@@ -1,0 +1,217 @@
+Build a mobile-first web app called “SummitReady”.
+
+Purpose:
+An app that helps users train for any mountain, hike, or alpine hut by creating a personalised training plan based on their summit date, using hills near their location.
+
+----------------------------------------
+CORE USER FLOW
+----------------------------------------
+
+1. User enters:
+   - Target mountain/hike name
+   - Target (summit) date
+   - Distance of target hike
+   - Elevation gain
+   - Highest altitude
+   - Difficulty level: Easy / Moderate / Hard / Alpine
+   - Current fitness level: Beginner / Average / Strong
+   - User location/postcode
+   - Maximum travel radius for training hills
+
+----------------------------------------
+PLAN GENERATION (KEY FEATURE)
+----------------------------------------
+
+The app must dynamically generate a training plan based on the number of weeks until the summit date.
+
+DO NOT hardcode an 8-week plan.
+
+Instead:
+
+- Calculate total weeks remaining until the summit date
+- Automatically adapt the plan length and structure
+
+Plan logic:
+
+IF weeks remaining < 4:
+- Create an accelerated plan
+- Focus on:
+  - Urgent fitness gains
+  - Key elevation sessions
+- Show warning:
+  “Limited preparation time – prioritise key sessions”
+
+IF weeks remaining = 4–12:
+- Create a progressive structured plan
+- Gradually increase:
+  - Weekly elevation gain
+  - Session intensity
+- Include:
+  - 1 peak week
+  - 1 taper week before summit
+
+IF weeks remaining > 12:
+- Create phased training:
+  - Base phase (low intensity, consistency)
+  - Build phase (increase elevation + effort)
+  - Peak phase (match/exceed summit demands)
+  - Taper phase (reduce load before trip)
+
+----------------------------------------
+WEEKLY PLAN STRUCTURE
+----------------------------------------
+
+Each generated week should include:
+
+- 2x cardio sessions (incline / stairs / steady effort)
+- 1x hill session (repeat climbs)
+- 1x “big day” (long hike or high elevation session)
+- Target elevation gain for the week
+- Short explanation of the purpose of that week
+
+Progression rules:
+- Increase elevation targets gradually each week
+- Include at least one “peak week” where:
+  - Elevation target reaches 80–100% of summit climb
+- Final 1–2 weeks must taper:
+  - Reduce volume
+  - Maintain light intensity
+
+----------------------------------------
+LOCAL HILL INTEGRATION (MVP SIMULATION)
+----------------------------------------
+
+- Based on user location, generate mock nearby hills
+- Each hill should include:
+  - Name
+  - Distance from user
+  - Approx elevation gain
+  - Suggested number of repeats
+
+Example:
+“Indian’s Head – 280m ascent → do 3 repeats for ~840m”
+
+Use mock data for MVP but structure code for future APIs:
+- OpenStreetMap / Overpass
+- Google Elevation API / Mapbox Terrain
+
+----------------------------------------
+PAGES
+----------------------------------------
+
+1. Landing Page
+- App name: SummitReady
+- Tagline: “Train for any mountain using hills near you”
+- Button: “Create my plan”
+
+2. Setup Page
+Form inputs for all user data
+
+3. Dashboard Page (IMPORTANT – make this feel like an app)
+
+Display:
+- Readiness Score (0–100%)
+- Status:
+  - Green: Ready
+  - Amber: Close
+  - Red: Not Ready
+- Days remaining until summit
+- Max ascent achieved
+- Weekly completion %
+- Current week target
+- “On track / Behind / Ready” message
+
+4. Training Plan Page
+
+- Dynamically generate weekly cards based on summit date
+- Clearly highlight:
+  - Current week
+  - Weeks remaining
+  - Peak week
+  - Taper week
+
+Each week card shows:
+- Sessions (cardio / hill / big day)
+- Target elevation
+- Suggested hill workouts
+- Notes
+
+5. Session Log Page
+
+User logs:
+- Date
+- Session type
+- Distance
+- Elevation gain
+- Duration
+- Effort (1–5)
+- Notes
+- Completed checkbox
+
+Store in localStorage (no login required)
+
+6. Nearby Hills Page
+
+Show mock hills:
+- Name
+- Distance
+- Elevation
+- Suggested repeats
+- “Use in plan” button
+
+----------------------------------------
+READINESS SCORE LOGIC
+----------------------------------------
+
+Score out of 100 based on:
+
+- Completion rate (consistency)
+- Highest elevation achieved vs target elevation
+- Whether user completed at least one “big day” at 80%+ target
+- Effort trend improving over time
+- Recent activity consistency
+
+Reduce score if:
+- Sessions missed
+- Effort remains very high (overtraining / struggling)
+- No peak effort achieved
+
+----------------------------------------
+TECH STACK (IMPORTANT)
+----------------------------------------
+
+- Use React
+- Use Tailwind CSS
+- Mobile-first design
+- Use localStorage for persistence
+- No authentication required
+- Clean, modular, readable code
+
+----------------------------------------
+UI / UX STYLE
+----------------------------------------
+
+Make it feel like a real app, not a spreadsheet:
+
+- Card-based layout
+- Rounded UI
+- Outdoor / mountain theme
+- Dark gradient background
+- Large readable text
+- Progress bars and/or rings
+- Minimal clutter
+- Optimised for iPhone screen
+
+----------------------------------------
+BONUS (IF POSSIBLE)
+----------------------------------------
+
+- Include a demo plan:
+  Hörnlihütte from Schwarzsee
+- Preload example data so dashboard is not empty
+- Add subtle animations (progress updates, card hover)
+
+----------------------------------------
+
+Goal:
+Create a working MVP that feels like a premium mobile training app, not just a form and table.
