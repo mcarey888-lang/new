@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import {
-  Animated,
   Dimensions,
   Platform,
   ScrollView,
@@ -12,288 +12,313 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
-import {
-  calculateReadiness,
-  getDaysRemaining,
-  getReadinessStatus,
-  getWeeklyCompletion,
-} from "@/utils/readinessScore";
+import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
+import { ProgressRing } from "@/components/ProgressRing";
+import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 
 const { width } = Dimensions.get("window");
-
-function RadialProgress({ score, size = 140 }: { score: number; size?: number }) {
-  const colors = useColors();
-  const animVal = useRef(new Animated.Value(0)).current;
-  const radius = (size - 20) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const status = getReadinessStatus(score);
-
-  useEffect(() => {
-    Animated.timing(animVal, {
-      toValue: score,
-      duration: 1200,
-      useNativeDriver: false,
-    }).start();
-  }, [score]);
-
-  const strokeDashoffset = animVal.interpolate({
-    inputRange: [0, 100],
-    outputRange: [circumference, 0],
-  });
-
-  return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      <View
-        style={{
-          position: "absolute",
-          width: size - 20,
-          height: size - 20,
-          borderRadius: (size - 20) / 2,
-          borderWidth: 10,
-          borderColor: colors.border,
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: size - 20,
-          height: size - 20,
-          borderRadius: (size - 20) / 2,
-          borderWidth: 10,
-          borderColor: status.color,
-          borderTopColor: "transparent",
-          borderRightColor: score > 25 ? status.color : "transparent",
-          borderBottomColor: score > 50 ? status.color : "transparent",
-          borderLeftColor: score > 75 ? status.color : "transparent",
-          transform: [{ rotate: "-90deg" }],
-        }}
-      />
-      <View style={{ alignItems: "center" }}>
-        <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: status.color }}>
-          {score}
-        </Text>
-        <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
-          READINESS
-        </Text>
-      </View>
-    </View>
-  );
-}
+const CARD_W = (width - 48) / 2;
 
 function StatCard({
   icon,
   label,
   value,
   unit,
-  color,
+  accent,
+  delay = 0,
 }: {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   value: string | number;
   unit?: string;
-  color: string;
+  accent: string;
+  delay?: number;
 }) {
-  const colors = useColors();
   return (
-    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.statIcon, { backgroundColor: color + "20" }]}>
-        <Feather name={icon} size={16} color={color} />
+    <Animated.View entering={FadeInDown.delay(delay).duration(500)} style={[styles.statCard, { width: CARD_W }]}>
+      <View style={[styles.statIconRow, { backgroundColor: accent + "18" }]}>
+        <Feather name={icon} size={15} color={accent} />
       </View>
-      <Text style={[styles.statValue, { color: colors.foreground }]}>
+      <Text style={styles.statValue}>
         {value}
-        {unit && <Text style={[styles.statUnit, { color: colors.mutedForeground }]}> {unit}</Text>}
+        {unit && <Text style={[styles.statUnit, { color: T.textMuted }]}> {unit}</Text>}
       </Text>
-      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>
-    </View>
+      <Text style={styles.statLabel}>{label}</Text>
+    </Animated.View>
   );
 }
 
 export default function DashboardScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore } = useApp();
 
   if (!summitGoal) {
     return (
-      <View style={[styles.empty, { backgroundColor: colors.background }]}>
-        <Feather name="compass" size={40} color={colors.primary} />
-        <Text style={[styles.emptyText, { color: colors.foreground }]}>No plan yet</Text>
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/setup")}
-        >
-          <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>Create my plan</Text>
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 18 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" }}>
+          <Feather name="compass" size={28} color={T.green} />
+        </View>
+        <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
+        <TouchableOpacity onPress={() => router.push("/setup")} style={styles.createPlanBtn}>
+          <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.createPlanGrad}>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" }}>Create my plan</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const status = getReadinessStatus(readinessScore);
-  const daysRemaining = getDaysRemaining(summitGoal.summitDate);
+  const statusColor = STATUS_COLOR(readinessScore);
+  const statusLabel = STATUS_LABEL(readinessScore);
+  const days = getDaysRemaining(summitGoal.summitDate);
   const currentWeek = getCurrentWeek(trainingPlan);
   const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber) : 0;
-  const maxElevAchieved = sessions.filter(s => s.completed).reduce((max, s) => Math.max(max, s.elevationGain), 0);
-  const totalSessions = sessions.filter(s => s.completed).length;
+  const maxElev = sessions.filter(s => s.completed).reduce((m, s) => Math.max(m, s.elevationGain), 0);
+  const totalDone = sessions.filter(s => s.completed).length;
 
-  const trackingMessage =
+  const trackingMsg =
     readinessScore >= 70 ? "You are on track" :
-    readinessScore >= 40 ? "Getting closer" :
-    "Behind — train more";
+    readinessScore >= 40 ? "Keep building fitness" :
+    "Behind — prioritise training";
 
   return (
-    <LinearGradient colors={["#050C18", "#0B1120", "#0B1120"]} style={{ flex: 1 }}>
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Platform.OS === "web" ? 80 : insets.top + 12,
+            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
             paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Training for</Text>
-            <Text style={[styles.mountain, { color: colors.foreground }]} numberOfLines={1}>
-              {summitGoal.mountainName}
-            </Text>
+        <Animated.View entering={FadeInDown.delay(0).duration(500)} style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerLabel}>Training for</Text>
+            <Text style={styles.headerMountain} numberOfLines={1}>{summitGoal.mountainName}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.editBtn, { backgroundColor: colors.surface }]}
-            onPress={() => router.push("/setup")}
-          >
-            <Feather name="edit-2" size={16} color={colors.primary} />
+          <TouchableOpacity onPress={() => router.push("/setup")} style={styles.editBtn}>
+            <Feather name="edit-2" size={15} color={T.green} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        {/* Readiness Card */}
-        <View style={[styles.readinessCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.readinessLeft}>
-            <RadialProgress score={readinessScore} size={120} />
-          </View>
-          <View style={styles.readinessRight}>
-            <View style={[styles.statusBadge, { backgroundColor: status.color + "25" }]}>
-              <View style={[styles.dot, { backgroundColor: status.color }]} />
-              <Text style={[styles.statusLabel, { color: status.color }]}>{status.label}</Text>
+        {/* Low time warning */}
+        {days > 0 && days < 28 && (
+          <Animated.View entering={FadeInDown.delay(60).duration(500)}>
+            <View style={styles.warningBanner}>
+              <Feather name="alert-triangle" size={14} color={T.orange} />
+              <Text style={styles.warningText}>
+                Limited prep time – prioritise key sessions
+              </Text>
             </View>
-            <Text style={[styles.trackingMsg, { color: colors.foreground }]}>{trackingMessage}</Text>
-            <Text style={[styles.daysLeft, { color: colors.mutedForeground }]}>
-              {daysRemaining > 0 ? `${daysRemaining} days to go` : "Summit day!"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Warning for < 4 weeks */}
-        {daysRemaining < 28 && daysRemaining > 0 && (
-          <View style={[styles.warning, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "50" }]}>
-            <Feather name="alert-triangle" size={16} color={colors.warning} />
-            <Text style={[styles.warningText, { color: colors.warning }]}>
-              Limited preparation time – prioritise key sessions
-            </Text>
-          </View>
+          </Animated.View>
         )}
+
+        {/* Readiness Hero Card */}
+        <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+          <View style={styles.readinessCard}>
+            <LinearGradient
+              colors={[statusColor + "10", "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.readinessInner}>
+              <ProgressRing score={readinessScore} size={148} strokeWidth={11} />
+              <View style={styles.readinessMeta}>
+                <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                  <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+                </View>
+                <Text style={styles.trackingMsg}>{trackingMsg}</Text>
+                <Text style={styles.daysText}>
+                  {days > 0 ? `${days} days until summit` : "Summit day!"}
+                </Text>
+                <View style={styles.difficultyRow}>
+                  <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
+                    <Feather name="flag" size={11} color={T.textMuted} />
+                    <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
+                  </View>
+                  <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
+                    <Feather name="zap" size={11} color={T.textMuted} />
+                    <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <StatCard icon="calendar" label="Days Remaining" value={daysRemaining} color={colors.primary} />
-          <StatCard icon="trending-up" label="Max Ascent" value={maxElevAchieved} unit="m" color={colors.accent} />
-          <StatCard icon="check-circle" label="Sessions Done" value={totalSessions} color={colors.primary} />
-          <StatCard icon="percent" label="This Week" value={weekCompletion} unit="%" color={colors.accent} />
+          <StatCard icon="calendar" label="Days Remaining" value={days} accent={T.blue} delay={120} />
+          <StatCard icon="trending-up" label="Max Ascent" value={maxElev} unit="m" accent={T.orange} delay={160} />
+          <StatCard icon="check-circle" label="Sessions Done" value={totalDone} accent={T.green} delay={200} />
+          <StatCard icon="bar-chart-2" label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
         </View>
+
+        {/* Summit Goal Strip */}
+        <Animated.View entering={FadeInDown.delay(260).duration(500)}>
+          <View style={styles.goalStrip}>
+            <View style={styles.goalItem}>
+              <Text style={styles.goalVal}>{summitGoal.elevationGain}m</Text>
+              <Text style={styles.goalLbl}>Elev. Gain</Text>
+            </View>
+            <View style={styles.goalDivider} />
+            <View style={styles.goalItem}>
+              <Text style={styles.goalVal}>{summitGoal.distance}km</Text>
+              <Text style={styles.goalLbl}>Distance</Text>
+            </View>
+            <View style={styles.goalDivider} />
+            <View style={styles.goalItem}>
+              <Text style={styles.goalVal}>{summitGoal.highestAltitude}m</Text>
+              <Text style={styles.goalLbl}>Max Altitude</Text>
+            </View>
+          </View>
+        </Animated.View>
 
         {/* Current Week */}
         {currentWeek && (
-          <View style={[styles.currentWeekCard, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
-            <View style={styles.cwHeader}>
-              <View style={[styles.cwBadge, { backgroundColor: colors.primary + "20" }]}>
-                <Text style={[styles.cwBadgeText, { color: colors.primary }]}>
-                  Week {currentWeek.weekNumber} · {currentWeek.phase}
+          <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+            <View style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}>
+              <LinearGradient
+                colors={[PHASE_COLOR[currentWeek.phase] + "0A", "transparent"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.weekCardTop}>
+                <View style={[styles.phasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "20" }]}>
+                  <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[currentWeek.phase] }]} />
+                  <Text style={[styles.phaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                    Week {currentWeek.weekNumber} · {currentWeek.phase}
+                  </Text>
+                </View>
+                {currentWeek.isPeakWeek && (
+                  <View style={styles.peakBadge}>
+                    <Text style={styles.peakBadgeText}>⚡ PEAK</Text>
+                  </View>
+                )}
+                {currentWeek.isTaperWeek && (
+                  <View style={styles.taperBadge}>
+                    <Text style={styles.taperBadgeText}>↓ TAPER</Text>
+                  </View>
+                )}
+                <Text style={[styles.weekTarget, { color: T.orange }]}>
+                  {currentWeek.targetElevation}m
                 </Text>
               </View>
-              <Text style={[styles.cwTarget, { color: colors.accent }]}>
-                {currentWeek.targetElevation}m target
-              </Text>
-            </View>
-            <Text style={[styles.cwPurpose, { color: colors.foreground }]}>{currentWeek.purpose}</Text>
-            <View style={styles.progressRow}>
-              <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
-                <View
-                  style={[styles.progressFill, { width: `${weekCompletion}%` as any, backgroundColor: colors.primary }]}
-                />
-              </View>
-              <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>{weekCompletion}%</Text>
-            </View>
-            <View style={styles.sessionTypes}>
-              {currentWeek.sessions.map((s, i) => (
-                <View key={i} style={[styles.sessionChip, { backgroundColor: colors.surfaceElevated }]}>
-                  <Feather
-                    name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
-                    size={12}
-                    color={s.type === "bigDay" ? colors.accent : colors.primary}
+              <Text style={styles.weekPurpose}>{currentWeek.purpose}</Text>
+              <View style={styles.progressRow}>
+                <View style={styles.progressTrack}>
+                  <Animated.View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${weekCompletion}%` as any,
+                        backgroundColor: PHASE_COLOR[currentWeek.phase],
+                      },
+                    ]}
                   />
-                  <Text style={[styles.sessionChipText, { color: colors.secondaryForeground }]}>{s.label}</Text>
                 </View>
-              ))}
+                <Text style={[styles.progressLabel, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                  {weekCompletion}%
+                </Text>
+              </View>
+              <View style={styles.sessionChips}>
+                {currentWeek.sessions.map((s, i) => (
+                  <View key={i} style={[styles.sChip, { backgroundColor: T.surface }]}>
+                    <Feather
+                      name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
+                      size={11}
+                      color={s.type === "bigDay" ? T.orange : T.green}
+                    />
+                    <Text style={styles.sChipText}>{s.label}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
+          </Animated.View>
         )}
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
+        {/* Action Buttons */}
+        <Animated.View entering={FadeInDown.delay(340).duration(500)} style={styles.actions}>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/(tabs)/log")}
+            style={styles.primaryAction}
             activeOpacity={0.85}
           >
-            <Feather name="plus-circle" size={18} color="#fff" />
-            <Text style={styles.actionBtnText}>Log session</Text>
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.primaryActionGrad}>
+              <Feather name="plus" size={18} color="#fff" />
+              <Text style={styles.primaryActionText}>Log Session</Text>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
             onPress={() => router.push("/(tabs)/plan")}
+            style={styles.secondaryAction}
             activeOpacity={0.85}
           >
-            <Feather name="calendar" size={18} color={colors.primary} />
-            <Text style={[styles.actionBtnText, { color: colors.foreground }]}>View plan</Text>
+            <Feather name="calendar" size={17} color={T.green} />
+            <Text style={styles.secondaryActionText}>View Plan</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </ScrollView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
-  emptyText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
-  createBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  scroll: { paddingHorizontal: 16 },
-  headerRow: {
+  scroll: { paddingHorizontal: 18 },
+  createPlanBtn: { borderRadius: 16, overflow: "hidden" },
+  createPlanGrad: { paddingHorizontal: 28, paddingVertical: 14 },
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
+    alignItems: "center",
+    marginBottom: 14,
   },
-  greeting: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 2 },
-  mountain: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", maxWidth: 260 },
-  editBtn: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  readinessCard: {
-    borderRadius: 20,
+  headerLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 2 },
+  headerMountain: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, maxWidth: 280 },
+  editBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: T.greenDim,
     borderWidth: 1,
-    padding: 20,
+    borderColor: T.green + "30",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  warningBanner: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+    backgroundColor: T.orangeDim,
+    borderWidth: 1,
+    borderColor: T.orange + "40",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     marginBottom: 12,
   },
-  readinessLeft: { marginRight: 20 },
-  readinessRight: { flex: 1, gap: 8 },
-  statusBadge: {
+  warningText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.orange },
+  readinessCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    backgroundColor: T.card,
+    padding: 20,
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  readinessInner: { flexDirection: "row", alignItems: "center", gap: 18 },
+  readinessMeta: { flex: 1, gap: 8 },
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -302,79 +327,124 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: "flex-start",
   },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  statusLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  trackingMsg: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  daysLeft: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  warning: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  warningText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 14,
-  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  trackingMsg: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 22 },
+  daysText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  difficultyRow: { flexDirection: "row", gap: 6, marginTop: 2 },
+  diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  diffText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
   statCard: {
-    width: (width - 42) / 2,
-    borderRadius: 16,
+    backgroundColor: T.card,
+    borderRadius: 18,
     borderWidth: 1,
+    borderColor: T.cardBorder,
     padding: 14,
-    gap: 4,
+    gap: 5,
   },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
+  statIconRow: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
   },
-  statValue: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  statUnit: { fontSize: 14 },
-  statLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  currentWeekCard: {
-    borderRadius: 18,
+  statValue: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  statUnit: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  goalStrip: {
+    backgroundColor: T.card,
+    borderRadius: 16,
     borderWidth: 1,
+    borderColor: T.cardBorder,
+    flexDirection: "row",
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  goalItem: { flex: 1, alignItems: "center" },
+  goalVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 2 },
+  goalLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  goalDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  weekCard: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    backgroundColor: T.card,
     padding: 16,
     marginBottom: 14,
+    overflow: "hidden",
     gap: 10,
   },
-  cwHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cwBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  cwBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  cwTarget: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  cwPurpose: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  weekCardTop: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
+  phasePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  phaseDot: { width: 7, height: 7, borderRadius: 4 },
+  phaseText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  peakBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: T.orangeDim },
+  peakBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.orange, letterSpacing: 0.5 },
+  taperBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: T.purpleDim },
+  taperBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 0.5 },
+  weekTarget: { fontSize: 14, fontFamily: "Inter_700Bold", marginLeft: "auto" as any },
+  weekPurpose: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  progressBg: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: 6, borderRadius: 3 },
-  progressLabel: { fontSize: 12, fontFamily: "Inter_500Medium", width: 32, textAlign: "right" },
-  sessionTypes: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  sessionChip: {
+  progressTrack: {
+    flex: 1,
+    height: 5,
+    backgroundColor: T.border,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: { height: 5, borderRadius: 3 },
+  progressLabel: { fontSize: 12, fontFamily: "Inter_700Bold", width: 34, textAlign: "right" },
+  sessionChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  sChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: T.border,
   },
-  sessionChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  quickActions: { flexDirection: "row", gap: 10 },
-  actionBtn: {
+  sChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.text },
+  actions: { flexDirection: "row", gap: 10 },
+  primaryAction: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: T.green,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  primaryActionGrad: {
+    height: 50,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
-  actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  primaryActionText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  secondaryAction: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "30",
+  },
+  secondaryActionText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.green },
 });

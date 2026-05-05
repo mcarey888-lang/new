@@ -13,89 +13,83 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { SummitGoal, useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
+import { T } from "@/constants/theme";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 type Fitness = "Beginner" | "Average" | "Strong";
 
+const DIFF_ICONS: Record<Difficulty, string> = {
+  Easy: "🌿", Moderate: "🏔️", Hard: "⛰️", Alpine: "🗻",
+};
+const FIT_ICONS: Record<Fitness, string> = {
+  Beginner: "🌱", Average: "🏃", Strong: "⚡",
+};
+
 export default function SetupScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { setSummitGoal } = useApp();
 
-  const [mountainName, setMountainName] = useState("");
-  const [summitDate, setSummitDate] = useState("");
-  const [distance, setDistance] = useState("");
-  const [elevationGain, setElevationGain] = useState("");
-  const [highestAltitude, setHighestAltitude] = useState("");
-  const [difficulty, setDifficulty] = useState<Difficulty>("Moderate");
-  const [fitnessLevel, setFitnessLevel] = useState<Fitness>("Average");
-  const [location, setLocation] = useState("");
-  const [maxRadius, setMaxRadius] = useState("25");
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
+  const [dist, setDist] = useState("");
+  const [elev, setElev] = useState("");
+  const [alt, setAlt] = useState("");
+  const [diff, setDiff] = useState<Difficulty>("Moderate");
+  const [fit, setFit] = useState<Fitness>("Average");
+  const [loc, setLoc] = useState("");
+  const [radius, setRadius] = useState("25");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const difficulties: Difficulty[] = ["Easy", "Moderate", "Hard", "Alpine"];
-  const fitnessLevels: Fitness[] = ["Beginner", "Average", "Strong"];
+  const DIFFICULTIES: Difficulty[] = ["Easy", "Moderate", "Hard", "Alpine"];
+  const FITNESS: Fitness[] = ["Beginner", "Average", "Strong"];
 
-  function validate(): boolean {
+  function validate() {
     const e: Record<string, string> = {};
-    if (!mountainName.trim()) e.mountainName = "Required";
-    if (!summitDate.match(/^\d{4}-\d{2}-\d{2}$/)) e.summitDate = "Use YYYY-MM-DD format";
-    else {
-      const d = new Date(summitDate);
-      if (isNaN(d.getTime()) || d <= new Date()) e.summitDate = "Must be a future date";
-    }
-    if (!distance || isNaN(Number(distance)) || Number(distance) <= 0) e.distance = "Enter km";
-    if (!elevationGain || isNaN(Number(elevationGain)) || Number(elevationGain) <= 0) e.elevationGain = "Enter metres";
-    if (!highestAltitude || isNaN(Number(highestAltitude))) e.highestAltitude = "Enter metres";
-    if (!location.trim()) e.location = "Required";
+    if (!name.trim()) e.name = "Required";
+    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) e.date = "Format: YYYY-MM-DD";
+    else if (new Date(date) <= new Date()) e.date = "Must be a future date";
+    if (!dist || isNaN(+dist) || +dist <= 0) e.dist = "Enter km";
+    if (!elev || isNaN(+elev) || +elev <= 0) e.elev = "Enter metres";
+    if (!alt || isNaN(+alt)) e.alt = "Enter metres";
+    if (!loc.trim()) e.loc = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  async function handleSubmit() {
+  async function submit() {
     if (!validate()) return;
     setSaving(true);
-    const goal: SummitGoal = {
-      mountainName: mountainName.trim(),
-      summitDate,
-      distance: Number(distance),
-      elevationGain: Number(elevationGain),
-      highestAltitude: Number(highestAltitude),
-      difficulty,
-      fitnessLevel,
-      location: location.trim(),
-      maxRadius: Number(maxRadius) || 25,
-    };
-    await setSummitGoal(goal);
+    await setSummitGoal({
+      mountainName: name.trim(),
+      summitDate: date,
+      distance: +dist,
+      elevationGain: +elev,
+      highestAltitude: +alt,
+      difficulty: diff,
+      fitnessLevel: fit,
+      location: loc.trim(),
+      maxRadius: +radius || 25,
+    });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
   }
 
-  const inputStyle = (field: string) => [
+  const inp = (field: string) => [
     styles.input,
-    {
-      backgroundColor: colors.surface,
-      borderColor: errors[field] ? colors.danger : colors.border,
-      color: colors.foreground,
-    },
+    errors[field] && { borderColor: T.red + "80" },
   ];
 
   return (
-    <LinearGradient colors={["#050C18", "#0B1120"]} style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
             {
-              paddingTop: Platform.OS === "web" ? 80 : insets.top + 16,
-              paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 30,
+              paddingTop: Platform.OS === "web" ? 72 : insets.top + 16,
+              paddingBottom: Platform.OS === "web" ? 60 : insets.bottom + 40,
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -103,151 +97,103 @@ export default function SetupScreen() {
         >
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Feather name="arrow-left" size={22} color={colors.foreground} />
+              <Feather name="arrow-left" size={20} color={T.white} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.foreground }]}>Your Summit</Text>
-          </View>
-
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>Target</Text>
-
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Mountain / Hike Name</Text>
-            <TextInput
-              style={inputStyle("mountainName")}
-              value={mountainName}
-              onChangeText={setMountainName}
-              placeholder="e.g. Hörnlihütte from Schwarzsee"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            {errors.mountainName && <Text style={styles.error}>{errors.mountainName}</Text>}
-          </View>
-
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Summit Date</Text>
-            <TextInput
-              style={inputStyle("summitDate")}
-              value={summitDate}
-              onChangeText={setSummitDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numbers-and-punctuation"
-            />
-            {errors.summitDate && <Text style={styles.error}>{errors.summitDate}</Text>}
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.fieldWrap, { flex: 1 }]}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>Distance (km)</Text>
-              <TextInput
-                style={inputStyle("distance")}
-                value={distance}
-                onChangeText={setDistance}
-                placeholder="14"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="decimal-pad"
-              />
-              {errors.distance && <Text style={styles.error}>{errors.distance}</Text>}
-            </View>
-            <View style={[styles.fieldWrap, { flex: 1 }]}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>Elev. Gain (m)</Text>
-              <TextInput
-                style={inputStyle("elevationGain")}
-                value={elevationGain}
-                onChangeText={setElevationGain}
-                placeholder="1200"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="number-pad"
-              />
-              {errors.elevationGain && <Text style={styles.error}>{errors.elevationGain}</Text>}
+            <View>
+              <Text style={styles.title}>Your Summit</Text>
+              <Text style={styles.subtitle}>Set up your training plan</Text>
             </View>
           </View>
 
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Highest Altitude (m)</Text>
-            <TextInput
-              style={inputStyle("highestAltitude")}
-              value={highestAltitude}
-              onChangeText={setHighestAltitude}
-              placeholder="3260"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="number-pad"
-            />
-            {errors.highestAltitude && <Text style={styles.error}>{errors.highestAltitude}</Text>}
-          </View>
+          <Section label="Target Mountain" icon="map-pin">
+            <Field label="Mountain / Hike Name" error={errors.name}>
+              <TextInput style={inp("name")} value={name} onChangeText={setName}
+                placeholder="e.g. Hörnlihütte from Schwarzsee" placeholderTextColor={T.textDim} />
+            </Field>
+            <Field label="Summit Date" error={errors.date}>
+              <TextInput style={inp("date")} value={date} onChangeText={setDate}
+                placeholder="YYYY-MM-DD" placeholderTextColor={T.textDim} keyboardType="numbers-and-punctuation" />
+            </Field>
+          </Section>
 
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>Difficulty</Text>
-          <View style={styles.chips}>
-            {difficulties.map(d => (
-              <TouchableOpacity
-                key={d}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: difficulty === d ? colors.primary : colors.surface,
-                    borderColor: difficulty === d ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setDifficulty(d)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.chipText, { color: difficulty === d ? "#fff" : colors.mutedForeground }]}>{d}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Section label="Route Details" icon="trending-up">
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Field label="Distance (km)" error={errors.dist} style={{ flex: 1 }}>
+                <TextInput style={inp("dist")} value={dist} onChangeText={setDist}
+                  placeholder="14" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+              </Field>
+              <Field label="Elev. Gain (m)" error={errors.elev} style={{ flex: 1 }}>
+                <TextInput style={inp("elev")} value={elev} onChangeText={setElev}
+                  placeholder="1220" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+              </Field>
+            </View>
+            <Field label="Highest Altitude (m)" error={errors.alt}>
+              <TextInput style={inp("alt")} value={alt} onChangeText={setAlt}
+                placeholder="3260" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+            </Field>
+          </Section>
 
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>Fitness Level</Text>
-          <View style={styles.chips}>
-            {fitnessLevels.map(f => (
-              <TouchableOpacity
-                key={f}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: fitnessLevel === f ? colors.accent : colors.surface,
-                    borderColor: fitnessLevel === f ? colors.accent : colors.border,
-                  },
-                ]}
-                onPress={() => setFitnessLevel(f)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.chipText, { color: fitnessLevel === f ? "#fff" : colors.mutedForeground }]}>{f}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Section label="Difficulty" icon="flag">
+            <View style={styles.optionGrid}>
+              {DIFFICULTIES.map(d => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setDiff(d)}
+                  style={[
+                    styles.optionBtn,
+                    diff === d && { borderColor: T.green, backgroundColor: T.greenDim },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.optionEmoji}>{DIFF_ICONS[d]}</Text>
+                  <Text style={[styles.optionLabel, diff === d && { color: T.green }]}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Section>
 
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>Location</Text>
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Location / Postcode</Text>
-            <TextInput
-              style={inputStyle("location")}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="e.g. Leeds, UK"
-              placeholderTextColor={colors.mutedForeground}
-            />
-            {errors.location && <Text style={styles.error}>{errors.location}</Text>}
-          </View>
+          <Section label="Fitness Level" icon="zap">
+            <View style={styles.optionGrid}>
+              {FITNESS.map(f => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => setFit(f)}
+                  style={[
+                    styles.optionBtn,
+                    fit === f && { borderColor: T.orange, backgroundColor: T.orangeDim },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.optionEmoji}>{FIT_ICONS[f]}</Text>
+                  <Text style={[styles.optionLabel, fit === f && { color: T.orange }]}>{f}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Section>
 
-          <View style={styles.fieldWrap}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Max Training Radius (km)</Text>
-            <TextInput
-              style={inputStyle("maxRadius")}
-              value={maxRadius}
-              onChangeText={setMaxRadius}
-              placeholder="25"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="number-pad"
-            />
-          </View>
+          <Section label="Your Location" icon="map">
+            <Field label="Location / Postcode" error={errors.loc}>
+              <TextInput style={inp("loc")} value={loc} onChangeText={setLoc}
+                placeholder="e.g. Leeds, UK" placeholderTextColor={T.textDim} />
+            </Field>
+            <Field label="Max Training Radius (km)">
+              <TextInput style={inp("radius")} value={radius} onChangeText={setRadius}
+                placeholder="25" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+            </Field>
+          </Section>
 
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: saving ? colors.muted : colors.primary }]}
-            onPress={handleSubmit}
-            activeOpacity={0.85}
+            onPress={submit}
             disabled={saving}
+            style={[styles.submitBtn, { opacity: saving ? 0.7 : 1 }]}
+            activeOpacity={0.85}
           >
-            <Feather name={saving ? "loader" : "check"} size={20} color="#fff" />
-            <Text style={styles.saveText}>{saving ? "Generating plan..." : "Generate my training plan"}</Text>
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitGrad}>
+              <Feather name={saving ? "loader" : "check-circle"} size={20} color="#fff" />
+              <Text style={styles.submitText}>
+                {saving ? "Generating plan…" : "Generate my training plan"}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -255,68 +201,92 @@ export default function SetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { paddingHorizontal: 20, gap: 0 },
-  header: {
+function Section({ label, icon, children }: {
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={s2.section}>
+      <View style={s2.sectionHead}>
+        <View style={s2.sectionIconBox}>
+          <Feather name={icon} size={14} color={T.green} />
+        </View>
+        <Text style={s2.sectionLabel}>{label}</Text>
+      </View>
+      <View style={s2.sectionBody}>{children}</View>
+    </View>
+  );
+}
+
+function Field({ label, error, children, style }: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  style?: object;
+}) {
+  return (
+    <View style={[{ marginBottom: 12 }, style]}>
+      <Text style={s2.fieldLabel}>{label}</Text>
+      {children}
+      {error && <Text style={s2.errorText}>{error}</Text>}
+    </View>
+  );
+}
+
+const s2 = StyleSheet.create({
+  section: { marginBottom: 8 },
+  sectionHead: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 28,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#141E30",
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 12,
     marginTop: 20,
   },
-  fieldWrap: { marginBottom: 14 },
-  label: { fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 6 },
+  sectionIconBox: { width: 28, height: 28, borderRadius: 8, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
+  sectionLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, letterSpacing: 0.3 },
+  fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted, marginBottom: 7 },
+  errorText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.red, marginTop: 4 },
+});
+
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: 20 },
+  header: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 24 },
+  backBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   input: {
-    height: 48,
-    borderRadius: 12,
+    height: 50,
+    backgroundColor: T.surface,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 14,
+    borderColor: T.border,
+    paddingHorizontal: 16,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
+    color: T.white,
   },
-  error: { fontSize: 11, color: "#E53E3E", marginTop: 4, fontFamily: "Inter_400Regular" },
-  row: { flexDirection: "row", gap: 12 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
+  optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  optionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    backgroundColor: T.surface,
   },
-  chipText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  saveButton: {
-    height: 56,
-    borderRadius: 16,
+  optionEmoji: { fontSize: 15 },
+  optionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  submitBtn: { borderRadius: 18, overflow: "hidden", marginTop: 28 },
+  submitGrad: {
+    height: 58,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    marginTop: 30,
-    shadowColor: "#4CAF74",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  saveText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  submitText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
 });

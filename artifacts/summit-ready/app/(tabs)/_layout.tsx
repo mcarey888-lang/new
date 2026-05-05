@@ -1,72 +1,38 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
+import { T } from "@/constants/theme";
 
-import { useColors } from "@/hooks/useColors";
-
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="dashboard">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Dashboard</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="plan">
-        <Icon sf={{ default: "calendar", selected: "calendar.fill" }} />
-        <Label>Plan</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="log">
-        <Icon sf={{ default: "pencil.and.list.clipboard", selected: "pencil.and.list.clipboard" }} />
-        <Label>Log</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="hills">
-        <Icon sf={{ default: "mountain.2", selected: "mountain.2.fill" }} />
-        <Label>Hills</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-function ClassicTabLayout() {
-  const colors = useColors();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: T.green,
+        tabBarInactiveTintColor: T.textDim,
         headerShown: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : "#0B1120",
+          backgroundColor: isIOS ? "transparent" : T.bg,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: "rgba(255,255,255,0.06)",
           elevation: 0,
-          height: isWeb ? 84 : 60,
+          height: isWeb ? 80 : 60,
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={100}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0B1120" }]} />
-          ) : null,
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isWeb ? T.bg : T.bg }]} />
+          ),
         tabBarLabelStyle: {
           fontSize: 11,
-          fontFamily: "Inter_500Medium",
-          marginBottom: isWeb ? 10 : 4,
+          fontFamily: "Inter_600SemiBold",
+          marginBottom: isWeb ? 12 : 2,
         },
       }}
     >
@@ -74,57 +40,57 @@ function ClassicTabLayout() {
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="house" tintColor={color} size={22} />
-            ) : (
-              <Feather name="home" size={21} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <Feather name="home" size={20} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="plan"
         options={{
           title: "Plan",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="calendar" tintColor={color} size={22} />
-            ) : (
-              <Feather name="calendar" size={21} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <Feather name="calendar" size={20} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="log"
         options={{
           title: "Log",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="list.bullet.clipboard" tintColor={color} size={22} />
-            ) : (
-              <Feather name="edit-3" size={21} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <Feather name="edit-3" size={20} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="hills"
         options={{
           title: "Hills",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="mountain.2" tintColor={color} size={22} />
-            ) : (
-              <Feather name="triangle" size={21} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <Feather name="triangle" size={20} color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
 
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
-}
+const styles = StyleSheet.create({
+  iconWrap: { width: 36, height: 26, alignItems: "center", justifyContent: "center" },
+  activeIconWrap: {
+    width: 44,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+});

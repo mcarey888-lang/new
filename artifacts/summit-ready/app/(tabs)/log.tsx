@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
   Dimensions,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -12,408 +14,412 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 
 import { Session, useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
-
-const { width } = Dimensions.get("window");
+import { T } from "@/constants/theme";
 
 const SESSION_TYPES = [
-  { value: "cardio" as const, label: "Cardio", icon: "heart" as const, color: "#4CAF74" },
-  { value: "hill" as const, label: "Hill Repeats", icon: "trending-up" as const, color: "#3B9CF5" },
-  { value: "bigDay" as const, label: "Big Day", icon: "flag" as const, color: "#F2994A" },
+  { value: "cardio" as const, label: "Cardio", icon: "heart" as const, color: T.green },
+  { value: "hill" as const, label: "Hill Repeats", icon: "trending-up" as const, color: T.blue },
+  { value: "bigDay" as const, label: "Big Day", icon: "flag" as const, color: T.orange },
 ];
 
-function EffortDots({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const colors = useColors();
-  const labels = ["Easy", "Moderate", "Hard", "Very Hard", "Max"];
+function EffortPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const labels = ["Easy", "Steady", "Hard", "Very Hard", "Max"];
   return (
-    <View>
-      <View style={{ flexDirection: "row", gap: 8 }}>
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", gap: 7 }}>
         {[1, 2, 3, 4, 5].map(n => (
           <TouchableOpacity
             key={n}
             onPress={() => onChange(n)}
             style={[
-              styles.effortDot,
-              { backgroundColor: n <= value ? colors.accent : colors.border },
+              styles.effortBtn,
+              { backgroundColor: n <= value ? T.orange : T.surface, borderColor: n <= value ? T.orange : T.border },
             ]}
-          />
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: n <= value ? "#fff" : T.textMuted }}>
+              {n}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
-      {value > 0 && (
-        <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 4 }}>
-          {labels[value - 1]}
-        </Text>
-      )}
+      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted }}>{labels[value - 1]}</Text>
     </View>
   );
 }
 
-function SessionCard({ session, onDelete, onToggle }: {
+function SessionCard({ session, onDelete, onToggle, index }: {
   session: Session;
   onDelete: () => void;
   onToggle: () => void;
+  index: number;
 }) {
-  const colors = useColors();
-  const typeInfo = SESSION_TYPES.find(t => t.value === session.type) ?? SESSION_TYPES[0];
-
+  const t = SESSION_TYPES.find(x => x.value === session.type) ?? SESSION_TYPES[0];
   return (
-    <View style={[styles.sessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.sessionCardTop}>
-        <View style={[styles.sessionTypeIcon, { backgroundColor: typeInfo.color + "20" }]}>
-          <Feather name={typeInfo.icon} size={16} color={typeInfo.color} />
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
+      <View style={styles.sessionCard}>
+        <LinearGradient
+          colors={[t.color + "08", "transparent"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.scTop}>
+          <View style={[styles.scTypeIcon, { backgroundColor: t.color + "18" }]}>
+            <Feather name={t.icon} size={16} color={t.color} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.scTitle}>{t.label}</Text>
+            <Text style={styles.scDate}>
+              {new Date(session.date).toLocaleDateString("en-GB", {
+                weekday: "short", day: "numeric", month: "short",
+              })}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
+            style={[styles.checkBtn, { backgroundColor: session.completed ? T.green : T.surface }]}
+          >
+            <Feather name="check" size={13} color={session.completed ? "#fff" : T.textDim} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onDelete} style={styles.delBtn}>
+            <Feather name="trash-2" size={14} color={T.textDim} />
+          </TouchableOpacity>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.sessionCardTitle, { color: colors.foreground }]}>{typeInfo.label}</Text>
-          <Text style={[styles.sessionCardDate, { color: colors.mutedForeground }]}>
-            {new Date(session.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
-          style={[styles.checkBtn, { backgroundColor: session.completed ? colors.primary : colors.border }]}
-        >
-          <Feather name="check" size={14} color={session.completed ? "#fff" : colors.mutedForeground} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
-          <Feather name="trash-2" size={15} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.sessionStats}>
-        <View style={styles.statItem}>
-          <Feather name="trending-up" size={12} color={colors.accent} />
-          <Text style={[styles.statItemText, { color: colors.secondaryForeground }]}>{session.elevationGain}m</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Feather name="map" size={12} color={colors.primary} />
-          <Text style={[styles.statItemText, { color: colors.secondaryForeground }]}>{session.distance}km</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Feather name="clock" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.statItemText, { color: colors.secondaryForeground }]}>{session.duration}min</Text>
-        </View>
-        <View style={styles.effortBar}>
-          {[1, 2, 3, 4, 5].map(n => (
-            <View
-              key={n}
-              style={[styles.effortBarPip, { backgroundColor: n <= session.effort ? colors.accent : colors.border }]}
-            />
+        <View style={styles.scStats}>
+          {[
+            { icon: "trending-up" as const, val: `${session.elevationGain}m`, color: T.orange },
+            { icon: "map" as const, val: `${session.distance}km`, color: T.blue },
+            { icon: "clock" as const, val: `${session.duration}min`, color: T.textMuted },
+          ].map((s, i) => (
+            <View key={i} style={styles.scStat}>
+              <Feather name={s.icon} size={11} color={s.color} />
+              <Text style={[styles.scStatText, { color: s.color }]}>{s.val}</Text>
+            </View>
           ))}
+          <View style={styles.effortDots}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <View
+                key={n}
+                style={[
+                  styles.effortPip,
+                  { backgroundColor: n <= session.effort ? T.orange : T.border },
+                ]}
+              />
+            ))}
+          </View>
         </View>
+        {!!session.notes && (
+          <Text style={styles.scNotes} numberOfLines={2}>{session.notes}</Text>
+        )}
       </View>
-      {session.notes ? (
-        <Text style={[styles.notesText, { color: colors.mutedForeground }]} numberOfLines={2}>{session.notes}</Text>
-      ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
-function AddSessionModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const colors = useColors();
+function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { addSession, trainingPlan } = useApp();
   const [type, setType] = useState<"cardio" | "hill" | "bigDay">("cardio");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [distance, setDistance] = useState("");
-  const [elevationGain, setElevationGain] = useState("");
-  const [duration, setDuration] = useState("");
-  const [effort, setEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [dist, setDist] = useState("");
+  const [elev, setElev] = useState("");
+  const [dur, setDur] = useState("");
+  const [effort, setEffort] = useState<number>(3);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
-    if (!distance || !elevationGain || !duration) return;
+  async function save() {
+    if (!dist || !elev || !dur) return;
     setSaving(true);
-
-    const today = new Date();
-    const sessionDate = new Date(date);
-    const weekNumber = trainingPlan.find(w => {
-      const start = new Date(w.startDate);
-      const end = new Date(w.endDate);
-      return sessionDate >= start && sessionDate <= end;
+    const d = new Date(date);
+    const weekNum = trainingPlan.find(w => {
+      return new Date(w.startDate) <= d && new Date(w.endDate) >= d;
     })?.weekNumber ?? 1;
 
     await addSession({
-      date,
-      type,
-      distance: Number(distance),
-      elevationGain: Number(elevationGain),
-      duration: Number(duration),
-      effort,
+      date, type,
+      distance: Number(dist),
+      elevationGain: Number(elev),
+      duration: Number(dur),
+      effort: effort as 1 | 2 | 3 | 4 | 5,
       notes: notes.trim(),
       completed: true,
-      weekNumber,
+      weekNumber: weekNum,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaving(false);
     onClose();
-    setDistance(""); setElevationGain(""); setDuration(""); setNotes(""); setEffort(3);
+    setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
   }
+
+  const inp = [styles.input];
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <LinearGradient colors={["#050C18", "#0B1120"]} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.modalScroll,
-            { paddingTop: Platform.OS === "web" ? 60 : insets.top + 10, paddingBottom: 40 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Log Session</Text>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surface }]}>
-              <Feather name="x" size={18} color={colors.foreground} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Session Type</Text>
-          <View style={styles.typeRow}>
-            {SESSION_TYPES.map(t => (
-              <TouchableOpacity
-                key={t.value}
-                onPress={() => setType(t.value)}
-                style={[
-                  styles.typeChip,
-                  { backgroundColor: type === t.value ? t.color : colors.surface, borderColor: type === t.value ? t.color : colors.border },
-                ]}
-              >
-                <Feather name={t.icon} size={14} color={type === t.value ? "#fff" : colors.mutedForeground} />
-                <Text style={[styles.typeChipText, { color: type === t.value ? "#fff" : colors.mutedForeground }]}>{t.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
-          />
-
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Distance (km)</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-                value={distance}
-                onChangeText={setDistance}
-                placeholder="8.5"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Elev. Gain (m)</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-                value={elevationGain}
-                onChangeText={setElevationGain}
-                placeholder="450"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Duration (min)</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-            value={duration}
-            onChangeText={setDuration}
-            placeholder="90"
-            placeholderTextColor={colors.mutedForeground}
-            keyboardType="number-pad"
-          />
-
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Effort</Text>
-          <EffortDots value={effort} onChange={v => setEffort(v as 1 | 2 | 3 | 4 | 5)} />
-
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Notes</Text>
-          <TextInput
-            style={[styles.notesInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="How did it feel?"
-            placeholderTextColor={colors.mutedForeground}
-            multiline
-            numberOfLines={3}
-          />
-
-          <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: saving ? colors.muted : colors.primary }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.modalScroll,
+              { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 48 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Feather name="check" size={18} color="#fff" />
-            <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Log Session"}</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Log Session</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Feather name="x" size={18} color={T.white} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.fLabel}>Session Type</Text>
+            <View style={styles.typeRow}>
+              {SESSION_TYPES.map(t => (
+                <TouchableOpacity
+                  key={t.value}
+                  onPress={() => setType(t.value)}
+                  style={[
+                    styles.typeBtn,
+                    { borderColor: type === t.value ? t.color : T.border },
+                    type === t.value && { backgroundColor: t.color + "18" },
+                  ]}
+                >
+                  <Feather name={t.icon} size={15} color={type === t.value ? t.color : T.textMuted} />
+                  <Text style={[styles.typeBtnText, { color: type === t.value ? t.color : T.textMuted }]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.fLabel}>Date</Text>
+            <TextInput
+              style={inp}
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={T.textDim}
+              keyboardType="numbers-and-punctuation"
+            />
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fLabel}>Distance (km)</Text>
+                <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fLabel}>Elev. Gain (m)</Text>
+                <TextInput style={inp} value={elev} onChangeText={setElev} placeholder="450" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+              </View>
+            </View>
+
+            <Text style={styles.fLabel}>Duration (min)</Text>
+            <TextInput style={inp} value={dur} onChangeText={setDur} placeholder="90" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+
+            <Text style={styles.fLabel}>Effort Level</Text>
+            <EffortPicker value={effort} onChange={setEffort} />
+
+            <Text style={[styles.fLabel, { marginTop: 16 }]}>Notes</Text>
+            <TextInput
+              style={[inp, styles.notesInput]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="How did it feel?"
+              placeholderTextColor={T.textDim}
+              multiline
+              numberOfLines={3}
+            />
+
+            <TouchableOpacity
+              onPress={save}
+              disabled={saving}
+              style={[styles.saveBtn, { opacity: saving ? 0.7 : 1 }]}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.saveBtnGrad}>
+                <Feather name="check" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Log Session"}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </Modal>
   );
 }
 
 export default function LogScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { sessions, deleteSession, updateSession } = useApp();
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const totalElev = sessions.filter(s => s.completed).reduce((a, s) => a + s.elevationGain, 0);
-  const totalDist = sessions.filter(s => s.completed).reduce((a, s) => a + s.distance, 0);
+  const done = sessions.filter(s => s.completed);
+  const totalElev = done.reduce((a, s) => a + s.elevationGain, 0);
+  const totalDist = done.reduce((a, s) => a + s.distance, 0);
 
   return (
-    <LinearGradient colors={["#050C18", "#0B1120"]} style={{ flex: 1 }}>
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Platform.OS === "web" ? 80 : insets.top + 12,
+            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
             paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.logHeader}>
-          <Text style={[styles.logTitle, { color: colors.foreground }]}>Session Log</Text>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
-            onPress={() => setModalVisible(true)}
-          >
-            <Feather name="plus" size={20} color="#fff" />
+        {/* Header */}
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+          <Text style={styles.title}>Session Log</Text>
+          <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.addBtn}>
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.addBtnGrad}>
+              <Feather name="plus" size={20} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        <View style={styles.totalRow}>
-          <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="trending-up" size={18} color={colors.accent} />
-            <Text style={[styles.totalVal, { color: colors.foreground }]}>{totalElev}m</Text>
-            <Text style={[styles.totalLbl, { color: colors.mutedForeground }]}>Total Elevation</Text>
+        {/* Summary Strip */}
+        <Animated.View entering={FadeInDown.delay(60).duration(400)}>
+          <View style={styles.summaryStrip}>
+            <View style={styles.summaryItem}>
+              <Feather name="trending-up" size={18} color={T.orange} />
+              <Text style={styles.summaryVal}>{totalElev}m</Text>
+              <Text style={styles.summaryLbl}>Total Elevation</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Feather name="map" size={18} color={T.blue} />
+              <Text style={styles.summaryVal}>{totalDist.toFixed(1)}km</Text>
+              <Text style={styles.summaryLbl}>Distance</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Feather name="check-circle" size={18} color={T.green} />
+              <Text style={styles.summaryVal}>{done.length}</Text>
+              <Text style={styles.summaryLbl}>Sessions</Text>
+            </View>
           </View>
-          <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="map" size={18} color={colors.primary} />
-            <Text style={[styles.totalVal, { color: colors.foreground }]}>{totalDist.toFixed(1)}km</Text>
-            <Text style={[styles.totalLbl, { color: colors.mutedForeground }]}>Total Distance</Text>
-          </View>
-          <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="check-circle" size={18} color={colors.primary} />
-            <Text style={[styles.totalVal, { color: colors.foreground }]}>{sessions.filter(s => s.completed).length}</Text>
-            <Text style={[styles.totalLbl, { color: colors.mutedForeground }]}>Sessions</Text>
-          </View>
-        </View>
+        </Animated.View>
 
         {sessions.length === 0 ? (
           <View style={styles.empty}>
-            <Feather name="activity" size={40} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No sessions yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>Log your first training session</Text>
-            <TouchableOpacity
-              style={[styles.emptyAddBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setModalVisible(true)}
-            >
-              <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>Log a session</Text>
+            <View style={[styles.emptyIcon, { backgroundColor: T.blueDim }]}>
+              <Feather name="activity" size={30} color={T.blue} />
+            </View>
+            <Text style={styles.emptyTitle}>No sessions yet</Text>
+            <Text style={styles.emptySub}>Log your first training session</Text>
+            <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.emptyBtn}>
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.emptyBtnGrad}>
+                <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Log a session</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : (
-          sessions.map(session => (
+          sessions.map((s, i) => (
             <SessionCard
-              key={session.id}
-              session={session}
-              onDelete={() => deleteSession(session.id)}
-              onToggle={() => updateSession(session.id, { completed: !session.completed })}
+              key={s.id}
+              session={s}
+              index={i}
+              onDelete={() => deleteSession(s.id)}
+              onToggle={() => updateSession(s.id, { completed: !s.completed })}
             />
           ))
         )}
       </ScrollView>
-
-      <AddSessionModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <AddModal visible={modalOpen} onClose={() => setModalOpen(false)} />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 16 },
-  logHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  logTitle: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  addBtn: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  totalRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  totalCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", gap: 4 },
-  totalVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  totalLbl: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
-  sessionCard: {
-    borderRadius: 16,
+  scroll: { paddingHorizontal: 18 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  addBtn: { borderRadius: 13, overflow: "hidden" },
+  addBtnGrad: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  summaryStrip: {
+    backgroundColor: T.card,
+    borderRadius: 18,
     borderWidth: 1,
+    borderColor: T.cardBorder,
+    flexDirection: "row",
+    paddingVertical: 16,
+    marginBottom: 16,
+  },
+  summaryItem: { flex: 1, alignItems: "center", gap: 4 },
+  summaryVal: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
+  summaryLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  summaryDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  sessionCard: {
+    backgroundColor: T.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
     padding: 14,
     marginBottom: 10,
+    overflow: "hidden",
+    gap: 10,
   },
-  sessionCardTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  sessionTypeIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  sessionCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  sessionCardDate: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  checkBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  deleteBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
-  sessionStats: { flexDirection: "row", alignItems: "center", gap: 10 },
-  statItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statItemText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  effortBar: { flexDirection: "row", gap: 3, marginLeft: "auto" as any },
-  effortBarPip: { width: 8, height: 8, borderRadius: 2 },
-  notesText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 8, lineHeight: 16 },
-  empty: { alignItems: "center", paddingTop: 60, gap: 10 },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", marginTop: 8 },
-  emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  emptyAddBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  effortDot: { width: 36, height: 12, borderRadius: 4 },
-  modalScroll: { paddingHorizontal: 20, gap: 0 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
-  modalTitle: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  closeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 6, marginTop: 14 },
-  input: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  typeRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  typeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  scTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  scTypeIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  scTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  scDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  checkBtn: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  delBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  scStats: { flexDirection: "row", alignItems: "center", gap: 12 },
+  scStat: { flexDirection: "row", alignItems: "center", gap: 4 },
+  scStatText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  effortDots: { flexDirection: "row", gap: 3, marginLeft: "auto" as any },
+  effortPip: { width: 9, height: 9, borderRadius: 3 },
+  scNotes: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  empty: { alignItems: "center", paddingTop: 60, gap: 12 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
+  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
+  emptyBtn: { borderRadius: 14, overflow: "hidden", marginTop: 8 },
+  emptyBtnGrad: { paddingHorizontal: 28, paddingVertical: 14 },
+  effortBtn: {
+    flex: 1,
+    height: 40,
     borderRadius: 10,
     borderWidth: 1,
-  },
-  typeChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  notesInput: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  saveBtn: {
-    height: 52,
-    borderRadius: 14,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginTop: 24,
   },
-  saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  modalScroll: { paddingHorizontal: 22, gap: 0 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 28 },
+  modalTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  closeBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  fLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, letterSpacing: 0.4, marginBottom: 8, marginTop: 16 },
+  input: {
+    height: 50,
+    backgroundColor: T.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: T.white,
+  },
+  typeRow: { flexDirection: "row", gap: 8 },
+  typeBtn: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: T.surface,
+  },
+  typeBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  notesInput: { height: 80, paddingTop: 14, textAlignVertical: "top" },
+  saveBtn: { borderRadius: 16, overflow: "hidden", marginTop: 24 },
+  saveBtnGrad: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
 });

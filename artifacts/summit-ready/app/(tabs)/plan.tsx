@@ -11,127 +11,131 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TrainingWeek, useApp } from "@/context/AppContext";
-import { useColors } from "@/hooks/useColors";
+import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
 
 const { width } = Dimensions.get("window");
 
-const PHASE_COLORS: Record<string, string> = {
-  Accelerated: "#E53E3E",
-  Base: "#4CAF74",
-  Build: "#3B9CF5",
-  Peak: "#F2994A",
-  Taper: "#9B7FD4",
-};
-
-function WeekCard({ week, isExpanded, onToggle }: { week: TrainingWeek; isExpanded: boolean; onToggle: () => void }) {
-  const colors = useColors();
-  const phaseColor = PHASE_COLORS[week.phase] ?? colors.primary;
-
-  const getBadgeStyle = () => {
-    if (week.isPeakWeek) return { bg: "#F2994A20", text: "#F2994A", label: "Peak Week" };
-    if (week.isTaperWeek) return { bg: "#9B7FD420", text: "#9B7FD4", label: "Taper Week" };
-    return null;
-  };
-  const badge = getBadgeStyle();
+function WeekCard({ week, isExpanded, onToggle, index }: {
+  week: TrainingWeek;
+  isExpanded: boolean;
+  onToggle: () => void;
+  index: number;
+}) {
+  const pc = PHASE_COLOR[week.phase] ?? T.green;
 
   return (
-    <TouchableOpacity
-      onPress={onToggle}
-      activeOpacity={0.8}
-      style={[
-        styles.weekCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: week.isCurrentWeek ? phaseColor + "60" : colors.border,
-          borderWidth: week.isCurrentWeek ? 1.5 : 1,
-        },
-      ]}
-    >
-      {week.isCurrentWeek && (
-        <View style={[styles.currentBanner, { backgroundColor: phaseColor }]}>
-          <Text style={styles.currentBannerText}>CURRENT WEEK</Text>
-        </View>
-      )}
-
-      <View style={styles.weekHeader}>
-        <View style={styles.weekLeft}>
-          <View style={[styles.phaseDot, { backgroundColor: phaseColor }]} />
-          <View>
-            <Text style={[styles.weekNum, { color: colors.foreground }]}>Week {week.weekNumber}</Text>
-            <Text style={[styles.weekDates, { color: colors.mutedForeground }]}>
-              {new Date(week.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} –{" "}
-              {new Date(week.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-            </Text>
+    <Animated.View entering={FadeInDown.delay(index * 40).duration(400)}>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.8}
+        style={[
+          styles.weekCard,
+          week.isCurrentWeek && { borderColor: pc + "60", borderWidth: 1.5 },
+        ]}
+      >
+        {week.isCurrentWeek && (
+          <View style={[styles.currentBanner, { backgroundColor: pc }]}>
+            <Text style={styles.currentBannerText}>● CURRENT WEEK</Text>
           </View>
-        </View>
-        <View style={styles.weekRight}>
-          <View style={[styles.phasePill, { backgroundColor: phaseColor + "20" }]}>
-            <Text style={[styles.phaseText, { color: phaseColor }]}>{week.phase}</Text>
-          </View>
-          {badge && (
-            <View style={[styles.badgePill, { backgroundColor: badge.bg }]}>
-              <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+        )}
+
+        <LinearGradient
+          colors={[pc + "08", "transparent"]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View style={styles.cardHeader}>
+          <View style={styles.cardLeft}>
+            <View style={[styles.weekNumBadge, { backgroundColor: pc + "20" }]}>
+              <Text style={[styles.weekNumText, { color: pc }]}>{week.weekNumber}</Text>
             </View>
-          )}
-          <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
-        </View>
-      </View>
-
-      <View style={styles.weekSummary}>
-        <View style={[styles.elevChip, { backgroundColor: colors.surfaceElevated }]}>
-          <Feather name="trending-up" size={13} color={colors.accent} />
-          <Text style={[styles.elevText, { color: colors.accent }]}>{week.targetElevation}m</Text>
-        </View>
-        <Text style={[styles.purposeText, { color: colors.mutedForeground }]} numberOfLines={isExpanded ? undefined : 1}>
-          {week.purpose}
-        </Text>
-      </View>
-
-      {isExpanded && (
-        <View style={styles.expandedContent}>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Sessions</Text>
-          {week.sessions.map((session, i) => (
-            <View key={i} style={[styles.sessionRow, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
-              <View style={[styles.sessionIconWrap, { backgroundColor: session.type === "bigDay" ? colors.accent + "20" : colors.primary + "20" }]}>
-                <Feather
-                  name={session.type === "cardio" ? "heart" : session.type === "hill" ? "trending-up" : "flag"}
-                  size={15}
-                  color={session.type === "bigDay" ? colors.accent : colors.primary}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.sessionLabelRow}>
-                  <Text style={[styles.sessionLabel, { color: colors.foreground }]}>{session.label}</Text>
-                  <Text style={[styles.sessionDuration, { color: colors.mutedForeground }]}>{session.duration}</Text>
-                </View>
-                <Text style={[styles.sessionDesc, { color: colors.mutedForeground }]}>{session.description}</Text>
-                <Text style={[styles.sessionElev, { color: colors.accent }]}>~{session.targetElevation}m gain</Text>
-              </View>
-            </View>
-          ))}
-
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 12 }]}>Suggested Hills</Text>
-          {week.hills.slice(0, 2).map((hill, i) => (
-            <View key={i} style={[styles.hillRow, { backgroundColor: colors.surfaceElevated }]}>
-              <Feather name="map-pin" size={14} color={colors.primary} />
-              <Text style={[styles.hillText, { color: colors.secondaryForeground }]}>
-                {hill.name} – {hill.elevation}m × {hill.repeats} repeats = ~{hill.totalElevation}m
+            <View>
+              <Text style={styles.phaseName}>{week.phase} Phase</Text>
+              <Text style={styles.weekDates}>
+                {new Date(week.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} –{" "}
+                {new Date(week.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
               </Text>
             </View>
-          ))}
+          </View>
+          <View style={styles.cardRight}>
+            {week.isPeakWeek && (
+              <View style={[styles.weekBadge, { backgroundColor: T.orangeDim }]}>
+                <Text style={[styles.weekBadgeText, { color: T.orange }]}>PEAK</Text>
+              </View>
+            )}
+            {week.isTaperWeek && (
+              <View style={[styles.weekBadge, { backgroundColor: T.purpleDim }]}>
+                <Text style={[styles.weekBadgeText, { color: T.purple }]}>TAPER</Text>
+              </View>
+            )}
+            <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={T.textMuted} />
+          </View>
         </View>
-      )}
-    </TouchableOpacity>
+
+        <View style={styles.cardMeta}>
+          <View style={[styles.elevChip, { backgroundColor: T.orangeDim }]}>
+            <Feather name="trending-up" size={12} color={T.orange} />
+            <Text style={[styles.elevText, { color: T.orange }]}>{week.targetElevation}m</Text>
+          </View>
+          <Text style={styles.purposeSnippet} numberOfLines={isExpanded ? undefined : 1}>
+            {week.purpose}
+          </Text>
+        </View>
+
+        {isExpanded && (
+          <View style={styles.expanded}>
+            <View style={[styles.divider, { backgroundColor: pc + "30" }]} />
+
+            <Text style={styles.sectionHead}>SESSIONS</Text>
+            {week.sessions.map((s, i) => (
+              <View key={i} style={styles.sessionRow}>
+                <View style={[
+                  styles.sessionIcon,
+                  { backgroundColor: s.type === "bigDay" ? T.orangeDim : T.greenDim },
+                ]}>
+                  <Feather
+                    name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
+                    size={14}
+                    color={s.type === "bigDay" ? T.orange : T.green}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={styles.sessionLabel}>{s.label}</Text>
+                    <Text style={styles.sessionDur}>{s.duration}</Text>
+                  </View>
+                  <Text style={styles.sessionDesc}>{s.description}</Text>
+                  <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
+                </View>
+              </View>
+            ))}
+
+            {week.hills.slice(0, 2).length > 0 && (
+              <>
+                <Text style={[styles.sectionHead, { marginTop: 14 }]}>SUGGESTED HILLS</Text>
+                {week.hills.slice(0, 2).map((h, i) => (
+                  <View key={i} style={styles.hillRow}>
+                    <Feather name="map-pin" size={13} color={T.green} />
+                    <Text style={styles.hillRowText}>
+                      {h.name} – {h.elevation}m × {h.repeats} = ~{h.totalElevation}m total
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 export default function PlanScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan } = useApp();
   const currentWeek = getCurrentWeek(trainingPlan);
@@ -139,7 +143,7 @@ export default function PlanScreen() {
     new Set(currentWeek ? [currentWeek.weekNumber] : [])
   );
 
-  function toggleWeek(n: number) {
+  function toggle(n: number) {
     setExpandedWeeks(prev => {
       const next = new Set(prev);
       next.has(n) ? next.delete(n) : next.add(n);
@@ -149,58 +153,63 @@ export default function PlanScreen() {
 
   if (!summitGoal || trainingPlan.length === 0) {
     return (
-      <View style={[styles.empty, { backgroundColor: colors.background }]}>
-        <Feather name="calendar" size={40} color={colors.primary} />
-        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No plan yet</Text>
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
+          <Feather name="calendar" size={28} color={T.blue} />
+        </View>
+        <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
         <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: colors.primary }]}
           onPress={() => router.push("/setup")}
+          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: T.green }}
         >
-          <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>Set up my summit</Text>
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Set up my summit</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const totalWeeks = trainingPlan.length;
-  const weeksRemaining = trainingPlan.filter(w => new Date(w.endDate) >= new Date()).length;
+  const weeksLeft = trainingPlan.filter(w => new Date(w.endDate) >= new Date()).length;
+  const phases = [...new Set(trainingPlan.map(w => w.phase))];
 
   return (
-    <LinearGradient colors={["#050C18", "#0B1120"]} style={{ flex: 1 }}>
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Platform.OS === "web" ? 80 : insets.top + 12,
+            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
             paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.planHeader}>
-          <Text style={[styles.planTitle, { color: colors.foreground }]}>Training Plan</Text>
-          <View style={styles.planMeta}>
-            <Text style={[styles.planMetaText, { color: colors.mutedForeground }]}>
-              {totalWeeks} weeks · {weeksRemaining} remaining
-            </Text>
+        <Animated.View entering={FadeInDown.delay(0).duration(500)} style={styles.header}>
+          <View>
+            <Text style={styles.title}>Training Plan</Text>
+            <Text style={styles.subtitle}>{totalWeeks} weeks · {weeksLeft} remaining</Text>
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.phaseLegend}>
-          {Object.entries(PHASE_COLORS).map(([phase, color]) => (
-            <View key={phase} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: color }]} />
-              <Text style={[styles.legendText, { color: colors.mutedForeground }]}>{phase}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Phase Legend */}
+        <Animated.View entering={FadeInDown.delay(60).duration(400)}>
+          <View style={styles.phaseBar}>
+            {phases.map(phase => (
+              <View key={phase} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: PHASE_COLOR[phase] }]} />
+                <Text style={styles.legendText}>{phase}</Text>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
 
-        {trainingPlan.map(week => (
+        {trainingPlan.map((week, i) => (
           <WeekCard
             key={week.weekNumber}
             week={week}
             isExpanded={expandedWeeks.has(week.weekNumber)}
-            onToggle={() => toggleWeek(week.weekNumber)}
+            onToggle={() => toggle(week.weekNumber)}
+            index={i}
           />
         ))}
       </ScrollView>
@@ -209,30 +218,34 @@ export default function PlanScreen() {
 }
 
 const styles = StyleSheet.create({
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
-  createBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  scroll: { paddingHorizontal: 16 },
-  planHeader: {
+  scroll: { paddingHorizontal: 18 },
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
     marginBottom: 14,
   },
-  planTitle: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  planMeta: {},
-  planMetaText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  phaseLegend: {
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  phaseBar: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
+    backgroundColor: T.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    padding: 12,
   },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  legendText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
   weekCard: {
-    borderRadius: 18,
+    backgroundColor: T.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
     marginBottom: 10,
     overflow: "hidden",
     padding: 16,
@@ -240,67 +253,58 @@ const styles = StyleSheet.create({
   currentBanner: {
     marginHorizontal: -16,
     marginTop: -16,
-    marginBottom: 12,
-    paddingVertical: 4,
+    marginBottom: 14,
+    paddingVertical: 5,
     alignItems: "center",
   },
-  currentBannerText: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: 1.5,
-  },
-  weekHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  weekLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  phaseDot: { width: 10, height: 10, borderRadius: 5 },
-  weekNum: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  weekDates: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  weekRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  phasePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  phaseText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  badgePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  weekSummary: { flexDirection: "row", alignItems: "center", gap: 8 },
+  currentBannerText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.5 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  cardLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  weekNumBadge: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  weekNumText: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  phaseName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.white },
+  weekDates: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  cardRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  weekBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
+  weekBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  cardMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
   elevChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
   },
-  elevText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  purposeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
-  expandedContent: { marginTop: 8 },
-  divider: { height: 1, marginVertical: 10 },
-  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 },
+  elevText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  purposeSnippet: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  expanded: {},
+  divider: { height: 1, marginVertical: 12 },
+  sectionHead: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.5, marginBottom: 10, textTransform: "uppercase" },
   sessionRow: {
     flexDirection: "row",
     gap: 10,
+    marginBottom: 8,
+    backgroundColor: T.surface,
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 6,
+    borderColor: T.border,
     alignItems: "flex-start",
   },
-  sessionIconWrap: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  sessionLabelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
-  sessionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  sessionDuration: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  sessionDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginBottom: 2 },
-  sessionElev: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  sessionIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  sessionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
+  sessionDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  sessionDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15, marginTop: 2 },
+  sessionElev: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 3 },
   hillRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    padding: 8,
+    padding: 9,
     borderRadius: 10,
+    backgroundColor: T.surface,
     marginBottom: 5,
   },
-  hillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
+  hillRowText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 17 },
 });
