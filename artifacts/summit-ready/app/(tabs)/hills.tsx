@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Linking } from "react-native";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -43,7 +44,6 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
   } else if (by === "elevation") {
     sorted.sort((a, b) => b.elevation - a.elevation);
   } else {
-    // popularity: higher grade score = more accessible = more popular, then closer first
     sorted.sort((a, b) => {
       const gs = (GRADE_SCORE[b.grade] ?? 3) - (GRADE_SCORE[a.grade] ?? 3);
       return gs !== 0 ? gs : a.distance - b.distance;
@@ -54,11 +54,26 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
 
 export default function HillsScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, nearbyHills, hillsLoading, fetchNearbyHills } = useApp();
+  const {
+    summitGoal, trainingPlan, nearbyHills, hillsLoading,
+    fetchNearbyHills, hillsInPlan, addHillToPlan, updateGoalLocation,
+  } = useApp();
 
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
   const [userChangedRadius, setUserChangedRadius] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("distance");
+
+  const [editingLoc, setEditingLoc] = useState(false);
+  const [locText, setLocText] = useState(summitGoal?.location ?? "");
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const locInputRef = useRef<TextInput>(null);
+
+  // Sync location text when goal loads
+  useEffect(() => {
+    if (summitGoal?.location && !editingLoc) {
+      setLocText(summitGoal.location);
+    }
+  }, [summitGoal?.location]);
 
   // Sync radius once the goal loads from storage (only if user hasn't manually changed it)
   useEffect(() => {
@@ -92,6 +107,36 @@ export default function HillsScreen() {
     }
   }
 
+  function startEditLoc() {
+    setLocText(summitGoal?.location ?? "");
+    setEditingLoc(true);
+    setTimeout(() => locInputRef.current?.focus(), 80);
+  }
+
+  async function confirmLoc() {
+    const trimmed = locText.trim();
+    if (trimmed.length >= 2) {
+      await updateGoalLocation(trimmed);
+      setEditingLoc(false);
+      // Auto-fetch with new location
+      await fetchNearbyHills(localRadius);
+    } else {
+      setEditingLoc(false);
+      setLocText(summitGoal?.location ?? "");
+    }
+  }
+
+  function cancelLoc() {
+    setEditingLoc(false);
+    setLocText(summitGoal?.location ?? "");
+  }
+
+  async function handleAddToPlan(hill: NearbyHill) {
+    await addHillToPlan(hill);
+    setJustAdded(hill.name);
+    setTimeout(() => setJustAdded(null), 2000);
+  }
+
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
@@ -103,13 +148,41 @@ export default function HillsScreen() {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Nearby Hills</Text>
-            {summitGoal && (
-              <Text style={styles.subtitle}>Near {summitGoal.location}</Text>
+
+            {/* Editable location */}
+            {editingLoc ? (
+              <View style={styles.locEditRow}>
+                <TextInput
+                  ref={locInputRef}
+                  style={styles.locInput}
+                  value={locText}
+                  onChangeText={setLocText}
+                  placeholderTextColor={T.textMuted}
+                  placeholder="City, Country"
+                  returnKeyType="done"
+                  onSubmitEditing={confirmLoc}
+                  autoCorrect={false}
+                />
+                <TouchableOpacity onPress={confirmLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="check" size={16} color={T.green} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={cancelLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x" size={16} color={T.textMuted} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={startEditLoc} style={styles.locRow} activeOpacity={0.7}>
+                <Text style={styles.subtitle}>
+                  {summitGoal ? summitGoal.location : "Tap to set location"}
+                </Text>
+                <Feather name="edit-2" size={12} color={T.textMuted} style={{ marginTop: 1 }} />
+              </TouchableOpacity>
             )}
           </View>
         </Animated.View>
@@ -137,7 +210,7 @@ export default function HillsScreen() {
           </View>
         </Animated.View>
 
-        {/* Radius Selector */}
+        {/* Radius + Sort Controls */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
           <View style={styles.controlCard}>
             <View style={styles.controlRow}>
@@ -173,10 +246,8 @@ export default function HillsScreen() {
               </View>
             </View>
 
-            {/* Divider */}
             <View style={styles.controlDivider} />
 
-            {/* Sort by */}
             <View style={styles.controlRow}>
               <View style={styles.controlLabelRow}>
                 <Feather name="sliders" size={13} color={T.blue} />
@@ -187,16 +258,10 @@ export default function HillsScreen() {
                   <TouchableOpacity
                     key={key}
                     onPress={() => setSortBy(key)}
-                    style={[
-                      styles.sortChip,
-                      sortBy === key && styles.sortChipActive,
-                    ]}
+                    style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[
-                      styles.sortChipText,
-                      sortBy === key && styles.sortChipTextActive,
-                    ]}>
+                    <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>
                       {key === "distance" ? "Distance" : key === "elevation" ? "Elevation" : "Popularity"}
                     </Text>
                   </TouchableOpacity>
@@ -226,9 +291,7 @@ export default function HillsScreen() {
               ) : radiusChanged ? (
                 <>
                   <Feather name="search" size={15} color={T.orange} />
-                  <Text style={[styles.fetchBtnText, { color: T.orange }]}>
-                    Search {localRadius}km radius
-                  </Text>
+                  <Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km radius</Text>
                 </>
               ) : (
                 <>
@@ -260,13 +323,14 @@ export default function HillsScreen() {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
+          const inPlan = hillsInPlan.includes(hill.name);
+          const wasJustAdded = justAdded === hill.name;
 
           return (
             <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
               <View style={styles.hillCard}>
                 <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
 
-                {/* Sort indicator badge */}
                 {sortBy === "distance" && (
                   <View style={styles.rankBadge}>
                     <Text style={styles.rankText}>#{i + 1} closest</Text>
@@ -332,18 +396,53 @@ export default function HillsScreen() {
                   <Text style={styles.progressCaption}>of this week's elevation target</Text>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.mapBtn}
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    Linking.openURL(
-                      `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
-                    )
-                  }
-                >
-                  <Feather name="map" size={14} color={T.green} />
-                  <Text style={styles.mapBtnText}>View on map</Text>
-                </TouchableOpacity>
+                {/* Action buttons */}
+                <View style={styles.actionRow}>
+                  {/* Add to Plan */}
+                  <TouchableOpacity
+                    style={[
+                      styles.addPlanBtn,
+                      inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" },
+                      wasJustAdded && { backgroundColor: T.green + "25" },
+                    ]}
+                    activeOpacity={inPlan ? 1 : 0.7}
+                    onPress={() => !inPlan && handleAddToPlan(hill)}
+                    disabled={inPlan}
+                  >
+                    <Feather
+                      name={wasJustAdded ? "check-circle" : inPlan ? "check" : "plus-circle"}
+                      size={14}
+                      color={inPlan ? T.green : T.blue}
+                    />
+                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Map link */}
+                  <TouchableOpacity
+                    style={styles.mapBtn}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      Linking.openURL(
+                        `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
+                      )
+                    }
+                  >
+                    <Feather name="map" size={14} color={T.green} />
+                    <Text style={styles.mapBtnText}>Map</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Plan impact note */}
+                {wasJustAdded && (
+                  <View style={styles.impactNote}>
+                    <Feather name="zap" size={12} color={T.green} />
+                    <Text style={styles.impactText}>
+                      Plan updated — hill sessions recalculated for {hill.name}
+                    </Text>
+                  </View>
+                )}
               </View>
             </Animated.View>
           );
@@ -357,7 +456,31 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  locRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  locEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  locInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.white,
+    backgroundColor: T.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: T.green + "50",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  locActionBtn: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
   ctxCard: {
     backgroundColor: T.card,
     borderRadius: 18,
@@ -381,7 +504,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    gap: 0,
   },
   controlRow: {
     flexDirection: "row",
@@ -417,10 +539,7 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     backgroundColor: T.surface,
   },
-  sortChipActive: {
-    borderColor: T.blue + "60",
-    backgroundColor: T.blueDim,
-  },
+  sortChipActive: { borderColor: T.blue + "60", backgroundColor: T.blueDim },
   sortChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   sortChipTextActive: { color: T.blue },
 
@@ -491,7 +610,10 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, backgroundColor: T.border, borderRadius: 3, overflow: "hidden", marginBottom: 5 },
   progressFill: { height: 6, borderRadius: 3 },
   progressCaption: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  mapBtn: {
+
+  actionRow: { flexDirection: "row", gap: 8 },
+  addPlanBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -499,7 +621,32 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: T.blue + "40",
+    backgroundColor: T.blueDim,
+  },
+  addPlanText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.blue },
+  mapBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: T.green + "40",
   },
   mapBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
+
+  impactNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: T.greenDim,
+    borderRadius: 10,
+    marginTop: -4,
+  },
+  impactText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.green, flex: 1 },
 });
