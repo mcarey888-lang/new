@@ -11,13 +11,13 @@ export function calculateReadiness(
   if (completed.length === 0) return 5;
 
   // 1. Consistency (30 pts): ratio of completed sessions vs expected by now
+  // Always include the current week so progress within week 1 still moves the score.
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weeksElapsed = plan.filter(w => new Date(w.endDate) < today).length;
-  const expectedSessions = weeksElapsed * 4;
-  const consistencyScore = expectedSessions > 0
-    ? Math.min(30, Math.round((completed.length / expectedSessions) * 30))
-    : completed.length > 0 ? 15 : 0;
+  const weeksIncludingCurrent = Math.min(plan.length, weeksElapsed + 1);
+  const expectedSessions = weeksIncludingCurrent * 4;
+  const consistencyScore = Math.min(30, Math.round((completed.length / expectedSessions) * 30));
 
   // 2. Elevation achievement (30 pts): highest elevation achieved vs target
   const maxElev = Math.max(...completed.map(s => s.elevationGain), 0);
