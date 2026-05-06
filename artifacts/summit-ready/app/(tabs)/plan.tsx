@@ -86,8 +86,10 @@ function WeekCard({
   completedPlanSessions,
   assignedHills,
   nearbyHills,
+  submittedPlanSessions,
   onToggleSession,
   onAssignHill,
+  onSubmitWeek,
 }: {
   week: TrainingWeek;
   isExpanded: boolean;
@@ -96,8 +98,10 @@ function WeekCard({
   completedPlanSessions: Record<string, boolean>;
   assignedHills: Record<string, NearbyHill>;
   nearbyHills: NearbyHill[];
+  submittedPlanSessions: Record<string, boolean>;
   onToggleSession: (weekNum: number, sessionIdx: number) => void;
   onAssignHill: (weekNum: number, sessionIdx: number) => void;
+  onSubmitWeek: (weekNum: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
@@ -269,6 +273,45 @@ function WeekCard({
                 ))}
               </>
             )}
+
+            {/* Submit / confirmation row */}
+            {(() => {
+              const unsubmitted = week.sessions.filter((_, i) => {
+                const key = `${week.weekNumber}-${i}`;
+                return completedPlanSessions[key] && !submittedPlanSessions[key];
+              }).length;
+              const submitted = week.sessions.filter((_, i) =>
+                submittedPlanSessions[`${week.weekNumber}-${i}`]
+              ).length;
+
+              if (unsubmitted > 0) {
+                return (
+                  <TouchableOpacity
+                    onPress={() => onSubmitWeek(week.weekNumber)}
+                    style={styles.submitWeekBtn}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitWeekGrad}>
+                      <Feather name="check-circle" size={15} color="#fff" />
+                      <Text style={styles.submitWeekText}>
+                        Submit {unsubmitted} completed session{unsubmitted > 1 ? "s" : ""} → update progress
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              }
+              if (submitted > 0) {
+                return (
+                  <View style={styles.submittedBanner}>
+                    <Feather name="check-circle" size={14} color={T.green} />
+                    <Text style={styles.submittedBannerText}>
+                      {submitted} session{submitted > 1 ? "s" : ""} submitted · dashboard updated
+                    </Text>
+                  </View>
+                );
+              }
+              return null;
+            })()}
           </View>
         )}
       </TouchableOpacity>
@@ -284,12 +327,18 @@ export default function PlanScreen() {
     completedPlanSessions,
     assignedHills,
     nearbyHills,
+    submittedPlanSessions,
     togglePlanSession,
     assignHillToSession,
     adjustPlanWithAI,
     planAdjusting,
     planAdjustNote,
+    submitWeekSessions,
   } = useApp();
+
+  async function handleSubmitWeek(weekNum: number) {
+    await submitWeekSessions(weekNum);
+  }
 
   const currentWeek = getCurrentWeek(trainingPlan);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(
@@ -399,8 +448,10 @@ export default function PlanScreen() {
             completedPlanSessions={completedPlanSessions}
             assignedHills={assignedHills}
             nearbyHills={nearbyHills}
+            submittedPlanSessions={submittedPlanSessions}
             onToggleSession={togglePlanSession}
             onAssignHill={openHillPicker}
+            onSubmitWeek={handleSubmitWeek}
           />
         ))}
       </ScrollView>
@@ -653,4 +704,31 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   adjustBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  submitWeekBtn: {
+    marginTop: 14,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  submitWeekGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  submitWeekText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  submittedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "30",
+  },
+  submittedBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
 });
