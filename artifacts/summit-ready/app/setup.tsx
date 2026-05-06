@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -58,6 +59,12 @@ export default function SetupScreen() {
 
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
+  const [calOpen, setCalOpen] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
   const [dist, setDist] = useState("");
   const [elev, setElev] = useState("");
   const [alt, setAlt] = useState("");
@@ -126,7 +133,7 @@ export default function SetupScreen() {
   function validate() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Required";
-    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) e.date = "Format: YYYY-MM-DD";
+    if (!date) e.date = "Pick a date";
     else if (new Date(date) <= new Date()) e.date = "Must be a future date";
     if (!dist || isNaN(+dist) || +dist <= 0) e.dist = "Enter km";
     if (!elev || isNaN(+elev) || +elev <= 0) e.elev = "Enter metres";
@@ -302,17 +309,31 @@ export default function SetupScreen() {
           <Section label="Summit Date" icon="calendar">
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Target Date</Text>
-              <TextInput
-                style={inp("date")}
-                value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={T.textDim}
-                keyboardType="numbers-and-punctuation"
-              />
+              <TouchableOpacity
+                onPress={() => setCalOpen(true)}
+                activeOpacity={0.8}
+                style={[styles.datePicker, errors.date ? { borderColor: T.red + "80" } : null]}
+              >
+                <Feather name="calendar" size={16} color={date ? T.green : T.textDim} />
+                <Text style={[styles.datePickerText, !date && { color: T.textDim }]}>
+                  {date
+                    ? new Date(date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+                    : "Pick a date"}
+                </Text>
+                <Feather name="chevron-down" size={14} color={T.textDim} />
+              </TouchableOpacity>
               {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
           </Section>
+
+          <CalendarModal
+            visible={calOpen}
+            selected={date}
+            calMonth={calMonth}
+            setCalMonth={setCalMonth}
+            onSelect={(d) => { setDate(d); setCalOpen(false); if (errors.date) setErrors(prev => ({ ...prev, date: "" })); }}
+            onClose={() => setCalOpen(false)}
+          />
 
           {/* Route details — auto-filled or manual */}
           <Section label="Route Details" icon="trending-up">
@@ -423,6 +444,110 @@ export default function SetupScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+  );
+}
+
+const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function CalendarModal({
+  visible, selected, calMonth, setCalMonth, onSelect, onClose,
+}: {
+  visible: boolean;
+  selected: string;
+  calMonth: Date;
+  setCalMonth: (d: Date) => void;
+  onSelect: (iso: string) => void;
+  onClose: () => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const year = calMonth.getFullYear();
+  const month = calMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  // Convert Sunday=0 to Mon-start offset (Mon=0, Sun=6)
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(startOffset).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  // Pad to full rows
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  function changeMonth(delta: number) {
+    const d = new Date(year, month + delta, 1);
+    setCalMonth(d);
+  }
+
+  function isoFor(day: number) {
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={calStyles.backdrop} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={calStyles.sheet}>
+          {/* Header */}
+          <View style={calStyles.header}>
+            <TouchableOpacity onPress={() => changeMonth(-1)} style={calStyles.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="chevron-left" size={20} color={T.white} />
+            </TouchableOpacity>
+            <Text style={calStyles.monthLabel}>{MONTHS[month]} {year}</Text>
+            <TouchableOpacity onPress={() => changeMonth(1)} style={calStyles.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="chevron-right" size={20} color={T.white} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Weekday labels */}
+          <View style={calStyles.weekRow}>
+            {WEEKDAYS.map(d => (
+              <Text key={d} style={calStyles.weekDay}>{d}</Text>
+            ))}
+          </View>
+
+          {/* Day grid */}
+          <View style={calStyles.grid}>
+            {cells.map((day, idx) => {
+              if (!day) return <View key={idx} style={calStyles.dayCell} />;
+              const iso = isoFor(day);
+              const cellDate = new Date(iso + "T12:00:00");
+              const isPast = cellDate <= today;
+              const isSelected = iso === selected;
+              const isToday = cellDate.toDateString() === today.toDateString();
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    calStyles.dayCell,
+                    isSelected && calStyles.dayCellSelected,
+                    isToday && !isSelected && calStyles.dayCellToday,
+                  ]}
+                  onPress={() => !isPast && onSelect(iso)}
+                  activeOpacity={isPast ? 1 : 0.7}
+                  disabled={isPast}
+                >
+                  <Text style={[
+                    calStyles.dayText,
+                    isPast && calStyles.dayTextPast,
+                    isSelected && calStyles.dayTextSelected,
+                    isToday && !isSelected && calStyles.dayTextToday,
+                  ]}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Footer */}
+          <TouchableOpacity onPress={onClose} style={calStyles.cancelBtn}>
+            <Text style={calStyles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -587,4 +712,86 @@ const styles = StyleSheet.create({
   submitBtn: { borderRadius: 18, overflow: "hidden", marginTop: 28 },
   submitGrad: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   submitText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  datePicker: {
+    height: 50,
+    backgroundColor: T.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  datePickerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
+});
+
+const calStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  sheet: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: T.card,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    padding: 20,
+    overflow: "hidden",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: T.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monthLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  weekRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  weekDay: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textDim,
+    letterSpacing: 0.5,
+  },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  dayCell: {
+    width: `${100 / 7}%` as unknown as number,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    marginBottom: 2,
+  },
+  dayCellSelected: { backgroundColor: T.green },
+  dayCellToday: { backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "60" },
+  dayText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.white },
+  dayTextPast: { color: T.textDim, opacity: 0.4 },
+  dayTextSelected: { color: "#fff", fontFamily: "Inter_700Bold" },
+  dayTextToday: { color: T.green, fontFamily: "Inter_700Bold" },
+  cancelBtn: {
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: T.surface,
+    alignItems: "center",
+  },
+  cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
 });
