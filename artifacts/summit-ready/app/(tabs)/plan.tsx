@@ -3,7 +3,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,19 +16,95 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TrainingWeek, useApp } from "@/context/AppContext";
+import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
 
 const { width } = Dimensions.get("window");
 
-function WeekCard({ week, isExpanded, onToggle, index }: {
+function HillPickerModal({
+  visible,
+  hills,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  hills: NearbyHill[];
+  onSelect: (hill: NearbyHill) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={mpStyles.overlay} activeOpacity={1} onPress={onClose} />
+      <View style={mpStyles.sheet}>
+        <View style={mpStyles.handle} />
+        <Text style={mpStyles.title}>Choose a Hill</Text>
+        <Text style={mpStyles.subtitle}>Select a training hill for this session</Text>
+
+        {hills.length === 0 ? (
+          <View style={mpStyles.empty}>
+            <Feather name="map-pin" size={28} color={T.textDim} />
+            <Text style={mpStyles.emptyText}>No hills loaded yet</Text>
+            <Text style={mpStyles.emptyHint}>Go to the Hills tab to load nearby hills first</Text>
+          </View>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+            {hills.map((hill, i) => (
+              <TouchableOpacity
+                key={i}
+                style={mpStyles.hillRow}
+                onPress={() => onSelect(hill)}
+                activeOpacity={0.7}
+              >
+                <Text style={mpStyles.hillEmoji}>{hill.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={mpStyles.hillName}>{hill.name}</Text>
+                  <Text style={mpStyles.hillSub}>{hill.surface} · {hill.distance}km away</Text>
+                </View>
+                <View style={mpStyles.hillStats}>
+                  <Text style={mpStyles.hillElev}>{hill.elevation}m</Text>
+                  <Text style={mpStyles.hillReps}>×{hill.repeats}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        <TouchableOpacity style={mpStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+          <Text style={mpStyles.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+function WeekCard({
+  week,
+  isExpanded,
+  onToggle,
+  index,
+  completedPlanSessions,
+  assignedHills,
+  nearbyHills,
+  onToggleSession,
+  onAssignHill,
+}: {
   week: TrainingWeek;
   isExpanded: boolean;
   onToggle: () => void;
   index: number;
+  completedPlanSessions: Record<string, boolean>;
+  assignedHills: Record<string, NearbyHill>;
+  nearbyHills: NearbyHill[];
+  onToggleSession: (weekNum: number, sessionIdx: number) => void;
+  onAssignHill: (weekNum: number, sessionIdx: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
+  const totalSessions = week.sessions.length;
+  const completedInWeek = week.sessions.filter((_, i) =>
+    completedPlanSessions[`${week.weekNumber}-${i}`]
+  ).length;
+  const allDone = completedInWeek === totalSessions;
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 40).duration(400)}>
@@ -36,18 +114,21 @@ function WeekCard({ week, isExpanded, onToggle, index }: {
         style={[
           styles.weekCard,
           week.isCurrentWeek && { borderColor: pc + "60", borderWidth: 1.5 },
+          allDone && { borderColor: T.green + "50", borderWidth: 1.5 },
         ]}
       >
-        {week.isCurrentWeek && (
+        {week.isCurrentWeek && !allDone && (
           <View style={[styles.currentBanner, { backgroundColor: pc }]}>
             <Text style={styles.currentBannerText}>● CURRENT WEEK</Text>
           </View>
         )}
+        {allDone && (
+          <View style={[styles.currentBanner, { backgroundColor: T.green }]}>
+            <Text style={styles.currentBannerText}>✓ WEEK COMPLETE</Text>
+          </View>
+        )}
 
-        <LinearGradient
-          colors={[pc + "08", "transparent"]}
-          style={StyleSheet.absoluteFill}
-        />
+        <LinearGradient colors={[pc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
 
         <View style={styles.cardHeader}>
           <View style={styles.cardLeft}>
@@ -73,6 +154,11 @@ function WeekCard({ week, isExpanded, onToggle, index }: {
                 <Text style={[styles.weekBadgeText, { color: T.purple }]}>TAPER</Text>
               </View>
             )}
+            {completedInWeek > 0 && (
+              <View style={[styles.weekBadge, { backgroundColor: T.greenDim }]}>
+                <Text style={[styles.weekBadgeText, { color: T.green }]}>{completedInWeek}/{totalSessions}</Text>
+              </View>
+            )}
             <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={T.textMuted} />
           </View>
         </View>
@@ -87,33 +173,88 @@ function WeekCard({ week, isExpanded, onToggle, index }: {
           </Text>
         </View>
 
+        {week.adjustNote && (
+          <View style={styles.adjustNoteBadge}>
+            <Feather name="zap" size={11} color={T.blue} />
+            <Text style={styles.adjustNoteText}>{week.adjustNote}</Text>
+          </View>
+        )}
+
         {isExpanded && (
           <View style={styles.expanded}>
             <View style={[styles.divider, { backgroundColor: pc + "30" }]} />
 
             <Text style={styles.sectionHead}>SESSIONS</Text>
-            {week.sessions.map((s, i) => (
-              <View key={i} style={styles.sessionRow}>
-                <View style={[
-                  styles.sessionIcon,
-                  { backgroundColor: s.type === "bigDay" ? T.orangeDim : T.greenDim },
-                ]}>
-                  <Feather
-                    name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
-                    size={14}
-                    color={s.type === "bigDay" ? T.orange : T.green}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={styles.sessionLabel}>{s.label}</Text>
-                    <Text style={styles.sessionDur}>{s.duration}</Text>
+            {week.sessions.map((s, i) => {
+              const sessionKey = `${week.weekNumber}-${i}`;
+              const isDone = !!completedPlanSessions[sessionKey];
+              const assignedHill = assignedHills[sessionKey];
+              const canPickHill = s.type === "hill" || s.type === "bigDay";
+
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.sessionRow,
+                    isDone && styles.sessionRowDone,
+                  ]}
+                >
+                  <TouchableOpacity
+                    onPress={() => onToggleSession(week.weekNumber, i)}
+                    style={[styles.checkbox, isDone && styles.checkboxDone]}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {isDone && <Feather name="check" size={12} color="#fff" />}
+                  </TouchableOpacity>
+
+                  <View style={[
+                    styles.sessionIcon,
+                    { backgroundColor: s.type === "bigDay" ? T.orangeDim : T.greenDim },
+                    isDone && { opacity: 0.5 },
+                  ]}>
+                    <Feather
+                      name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
+                      size={14}
+                      color={s.type === "bigDay" ? T.orange : T.green}
+                    />
                   </View>
-                  <Text style={styles.sessionDesc}>{s.description}</Text>
-                  <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <Text style={[styles.sessionLabel, isDone && styles.sessionLabelDone]}>{s.label}</Text>
+                      <Text style={styles.sessionDur}>{s.duration}</Text>
+                    </View>
+
+                    {assignedHill ? (
+                      <View style={styles.assignedHillRow}>
+                        <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
+                        <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
+                        <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
+                    )}
+
+                    <View style={styles.sessionFooter}>
+                      <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
+                      {canPickHill && (
+                        <TouchableOpacity
+                          onPress={() => onAssignHill(week.weekNumber, i)}
+                          style={styles.pickHillBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="map-pin" size={11} color={T.green} />
+                          <Text style={styles.pickHillText}>
+                            {assignedHill ? "Change hill" : "Pick hill"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             {week.hills.slice(0, 2).length > 0 && (
               <>
@@ -137,11 +278,25 @@ function WeekCard({ week, isExpanded, onToggle, index }: {
 
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan } = useApp();
+  const {
+    summitGoal,
+    trainingPlan,
+    completedPlanSessions,
+    assignedHills,
+    nearbyHills,
+    togglePlanSession,
+    assignHillToSession,
+    adjustPlanWithAI,
+    planAdjusting,
+    planAdjustNote,
+  } = useApp();
+
   const currentWeek = getCurrentWeek(trainingPlan);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(
     new Set(currentWeek ? [currentWeek.weekNumber] : [])
   );
+  const [hillPickerOpen, setHillPickerOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
 
   function toggle(n: number) {
     setExpandedWeeks(prev => {
@@ -150,6 +305,21 @@ export default function PlanScreen() {
       return next;
     });
   }
+
+  function openHillPicker(weekNum: number, sessionIdx: number) {
+    setActiveSession({ weekNum, sessionIdx });
+    setHillPickerOpen(true);
+  }
+
+  function handleHillSelect(hill: NearbyHill) {
+    if (activeSession) {
+      assignHillToSession(activeSession.weekNum, activeSession.sessionIdx, hill);
+    }
+    setHillPickerOpen(false);
+    setActiveSession(null);
+  }
+
+  const completedCount = Object.values(completedPlanSessions).filter(Boolean).length;
 
   if (!summitGoal || trainingPlan.length === 0) {
     return (
@@ -179,7 +349,7 @@ export default function PlanScreen() {
           styles.scroll,
           {
             paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
-            paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
+            paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -191,7 +361,23 @@ export default function PlanScreen() {
           </View>
         </Animated.View>
 
-        {/* Phase Legend */}
+        {planAdjustNote && (
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View style={styles.adjustNoteCard}>
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={styles.adjustNoteInner}>
+                <View style={styles.adjustNoteIcon}>
+                  <Feather name="cpu" size={14} color={T.blue} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.adjustNoteTitle}>Plan adjusted by AI</Text>
+                  <Text style={styles.adjustNoteBody}>{planAdjustNote}</Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
         <Animated.View entering={FadeInDown.delay(60).duration(400)}>
           <View style={styles.phaseBar}>
             {phases.map(phase => (
@@ -210,12 +396,94 @@ export default function PlanScreen() {
             isExpanded={expandedWeeks.has(week.weekNumber)}
             onToggle={() => toggle(week.weekNumber)}
             index={i}
+            completedPlanSessions={completedPlanSessions}
+            assignedHills={assignedHills}
+            nearbyHills={nearbyHills}
+            onToggleSession={togglePlanSession}
+            onAssignHill={openHillPicker}
           />
         ))}
       </ScrollView>
+
+      {completedCount > 0 && (
+        <View style={[styles.adjustBar, { paddingBottom: Platform.OS === "web" ? 16 : insets.bottom + 90 }]}>
+          <TouchableOpacity
+            onPress={adjustPlanWithAI}
+            disabled={planAdjusting}
+            style={[styles.adjustBtn, planAdjusting && { opacity: 0.7 }]}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.adjustBtnGrad}>
+              {planAdjusting ? (
+                <>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.adjustBtnText}>Adjusting plan…</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name="cpu" size={16} color="#fff" />
+                  <Text style={styles.adjustBtnText}>
+                    Adjust plan with AI · {completedCount} done
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <HillPickerModal
+        visible={hillPickerOpen}
+        hills={nearbyHills}
+        onSelect={handleHillSelect}
+        onClose={() => { setHillPickerOpen(false); setActiveSession(null); }}
+      />
     </LinearGradient>
   );
 }
+
+const mpStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
+  sheet: {
+    backgroundColor: T.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: T.border,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  handle: { width: 36, height: 4, backgroundColor: T.border, borderRadius: 2, alignSelf: "center", marginBottom: 18 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 16 },
+  empty: { alignItems: "center", paddingVertical: 32, gap: 8 },
+  emptyText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  emptyHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
+  hillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: T.border,
+  },
+  hillEmoji: { fontSize: 24 },
+  hillName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  hillSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  hillStats: { alignItems: "flex-end" },
+  hillElev: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.orange },
+  hillReps: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  cancelBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+  },
+  cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+});
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18 },
@@ -227,6 +495,17 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  adjustNoteCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.blue + "40",
+    overflow: "hidden",
+    marginBottom: 14,
+  },
+  adjustNoteInner: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14 },
+  adjustNoteIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
+  adjustNoteTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.blue, marginBottom: 3 },
+  adjustNoteBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 19 },
   phaseBar: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -278,6 +557,18 @@ const styles = StyleSheet.create({
   },
   elevText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   purposeSnippet: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  adjustNoteBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: T.blueDim,
+    alignSelf: "flex-start",
+  },
+  adjustNoteText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
   expanded: {},
   divider: { height: 1, marginVertical: 12 },
   sectionHead: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.5, marginBottom: 10, textTransform: "uppercase" },
@@ -292,11 +583,49 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     alignItems: "flex-start",
   },
-  sessionIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  sessionRowDone: {
+    backgroundColor: T.greenDim,
+    borderColor: T.green + "30",
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    backgroundColor: T.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxDone: {
+    backgroundColor: T.green,
+    borderColor: T.green,
+  },
+  sessionIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   sessionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
+  sessionLabelDone: { textDecorationLine: "line-through", color: T.textMuted },
   sessionDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   sessionDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15, marginTop: 2 },
   sessionElev: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 3 },
+  sessionFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 3 },
+  pickHillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "30",
+  },
+  pickHillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  assignedHillRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
+  assignedHillEmoji: { fontSize: 13, marginRight: 4 },
+  assignedHillName: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.white },
+  assignedHillSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   hillRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -307,4 +636,21 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   hillRowText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 17 },
+  adjustBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+  },
+  adjustBtn: { borderRadius: 16, overflow: "hidden" },
+  adjustBtnGrad: {
+    height: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  adjustBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 });

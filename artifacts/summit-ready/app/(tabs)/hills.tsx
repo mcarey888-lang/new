@@ -2,32 +2,32 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Linking } from "react-native";
 import React from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
-const HILLS = [
-  { name: "Indian's Head", km: 4.2, elev: 280, repeats: 3, grade: "Moderate", surface: "Grassy moorland", icon: "🏔️" },
-  { name: "Beacon Hill", km: 6.8, elev: 195, repeats: 4, grade: "Easy–Mod", surface: "Mixed trail", icon: "⛰️" },
-  { name: "Black Mountain Ridge", km: 9.1, elev: 420, repeats: 2, grade: "Hard", surface: "Rocky path", icon: "🗻" },
-  { name: "Crow Tor", km: 12.5, elev: 350, repeats: 2, grade: "Moderate", surface: "Moorland", icon: "⛰️" },
-  { name: "Stony Edge", km: 15.0, elev: 520, repeats: 1, grade: "Hard", surface: "Scree + rock", icon: "🏔️" },
-  { name: "Grey Crag", km: 18.3, elev: 680, repeats: 1, grade: "Alpine", surface: "Technical scramble", icon: "🗻" },
-];
-
 const GRADE_COLOR: Record<string, string> = {
+  "Easy": T.green,
   "Easy–Mod": T.green,
-  Moderate: T.blue,
-  Hard: T.orange,
-  Alpine: "#FF4444",
+  "Moderate": T.blue,
+  "Hard": T.orange,
+  "Alpine": "#FF4444",
 };
 
 export default function HillsScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan } = useApp();
+  const { summitGoal, trainingPlan, nearbyHills, hillsLoading, fetchNearbyHills } = useApp();
   const targetElev = summitGoal?.elevationGain ?? 1000;
 
   const currentWeek = trainingPlan.find(w => {
@@ -53,7 +53,9 @@ export default function HillsScreen() {
           <View>
             <Text style={styles.title}>Nearby Hills</Text>
             {summitGoal && (
-              <Text style={styles.subtitle}>Near {summitGoal.location} · {summitGoal.maxRadius}km radius</Text>
+              <Text style={styles.subtitle}>
+                Near {summitGoal.location} · {summitGoal.maxRadius}km radius
+              </Text>
             )}
           </View>
           <View style={[styles.radiusBadge, { backgroundColor: T.greenDim }]}>
@@ -64,7 +66,7 @@ export default function HillsScreen() {
           </View>
         </Animated.View>
 
-        {/* Target Context Card */}
+        {/* Stats Context */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)}>
           <View style={styles.ctxCard}>
             <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -80,39 +82,68 @@ export default function HillsScreen() {
               </View>
               <View style={styles.ctxDivider} />
               <View style={styles.ctxItem}>
-                <Text style={styles.ctxVal}>{HILLS.length}</Text>
+                <Text style={styles.ctxVal}>{nearbyHills.length}</Text>
                 <Text style={styles.ctxLbl}>Hills found</Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Mock data notice */}
+        {/* Fetch / Refresh button */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
-          <View style={styles.mockBanner}>
-            <Feather name="zap" size={12} color={T.orange} />
-            <Text style={styles.mockText}>
-              Demo data — real integration with OpenStreetMap & elevation APIs coming
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={fetchNearbyHills}
+            disabled={hillsLoading}
+            style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+              style={styles.fetchBtnInner}
+            >
+              {hillsLoading ? (
+                <>
+                  <ActivityIndicator size="small" color={T.green} />
+                  <Text style={styles.fetchBtnText}>Finding hills near {summitGoal?.location ?? "you"}…</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name={nearbyHills.length > 0 ? "refresh-cw" : "zap"} size={15} color={T.green} />
+                  <Text style={styles.fetchBtnText}>
+                    {nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
+        {/* Empty state */}
+        {nearbyHills.length === 0 && !hillsLoading && (
+          <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyEmoji}>🏔️</Text>
+              <Text style={styles.emptyTitle}>No hills loaded yet</Text>
+              <Text style={styles.emptyText}>
+                Tap "Find hills with AI" above and we'll find real training hills near {summitGoal?.location ?? "your location"}.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
         {/* Hill Cards */}
-        {HILLS.map((hill, i) => {
-          const total = hill.elev * hill.repeats;
+        {nearbyHills.map((hill, i) => {
+          const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
 
           return (
             <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
               <View style={styles.hillCard}>
-                <LinearGradient
-                  colors={[gc + "08", "transparent"]}
-                  style={StyleSheet.absoluteFill}
-                />
+                <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
                 <View style={styles.hillTop}>
                   <View style={[styles.hillIconBox, { backgroundColor: gc + "18" }]}>
-                    <Text style={styles.hillEmoji}>{hill.icon}</Text>
+                    <Text style={styles.hillEmoji}>{hill.emoji}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.hillName}>{hill.name}</Text>
@@ -126,12 +157,12 @@ export default function HillsScreen() {
                 <View style={styles.hillStats}>
                   <View style={styles.hillStat}>
                     <Feather name="map-pin" size={12} color={T.green} />
-                    <Text style={styles.hillStatVal}>{hill.km}km</Text>
+                    <Text style={styles.hillStatVal}>{hill.distance}km</Text>
                     <Text style={styles.hillStatLbl}>away</Text>
                   </View>
                   <View style={styles.hillStat}>
                     <Feather name="trending-up" size={12} color={T.orange} />
-                    <Text style={styles.hillStatVal}>{hill.elev}m</Text>
+                    <Text style={styles.hillStatVal}>{hill.elevation}m</Text>
                     <Text style={styles.hillStatLbl}>per climb</Text>
                   </View>
                   <View style={styles.hillStat}>
@@ -162,7 +193,11 @@ export default function HillsScreen() {
                 <TouchableOpacity
                   style={styles.mapBtn}
                   activeOpacity={0.7}
-                  onPress={() => Linking.openURL(`https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`)}
+                  onPress={() =>
+                    Linking.openURL(
+                      `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
+                    )
+                  }
                 >
                   <Feather name="map" size={14} color={T.green} />
                   <Text style={styles.mapBtnText}>View on map</Text>
@@ -189,26 +224,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: T.green + "30",
     overflow: "hidden",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   ctxRow: { flexDirection: "row", paddingVertical: 14 },
   ctxItem: { flex: 1, alignItems: "center", gap: 3 },
   ctxVal: { fontSize: 19, fontFamily: "Inter_700Bold", color: T.white },
   ctxLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
   ctxDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
-  mockBanner: {
+  fetchBtn: { borderRadius: 14, overflow: "hidden", marginBottom: 14 },
+  fetchBtnInner: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
-    backgroundColor: T.orangeDim,
+    paddingVertical: 13,
     borderWidth: 1,
-    borderColor: T.orange + "30",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 14,
+    borderColor: T.green + "40",
+    borderRadius: 14,
   },
-  mockText: { flex: 1, fontSize: 11, fontFamily: "Inter_500Medium", color: T.orange },
+  fetchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+  emptyCard: {
+    backgroundColor: T.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    padding: 32,
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  emptyEmoji: { fontSize: 40 },
+  emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
+  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 20 },
   hillCard: {
     backgroundColor: T.card,
     borderRadius: 20,

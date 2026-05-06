@@ -35,6 +35,18 @@ export interface TrainingWeek {
   startDate: string;
   endDate: string;
   hills: { name: string; elevation: number; distance: number; repeats: number; totalElevation: number }[];
+  adjustNote?: string;
+}
+
+export interface NearbyHill {
+  name: string;
+  elevation: number;
+  distance: number;
+  repeats: number;
+  totalElevation: number;
+  surface: string;
+  grade: string;
+  emoji: string;
 }
 
 export interface Session {
@@ -56,11 +68,21 @@ interface AppState {
   sessions: Session[];
   readinessScore: number;
   isLoading: boolean;
+  nearbyHills: NearbyHill[];
+  hillsLoading: boolean;
+  completedPlanSessions: Record<string, boolean>;
+  assignedHills: Record<string, NearbyHill>;
+  planAdjusting: boolean;
+  planAdjustNote: string | null;
   setSummitGoal: (goal: SummitGoal) => Promise<void>;
   addSession: (session: Omit<Session, "id">) => Promise<void>;
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearPlan: () => Promise<void>;
+  fetchNearbyHills: () => Promise<void>;
+  togglePlanSession: (weekNum: number, sessionIdx: number) => Promise<void>;
+  assignHillToSession: (weekNum: number, sessionIdx: number, hill: NearbyHill) => Promise<void>;
+  adjustPlanWithAI: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -69,15 +91,34 @@ const AppContext = createContext<AppState>({
   sessions: [],
   readinessScore: 0,
   isLoading: true,
+  nearbyHills: [],
+  hillsLoading: false,
+  completedPlanSessions: {},
+  assignedHills: {},
+  planAdjusting: false,
+  planAdjustNote: null,
   setSummitGoal: async () => {},
   addSession: async () => {},
   updateSession: async () => {},
   deleteSession: async () => {},
   clearPlan: async () => {},
+  fetchNearbyHills: async () => {},
+  togglePlanSession: async () => {},
+  assignHillToSession: async () => {},
+  adjustPlanWithAI: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
 const SESSIONS_KEY = "summitready_sessions";
+const PLAN_KEY = "summitready_plan";
+const HILLS_KEY = "summitready_nearby_hills";
+const COMPLETED_KEY = "summitready_completed_plan_sessions";
+const ASSIGNED_KEY = "summitready_assigned_hills";
+const ADJUST_NOTE_KEY = "summitready_adjust_note";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 
 const DEMO_GOAL: SummitGoal = {
   mountainName: "Hörnlihütte from Schwarzsee",
@@ -140,25 +181,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [readinessScore, setReadinessScore] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [nearbyHills, setNearbyHills] = useState<NearbyHill[]>([]);
+  const [hillsLoading, setHillsLoading] = useState(false);
+  const [completedPlanSessions, setCompletedPlanSessions] = useState<Record<string, boolean>>({});
+  const [assignedHills, setAssignedHills] = useState<Record<string, NearbyHill>>({});
+  const [planAdjusting, setPlanAdjusting] = useState(false);
+  const [planAdjustNote, setPlanAdjustNote] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [goalStr, sessionsStr] = await Promise.all([
-          AsyncStorage.getItem(GOAL_KEY),
-          AsyncStorage.getItem(SESSIONS_KEY),
+        const pairs = await AsyncStorage.multiGet([
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY,
         ]);
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr] =
+          pairs.map(([, v]) => v);
 
         if (goalStr) {
           const goal: SummitGoal = JSON.parse(goalStr);
-          const plan = generatePlan(goal);
+          const plan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
           const storedSessions: Session[] = sessionsStr ? JSON.parse(sessionsStr) : [];
+          const hills: NearbyHill[] = hillsStr ? JSON.parse(hillsStr) : [];
+          const completed: Record<string, boolean> = completedStr ? JSON.parse(completedStr) : {};
+          const assigned: Record<string, NearbyHill> = assignedStr ? JSON.parse(assignedStr) : {};
+
           setSummitGoalState(goal);
           setTrainingPlan(plan);
           setSessions(storedSessions);
+          setNearbyHills(hills);
+          setCompletedPlanSessions(completed);
+          setAssignedHills(assigned);
           setReadinessScore(calculateReadiness(goal, plan, storedSessions));
+          if (noteStr) setPlanAdjustNote(noteStr);
         } else {
-          // Load demo data
           const plan = generatePlan(DEMO_GOAL);
           setSummitGoalState(DEMO_GOAL);
           setTrainingPlan(plan);
@@ -166,6 +221,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setReadinessScore(calculateReadiness(DEMO_GOAL, plan, DEMO_SESSIONS));
           await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(DEMO_GOAL));
           await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(DEMO_SESSIONS));
+          await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan));
         }
       } catch {}
       setIsLoading(false);
@@ -176,9 +232,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const plan = generatePlan(goal);
     setSummitGoalState(goal);
     setTrainingPlan(plan);
+    setCompletedPlanSessions({});
+    setAssignedHills({});
+    setPlanAdjustNote(null);
     const score = calculateReadiness(goal, plan, sessions);
     setReadinessScore(score);
-    await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(goal));
+    await AsyncStorage.multiSet([
+      [GOAL_KEY, JSON.stringify(goal)],
+      [PLAN_KEY, JSON.stringify(plan)],
+      [COMPLETED_KEY, "{}"],
+      [ASSIGNED_KEY, "{}"],
+      [ADJUST_NOTE_KEY, ""],
+    ]);
   }, [sessions]);
 
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
@@ -208,12 +273,121 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSummitGoalState(null);
     setTrainingPlan([]);
     setSessions([]);
+    setNearbyHills([]);
+    setCompletedPlanSessions({});
+    setAssignedHills({});
+    setPlanAdjustNote(null);
     setReadinessScore(0);
-    await AsyncStorage.multiRemove([GOAL_KEY, SESSIONS_KEY]);
+    await AsyncStorage.multiRemove([
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY,
+    ]);
   }, []);
 
+  const fetchNearbyHills = useCallback(async () => {
+    if (!summitGoal) return;
+    setHillsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/hills-lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location: summitGoal.location, radius: summitGoal.maxRadius }),
+      });
+      if (!res.ok) throw new Error("Hills lookup failed");
+      const data: { hills: NearbyHill[] } = await res.json();
+      setNearbyHills(data.hills);
+      await AsyncStorage.setItem(HILLS_KEY, JSON.stringify(data.hills));
+    } catch {}
+    setHillsLoading(false);
+  }, [summitGoal]);
+
+  const togglePlanSession = useCallback(async (weekNum: number, sessionIdx: number) => {
+    const key = `${weekNum}-${sessionIdx}`;
+    const updated = { ...completedPlanSessions, [key]: !completedPlanSessions[key] };
+    setCompletedPlanSessions(updated);
+    await AsyncStorage.setItem(COMPLETED_KEY, JSON.stringify(updated));
+  }, [completedPlanSessions]);
+
+  const assignHillToSession = useCallback(async (weekNum: number, sessionIdx: number, hill: NearbyHill) => {
+    const key = `${weekNum}-${sessionIdx}`;
+    const updated = { ...assignedHills, [key]: hill };
+    setAssignedHills(updated);
+    await AsyncStorage.setItem(ASSIGNED_KEY, JSON.stringify(updated));
+  }, [assignedHills]);
+
+  const adjustPlanWithAI = useCallback(async () => {
+    if (!summitGoal || trainingPlan.length === 0) return;
+    setPlanAdjusting(true);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentWeek = trainingPlan.find(w =>
+      new Date(w.startDate) <= today && new Date(w.endDate) >= today
+    ) ?? trainingPlan[0];
+
+    const currentWeekNum = currentWeek?.weekNumber ?? 1;
+
+    const pastAndCurrentWeeks = trainingPlan.filter(w => w.weekNumber <= currentWeekNum);
+    const totalScheduled = pastAndCurrentWeeks.reduce((acc, w) => acc + w.sessions.length, 0);
+    const completedCount = Object.values(completedPlanSessions).filter(Boolean).length;
+
+    const remainingWeeks = trainingPlan
+      .filter(w => new Date(w.endDate) >= today)
+      .map(w => ({
+        weekNumber: w.weekNumber,
+        phase: w.phase,
+        targetElevation: w.targetElevation,
+        purpose: w.purpose,
+      }));
+
+    try {
+      const res = await fetch(`${API_BASE}/adjust-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summitGoal,
+          completedCount,
+          totalScheduled,
+          currentWeekNumber: currentWeekNum,
+          remainingWeeks,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Adjust plan failed");
+
+      const data: {
+        overallNote: string;
+        adjustedWeeks: { weekNumber: number; targetElevation: number; purpose: string; note?: string }[];
+      } = await res.json();
+
+      const adjustMap = new Map(data.adjustedWeeks.map(w => [w.weekNumber, w]));
+      const updatedPlan = trainingPlan.map(week => {
+        const adj = adjustMap.get(week.weekNumber);
+        if (!adj) return week;
+        return {
+          ...week,
+          targetElevation: adj.targetElevation,
+          purpose: adj.purpose,
+          adjustNote: adj.note,
+        };
+      });
+
+      setTrainingPlan(updatedPlan);
+      setPlanAdjustNote(data.overallNote);
+      await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updatedPlan));
+      await AsyncStorage.setItem(ADJUST_NOTE_KEY, data.overallNote);
+    } catch {}
+    setPlanAdjusting(false);
+  }, [summitGoal, trainingPlan, completedPlanSessions]);
+
   return (
-    <AppContext.Provider value={{ summitGoal, trainingPlan, sessions, readinessScore, isLoading, setSummitGoal, addSession, updateSession, deleteSession, clearPlan }}>
+    <AppContext.Provider value={{
+      summitGoal, trainingPlan, sessions, readinessScore, isLoading,
+      nearbyHills, hillsLoading, completedPlanSessions, assignedHills,
+      planAdjusting, planAdjustNote,
+      setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
+      fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
+    }}>
       {children}
     </AppContext.Provider>
   );
