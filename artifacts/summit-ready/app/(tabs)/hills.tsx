@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Linking } from "react-native";
-import React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -14,7 +14,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp } from "@/context/AppContext";
+import { useApp, NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
 const GRADE_COLOR: Record<string, string> = {
@@ -25,16 +25,72 @@ const GRADE_COLOR: Record<string, string> = {
   "Alpine": "#FF4444",
 };
 
+const GRADE_SCORE: Record<string, number> = {
+  "Easy": 5,
+  "Easy–Mod": 4,
+  "Moderate": 3,
+  "Hard": 2,
+  "Alpine": 1,
+};
+
+const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+type SortKey = "distance" | "elevation" | "popularity";
+
+function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
+  const sorted = [...hills];
+  if (by === "distance") {
+    sorted.sort((a, b) => a.distance - b.distance);
+  } else if (by === "elevation") {
+    sorted.sort((a, b) => b.elevation - a.elevation);
+  } else {
+    // popularity: higher grade score = more accessible = more popular, then closer first
+    sorted.sort((a, b) => {
+      const gs = (GRADE_SCORE[b.grade] ?? 3) - (GRADE_SCORE[a.grade] ?? 3);
+      return gs !== 0 ? gs : a.distance - b.distance;
+    });
+  }
+  return sorted;
+}
+
 export default function HillsScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, nearbyHills, hillsLoading, fetchNearbyHills } = useApp();
-  const targetElev = summitGoal?.elevationGain ?? 1000;
 
+  const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
+  const [userChangedRadius, setUserChangedRadius] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("distance");
+
+  // Sync radius once the goal loads from storage (only if user hasn't manually changed it)
+  useEffect(() => {
+    if (!userChangedRadius && summitGoal?.maxRadius) {
+      setLocalRadius(summitGoal.maxRadius);
+    }
+  }, [summitGoal?.maxRadius, userChangedRadius]);
+
+  const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
+
+  const targetElev = summitGoal?.elevationGain ?? 1000;
   const currentWeek = trainingPlan.find(w => {
     const now = new Date();
     return new Date(w.startDate) <= now && new Date(w.endDate) >= now;
   });
   const weekTarget = currentWeek?.targetElevation ?? Math.round(targetElev * 0.5);
+
+  const displayedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
+
+  function stepRadius(dir: 1 | -1) {
+    setUserChangedRadius(true);
+    const idx = RADIUS_STEPS.indexOf(localRadius);
+    if (idx === -1) {
+      const nearest = RADIUS_STEPS.reduce((p, c) =>
+        Math.abs(c - localRadius) < Math.abs(p - localRadius) ? c : p
+      );
+      setLocalRadius(nearest);
+    } else {
+      const next = idx + dir;
+      if (next >= 0 && next < RADIUS_STEPS.length) setLocalRadius(RADIUS_STEPS[next]);
+    }
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -53,16 +109,8 @@ export default function HillsScreen() {
           <View>
             <Text style={styles.title}>Nearby Hills</Text>
             {summitGoal && (
-              <Text style={styles.subtitle}>
-                Near {summitGoal.location} · {summitGoal.maxRadius}km radius
-              </Text>
+              <Text style={styles.subtitle}>Near {summitGoal.location}</Text>
             )}
-          </View>
-          <View style={[styles.radiusBadge, { backgroundColor: T.greenDim }]}>
-            <Feather name="radio" size={12} color={T.green} />
-            <Text style={[styles.radiusText, { color: T.green }]}>
-              {summitGoal?.maxRadius ?? 30}km
-            </Text>
           </View>
         </Animated.View>
 
@@ -89,22 +137,98 @@ export default function HillsScreen() {
           </View>
         </Animated.View>
 
-        {/* Fetch / Refresh button */}
+        {/* Radius Selector */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+          <View style={styles.controlCard}>
+            <View style={styles.controlRow}>
+              <View style={styles.controlLabelRow}>
+                <Feather name="radio" size={13} color={T.green} />
+                <Text style={styles.controlLabel}>Search radius</Text>
+              </View>
+              <View style={styles.radiusStepper}>
+                <TouchableOpacity
+                  onPress={() => stepRadius(-1)}
+                  disabled={localRadius <= RADIUS_STEPS[0]}
+                  style={[styles.stepBtn, localRadius <= RADIUS_STEPS[0] && { opacity: 0.3 }]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather name="minus" size={14} color={T.white} />
+                </TouchableOpacity>
+                <View style={styles.radiusValueBox}>
+                  <Text style={[styles.radiusValue, radiusChanged && { color: T.orange }]}>
+                    {localRadius}
+                    <Text style={styles.radiusUnit}> km</Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => stepRadius(1)}
+                  disabled={localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]}
+                  style={[styles.stepBtn, localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather name="plus" size={14} color={T.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.controlDivider} />
+
+            {/* Sort by */}
+            <View style={styles.controlRow}>
+              <View style={styles.controlLabelRow}>
+                <Feather name="sliders" size={13} color={T.blue} />
+                <Text style={styles.controlLabel}>Sort by</Text>
+              </View>
+              <View style={styles.sortChips}>
+                {(["distance", "elevation", "popularity"] as SortKey[]).map(key => (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => setSortBy(key)}
+                    style={[
+                      styles.sortChip,
+                      sortBy === key && styles.sortChipActive,
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.sortChipText,
+                      sortBy === key && styles.sortChipTextActive,
+                    ]}>
+                      {key === "distance" ? "Distance" : key === "elevation" ? "Elevation" : "Popularity"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Fetch / Refresh button */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
           <TouchableOpacity
-            onPress={fetchNearbyHills}
+            onPress={() => fetchNearbyHills(localRadius)}
             disabled={hillsLoading}
             style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+              colors={radiusChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
               style={styles.fetchBtnInner}
             >
               {hillsLoading ? (
                 <>
                   <ActivityIndicator size="small" color={T.green} />
-                  <Text style={styles.fetchBtnText}>Finding hills near {summitGoal?.location ?? "you"}…</Text>
+                  <Text style={styles.fetchBtnText}>Finding hills within {localRadius}km…</Text>
+                </>
+              ) : radiusChanged ? (
+                <>
+                  <Feather name="search" size={15} color={T.orange} />
+                  <Text style={[styles.fetchBtnText, { color: T.orange }]}>
+                    Search {localRadius}km radius
+                  </Text>
                 </>
               ) : (
                 <>
@@ -132,7 +256,7 @@ export default function HillsScreen() {
         )}
 
         {/* Hill Cards */}
-        {nearbyHills.map((hill, i) => {
+        {displayedHills.map((hill, i) => {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
@@ -141,6 +265,24 @@ export default function HillsScreen() {
             <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
               <View style={styles.hillCard}>
                 <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
+
+                {/* Sort indicator badge */}
+                {sortBy === "distance" && (
+                  <View style={styles.rankBadge}>
+                    <Text style={styles.rankText}>#{i + 1} closest</Text>
+                  </View>
+                )}
+                {sortBy === "elevation" && (
+                  <View style={[styles.rankBadge, { backgroundColor: T.orangeDim }]}>
+                    <Text style={[styles.rankText, { color: T.orange }]}>#{i + 1} highest</Text>
+                  </View>
+                )}
+                {sortBy === "popularity" && i === 0 && (
+                  <View style={[styles.rankBadge, { backgroundColor: T.purpleDim }]}>
+                    <Text style={[styles.rankText, { color: T.purple }]}>Most popular</Text>
+                  </View>
+                )}
+
                 <View style={styles.hillTop}>
                   <View style={[styles.hillIconBox, { backgroundColor: gc + "18" }]}>
                     <Text style={styles.hillEmoji}>{hill.emoji}</Text>
@@ -216,8 +358,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  radiusBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  radiusText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   ctxCard: {
     backgroundColor: T.card,
     borderRadius: 18,
@@ -231,6 +371,59 @@ const styles = StyleSheet.create({
   ctxVal: { fontSize: 19, fontFamily: "Inter_700Bold", color: T.white },
   ctxLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
   ctxDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+
+  controlCard: {
+    backgroundColor: T.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    overflow: "hidden",
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 0,
+  },
+  controlRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 40,
+  },
+  controlDivider: { height: 1, backgroundColor: T.border, marginVertical: 12 },
+  controlLabelRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  controlLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+
+  radiusStepper: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radiusValueBox: { minWidth: 64, alignItems: "center" },
+  radiusValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
+  radiusUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  sortChips: { flexDirection: "row", gap: 6 },
+  sortChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: T.border,
+    backgroundColor: T.surface,
+  },
+  sortChipActive: {
+    borderColor: T.blue + "60",
+    backgroundColor: T.blueDim,
+  },
+  sortChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  sortChipTextActive: { color: T.blue },
+
   fetchBtn: { borderRadius: 14, overflow: "hidden", marginBottom: 14 },
   fetchBtnInner: {
     flexDirection: "row",
@@ -266,6 +459,15 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     gap: 12,
   },
+  rankBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
+    backgroundColor: T.greenDim,
+    marginBottom: -4,
+  },
+  rankText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
   hillTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   hillIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   hillEmoji: { fontSize: 22 },
