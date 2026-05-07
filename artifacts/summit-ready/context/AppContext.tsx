@@ -255,21 +255,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const plan = generatePlan(goal);
     setSummitGoalState(goal);
     setTrainingPlan(plan);
+    // Reset ALL session data — old sessions from a previous goal are irrelevant
+    setSessions([]);
     setCompletedPlanSessions({});
     setAssignedHills({});
     setSubmittedPlanSessions({});
+    setHillsInPlan([]);
     setPlanAdjustNote(null);
-    const score = calculateReadiness(goal, plan, sessions);
+    const score = calculateReadiness(goal, plan, []);
     setReadinessScore(score);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
       [PLAN_KEY, JSON.stringify(plan)],
+      [SESSIONS_KEY, "[]"],
       [COMPLETED_KEY, "{}"],
       [ASSIGNED_KEY, "{}"],
       [SUBMITTED_KEY, "{}"],
+      [HILLS_IN_PLAN_KEY, "[]"],
       [ADJUST_NOTE_KEY, ""],
     ]);
-  }, [sessions]);
+  }, []);
 
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 6);
