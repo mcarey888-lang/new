@@ -13,6 +13,9 @@ export interface SummitGoal {
   fitnessLevel: "Beginner" | "Average" | "Strong";
   location: string;
   maxRadius: number;
+  equipment: Array<"gym" | "weights" | "bands" | "none">;
+  trainingDaysPerWeek: number;
+  hillDaysPerWeek: number;
 }
 
 export interface PlanSession {
@@ -146,6 +149,9 @@ const DEMO_GOAL: SummitGoal = {
   fitnessLevel: "Average",
   location: "Schwarzsee, Switzerland",
   maxRadius: 30,
+  equipment: ["none"],
+  trainingDaysPerWeek: 4,
+  hillDaysPerWeek: 2,
 };
 
 const DEMO_SESSIONS: Session[] = [
@@ -326,8 +332,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const key = `${weekNum}-${sessionIdx}`;
     const updated = { ...completedPlanSessions, [key]: !completedPlanSessions[key] };
     setCompletedPlanSessions(updated);
+    // Recalculate readiness in real-time using checked-but-not-submitted sessions as virtual progress
+    if (summitGoal) {
+      const virtualCount = Object.keys(updated).filter(k => updated[k] && !submittedPlanSessions[k]).length;
+      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { virtualSessionCount: virtualCount }));
+    }
     await AsyncStorage.setItem(COMPLETED_KEY, JSON.stringify(updated));
-  }, [completedPlanSessions]);
+  }, [completedPlanSessions, submittedPlanSessions, summitGoal, trainingPlan, sessions]);
 
   const assignHillToSession = useCallback(async (weekNum: number, sessionIdx: number, hill: NearbyHill) => {
     const key = `${weekNum}-${sessionIdx}`;

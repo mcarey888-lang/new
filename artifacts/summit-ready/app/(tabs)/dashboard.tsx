@@ -77,7 +77,8 @@ export default function DashboardScreen() {
   const statusLabel = STATUS_LABEL(readinessScore);
   const days = getDaysRemaining(summitGoal.summitDate);
   const currentWeek = getCurrentWeek(trainingPlan);
-  const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber) : 0;
+  const sessionsPerWeek = summitGoal?.trainingDaysPerWeek ?? 4;
+  const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek) : 0;
   const maxElev = sessions.filter(s => s.completed).reduce((m, s) => Math.max(m, s.elevationGain), 0);
   const totalDone = sessions.filter(s => s.completed).length;
 

@@ -21,6 +21,7 @@ import { T } from "@/constants/theme";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 type Fitness = "Beginner" | "Average" | "Strong";
+type Equipment = "gym" | "weights" | "bands" | "none";
 
 interface RouteOption {
   name: string;
@@ -45,9 +46,19 @@ const DIFF_ICONS: Record<Difficulty, string> = {
 const DIFF_COLORS: Record<Difficulty, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange, Alpine: "#FF4444",
 };
-const FIT_ICONS: Record<Fitness, string> = {
-  Beginner: "🌱", Average: "🏃", Strong: "⚡",
-};
+
+const FITNESS_OPTIONS: { value: Fitness; emoji: string; label: string; desc: string }[] = [
+  { value: "Beginner", emoji: "🌱", label: "Just starting", desc: "New to regular exercise or hiking" },
+  { value: "Average", emoji: "🏃", label: "Some fitness", desc: "Walk or exercise 1–3× per week" },
+  { value: "Strong",  emoji: "⚡", label: "Regularly active", desc: "Hike or run weekly, exercise 4+ days" },
+];
+
+const EQUIPMENT_OPTIONS: { value: Equipment; icon: keyof typeof Feather.glyphMap; label: string; desc: string }[] = [
+  { value: "gym",     icon: "activity",    label: "Gym membership",    desc: "Treadmill, step machine, weights" },
+  { value: "weights", icon: "trending-up", label: "Home weights",      desc: "Dumbbells, barbell, or kettlebell" },
+  { value: "bands",   icon: "link",        label: "Resistance bands",  desc: "Bands or bodyweight equipment" },
+  { value: "none",    icon: "map-pin",     label: "No equipment",      desc: "Walks, runs, stairs only" },
+];
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -61,38 +72,36 @@ export default function SetupScreen() {
   const [date, setDate] = useState("");
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d;
+    const d = new Date(); d.setDate(1); return d;
   });
   const [dist, setDist] = useState("");
   const [elev, setElev] = useState("");
   const [alt, setAlt] = useState("");
   const [diff, setDiff] = useState<Difficulty>("Moderate");
   const [fit, setFit] = useState<Fitness>("Average");
+  const [equipment, setEquipment] = useState<Equipment[]>(["none"]);
+  const [trainingDays, setTrainingDays] = useState(4);
+  const [hillDays, setHillDays] = useState(2);
   const [loc, setLoc] = useState("");
   const [radius, setRadius] = useState("25");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  // Mountain lookup state
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "results" | "error">("idle");
   const [mountainResult, setMountainResult] = useState<MountainResult | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<RouteOption | null>(null);
   const [lookupError, setLookupError] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const FITNESS: Fitness[] = ["Beginner", "Average", "Strong"];
+  // Ensure hillDays never exceeds trainingDays - 1
+  useEffect(() => {
+    if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
+  }, [trainingDays]);
 
-  // Lookup mountain info with debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (name.trim().length < 3) {
-      if (lookupState !== "idle") {
-        setLookupState("idle");
-        setMountainResult(null);
-        setSelectedRoute(null);
-      }
+      if (lookupState !== "idle") { setLookupState("idle"); setMountainResult(null); setSelectedRoute(null); }
       return;
     }
     debounceRef.current = setTimeout(() => lookupMountain(name.trim()), 900);
@@ -100,20 +109,16 @@ export default function SetupScreen() {
   }, [name]);
 
   async function lookupMountain(mountainName: string) {
-    setLookupState("loading");
-    setSelectedRoute(null);
-    setMountainResult(null);
+    setLookupState("loading"); setSelectedRoute(null); setMountainResult(null);
     try {
       const res = await fetch(`${API_BASE}/mountain-lookup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: mountainName }),
       });
       if (!res.ok) throw new Error("Lookup failed");
       const data: MountainResult = await res.json();
-      setMountainResult(data);
-      setLookupState("results");
-    } catch (e) {
+      setMountainResult(data); setLookupState("results");
+    } catch {
       setLookupError("Could not look up route data. Fill in manually.");
       setLookupState("error");
     }
@@ -125,8 +130,21 @@ export default function SetupScreen() {
     setElev(String(route.elevationGain));
     setAlt(String(route.highestAltitude));
     setDiff(route.difficulty);
-    if (mountainResult?.mountainName) {
-      setName(mountainResult.mountainName);
+    if (mountainResult?.mountainName) setName(mountainResult.mountainName);
+  }
+
+  function toggleEquipment(value: Equipment) {
+    if (value === "none") {
+      setEquipment(["none"]);
+    } else {
+      setEquipment(prev => {
+        const withoutNone = prev.filter(e => e !== "none");
+        if (withoutNone.includes(value)) {
+          const removed = withoutNone.filter(e => e !== value);
+          return removed.length === 0 ? ["none"] : removed;
+        }
+        return [...withoutNone, value];
+      });
     }
   }
 
@@ -156,15 +174,16 @@ export default function SetupScreen() {
       fitnessLevel: fit,
       location: loc.trim(),
       maxRadius: +radius || 25,
+      equipment,
+      trainingDaysPerWeek: trainingDays,
+      hillDaysPerWeek: hillDays,
     });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
   }
 
-  const inp = (field: string) => [
-    styles.input,
-    errors[field] ? { borderColor: T.red + "80" } : null,
-  ];
+  const inp = (field: string) => [styles.input, errors[field] ? { borderColor: T.red + "80" } : null];
+  const maxHillDays = Math.max(1, trainingDays - 1);
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -174,7 +193,7 @@ export default function SetupScreen() {
             styles.scroll,
             {
               paddingTop: Platform.OS === "web" ? 72 : insets.top + 16,
-              paddingBottom: Platform.OS === "web" ? 60 : insets.bottom + 40,
+              paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 40,
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -187,7 +206,7 @@ export default function SetupScreen() {
             </TouchableOpacity>
             <View>
               <Text style={styles.title}>Your Summit</Text>
-              <Text style={styles.subtitle}>Set up your training plan</Text>
+              <Text style={styles.subtitle}>Build a plan tailored to you</Text>
             </View>
           </View>
 
@@ -198,23 +217,15 @@ export default function SetupScreen() {
               <View style={styles.mountainInputRow}>
                 <TextInput
                   style={[styles.input, { flex: 1 }, errors.name ? { borderColor: T.red + "80" } : null]}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="e.g. Hörnlihütte, Ben Nevis, Mont Blanc…"
-                  placeholderTextColor={T.textDim}
-                  autoCorrect={false}
+                  value={name} onChangeText={setName}
+                  placeholder="e.g. Ben Nevis, Mont Blanc, Snowdon…"
+                  placeholderTextColor={T.textDim} autoCorrect={false}
                 />
                 {lookupState === "loading" && (
-                  <View style={styles.lookupSpinner}>
-                    <ActivityIndicator size="small" color={T.green} />
-                  </View>
+                  <View style={styles.lookupSpinner}><ActivityIndicator size="small" color={T.green} /></View>
                 )}
                 {lookupState !== "loading" && name.trim().length >= 3 && (
-                  <TouchableOpacity
-                    style={styles.lookupBtn}
-                    onPress={() => lookupMountain(name.trim())}
-                    activeOpacity={0.8}
-                  >
+                  <TouchableOpacity style={styles.lookupBtn} onPress={() => lookupMountain(name.trim())} activeOpacity={0.8}>
                     <Feather name="search" size={16} color={T.green} />
                   </TouchableOpacity>
                 )}
@@ -222,21 +233,18 @@ export default function SetupScreen() {
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
             </View>
 
-            {/* Lookup status */}
             {lookupState === "loading" && (
               <Animated.View entering={FadeInDown.duration(300)} style={styles.lookupCard}>
                 <ActivityIndicator size="small" color={T.green} />
                 <Text style={styles.lookupLoadingText}>Looking up routes for "{name}"…</Text>
               </Animated.View>
             )}
-
             {lookupState === "error" && (
               <Animated.View entering={FadeInDown.duration(300)} style={[styles.lookupCard, styles.lookupError]}>
                 <Feather name="alert-circle" size={14} color={T.orange} />
                 <Text style={styles.lookupErrorText}>{lookupError}</Text>
               </Animated.View>
             )}
-
             {lookupState === "results" && mountainResult && (
               <Animated.View entering={FadeInDown.duration(400)}>
                 <View style={styles.mountainInfo}>
@@ -250,38 +258,24 @@ export default function SetupScreen() {
                       )}
                     </View>
                     <View style={[styles.routeCountBadge, { backgroundColor: T.greenDim }]}>
-                      <Text style={[styles.routeCountText, { color: T.green }]}>
-                        {mountainResult.routes.length} routes
-                      </Text>
+                      <Text style={[styles.routeCountText, { color: T.green }]}>{mountainResult.routes.length} routes</Text>
                     </View>
                   </View>
                 </View>
-
                 <Text style={styles.routePickerLabel}>Select a route to auto-fill details:</Text>
                 {mountainResult.routes.map((route, i) => {
                   const isSelected = selectedRoute?.name === route.name;
                   const dc = DIFF_COLORS[route.difficulty];
                   return (
-                    <TouchableOpacity
-                      key={i}
-                      onPress={() => selectRoute(route)}
-                      activeOpacity={0.8}
-                      style={[
-                        styles.routeCard,
-                        isSelected && { borderColor: dc, borderWidth: 1.5 },
-                      ]}
+                    <TouchableOpacity key={i} onPress={() => selectRoute(route)} activeOpacity={0.8}
+                      style={[styles.routeCard, isSelected && { borderColor: dc, borderWidth: 1.5 }]}
                     >
-                      <LinearGradient
-                        colors={isSelected ? [dc + "12", "transparent"] : ["transparent", "transparent"]}
-                        style={StyleSheet.absoluteFill}
-                      />
+                      <LinearGradient colors={isSelected ? [dc + "12", "transparent"] : ["transparent", "transparent"]} style={StyleSheet.absoluteFill} />
                       <View style={styles.routeCardTop}>
                         <Text style={styles.routeEmoji}>{DIFF_ICONS[route.difficulty]}</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.routeName}>{route.name}</Text>
-                          {route.startingPoint && (
-                            <Text style={styles.routeStart}>From {route.startingPoint}</Text>
-                          )}
+                          {route.startingPoint && <Text style={styles.routeStart}>From {route.startingPoint}</Text>}
                         </View>
                         <View style={[styles.diffBadge, { backgroundColor: dc + "20" }]}>
                           <Text style={[styles.diffBadgeText, { color: dc }]}>{route.difficulty}</Text>
@@ -309,9 +303,7 @@ export default function SetupScreen() {
           <Section label="Summit Date" icon="calendar">
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Target Date</Text>
-              <TouchableOpacity
-                onPress={() => setCalOpen(true)}
-                activeOpacity={0.8}
+              <TouchableOpacity onPress={() => setCalOpen(true)} activeOpacity={0.8}
                 style={[styles.datePicker, errors.date ? { borderColor: T.red + "80" } : null]}
               >
                 <Feather name="calendar" size={16} color={date ? T.green : T.textDim} />
@@ -327,23 +319,18 @@ export default function SetupScreen() {
           </Section>
 
           <CalendarModal
-            visible={calOpen}
-            selected={date}
-            calMonth={calMonth}
-            setCalMonth={setCalMonth}
+            visible={calOpen} selected={date} calMonth={calMonth} setCalMonth={setCalMonth}
             onSelect={(d) => { setDate(d); setCalOpen(false); if (errors.date) setErrors(prev => ({ ...prev, date: "" })); }}
             onClose={() => setCalOpen(false)}
           />
 
-          {/* Route details — auto-filled or manual */}
+          {/* Route details */}
           <Section label="Route Details" icon="trending-up">
             {selectedRoute && (
               <Animated.View entering={FadeInDown.duration(300)}>
                 <View style={styles.autofillBanner}>
                   <Feather name="zap" size={13} color={T.green} />
-                  <Text style={styles.autofillText}>
-                    Auto-filled from "{selectedRoute.name}" — edit if needed
-                  </Text>
+                  <Text style={styles.autofillText}>Auto-filled from "{selectedRoute.name}" — edit if needed</Text>
                 </View>
               </Animated.View>
             )}
@@ -367,20 +354,13 @@ export default function SetupScreen() {
                 placeholder="3260" placeholderTextColor={T.textDim} keyboardType="number-pad" />
               {errors.alt && <Text style={styles.errorText}>{errors.alt}</Text>}
             </View>
-
             <Text style={styles.fLabel}>Difficulty</Text>
             <View style={styles.diffRow}>
               {(["Easy", "Moderate", "Hard", "Alpine"] as Difficulty[]).map(d => {
                 const dc = DIFF_COLORS[d];
                 return (
-                  <TouchableOpacity
-                    key={d}
-                    onPress={() => setDiff(d)}
-                    style={[
-                      styles.diffBtn,
-                      diff === d && { borderColor: dc, backgroundColor: dc + "18" },
-                    ]}
-                    activeOpacity={0.7}
+                  <TouchableOpacity key={d} onPress={() => setDiff(d)} activeOpacity={0.7}
+                    style={[styles.diffBtn, diff === d && { borderColor: dc, backgroundColor: dc + "18" }]}
                   >
                     <Text style={styles.diffEmoji}>{DIFF_ICONS[d]}</Text>
                     <Text style={[styles.diffLabel, diff === d && { color: dc }]}>{d}</Text>
@@ -390,52 +370,153 @@ export default function SetupScreen() {
             </View>
           </Section>
 
-          {/* Fitness */}
-          <Section label="Your Fitness" icon="zap">
-            <View style={styles.fitRow}>
-              {FITNESS.map(f => (
-                <TouchableOpacity
-                  key={f}
-                  onPress={() => setFit(f)}
-                  style={[
-                    styles.fitBtn,
-                    fit === f && { borderColor: T.orange, backgroundColor: T.orangeDim },
-                  ]}
-                  activeOpacity={0.7}
+          {/* Fitness Assessment */}
+          <Section label="Fitness Assessment" icon="zap">
+            <Text style={styles.sectionDesc}>
+              Be honest — an accurate assessment means a plan that's actually achievable.
+            </Text>
+            <View style={styles.fitnessGrid}>
+              {FITNESS_OPTIONS.map(opt => {
+                const active = fit === opt.value;
+                return (
+                  <TouchableOpacity key={opt.value} onPress={() => setFit(opt.value)} activeOpacity={0.7}
+                    style={[styles.fitnessCard, active && styles.fitnessCardActive]}
+                  >
+                    {active && <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />}
+                    <Text style={styles.fitnessEmoji}>{opt.emoji}</Text>
+                    <Text style={[styles.fitnessLabel, active && { color: T.orange }]}>{opt.label}</Text>
+                    <Text style={styles.fitnessDesc}>{opt.desc}</Text>
+                    {active && (
+                      <View style={styles.fitnessCheck}>
+                        <Feather name="check" size={10} color={T.orange} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Section>
+
+          {/* Equipment */}
+          <Section label="Available Equipment" icon="tool">
+            <Text style={styles.sectionDesc}>
+              Select everything you have access to — your plan will be tailored around what's available.
+            </Text>
+            <View style={styles.equipGrid}>
+              {EQUIPMENT_OPTIONS.map(opt => {
+                const active = equipment.includes(opt.value);
+                const isNoneOpt = opt.value === "none";
+                return (
+                  <TouchableOpacity key={opt.value} onPress={() => toggleEquipment(opt.value)} activeOpacity={0.7}
+                    style={[styles.equipCard, active && (isNoneOpt ? styles.equipCardNone : styles.equipCardActive)]}
+                  >
+                    {active && <LinearGradient
+                      colors={isNoneOpt ? [T.blueDim, "transparent"] : [T.greenDim, "transparent"]}
+                      style={StyleSheet.absoluteFill}
+                    />}
+                    <View style={[styles.equipIcon, { backgroundColor: active ? (isNoneOpt ? T.blue + "20" : T.green + "20") : T.surface }]}>
+                      <Feather name={opt.icon} size={18} color={active ? (isNoneOpt ? T.blue : T.green) : T.textMuted} />
+                    </View>
+                    <Text style={[styles.equipLabel, active && { color: isNoneOpt ? T.blue : T.green }]}>{opt.label}</Text>
+                    <Text style={styles.equipDesc}>{opt.desc}</Text>
+                    {active && (
+                      <View style={[styles.equipCheck, { backgroundColor: isNoneOpt ? T.blue : T.green }]}>
+                        <Feather name="check" size={10} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Section>
+
+          {/* Training Schedule */}
+          <Section label="Training Schedule" icon="calendar">
+            <Text style={styles.sectionDesc}>
+              How many days per week can you commit to training? We'll build the plan around your availability.
+            </Text>
+
+            <Text style={styles.fLabel}>Training days per week</Text>
+            <View style={styles.chipRow}>
+              {[2, 3, 4, 5, 6].map(n => (
+                <TouchableOpacity key={n} onPress={() => setTrainingDays(n)} activeOpacity={0.7}
+                  style={[styles.chip, trainingDays === n && styles.chipActive]}
                 >
-                  <Text style={styles.fitEmoji}>{FIT_ICONS[f]}</Text>
-                  <Text style={[styles.fitLabel, fit === f && { color: T.orange }]}>{f}</Text>
+                  <Text style={[styles.chipText, trainingDays === n && styles.chipTextActive]}>{n}</Text>
+                  {trainingDays === n && <Text style={styles.chipSub}>days</Text>}
                 </TouchableOpacity>
               ))}
+            </View>
+
+            <View style={styles.scheduleInfo}>
+              <Feather name="info" size={12} color={T.textMuted} />
+              <Text style={styles.scheduleInfoText}>
+                {trainingDays} training days/week · {trainingDays - hillDays} non-hill session{trainingDays - hillDays !== 1 ? "s" : ""}
+              </Text>
+            </View>
+
+            <Text style={[styles.fLabel, { marginTop: 14 }]}>Hill training days per week</Text>
+            <Text style={styles.fieldHint}>Hill sessions are the core of summit preparation — the more the better.</Text>
+            <View style={styles.chipRow}>
+              {Array.from({ length: maxHillDays }, (_, i) => i + 1).map(n => (
+                <TouchableOpacity key={n} onPress={() => setHillDays(n)} activeOpacity={0.7}
+                  style={[styles.chip, styles.chipGreen, hillDays === n && styles.chipGreenActive]}
+                >
+                  <Text style={[styles.chipText, hillDays === n && { color: T.green }]}>{n}</Text>
+                  {hillDays === n && <Text style={[styles.chipSub, { color: T.green + "99" }]}>hill{n !== 1 ? "s" : ""}</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Summary card */}
+            <View style={styles.summaryCard}>
+              <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Text style={styles.summaryTitle}>Your weekly plan will include:</Text>
+              <View style={styles.summaryRow}>
+                <Feather name="trending-up" size={13} color={T.green} />
+                <Text style={styles.summaryText}>{hillDays} hill session{hillDays !== 1 ? "s" : ""} — repeats on local hills</Text>
+              </View>
+              {trainingDays - hillDays - 1 > 0 && (
+                <View style={styles.summaryRow}>
+                  <Feather name="heart" size={13} color={T.blue} />
+                  <Text style={styles.summaryText}>
+                    {trainingDays - hillDays - 1} cardio session{trainingDays - hillDays - 1 !== 1 ? "s" : ""} —{" "}
+                    {equipment.includes("gym") ? "treadmill / step machine" : equipment.includes("none") || equipment.length === 0 ? "runs, walks, stairs" : "runs + resistance work"}
+                  </Text>
+                </View>
+              )}
+              {trainingDays >= 3 && (
+                <View style={styles.summaryRow}>
+                  <Feather name="flag" size={13} color={T.orange} />
+                  <Text style={styles.summaryText}>1 big day — long hike or extended hill session</Text>
+                </View>
+              )}
             </View>
           </Section>
 
           {/* Location */}
           <Section label="Your Location" icon="map">
             <View style={styles.fieldWrap}>
-              <Text style={styles.fLabel}>Location / Postcode</Text>
+              <Text style={styles.fLabel}>Training location</Text>
+              <Text style={styles.fieldHint}>Used to find hills near you for training sessions</Text>
               <TextInput style={inp("loc")} value={loc} onChangeText={setLoc}
                 placeholder="e.g. Leeds, UK" placeholderTextColor={T.textDim} />
               {errors.loc && <Text style={styles.errorText}>{errors.loc}</Text>}
             </View>
             <View style={styles.fieldWrap}>
-              <Text style={styles.fLabel}>Max Training Radius (km)</Text>
+              <Text style={styles.fLabel}>Max search radius (km)</Text>
               <TextInput style={inp("radius")} value={radius} onChangeText={setRadius}
                 placeholder="25" placeholderTextColor={T.textDim} keyboardType="number-pad" />
             </View>
           </Section>
 
-          <TouchableOpacity
-            onPress={submit}
-            disabled={saving}
-            style={[styles.submitBtn, { opacity: saving ? 0.7 : 1 }]}
-            activeOpacity={0.85}
+          <TouchableOpacity onPress={submit} disabled={saving}
+            style={[styles.submitBtn, { opacity: saving ? 0.7 : 1 }]} activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitGrad}>
               {saving
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="check-circle" size={20} color="#fff" />
-              }
+                : <Feather name="check-circle" size={20} color="#fff" />}
               <Text style={styles.submitText}>
                 {saving ? "Generating plan…" : "Generate my training plan"}
               </Text>
@@ -450,46 +531,26 @@ export default function SetupScreen() {
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function CalendarModal({
-  visible, selected, calMonth, setCalMonth, onSelect, onClose,
-}: {
-  visible: boolean;
-  selected: string;
-  calMonth: Date;
-  setCalMonth: (d: Date) => void;
-  onSelect: (iso: string) => void;
-  onClose: () => void;
+function CalendarModal({ visible, selected, calMonth, setCalMonth, onSelect, onClose }: {
+  visible: boolean; selected: string; calMonth: Date;
+  setCalMonth: (d: Date) => void; onSelect: (iso: string) => void; onClose: () => void;
 }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const year = calMonth.getFullYear();
   const month = calMonth.getMonth();
   const firstDay = new Date(year, month, 1);
-  // Convert Sunday=0 to Mon-start offset (Mon=0, Sun=6)
   const startOffset = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [
-    ...Array(startOffset).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  // Pad to full rows
+  const cells: (number | null)[] = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  function changeMonth(delta: number) {
-    const d = new Date(year, month + delta, 1);
-    setCalMonth(d);
-  }
-
-  function isoFor(day: number) {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
+  function changeMonth(delta: number) { setCalMonth(new Date(year, month + delta, 1)); }
+  function isoFor(day: number) { return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`; }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={calStyles.backdrop} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={calStyles.sheet}>
-          {/* Header */}
           <View style={calStyles.header}>
             <TouchableOpacity onPress={() => changeMonth(-1)} style={calStyles.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Feather name="chevron-left" size={20} color={T.white} />
@@ -499,15 +560,9 @@ function CalendarModal({
               <Feather name="chevron-right" size={20} color={T.white} />
             </TouchableOpacity>
           </View>
-
-          {/* Weekday labels */}
           <View style={calStyles.weekRow}>
-            {WEEKDAYS.map(d => (
-              <Text key={d} style={calStyles.weekDay}>{d}</Text>
-            ))}
+            {WEEKDAYS.map(d => <Text key={d} style={calStyles.weekDay}>{d}</Text>)}
           </View>
-
-          {/* Day grid */}
           <View style={calStyles.grid}>
             {cells.map((day, idx) => {
               if (!day) return <View key={idx} style={calStyles.dayCell} />;
@@ -517,31 +572,17 @@ function CalendarModal({
               const isSelected = iso === selected;
               const isToday = cellDate.toDateString() === today.toDateString();
               return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[
-                    calStyles.dayCell,
-                    isSelected && calStyles.dayCellSelected,
-                    isToday && !isSelected && calStyles.dayCellToday,
-                  ]}
-                  onPress={() => !isPast && onSelect(iso)}
-                  activeOpacity={isPast ? 1 : 0.7}
-                  disabled={isPast}
+                <TouchableOpacity key={idx}
+                  style={[calStyles.dayCell, isSelected && calStyles.dayCellSelected, isToday && !isSelected && calStyles.dayCellToday]}
+                  onPress={() => !isPast && onSelect(iso)} activeOpacity={isPast ? 1 : 0.7} disabled={isPast}
                 >
-                  <Text style={[
-                    calStyles.dayText,
-                    isPast && calStyles.dayTextPast,
-                    isSelected && calStyles.dayTextSelected,
-                    isToday && !isSelected && calStyles.dayTextToday,
-                  ]}>
+                  <Text style={[calStyles.dayText, isPast && calStyles.dayTextPast, isSelected && calStyles.dayTextSelected, isToday && !isSelected && calStyles.dayTextToday]}>
                     {day}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-
-          {/* Footer */}
           <TouchableOpacity onPress={onClose} style={calStyles.cancelBtn}>
             <Text style={calStyles.cancelText}>Cancel</Text>
           </TouchableOpacity>
@@ -565,233 +606,147 @@ const statStyles = StyleSheet.create({
   text: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 });
 
-function Section({ label, icon, children }: {
-  label: string;
-  icon: keyof typeof Feather.glyphMap;
-  children: React.ReactNode;
-}) {
+function Section({ label, icon, children }: { label: string; icon: keyof typeof Feather.glyphMap; children: React.ReactNode }) {
   return (
     <View style={secStyles.wrap}>
       <View style={secStyles.head}>
         <View style={secStyles.iconBox}>
-          <Feather name={icon} size={13} color={T.green} />
+          <Feather name={icon} size={15} color={T.green} />
         </View>
         <Text style={secStyles.label}>{label}</Text>
       </View>
-      {children}
+      <View style={secStyles.body}>{children}</View>
     </View>
   );
 }
 
 const secStyles = StyleSheet.create({
-  wrap: { marginBottom: 4 },
-  head: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 22 },
-  iconBox: { width: 28, height: 28, borderRadius: 8, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
-  label: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, letterSpacing: 0.3 },
-});
-
-const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 20 },
-  header: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  fieldWrap: { flex: 1, marginBottom: 12 },
-  fLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted, marginBottom: 7 },
-  input: {
-    height: 50,
-    backgroundColor: T.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: T.border,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: T.white,
-  },
-  errorText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.red, marginTop: 4 },
-  mountainInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  lookupSpinner: { width: 44, height: 50, alignItems: "center", justifyContent: "center" },
-  lookupBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: T.greenDim,
-    borderWidth: 1,
-    borderColor: T.green + "40",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lookupCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: T.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: T.border,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  lookupError: { borderColor: T.orange + "40", backgroundColor: T.orangeDim },
-  lookupLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
-  lookupErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange, flex: 1 },
-  mountainInfo: {
-    backgroundColor: T.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: T.green + "40",
-    padding: 14,
-    marginBottom: 12,
-  },
-  mountainInfoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  mountainInfoName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
-  mountainInfoLocation: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  routeCountBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  routeCountText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  routePickerLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 8, letterSpacing: 0.3 },
-  routeCard: {
-    backgroundColor: T.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.cardBorder,
-    padding: 14,
-    marginBottom: 8,
-    overflow: "hidden",
-    gap: 8,
-  },
-  routeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  routeEmoji: { fontSize: 22 },
-  routeName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  routeStart: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  diffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  diffBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  checkMark: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  routeDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  routeStats: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  autofillBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: T.greenDim,
-    borderWidth: 1,
-    borderColor: T.green + "40",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
-  },
-  autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: T.green },
-  diffRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
-  diffBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: T.border,
-    backgroundColor: T.surface,
-  },
-  diffEmoji: { fontSize: 15 },
-  diffLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  fitRow: { flexDirection: "row", gap: 8 },
-  fitBtn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 7,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: T.border,
-    backgroundColor: T.surface,
-  },
-  fitEmoji: { fontSize: 20 },
-  fitLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  submitBtn: { borderRadius: 18, overflow: "hidden", marginTop: 28 },
-  submitGrad: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-  submitText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
-  datePicker: {
-    height: 50,
-    backgroundColor: T.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: T.border,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  datePickerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
+  wrap: { marginBottom: 10 },
+  head: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  iconBox: { width: 30, height: 30, borderRadius: 9, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
+  label: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  body: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.cardBorder, padding: 16, gap: 12 },
 });
 
 const calStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  sheet: {
-    width: "100%",
-    maxWidth: 360,
-    backgroundColor: T.card,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: T.cardBorder,
-    padding: 20,
-    overflow: "hidden",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 18,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: T.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center" },
+  sheet: { backgroundColor: T.card, borderRadius: 22, borderWidth: 1, borderColor: T.cardBorder, padding: 20, width: 320 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  navBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   monthLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
-  weekRow: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  weekDay: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: T.textDim,
-    letterSpacing: 0.5,
-  },
+  weekRow: { flexDirection: "row", marginBottom: 8 },
+  weekDay: { flex: 1, textAlign: "center", fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   grid: { flexDirection: "row", flexWrap: "wrap" },
-  dayCell: {
-    width: `${100 / 7}%` as unknown as number,
-    aspectRatio: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    marginBottom: 2,
-  },
+  dayCell: { width: `${100 / 7}%` as any, aspectRatio: 1, alignItems: "center", justifyContent: "center", borderRadius: 8 },
   dayCellSelected: { backgroundColor: T.green },
-  dayCellToday: { backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "60" },
-  dayText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.white },
-  dayTextPast: { color: T.textDim, opacity: 0.4 },
+  dayCellToday: { borderWidth: 1, borderColor: T.green + "60" },
+  dayText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.white },
+  dayTextPast: { color: T.textDim },
   dayTextSelected: { color: "#fff", fontFamily: "Inter_700Bold" },
-  dayTextToday: { color: T.green, fontFamily: "Inter_700Bold" },
-  cancelBtn: {
-    marginTop: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: T.surface,
-    alignItems: "center",
-  },
+  dayTextToday: { color: T.green },
+  cancelBtn: { marginTop: 16, alignItems: "center", paddingVertical: 10 },
   cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+});
+
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: 18, gap: 8 },
+  header: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 20 },
+  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.white },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  sectionDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19, marginTop: -4, marginBottom: 4 },
+  fieldWrap: { gap: 6 },
+  fLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  fieldHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: -2 },
+  input: {
+    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white,
+  },
+  errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
+
+  mountainInputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  lookupSpinner: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  lookupBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "30", alignItems: "center", justifyContent: "center" },
+  lookupCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, padding: 12, marginTop: 4 },
+  lookupLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
+  lookupError: { borderColor: T.orange + "40" },
+  lookupErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange, flex: 1 },
+  mountainInfo: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 10 },
+  mountainInfoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  mountainInfoName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  mountainInfoLocation: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  routeCountBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  routeCountText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  routePickerLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  routeCard: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 8, overflow: "hidden", gap: 8 },
+  routeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  routeEmoji: { fontSize: 20 },
+  routeName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  routeStart: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  diffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  diffBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  checkMark: { width: 22, height: 22, borderRadius: 7, alignItems: "center", justifyContent: "center" },
+  routeDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  routeStats: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+
+  datePicker: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  datePickerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
+
+  autofillBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: T.green + "30" },
+  autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
+
+  diffRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  diffBtn: { flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4 },
+  diffEmoji: { fontSize: 18 },
+  diffLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+
+  fitnessGrid: { gap: 8 },
+  fitnessCard: {
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    padding: 14, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden",
+  },
+  fitnessCardActive: { borderColor: T.orange + "60" },
+  fitnessEmoji: { fontSize: 22, width: 32, textAlign: "center" },
+  fitnessLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, minWidth: 110 },
+  fitnessDesc: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  fitnessCheck: { width: 20, height: 20, borderRadius: 6, backgroundColor: T.orangeDim, borderWidth: 1, borderColor: T.orange + "40", alignItems: "center", justifyContent: "center" },
+
+  equipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  equipCard: {
+    width: "48%" as any, backgroundColor: T.surface, borderRadius: 14, borderWidth: 1,
+    borderColor: T.border, padding: 14, gap: 6, overflow: "hidden",
+  },
+  equipCardActive: { borderColor: T.green + "60" },
+  equipCardNone: { borderColor: T.blue + "60" },
+  equipIcon: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  equipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  equipDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15 },
+  equipCheck: { position: "absolute" as any, top: 10, right: 10, width: 18, height: 18, borderRadius: 6, alignItems: "center", justifyContent: "center" },
+
+  chipRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  chip: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+    borderColor: T.border, backgroundColor: T.surface, alignItems: "center",
+  },
+  chipActive: { borderColor: T.blue + "60", backgroundColor: T.blueDim },
+  chipGreen: {},
+  chipGreenActive: { borderColor: T.green + "60", backgroundColor: T.greenDim },
+  chipText: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+  chipTextActive: { color: T.blue },
+  chipSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.blue + "99", marginTop: 1 },
+
+  scheduleInfo: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  scheduleInfoText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  summaryCard: {
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.green + "25",
+    padding: 14, gap: 8, overflow: "hidden", marginTop: 4,
+  },
+  summaryTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  summaryRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  summaryText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 18 },
+
+  submitBtn: { borderRadius: 16, overflow: "hidden", marginTop: 8 },
+  submitGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 },
+  submitText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });
