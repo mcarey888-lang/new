@@ -93,7 +93,7 @@ export default function DashboardScreen() {
           styles.scroll,
           {
             paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
-            paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
+            paddingBottom: Platform.OS === "web" ? 110 : insets.bottom + 110,
           },
         ]}
         showsVerticalScrollIndicator={false}
