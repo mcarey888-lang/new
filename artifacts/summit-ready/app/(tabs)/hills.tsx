@@ -144,7 +144,7 @@ export default function HillsScreen() {
           styles.scroll,
           {
             paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
-            paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 100,
+            paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 130,
           },
         ]}
         showsVerticalScrollIndicator={false}
