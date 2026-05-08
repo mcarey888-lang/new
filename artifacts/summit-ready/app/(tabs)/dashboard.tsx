@@ -2,8 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Platform,
   ScrollView,
@@ -21,6 +22,16 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
+
+interface CoachAssessment {
+  summary: string;
+  tone: "positive" | "warning" | "neutral";
+  tips: string[];
+}
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
@@ -57,6 +68,73 @@ function StatCard({
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore } = useApp();
+  const [coach, setCoach] = useState<CoachAssessment | null>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState(false);
+  const hasFetched = useRef(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchCoach = useCallback(async () => {
+    if (!summitGoal) return;
+    // Cancel any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setCoachLoading(true);
+    setCoachError(false);
+    try {
+      const completed = sessions.filter(s => s.completed);
+      const currentWeek = getCurrentWeek(trainingPlan);
+      const days = getDaysRemaining(summitGoal.summitDate);
+      const sessionsPerWeek = summitGoal.trainingDaysPerWeek ?? 4;
+      const weekCompletion = currentWeek
+        ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek)
+        : 0;
+      const totalElevation = completed.reduce((s, x) => s + x.elevationGain, 0);
+      const maxElev = completed.reduce((m, x) => Math.max(m, x.elevationGain), 0);
+      const recentTypes = completed.slice(0, 5).map(s => s.type);
+
+      const res = await fetch(`${API_BASE}/coach-assessment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          summitGoal,
+          readinessScore,
+          totalSessionsDone: completed.length,
+          totalElevationLogged: totalElevation,
+          maxSingleElevation: maxElev,
+          weekCompletion,
+          daysRemaining: days,
+          weeksInPlan: trainingPlan.length,
+          currentWeekNumber: currentWeek?.weekNumber ?? 1,
+          currentPhase: currentWeek?.phase ?? "Base",
+          recentSessionTypes: recentTypes,
+        }),
+      });
+      if (!res.ok) throw new Error("Coach failed");
+      const data: CoachAssessment = await res.json();
+      if (!controller.signal.aborted) setCoach(data);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setCoachError(true);
+    } finally {
+      if (!controller.signal.aborted) setCoachLoading(false);
+    }
+  }, [summitGoal, sessions, trainingPlan, readinessScore]);
+
+  useEffect(() => {
+    if (summitGoal && !hasFetched.current) {
+      hasFetched.current = true;
+      fetchCoach();
+    }
+  }, [summitGoal, fetchCoach]);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   if (!summitGoal) {
     return (
@@ -266,6 +344,83 @@ export default function DashboardScreen() {
           </Animated.View>
         )}
 
+        {/* AI Coach */}
+        <Animated.View entering={FadeInDown.delay(320).duration(500)}>
+          <View style={styles.coachCard}>
+            <LinearGradient
+              colors={
+                coach?.tone === "positive" ? [T.greenDim, "transparent"] :
+                coach?.tone === "warning"  ? [T.orangeDim, "transparent"] :
+                                             [T.blueDim, "transparent"]
+              }
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Header */}
+            <View style={styles.coachHeader}>
+              <View style={styles.coachTitleRow}>
+                <View style={[
+                  styles.coachIconWrap,
+                  {
+                    backgroundColor:
+                      coach?.tone === "positive" ? T.green + "20" :
+                      coach?.tone === "warning"  ? T.orange + "20" : T.blue + "20",
+                  },
+                ]}>
+                  <Feather
+                    name="cpu"
+                    size={14}
+                    color={
+                      coach?.tone === "positive" ? T.green :
+                      coach?.tone === "warning"  ? T.orange : T.blue
+                    }
+                  />
+                </View>
+                <Text style={styles.coachTitle}>AI Coach</Text>
+              </View>
+              <TouchableOpacity
+                onPress={fetchCoach}
+                disabled={coachLoading}
+                style={styles.coachRefresh}
+                activeOpacity={0.7}
+              >
+                <Feather name="refresh-cw" size={13} color={T.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Body */}
+            {coachLoading ? (
+              <View style={styles.coachLoading}>
+                <ActivityIndicator size="small" color={T.green} />
+                <Text style={styles.coachLoadingText}>Analysing your training...</Text>
+              </View>
+            ) : coachError ? (
+              <View style={styles.coachLoading}>
+                <Feather name="wifi-off" size={15} color={T.textMuted} />
+                <Text style={styles.coachLoadingText}>Couldn't reach coach — tap refresh to retry</Text>
+              </View>
+            ) : coach ? (
+              <>
+                <Text style={styles.coachSummary}>{coach.summary}</Text>
+                <View style={styles.coachTips}>
+                  {coach.tips.map((tip, i) => (
+                    <View key={i} style={styles.coachTip}>
+                      <View style={[
+                        styles.coachTipDot,
+                        {
+                          backgroundColor:
+                            coach.tone === "positive" ? T.green :
+                            coach.tone === "warning"  ? T.orange : T.blue,
+                        },
+                      ]} />
+                      <Text style={styles.coachTipText}>{tip}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </View>
+        </Animated.View>
+
         {/* Action Buttons */}
         <Animated.View entering={FadeInDown.delay(340).duration(500)} style={styles.actions}>
           <TouchableOpacity
@@ -436,6 +591,28 @@ const styles = StyleSheet.create({
     borderColor: T.border,
   },
   sChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.text },
+  coachCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    backgroundColor: T.card,
+    padding: 16,
+    marginBottom: 14,
+    overflow: "hidden",
+    gap: 12,
+  },
+  coachHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  coachTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  coachIconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  coachTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  coachRefresh: { padding: 6 },
+  coachLoading: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
+  coachLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
+  coachSummary: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 21 },
+  coachTips: { gap: 10 },
+  coachTip: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  coachTipDot: { width: 7, height: 7, borderRadius: 4, marginTop: 7, flexShrink: 0 },
+  coachTipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text, flex: 1, lineHeight: 19 },
   actions: { flexDirection: "row", gap: 10 },
   primaryAction: {
     flex: 1,
