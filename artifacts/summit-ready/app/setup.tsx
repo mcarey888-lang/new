@@ -14,15 +14,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Slider from "@react-native-community/slider";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SummitGoal, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import {
   assessTime, TimeAssessment,
-  WALK_DIST_OPTIONS, EXERCISE_FREQ_OPTIONS,
-  WalkDistValue, FreqValue,
-  deriveFitnessLevel, fitnessLevelLabel,
+  deriveFitnessFromSliders,
+  walkDistLabel, freqLabel,
+  fitnessLevelLabel,
 } from "@/utils/timeValidator";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
@@ -79,8 +80,9 @@ export default function SetupScreen() {
   const [elev, setElev] = useState("");
   const [alt, setAlt] = useState("");
   const [diff, setDiff] = useState<Difficulty>("Moderate");
-  const [walkDist, setWalkDist] = useState<WalkDistValue>("3to8");
-  const [freq, setFreq] = useState<FreqValue>("1to2");
+  const [readiness, setReadiness] = useState(50);
+  const [walkSlider, setWalkSlider] = useState(50);
+  const [freqSlider, setFreqSlider] = useState(50);
   const [fit, setFit] = useState<Fitness>("Average");
   const [equipment, setEquipment] = useState<Equipment[]>(["none"]);
   const [trainingDays, setTrainingDays] = useState(4);
@@ -102,10 +104,10 @@ export default function SetupScreen() {
     if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
   }, [trainingDays]);
 
-  // Derive fitness level from the quiz answers
+  // Derive fitness level from the three sliders
   useEffect(() => {
-    setFit(deriveFitnessLevel(walkDist, freq));
-  }, [walkDist, freq]);
+    setFit(deriveFitnessFromSliders(readiness, walkSlider, freqSlider));
+  }, [readiness, walkSlider, freqSlider]);
 
   // Recompute time assessment whenever anything that affects it changes
   useEffect(() => {
@@ -228,50 +230,62 @@ export default function SetupScreen() {
             </View>
           </View>
 
-          {/* Mountain name + auto-lookup */}
-          {/* Fitness Assessment — 2-question quiz */}
+          {/* Fitness Assessment — slider quiz */}
           <Section label="Your Fitness" icon="zap">
             <Text style={styles.sectionDesc}>
-              Two quick questions — be honest, this shapes your entire plan.
+              Slide each to where you honestly sit — this shapes your entire plan.
             </Text>
 
-            <Text style={styles.fLabel}>How far can you walk comfortably without stopping?</Text>
-            <View style={styles.quizRow}>
-              {WALK_DIST_OPTIONS.map(opt => (
-                <TouchableOpacity key={opt.value} onPress={() => setWalkDist(opt.value)} activeOpacity={0.7}
-                  style={[styles.quizChip, walkDist === opt.value && styles.quizChipActive]}
-                >
-                  {walkDist === opt.value && (
-                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  )}
-                  <Text style={[styles.quizChipText, walkDist === opt.value && { color: T.orange }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <FitnessSlider
+              label="How ready do you feel?"
+              displayValue={`${readiness}%`}
+              subLabel={
+                readiness < 20 ? "Just getting started" :
+                readiness < 40 ? "Some base fitness" :
+                readiness < 60 ? "Moderately active" :
+                readiness < 80 ? "Fairly fit" : "Peak condition"
+              }
+              value={readiness}
+              onValueChange={setReadiness}
+              color={readiness < 34 ? T.red : readiness < 67 ? T.orange : T.green}
+            />
 
-            <Text style={[styles.fLabel, { marginTop: 14 }]}>How often do you exercise?</Text>
-            <View style={styles.quizRow}>
-              {EXERCISE_FREQ_OPTIONS.map(opt => (
-                <TouchableOpacity key={opt.value} onPress={() => setFreq(opt.value)} activeOpacity={0.7}
-                  style={[styles.quizChip, freq === opt.value && styles.quizChipActive]}
-                >
-                  {freq === opt.value && (
-                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  )}
-                  <Text style={[styles.quizChipText, freq === opt.value && { color: T.orange }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <FitnessSlider
+              label="Comfortable walking distance"
+              displayValue={walkDistLabel(walkSlider)}
+              subLabel="without stopping"
+              value={walkSlider}
+              onValueChange={setWalkSlider}
+              color={T.blue}
+            />
+
+            <FitnessSlider
+              label="How often do you exercise?"
+              displayValue={freqLabel(freqSlider)}
+              subLabel="per week on average"
+              value={freqSlider}
+              onValueChange={setFreqSlider}
+              color={T.purple}
+            />
 
             {/* Derived result pill */}
             <View style={styles.fitnessResult}>
-              <View style={[styles.fitnessResultPill, { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }]}>
-                <Feather name="zap" size={13} color={T.orange} />
-                <Text style={styles.fitnessResultText}>Assessed as: <Text style={{ color: T.orange, fontFamily: "Inter_700Bold" }}>{fitnessLevelLabel(fit)}</Text></Text>
+              <View style={[styles.fitnessResultPill, {
+                backgroundColor:
+                  fit === "Strong" ? T.greenDim : fit === "Average" ? T.orangeDim : T.blueDim,
+                borderColor:
+                  fit === "Strong" ? T.green + "40" : fit === "Average" ? T.orange + "40" : T.blue + "40",
+              }]}>
+                <Feather name="zap" size={13} color={fit === "Strong" ? T.green : fit === "Average" ? T.orange : T.blue} />
+                <Text style={styles.fitnessResultText}>
+                  Assessed as:{" "}
+                  <Text style={{
+                    fontFamily: "Inter_700Bold",
+                    color: fit === "Strong" ? T.green : fit === "Average" ? T.orange : T.blue,
+                  }}>
+                    {fitnessLevelLabel(fit)}
+                  </Text>
+                </Text>
               </View>
               <Text style={styles.fitnessResultHint}>
                 {fit === "Beginner" && "A structured plan will build you up safely."}
@@ -674,6 +688,55 @@ function CalendarModal({ visible, selected, calMonth, setCalMonth, onSelect, onC
     </Modal>
   );
 }
+
+function FitnessSlider({
+  label, displayValue, subLabel, value, onValueChange, color,
+}: {
+  label: string;
+  displayValue: string;
+  subLabel: string;
+  value: number;
+  onValueChange: (v: number) => void;
+  color: string;
+}) {
+  return (
+    <View style={sliderStyles.wrap}>
+      <View style={sliderStyles.header}>
+        <Text style={styles.fLabel}>{label}</Text>
+        <View style={[sliderStyles.badge, { backgroundColor: color + "20", borderColor: color + "50" }]}>
+          <Text style={[sliderStyles.badgeText, { color }]}>{displayValue}</Text>
+        </View>
+      </View>
+      <Text style={sliderStyles.subLabel}>{subLabel}</Text>
+      <Slider
+        value={value}
+        onValueChange={onValueChange}
+        minimumValue={0}
+        maximumValue={100}
+        step={1}
+        minimumTrackTintColor={color}
+        maximumTrackTintColor={T.border}
+        thumbTintColor={color}
+        style={sliderStyles.slider}
+      />
+      <View style={sliderStyles.endLabels}>
+        <Text style={sliderStyles.endText}>Low</Text>
+        <Text style={sliderStyles.endText}>High</Text>
+      </View>
+    </View>
+  );
+}
+
+const sliderStyles = StyleSheet.create({
+  wrap: { gap: 4 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  badge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  subLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: -2 },
+  slider: { height: 38, marginHorizontal: -4 },
+  endLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: -6 },
+  endText: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim },
+});
 
 function RouteStatPill({ icon, val, color }: { icon: keyof typeof Feather.glyphMap; val: string; color: string }) {
   return (

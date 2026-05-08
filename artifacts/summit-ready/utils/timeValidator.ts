@@ -125,6 +125,47 @@ export const EXERCISE_FREQ_OPTIONS = [
 export type WalkDistValue = typeof WALK_DIST_OPTIONS[number]["value"];
 export type FreqValue = typeof EXERCISE_FREQ_OPTIONS[number]["value"];
 
+/** Map a 0-100 slider to the nearest WalkDistValue zone */
+export function walkDistFromSlider(val: number): WalkDistValue {
+  if (val < 25) return "under3";
+  if (val < 50) return "3to8";
+  if (val < 75) return "8to15";
+  return "over15";
+}
+
+/** Map a 0-100 slider to the nearest FreqValue zone */
+export function freqFromSlider(val: number): FreqValue {
+  if (val < 25) return "rarely";
+  if (val < 50) return "1to2";
+  if (val < 75) return "3to4";
+  return "daily";
+}
+
+/** Label for a walk-dist slider value */
+export function walkDistLabel(val: number): string {
+  return WALK_DIST_OPTIONS.find(o => o.value === walkDistFromSlider(val))?.label ?? "";
+}
+
+/** Label for a freq slider value */
+export function freqLabel(val: number): string {
+  return EXERCISE_FREQ_OPTIONS.find(o => o.value === freqFromSlider(val))?.label ?? "";
+}
+
+/** Derive fitness from three 0-100 sliders */
+export function deriveFitnessFromSliders(
+  readiness: number,
+  walkSlider: number,
+  freqSlider: number,
+): FitnessLevel {
+  const walkScore = WALK_DIST_OPTIONS.find(o => o.value === walkDistFromSlider(walkSlider))?.score ?? 1;
+  const freqScore = EXERCISE_FREQ_OPTIONS.find(o => o.value === freqFromSlider(freqSlider))?.score ?? 1;
+  const readinessBonus = readiness < 34 ? 0 : readiness < 67 ? 1 : 2;
+  const total = walkScore + freqScore + readinessBonus;
+  if (total <= 2) return "Beginner";
+  if (total <= 5) return "Average";
+  return "Strong";
+}
+
 export function deriveFitnessLevel(walkDist: WalkDistValue, freq: FreqValue): FitnessLevel {
   const walkScore = WALK_DIST_OPTIONS.find(o => o.value === walkDist)?.score ?? 1;
   const freqScore = EXERCISE_FREQ_OPTIONS.find(o => o.value === freq)?.score ?? 1;
