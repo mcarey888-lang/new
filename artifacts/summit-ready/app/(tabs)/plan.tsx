@@ -20,101 +20,142 @@ import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
 
-// ── Rep Stepper ───────────────────────────────────────────────────────────────
+// ── Rep Tracker ───────────────────────────────────────────────────────────────
+// Shows summit-equivalent target reps, lets user log how many they actually
+// managed, and turns green when they hit the target.
 function RepStepper({
   sessionKey,
-  defaultReps,
+  targetReps,
   elevPerRep,
   sessionReps,
+  isDone,
   onSet,
 }: {
   sessionKey: string;
-  defaultReps: number;
+  targetReps: number;          // auto-calculated summit-equivalent
   elevPerRep: number;
   sessionReps: Record<string, number>;
+  isDone: boolean;
   onSet: (key: string, reps: number) => void;
 }) {
-  const custom = sessionReps[sessionKey];
-  const reps = custom ?? defaultReps;
-  const isModified = custom !== undefined && custom !== defaultReps;
-  const totalElev = elevPerRep > 0 ? reps * elevPerRep : null;
+  const logged = sessionReps[sessionKey];
+  const hasLogged = logged !== undefined;
+  const displayReps = hasLogged ? logged : 0;
+  const hitTarget = hasLogged && logged >= targetReps;
+  const targetElev = elevPerRep > 0 ? targetReps * elevPerRep : null;
+  const loggedElev = hasLogged && elevPerRep > 0 ? logged * elevPerRep : null;
 
   return (
-    <View style={rsStyles.row}>
-      <Feather name="repeat" size={11} color={T.textDim} />
-      <Text style={rsStyles.label}>Reps:</Text>
+    <View style={rsStyles.container}>
+      {/* Target badge */}
+      <View style={rsStyles.targetRow}>
+        <Feather name="flag" size={11} color={T.orange} />
+        <Text style={rsStyles.targetLabel}>
+          Summit target:{" "}
+          <Text style={rsStyles.targetNum}>{targetReps} reps</Text>
+        </Text>
+        {targetElev !== null && (
+          <Text style={rsStyles.targetElev}>= {targetElev}m total</Text>
+        )}
+      </View>
 
-      <TouchableOpacity
-        onPress={() => onSet(sessionKey, reps - 1)}
-        style={[rsStyles.btn, reps <= 1 && rsStyles.btnDisabled]}
-        activeOpacity={0.7}
-        disabled={reps <= 1}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Feather name="minus" size={12} color={reps <= 1 ? T.textDim : T.white} />
-      </TouchableOpacity>
+      {/* Log actuals row */}
+      <View style={rsStyles.logRow}>
+        <Text style={rsStyles.logLabel}>Today I did:</Text>
 
-      <Text style={[rsStyles.count, isModified && rsStyles.countModified]}>{reps}</Text>
-
-      <TouchableOpacity
-        onPress={() => onSet(sessionKey, reps + 1)}
-        style={rsStyles.btn}
-        activeOpacity={0.7}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Feather name="plus" size={12} color={T.white} />
-      </TouchableOpacity>
-
-      {totalElev !== null && (
-        <Text style={rsStyles.elev}>= {totalElev}m gain</Text>
-      )}
-
-      {isModified && (
         <TouchableOpacity
-          onPress={() => onSet(sessionKey, defaultReps)}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          style={rsStyles.resetBtn}
+          onPress={() => onSet(sessionKey, Math.max(0, displayReps - 1))}
+          style={[rsStyles.btn, displayReps <= 0 && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={displayReps <= 0}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={rsStyles.resetText}>reset</Text>
+          <Feather name="minus" size={12} color={displayReps <= 0 ? T.textDim : T.white} />
         </TouchableOpacity>
-      )}
+
+        <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
+          {hasLogged ? displayReps : "–"}
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => onSet(sessionKey, displayReps + 1)}
+          style={rsStyles.btn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="plus" size={12} color={T.white} />
+        </TouchableOpacity>
+
+        {loggedElev !== null && (
+          <Text style={[rsStyles.logElev, hitTarget && { color: T.green }]}>
+            = {loggedElev}m
+          </Text>
+        )}
+
+        {hitTarget && (
+          <View style={rsStyles.hitBadge}>
+            <Feather name="check" size={10} color={T.green} />
+            <Text style={rsStyles.hitText}>Target hit!</Text>
+          </View>
+        )}
+
+        {hasLogged && !hitTarget && logged > 0 && (
+          <Text style={rsStyles.progressText}>
+            {logged}/{targetReps}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
 
 const rsStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    paddingTop: 8,
+  container: {
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: T.border,
+    gap: 8,
+  },
+  targetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     flexWrap: "wrap",
   },
-  label: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  targetLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  targetNum: { fontFamily: "Inter_600SemiBold", color: T.orange },
+  targetElev: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginLeft: 2 },
+  logRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    flexWrap: "wrap",
+  },
+  logLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
   btn: {
-    width: 24, height: 24, borderRadius: 7,
+    width: 26, height: 26, borderRadius: 8,
     backgroundColor: T.surface,
     borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
-  btnDisabled: { opacity: 0.4 },
+  btnDisabled: { opacity: 0.35 },
   count: {
-    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+    fontSize: 15, fontFamily: "Inter_700Bold", color: T.textMuted,
     minWidth: 22, textAlign: "center",
   },
-  countModified: { color: T.green },
-  elev: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.orange, marginLeft: 2 },
-  resetBtn: {
-    paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 5,
-    backgroundColor: T.surface,
-    borderWidth: 1, borderColor: T.border,
-    marginLeft: 4,
+  countPartial: { color: T.white },
+  countHit: { color: T.green },
+  logElev: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.orange },
+  hitBadge: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: T.greenDim,
+    borderWidth: 1, borderColor: T.green + "40",
   },
-  resetText: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  hitText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
+  progressText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted },
 });
 
 const { width } = Dimensions.get("window");
@@ -185,6 +226,7 @@ function WeekCard({
   nearbyHills,
   submittedPlanSessions,
   sessionReps,
+  summitGoal,
   onToggleSession,
   onAssignHill,
   onSubmitWeek,
@@ -199,6 +241,7 @@ function WeekCard({
   nearbyHills: NearbyHill[];
   submittedPlanSessions: Record<string, boolean>;
   sessionReps: Record<string, number>;
+  summitGoal: import("@/context/AppContext").SummitGoal | null;
   onToggleSession: (weekNum: number, sessionIdx: number) => void;
   onAssignHill: (weekNum: number, sessionIdx: number) => void;
   onSubmitWeek: (weekNum: number) => void;
@@ -359,14 +402,18 @@ function WeekCard({
 
                     {canPickHill && (() => {
                       const hill = assignedHill ?? week.hills[0] ?? null;
-                      const elevPerRep = hill ? hill.elevation : 0;
-                      const defaultReps = hill ? hill.repeats : Math.max(1, Math.ceil(s.targetElevation / 100));
+                      // elevPerRep: height gained per single rep on this hill
+                      const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
+                      // targetReps: how many reps of this hill = summit elevation
+                      const summitElev = summitGoal?.elevationGain ?? s.targetElevation;
+                      const targetReps = Math.max(1, Math.ceil(summitElev / elevPerRep));
                       return (
                         <RepStepper
                           sessionKey={sessionKey}
-                          defaultReps={defaultReps}
+                          targetReps={targetReps}
                           elevPerRep={elevPerRep}
                           sessionReps={sessionReps}
+                          isDone={isDone}
                           onSet={onSetReps}
                         />
                       );
@@ -568,6 +615,7 @@ export default function PlanScreen() {
             nearbyHills={nearbyHills}
             submittedPlanSessions={submittedPlanSessions}
             sessionReps={sessionReps}
+            summitGoal={summitGoal}
             onToggleSession={togglePlanSession}
             onAssignHill={openHillPicker}
             onSubmitWeek={handleSubmitWeek}

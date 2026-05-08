@@ -1,4 +1,4 @@
-import { SummitGoal, TrainingWeek, Session } from "@/context/AppContext";
+import { SummitGoal, TrainingWeek, Session, NearbyHill } from "@/context/AppContext";
 
 // Maximum achievable score based on actual logged sessions and difficulty.
 // The cap prevents zero-session gaming but must not punish genuine plan completion.
@@ -19,11 +19,21 @@ function sessionCap(realSessions: number, difficulty: string): number {
   return row[5];
 }
 
+// Derive target reps for a hill session given summit elevation and the hill
+// being used. Mirrors the logic in plan.tsx RepStepper.
+export function calcTargetReps(summitElev: number, elevPerRep: number): number {
+  return Math.max(1, Math.ceil(summitElev / Math.max(1, elevPerRep)));
+}
+
 export function calculateReadiness(
   goal: SummitGoal,
   plan: TrainingWeek[],
   sessions: Session[],
-  opts?: { virtualSessionCount?: number }
+  opts?: {
+    virtualSessionCount?: number;
+    sessionReps?: Record<string, number>;
+    assignedHills?: Record<string, NearbyHill>;
+  }
 ): number {
   if (!goal || plan.length === 0) return 0;
 
@@ -34,27 +44,22 @@ export function calculateReadiness(
 
   if (totalCompleted === 0) return 5;
 
-  // ── 1. Consistency (30 pts) ───────────────────────────────────────────────
+  // ── 1. Consistency (25 pts) ───────────────────────────────────────────────
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weeksElapsed = plan.filter(w => new Date(w.endDate) < today).length;
   const weeksIncludingCurrent = Math.min(plan.length, weeksElapsed + 1);
   const expectedSessions = weeksIncludingCurrent * sessionsPerWeek;
   const consistencyRatio = expectedSessions > 0 ? totalCompleted / expectedSessions : 1;
-  const consistencyScore = Math.min(30, Math.round(consistencyRatio * 30));
+  const consistencyScore = Math.min(25, Math.round(consistencyRatio * 25));
 
-  // ── 2. Elevation achievement (30 pts) ─────────────────────────────────────
-  // Compare the best single session to a realistic TRAINING target (60% of summit),
-  // not the summit elevation itself. Reaching 60% of summit elevation in training
-  // is excellent preparation; you don't need to replicate the summit in training.
+  // ── 2. Elevation achievement (25 pts) ─────────────────────────────────────
   const trainingTarget = goal.elevationGain * 0.60;
   const maxElev = Math.max(...completed.map(s => s.elevationGain), virtual > 0 ? trainingTarget * 0.4 : 0);
   const elevRatio = Math.min(1, maxElev / trainingTarget);
-  const elevScore = Math.min(30, Math.round(elevRatio * 30));
+  const elevScore = Math.min(25, Math.round(elevRatio * 25));
 
   // ── 3. Big day (20 pts) ───────────────────────────────────────────────────
-  // Threshold: 55-70% of summit elevation depending on difficulty.
-  // This reflects what a well-structured plan's big day should target.
   const bigDayPct: Record<string, number> = { Easy: 0.55, Moderate: 0.62, Hard: 0.72, Alpine: 0.82 };
   const threshold = (bigDayPct[goal.difficulty] ?? 0.62) * goal.elevationGain;
   const bigDays = completed.filter(s => s.type === "bigDay");
@@ -64,24 +69,51 @@ export function calculateReadiness(
     : virtual > 0           ? 4
     : 0;
 
-  // ── 4. Effort trend (10 pts) ──────────────────────────────────────────────
-  let effortScore = 5;
+  // ── 4. Hill rep progress (15 pts) ─────────────────────────────────────────
+  // For each hill/bigDay plan session that has a logged rep count, calculate
+  // actual/target ratio. Average across all logged sessions.
+  let repScore = 0;
+  if (opts?.sessionReps && Object.keys(opts.sessionReps).length > 0) {
+    const repEntries: number[] = [];
+    for (const [key, loggedReps] of Object.entries(opts.sessionReps)) {
+      if (loggedReps <= 0) continue;
+      // Find the week + session index from key "weekNum-sessionIdx"
+      const [wStr, iStr] = key.split("-");
+      const wNum = parseInt(wStr, 10);
+      const sIdx = parseInt(iStr, 10);
+      const week = plan.find(w => w.weekNumber === wNum);
+      if (!week) continue;
+      const session = week.sessions[sIdx];
+      if (!session || (session.type !== "hill" && session.type !== "bigDay")) continue;
+      const assignedHill = opts.assignedHills?.[key];
+      const elevPerRep = assignedHill?.elevation ?? week.hills[0]?.elevation ?? Math.max(50, Math.round(session.targetElevation / 4));
+      const target = calcTargetReps(goal.elevationGain, elevPerRep);
+      repEntries.push(Math.min(1, loggedReps / target));
+    }
+    if (repEntries.length > 0) {
+      const avgRatio = repEntries.reduce((a, b) => a + b, 0) / repEntries.length;
+      repScore = Math.round(avgRatio * 15);
+    }
+  }
+
+  // ── 5. Effort trend (8 pts) ───────────────────────────────────────────────
+  let effortScore = 4;
   if (completed.length >= 3) {
     const recent = completed.slice(0, 3).map(s => s.effort);
     const older  = completed.slice(3, 6).map(s => s.effort);
     const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
     const avgOlder  = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : avgRecent;
-    effortScore = avgRecent <= avgOlder ? 10 : 6;
+    effortScore = avgRecent <= avgOlder ? 8 : 5;
   }
 
-  // ── 5. Recent activity (10 pts) ───────────────────────────────────────────
+  // ── 6. Recent activity (7 pts) ────────────────────────────────────────────
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const recentSessions = completed.filter(s => new Date(s.date) >= sevenDaysAgo);
   const recentScore =
-    recentSessions.length >= 3 ? 10 :
-    recentSessions.length >= 1 ? 6  :
-    virtual > 0               ? 4  : 0;
+    recentSessions.length >= 3 ? 7 :
+    recentSessions.length >= 1 ? 4 :
+    virtual > 0               ? 2 : 0;
 
   // ── Penalties ─────────────────────────────────────────────────────────────
   let penalty = 0;
@@ -98,7 +130,7 @@ export function calculateReadiness(
     else if (daysSinceLast > 7) penalty += 5;
   }
 
-  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + effortScore + recentScore - penalty);
+  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty);
 
   // Cap is based on real logged sessions only (not virtual)
   const cap = sessionCap(completed.length, goal.difficulty);
