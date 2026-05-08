@@ -36,6 +36,88 @@ interface CoachAssessment {
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
 
+// ── Alpine Guide Mascot ───────────────────────────────────────────────────────
+function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
+  const jacket =
+    tone === "positive" ? "#2AB860" :
+    tone === "warning"  ? "#E8923A" : "#4A8ED9";
+  const hatBand =
+    tone === "positive" ? "#1A8A44" :
+    tone === "warning"  ? "#C4761F" : "#2D6CB8";
+
+  // Mouth shape changes with tone
+  const mouth =
+    tone === "positive" ? (
+      // smile — two small quarter-circles using border trick
+      <View style={{ width: 12, height: 6, borderBottomLeftRadius: 6, borderBottomRightRadius: 6, borderWidth: 2, borderTopWidth: 0, borderColor: "#7A4A1E", marginTop: 2 }} />
+    ) : tone === "warning" ? (
+      // frown
+      <View style={{ width: 12, height: 6, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderWidth: 2, borderBottomWidth: 0, borderColor: "#7A4A1E", marginTop: 4 }} />
+    ) : (
+      // neutral line
+      <View style={{ width: 10, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, marginTop: 4 }} />
+    );
+
+  return (
+    <View style={{ width: 56, alignItems: "center" }}>
+      {/* Hat crown */}
+      <View style={{
+        width: 30, height: 20, backgroundColor: "#1E3D18",
+        borderTopLeftRadius: 10, borderTopRightRadius: 10,
+        justifyContent: "flex-end", alignItems: "center",
+      }}>
+        {/* Feather */}
+        <Text style={{ position: "absolute", top: -6, right: -4, fontSize: 13, transform: [{ rotate: "-30deg" }] }}>🪶</Text>
+      </View>
+      {/* Hat brim */}
+      <View style={{ width: 46, height: 7, backgroundColor: "#1E3D18", borderRadius: 3, marginTop: -1 }}>
+        {/* Band stripe */}
+        <View style={{ position: "absolute", top: 1, left: 6, right: 6, height: 3, backgroundColor: hatBand, borderRadius: 2 }} />
+      </View>
+
+      {/* Head */}
+      <View style={{
+        width: 38, height: 38, borderRadius: 19,
+        backgroundColor: "#F7C88A",
+        borderWidth: 1.5, borderColor: "#E8AA60",
+        alignItems: "center", justifyContent: "center",
+        marginTop: 1,
+      }}>
+        {/* Rosy cheeks */}
+        <View style={{ position: "absolute", left: 4, top: 18, width: 8, height: 5, borderRadius: 4, backgroundColor: "#F4A0A0", opacity: 0.6 }} />
+        <View style={{ position: "absolute", right: 4, top: 18, width: 8, height: 5, borderRadius: 4, backgroundColor: "#F4A0A0", opacity: 0.6 }} />
+        {/* Eyes */}
+        <View style={{ flexDirection: "row", gap: 7, marginTop: -4 }}>
+          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#3A2010" }} />
+          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#3A2010" }} />
+        </View>
+        {/* Eyebrows — raised for positive, furrowed for warning */}
+        <View style={{ position: "absolute", top: 8, left: 7, width: 7, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, transform: [{ rotate: tone === "warning" ? "8deg" : tone === "positive" ? "-5deg" : "0deg" }] }} />
+        <View style={{ position: "absolute", top: 8, right: 7, width: 7, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, transform: [{ rotate: tone === "warning" ? "-8deg" : tone === "positive" ? "5deg" : "0deg" }] }} />
+        {mouth}
+        {/* Beard/stubble */}
+        <View style={{ position: "absolute", bottom: 4, width: 22, height: 5, borderRadius: 3, backgroundColor: "#C89850", opacity: 0.4 }} />
+      </View>
+
+      {/* Neck + body */}
+      <View style={{ width: 16, height: 5, backgroundColor: "#F7C88A", borderBottomLeftRadius: 3, borderBottomRightRadius: 3 }} />
+      {/* Jacket */}
+      <View style={{ width: 42, height: 18, backgroundColor: jacket, borderRadius: 5, alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+        {/* Collar */}
+        <View style={{ position: "absolute", top: 0, width: 14, borderTopWidth: 8, borderTopColor: "#fff", borderLeftWidth: 7, borderRightWidth: 7, borderLeftColor: "transparent", borderRightColor: "transparent", opacity: 0.25 }} />
+        {/* Buttons */}
+        <View style={{ flexDirection: "row", gap: 5, marginTop: 4 }}>
+          {[0,1,2].map(i => (
+            <View key={i} style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.7)" }} />
+          ))}
+        </View>
+      </View>
+      {/* Ice axe / walking stick */}
+      <Text style={{ position: "absolute", bottom: 0, right: 0, fontSize: 16, transform: [{ rotate: "20deg" }] }}>⛏️</Text>
+    </View>
+  );
+}
+
 function StatCard({
   icon,
   label,
@@ -355,27 +437,41 @@ export default function DashboardScreen() {
               }
               style={StyleSheet.absoluteFill}
             />
-            {/* Header */}
+
+            {/* Header row: mascot + title + refresh */}
             <View style={styles.coachHeader}>
               <View style={styles.coachTitleRow}>
-                <View style={[
-                  styles.coachIconWrap,
-                  {
-                    backgroundColor:
-                      coach?.tone === "positive" ? T.green + "20" :
-                      coach?.tone === "warning"  ? T.orange + "20" : T.blue + "20",
-                  },
-                ]}>
-                  <Feather
-                    name="cpu"
-                    size={14}
-                    color={
-                      coach?.tone === "positive" ? T.green :
-                      coach?.tone === "warning"  ? T.orange : T.blue
-                    }
-                  />
+                <AlpineGuide tone={coach?.tone} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.coachTitle}>Your Guide</Text>
+                    <View style={[
+                      styles.coachBadge,
+                      {
+                        backgroundColor:
+                          coach?.tone === "positive" ? T.green + "22" :
+                          coach?.tone === "warning"  ? T.orange + "22" : T.blue + "22",
+                      },
+                    ]}>
+                      <Text style={[
+                        styles.coachBadgeText,
+                        {
+                          color:
+                            coach?.tone === "positive" ? T.green :
+                            coach?.tone === "warning"  ? T.orange : T.blue,
+                        },
+                      ]}>
+                        {coach?.tone === "positive" ? "On track" : coach?.tone === "warning" ? "Needs work" : "AI Coach"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.coachSubtitle}>
+                    {coach?.tone === "positive" ? "Looking good — keep the momentum going" :
+                     coach?.tone === "warning"  ? "A few things need your attention" :
+                     coachLoading                ? "Checking your training data..." :
+                                                  "Your personalised assessment"}
+                  </Text>
                 </View>
-                <Text style={styles.coachTitle}>AI Coach</Text>
               </View>
               <TouchableOpacity
                 onPress={fetchCoach}
@@ -387,6 +483,9 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Divider */}
+            <View style={styles.coachDivider} />
+
             {/* Body */}
             {coachLoading ? (
               <View style={styles.coachLoading}>
@@ -394,10 +493,10 @@ export default function DashboardScreen() {
                 <Text style={styles.coachLoadingText}>Analysing your training...</Text>
               </View>
             ) : coachError ? (
-              <View style={styles.coachLoading}>
+              <TouchableOpacity onPress={fetchCoach} style={styles.coachLoading} activeOpacity={0.7}>
                 <Feather name="wifi-off" size={15} color={T.textMuted} />
-                <Text style={styles.coachLoadingText}>Couldn't reach coach — tap refresh to retry</Text>
-              </View>
+                <Text style={styles.coachLoadingText}>Couldn't reach coach — tap to retry</Text>
+              </TouchableOpacity>
             ) : coach ? (
               <>
                 <Text style={styles.coachSummary}>{coach.summary}</Text>
@@ -601,17 +700,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     gap: 12,
   },
-  coachHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  coachTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  coachIconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  coachTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  coachRefresh: { padding: 6 },
-  coachLoading: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
+  coachHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  coachTitleRow: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  coachTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  coachSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  coachBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  coachBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  coachRefresh: { padding: 6, marginTop: 2 },
+  coachDivider: { height: 1, backgroundColor: T.border, marginHorizontal: -16, opacity: 0.6 },
+  coachLoading: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
   coachLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
-  coachSummary: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 21 },
+  coachSummary: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 20 },
   coachTips: { gap: 10 },
   coachTip: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  coachTipDot: { width: 7, height: 7, borderRadius: 4, marginTop: 7, flexShrink: 0 },
+  coachTipDot: { width: 7, height: 7, borderRadius: 4, marginTop: 6, flexShrink: 0 },
   coachTipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text, flex: 1, lineHeight: 19 },
   actions: { flexDirection: "row", gap: 10 },
   primaryAction: {
