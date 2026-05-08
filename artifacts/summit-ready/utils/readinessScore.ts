@@ -1,21 +1,21 @@
 import { SummitGoal, TrainingWeek, Session } from "@/context/AppContext";
 
 // Maximum achievable score based on actual logged sessions and difficulty.
-// Harder routes require far more logged evidence before a high score is possible.
+// The cap prevents zero-session gaming but must not punish genuine plan completion.
 function sessionCap(realSessions: number, difficulty: string): number {
   const bands: Record<string, number[]> = {
-    //            0-4  5-9  10-19  20-29  30-39  40+
-    Easy:        [38,  62,  82,    96,    100,   100],
-    Moderate:    [32,  54,  72,    88,    96,    100],
-    Hard:        [25,  44,  62,    76,    88,     96],
-    Alpine:      [14,  28,  42,    56,    68,     80],
+    //          0   1-3  4-7  8-15  16-29  30+
+    Easy:      [5,  55,  80,  93,   100,   100],
+    Moderate:  [5,  48,  72,  88,    96,   100],
+    Hard:      [5,  35,  56,  74,    88,    96],
+    Alpine:    [5,  22,  38,  56,    72,    86],
   };
   const row = bands[difficulty] ?? bands.Moderate;
-  if (realSessions < 5)  return row[0];
-  if (realSessions < 10) return row[1];
-  if (realSessions < 20) return row[2];
-  if (realSessions < 30) return row[3];
-  if (realSessions < 40) return row[4];
+  if (realSessions === 0) return row[0];
+  if (realSessions <= 3)  return row[1];
+  if (realSessions <= 7)  return row[2];
+  if (realSessions <= 15) return row[3];
+  if (realSessions <= 29) return row[4];
   return row[5];
 }
 
@@ -40,28 +40,38 @@ export function calculateReadiness(
   const weeksElapsed = plan.filter(w => new Date(w.endDate) < today).length;
   const weeksIncludingCurrent = Math.min(plan.length, weeksElapsed + 1);
   const expectedSessions = weeksIncludingCurrent * sessionsPerWeek;
-  const consistencyScore = Math.min(30, Math.round((totalCompleted / expectedSessions) * 30));
+  const consistencyRatio = expectedSessions > 0 ? totalCompleted / expectedSessions : 1;
+  const consistencyScore = Math.min(30, Math.round(consistencyRatio * 30));
 
-  // ── 2. Elevation achievement (30 pts) ────────────────────────────────────
-  const maxElev = Math.max(...completed.map(s => s.elevationGain), 0);
-  const elevScore = Math.min(30, Math.round((maxElev / goal.elevationGain) * 30));
+  // ── 2. Elevation achievement (30 pts) ─────────────────────────────────────
+  // Compare the best single session to a realistic TRAINING target (60% of summit),
+  // not the summit elevation itself. Reaching 60% of summit elevation in training
+  // is excellent preparation; you don't need to replicate the summit in training.
+  const trainingTarget = goal.elevationGain * 0.60;
+  const maxElev = Math.max(...completed.map(s => s.elevationGain), virtual > 0 ? trainingTarget * 0.4 : 0);
+  const elevRatio = Math.min(1, maxElev / trainingTarget);
+  const elevScore = Math.min(30, Math.round(elevRatio * 30));
 
   // ── 3. Big day (20 pts) ───────────────────────────────────────────────────
-  // Harder routes need a proportionally bigger qualifying big day
-  const bigDayPct: Record<string, number> = { Easy: 0.75, Moderate: 0.80, Hard: 0.87, Alpine: 0.93 };
-  const threshold = (bigDayPct[goal.difficulty] ?? 0.80) * goal.elevationGain;
+  // Threshold: 55-70% of summit elevation depending on difficulty.
+  // This reflects what a well-structured plan's big day should target.
+  const bigDayPct: Record<string, number> = { Easy: 0.55, Moderate: 0.62, Hard: 0.72, Alpine: 0.82 };
+  const threshold = (bigDayPct[goal.difficulty] ?? 0.62) * goal.elevationGain;
   const bigDays = completed.filter(s => s.type === "bigDay");
   const hasQualifyingBigDay = bigDays.some(s => s.elevationGain >= threshold);
-  const bigDayScore = hasQualifyingBigDay ? 20 : bigDays.length > 0 ? 4 : 0;
+  const bigDayScore = hasQualifyingBigDay ? 20
+    : bigDays.length > 0    ? 8
+    : virtual > 0           ? 4
+    : 0;
 
   // ── 4. Effort trend (10 pts) ──────────────────────────────────────────────
-  let effortScore = 4;
+  let effortScore = 5;
   if (completed.length >= 3) {
     const recent = completed.slice(0, 3).map(s => s.effort);
     const older  = completed.slice(3, 6).map(s => s.effort);
     const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
     const avgOlder  = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : avgRecent;
-    effortScore = avgRecent <= avgOlder ? 10 : 5;
+    effortScore = avgRecent <= avgOlder ? 10 : 6;
   }
 
   // ── 5. Recent activity (10 pts) ───────────────────────────────────────────
@@ -70,8 +80,8 @@ export function calculateReadiness(
   const recentSessions = completed.filter(s => new Date(s.date) >= sevenDaysAgo);
   const recentScore =
     recentSessions.length >= 3 ? 10 :
-    recentSessions.length >= 1 ? 5 :
-    virtual > 0               ? 3 : 0;
+    recentSessions.length >= 1 ? 6  :
+    virtual > 0               ? 4  : 0;
 
   // ── Penalties ─────────────────────────────────────────────────────────────
   let penalty = 0;
@@ -90,8 +100,7 @@ export function calculateReadiness(
 
   const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + effortScore + recentScore - penalty);
 
-  // Cap the final score based on how many real sessions have been logged
-  // and the difficulty of the goal. Harder routes require more evidence.
+  // Cap is based on real logged sessions only (not virtual)
   const cap = sessionCap(completed.length, goal.difficulty);
   return Math.min(cap, raw);
 }
