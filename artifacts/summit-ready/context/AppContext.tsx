@@ -16,6 +16,7 @@ export interface SummitGoal {
   equipment: Array<"gym" | "weights" | "bands" | "none">;
   trainingDaysPerWeek: number;
   hillDaysPerWeek: number;
+  preferredHill?: NearbyHill;
 }
 
 export interface PlanSession {

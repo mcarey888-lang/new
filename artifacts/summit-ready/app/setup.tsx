@@ -17,7 +17,7 @@ import {
 import Slider from "@react-native-community/slider";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SummitGoal, useApp } from "@/context/AppContext";
+import { SummitGoal, NearbyHill, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import {
   assessTime, TimeAssessment,
@@ -98,6 +98,10 @@ export default function SetupScreen() {
   const [lookupError, setLookupError] = useState("");
   const [timeAssessment, setTimeAssessment] = useState<TimeAssessment | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [hillSearchState, setHillSearchState] = useState<"idle" | "loading" | "results" | "error">("idle");
+  const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
+  const [preferredHill, setPreferredHill] = useState<NearbyHill | null>(null);
 
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
@@ -181,6 +185,25 @@ export default function SetupScreen() {
     return Object.keys(e).length === 0;
   }
 
+  async function fetchSetupHills() {
+    const location = loc.trim();
+    if (location.length < 2) return;
+    setHillSearchState("loading");
+    try {
+      const res = await fetch(`${API_BASE}/hills-lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location, radius: +radius || 25 }),
+      });
+      if (!res.ok) throw new Error("Hills lookup failed");
+      const data: { hills: NearbyHill[] } = await res.json();
+      setSetupHills(data.hills);
+      setHillSearchState("results");
+    } catch {
+      setHillSearchState("error");
+    }
+  }
+
   async function submit() {
     if (!validate()) return;
     setSaving(true);
@@ -197,6 +220,7 @@ export default function SetupScreen() {
       equipment,
       trainingDaysPerWeek: trainingDays,
       hillDaysPerWeek: hillDays,
+      preferredHill: preferredHill ?? undefined,
     });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
@@ -591,20 +615,104 @@ export default function SetupScreen() {
             </View>
           </Section>
 
-          {/* Location */}
+          {/* Location + Hill Picker */}
           <Section label="Your Location" icon="map">
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Training location</Text>
-              <Text style={styles.fieldHint}>Used to find hills near you for training sessions</Text>
-              <TextInput style={inp("loc")} value={loc} onChangeText={setLoc}
-                placeholder="e.g. Leeds, UK" placeholderTextColor={T.textDim} />
+              <Text style={styles.fieldHint}>Town, city, or postcode — used to find your local training hills</Text>
+              <TextInput
+                style={inp("loc")} value={loc}
+                onChangeText={v => { setLoc(v); setHillSearchState("idle"); setSetupHills([]); setPreferredHill(null); }}
+                placeholder="e.g. Leeds, UK or LS1 1AA"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={fetchSetupHills}
+              />
               {errors.loc && <Text style={styles.errorText}>{errors.loc}</Text>}
             </View>
-            <View style={styles.fieldWrap}>
-              <Text style={styles.fLabel}>Max search radius (km)</Text>
-              <TextInput style={inp("radius")} value={radius} onChangeText={setRadius}
-                placeholder="25" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-end" }}>
+              <View style={[styles.fieldWrap, { flex: 1 }]}>
+                <Text style={styles.fLabel}>Search radius (km)</Text>
+                <TextInput style={inp("radius")} value={radius} onChangeText={setRadius}
+                  placeholder="25" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+              </View>
+              <TouchableOpacity
+                onPress={fetchSetupHills}
+                disabled={hillSearchState === "loading" || loc.trim().length < 2}
+                activeOpacity={0.8}
+                style={[hillStyles.findBtn, (hillSearchState === "loading" || loc.trim().length < 2) && { opacity: 0.5 }]}
+              >
+                {hillSearchState === "loading"
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Feather name="search" size={15} color="#fff" />
+                }
+                <Text style={hillStyles.findBtnText}>
+                  {hillSearchState === "loading" ? "Searching…" : "Find hills"}
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Hill picker results */}
+            {hillSearchState === "error" && (
+              <Animated.View entering={FadeInDown.duration(300)} style={hillStyles.errorBanner}>
+                <Feather name="alert-circle" size={13} color={T.orange} />
+                <Text style={hillStyles.errorText}>Could not fetch hills — check your location and try again.</Text>
+              </Animated.View>
+            )}
+
+            {hillSearchState === "results" && setupHills.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(400)} style={{ gap: 8 }}>
+                <Text style={hillStyles.pickerLabel}>
+                  {preferredHill ? "✓ Training hill selected — tap another to change" : "Pick your preferred training hill"}
+                </Text>
+                {setupHills.map(hill => {
+                  const selected = preferredHill?.name === hill.name;
+                  const gradeColor =
+                    hill.grade === "Easy" ? T.green :
+                    hill.grade === "Easy–Mod" ? T.green :
+                    hill.grade === "Moderate" ? T.blue :
+                    hill.grade === "Hard" ? T.orange : "#FF4444";
+                  return (
+                    <TouchableOpacity
+                      key={hill.name}
+                      onPress={() => setPreferredHill(selected ? null : hill)}
+                      activeOpacity={0.8}
+                      style={[hillStyles.hillCard, selected && { borderColor: T.green, borderWidth: 1.5 }]}
+                    >
+                      {selected && (
+                        <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                      )}
+                      <View style={hillStyles.hillCardTop}>
+                        <Text style={hillStyles.hillEmoji}>{hill.emoji}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={hillStyles.hillName}>{hill.name}</Text>
+                          <Text style={hillStyles.hillSurface}>{hill.surface}</Text>
+                        </View>
+                        <View style={[hillStyles.gradeBadge, { backgroundColor: gradeColor + "20" }]}>
+                          <Text style={[hillStyles.gradeText, { color: gradeColor }]}>{hill.grade}</Text>
+                        </View>
+                        {selected && (
+                          <View style={hillStyles.checkCircle}>
+                            <Feather name="check" size={12} color="#fff" />
+                          </View>
+                        )}
+                      </View>
+                      <View style={hillStyles.hillStats}>
+                        <HillStatChip icon="trending-up" val={`${hill.elevation}m`} color={T.orange} />
+                        <HillStatChip icon="map-pin" val={`${hill.distance}km away`} color={T.blue} />
+                        <HillStatChip icon="repeat" val={`×${hill.repeats} reps`} color={T.purple} />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {!preferredHill && (
+                  <Text style={hillStyles.skipHint}>
+                    Skip for now — you can set this from the Hills tab after setup.
+                  </Text>
+                )}
+              </Animated.View>
+            )}
           </Section>
 
           <TouchableOpacity onPress={submit} disabled={saving}
@@ -747,9 +855,63 @@ function RouteStatPill({ icon, val, color }: { icon: keyof typeof Feather.glyphM
   );
 }
 
+function HillStatChip({ icon, val, color }: { icon: keyof typeof Feather.glyphMap; val: string; color: string }) {
+  return (
+    <View style={[hillStyles.statChip, { backgroundColor: color + "15" }]}>
+      <Feather name={icon} size={10} color={color} />
+      <Text style={[hillStyles.statChipText, { color }]}>{val}</Text>
+    </View>
+  );
+}
+
 const statStyles = StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   text: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+});
+
+const hillStyles = StyleSheet.create({
+  findBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: T.green, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, height: 46,
+  },
+  findBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.orangeDim, borderRadius: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: T.orange + "30",
+  },
+  errorText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.orange },
+  pickerLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold",
+    color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5,
+  },
+  hillCard: {
+    backgroundColor: T.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    padding: 14, gap: 10, overflow: "hidden",
+  },
+  hillCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  hillEmoji: { fontSize: 22 },
+  hillName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  hillSurface: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  gradeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  gradeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  checkCircle: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: T.green, alignItems: "center", justifyContent: "center",
+  },
+  hillStats: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  statChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  },
+  statChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  skipHint: {
+    fontSize: 12, fontFamily: "Inter_400Regular",
+    color: T.textDim, textAlign: "center", marginTop: 4,
+  },
 });
 
 function Section({ label, icon, children }: { label: string; icon: keyof typeof Feather.glyphMap; children: React.ReactNode }) {

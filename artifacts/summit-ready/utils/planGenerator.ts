@@ -150,7 +150,7 @@ function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hil
 function getMockHills(location: string, radius: number): TrainingWeek["hills"] {
   const hillNames = [
     "Ridge Peak", "Beacon Hill", "Crow Tor", "Stony Edge", "Indian's Head",
-    "Carn Mor", "Black Mountain", "Grey Crag", "High Knott", "Whernside Scar",
+    "Carn Mor", "Grey Crag", "High Knott", "Whernside Scar", "Pen y Fan",
   ];
   const seed = location.length + radius;
   return Array.from({ length: 3 }, (_, i) => {
@@ -181,7 +181,15 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
   const startMultiplier = getStartElevationMultiplier(goal.fitnessLevel);
   const diffMultiplier = getDifficultyMultiplier(goal.difficulty);
   const startElev = Math.round(targetElevation * startMultiplier * diffMultiplier);
-  const hills = getMockHills(goal.location, goal.maxRadius);
+  const hills = goal.preferredHill
+    ? [{
+        name: goal.preferredHill.name,
+        elevation: goal.preferredHill.elevation,
+        distance: goal.preferredHill.distance,
+        repeats: goal.preferredHill.repeats,
+        totalElevation: goal.preferredHill.totalElevation,
+      }]
+    : getMockHills(goal.location, goal.maxRadius);
 
   const weeks: TrainingWeek[] = [];
 
