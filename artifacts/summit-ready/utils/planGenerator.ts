@@ -181,14 +181,14 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
   const startMultiplier = getStartElevationMultiplier(goal.fitnessLevel);
   const diffMultiplier = getDifficultyMultiplier(goal.difficulty);
   const startElev = Math.round(targetElevation * startMultiplier * diffMultiplier);
-  const hills = goal.preferredHill
-    ? [{
-        name: goal.preferredHill.name,
-        elevation: goal.preferredHill.elevation,
-        distance: goal.preferredHill.distance,
-        repeats: goal.preferredHill.repeats,
-        totalElevation: goal.preferredHill.totalElevation,
-      }]
+  const hills = (goal.preferredHills && goal.preferredHills.length > 0)
+    ? goal.preferredHills.map(h => ({
+        name: h.name,
+        elevation: h.elevation,
+        distance: h.distance,
+        repeats: h.repeats,
+        totalElevation: h.totalElevation,
+      }))
     : getMockHills(goal.location, goal.maxRadius);
 
   const weeks: TrainingWeek[] = [];

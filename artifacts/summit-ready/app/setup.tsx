@@ -101,7 +101,7 @@ export default function SetupScreen() {
 
   const [hillSearchState, setHillSearchState] = useState<"idle" | "loading" | "results" | "error">("idle");
   const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
-  const [preferredHill, setPreferredHill] = useState<NearbyHill | null>(null);
+  const [preferredHills, setPreferredHills] = useState<NearbyHill[]>([]);
 
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
@@ -220,7 +220,7 @@ export default function SetupScreen() {
       equipment,
       trainingDaysPerWeek: trainingDays,
       hillDaysPerWeek: hillDays,
-      preferredHill: preferredHill ?? undefined,
+      preferredHills: preferredHills.length > 0 ? preferredHills : undefined,
     });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
@@ -622,7 +622,7 @@ export default function SetupScreen() {
               <Text style={styles.fieldHint}>Town, city, or postcode — used to find your local training hills</Text>
               <TextInput
                 style={inp("loc")} value={loc}
-                onChangeText={v => { setLoc(v); setHillSearchState("idle"); setSetupHills([]); setPreferredHill(null); }}
+                onChangeText={v => { setLoc(v); setHillSearchState("idle"); setSetupHills([]); setPreferredHills([]); }}
                 placeholder="e.g. Leeds, UK or LS1 1AA"
                 placeholderTextColor={T.textDim}
                 returnKeyType="search"
@@ -663,11 +663,18 @@ export default function SetupScreen() {
 
             {hillSearchState === "results" && setupHills.length > 0 && (
               <Animated.View entering={FadeInDown.duration(400)} style={{ gap: 8 }}>
-                <Text style={hillStyles.pickerLabel}>
-                  {preferredHill ? "✓ Training hill selected — tap another to change" : "Pick your preferred training hill"}
-                </Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={hillStyles.pickerLabel}>Select your training hills</Text>
+                  {preferredHills.length > 0 && (
+                    <View style={{ backgroundColor: T.greenDim, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: T.green + "40" }}>
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: T.green }}>
+                        {preferredHills.length} selected
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 {setupHills.map(hill => {
-                  const selected = preferredHill?.name === hill.name;
+                  const selected = preferredHills.some(h => h.name === hill.name);
                   const gradeColor =
                     hill.grade === "Easy" ? T.green :
                     hill.grade === "Easy–Mod" ? T.green :
@@ -676,7 +683,9 @@ export default function SetupScreen() {
                   return (
                     <TouchableOpacity
                       key={hill.name}
-                      onPress={() => setPreferredHill(selected ? null : hill)}
+                      onPress={() => setPreferredHills(prev =>
+                        selected ? prev.filter(h => h.name !== hill.name) : [...prev, hill]
+                      )}
                       activeOpacity={0.8}
                       style={[hillStyles.hillCard, selected && { borderColor: T.green, borderWidth: 1.5 }]}
                     >
@@ -706,9 +715,9 @@ export default function SetupScreen() {
                     </TouchableOpacity>
                   );
                 })}
-                {!preferredHill && (
+                {preferredHills.length === 0 && (
                   <Text style={hillStyles.skipHint}>
-                    Skip for now — you can set this from the Hills tab after setup.
+                    Tap any hill to select it — pick as many as you like. You can also change these later from the Hills tab.
                   </Text>
                 )}
               </Animated.View>
