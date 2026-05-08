@@ -1,27 +1,32 @@
 export type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 export type FitnessLevel = "Beginner" | "Average" | "Strong";
 
-// Minimum training weeks required — grounded in reality.
-// Easy = popular hill walks (Snowdon, Scafell Pike tourist route etc.)
-// Moderate = strenuous full-day hikes with significant elevation
-// Hard = serious multi-hour mountain routes with technical terrain
-// Alpine = high-altitude routes with objective hazards (Matterhorn, Mont Blanc etc.)
+// Minimum training weeks required — grounded in realistic hiking preparation.
+//
+// Easy    = short popular hill walks (< 400m gain, well-marked paths)
+// Moderate= full-day hikes with significant elevation (Snowdon, Scafell Pike,
+//           Ben Nevis tourist path, most UK/European "classic" routes)
+// Hard    = strenuous mountain routes with scrambling or sustained steep ascent
+//           (Crib Goch, Helvellyn via Striding Edge, technical ridge walks)
+// Alpine  = high-altitude or technical routes with objective hazards
+//           (Matterhorn, Mont Blanc, routes requiring crampon/ice-axe skills)
+//
+// Note: a fit person can summit Snowdon with 2-3 weeks of targeted preparation;
+// a beginner attempting the Matterhorn needs a full season of mountaineering.
 const MIN_WEEKS_BASE: Record<Difficulty, Record<FitnessLevel, number>> = {
-  Easy:     { Beginner:  2, Average:  0, Strong:  0 },
-  Moderate: { Beginner:  4, Average:  1, Strong:  0 },
-  Hard:     { Beginner: 12, Average:  5, Strong:  2 },
-  Alpine:   { Beginner: 30, Average: 18, Strong: 10 },
+  Easy:     { Beginner:  1, Average:  0, Strong:  0 },
+  Moderate: { Beginner:  3, Average:  1, Strong:  0 },
+  Hard:     { Beginner:  8, Average:  3, Strong:  1 },
+  Alpine:   { Beginner: 24, Average: 12, Strong:  6 },
 };
 
-// "Comfortable" weeks — 1.4× min, gives buffer for missed sessions
-const REC_MULTIPLIER = 1.4;
-
-// Minimum recommended even when minimum = 0 (so we can suggest preparation)
+// Comfortable weeks — enough buffer for missed sessions and progressive build.
+// These are the "ideal" windows, not hard requirements.
 const MIN_REC_BASE: Record<Difficulty, Record<FitnessLevel, number>> = {
-  Easy:     { Beginner:  3, Average:  2, Strong:  1 },
-  Moderate: { Beginner:  9, Average:  4, Strong:  2 },
-  Hard:     { Beginner: 22, Average: 14, Strong: 10 },
-  Alpine:   { Beginner: 50, Average: 30, Strong: 20 },
+  Easy:     { Beginner:  2, Average:  1, Strong:  1 },
+  Moderate: { Beginner:  5, Average:  3, Strong:  2 },
+  Hard:     { Beginner: 12, Average:  6, Strong:  3 },
+  Alpine:   { Beginner: 36, Average: 20, Strong: 12 },
 };
 
 export function getTimeRequirement(
@@ -29,9 +34,12 @@ export function getTimeRequirement(
   fitnessLevel: FitnessLevel,
   trainingDaysPerWeek = 4
 ): { minWeeks: number; recommendedWeeks: number } {
-  const base = MIN_WEEKS_BASE[difficulty]?.[fitnessLevel] ?? 8;
-  const recBase = MIN_REC_BASE[difficulty]?.[fitnessLevel] ?? 12;
-  const daysFactor = 4 / Math.max(2, trainingDaysPerWeek);
+  const base = MIN_WEEKS_BASE[difficulty]?.[fitnessLevel] ?? 4;
+  const recBase = MIN_REC_BASE[difficulty]?.[fitnessLevel] ?? 6;
+  // Dampen the days factor so training 2 days/week adds ~25% time, not 100%.
+  // Formula: linear scale from 1.0 (at 4+ days) to 1.3 (at 2 days).
+  const clampedDays = Math.max(2, Math.min(4, trainingDaysPerWeek));
+  const daysFactor = 1 + (4 - clampedDays) * 0.15;
   const minWeeks = Math.round(base * daysFactor);
   const recommendedWeeks = Math.round(recBase * daysFactor);
   return { minWeeks, recommendedWeeks };
@@ -70,37 +78,42 @@ export function assessTime(
   let message: string;
   let detail: string;
 
+  const diffLabel: Record<Difficulty, string> = {
+    Easy: "an easy route", Moderate: "a moderate route",
+    Hard: "a hard route", Alpine: "an alpine route",
+  };
+
   if (weeksAvailable === 0) {
     status = "impossible";
     message = "Date is too soon";
     detail = "Pick a future date with at least a few days to prepare.";
   } else if (minWeeks === 0) {
-    // No mandatory training — this person is already fit enough for this route
+    // No mandatory training — already fit enough
     if (weeksAvailable >= recommendedWeeks) {
       status = "good";
-      message = `Great — ${weeksAvailable} weeks of preparation available`;
-      detail = `At your fitness level you could tackle a ${difficulty} route without formal training, but ${weeksAvailable} weeks of targeted preparation will make it much safer and more enjoyable.`;
+      message = `Well prepared — you're ready for ${diffLabel[difficulty]}`;
+      detail = `At your fitness level this route is well within reach. ${weeksAvailable} weeks of targeted hill sessions will sharpen your confidence and make summit day more enjoyable.`;
     } else {
       status = "good";
-      message = `You're fit enough — a few sessions of preparation recommended`;
-      detail = `At your fitness level, a ${difficulty} route requires no minimum training — though even ${weeksAvailable > 1 ? `${weeksAvailable} weeks of` : "a couple of sessions of"} specific hill practice will boost your confidence and enjoyment.`;
+      message = `Ready to go — no minimum training required`;
+      detail = `Your fitness is good enough for ${diffLabel[difficulty]} without a formal training block. ${weeksAvailable > 1 ? `${weeksAvailable} weeks of` : "A couple of sessions of"} specific hill practice will make a real difference to your comfort on the day.`;
     }
   } else if (weeksAvailable < minWeeks * 0.5) {
     status = "impossible";
-    message = `Not enough time — at least ${minWeeks} weeks needed`;
-    detail = `For a ${difficulty} climb at your current fitness, you need a minimum of ${minWeeks} weeks of consistent training at ${trainingDaysPerWeek} days/week. You have ${weeksAvailable} week${weeksAvailable !== 1 ? "s" : ""}. Pick a later date.`;
+    message = `Not enough time — minimum ${minWeeks} week${minWeeks !== 1 ? "s" : ""} needed`;
+    detail = `For ${diffLabel[difficulty]} at your current fitness, you need at least ${minWeeks} weeks of preparation. You have ${weeksAvailable} — pick a later date or a less demanding route.`;
   } else if (weeksAvailable < minWeeks) {
     status = "insufficient";
-    message = `Very tight — ${minWeeks} weeks minimum, you have ${weeksAvailable}`;
-    detail = `This is a demanding schedule with no room for setbacks. You'll need to train consistently and without missed weeks.`;
+    message = `Very tight — ${minWeeks} week${minWeeks !== 1 ? "s" : ""} minimum, you have ${weeksAvailable}`;
+    detail = `Doable but demanding. You'll need to train consistently with no missed weeks. Consider a closer date or stepping up your current fitness first.`;
   } else if (weeksAvailable < recommendedWeeks) {
     status = "tight";
-    message = `Manageable but tight — ${recommendedWeeks} weeks is comfortable`;
-    detail = `You have enough time, but there's little buffer. Missing sessions will have a real impact on your readiness.`;
+    message = `Enough time — ideally ${recommendedWeeks} weeks, you have ${weeksAvailable}`;
+    detail = `You have the minimum you need. There's little buffer, so train consistently and treat every session as important.`;
   } else {
     status = "good";
     message = `Good — ${weeksAvailable} weeks gives solid preparation time`;
-    detail = `You have ${weeksAvailable - recommendedWeeks} weeks of buffer above the ${recommendedWeeks} week recommendation. Keep consistent and you'll be well prepared.`;
+    detail = `${recommendedWeeks} weeks is all you need for this route at your fitness level. You have ${weeksAvailable - recommendedWeeks} week${weeksAvailable - recommendedWeeks !== 1 ? "s" : ""} to spare — stay consistent and you'll arrive well prepared.`;
   }
 
   return { status, weeksAvailable, minWeeks, recommendedWeeks, message, detail };
@@ -161,8 +174,10 @@ export function deriveFitnessFromSliders(
   const freqScore = EXERCISE_FREQ_OPTIONS.find(o => o.value === freqFromSlider(freqSlider))?.score ?? 1;
   const readinessBonus = readiness < 34 ? 0 : readiness < 67 ? 1 : 2;
   const total = walkScore + freqScore + readinessBonus;
-  if (total <= 2) return "Beginner";
-  if (total <= 5) return "Average";
+  // Thresholds: someone who walks 8km+ and exercises 3-4×/week is "Strong"
+  // for the purposes of UK/European mountain training plans.
+  if (total <= 1) return "Beginner";
+  if (total <= 4) return "Average";
   return "Strong";
 }
 
