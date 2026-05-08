@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,6 +24,8 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
+
+const MASCOT = require("@/assets/mascot.png");
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -38,82 +42,30 @@ const CARD_W = (width - 48) / 2;
 
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
 function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
-  const jacket =
-    tone === "positive" ? "#2AB860" :
-    tone === "warning"  ? "#E8923A" : "#4A8ED9";
-  const hatBand =
-    tone === "positive" ? "#1A8A44" :
-    tone === "warning"  ? "#C4761F" : "#2D6CB8";
-
-  // Mouth shape changes with tone
-  const mouth =
-    tone === "positive" ? (
-      // smile — two small quarter-circles using border trick
-      <View style={{ width: 12, height: 6, borderBottomLeftRadius: 6, borderBottomRightRadius: 6, borderWidth: 2, borderTopWidth: 0, borderColor: "#7A4A1E", marginTop: 2 }} />
-    ) : tone === "warning" ? (
-      // frown
-      <View style={{ width: 12, height: 6, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderWidth: 2, borderBottomWidth: 0, borderColor: "#7A4A1E", marginTop: 4 }} />
-    ) : (
-      // neutral line
-      <View style={{ width: 10, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, marginTop: 4 }} />
-    );
+  const badge =
+    tone === "positive" ? "👍" :
+    tone === "warning"  ? "⚠️" : "🧭";
 
   return (
-    <View style={{ width: 56, alignItems: "center" }}>
-      {/* Hat crown */}
+    <View style={{ width: 72, height: 72 }}>
+      <Image
+        source={MASCOT}
+        style={{ width: 72, height: 72 }}
+        resizeMode="contain"
+      />
+      {/* Small tone indicator badge */}
       <View style={{
-        width: 30, height: 20, backgroundColor: "#1E3D18",
-        borderTopLeftRadius: 10, borderTopRightRadius: 10,
-        justifyContent: "flex-end", alignItems: "center",
-      }}>
-        {/* Feather */}
-        <Text style={{ position: "absolute", top: -6, right: -4, fontSize: 13, transform: [{ rotate: "-30deg" }] }}>🪶</Text>
-      </View>
-      {/* Hat brim */}
-      <View style={{ width: 46, height: 7, backgroundColor: "#1E3D18", borderRadius: 3, marginTop: -1 }}>
-        {/* Band stripe */}
-        <View style={{ position: "absolute", top: 1, left: 6, right: 6, height: 3, backgroundColor: hatBand, borderRadius: 2 }} />
-      </View>
-
-      {/* Head */}
-      <View style={{
-        width: 38, height: 38, borderRadius: 19,
-        backgroundColor: "#F7C88A",
-        borderWidth: 1.5, borderColor: "#E8AA60",
+        position: "absolute", bottom: 0, right: 0,
+        width: 22, height: 22, borderRadius: 11,
+        backgroundColor: T.card,
+        borderWidth: 1.5,
+        borderColor:
+          tone === "positive" ? T.green :
+          tone === "warning"  ? T.orange : T.blue,
         alignItems: "center", justifyContent: "center",
-        marginTop: 1,
       }}>
-        {/* Rosy cheeks */}
-        <View style={{ position: "absolute", left: 4, top: 18, width: 8, height: 5, borderRadius: 4, backgroundColor: "#F4A0A0", opacity: 0.6 }} />
-        <View style={{ position: "absolute", right: 4, top: 18, width: 8, height: 5, borderRadius: 4, backgroundColor: "#F4A0A0", opacity: 0.6 }} />
-        {/* Eyes */}
-        <View style={{ flexDirection: "row", gap: 7, marginTop: -4 }}>
-          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#3A2010" }} />
-          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#3A2010" }} />
-        </View>
-        {/* Eyebrows — raised for positive, furrowed for warning */}
-        <View style={{ position: "absolute", top: 8, left: 7, width: 7, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, transform: [{ rotate: tone === "warning" ? "8deg" : tone === "positive" ? "-5deg" : "0deg" }] }} />
-        <View style={{ position: "absolute", top: 8, right: 7, width: 7, height: 2, backgroundColor: "#7A4A1E", borderRadius: 1, transform: [{ rotate: tone === "warning" ? "-8deg" : tone === "positive" ? "5deg" : "0deg" }] }} />
-        {mouth}
-        {/* Beard/stubble */}
-        <View style={{ position: "absolute", bottom: 4, width: 22, height: 5, borderRadius: 3, backgroundColor: "#C89850", opacity: 0.4 }} />
+        <Text style={{ fontSize: 11 }}>{badge}</Text>
       </View>
-
-      {/* Neck + body */}
-      <View style={{ width: 16, height: 5, backgroundColor: "#F7C88A", borderBottomLeftRadius: 3, borderBottomRightRadius: 3 }} />
-      {/* Jacket */}
-      <View style={{ width: 42, height: 18, backgroundColor: jacket, borderRadius: 5, alignItems: "center", justifyContent: "center", marginTop: 1 }}>
-        {/* Collar */}
-        <View style={{ position: "absolute", top: 0, width: 14, borderTopWidth: 8, borderTopColor: "#fff", borderLeftWidth: 7, borderRightWidth: 7, borderLeftColor: "transparent", borderRightColor: "transparent", opacity: 0.25 }} />
-        {/* Buttons */}
-        <View style={{ flexDirection: "row", gap: 5, marginTop: 4 }}>
-          {[0,1,2].map(i => (
-            <View key={i} style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.7)" }} />
-          ))}
-        </View>
-      </View>
-      {/* Ice axe / walking stick */}
-      <Text style={{ position: "absolute", bottom: 0, right: 0, fontSize: 16, transform: [{ rotate: "20deg" }] }}>⛏️</Text>
     </View>
   );
 }
