@@ -18,7 +18,12 @@ import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SummitGoal, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
-import { assessTime, TimeAssessment } from "@/utils/timeValidator";
+import {
+  assessTime, TimeAssessment,
+  WALK_DIST_OPTIONS, EXERCISE_FREQ_OPTIONS,
+  WalkDistValue, FreqValue,
+  deriveFitnessLevel, fitnessLevelLabel,
+} from "@/utils/timeValidator";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 type Fitness = "Beginner" | "Average" | "Strong";
@@ -48,11 +53,6 @@ const DIFF_COLORS: Record<Difficulty, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange, Alpine: "#FF4444",
 };
 
-const FITNESS_OPTIONS: { value: Fitness; emoji: string; label: string; desc: string }[] = [
-  { value: "Beginner", emoji: "🌱", label: "Just starting", desc: "New to regular exercise or hiking" },
-  { value: "Average", emoji: "🏃", label: "Some fitness", desc: "Walk or exercise 1–3× per week" },
-  { value: "Strong",  emoji: "⚡", label: "Regularly active", desc: "Hike or run weekly, exercise 4+ days" },
-];
 
 const EQUIPMENT_OPTIONS: { value: Equipment; icon: keyof typeof Feather.glyphMap; label: string; desc: string }[] = [
   { value: "gym",     icon: "activity",    label: "Gym membership",    desc: "Treadmill, step machine, weights" },
@@ -79,6 +79,8 @@ export default function SetupScreen() {
   const [elev, setElev] = useState("");
   const [alt, setAlt] = useState("");
   const [diff, setDiff] = useState<Difficulty>("Moderate");
+  const [walkDist, setWalkDist] = useState<WalkDistValue>("3to8");
+  const [freq, setFreq] = useState<FreqValue>("1to2");
   const [fit, setFit] = useState<Fitness>("Average");
   const [equipment, setEquipment] = useState<Equipment[]>(["none"]);
   const [trainingDays, setTrainingDays] = useState(4);
@@ -99,6 +101,11 @@ export default function SetupScreen() {
   useEffect(() => {
     if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
   }, [trainingDays]);
+
+  // Derive fitness level from the quiz answers
+  useEffect(() => {
+    setFit(deriveFitnessLevel(walkDist, freq));
+  }, [walkDist, freq]);
 
   // Recompute time assessment whenever anything that affects it changes
   useEffect(() => {
@@ -421,30 +428,55 @@ export default function SetupScreen() {
             </View>
           </Section>
 
-          {/* Fitness Assessment */}
-          <Section label="Fitness Assessment" icon="zap">
+          {/* Fitness Assessment — 2-question quiz */}
+          <Section label="Your Fitness" icon="zap">
             <Text style={styles.sectionDesc}>
-              Be honest — an accurate assessment means a plan that's actually achievable.
+              Two quick questions — be honest, this shapes your entire plan.
             </Text>
-            <View style={styles.fitnessGrid}>
-              {FITNESS_OPTIONS.map(opt => {
-                const active = fit === opt.value;
-                return (
-                  <TouchableOpacity key={opt.value} onPress={() => setFit(opt.value)} activeOpacity={0.7}
-                    style={[styles.fitnessCard, active && styles.fitnessCardActive]}
-                  >
-                    {active && <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />}
-                    <Text style={styles.fitnessEmoji}>{opt.emoji}</Text>
-                    <Text style={[styles.fitnessLabel, active && { color: T.orange }]}>{opt.label}</Text>
-                    <Text style={styles.fitnessDesc}>{opt.desc}</Text>
-                    {active && (
-                      <View style={styles.fitnessCheck}>
-                        <Feather name="check" size={10} color={T.orange} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+
+            <Text style={styles.fLabel}>How far can you walk comfortably without stopping?</Text>
+            <View style={styles.quizRow}>
+              {WALK_DIST_OPTIONS.map(opt => (
+                <TouchableOpacity key={opt.value} onPress={() => setWalkDist(opt.value)} activeOpacity={0.7}
+                  style={[styles.quizChip, walkDist === opt.value && styles.quizChipActive]}
+                >
+                  {walkDist === opt.value && (
+                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  )}
+                  <Text style={[styles.quizChipText, walkDist === opt.value && { color: T.orange }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.fLabel, { marginTop: 14 }]}>How often do you exercise?</Text>
+            <View style={styles.quizRow}>
+              {EXERCISE_FREQ_OPTIONS.map(opt => (
+                <TouchableOpacity key={opt.value} onPress={() => setFreq(opt.value)} activeOpacity={0.7}
+                  style={[styles.quizChip, freq === opt.value && styles.quizChipActive]}
+                >
+                  {freq === opt.value && (
+                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  )}
+                  <Text style={[styles.quizChipText, freq === opt.value && { color: T.orange }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Derived result pill */}
+            <View style={styles.fitnessResult}>
+              <View style={[styles.fitnessResultPill, { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }]}>
+                <Feather name="zap" size={13} color={T.orange} />
+                <Text style={styles.fitnessResultText}>Assessed as: <Text style={{ color: T.orange, fontFamily: "Inter_700Bold" }}>{fitnessLevelLabel(fit)}</Text></Text>
+              </View>
+              <Text style={styles.fitnessResultHint}>
+                {fit === "Beginner" && "A structured plan will build you up safely."}
+                {fit === "Average"  && "You have a solid foundation to build from."}
+                {fit === "Strong"   && "You can handle higher intensity sessions right away."}
+              </Text>
             </View>
           </Section>
 
@@ -761,16 +793,21 @@ const styles = StyleSheet.create({
   diffEmoji: { fontSize: 18 },
   diffLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
 
-  fitnessGrid: { gap: 8 },
-  fitnessCard: {
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    padding: 14, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden",
+  quizRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  quizChip: {
+    flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.surface, alignItems: "center", justifyContent: "center",
+    paddingVertical: 11, paddingHorizontal: 8, overflow: "hidden",
   },
-  fitnessCardActive: { borderColor: T.orange + "60" },
-  fitnessEmoji: { fontSize: 22, width: 32, textAlign: "center" },
-  fitnessLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, minWidth: 110 },
-  fitnessDesc: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  fitnessCheck: { width: 20, height: 20, borderRadius: 6, backgroundColor: T.orangeDim, borderWidth: 1, borderColor: T.orange + "40", alignItems: "center", justifyContent: "center" },
+  quizChipActive: { borderColor: T.orange + "60" },
+  quizChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text, textAlign: "center" },
+  fitnessResult: { gap: 6, marginTop: 4 },
+  fitnessResultPill: {
+    flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start",
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1,
+  },
+  fitnessResultText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text },
+  fitnessResultHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, paddingLeft: 4 },
 
   equipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   equipCard: {
