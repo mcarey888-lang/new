@@ -73,11 +73,15 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   }
 
   // No equipment — walks, runs, stairs
-  const stairReps = Math.max(5, Math.round(elevTarget / 15));
+  // Assume ~3m per floor; each rep targets ~15m (≈5 floors)
+  const metresPerRep = 15;
+  const stairReps = Math.max(5, Math.round(elevTarget / metresPerRep));
+  const floorsPerRep = Math.round(metresPerRep / 3); // ≈5 floors
+  const totalElev = stairReps * metresPerRep;
   const opts = [
     {
       label: "Stair Repeats",
-      description: `Find a multi-storey staircase, car park, or any long staircase. Walk up, walk down. Repeat ${stairReps}× (about ${stairReps * 15}m elevation). This directly mimics uphill summit climbing.`,
+      description: `Find a staircase of at least ${floorsPerRep} floors (≈${metresPerRep}m per climb) — a car park, block of flats, or office building works perfectly. Walk up, walk down, repeat ${stairReps}× for ${totalElev}m total elevation. Each floor is roughly 3m, so ${floorsPerRep} floors = ${metresPerRep}m per climb. This directly mimics the sustained uphill effort of summit day.`,
     },
     {
       label: "Uphill Walk / Run",
