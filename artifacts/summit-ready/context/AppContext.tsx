@@ -79,6 +79,7 @@ interface AppState {
   planAdjusting: boolean;
   planAdjustNote: string | null;
   submittedPlanSessions: Record<string, boolean>;
+  sessionReps: Record<string, number>;
   setSummitGoal: (goal: SummitGoal) => Promise<void>;
   addSession: (session: Omit<Session, "id">) => Promise<void>;
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
@@ -92,6 +93,7 @@ interface AppState {
   hillsInPlan: string[];
   addHillToPlan: (hill: NearbyHill) => Promise<void>;
   updateGoalLocation: (location: string) => Promise<void>;
+  setSessionReps: (key: string, reps: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -107,6 +109,7 @@ const AppContext = createContext<AppState>({
   planAdjusting: false,
   planAdjustNote: null,
   submittedPlanSessions: {},
+  sessionReps: {},
   setSummitGoal: async () => {},
   addSession: async () => {},
   updateSession: async () => {},
@@ -120,6 +123,7 @@ const AppContext = createContext<AppState>({
   hillsInPlan: [],
   addHillToPlan: async () => {},
   updateGoalLocation: async () => {},
+  setSessionReps: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -131,6 +135,7 @@ const ASSIGNED_KEY = "summitready_assigned_hills";
 const ADJUST_NOTE_KEY = "summitready_adjust_note";
 const SUBMITTED_KEY = "summitready_submitted_plan_sessions";
 const HILLS_IN_PLAN_KEY = "summitready_hills_in_plan";
+const REPS_KEY = "summitready_session_reps";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -208,14 +213,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [planAdjustNote, setPlanAdjustNote] = useState<string | null>(null);
   const [submittedPlanSessions, setSubmittedPlanSessions] = useState<Record<string, boolean>>({});
   const [hillsInPlan, setHillsInPlan] = useState<string[]>([]);
+  const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -237,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setReadinessScore(calculateReadiness(goal, plan, storedSessions));
           if (noteStr) setPlanAdjustNote(noteStr);
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
+          if (repsStr) setSessionRepsState(JSON.parse(repsStr));
         } else {
           const plan = generatePlan(DEMO_GOAL);
           setSummitGoalState(DEMO_GOAL);
@@ -262,6 +269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAssignedHills({});
     setSubmittedPlanSessions({});
     setHillsInPlan([]);
+    setSessionRepsState({});
     setPlanAdjustNote(null);
     const score = calculateReadiness(goal, plan, []);
     setReadinessScore(score);
@@ -274,6 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [SUBMITTED_KEY, "{}"],
       [HILLS_IN_PLAN_KEY, "[]"],
       [ADJUST_NOTE_KEY, ""],
+      [REPS_KEY, "{}"],
     ]);
   }, []);
 
@@ -309,10 +318,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAssignedHills({});
     setSubmittedPlanSessions({});
     setHillsInPlan([]);
+    setSessionRepsState({});
     setPlanAdjustNote(null);
     setReadinessScore(0);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY,
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY,
     ]);
   }, []);
 
@@ -455,6 +465,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updated));
   }, [summitGoal]);
 
+  const setSessionReps = useCallback(async (key: string, reps: number) => {
+    const updated = { ...sessionReps, [key]: Math.max(1, reps) };
+    setSessionRepsState(updated);
+    await AsyncStorage.setItem(REPS_KEY, JSON.stringify(updated));
+  }, [sessionReps]);
+
   const adjustPlanWithAI = useCallback(async () => {
     if (!summitGoal || trainingPlan.length === 0) return;
     setPlanAdjusting(true);
@@ -525,10 +541,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       summitGoal, trainingPlan, sessions, readinessScore, isLoading,
       nearbyHills, hillsLoading, completedPlanSessions, assignedHills,
-      planAdjusting, planAdjustNote, submittedPlanSessions,
+      planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, updateGoalLocation,
+      submitWeekSessions, hillsInPlan, addHillToPlan, updateGoalLocation, setSessionReps,
     }}>
       {children}
     </AppContext.Provider>

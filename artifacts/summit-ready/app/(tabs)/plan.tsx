@@ -20,6 +20,103 @@ import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
 
+// ── Rep Stepper ───────────────────────────────────────────────────────────────
+function RepStepper({
+  sessionKey,
+  defaultReps,
+  elevPerRep,
+  sessionReps,
+  onSet,
+}: {
+  sessionKey: string;
+  defaultReps: number;
+  elevPerRep: number;
+  sessionReps: Record<string, number>;
+  onSet: (key: string, reps: number) => void;
+}) {
+  const custom = sessionReps[sessionKey];
+  const reps = custom ?? defaultReps;
+  const isModified = custom !== undefined && custom !== defaultReps;
+  const totalElev = elevPerRep > 0 ? reps * elevPerRep : null;
+
+  return (
+    <View style={rsStyles.row}>
+      <Feather name="repeat" size={11} color={T.textDim} />
+      <Text style={rsStyles.label}>Reps:</Text>
+
+      <TouchableOpacity
+        onPress={() => onSet(sessionKey, reps - 1)}
+        style={[rsStyles.btn, reps <= 1 && rsStyles.btnDisabled]}
+        activeOpacity={0.7}
+        disabled={reps <= 1}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Feather name="minus" size={12} color={reps <= 1 ? T.textDim : T.white} />
+      </TouchableOpacity>
+
+      <Text style={[rsStyles.count, isModified && rsStyles.countModified]}>{reps}</Text>
+
+      <TouchableOpacity
+        onPress={() => onSet(sessionKey, reps + 1)}
+        style={rsStyles.btn}
+        activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Feather name="plus" size={12} color={T.white} />
+      </TouchableOpacity>
+
+      {totalElev !== null && (
+        <Text style={rsStyles.elev}>= {totalElev}m gain</Text>
+      )}
+
+      {isModified && (
+        <TouchableOpacity
+          onPress={() => onSet(sessionKey, defaultReps)}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={rsStyles.resetBtn}
+        >
+          <Text style={rsStyles.resetText}>reset</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const rsStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: T.border,
+    flexWrap: "wrap",
+  },
+  label: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  btn: {
+    width: 24, height: 24, borderRadius: 7,
+    backgroundColor: T.surface,
+    borderWidth: 1, borderColor: T.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  btnDisabled: { opacity: 0.4 },
+  count: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+    minWidth: 22, textAlign: "center",
+  },
+  countModified: { color: T.green },
+  elev: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.orange, marginLeft: 2 },
+  resetBtn: {
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 5,
+    backgroundColor: T.surface,
+    borderWidth: 1, borderColor: T.border,
+    marginLeft: 4,
+  },
+  resetText: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+});
+
 const { width } = Dimensions.get("window");
 
 function HillPickerModal({
@@ -87,9 +184,11 @@ function WeekCard({
   assignedHills,
   nearbyHills,
   submittedPlanSessions,
+  sessionReps,
   onToggleSession,
   onAssignHill,
   onSubmitWeek,
+  onSetReps,
 }: {
   week: TrainingWeek;
   isExpanded: boolean;
@@ -99,9 +198,11 @@ function WeekCard({
   assignedHills: Record<string, NearbyHill>;
   nearbyHills: NearbyHill[];
   submittedPlanSessions: Record<string, boolean>;
+  sessionReps: Record<string, number>;
   onToggleSession: (weekNum: number, sessionIdx: number) => void;
   onAssignHill: (weekNum: number, sessionIdx: number) => void;
   onSubmitWeek: (weekNum: number) => void;
+  onSetReps: (key: string, reps: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
@@ -255,6 +356,21 @@ function WeekCard({
                         </TouchableOpacity>
                       )}
                     </View>
+
+                    {canPickHill && (() => {
+                      const hill = assignedHill ?? week.hills[0] ?? null;
+                      const elevPerRep = hill ? hill.elevation : 0;
+                      const defaultReps = hill ? hill.repeats : Math.max(1, Math.ceil(s.targetElevation / 100));
+                      return (
+                        <RepStepper
+                          sessionKey={sessionKey}
+                          defaultReps={defaultReps}
+                          elevPerRep={elevPerRep}
+                          sessionReps={sessionReps}
+                          onSet={onSetReps}
+                        />
+                      );
+                    })()}
                   </View>
                 </View>
               );
@@ -328,12 +444,14 @@ export default function PlanScreen() {
     assignedHills,
     nearbyHills,
     submittedPlanSessions,
+    sessionReps,
     togglePlanSession,
     assignHillToSession,
     adjustPlanWithAI,
     planAdjusting,
     planAdjustNote,
     submitWeekSessions,
+    setSessionReps,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -449,9 +567,11 @@ export default function PlanScreen() {
             assignedHills={assignedHills}
             nearbyHills={nearbyHills}
             submittedPlanSessions={submittedPlanSessions}
+            sessionReps={sessionReps}
             onToggleSession={togglePlanSession}
             onAssignHill={openHillPicker}
             onSubmitWeek={handleSubmitWeek}
+            onSetReps={setSessionReps}
           />
         ))}
       </ScrollView>
