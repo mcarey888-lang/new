@@ -18,6 +18,7 @@ import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SummitGoal, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { assessTime, TimeAssessment } from "@/utils/timeValidator";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 type Fitness = "Beginner" | "Average" | "Strong";
@@ -91,12 +92,18 @@ export default function SetupScreen() {
   const [mountainResult, setMountainResult] = useState<MountainResult | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<RouteOption | null>(null);
   const [lookupError, setLookupError] = useState("");
+  const [timeAssessment, setTimeAssessment] = useState<TimeAssessment | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
     if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
   }, [trainingDays]);
+
+  // Recompute time assessment whenever anything that affects it changes
+  useEffect(() => {
+    setTimeAssessment(date ? assessTime(date, diff, fit, trainingDays) : null);
+  }, [date, diff, fit, trainingDays]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -153,6 +160,10 @@ export default function SetupScreen() {
     if (!name.trim()) e.name = "Required";
     if (!date) e.date = "Pick a date";
     else if (new Date(date) <= new Date()) e.date = "Must be a future date";
+    else {
+      const ta = assessTime(date, diff, fit, trainingDays);
+      if (ta?.status === "impossible") e.date = ta.message;
+    }
     if (!dist || isNaN(+dist) || +dist <= 0) e.dist = "Enter km";
     if (!elev || isNaN(+elev) || +elev <= 0) e.elev = "Enter metres";
     if (!alt || isNaN(+alt)) e.alt = "Enter metres";
@@ -316,6 +327,46 @@ export default function SetupScreen() {
               </TouchableOpacity>
               {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
+
+            {/* Time assessment banner — updates live as date/difficulty/fitness change */}
+            {timeAssessment && !errors.date && (() => {
+              const ta = timeAssessment;
+              const cfg = {
+                good:        { icon: "check-circle" as const, bg: T.greenDim,   border: T.green + "40",  text: T.green,   title: ta.message },
+                tight:       { icon: "clock"        as const, bg: T.orangeDim,  border: T.orange + "40", text: T.orange,  title: ta.message },
+                insufficient:{ icon: "alert-triangle" as const, bg: T.redDim ?? "rgba(255,68,68,0.12)", border: T.red + "40", text: T.red, title: ta.message },
+                impossible:  { icon: "x-circle"     as const, bg: T.redDim ?? "rgba(255,68,68,0.12)",   border: T.red + "60", text: T.red,   title: ta.message },
+              }[ta.status];
+              return (
+                <Animated.View entering={FadeInDown.duration(350)}>
+                  <View style={[styles.timeCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+                    <View style={styles.timeCardRow}>
+                      <Feather name={cfg.icon} size={15} color={cfg.text} />
+                      <Text style={[styles.timeCardTitle, { color: cfg.text }]}>{cfg.title}</Text>
+                    </View>
+                    <Text style={styles.timeCardDetail}>{ta.detail}</Text>
+                    {ta.status !== "good" && (
+                      <View style={styles.timeCardMeta}>
+                        <View style={styles.timeMetaItem}>
+                          <Text style={styles.timeMetaVal}>{ta.weeksAvailable}</Text>
+                          <Text style={styles.timeMetaLbl}>weeks you have</Text>
+                        </View>
+                        <View style={styles.timeMetaDivider} />
+                        <View style={styles.timeMetaItem}>
+                          <Text style={styles.timeMetaVal}>{ta.minWeeks}</Text>
+                          <Text style={styles.timeMetaLbl}>minimum needed</Text>
+                        </View>
+                        <View style={styles.timeMetaDivider} />
+                        <View style={styles.timeMetaItem}>
+                          <Text style={styles.timeMetaVal}>{ta.recommendedWeeks}</Text>
+                          <Text style={styles.timeMetaLbl}>recommended</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </Animated.View>
+              );
+            })()}
           </Section>
 
           <CalendarModal
@@ -691,6 +742,16 @@ const styles = StyleSheet.create({
 
   datePicker: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13 },
   datePickerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
+
+  timeCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+  timeCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  timeCardTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", lineHeight: 18 },
+  timeCardDetail: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  timeCardMeta: { flexDirection: "row", alignItems: "center", paddingTop: 6, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", marginTop: 2 },
+  timeMetaItem: { flex: 1, alignItems: "center", gap: 2 },
+  timeMetaVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white },
+  timeMetaLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
+  timeMetaDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)" },
 
   autofillBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: T.green + "30" },
   autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },

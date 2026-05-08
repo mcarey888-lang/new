@@ -20,6 +20,7 @@ import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
+import { assessTime } from "@/utils/timeValidator";
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
@@ -77,6 +78,12 @@ export default function DashboardScreen() {
   const statusLabel = STATUS_LABEL(readinessScore);
   const days = getDaysRemaining(summitGoal.summitDate);
   const currentWeek = getCurrentWeek(trainingPlan);
+  const timeAssessment = assessTime(
+    summitGoal.summitDate,
+    summitGoal.difficulty,
+    summitGoal.fitnessLevel,
+    summitGoal.trainingDaysPerWeek
+  );
   const sessionsPerWeek = summitGoal?.trainingDaysPerWeek ?? 4;
   const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek) : 0;
   const maxElev = sessions.filter(s => s.completed).reduce((m, s) => Math.max(m, s.elevationGain), 0);
@@ -110,14 +117,26 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Low time warning */}
-        {days > 0 && days < 28 && (
+        {/* Time readiness warning */}
+        {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
           <Animated.View entering={FadeInDown.delay(60).duration(500)}>
-            <View style={styles.warningBanner}>
-              <Feather name="alert-triangle" size={14} color={T.orange} />
-              <Text style={styles.warningText}>
-                Limited prep time – prioritise key sessions
-              </Text>
+            <View style={[
+              styles.warningBanner,
+              timeAssessment.status === "tight"
+                ? { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }
+                : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
+            ]}>
+              <Feather
+                name={timeAssessment.status === "tight" ? "clock" : "alert-triangle"}
+                size={14}
+                color={timeAssessment.status === "tight" ? T.orange : T.red}
+              />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.warningText, { color: timeAssessment.status === "tight" ? T.orange : T.red }]}>
+                  {timeAssessment.message}
+                </Text>
+                <Text style={styles.warningDetail}>{timeAssessment.detail}</Text>
+              </View>
             </View>
           </Animated.View>
         )}
@@ -307,7 +326,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 12,
   },
-  warningText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.orange },
+  warningText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  warningDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
   readinessCard: {
     borderRadius: 22,
     borderWidth: 1,
