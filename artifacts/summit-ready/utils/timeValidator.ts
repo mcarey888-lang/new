@@ -8,9 +8,9 @@ export type FitnessLevel = "Beginner" | "Average" | "Strong";
 // Alpine = high-altitude routes with objective hazards (Matterhorn, Mont Blanc etc.)
 const MIN_WEEKS_BASE: Record<Difficulty, Record<FitnessLevel, number>> = {
   Easy:     { Beginner:  2, Average:  0, Strong:  0 },
-  Moderate: { Beginner:  6, Average:  3, Strong:  1 },
-  Hard:     { Beginner: 16, Average: 10, Strong:  7 },
-  Alpine:   { Beginner: 36, Average: 22, Strong: 14 },
+  Moderate: { Beginner:  4, Average:  1, Strong:  0 },
+  Hard:     { Beginner: 12, Average:  5, Strong:  2 },
+  Alpine:   { Beginner: 30, Average: 18, Strong: 10 },
 };
 
 // "Comfortable" weeks — 1.4× min, gives buffer for missed sessions

@@ -229,6 +229,58 @@ export default function SetupScreen() {
           </View>
 
           {/* Mountain name + auto-lookup */}
+          {/* Fitness Assessment — 2-question quiz */}
+          <Section label="Your Fitness" icon="zap">
+            <Text style={styles.sectionDesc}>
+              Two quick questions — be honest, this shapes your entire plan.
+            </Text>
+
+            <Text style={styles.fLabel}>How far can you walk comfortably without stopping?</Text>
+            <View style={styles.quizRow}>
+              {WALK_DIST_OPTIONS.map(opt => (
+                <TouchableOpacity key={opt.value} onPress={() => setWalkDist(opt.value)} activeOpacity={0.7}
+                  style={[styles.quizChip, walkDist === opt.value && styles.quizChipActive]}
+                >
+                  {walkDist === opt.value && (
+                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  )}
+                  <Text style={[styles.quizChipText, walkDist === opt.value && { color: T.orange }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.fLabel, { marginTop: 14 }]}>How often do you exercise?</Text>
+            <View style={styles.quizRow}>
+              {EXERCISE_FREQ_OPTIONS.map(opt => (
+                <TouchableOpacity key={opt.value} onPress={() => setFreq(opt.value)} activeOpacity={0.7}
+                  style={[styles.quizChip, freq === opt.value && styles.quizChipActive]}
+                >
+                  {freq === opt.value && (
+                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  )}
+                  <Text style={[styles.quizChipText, freq === opt.value && { color: T.orange }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Derived result pill */}
+            <View style={styles.fitnessResult}>
+              <View style={[styles.fitnessResultPill, { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }]}>
+                <Feather name="zap" size={13} color={T.orange} />
+                <Text style={styles.fitnessResultText}>Assessed as: <Text style={{ color: T.orange, fontFamily: "Inter_700Bold" }}>{fitnessLevelLabel(fit)}</Text></Text>
+              </View>
+              <Text style={styles.fitnessResultHint}>
+                {fit === "Beginner" && "A structured plan will build you up safely."}
+                {fit === "Average"  && "You have a solid foundation to build from."}
+                {fit === "Strong"   && "You can handle higher intensity sessions right away."}
+              </Text>
+            </View>
+          </Section>
+
           <Section label="Mountain / Hike" icon="map-pin">
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Mountain or Hike Name</Text>
@@ -425,58 +477,6 @@ export default function SetupScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </View>
-          </Section>
-
-          {/* Fitness Assessment — 2-question quiz */}
-          <Section label="Your Fitness" icon="zap">
-            <Text style={styles.sectionDesc}>
-              Two quick questions — be honest, this shapes your entire plan.
-            </Text>
-
-            <Text style={styles.fLabel}>How far can you walk comfortably without stopping?</Text>
-            <View style={styles.quizRow}>
-              {WALK_DIST_OPTIONS.map(opt => (
-                <TouchableOpacity key={opt.value} onPress={() => setWalkDist(opt.value)} activeOpacity={0.7}
-                  style={[styles.quizChip, walkDist === opt.value && styles.quizChipActive]}
-                >
-                  {walkDist === opt.value && (
-                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  )}
-                  <Text style={[styles.quizChipText, walkDist === opt.value && { color: T.orange }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.fLabel, { marginTop: 14 }]}>How often do you exercise?</Text>
-            <View style={styles.quizRow}>
-              {EXERCISE_FREQ_OPTIONS.map(opt => (
-                <TouchableOpacity key={opt.value} onPress={() => setFreq(opt.value)} activeOpacity={0.7}
-                  style={[styles.quizChip, freq === opt.value && styles.quizChipActive]}
-                >
-                  {freq === opt.value && (
-                    <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  )}
-                  <Text style={[styles.quizChipText, freq === opt.value && { color: T.orange }]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Derived result pill */}
-            <View style={styles.fitnessResult}>
-              <View style={[styles.fitnessResultPill, { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }]}>
-                <Feather name="zap" size={13} color={T.orange} />
-                <Text style={styles.fitnessResultText}>Assessed as: <Text style={{ color: T.orange, fontFamily: "Inter_700Bold" }}>{fitnessLevelLabel(fit)}</Text></Text>
-              </View>
-              <Text style={styles.fitnessResultHint}>
-                {fit === "Beginner" && "A structured plan will build you up safely."}
-                {fit === "Average"  && "You have a solid foundation to build from."}
-                {fit === "Strong"   && "You can handle higher intensity sessions right away."}
-              </Text>
             </View>
           </Section>
 
