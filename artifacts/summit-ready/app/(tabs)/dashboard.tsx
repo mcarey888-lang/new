@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  ImageBackground,
   Platform,
   ScrollView,
   StyleSheet,
@@ -39,6 +40,197 @@ interface CoachAssessment {
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
+
+// ── Mountain Hero ─────────────────────────────────────────────────────────────
+function MountainHero({
+  mountainName,
+  summitDate,
+  topInset,
+  onEdit,
+}: {
+  mountainName: string;
+  summitDate: string;
+  topInset: number;
+  onEdit: () => void;
+}) {
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setImageUri(null);
+    setLoading(true);
+
+    async function fetchWikiImage() {
+      try {
+        // Build search candidates: full name, then each individual word (longest first)
+        const words = mountainName.split(/\s+/).filter(w => w.length > 3);
+        const candidates = [mountainName, ...words].slice(0, 4);
+
+        for (const candidate of candidates) {
+          // Step 1: opensearch to find the best matching article title
+          const searchRes = await fetch(
+            `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(candidate)}&limit=3&format=json&origin=*`
+          );
+          const searchData = await searchRes.json();
+          const titles: string[] = searchData[1] ?? [];
+          if (cancelled || titles.length === 0) continue;
+
+          // Step 2: try each result until we get one with an image
+          for (const t of titles) {
+            const summaryRes = await fetch(
+              `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`,
+              { headers: { Accept: "application/json" } }
+            );
+            const data = await summaryRes.json();
+            const url: string | undefined =
+              data.originalimage?.source ?? data.thumbnail?.source;
+            if (url) {
+              if (!cancelled) { setImageUri(url); setLoading(false); }
+              return;
+            }
+          }
+        }
+      } catch {
+        /* fall through to gradient fallback */
+      }
+      if (!cancelled) setLoading(false);
+    }
+    fetchWikiImage();
+    return () => { cancelled = true; };
+  }, [mountainName]);
+
+  const dateStr = summitDate
+    ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric",
+      })
+    : "";
+
+  return (
+    <View style={heroStyles.container}>
+      {loading ? (
+        /* Shimmer while fetching */
+        <LinearGradient
+          colors={["#0F2218", "#0A0C10"]}
+          style={heroStyles.image}
+        >
+          <HeroContent
+            mountainName={mountainName}
+            dateStr={dateStr}
+            topInset={topInset}
+            onEdit={onEdit}
+          />
+        </LinearGradient>
+      ) : imageUri ? (
+        <ImageBackground
+          source={{ uri: imageUri }}
+          style={heroStyles.image}
+          resizeMode="cover"
+          onError={() => { setImageUri(null); }}
+        >
+          {/* top vignette */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.6)", "transparent"]}
+            style={[StyleSheet.absoluteFill, { height: "55%" }]}
+          />
+          {/* bottom fade into app bg */}
+          <LinearGradient
+            colors={["transparent", "rgba(8,10,14,0.88)", T.bg]}
+            style={[StyleSheet.absoluteFill, { top: "35%" }]}
+          />
+          <HeroContent
+            mountainName={mountainName}
+            dateStr={dateStr}
+            topInset={topInset}
+            onEdit={onEdit}
+          />
+        </ImageBackground>
+      ) : (
+        /* Gradient fallback — no image found */
+        <LinearGradient
+          colors={["#1C3A2A", "#0F1E14", T.bg]}
+          style={heroStyles.image}
+        >
+          <View style={heroStyles.fallbackEmoji}>
+            <Text style={{ fontSize: 58 }}>🏔️</Text>
+          </View>
+          <HeroContent
+            mountainName={mountainName}
+            dateStr={dateStr}
+            topInset={topInset}
+            onEdit={onEdit}
+          />
+        </LinearGradient>
+      )}
+    </View>
+  );
+}
+
+function HeroContent({
+  mountainName, dateStr, topInset, onEdit,
+}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void }) {
+  return (
+    <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
+      {/* edit button — top right */}
+      <View style={heroStyles.topRow}>
+        <View />
+        <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
+          <Feather name="edit-2" size={14} color={T.green} />
+        </TouchableOpacity>
+      </View>
+      {/* name + date — bottom of hero */}
+      <View style={heroStyles.bottomText}>
+        <Text style={heroStyles.trainingFor}>Training for</Text>
+        <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
+        {dateStr ? <Text style={heroStyles.summitDate}>🗓 {dateStr}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+const heroStyles = StyleSheet.create({
+  container: { marginHorizontal: -18 },
+  image: { width: "100%", height: 270 },
+  fallbackEmoji: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 40,
+  },
+  overlay: {
+    flex: 1,
+    paddingHorizontal: 18,
+    justifyContent: "space-between",
+    paddingBottom: 20,
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  editBtn: {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1, borderColor: T.green + "50",
+    alignItems: "center", justifyContent: "center",
+  },
+  bottomText: { gap: 4 },
+  trainingFor: {
+    fontSize: 12, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.65)", letterSpacing: 0.5,
+    textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  mountainName: {
+    fontSize: 28, fontFamily: "Inter_700Bold", color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+    lineHeight: 34,
+  },
+  summitDate: {
+    fontSize: 13, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.75)",
+    textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+});
 
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
 function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
@@ -212,22 +404,19 @@ export default function DashboardScreen() {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
+            paddingTop: 0,
             paddingBottom: Platform.OS === "web" ? 110 : insets.bottom + 110,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.delay(0).duration(500)} style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerLabel}>Training for</Text>
-            <Text style={styles.headerMountain} numberOfLines={1}>{summitGoal.mountainName}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push("/setup")} style={styles.editBtn}>
-            <Feather name="edit-2" size={15} color={T.green} />
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Mountain Hero */}
+        <MountainHero
+          mountainName={summitGoal.mountainName}
+          summitDate={summitGoal.summitDate}
+          topInset={Platform.OS === "web" ? 20 : insets.top}
+          onEdit={() => router.push("/setup")}
+        />
 
         {/* Time readiness warning */}
         {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
