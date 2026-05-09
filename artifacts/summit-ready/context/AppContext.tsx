@@ -386,15 +386,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (completedPlanSessions[key] && !submittedPlanSessions[key]) {
         const d = new Date(weekStart);
         d.setDate(d.getDate() + i * 2);
+
+        // For hill/bigDay sessions use logged reps × elevation per rep if available,
+        // otherwise fall back to the plan's target elevation.
+        let elevationGain = s.targetElevation;
+        const loggedReps = sessionReps[key];
+        if (loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")) {
+          const hill = assignedHills[key] ?? week.hills[0] ?? null;
+          const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
+          elevationGain = loggedReps * elevPerRep;
+        }
+
         toSubmit.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 6) + i,
           type: s.type,
           date: d.toISOString().split("T")[0],
           distance: s.type === "cardio" ? 5 : s.type === "hill" ? 6 : 10,
-          elevationGain: s.targetElevation,
+          elevationGain,
           duration: parseDuration(s.duration),
           effort: 3,
-          notes: `Submitted from plan: ${s.label}`,
+          notes: loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")
+            ? `Submitted from plan: ${s.label} (${loggedReps} rep${loggedReps !== 1 ? "s" : ""} logged)`
+            : `Submitted from plan: ${s.label}`,
           completed: true,
           weekNumber: weekNum,
         });
