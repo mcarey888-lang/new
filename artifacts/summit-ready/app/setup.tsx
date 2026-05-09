@@ -103,6 +103,11 @@ export default function SetupScreen() {
   const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
   const [preferredHills, setPreferredHills] = useState<NearbyHill[]>([]);
 
+  // Specific hill search
+  const [specificSearch, setSpecificSearch] = useState("");
+  const [specificSearching, setSpecificSearching] = useState(false);
+  const [specificSearchErr, setSpecificSearchErr] = useState<string | null>(null);
+
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
     if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
@@ -183,6 +188,40 @@ export default function SetupScreen() {
     if (!loc.trim()) e.loc = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
+  }
+
+  async function searchSpecificHill() {
+    const query = specificSearch.trim();
+    if (query.length < 2) return;
+    setSpecificSearching(true);
+    setSpecificSearchErr(null);
+    try {
+      const res = await fetch(`${API_BASE}/hills-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hillName: query, location: loc.trim() }),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json() as { hill: NearbyHill };
+      const hill = data.hill;
+      // Add to setupHills if not already present
+      setSetupHills(prev => {
+        const exists = prev.some(h => h.name.toLowerCase() === hill.name.toLowerCase());
+        return exists ? prev : [hill, ...prev];
+      });
+      // Auto-select it
+      setPreferredHills(prev => {
+        const exists = prev.some(h => h.name.toLowerCase() === hill.name.toLowerCase());
+        return exists ? prev : [...prev, hill];
+      });
+      // Move to results state so the list appears
+      setHillSearchState("results");
+      setSpecificSearch("");
+    } catch {
+      setSpecificSearchErr("Couldn't find that hill — try a different name.");
+    } finally {
+      setSpecificSearching(false);
+    }
   }
 
   async function fetchSetupHills() {
@@ -653,6 +692,39 @@ export default function SetupScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Specific hill search */}
+            <View style={hillStyles.specificSearchCard}>
+              <View style={hillStyles.specificSearchHeader}>
+                <Feather name="search" size={13} color={T.purple} />
+                <Text style={hillStyles.specificSearchTitle}>Search a specific hill</Text>
+              </View>
+              <View style={hillStyles.specificSearchRow}>
+                <TextInput
+                  style={hillStyles.specificSearchInput}
+                  value={specificSearch}
+                  onChangeText={v => { setSpecificSearch(v); setSpecificSearchErr(null); }}
+                  placeholder="e.g. Pendle Hill, Kinder Scout…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={searchSpecificHill}
+                />
+                <TouchableOpacity
+                  onPress={searchSpecificHill}
+                  disabled={specificSearching || specificSearch.trim().length < 2}
+                  activeOpacity={0.8}
+                  style={[hillStyles.specificSearchBtn, (specificSearching || specificSearch.trim().length < 2) && { opacity: 0.45 }]}
+                >
+                  {specificSearching
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Feather name="search" size={15} color="#fff" />
+                  }
+                </TouchableOpacity>
+              </View>
+              {specificSearchErr && (
+                <Text style={hillStyles.specificSearchErr}>{specificSearchErr}</Text>
+              )}
+            </View>
+
             {/* Hill picker results */}
             {hillSearchState === "error" && (
               <Animated.View entering={FadeInDown.duration(300)} style={hillStyles.errorBanner}>
@@ -920,6 +992,28 @@ const hillStyles = StyleSheet.create({
   skipHint: {
     fontSize: 12, fontFamily: "Inter_400Regular",
     color: T.textDim, textAlign: "center", marginTop: 4,
+  },
+  specificSearchCard: {
+    backgroundColor: T.purpleDim,
+    borderRadius: 12, borderWidth: 1, borderColor: T.purple + "30",
+    padding: 12, gap: 10,
+  },
+  specificSearchHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  specificSearchTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.purple },
+  specificSearchRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  specificSearchInput: {
+    flex: 1, backgroundColor: T.surface, borderRadius: 10,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 13, fontFamily: "Inter_400Regular", color: T.white,
+    height: 42,
+  },
+  specificSearchBtn: {
+    width: 42, height: 42, borderRadius: 10,
+    backgroundColor: T.purple, alignItems: "center", justifyContent: "center",
+  },
+  specificSearchErr: {
+    fontSize: 11, fontFamily: "Inter_400Regular", color: T.orange, marginTop: -4,
   },
 });
 
