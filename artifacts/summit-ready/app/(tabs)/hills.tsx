@@ -56,7 +56,7 @@ export default function HillsScreen() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading,
-    fetchNearbyHills, hillsInPlan, addHillToPlan, updateGoalLocation,
+    fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation,
   } = useApp();
 
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
@@ -67,6 +67,14 @@ export default function HillsScreen() {
   const [locText, setLocText] = useState(summitGoal?.location ?? "");
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const locInputRef = useRef<TextInput>(null);
+
+  // Hill search state
+  const [searchText, setSearchText] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState<NearbyHill | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchAdded, setSearchAdded] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
   // Sync location text when goal loads
   useEffect(() => {
@@ -135,6 +143,38 @@ export default function HillsScreen() {
     await addHillToPlan(hill);
     setJustAdded(hill.name);
     setTimeout(() => setJustAdded(null), 2000);
+  }
+
+  async function handleHillSearch() {
+    const query = searchText.trim();
+    if (query.length < 2) return;
+    setSearchLoading(true);
+    setSearchResult(null);
+    setSearchError(null);
+    setSearchAdded(false);
+    try {
+      const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+        : "/api";
+      const res = await fetch(`${API_BASE}/hills-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hillName: query, location: summitGoal?.location ?? "" }),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json() as { hill: NearbyHill };
+      setSearchResult(data.hill);
+    } catch {
+      setSearchError("Couldn't find that hill — try a different name or spelling.");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  async function handleAddSearchResult() {
+    if (!searchResult) return;
+    await addToNearbyHills(searchResult);
+    setSearchAdded(true);
   }
 
   return (
@@ -268,6 +308,98 @@ export default function HillsScreen() {
                 ))}
               </View>
             </View>
+          </View>
+        </Animated.View>
+
+        {/* Hill Search */}
+        <Animated.View entering={FadeInDown.delay(90).duration(400)}>
+          <View style={styles.searchCard}>
+            <View style={styles.searchLabelRow}>
+              <Feather name="search" size={13} color={T.purple} />
+              <Text style={styles.searchLabel}>Search for a specific hill</Text>
+            </View>
+            <Text style={styles.searchHint}>Know a hill you want to train on? Search for it by name.</Text>
+            <View style={styles.searchRow}>
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+                placeholder="e.g. Pendle Hill, Ben Nevis…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={handleHillSearch}
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={handleHillSearch}
+                disabled={searchLoading || searchText.trim().length < 2}
+                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                activeOpacity={0.75}
+              >
+                {searchLoading
+                  ? <ActivityIndicator size="small" color={T.white} />
+                  : <Feather name="search" size={16} color={T.white} />}
+              </TouchableOpacity>
+            </View>
+
+            {/* Error */}
+            {searchError && (
+              <View style={styles.searchErrRow}>
+                <Feather name="alert-circle" size={13} color={T.red} />
+                <Text style={styles.searchErrText}>{searchError}</Text>
+              </View>
+            )}
+
+            {/* Result preview */}
+            {searchResult && (
+              <View style={styles.searchResult}>
+                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.searchResultTop}>
+                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
+                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
+                  </View>
+                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
+                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
+                  </View>
+                </View>
+                <View style={styles.searchResultStats}>
+                  <View style={styles.searchStat}>
+                    <Feather name="trending-up" size={11} color={T.orange} />
+                    <Text style={styles.searchStatVal}>{searchResult.elevation}m</Text>
+                    <Text style={styles.searchStatLbl}>per rep</Text>
+                  </View>
+                  <View style={styles.searchStat}>
+                    <Feather name="map-pin" size={11} color={T.green} />
+                    <Text style={styles.searchStatVal}>{searchResult.distance}km</Text>
+                    <Text style={styles.searchStatLbl}>away</Text>
+                  </View>
+                  <View style={styles.searchStat}>
+                    <Feather name="repeat" size={11} color={T.textMuted} />
+                    <Text style={styles.searchStatVal}>{searchResult.repeats}×</Text>
+                    <Text style={styles.searchStatLbl}>recs</Text>
+                  </View>
+                  <View style={styles.searchStat}>
+                    <Feather name="bar-chart-2" size={11} color={T.purple} />
+                    <Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text>
+                    <Text style={styles.searchStatLbl}>total</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddSearchResult}
+                  disabled={searchAdded}
+                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.75}
+                >
+                  <Feather name={searchAdded ? "check-circle" : "plus-circle"} size={14} color={searchAdded ? T.green : T.purple} />
+                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
+                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </Animated.View>
 
@@ -649,4 +781,71 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   impactText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.green, flex: 1 },
+
+  searchCard: {
+    backgroundColor: T.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: T.purple + "35",
+    overflow: "hidden",
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  searchLabelRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  searchLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  searchHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17, marginTop: -4 },
+  searchRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.white,
+    backgroundColor: T.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.purple + "40",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchBtn: {
+    width: 42, height: 42,
+    borderRadius: 12,
+    backgroundColor: T.purple,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  searchErrText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, flex: 1 },
+  searchResult: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.purple + "40",
+    overflow: "hidden",
+    padding: 12,
+    gap: 10,
+  },
+  searchResultTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  searchResultEmoji: { fontSize: 24 },
+  searchResultName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  searchResultSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  searchGradeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
+  searchGradeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  searchResultStats: { flexDirection: "row", gap: 12 },
+  searchStat: { flexDirection: "row", alignItems: "center", gap: 4 },
+  searchStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  searchStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  searchAddBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.purple + "50",
+    backgroundColor: T.purpleDim,
+  },
+  searchAddText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
 });

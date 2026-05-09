@@ -92,6 +92,7 @@ interface AppState {
   submitWeekSessions: (weekNum: number) => Promise<number>;
   hillsInPlan: string[];
   addHillToPlan: (hill: NearbyHill) => Promise<void>;
+  addToNearbyHills: (hill: NearbyHill) => Promise<void>;
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
 }
@@ -122,6 +123,7 @@ const AppContext = createContext<AppState>({
   submitWeekSessions: async () => 0,
   hillsInPlan: [],
   addHillToPlan: async () => {},
+  addToNearbyHills: async () => {},
   updateGoalLocation: async () => {},
   setSessionReps: async () => {},
 });
@@ -472,6 +474,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(HILLS_IN_PLAN_KEY, JSON.stringify(updatedInPlan));
   }, [summitGoal, trainingPlan, sessions, hillsInPlan, sessionReps, assignedHills]);
 
+  const addToNearbyHills = useCallback(async (hill: NearbyHill) => {
+    // Avoid duplicates by name
+    const already = nearbyHills.some(h => h.name.toLowerCase() === hill.name.toLowerCase());
+    const updated = already ? nearbyHills : [hill, ...nearbyHills];
+    setNearbyHills(updated);
+    await AsyncStorage.setItem(HILLS_KEY, JSON.stringify(updated));
+  }, [nearbyHills]);
+
   const updateGoalLocation = useCallback(async (location: string) => {
     if (!summitGoal) return;
     const updated = { ...summitGoal, location };
@@ -558,7 +568,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, updateGoalLocation, setSessionReps,
+      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps,
     }}>
       {children}
     </AppContext.Provider>
