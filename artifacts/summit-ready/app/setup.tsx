@@ -98,6 +98,7 @@ export default function SetupScreen() {
   const [lookupError, setLookupError] = useState("");
   const [timeAssessment, setTimeAssessment] = useState<TimeAssessment | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipLookupRef = useRef(false);
 
   const [hillSearchState, setHillSearchState] = useState<"idle" | "loading" | "results" | "error">("idle");
   const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
@@ -124,6 +125,10 @@ export default function SetupScreen() {
   }, [date, diff, fit, trainingDays]);
 
   useEffect(() => {
+    if (skipLookupRef.current) {
+      skipLookupRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (name.trim().length < 3) {
       if (lookupState !== "idle") { setLookupState("idle"); setMountainResult(null); setSelectedRoute(null); }
@@ -155,7 +160,10 @@ export default function SetupScreen() {
     setElev(String(route.elevationGain));
     setAlt(String(route.highestAltitude));
     setDiff(route.difficulty);
-    if (mountainResult?.mountainName) setName(mountainResult.mountainName);
+    if (mountainResult?.mountainName) {
+      skipLookupRef.current = true;
+      setName(mountainResult.mountainName);
+    }
   }
 
   function toggleEquipment(value: Equipment) {
