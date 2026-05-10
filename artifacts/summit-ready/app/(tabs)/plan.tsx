@@ -541,6 +541,7 @@ export default function PlanScreen() {
     nearbyHills,
     submittedPlanSessions,
     sessionReps,
+    sessionEfforts,
     togglePlanSession,
     assignHillToSession,
     adjustPlanWithAI,
@@ -548,6 +549,7 @@ export default function PlanScreen() {
     planAdjustNote,
     submitWeekSessions,
     setSessionReps,
+    setSessionEffort,
     updatePlanSession,
   } = useApp();
 
@@ -562,10 +564,11 @@ export default function PlanScreen() {
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
 
-  // Edit session modal state (duration only)
+  // Edit session modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
   const [editDuration, setEditDuration] = useState("");
+  const [editEffort, setEditEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
 
   // Swap exercise modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -596,16 +599,20 @@ export default function PlanScreen() {
     const week = trainingPlan.find(w => w.weekNumber === weekNum);
     const session = week?.sessions[sessionIdx];
     if (!session) return;
+    const key = `${weekNum}-${sessionIdx}`;
     setEditTarget({ weekNum, sessionIdx });
     setEditDuration(session.duration);
+    setEditEffort((sessionEfforts[key] ?? 3) as 1 | 2 | 3 | 4 | 5);
     setEditModalOpen(true);
   }
 
   async function handleSaveEdit() {
     if (!editTarget) return;
+    const key = `${editTarget.weekNum}-${editTarget.sessionIdx}`;
     await updatePlanSession(editTarget.weekNum, editTarget.sessionIdx, {
       duration: editDuration.trim() || editDuration,
     });
+    await setSessionEffort(key, editEffort);
     setEditModalOpen(false);
     setEditTarget(null);
   }
@@ -749,14 +756,14 @@ export default function PlanScreen() {
         onClose={() => { setHillPickerOpen(false); setActiveSession(null); }}
       />
 
-      {/* Edit Duration Modal */}
+      {/* Edit Session Modal */}
       <Modal visible={editModalOpen} transparent animationType="fade" onRequestClose={() => setEditModalOpen(false)}>
         <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setEditModalOpen(false)} />
         <View style={editStyles.sheet}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
-            <Feather name="clock" size={16} color={T.blue} />
-            <Text style={editStyles.title}>Edit Duration</Text>
+            <Feather name="edit-2" size={16} color={T.blue} />
+            <Text style={editStyles.title}>Edit Session</Text>
           </View>
 
           <Text style={editStyles.fieldLabel}>Duration</Text>
@@ -768,6 +775,21 @@ export default function PlanScreen() {
             placeholder="e.g. 45 min"
             autoCorrect={false}
           />
+
+          <Text style={editStyles.fieldLabel}>How hard was it?</Text>
+          <View style={editStyles.effortRow}>
+            {([1, 2, 3, 4, 5] as const).map(n => (
+              <TouchableOpacity
+                key={n}
+                onPress={() => setEditEffort(n)}
+                style={[editStyles.effortPip, { backgroundColor: n <= editEffort ? T.orange : T.surface, borderColor: n <= editEffort ? T.orange : T.border }]}
+                activeOpacity={0.7}
+              />
+            ))}
+            <Text style={editStyles.effortLabel}>
+              {["", "Easy", "Light", "Moderate", "Hard", "Max"][editEffort]}
+            </Text>
+          </View>
 
           <View style={editStyles.btnRow}>
             <TouchableOpacity
@@ -864,6 +886,15 @@ const editStyles = StyleSheet.create({
     fontSize: 14, fontFamily: "Inter_400Regular", color: T.white,
   },
   inputMulti: { minHeight: 72, paddingTop: 11 },
+  effortRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4,
+  },
+  effortPip: {
+    width: 30, height: 30, borderRadius: 8, borderWidth: 1.5,
+  },
+  effortLabel: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange, marginLeft: 4,
+  },
   btnRow: {
     flexDirection: "row", gap: 10, marginTop: 8,
   },

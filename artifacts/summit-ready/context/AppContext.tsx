@@ -82,6 +82,7 @@ interface AppState {
   planAdjustNote: string | null;
   submittedPlanSessions: Record<string, boolean>;
   sessionReps: Record<string, number>;
+  sessionEfforts: Record<string, 1 | 2 | 3 | 4 | 5>;
   hasViewedPlan: boolean;
   setSummitGoal: (goal: SummitGoal) => Promise<void>;
   addSession: (session: Omit<Session, "id">) => Promise<void>;
@@ -98,6 +99,7 @@ interface AppState {
   addToNearbyHills: (hill: NearbyHill) => Promise<void>;
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
+  setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
   updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
 }
@@ -116,6 +118,7 @@ const AppContext = createContext<AppState>({
   planAdjustNote: null,
   submittedPlanSessions: {},
   sessionReps: {},
+  sessionEfforts: {},
   hasViewedPlan: false,
   setSummitGoal: async () => {},
   addSession: async () => {},
@@ -132,6 +135,7 @@ const AppContext = createContext<AppState>({
   addToNearbyHills: async () => {},
   updateGoalLocation: async () => {},
   setSessionReps: async () => {},
+  setSessionEffort: async () => {},
   updatePlanSession: async () => {},
   markPlanViewed: async () => {},
 });
@@ -146,6 +150,7 @@ const ADJUST_NOTE_KEY = "summitready_adjust_note";
 const SUBMITTED_KEY = "summitready_submitted_plan_sessions";
 const HILLS_IN_PLAN_KEY = "summitready_hills_in_plan";
 const REPS_KEY = "summitready_session_reps";
+const EFFORTS_KEY = "summitready_session_efforts";
 const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -225,15 +230,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [submittedPlanSessions, setSubmittedPlanSessions] = useState<Record<string, boolean>>({});
   const [hillsInPlan, setHillsInPlan] = useState<string[]>([]);
   const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
+  const [sessionEfforts, setSessionEffortsState] = useState<Record<string, 1 | 2 | 3 | 4 | 5>>({});
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, HAS_VIEWED_PLAN_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, hasViewedPlanStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -257,6 +263,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (noteStr) setPlanAdjustNote(noteStr);
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
+          if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
         }
         // No else — fresh users start from the landing page with no pre-loaded data
@@ -276,6 +283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSubmittedPlanSessions({});
     setHillsInPlan([]);
     setSessionRepsState({});
+    setSessionEffortsState({});
     setPlanAdjustNote(null);
     // Reset plan-viewed flag so user sees their new plan before upgrade prompts
     setHasViewedPlan(false);
@@ -328,11 +336,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSubmittedPlanSessions({});
     setHillsInPlan([]);
     setSessionRepsState({});
+    setSessionEffortsState({});
     setPlanAdjustNote(null);
     setReadinessScore(0);
     setHasViewedPlan(false);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, HAS_VIEWED_PLAN_KEY,
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY,
     ]);
   }, []);
 
@@ -412,6 +421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           elevationGain = loggedReps * elevPerRep;
         }
 
+        const storedEffort = sessionEfforts[key];
         toSubmit.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 6) + i,
           type: s.type,
@@ -419,7 +429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           distance: s.type === "cardio" ? 5 : s.type === "hill" ? 6 : 10,
           elevationGain,
           duration: parseDuration(s.duration),
-          effort: 3,
+          effort: (storedEffort ?? 3) as 1 | 2 | 3 | 4 | 5,
           notes: loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")
             ? `Submitted from plan: ${s.label} (${loggedReps} rep${loggedReps !== 1 ? "s" : ""} logged)`
             : `Submitted from plan: ${s.label}`,
@@ -507,6 +517,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSessionRepsState(updated);
     await AsyncStorage.setItem(REPS_KEY, JSON.stringify(updated));
   }, [sessionReps]);
+
+  const setSessionEffort = useCallback(async (key: string, effort: 1 | 2 | 3 | 4 | 5) => {
+    const updated = { ...sessionEfforts, [key]: effort };
+    setSessionEffortsState(updated);
+    await AsyncStorage.setItem(EFFORTS_KEY, JSON.stringify(updated));
+  }, [sessionEfforts]);
 
   const updatePlanSession = useCallback(async (
     weekNum: number,
@@ -598,7 +614,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasViewedPlan, markPlanViewed,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, updatePlanSession,
+      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
     }}>
       {children}
     </AppContext.Provider>

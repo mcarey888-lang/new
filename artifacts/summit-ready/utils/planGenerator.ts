@@ -42,15 +42,15 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     const opts = [
       {
         label: "Incline Treadmill",
-        description: `Set treadmill to 8–12% incline. Walk or run at a sustainable pace for the full session. Focus on steady breathing and keeping your heart rate in zone 2–3.`,
+        description: `Set the treadmill to 8–12% incline and walk or jog at a pace where you can hold a conversation. Keep your heart rate in zone 2–3 for the full duration. Focus on steady foot strike and upright posture — the same mechanics you'll use on the mountain.`,
       },
       {
-        label: "Step Machine",
-        description: `Step machine or Stairmaster at moderate resistance. Keep a consistent rhythm — don't hold the rails. Builds the exact muscle groups needed for summit day.`,
+        label: "StairMaster / Step Machine",
+        description: `Set the StairMaster or step machine to a moderate resistance and maintain a consistent stepping rhythm for the full session. Do not lean on the handrails — engage your legs and core as you would on a real ascent. This is one of the most specific gym exercises for summit fitness.`,
       },
       {
-        label: "Cardio + Leg Strength",
-        description: `25 min incline treadmill then: weighted squats 3×12, lunges 3×10 each leg, calf raises 3×20. Builds climbing power.`,
+        label: "Incline Treadmill + Leg Strength",
+        description: `25 min on the incline treadmill (10–12%), then move straight to: goblet squats 3×12, reverse lunges 3×10 each leg, single-leg calf raises 3×15. Rest 60s between sets. Builds the leg drive and endurance needed on steep terrain.`,
       },
     ];
     const o = opts[variant % opts.length];
@@ -60,12 +60,12 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   if (hasWeights(goal)) {
     const opts = [
       {
-        label: "Run + Resistance",
-        description: `20–30 min brisk walk or run (uphill wherever possible), then: resistance band squats 3×15, step-ups 3×12, calf raises 3×20. Targets summit-specific muscles.`,
+        label: "Uphill Walk / Run + Resistance",
+        description: `20–30 min brisk walk or jog on any incline you can find — a hill, road with gradient, or stairs. Then: resistance band squats 3×15, weighted step-ups onto a chair or box 3×12 each leg, calf raises 3×20. These movements directly target the muscles that take the most strain on summit day.`,
       },
       {
         label: "Uphill Walk + Core",
-        description: `Find any incline — hill, ramp, or stairs — and walk briskly for the session. Follow with plank 3×45s and glute bridges 3×15.`,
+        description: `Walk briskly for the full session on any incline — a hill, ramp, or stairs. Aim to keep your breathing elevated throughout. Finish with: plank hold 3×45s, glute bridges 3×15, and side-lying leg raises 3×12 each. A strong core stabilises every step on uneven terrain.`,
       },
     ];
     const o = opts[variant % opts.length];
@@ -81,15 +81,15 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   const opts = [
     {
       label: "Stair Repeats",
-      description: `Find a staircase of at least ${floorsPerRep} floors (≈${metresPerRep}m per climb) — a car park, block of flats, or office building works perfectly. Walk up, walk down, repeat ${stairReps}× for ${totalElev}m total elevation. Each floor is roughly 3m, so ${floorsPerRep} floors = ${metresPerRep}m per climb. This directly mimics the sustained uphill effort of summit day.`,
+      description: `Find a staircase with at least ${floorsPerRep} floors — a car park, block of flats, or office building works well. Walk up at a controlled pace, descend for recovery, and repeat ${stairReps} times to accumulate ${totalElev}m of elevation gain. Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
     },
     {
       label: "Uphill Walk / Run",
-      description: `Walk or run any route with as much uphill as possible. Aim for ${elevTarget}m accumulated elevation gain. Seek out roads, parks, or paths that gain height.`,
+      description: `Walk or jog any route that gains height — roads with gradient, park paths, or embankments all count. Aim to accumulate ${elevTarget}m of uphill over the session. Time on incline matters more than pace; stay aerobic and breathe steadily throughout.`,
     },
     {
-      label: "Brisk Walk — Long",
-      description: `Extended brisk walk at a pace where you can talk but feel the effort. Include as many slopes or hills as possible. Focus on time on feet and staying aerobic.`,
+      label: "Sustained Brisk Walk",
+      description: `A longer steady walk at a pace where you're breathing noticeably but can still speak in short sentences. Include as much uphill as you can find. Focus on keeping a consistent pace for the full duration — building time on feet is key at this stage of training.`,
     },
   ];
   const o = opts[variant % opts.length];
