@@ -530,10 +530,12 @@ export default function DashboardScreen() {
                 <View style={styles.difficultyRow}>
                   <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
                     <Feather name="flag" size={11} color={T.textMuted} />
+                    <Text style={styles.diffLabel}>Route: </Text>
                     <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
                   </View>
                   <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
                     <Feather name="zap" size={11} color={T.textMuted} />
+                    <Text style={styles.diffLabel}>Fitness: </Text>
                     <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
                   </View>
                 </View>
@@ -831,7 +833,8 @@ const styles = StyleSheet.create({
   daysText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   difficultyRow: { flexDirection: "row", gap: 6, marginTop: 2 },
   diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  diffText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted },
+  diffLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  diffText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
   statCard: {
     backgroundColor: T.card,
