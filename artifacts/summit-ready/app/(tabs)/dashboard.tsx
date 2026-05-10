@@ -224,6 +224,7 @@ const heroStyles = StyleSheet.create({
   topRow: {
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: 16,
   },
   logoSmall: { width: 186, height: 74 },
   headerButtons: {
