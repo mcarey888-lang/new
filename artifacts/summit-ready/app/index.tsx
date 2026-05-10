@@ -92,7 +92,7 @@ export default function LandingScreen() {
             </LinearGradient>
           </TouchableOpacity>
           <Text style={styles.demoNote}>
-            Demo plan loaded · No account needed
+            Free to start · No account needed
           </Text>
         </Animated.View>
       </View>

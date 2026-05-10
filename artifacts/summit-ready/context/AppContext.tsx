@@ -256,16 +256,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
-        } else {
-          const plan = generatePlan(DEMO_GOAL);
-          setSummitGoalState(DEMO_GOAL);
-          setTrainingPlan(plan);
-          setSessions(DEMO_SESSIONS);
-          setReadinessScore(calculateReadiness(DEMO_GOAL, plan, DEMO_SESSIONS));
-          await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(DEMO_GOAL));
-          await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(DEMO_SESSIONS));
-          await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan));
         }
+        // No else — fresh users start from the landing page with no pre-loaded data
       } catch {}
       setIsLoading(false);
     })();
