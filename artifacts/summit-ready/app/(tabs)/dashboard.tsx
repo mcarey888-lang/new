@@ -171,9 +171,9 @@ function HeroContent({
 }: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void }) {
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
-      {/* edit button — top right */}
+      {/* logo left, edit button right */}
       <View style={heroStyles.topRow}>
-        <View />
+        <Image source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} resizeMode="contain" />
         <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
           <Feather name="edit-2" size={14} color={T.green} />
         </TouchableOpacity>
@@ -208,6 +208,7 @@ const heroStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  logoSmall: { width: 110, height: 44 },
   editBtn: {
     width: 36, height: 36, borderRadius: 11,
     backgroundColor: "rgba(0,0,0,0.45)",

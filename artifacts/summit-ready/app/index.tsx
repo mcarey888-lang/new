@@ -47,15 +47,11 @@ export default function LandingScreen() {
       >
         {/* Hero */}
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.hero}>
-          <View style={styles.logoWrap}>
-            <Image
-              source={require("@/assets/images/icon.png")}
-              style={styles.logo}
-              resizeMode="cover"
-            />
-            <View style={styles.logoGlow} />
-          </View>
-          <Text style={styles.appName}>SummitReady</Text>
+          <Image
+            source={require("@/assets/images/logo.gif")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.tagline}>
             Train for any mountain{"\n"}using hills near you
           </Text>
@@ -125,32 +121,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  logoWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    overflow: "hidden",
-    shadowColor: T.green,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 16,
-  },
-  logo: { width: 88, height: 88 },
-  logoGlow: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: T.green + "40",
-  },
-  appName: {
-    fontSize: 38,
-    fontFamily: "Inter_700Bold",
-    color: T.white,
-    letterSpacing: -0.8,
-    marginTop: 4,
-  },
+  logo: { width: 260, height: 104 },
   tagline: {
     fontSize: 17,
     fontFamily: "Inter_400Regular",
