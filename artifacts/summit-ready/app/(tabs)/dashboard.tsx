@@ -49,12 +49,14 @@ function MountainHero({
   topInset,
   onEdit,
   isSubscribed,
+  hasViewedPlan,
 }: {
   mountainName: string;
   summitDate: string;
   topInset: number;
   onEdit: () => void;
   isSubscribed: boolean;
+  hasViewedPlan: boolean;
 }) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,7 @@ function MountainHero({
             topInset={topInset}
             onEdit={onEdit}
             isSubscribed={isSubscribed}
+            hasViewedPlan={hasViewedPlan}
           />
         </LinearGradient>
       ) : imageUri ? (
@@ -148,6 +151,7 @@ function MountainHero({
             topInset={topInset}
             onEdit={onEdit}
             isSubscribed={isSubscribed}
+            hasViewedPlan={hasViewedPlan}
           />
         </ImageBackground>
       ) : (
@@ -165,6 +169,7 @@ function MountainHero({
             topInset={topInset}
             onEdit={onEdit}
             isSubscribed={isSubscribed}
+            hasViewedPlan={hasViewedPlan}
           />
         </LinearGradient>
       )}
@@ -173,17 +178,19 @@ function MountainHero({
 }
 
 function HeroContent({
-  mountainName, dateStr, topInset, onEdit, isSubscribed,
-}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean }) {
+  mountainName, dateStr, topInset, onEdit, isSubscribed, hasViewedPlan,
+}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean }) {
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
       {/* logo left, buttons right */}
       <View style={heroStyles.topRow}>
         <Image source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} resizeMode="contain" />
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
-            <Feather name={isSubscribed ? "zap" : "lock"} size={13} color={isSubscribed ? T.green : T.purple} />
-          </TouchableOpacity>
+          {hasViewedPlan && (
+            <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
+              <Feather name={isSubscribed ? "zap" : "lock"} size={13} color={isSubscribed ? T.green : T.purple} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
             <Feather name="edit-2" size={14} color={T.green} />
           </TouchableOpacity>
@@ -305,7 +312,7 @@ function StatCard({
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -313,6 +320,14 @@ export default function DashboardScreen() {
   const hasFetched = useRef(false);
 
   const abortRef = useRef<AbortController | null>(null);
+
+  // Mark the plan as viewed after the user has had 5 seconds to see their
+  // readiness score and plan — upgrade prompts only appear after this.
+  useEffect(() => {
+    if (!summitGoal || hasViewedPlan) return;
+    const timer = setTimeout(() => { markPlanViewed(); }, 5000);
+    return () => clearTimeout(timer);
+  }, [summitGoal, hasViewedPlan, markPlanViewed]);
 
   const fetchCoach = useCallback(async () => {
     if (!summitGoal) return;
@@ -430,10 +445,11 @@ export default function DashboardScreen() {
           topInset={Platform.OS === "web" ? 20 : insets.top}
           onEdit={() => router.push("/setup")}
           isSubscribed={isSubscribed}
+          hasViewedPlan={hasViewedPlan}
         />
 
-        {/* Upgrade banner — free users only */}
-        {!isSubscribed && (
+        {/* Upgrade banner — shown only after user has seen their plan */}
+        {hasViewedPlan && !isSubscribed && (
           <Animated.View entering={FadeInDown.delay(40).duration(500)}>
             <TouchableOpacity
               onPress={() => router.push("/paywall")}
