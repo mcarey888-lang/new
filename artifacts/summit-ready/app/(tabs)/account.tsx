@@ -1,0 +1,589 @@
+import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import Purchases from "react-native-purchases";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "@/context/AppContext";
+import { useSubscription } from "@/lib/revenuecat";
+import { T } from "@/constants/theme";
+
+const ACCOUNT_EMAIL_KEY = "summitready_account_email";
+
+function maskId(id: string) {
+  if (id.startsWith("$RCAnonymousID:")) return "Guest account";
+  if (id.length > 20) return id.slice(0, 6) + "…" + id.slice(-4);
+  return id;
+}
+
+export default function AccountScreen() {
+  const insets = useSafeAreaInsets();
+  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan } = useApp();
+  const { customerInfo, isSubscribed, restore, isRestoring, refetchCustomerInfo } = useSubscription();
+
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState("");
+  const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ACCOUNT_EMAIL_KEY).then(val => setAccountEmail(val));
+  }, []);
+
+  const userId = customerInfo?.originalAppUserId ?? null;
+  const isGuest = !accountEmail;
+
+  const entitlement = customerInfo?.entitlements.active?.["premium"];
+  const expiresDate = entitlement?.expirationDate
+    ? new Date(entitlement.expirationDate).toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric",
+      })
+    : null;
+  const willRenew = entitlement?.willRenew ?? false;
+
+  const completedCount = Object.values(completedPlanSessions ?? {}).filter(Boolean).length;
+  const totalPlanSessions = trainingPlan.reduce((a, w) => a + w.sessions.length, 0);
+  const currentWeek = trainingPlan.find(w => w.isCurrentWeek);
+
+  async function handleSignIn() {
+    const email = emailInput.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setSignInError("Please enter a valid email address.");
+      return;
+    }
+    setSigningIn(true);
+    setSignInError("");
+    try {
+      await Purchases.logIn(email);
+      await AsyncStorage.setItem(ACCOUNT_EMAIL_KEY, email);
+      setAccountEmail(email);
+      await refetchCustomerInfo();
+      setSignInOpen(false);
+      setEmailInput("");
+    } catch {
+      setSignInError("Sign in failed. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  async function handleSignOut() {
+    if (Platform.OS === "web") {
+      doSignOut();
+    } else {
+      Alert.alert(
+        "Sign out",
+        "You'll revert to a guest account. Your training data stays on this device.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign out", style: "destructive", onPress: doSignOut },
+        ]
+      );
+    }
+  }
+
+  async function doSignOut() {
+    try {
+      await Purchases.logOut();
+    } catch {}
+    await AsyncStorage.removeItem(ACCOUNT_EMAIL_KEY);
+    setAccountEmail(null);
+    await refetchCustomerInfo();
+  }
+
+  async function handleResetData() {
+    if (Platform.OS === "web") {
+      doResetData();
+    } else {
+      Alert.alert(
+        "Reset all data",
+        "This will permanently delete your summit goal, training plan, and session history. This cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Reset", style: "destructive", onPress: doResetData },
+        ]
+      );
+    }
+  }
+
+  async function doResetData() {
+    try {
+      await Purchases.logOut();
+    } catch {}
+    await AsyncStorage.removeItem(ACCOUNT_EMAIL_KEY);
+    setAccountEmail(null);
+    await clearPlan();
+    router.replace("/");
+  }
+
+  async function handleRestore() {
+    setRestoreMsg(null);
+    try {
+      await restore();
+      setRestoreMsg({ type: "success", text: "Purchases restored successfully." });
+    } catch {
+      setRestoreMsg({ type: "error", text: "No purchases found to restore." });
+    }
+  }
+
+  const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
+  const botPad = Platform.OS === "web" ? 100 : insets.bottom + 100;
+
+  return (
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingTop: topPad, paddingBottom: botPad }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <Animated.View entering={FadeInDown.delay(0).duration(400)} style={styles.header}>
+          <Text style={styles.title}>Account</Text>
+        </Animated.View>
+
+        {/* Profile card */}
+        <Animated.View entering={FadeInDown.delay(40).duration(400)}>
+          <View style={[styles.profileCard, !isGuest && { borderColor: T.green + "40" }]}>
+            <LinearGradient
+              colors={isGuest ? ["transparent", "transparent"] : [T.greenDim, "transparent"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.avatarRow}>
+              <View style={[styles.avatar, { backgroundColor: isGuest ? T.surface : T.greenDim }]}>
+                {isGuest
+                  ? <Feather name="user" size={24} color={T.textMuted} />
+                  : <Text style={styles.avatarInitial}>{accountEmail![0].toUpperCase()}</Text>
+                }
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.displayName}>
+                  {isGuest ? "Guest" : accountEmail}
+                </Text>
+                {userId && (
+                  <Text style={styles.userId}>ID: {maskId(userId)}</Text>
+                )}
+              </View>
+              <View style={[styles.guestBadge, { backgroundColor: isGuest ? T.surface : T.greenDim, borderColor: isGuest ? T.border : T.green + "40" }]}>
+                <View style={[styles.guestDot, { backgroundColor: isGuest ? T.textDim : T.green }]} />
+                <Text style={[styles.guestBadgeText, { color: isGuest ? T.textMuted : T.green }]}>
+                  {isGuest ? "Guest" : "Signed in"}
+                </Text>
+              </View>
+            </View>
+
+            {isGuest ? (
+              <TouchableOpacity
+                style={styles.signInBtn}
+                onPress={() => setSignInOpen(true)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.signInBtnGrad}>
+                  <Feather name="log-in" size={15} color="#fff" />
+                  <Text style={styles.signInBtnText}>Sign in with email</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.signedInNote}>
+                <Feather name="shield" size={12} color={T.green} />
+                <Text style={styles.signedInNoteText}>
+                  Your purchases are linked to this account and can be restored on any device.
+                </Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Subscription card */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+          <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
+          <View style={[styles.subCard, isSubscribed && { borderColor: T.green + "50" }]}>
+            <LinearGradient
+              colors={isSubscribed ? [T.greenDim, "transparent"] : ["transparent", "transparent"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.subRow}>
+              <View style={[styles.subIconBox, { backgroundColor: isSubscribed ? T.greenDim : T.surface }]}>
+                <Feather name={isSubscribed ? "zap" : "circle"} size={18} color={isSubscribed ? T.green : T.textMuted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.subPlanName, isSubscribed && { color: T.green }]}>
+                  {isSubscribed ? "SummitReady Pro" : "Free Plan"}
+                </Text>
+                {isSubscribed && expiresDate ? (
+                  <Text style={styles.subDetail}>
+                    {willRenew ? `Renews ${expiresDate}` : `Expires ${expiresDate} · Won't renew`}
+                  </Text>
+                ) : (
+                  <Text style={styles.subDetail}>Limited features</Text>
+                )}
+              </View>
+              <View style={[styles.subStatusBadge, { backgroundColor: isSubscribed ? T.green + "20" : T.surface }]}>
+                <Text style={[styles.subStatusText, { color: isSubscribed ? T.green : T.textMuted }]}>
+                  {isSubscribed ? "Active" : "Free"}
+                </Text>
+              </View>
+            </View>
+
+            {isSubscribed && (
+              <View style={styles.subFeatures}>
+                {["Adaptive AI training", "Unlimited hill sessions", "Advanced analytics", "AI coach feedback"].map(f => (
+                  <View key={f} style={styles.subFeatureRow}>
+                    <Feather name="check" size={12} color={T.green} />
+                    <Text style={styles.subFeatureText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {!isSubscribed && (
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={() => router.push("/paywall")}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.upgradeBtnGrad}>
+                  <Feather name="zap" size={14} color="#fff" />
+                  <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+                  <Feather name="arrow-right" size={13} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Progress summary */}
+        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+          <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Text style={styles.statVal}>{sessions.length}</Text>
+              <Text style={styles.statLbl}>Sessions logged</Text>
+            </View>
+            <View style={styles.statBox}>
+              <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Text style={styles.statVal}>{completedCount}</Text>
+              <Text style={styles.statLbl}>Plan sessions done</Text>
+            </View>
+            <View style={styles.statBox}>
+              <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Text style={styles.statVal}>{currentWeek ? `Wk ${currentWeek.weekNumber}` : "—"}</Text>
+              <Text style={styles.statLbl}>Current week</Text>
+            </View>
+            <View style={styles.statBox}>
+              <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Text style={styles.statVal}>{totalPlanSessions}</Text>
+              <Text style={styles.statLbl}>Plan sessions total</Text>
+            </View>
+          </View>
+          {summitGoal && (
+            <View style={styles.goalPill}>
+              <Feather name="flag" size={13} color={T.green} />
+              <Text style={styles.goalPillText} numberOfLines={1}>
+                {summitGoal.mountainName}
+              </Text>
+              <Text style={styles.goalPillSub}>
+                {summitGoal.elevationGain}m · {new Date(summitGoal.summitDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* Billing actions */}
+        <Animated.View entering={FadeInDown.delay(160).duration(400)}>
+          <Text style={styles.sectionLabel}>BILLING</Text>
+          <View style={styles.actionList}>
+            {restoreMsg && (
+              <View style={[styles.restoreMsg, { borderColor: restoreMsg.type === "success" ? T.green + "30" : T.orange + "30", backgroundColor: restoreMsg.type === "success" ? T.greenDim : T.orangeDim }]}>
+                <Feather name={restoreMsg.type === "success" ? "check-circle" : "alert-circle"} size={14} color={restoreMsg.type === "success" ? T.green : T.orange} />
+                <Text style={[styles.restoreMsgText, { color: restoreMsg.type === "success" ? T.green : T.orange }]}>{restoreMsg.text}</Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.actionRow} onPress={handleRestore} disabled={isRestoring} activeOpacity={0.7}>
+              {isRestoring
+                ? <ActivityIndicator size="small" color={T.blue} />
+                : <Feather name="refresh-cw" size={16} color={T.blue} />}
+              <Text style={styles.actionText}>Restore purchases</Text>
+              <Feather name="chevron-right" size={16} color={T.textDim} />
+            </TouchableOpacity>
+            {isSubscribed && (
+              <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/subscription")} activeOpacity={0.7}>
+                <Feather name="credit-card" size={16} color={T.green} />
+                <Text style={styles.actionText}>Manage subscription</Text>
+                <Feather name="chevron-right" size={16} color={T.textDim} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Account actions */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+          <Text style={styles.sectionLabel}>ACCOUNT</Text>
+          <View style={styles.actionList}>
+            {!isGuest ? (
+              <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>
+                <Feather name="log-out" size={16} color={T.orange} />
+                <Text style={[styles.actionText, { color: T.orange }]}>Sign out</Text>
+                <Feather name="chevron-right" size={16} color={T.textDim} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.actionRow} onPress={() => setSignInOpen(true)} activeOpacity={0.7}>
+                <Feather name="log-in" size={16} color={T.blue} />
+                <Text style={styles.actionText}>Sign in</Text>
+                <Feather name="chevron-right" size={16} color={T.textDim} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleResetData} activeOpacity={0.7}>
+              <Feather name="trash-2" size={16} color="#FF4444" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.actionText, { color: "#FF4444" }]}>Reset all data</Text>
+                <Text style={styles.actionSub}>Deletes your goal, plan and session history</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={T.textDim} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* App info */}
+        <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.appInfo}>
+          <Text style={styles.appInfoText}>SummitReady · v1.0</Text>
+          <Text style={styles.appInfoText}>Free to start · No account needed</Text>
+        </Animated.View>
+      </ScrollView>
+
+      {/* Sign-in modal */}
+      <Modal visible={signInOpen} transparent animationType="slide" onRequestClose={() => setSignInOpen(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => { setSignInOpen(false); setSignInError(""); }} />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={[styles.modalSheet, { paddingBottom: Platform.OS === "web" ? 32 : Math.max(insets.bottom, 24) }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalTitleRow}>
+              <View style={styles.modalIconBox}>
+                <Feather name="log-in" size={18} color={T.blue} />
+              </View>
+              <View>
+                <Text style={styles.modalTitle}>Sign in</Text>
+                <Text style={styles.modalSubtitle}>Link your purchases across devices</Text>
+              </View>
+            </View>
+
+            <Text style={styles.modalLabel}>Email address</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={emailInput}
+              onChangeText={txt => { setEmailInput(txt); setSignInError(""); }}
+              placeholder="you@example.com"
+              placeholderTextColor={T.textDim}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {signInError ? (
+              <View style={styles.errorRow}>
+                <Feather name="alert-circle" size={13} color={T.orange} />
+                <Text style={styles.errorText}>{signInError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalNote}>
+              <Feather name="info" size={12} color={T.textMuted} />
+              <Text style={styles.modalNoteText}>
+                We use your email as a secure account ID to link RevenueCat purchases. No password required.
+              </Text>
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setSignInOpen(false); setSignInError(""); setEmailInput(""); }} activeOpacity={0.7}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleSignIn}
+                disabled={signingIn}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.confirmBtnGrad}>
+                  {signingIn
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <>
+                        <Feather name="check" size={15} color="#fff" />
+                        <Text style={styles.confirmText}>Sign in</Text>
+                      </>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: 18, gap: 16 },
+  header: { marginBottom: 4 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
+
+  sectionLabel: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold",
+    color: T.textMuted, letterSpacing: 0.8, textTransform: "uppercase",
+    marginBottom: -6, marginTop: 4,
+  },
+
+  profileCard: {
+    backgroundColor: T.card, borderRadius: 20,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 16, gap: 12, overflow: "hidden",
+  },
+  avatarRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: {
+    width: 52, height: 52, borderRadius: 16,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: T.border,
+  },
+  avatarInitial: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.green },
+  displayName: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  userId: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  guestBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 10, borderWidth: 1,
+  },
+  guestDot: { width: 6, height: 6, borderRadius: 3 },
+  guestBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  signInBtn: { borderRadius: 14, overflow: "hidden" },
+  signInBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13,
+  },
+  signInBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  signedInNote: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: T.greenDim, borderRadius: 12, padding: 10,
+  },
+  signedInNoteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green, lineHeight: 17 },
+
+  subCard: {
+    backgroundColor: T.card, borderRadius: 20,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 16, gap: 12, overflow: "hidden",
+  },
+  subRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  subIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  subPlanName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+  subDetail: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  subStatusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  subStatusText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  subFeatures: { gap: 6, paddingTop: 4 },
+  subFeatureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  subFeatureText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  upgradeBtn: { borderRadius: 14, overflow: "hidden" },
+  upgradeBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13,
+  },
+  upgradeBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  statBox: {
+    flex: 1, minWidth: "45%",
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 14, gap: 4, overflow: "hidden",
+  },
+  statVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
+  statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  goalPill: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.green + "30",
+    paddingVertical: 10, paddingHorizontal: 14, marginTop: 2,
+  },
+  goalPillText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  goalPillSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  actionList: { gap: 8 },
+  actionRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 14, paddingHorizontal: 16,
+  },
+  actionText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text },
+  actionSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  restoreMsg: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 12, padding: 12, borderWidth: 1,
+  },
+  restoreMsgText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+
+  appInfo: { alignItems: "center", gap: 4, paddingTop: 8, paddingBottom: 4 },
+  appInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
+  modalSheet: {
+    backgroundColor: T.card,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderWidth: 1, borderColor: T.border,
+    padding: 20, gap: 12,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: T.border, alignSelf: "center", marginBottom: 4,
+  },
+  modalTitleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  modalIconBox: {
+    width: 42, height: 42, borderRadius: 13,
+    backgroundColor: T.blueDim,
+    alignItems: "center", justifyContent: "center",
+  },
+  modalTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
+  modalSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  modalLabel: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold",
+    color: T.textMuted, letterSpacing: 0.4, textTransform: "uppercase",
+  },
+  modalInput: {
+    backgroundColor: T.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
+  },
+  errorRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange },
+  modalNote: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+  },
+  modalNoteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  modalBtnRow: { flexDirection: "row", gap: 10 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  confirmBtn: { flex: 2, borderRadius: 14, overflow: "hidden" },
+  confirmBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13,
+  },
+  confirmText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+});

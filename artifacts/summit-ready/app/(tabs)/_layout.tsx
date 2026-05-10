@@ -80,6 +80,18 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: "Account",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
+              <Feather name="user" size={20} color={color} />
+            </View>
+          ),
+          tabBarActiveTintColor: T.blue,
+        }}
+      />
     </Tabs>
   );
 }
