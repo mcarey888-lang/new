@@ -57,7 +57,7 @@ export default function SubscriptionScreen() {
   }
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+    <LinearGradient colors={["#060D1B", "#0A1628", "#060E1C"]} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,

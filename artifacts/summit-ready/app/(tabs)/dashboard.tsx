@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
+import { useSubscription } from "@/lib/revenuecat";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
@@ -47,11 +48,13 @@ function MountainHero({
   summitDate,
   topInset,
   onEdit,
+  isSubscribed,
 }: {
   mountainName: string;
   summitDate: string;
   topInset: number;
   onEdit: () => void;
+  isSubscribed: boolean;
 }) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +122,7 @@ function MountainHero({
             dateStr={dateStr}
             topInset={topInset}
             onEdit={onEdit}
+            isSubscribed={isSubscribed}
           />
         </LinearGradient>
       ) : imageUri ? (
@@ -143,6 +147,7 @@ function MountainHero({
             dateStr={dateStr}
             topInset={topInset}
             onEdit={onEdit}
+            isSubscribed={isSubscribed}
           />
         </ImageBackground>
       ) : (
@@ -159,6 +164,7 @@ function MountainHero({
             dateStr={dateStr}
             topInset={topInset}
             onEdit={onEdit}
+            isSubscribed={isSubscribed}
           />
         </LinearGradient>
       )}
@@ -167,16 +173,21 @@ function MountainHero({
 }
 
 function HeroContent({
-  mountainName, dateStr, topInset, onEdit,
-}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void }) {
+  mountainName, dateStr, topInset, onEdit, isSubscribed,
+}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean }) {
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
-      {/* logo left, edit button right */}
+      {/* logo left, buttons right */}
       <View style={heroStyles.topRow}>
         <Image source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} resizeMode="contain" />
-        <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
-          <Feather name="edit-2" size={14} color={T.green} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
+            <Feather name={isSubscribed ? "zap" : "lock"} size={13} color={isSubscribed ? T.green : T.purple} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
+            <Feather name="edit-2" size={14} color={T.green} />
+          </TouchableOpacity>
+        </View>
       </View>
       {/* name + date — bottom of hero */}
       <View style={heroStyles.bottomText}>
@@ -295,6 +306,7 @@ function StatCard({
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore } = useApp();
+  const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState(false);
@@ -417,7 +429,35 @@ export default function DashboardScreen() {
           summitDate={summitGoal.summitDate}
           topInset={Platform.OS === "web" ? 20 : insets.top}
           onEdit={() => router.push("/setup")}
+          isSubscribed={isSubscribed}
         />
+
+        {/* Upgrade banner — free users only */}
+        {!isSubscribed && (
+          <Animated.View entering={FadeInDown.delay(40).duration(500)}>
+            <TouchableOpacity
+              onPress={() => router.push("/paywall")}
+              activeOpacity={0.85}
+              style={styles.upgradeBanner}
+            >
+              <LinearGradient
+                colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.upgradeBannerLeft}>
+                <View style={styles.upgradeIconWrap}>
+                  <Feather name="zap" size={13} color={T.green} />
+                </View>
+                <View style={{ gap: 1 }}>
+                  <Text style={styles.upgradeBannerTitle}>Upgrade to Summit Ready Pro</Text>
+                  <Text style={styles.upgradeBannerSub}>Unlock adaptive plans, AI coaching & more</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={16} color={T.green} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Time readiness warning */}
         {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
@@ -690,6 +730,19 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18 },
+  upgradeBanner: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderRadius: 14, borderWidth: 1, borderColor: T.green + "30",
+    paddingVertical: 11, paddingHorizontal: 14, marginTop: 12,
+    overflow: "hidden",
+  },
+  upgradeBannerLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  upgradeIconWrap: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center",
+  },
+  upgradeBannerTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
+  upgradeBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   createPlanBtn: { borderRadius: 16, overflow: "hidden" },
   createPlanGrad: { paddingHorizontal: 28, paddingVertical: 14 },
   header: {
