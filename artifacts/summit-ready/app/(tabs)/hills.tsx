@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Linking } from "react-native";
+import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -555,14 +556,45 @@ export default function HillsScreen() {
                   <TouchableOpacity
                     style={styles.mapBtn}
                     activeOpacity={0.7}
-                    onPress={() =>
-                      Linking.openURL(
-                        `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
-                      )
-                    }
+                    onPress={() => {
+                      if (hill.lat && hill.lng) {
+                        Linking.openURL(
+                          `https://www.openstreetmap.org/?mlat=${hill.lat}&mlon=${hill.lng}#map=14/${hill.lat}/${hill.lng}`
+                        );
+                      } else {
+                        Linking.openURL(
+                          `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
+                        );
+                      }
+                    }}
                   >
                     <Feather name="map" size={14} color={T.green} />
                     <Text style={styles.mapBtnText}>Map</Text>
+                  </TouchableOpacity>
+
+                  {/* Details */}
+                  <TouchableOpacity
+                    style={styles.detailsBtn}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/hill-detail",
+                        params: {
+                          name: hill.name,
+                          location: summitGoal?.location ?? "",
+                          lat: hill.lat?.toString() ?? "",
+                          lng: hill.lng?.toString() ?? "",
+                          elevation: hill.elevation.toString(),
+                          distance: hill.distance.toString(),
+                          grade: hill.grade,
+                          surface: hill.surface,
+                          emoji: hill.emoji,
+                        },
+                      })
+                    }
+                  >
+                    <Feather name="info" size={14} color={T.purple} />
+                    <Text style={styles.detailsBtnText}>Details</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -769,6 +801,19 @@ const styles = StyleSheet.create({
     borderColor: T.green + "40",
   },
   mapBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
+  detailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.purple + "40",
+    backgroundColor: T.purpleDim,
+  },
+  detailsBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
 
   impactNote: {
     flexDirection: "row",

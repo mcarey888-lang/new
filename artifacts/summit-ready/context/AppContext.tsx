@@ -51,6 +51,8 @@ export interface NearbyHill {
   surface: string;
   grade: string;
   emoji: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface Session {
