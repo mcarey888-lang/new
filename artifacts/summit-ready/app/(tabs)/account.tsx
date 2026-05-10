@@ -210,7 +210,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         {/* Subscription card */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
           <View style={[styles.subCard, isSubscribed && { borderColor: T.green + "50" }]}>
             <LinearGradient
@@ -268,7 +268,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         {/* Progress summary */}
-        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
@@ -306,7 +306,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         {/* Billing actions */}
-        <Animated.View entering={FadeInDown.delay(160).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>BILLING</Text>
           <View style={styles.actionList}>
             {restoreMsg && (
@@ -333,7 +333,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         {/* Account actions */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>ACCOUNT</Text>
           <View style={styles.actionList}>
             {!isGuest ? (
@@ -437,14 +437,15 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 18, gap: 16 },
-  header: { marginBottom: 4 },
+  scroll: { paddingHorizontal: 18, gap: 20 },
+  header: { marginBottom: 0 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
+
+  section: { gap: 8 },
 
   sectionLabel: {
     fontSize: 11, fontFamily: "Inter_600SemiBold",
     color: T.textMuted, letterSpacing: 0.8, textTransform: "uppercase",
-    marginBottom: -6, marginTop: 4,
   },
 
   profileCard: {
