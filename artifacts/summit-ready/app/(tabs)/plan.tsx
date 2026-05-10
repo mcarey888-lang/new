@@ -217,6 +217,32 @@ function HillPickerModal({
   );
 }
 
+function getExerciseAlternatives(label: string): { name: string; icon: string; desc: string }[] {
+  const l = label.toLowerCase();
+  const isStairs = l.includes("stair") || l.includes("step") || l.includes("climb");
+  const isRun = l.includes("run") || l.includes("jog") || l.includes("walk");
+
+  const stairAlts = [
+    { name: "Incline Treadmill", icon: "trending-up", desc: "10–15% incline, brisk hike pace" },
+    { name: "StairMaster", icon: "layers", desc: "Continuous stair climbing machine" },
+    { name: "Stepper Machine", icon: "activity", desc: "Step machine for leg drive and cardio" },
+    { name: "Box Step-Ups", icon: "square", desc: "Weighted step-ups onto a box or bench" },
+    { name: "Weighted Stairs", icon: "package", desc: "Stairs with a loaded pack or weight vest" },
+    { name: "Elliptical (high resistance)", icon: "refresh-cw", desc: "High resistance, simulate climbing effort" },
+  ];
+  const cardioAlts = [
+    { name: "Incline Treadmill", icon: "trending-up", desc: "10–15% incline, brisk hike pace" },
+    { name: "Indoor Cycling", icon: "wind", desc: "High cadence cycling for aerobic base" },
+    { name: "Rowing Machine", icon: "anchor", desc: "Full body cardio with strong leg drive" },
+    { name: "Elliptical", icon: "refresh-cw", desc: "Sustained aerobic effort, moderate resistance" },
+    { name: "StairMaster", icon: "layers", desc: "Continuous stair climbing machine" },
+    { name: "Swimming", icon: "droplet", desc: "Low impact aerobic conditioning" },
+  ];
+  if (isStairs) return stairAlts;
+  if (isRun) return cardioAlts;
+  return stairAlts; // hill training default
+}
+
 function WeekCard({
   week,
   isExpanded,
@@ -233,6 +259,7 @@ function WeekCard({
   onSubmitWeek,
   onSetReps,
   onEditSession,
+  onSwapExercise,
 }: {
   week: TrainingWeek;
   isExpanded: boolean;
@@ -249,6 +276,7 @@ function WeekCard({
   onSubmitWeek: (weekNum: number) => void;
   onSetReps: (key: string, reps: number) => void;
   onEditSession: (weekNum: number, sessionIdx: number) => void;
+  onSwapExercise: (weekNum: number, sessionIdx: number, label: string) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
@@ -398,7 +426,7 @@ function WeekCard({
 
                     <View style={styles.sessionFooter}>
                       <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
-                      {canPickHill && (
+                      {canPickHill ? (
                         <TouchableOpacity
                           onPress={() => onAssignHill(week.weekNumber, i)}
                           style={styles.pickHillBtn}
@@ -408,6 +436,15 @@ function WeekCard({
                           <Text style={styles.pickHillText}>
                             {assignedHill ? "Change hill" : "Pick hill"}
                           </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
+                          style={styles.swapBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="refresh-cw" size={11} color={T.blue} />
+                          <Text style={styles.swapBtnText}>Swap exercise</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -525,12 +562,14 @@ export default function PlanScreen() {
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
 
-  // Edit session modal state
+  // Edit session modal state (duration only)
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
-  const [editLabel, setEditLabel] = useState("");
-  const [editDesc, setEditDesc] = useState("");
   const [editDuration, setEditDuration] = useState("");
+
+  // Swap exercise modal state
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [swapTarget, setSwapTarget] = useState<{ weekNum: number; sessionIdx: number; label: string } | null>(null);
 
   function toggle(n: number) {
     setExpandedWeeks(prev => {
@@ -558,8 +597,6 @@ export default function PlanScreen() {
     const session = week?.sessions[sessionIdx];
     if (!session) return;
     setEditTarget({ weekNum, sessionIdx });
-    setEditLabel(session.label);
-    setEditDesc(session.description);
     setEditDuration(session.duration);
     setEditModalOpen(true);
   }
@@ -567,12 +604,22 @@ export default function PlanScreen() {
   async function handleSaveEdit() {
     if (!editTarget) return;
     await updatePlanSession(editTarget.weekNum, editTarget.sessionIdx, {
-      label: editLabel.trim() || editLabel,
-      description: editDesc.trim() || editDesc,
       duration: editDuration.trim() || editDuration,
     });
     setEditModalOpen(false);
     setEditTarget(null);
+  }
+
+  function openSwapExercise(weekNum: number, sessionIdx: number, label: string) {
+    setSwapTarget({ weekNum, sessionIdx, label });
+    setSwapModalOpen(true);
+  }
+
+  async function handleSwapSelect(newLabel: string) {
+    if (!swapTarget) return;
+    await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, { label: newLabel });
+    setSwapModalOpen(false);
+    setSwapTarget(null);
   }
 
   const completedCount = Object.values(completedPlanSessions).filter(Boolean).length;
@@ -663,6 +710,7 @@ export default function PlanScreen() {
             onSubmitWeek={handleSubmitWeek}
             onSetReps={setSessionReps}
             onEditSession={openEditSession}
+            onSwapExercise={openSwapExercise}
           />
         ))}
       </ScrollView>
@@ -701,37 +749,15 @@ export default function PlanScreen() {
         onClose={() => { setHillPickerOpen(false); setActiveSession(null); }}
       />
 
-      {/* Edit Session Modal */}
+      {/* Edit Duration Modal */}
       <Modal visible={editModalOpen} transparent animationType="fade" onRequestClose={() => setEditModalOpen(false)}>
         <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setEditModalOpen(false)} />
         <View style={editStyles.sheet}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
-            <Feather name="edit-2" size={16} color={T.blue} />
-            <Text style={editStyles.title}>Edit Session</Text>
+            <Feather name="clock" size={16} color={T.blue} />
+            <Text style={editStyles.title}>Edit Duration</Text>
           </View>
-
-          <Text style={editStyles.fieldLabel}>Session name</Text>
-          <TextInput
-            style={editStyles.input}
-            value={editLabel}
-            onChangeText={setEditLabel}
-            placeholderTextColor={T.textDim}
-            placeholder="e.g. Hill Repeats"
-            autoCorrect={false}
-          />
-
-          <Text style={editStyles.fieldLabel}>Description</Text>
-          <TextInput
-            style={[editStyles.input, editStyles.inputMulti]}
-            value={editDesc}
-            onChangeText={setEditDesc}
-            placeholderTextColor={T.textDim}
-            placeholder="What does this session involve?"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
 
           <Text style={editStyles.fieldLabel}>Duration</Text>
           <TextInput
@@ -762,6 +788,45 @@ export default function PlanScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Swap Exercise Modal */}
+      <Modal visible={swapModalOpen} transparent animationType="fade" onRequestClose={() => setSwapModalOpen(false)}>
+        <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setSwapModalOpen(false)} />
+        <View style={editStyles.sheet}>
+          <View style={editStyles.handle} />
+          <View style={editStyles.titleRow}>
+            <Feather name="refresh-cw" size={16} color={T.blue} />
+            <Text style={editStyles.title}>Swap Exercise</Text>
+          </View>
+          <Text style={editStyles.swapHint}>
+            Choose an alternative to <Text style={{ color: T.text, fontFamily: "Inter_600SemiBold" }}>{swapTarget?.label}</Text>
+          </Text>
+          {getExerciseAlternatives(swapTarget?.label ?? "").map((opt) => (
+            <TouchableOpacity
+              key={opt.name}
+              style={editStyles.swapOption}
+              activeOpacity={0.75}
+              onPress={() => handleSwapSelect(opt.name)}
+            >
+              <View style={editStyles.swapIcon}>
+                <Feather name={opt.icon as any} size={15} color={T.blue} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={editStyles.swapName}>{opt.name}</Text>
+                <Text style={editStyles.swapDesc}>{opt.desc}</Text>
+              </View>
+              <Feather name="chevron-right" size={14} color={T.textMuted} />
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            onPress={() => setSwapModalOpen(false)}
+            style={[editStyles.cancelBtn, { marginTop: 4 }]}
+            activeOpacity={0.7}
+          >
+            <Text style={editStyles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </LinearGradient>
@@ -820,6 +885,21 @@ const editStyles = StyleSheet.create({
   saveText: {
     fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff",
   },
+  swapHint: {
+    fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 4,
+  },
+  swapOption: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: T.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+  },
+  swapIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center",
+  },
+  swapName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  swapDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
 });
 
 const mpStyles = StyleSheet.create({
@@ -1002,6 +1082,13 @@ const styles = StyleSheet.create({
     borderColor: T.green + "30",
   },
   pickHillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  swapBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 8, borderWidth: 1,
+    borderColor: T.blue + "50", backgroundColor: T.blueDim,
+  },
+  swapBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
   assignedHillRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
   assignedHillEmoji: { fontSize: 13, marginRight: 4 },
   assignedHillName: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.white },
