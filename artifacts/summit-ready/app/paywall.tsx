@@ -1,0 +1,381 @@
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSubscription } from "@/lib/revenuecat";
+import { T } from "@/constants/theme";
+
+const FEATURES = [
+  { icon: "map-pin" as const,    title: "Personalised summit training",      desc: "Plans built entirely around your mountain, date, and fitness" },
+  { icon: "trending-up" as const, title: "Adaptive progression plans",        desc: "Your plan updates as you train — smarter every week" },
+  { icon: "navigation" as const,  title: "Local hikes matched to fitness",    desc: "Unlimited hill recommendations near you" },
+  { icon: "activity" as const,    title: "Summit readiness tracking",         desc: "Know exactly how ready you are, week by week" },
+  { icon: "cpu" as const,         title: "AI-powered coaching insights",      desc: "Get personalised feedback from your AI summit coach" },
+];
+
+type ConfirmModalProps = {
+  visible: boolean;
+  packageName: string;
+  priceString: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }: ConfirmModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={confirmStyles.backdrop}>
+        <View style={confirmStyles.sheet}>
+          <View style={confirmStyles.iconWrap}>
+            <Feather name="shopping-bag" size={24} color={T.green} />
+          </View>
+          <Text style={confirmStyles.title}>Confirm Purchase</Text>
+          <Text style={confirmStyles.body}>
+            You're about to purchase <Text style={{ color: T.white, fontFamily: "Inter_700Bold" }}>{packageName}</Text>{" "}
+            for <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>{priceString}</Text> using the test store.
+          </Text>
+          <View style={confirmStyles.btnRow}>
+            <TouchableOpacity onPress={onCancel} style={confirmStyles.cancelBtn} activeOpacity={0.7}>
+              <Text style={confirmStyles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onConfirm} style={confirmStyles.confirmBtn} activeOpacity={0.85}>
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={confirmStyles.confirmGrad}>
+                <Text style={confirmStyles.confirmText}>Confirm</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export default function PaywallScreen() {
+  const insets = useSafeAreaInsets();
+  const { offerings, purchase, restore, isPurchasing, isRestoring } = useSubscription();
+
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [selectedPkg, setSelectedPkg] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [restoreSuccess, setRestoreSuccess] = useState(false);
+
+  const currentOffering = offerings?.current;
+  const monthlyPkg = currentOffering?.monthly ?? currentOffering?.availablePackages?.[0] ?? null;
+  const annualPkg = currentOffering?.annual ?? currentOffering?.availablePackages?.[1] ?? null;
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("monthly");
+
+  const activePkg = selectedPlan === "annual" && annualPkg ? annualPkg : monthlyPkg;
+
+  function handleSubscribe() {
+    if (!activePkg) return;
+    setSelectedPkg(activePkg);
+    setConfirmVisible(true);
+    setError(null);
+  }
+
+  async function confirmPurchase() {
+    setConfirmVisible(false);
+    try {
+      await purchase(selectedPkg);
+      router.back();
+    } catch (e: any) {
+      if (!e?.userCancelled) {
+        setError("Purchase failed. Please try again.");
+      }
+    }
+  }
+
+  async function handleRestore() {
+    setError(null);
+    try {
+      await restore();
+      setRestoreSuccess(true);
+      setTimeout(() => {
+        setRestoreSuccess(false);
+        router.back();
+      }, 1500);
+    } catch {
+      setError("Restore failed. Please try again.");
+    }
+  }
+
+  return (
+    <LinearGradient colors={["#0A0C10", "#0D1A12", "#0A0C10"]} style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingTop: Platform.OS === "web" ? 64 : insets.top + 16,
+            paddingBottom: Platform.OS === "web" ? 60 : insets.bottom + 40,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} activeOpacity={0.7}>
+            <Feather name="x" size={20} color={T.textMuted} />
+          </TouchableOpacity>
+          <Image
+            source={require("@/assets/images/logo.gif")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.heroSection}>
+          <View style={styles.proBadge}>
+            <Feather name="zap" size={12} color={T.green} />
+            <Text style={styles.proBadgeText}>SUMMIT READY PRO</Text>
+          </View>
+          <Text style={styles.headline}>Give Yourself The Best Chance Of Reaching The Summit</Text>
+          <Text style={styles.subheadline}>
+            Train smarter with personalised mountain preparation designed around your summit goal.
+          </Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.featuresSection}>
+          {FEATURES.map((f, i) => (
+            <View key={i} style={styles.featureRow}>
+              <View style={styles.featureIconWrap}>
+                <Feather name={f.icon} size={16} color={T.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.featureTitle}>{f.title}</Text>
+                <Text style={styles.featureDesc}>{f.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.planSection}>
+          <Text style={styles.planHeading}>Choose your plan</Text>
+          <View style={styles.planRow}>
+            {monthlyPkg && (
+              <TouchableOpacity
+                onPress={() => setSelectedPlan("monthly")}
+                activeOpacity={0.8}
+                style={[styles.planCard, selectedPlan === "monthly" && styles.planCardActive]}
+              >
+                {selectedPlan === "monthly" && (
+                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                )}
+                <Text style={styles.planLabel}>Monthly</Text>
+                <Text style={[styles.planPrice, selectedPlan === "monthly" && { color: T.green }]}>
+                  {monthlyPkg.product.priceString}
+                </Text>
+                <Text style={styles.planPer}>per month</Text>
+              </TouchableOpacity>
+            )}
+            {annualPkg && (
+              <TouchableOpacity
+                onPress={() => setSelectedPlan("annual")}
+                activeOpacity={0.8}
+                style={[styles.planCard, selectedPlan === "annual" && styles.planCardActive]}
+              >
+                {selectedPlan === "annual" && (
+                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                )}
+                <View style={styles.bestValueBadge}>
+                  <Text style={styles.bestValueText}>BEST VALUE</Text>
+                </View>
+                <Text style={styles.planLabel}>Annual</Text>
+                <Text style={[styles.planPrice, selectedPlan === "annual" && { color: T.green }]}>
+                  {annualPkg.product.priceString}
+                </Text>
+                <Text style={styles.planPer}>per year</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+
+        {error && (
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.errorBanner}>
+            <Feather name="alert-circle" size={14} color={T.orange} />
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        )}
+
+        {restoreSuccess && (
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.successBanner}>
+            <Feather name="check-circle" size={14} color={T.green} />
+            <Text style={styles.successText}>Purchases restored successfully!</Text>
+          </Animated.View>
+        )}
+
+        <Animated.View entering={FadeInUp.delay(400).duration(600)} style={styles.ctaSection}>
+          <TouchableOpacity
+            onPress={handleSubscribe}
+            disabled={isPurchasing || !activePkg}
+            activeOpacity={0.85}
+            style={[styles.ctaBtn, (isPurchasing || !activePkg) && { opacity: 0.6 }]}
+          >
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.ctaGrad}>
+              {isPurchasing
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="zap" size={18} color="#fff" />}
+              <Text style={styles.ctaText}>
+                {isPurchasing ? "Processing…" : "Start 7-Day Free Trial"}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <Text style={styles.cancelNote}>Cancel anytime · No commitment</Text>
+
+          <TouchableOpacity
+            onPress={handleRestore}
+            disabled={isRestoring}
+            activeOpacity={0.7}
+            style={styles.restoreBtn}
+          >
+            {isRestoring
+              ? <ActivityIndicator size="small" color={T.textMuted} />
+              : <Text style={styles.restoreText}>Restore purchases</Text>}
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
+
+      <ConfirmModal
+        visible={confirmVisible}
+        packageName={selectedPkg?.product?.title ?? "Summit Ready Pro"}
+        priceString={selectedPkg?.product?.priceString ?? ""}
+        onConfirm={confirmPurchase}
+        onCancel={() => setConfirmVisible(false)}
+      />
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: 24, gap: 24 },
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  closeBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center", justifyContent: "center",
+  },
+  logo: { width: 160, height: 64 },
+  heroSection: { gap: 12, alignItems: "center" },
+  proBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: T.greenDim, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderWidth: 1, borderColor: T.green + "40",
+  },
+  proBadgeText: {
+    fontSize: 11, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.8,
+  },
+  headline: {
+    fontSize: 26, fontFamily: "Inter_700Bold", color: T.white,
+    textAlign: "center", lineHeight: 34, letterSpacing: -0.3,
+  },
+  subheadline: {
+    fontSize: 15, fontFamily: "Inter_400Regular", color: T.textMuted,
+    textAlign: "center", lineHeight: 22,
+  },
+  featuresSection: {
+    backgroundColor: T.card, borderRadius: 20,
+    borderWidth: 1, borderColor: T.border,
+    padding: 16, gap: 14,
+  },
+  featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  featureIconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  featureTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  featureDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  planSection: { gap: 12 },
+  planHeading: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  planRow: { flexDirection: "row", gap: 10 },
+  planCard: {
+    flex: 1, backgroundColor: T.card,
+    borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    padding: 14, gap: 4, alignItems: "center",
+    overflow: "hidden", position: "relative",
+  },
+  planCardActive: { borderColor: T.green, borderWidth: 1.5 },
+  bestValueBadge: {
+    backgroundColor: T.green + "25", borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
+    marginBottom: 4,
+  },
+  bestValueText: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
+  planLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  planPrice: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
+  planPer: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.orangeDim, borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: T.orange + "30",
+  },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange },
+  successBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.greenDim, borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: T.green + "30",
+  },
+  successText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.green },
+  ctaSection: { alignItems: "center", gap: 10 },
+  ctaBtn: { width: "100%", borderRadius: 18, overflow: "hidden" },
+  ctaGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 17,
+  },
+  ctaText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  cancelNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  restoreBtn: { paddingVertical: 6 },
+  restoreText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textDecorationLine: "underline" },
+});
+
+const confirmStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.7)",
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 32,
+  },
+  sheet: {
+    backgroundColor: T.card, borderRadius: 20,
+    borderWidth: 1, borderColor: T.border,
+    padding: 24, gap: 12, width: "100%",
+  },
+  iconWrap: {
+    width: 48, height: 48, borderRadius: 14,
+    backgroundColor: T.greenDim, alignSelf: "center",
+    alignItems: "center", justifyContent: "center",
+  },
+  title: {
+    fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center",
+  },
+  body: {
+    fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted,
+    textAlign: "center", lineHeight: 20,
+  },
+  btnRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  confirmBtn: { flex: 2, borderRadius: 14, overflow: "hidden" },
+  confirmGrad: {
+    paddingVertical: 13, alignItems: "center", justifyContent: "center",
+  },
+  confirmText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+});
