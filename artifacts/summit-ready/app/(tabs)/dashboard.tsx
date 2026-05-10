@@ -226,7 +226,7 @@ const heroStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  logoSmall: { width: 248, height: 99, alignSelf: "flex-start", marginLeft: -22 },
+  logoSmall: { width: 248, height: 99, alignSelf: "flex-start" },
   editBtn: {
     width: 36, height: 36, borderRadius: 11,
     backgroundColor: "rgba(0,0,0,0.45)",
