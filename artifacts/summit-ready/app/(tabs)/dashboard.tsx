@@ -182,10 +182,10 @@ function HeroContent({
 }: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean }) {
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
-      {/* logo left, buttons right */}
+      {/* logo centred, buttons pinned right */}
       <View style={heroStyles.topRow}>
         <Image source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} resizeMode="contain" />
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={heroStyles.headerButtons}>
           {hasViewedPlan && (
             <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
               <Feather name={isSubscribed ? "zap" : "lock"} size={13} color={isSubscribed ? T.green : T.purple} />
@@ -222,11 +222,17 @@ const heroStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "center",
   },
-  logoSmall: { width: 248, height: 99, alignSelf: "flex-start" },
+  logoSmall: { width: 186, height: 74 },
+  headerButtons: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    flexDirection: "row",
+    gap: 8,
+  },
   editBtn: {
     width: 36, height: 36, borderRadius: 11,
     backgroundColor: "rgba(0,0,0,0.45)",
