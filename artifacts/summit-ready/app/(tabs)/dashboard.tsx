@@ -518,6 +518,7 @@ export default function DashboardScreen() {
             <View style={styles.readinessInner}>
               <ProgressRing score={readinessScore} size={148} strokeWidth={11} />
               <View style={styles.readinessMeta}>
+                <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
                 <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
                   <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
                   <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
@@ -811,6 +812,10 @@ const styles = StyleSheet.create({
   },
   readinessInner: { flexDirection: "row", alignItems: "center", gap: 18 },
   readinessMeta: { flex: 1, gap: 8 },
+  areYouReadyLabel: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold",
+    color: T.textMuted, letterSpacing: 0.6, textTransform: "uppercase",
+  },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
