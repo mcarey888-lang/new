@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -231,6 +232,7 @@ function WeekCard({
   onAssignHill,
   onSubmitWeek,
   onSetReps,
+  onEditSession,
 }: {
   week: TrainingWeek;
   isExpanded: boolean;
@@ -246,6 +248,7 @@ function WeekCard({
   onAssignHill: (weekNum: number, sessionIdx: number) => void;
   onSubmitWeek: (weekNum: number) => void;
   onSetReps: (key: string, reps: number) => void;
+  onEditSession: (weekNum: number, sessionIdx: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
@@ -371,7 +374,16 @@ function WeekCard({
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                       <Text style={[styles.sessionLabel, isDone && styles.sessionLabelDone]}>{s.label}</Text>
-                      <Text style={styles.sessionDur}>{s.duration}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={styles.sessionDur}>{s.duration}</Text>
+                        <TouchableOpacity
+                          onPress={() => onEditSession(week.weekNumber, i)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="edit-2" size={13} color={T.textMuted} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {assignedHill ? (
@@ -499,6 +511,7 @@ export default function PlanScreen() {
     planAdjustNote,
     submitWeekSessions,
     setSessionReps,
+    updatePlanSession,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -511,6 +524,13 @@ export default function PlanScreen() {
   );
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
+
+  // Edit session modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editDuration, setEditDuration] = useState("");
 
   function toggle(n: number) {
     setExpandedWeeks(prev => {
@@ -531,6 +551,28 @@ export default function PlanScreen() {
     }
     setHillPickerOpen(false);
     setActiveSession(null);
+  }
+
+  function openEditSession(weekNum: number, sessionIdx: number) {
+    const week = trainingPlan.find(w => w.weekNumber === weekNum);
+    const session = week?.sessions[sessionIdx];
+    if (!session) return;
+    setEditTarget({ weekNum, sessionIdx });
+    setEditLabel(session.label);
+    setEditDesc(session.description);
+    setEditDuration(session.duration);
+    setEditModalOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editTarget) return;
+    await updatePlanSession(editTarget.weekNum, editTarget.sessionIdx, {
+      label: editLabel.trim() || editLabel,
+      description: editDesc.trim() || editDesc,
+      duration: editDuration.trim() || editDuration,
+    });
+    setEditModalOpen(false);
+    setEditTarget(null);
   }
 
   const completedCount = Object.values(completedPlanSessions).filter(Boolean).length;
@@ -620,6 +662,7 @@ export default function PlanScreen() {
             onAssignHill={openHillPicker}
             onSubmitWeek={handleSubmitWeek}
             onSetReps={setSessionReps}
+            onEditSession={openEditSession}
           />
         ))}
       </ScrollView>
@@ -657,9 +700,127 @@ export default function PlanScreen() {
         onSelect={handleHillSelect}
         onClose={() => { setHillPickerOpen(false); setActiveSession(null); }}
       />
+
+      {/* Edit Session Modal */}
+      <Modal visible={editModalOpen} transparent animationType="fade" onRequestClose={() => setEditModalOpen(false)}>
+        <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setEditModalOpen(false)} />
+        <View style={editStyles.sheet}>
+          <View style={editStyles.handle} />
+          <View style={editStyles.titleRow}>
+            <Feather name="edit-2" size={16} color={T.blue} />
+            <Text style={editStyles.title}>Edit Session</Text>
+          </View>
+
+          <Text style={editStyles.fieldLabel}>Session name</Text>
+          <TextInput
+            style={editStyles.input}
+            value={editLabel}
+            onChangeText={setEditLabel}
+            placeholderTextColor={T.textDim}
+            placeholder="e.g. Hill Repeats"
+            autoCorrect={false}
+          />
+
+          <Text style={editStyles.fieldLabel}>Description</Text>
+          <TextInput
+            style={[editStyles.input, editStyles.inputMulti]}
+            value={editDesc}
+            onChangeText={setEditDesc}
+            placeholderTextColor={T.textDim}
+            placeholder="What does this session involve?"
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+
+          <Text style={editStyles.fieldLabel}>Duration</Text>
+          <TextInput
+            style={editStyles.input}
+            value={editDuration}
+            onChangeText={setEditDuration}
+            placeholderTextColor={T.textDim}
+            placeholder="e.g. 45 min"
+            autoCorrect={false}
+          />
+
+          <View style={editStyles.btnRow}>
+            <TouchableOpacity
+              onPress={() => setEditModalOpen(false)}
+              style={editStyles.cancelBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={editStyles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSaveEdit}
+              style={editStyles.saveBtn}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={editStyles.saveBtnGrad}>
+                <Feather name="check" size={15} color="#fff" />
+                <Text style={editStyles.saveText}>Save changes</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
+
+const editStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  sheet: {
+    backgroundColor: T.card,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderWidth: 1, borderColor: T.border,
+    padding: 20, paddingBottom: 36, gap: 10,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: T.border, alignSelf: "center", marginBottom: 8,
+  },
+  titleRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4,
+  },
+  title: {
+    fontSize: 17, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  fieldLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold",
+    color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4,
+  },
+  input: {
+    backgroundColor: T.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 14, fontFamily: "Inter_400Regular", color: T.white,
+  },
+  inputMulti: { minHeight: 72, paddingTop: 11 },
+  btnRow: {
+    flexDirection: "row", gap: 10, marginTop: 8,
+  },
+  cancelBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  cancelText: {
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted,
+  },
+  saveBtn: {
+    flex: 2, borderRadius: 14, overflow: "hidden",
+  },
+  saveBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13,
+  },
+  saveText: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff",
+  },
+});
 
 const mpStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },

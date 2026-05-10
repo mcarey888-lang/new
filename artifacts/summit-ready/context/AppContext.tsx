@@ -95,6 +95,7 @@ interface AppState {
   addToNearbyHills: (hill: NearbyHill) => Promise<void>;
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
+  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>) => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -126,6 +127,7 @@ const AppContext = createContext<AppState>({
   addToNearbyHills: async () => {},
   updateGoalLocation: async () => {},
   setSessionReps: async () => {},
+  updatePlanSession: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -495,6 +497,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(REPS_KEY, JSON.stringify(updated));
   }, [sessionReps]);
 
+  const updatePlanSession = useCallback(async (
+    weekNum: number,
+    sessionIdx: number,
+    updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>
+  ) => {
+    const updatedPlan = trainingPlan.map(week => {
+      if (week.weekNumber !== weekNum) return week;
+      const updatedSessions = week.sessions.map((s, i) =>
+        i === sessionIdx ? { ...s, ...updates } : s
+      );
+      return { ...week, sessions: updatedSessions };
+    });
+    setTrainingPlan(updatedPlan);
+    await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updatedPlan));
+  }, [trainingPlan]);
+
   const adjustPlanWithAI = useCallback(async () => {
     if (!summitGoal || trainingPlan.length === 0) return;
     setPlanAdjusting(true);
@@ -568,7 +586,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps,
+      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, updatePlanSession,
     }}>
       {children}
     </AppContext.Provider>
