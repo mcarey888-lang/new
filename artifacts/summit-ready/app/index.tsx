@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  logo: { width: 260, height: 104 },
+  logo: { width: 390, height: 156 },
   tagline: {
     fontSize: 17,
     fontFamily: "Inter_400Regular",
