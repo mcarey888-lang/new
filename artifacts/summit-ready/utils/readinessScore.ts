@@ -130,10 +130,16 @@ export function calculateReadiness(
     else if (daysSinceLast > 7) penalty += 5;
   }
 
-  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty);
+  // ── 7. Fitness baseline from onboarding experience questions (0–33 pts) ────
+  const baseline = goal.fitnessBaseline ?? 0;
 
-  // Cap is based on real logged sessions only (not virtual)
-  const cap = sessionCap(completed.length, goal.difficulty);
+  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty + baseline);
+
+  // Cap is based on real logged sessions only (not virtual).
+  // Experienced athletes (high baseline) get a raised floor cap so prior fitness
+  // is reflected even before many sessions are logged.
+  const baseCap = sessionCap(completed.length, goal.difficulty);
+  const cap = baseline > 20 ? Math.max(baseCap, baseline + 10) : baseCap;
   return Math.min(cap, raw);
 }
 

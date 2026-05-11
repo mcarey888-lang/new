@@ -104,6 +104,11 @@ export default function SetupScreen() {
   const [setupHills, setSetupHills] = useState<NearbyHill[]>([]);
   const [preferredHills, setPreferredHills] = useState<NearbyHill[]>([]);
 
+  // Experience baseline questions (0 = not answered, 1-N = option index)
+  const [expElevation, setExpElevation] = useState(0);
+  const [expRunning, setExpRunning]     = useState(0);
+  const [expUphill, setExpUphill]       = useState(0);
+
   // Specific hill search
   const [specificSearch, setSpecificSearch] = useState("");
   const [specificSearching, setSpecificSearching] = useState(false);
@@ -251,6 +256,18 @@ export default function SetupScreen() {
     }
   }
 
+  // Scoring: index 0 = unanswered, then option 1-N maps to pts
+  // Elevation: Under200=0, 200-500=8, 500-1000=17, 1000+=25  → max 25
+  // Running:   No=0, WithEffort=3, Easily=5                  → max 5
+  // Uphill:    Rarely=0, Monthly=2, Weekly+=3                → max 3  (total max 33)
+  const EXP_ELEV_PTS   = [0, 0, 8, 17, 25];
+  const EXP_RUN_PTS    = [0, 0, 3, 5];
+  const EXP_UPHILL_PTS = [0, 0, 2, 3];
+  const fitnessBaseline =
+    (EXP_ELEV_PTS[expElevation] ?? 0) +
+    (EXP_RUN_PTS[expRunning]    ?? 0) +
+    (EXP_UPHILL_PTS[expUphill]  ?? 0);
+
   async function submit() {
     if (!validate()) return;
     setSaving(true);
@@ -268,6 +285,7 @@ export default function SetupScreen() {
       trainingDaysPerWeek: trainingDays,
       hillDaysPerWeek: hillDays,
       preferredHills: preferredHills.length > 0 ? preferredHills : undefined,
+      fitnessBaseline,
     });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
@@ -363,6 +381,65 @@ export default function SetupScreen() {
                 {fit === "Average"  && "You have a solid foundation to build from."}
                 {fit === "Strong"   && "You can handle higher intensity sessions right away."}
               </Text>
+            </View>
+
+            {/* Experience baseline questions */}
+            <View style={styles.expDivider} />
+            <Text style={styles.expHeading}>Your recent experience</Text>
+            <Text style={styles.expSub}>Helps us set the right starting point for your readiness score.</Text>
+
+            <Text style={styles.expQ}>Biggest single-day elevation gain in the last 3 months?</Text>
+            <View style={styles.expRow}>
+              {["Under 200m", "200–500m", "500–1000m", "1000m+"].map((label, i) => {
+                const idx = i + 1;
+                const active = expElevation === idx;
+                return (
+                  <TouchableOpacity
+                    key={label}
+                    style={[styles.expChip, active && { backgroundColor: T.greenDim, borderColor: T.green + "60" }]}
+                    onPress={() => setExpElevation(active ? 0 : idx)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.expChipText, active && { color: T.green }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.expQ}>Can you run 5km without stopping?</Text>
+            <View style={styles.expRow}>
+              {["No", "Yes, with effort", "Yes, easily"].map((label, i) => {
+                const idx = i + 1;
+                const active = expRunning === idx;
+                return (
+                  <TouchableOpacity
+                    key={label}
+                    style={[styles.expChip, active && { backgroundColor: T.blueDim, borderColor: T.blue + "60" }]}
+                    onPress={() => setExpRunning(active ? 0 : idx)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.expChipText, active && { color: T.blue }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.expQ}>How often do you train with significant uphill?</Text>
+            <View style={styles.expRow}>
+              {["Rarely", "Monthly", "Weekly+"].map((label, i) => {
+                const idx = i + 1;
+                const active = expUphill === idx;
+                return (
+                  <TouchableOpacity
+                    key={label}
+                    style={[styles.expChip, active && { backgroundColor: T.purpleDim, borderColor: T.purple + "60" }]}
+                    onPress={() => setExpUphill(active ? 0 : idx)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.expChipText, active && { color: T.purple }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </Section>
 
@@ -1144,6 +1221,17 @@ const styles = StyleSheet.create({
   },
   fitnessResultText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text },
   fitnessResultHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, paddingLeft: 4 },
+
+  expDivider: { height: 1, backgroundColor: T.border, marginVertical: 4 },
+  expHeading: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, marginTop: 2 },
+  expSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: -4, marginBottom: 2 },
+  expQ: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: -4 },
+  expRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  expChip: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 1.5, borderColor: T.border, backgroundColor: T.surface,
+  },
+  expChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
 
   equipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   equipCard: {

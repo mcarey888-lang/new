@@ -17,6 +17,7 @@ export interface SummitGoal {
   trainingDaysPerWeek: number;
   hillDaysPerWeek: number;
   preferredHills?: NearbyHill[];
+  fitnessBaseline?: number;
 }
 
 export interface PlanSession {

@@ -305,6 +305,21 @@ export default function AccountScreen() {
           )}
         </Animated.View>
 
+        {/* Setup / Goal actions */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.section}>
+          <Text style={styles.sectionLabel}>TRAINING SETUP</Text>
+          <View style={styles.actionList}>
+            <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/setup")} activeOpacity={0.7}>
+              <Feather name="compass" size={16} color={T.blue} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionText}>Review or change setup</Text>
+                <Text style={styles.actionSub}>Update your goal, fitness level or mountain</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={T.textDim} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
         {/* Billing actions */}
         <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>BILLING</Text>
