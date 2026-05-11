@@ -77,7 +77,7 @@ export default function LandingScreen() {
         <Animated.View entering={FadeInUp.delay(420).duration(600)} style={styles.cta}>
           <TouchableOpacity
             style={styles.ctaBtn}
-            onPress={() => router.push("/setup")}
+            onPress={() => router.push("/questionnaire")}
             activeOpacity={0.85}
           >
             <LinearGradient

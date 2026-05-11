@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +16,7 @@ import {
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "@/lib/revenuecat";
-import { T } from "@/constants/theme";
+import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
 
 const FEATURES = [
   { icon: "map-pin" as const,    title: "Personalised summit training",      desc: "Plans built entirely around your mountain, date, and fitness" },
@@ -66,6 +66,11 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const { offerings, purchase, restore, isPurchasing, isRestoring } = useSubscription();
+  const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string }>();
+
+  const fromQuestionnaire = params.fromQuestionnaire === "true";
+  const quizScore = params.score ? parseInt(params.score, 10) : null;
+  const quizMountain = params.mountain ?? null;
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState<any>(null);
@@ -90,7 +95,11 @@ export default function PaywallScreen() {
     setConfirmVisible(false);
     try {
       await purchase(selectedPkg);
-      router.back();
+      if (fromQuestionnaire) {
+        router.replace("/setup");
+      } else {
+        router.back();
+      }
     } catch (e: any) {
       if (!e?.userCancelled) {
         setError("Purchase failed. Please try again.");
@@ -140,11 +149,53 @@ export default function PaywallScreen() {
             <Feather name="zap" size={12} color={T.green} />
             <Text style={styles.proBadgeText}>SUMMIT READY PRO</Text>
           </View>
-          <Text style={styles.headline}>Give Yourself The Best Chance Of Reaching The Summit</Text>
-          <Text style={styles.subheadline}>
-            Train smarter with personalised mountain preparation designed around your summit goal.
-          </Text>
+          {fromQuestionnaire && quizScore !== null ? (
+            <>
+              <Text style={styles.headline}>
+                {quizMountain ? `Your ${quizMountain} readiness` : "Your summit readiness"}
+              </Text>
+              <Text style={styles.subheadline}>
+                Based on your fitness profile — start your free trial to unlock a personalised training schedule built around your summit.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.headline}>Give Yourself The Best Chance Of Reaching The Summit</Text>
+              <Text style={styles.subheadline}>
+                Train smarter with personalised mountain preparation designed around your summit goal.
+              </Text>
+            </>
+          )}
         </Animated.View>
+
+        {fromQuestionnaire && quizScore !== null && (
+          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
+            <LinearGradient
+              colors={[STATUS_COLOR(quizScore) + "22", STATUS_COLOR(quizScore) + "08"]}
+              style={[styles.scoreCard, { borderColor: STATUS_COLOR(quizScore) + "50" }]}
+            >
+              <View style={styles.scoreLeft}>
+                <Text style={styles.scoreLabel}>Current fitness baseline</Text>
+                <View style={styles.scoreRow}>
+                  <Text style={[styles.scoreNum, { color: STATUS_COLOR(quizScore) }]}>{quizScore}</Text>
+                  <Text style={styles.scoreOutOf}>/100</Text>
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR(quizScore) + "25" }]}>
+                  <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR(quizScore) }]} />
+                  <Text style={[styles.statusText, { color: STATUS_COLOR(quizScore) }]}>
+                    {STATUS_LABEL(quizScore)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.scoreRight}>
+                <Text style={styles.scoreMsgHead}>Ready to improve?</Text>
+                <Text style={styles.scoreMsgBody}>
+                  A personalised training plan will build your score week by week until summit day.
+                </Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.featuresSection}>
           {FEATURES.map((f, i) => (
@@ -227,7 +278,11 @@ export default function PaywallScreen() {
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <Feather name="zap" size={18} color="#fff" />}
               <Text style={styles.ctaText}>
-                {isPurchasing ? "Processing…" : "Start 7-Day Free Trial"}
+                {isPurchasing
+                  ? "Processing…"
+                  : fromQuestionnaire
+                    ? "Get my personalised training schedule"
+                    : "Start 7-Day Free Trial"}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -342,6 +397,26 @@ const styles = StyleSheet.create({
   cancelNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
   restoreBtn: { paddingVertical: 6 },
   restoreText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textDecorationLine: "underline" },
+
+  scoreCard: {
+    flexDirection: "row", alignItems: "center", gap: 16,
+    borderRadius: 20, borderWidth: 1.5,
+    padding: 18, overflow: "hidden",
+  },
+  scoreLeft: { alignItems: "flex-start", gap: 6 },
+  scoreLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  scoreRow: { flexDirection: "row", alignItems: "baseline", gap: 2 },
+  scoreNum: { fontSize: 48, fontFamily: "Inter_700Bold", lineHeight: 52 },
+  scoreOutOf: { fontSize: 16, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statusPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  scoreRight: { flex: 1, gap: 4 },
+  scoreMsgHead: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  scoreMsgBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
 });
 
 const confirmStyles = StyleSheet.create({

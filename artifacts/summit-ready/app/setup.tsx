@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -114,10 +115,41 @@ export default function SetupScreen() {
   const [specificSearching, setSpecificSearching] = useState(false);
   const [specificSearchErr, setSpecificSearchErr] = useState<string | null>(null);
 
+  // Questionnaire pre-fill baseline (overrides chip-derived value if set)
+  const [prefillBaseline, setPrefillBaseline] = useState<number | null>(null);
+
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
     if (hillDays >= trainingDays) setHillDays(Math.max(1, trainingDays - 1));
   }, [trainingDays]);
+
+  // Read questionnaire answers and pre-fill fields
+  useEffect(() => {
+    AsyncStorage.getItem("summitready_questionnaire_data").then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as {
+          mountainName?: string;
+          fitnessBaseline?: number;
+          fitnessLevel?: "Beginner" | "Average" | "Strong";
+          trainingDays?: number;
+          hillDays?: number;
+          equipment?: Equipment[];
+          location?: string;
+        };
+        if (data.mountainName) {
+          skipLookupRef.current = true;
+          setName(data.mountainName);
+        }
+        if (data.fitnessLevel) setFit(data.fitnessLevel);
+        if (data.trainingDays) setTrainingDays(data.trainingDays);
+        if (data.hillDays) setHillDays(data.hillDays);
+        if (data.equipment?.length) setEquipment(data.equipment);
+        if (data.location) setLoc(data.location);
+        if (typeof data.fitnessBaseline === "number") setPrefillBaseline(data.fitnessBaseline);
+      } catch {}
+    });
+  }, []);
 
   // Derive fitness level from the three sliders
   useEffect(() => {
@@ -263,10 +295,12 @@ export default function SetupScreen() {
   const EXP_ELEV_PTS   = [0, 0, 10, 20, 30];
   const EXP_RUN_PTS    = [0, 0, 4, 8];
   const EXP_UPHILL_PTS = [0, 0, 2, 5];
-  const fitnessBaseline =
+  // Questionnaire baseline takes priority over the in-setup chips when available
+  const chipBaseline =
     (EXP_ELEV_PTS[expElevation] ?? 0) +
     (EXP_RUN_PTS[expRunning]    ?? 0) +
     (EXP_UPHILL_PTS[expUphill]  ?? 0);
+  const fitnessBaseline = prefillBaseline !== null ? prefillBaseline : chipBaseline;
 
   async function submit() {
     if (!validate()) return;

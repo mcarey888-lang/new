@@ -143,7 +143,8 @@ export function calculateReadiness(
   // Experienced athletes (high baseline) get a raised cap so prior fitness
   // is reflected without requiring many logged sessions first.
   const baseCap = sessionCap(completed.length, goal.difficulty);
-  const cap = baseline > 0 ? Math.max(baseCap, baseline + 15) : baseCap;
+  // Experienced athletes (high baseline, max now 50) get a raised cap floor.
+  const cap = baseline > 0 ? Math.max(baseCap, Math.min(baseline + 20, 95)) : baseCap;
   return Math.min(cap, raw);
 }
 
