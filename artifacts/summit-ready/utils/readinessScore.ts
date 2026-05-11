@@ -41,8 +41,12 @@ export function calculateReadiness(
   const completed = sessions.filter(s => s.completed);
   const virtual = opts?.virtualSessionCount ?? 0;
   const totalCompleted = completed.length + virtual;
+  const baseline = goal.fitnessBaseline ?? 0;
 
-  if (totalCompleted === 0) return 5;
+  // With no sessions logged, return the baseline directly (min 5).
+  // This allows fit users who answered the experience questions to start
+  // meaningfully higher than the default floor.
+  if (totalCompleted === 0) return Math.max(5, baseline);
 
   // ── 1. Consistency (25 pts) ───────────────────────────────────────────────
   const today = new Date();
@@ -130,16 +134,16 @@ export function calculateReadiness(
     else if (daysSinceLast > 7) penalty += 5;
   }
 
-  // ── 7. Fitness baseline from onboarding experience questions (0–33 pts) ────
-  const baseline = goal.fitnessBaseline ?? 0;
+  // ── 7. Fitness baseline from onboarding experience questions (0–43 pts) ────
+  // (baseline is already declared above for the zero-session early return)
 
   const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty + baseline);
 
   // Cap is based on real logged sessions only (not virtual).
-  // Experienced athletes (high baseline) get a raised floor cap so prior fitness
-  // is reflected even before many sessions are logged.
+  // Experienced athletes (high baseline) get a raised cap so prior fitness
+  // is reflected without requiring many logged sessions first.
   const baseCap = sessionCap(completed.length, goal.difficulty);
-  const cap = baseline > 20 ? Math.max(baseCap, baseline + 10) : baseCap;
+  const cap = baseline > 0 ? Math.max(baseCap, baseline + 15) : baseCap;
   return Math.min(cap, raw);
 }
 

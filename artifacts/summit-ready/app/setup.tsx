@@ -257,12 +257,12 @@ export default function SetupScreen() {
   }
 
   // Scoring: index 0 = unanswered, then option 1-N maps to pts
-  // Elevation: Under200=0, 200-500=8, 500-1000=17, 1000+=25  → max 25
-  // Running:   No=0, WithEffort=3, Easily=5                  → max 5
-  // Uphill:    Rarely=0, Monthly=2, Weekly+=3                → max 3  (total max 33)
-  const EXP_ELEV_PTS   = [0, 0, 8, 17, 25];
-  const EXP_RUN_PTS    = [0, 0, 3, 5];
-  const EXP_UPHILL_PTS = [0, 0, 2, 3];
+  // Elevation: Under200=0, 200-500=10, 500-1000=20, 1000+=30 → max 30
+  // Running:   No=0, WithEffort=4, Easily=8                  → max 8
+  // Uphill:    Rarely=0, Monthly=2, Weekly+=5                → max 5  (total max 43)
+  const EXP_ELEV_PTS   = [0, 0, 10, 20, 30];
+  const EXP_RUN_PTS    = [0, 0, 4, 8];
+  const EXP_UPHILL_PTS = [0, 0, 2, 5];
   const fitnessBaseline =
     (EXP_ELEV_PTS[expElevation] ?? 0) +
     (EXP_RUN_PTS[expRunning]    ?? 0) +
