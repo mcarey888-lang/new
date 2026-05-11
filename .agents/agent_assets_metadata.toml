@@ -6,3 +6,21 @@ id = "zbR2BwsEU5Hm5FWT0_ul3"
 uri = "file://artifacts/summit-ready/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "RdxoxEQSLq1CHZO9D46ON"
+uri = "file://artifacts/summit-landing/src/assets/hero-bg.png"
+type = "image"
+title = "Dramatic alpine peak at 5am"
+
+[[generated]]
+id = "r9YT20GdPf0Wtq18EJw5U"
+uri = "file://artifacts/summit-landing/src/assets/feature-map.png"
+type = "image"
+title = "Worn trail map on rocks"
+
+[[generated]]
+id = "VU9dBJK2YznjjMBkHyx4Q"
+uri = "file://artifacts/summit-landing/src/assets/feature-climb.png"
+type = "image"
+title = "Climber silhouette ascending ridge"
