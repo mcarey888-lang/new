@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "RdxoxEQSLq1CHZO9D46ON"
@@ -18,3 +17,33 @@ id = "VU9dBJK2YznjjMBkHyx4Q"
 uri = "file://artifacts/summit-landing/src/assets/feature-climb.png"
 type = "image"
 title = "Climber silhouette ascending ridge"
+
+[[outputs]]
+id = "neVNzkxcGmWjQ3nBJ2x_h"
+uri = "file://screenshots/screen-home.jpg"
+type = "image"
+title = "1. Home — Hero screen"
+
+[[outputs]]
+id = "3A8JTcZACexvUHRbcSnSv"
+uri = "file://screenshots/screen-questionnaire.jpg"
+type = "image"
+title = "2. Questionnaire — Summit goal"
+
+[[outputs]]
+id = "MBbTb2A3i58fnMCnyRu_e"
+uri = "file://screenshots/screen-setup.jpg"
+type = "image"
+title = "3. Setup — Fitness assessment"
+
+[[outputs]]
+id = "Unk3IC8_wgRPCP8Jenll4"
+uri = "file://screenshots/screen-hills.jpg"
+type = "image"
+title = "4. Nearby Hills finder"
+
+[[outputs]]
+id = "YG8OYEtfzTAHuGOtnSmXH"
+uri = "file://screenshots/screen-paywall.jpg"
+type = "image"
+title = "5. Paywall — Pricing"
