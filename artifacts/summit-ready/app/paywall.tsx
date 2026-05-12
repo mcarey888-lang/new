@@ -212,7 +212,11 @@ export default function PaywallScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.planSection}>
-          <Text style={styles.planHeading}>Choose your plan</Text>
+          <View style={styles.trialBanner}>
+            <Feather name="gift" size={14} color={T.green} />
+            <Text style={styles.trialBannerText}>7-day free trial included — cancel anytime</Text>
+          </View>
+          <Text style={styles.planHeading}>Then choose your plan</Text>
           <View style={styles.planRow}>
             {monthlyPkg && (
               <TouchableOpacity
@@ -357,6 +361,15 @@ const styles = StyleSheet.create({
   featureTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
   featureDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
   planSection: { gap: 12 },
+  trialBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    backgroundColor: T.greenDim, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: T.green + "40",
+  },
+  trialBannerText: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green,
+  },
   planHeading: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
   planRow: { flexDirection: "row", gap: 10 },
   planCard: {
