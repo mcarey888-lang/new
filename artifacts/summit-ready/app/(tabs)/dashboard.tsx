@@ -516,16 +516,16 @@ export default function DashboardScreen() {
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.readinessInner}>
-              {/* Score ring — capped at 40 for free users */}
+              {/* Score ring — ring fills to real score; number is blurred above 40 for free users */}
               <View>
-                <ProgressRing score={!isSubscribed && readinessScore > 40 ? 40 : readinessScore} size={148} strokeWidth={11} />
+                <ProgressRing score={readinessScore} size={148} strokeWidth={11} />
                 {!isSubscribed && readinessScore > 40 && (
                   <TouchableOpacity
                     onPress={() => router.push("/paywall")}
                     activeOpacity={0.85}
                     style={styles.ringLockOverlay}
                   >
-                    <BlurView intensity={18} style={StyleSheet.absoluteFill} />
+                    <BlurView intensity={28} style={StyleSheet.absoluteFill} />
                     <Feather name="lock" size={20} color={T.green} />
                     <Text style={styles.ringLockText}>Unlock score</Text>
                   </TouchableOpacity>
