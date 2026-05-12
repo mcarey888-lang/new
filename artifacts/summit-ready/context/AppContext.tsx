@@ -18,6 +18,7 @@ export interface SummitGoal {
   hillDaysPerWeek: number;
   preferredHills?: NearbyHill[];
   fitnessBaseline?: number;
+  planStartMode?: "optimal" | "full";
 }
 
 export interface PlanSession {

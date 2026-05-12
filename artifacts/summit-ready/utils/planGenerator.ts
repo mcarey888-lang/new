@@ -1,4 +1,5 @@
 import { SummitGoal, TrainingWeek, PlanSession } from "@/context/AppContext";
+import { getTimeRequirement, type Difficulty, type FitnessLevel } from "@/utils/timeValidator";
 
 function getStartElevationMultiplier(fitnessLevel: string): number {
   switch (fitnessLevel) {
@@ -36,7 +37,10 @@ function noEquipment(goal: SummitGoal) {
 
 function createEquipmentCardioSession(targetElev: number, weekNum: number, goal: SummitGoal, variant = 0): PlanSession {
   const elevTarget = Math.round(targetElev * 0.3);
-  const dur = weekNum < 4 ? "30–40 min" : "40–55 min";
+  const isEasy = goal.difficulty === "Easy";
+  const dur = isEasy
+    ? (weekNum < 4 ? "25–35 min" : "35–45 min")
+    : (weekNum < 4 ? "30–40 min" : "40–55 min");
 
   if (hasGym(goal)) {
     const opts = [
@@ -73,10 +77,9 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   }
 
   // No equipment — walks, runs, stairs
-  // Assume ~3m per floor; each rep targets ~15m (≈5 floors)
   const metresPerRep = 15;
   const stairReps = Math.max(5, Math.round(elevTarget / metresPerRep));
-  const floorsPerRep = Math.round(metresPerRep / 3); // ≈5 floors
+  const floorsPerRep = Math.round(metresPerRep / 3);
   const totalElev = stairReps * metresPerRep;
   const opts = [
     {
@@ -98,13 +101,16 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
 
 function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal): PlanSession {
   const hill = hills[0];
+  const isEasy = goal.difficulty === "Easy";
+  const hillDur = isEasy ? "45–60 min" : "60–90 min";
+
   if (!hill) {
     return {
       type: "hill",
       label: "Hill Repeats",
       description: `Find your nearest hill and repeat climbs. Target ${Math.round(targetElev * 0.5)}m total elevation gain — ${Math.round((targetElev * 0.5 / goal.elevationGain) * 100)}% of your summit's ${goal.elevationGain}m.`,
       targetElevation: Math.round(targetElev * 0.5),
-      duration: "60–90 min",
+      duration: hillDur,
     };
   }
 
@@ -117,11 +123,12 @@ function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goa
     label: `Hill Repeats — ${hill.name}`,
     description: `${hill.name} (${hill.elevation}m per climb × ${targetReps} reps = ${totalGain}m) — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. ${hill.distance}km away. Walk or run up, walk down for recovery.`,
     targetElevation: totalGain,
-    duration: "60–90 min",
+    duration: hillDur,
   };
 }
 
 function createBigDaySession(targetElev: number, goal: SummitGoal, hills: TrainingWeek["hills"]): PlanSession {
+  const isEasy = goal.difficulty === "Easy";
   const bigTarget = Math.round(targetElev * 0.75);
   const pctOfSummit = Math.round((bigTarget / goal.elevationGain) * 100);
   const hill = hills[0];
@@ -134,12 +141,21 @@ function createBigDaySession(targetElev: number, goal: SummitGoal, hills: Traini
     label: "Big Day Out",
     description: `Full effort long session. Target: ${hillDetail} — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. This session directly prepares your body for the demands of summit day. Go at a steady, sustainable pace.`,
     targetElevation: bigTarget,
-    duration: "2–5 hours",
+    duration: isEasy ? "1–3 hours" : "2–5 hours",
   };
 }
 
+function getMaxSessionsForDifficulty(difficulty: string, requestedDays: number): number {
+  switch (difficulty) {
+    case "Easy":     return Math.min(requestedDays, 3);
+    case "Moderate": return Math.min(requestedDays, 4);
+    default:         return requestedDays;
+  }
+}
+
 function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hills: TrainingWeek["hills"]): PlanSession[] {
-  const totalDays = Math.max(2, goal.trainingDaysPerWeek ?? 4);
+  const requestedDays = Math.max(2, goal.trainingDaysPerWeek ?? 4);
+  const totalDays = getMaxSessionsForDifficulty(goal.difficulty, requestedDays);
   const hillDays = Math.min(Math.max(1, goal.hillDaysPerWeek ?? 1), totalDays - 1);
   const bigDayCount = totalDays >= 3 ? 1 : 0;
   const cardioDays = Math.max(0, totalDays - hillDays - bigDayCount);
@@ -179,7 +195,28 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
   summitDate.setHours(0, 0, 0, 0);
 
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const totalWeeks = Math.max(1, Math.ceil((summitDate.getTime() - today.getTime()) / msPerWeek));
+  const weeksToSummit = Math.max(1, Math.ceil((summitDate.getTime() - today.getTime()) / msPerWeek));
+
+  // Determine the actual plan start date.
+  // If the user has significantly more time than the recommended training period,
+  // default to starting the plan at the optimal point (recommendedWeeks before summit).
+  // The user can override this by setting planStartMode = "full" to start from today.
+  const { recommendedWeeks } = getTimeRequirement(
+    goal.difficulty as Difficulty,
+    goal.fitnessLevel as FitnessLevel,
+    goal.trainingDaysPerWeek ?? 4
+  );
+
+  let planStart = today;
+  const hasSurplus = weeksToSummit > recommendedWeeks + 2;
+
+  if (hasSurplus && goal.planStartMode !== "full") {
+    // Start recommendedWeeks before the summit, but never before today
+    const optimalStart = new Date(summitDate.getTime() - recommendedWeeks * msPerWeek);
+    planStart = optimalStart > today ? optimalStart : today;
+  }
+
+  const totalWeeks = Math.max(1, Math.ceil((summitDate.getTime() - planStart.getTime()) / msPerWeek));
 
   const targetElevation = goal.elevationGain;
   const startMultiplier = getStartElevationMultiplier(goal.fitnessLevel);
@@ -195,13 +232,20 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
       }))
     : getMockHills(goal.location, goal.maxRadius);
 
+  // For the "is current week" check, we need to know if a week contains today
+  function isCurrentWeek(weekStart: Date, weekEnd: Date): boolean {
+    const end = new Date(weekEnd);
+    end.setHours(23, 59, 59);
+    return today >= weekStart && today <= end;
+  }
+
   const weeks: TrainingWeek[] = [];
 
   if (totalWeeks < 4) {
     for (let w = 1; w <= totalWeeks; w++) {
       const progress = w / totalWeeks;
       const weekElev = Math.round(startElev + (targetElevation * 0.9 - startElev) * progress);
-      const weekStart = addDays(today, (w - 1) * 7);
+      const weekStart = addDays(planStart, (w - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
       const isTaper = w === totalWeeks;
       const isPeak = w === totalWeeks - 1 && totalWeeks > 1;
@@ -218,7 +262,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
         sessions: createSessions(elevTarget, w, goal, hills),
         isPeakWeek: isPeak,
         isTaperWeek: isTaper,
-        isCurrentWeek: w === 1,
+        isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
         startDate: formatDate(weekStart),
         endDate: formatDate(weekEnd),
         hills,
@@ -231,7 +275,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
     for (let w = 1; w <= totalWeeks; w++) {
       const isPeak = w === peakWeek;
       const isTaper = w === taperWeek;
-      const weekStart = addDays(today, (w - 1) * 7);
+      const weekStart = addDays(planStart, (w - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
 
       let elevTarget: number;
@@ -262,7 +306,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
         sessions: createSessions(elevTarget, w, goal, hills),
         isPeakWeek: isPeak,
         isTaperWeek: isTaper,
-        isCurrentWeek: w === 1,
+        isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
         startDate: formatDate(weekStart),
         endDate: formatDate(weekEnd),
         hills,
@@ -275,7 +319,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
     const baseWeeks = totalWeeks - buildWeeks - peakWeeks - taperWeeks;
 
     for (let w = 1; w <= totalWeeks; w++) {
-      const weekStart = addDays(today, (w - 1) * 7);
+      const weekStart = addDays(planStart, (w - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
 
       let phase: TrainingWeek["phase"];
@@ -321,7 +365,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
         sessions: createSessions(Math.max(100, elevTarget), w, goal, hills),
         isPeakWeek,
         isTaperWeek,
-        isCurrentWeek: w === 1,
+        isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
         startDate: formatDate(weekStart),
         endDate: formatDate(weekEnd),
         hills,

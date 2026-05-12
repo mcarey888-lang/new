@@ -117,6 +117,7 @@ export default function SetupScreen() {
 
   // Questionnaire pre-fill baseline (overrides chip-derived value if set)
   const [prefillBaseline, setPrefillBaseline] = useState<number | null>(null);
+  const [planStartMode, setPlanStartMode] = useState<"optimal" | "full">("optimal");
 
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
@@ -320,6 +321,7 @@ export default function SetupScreen() {
       hillDaysPerWeek: hillDays,
       preferredHills: preferredHills.length > 0 ? preferredHills : undefined,
       fitnessBaseline,
+      planStartMode,
     });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
@@ -618,6 +620,57 @@ export default function SetupScreen() {
                         </View>
                       </View>
                     )}
+                  </View>
+                </Animated.View>
+              );
+            })()}
+
+            {/* Plan duration choice — shown when user has significantly more time than needed */}
+            {timeAssessment && !errors.date && timeAssessment.status === "good" && timeAssessment.weeksAvailable > timeAssessment.recommendedWeeks + 2 && (() => {
+              const ta = timeAssessment;
+              const summitMs = new Date(date + "T12:00:00").getTime();
+              const optimalStartMs = summitMs - ta.recommendedWeeks * 7 * 24 * 60 * 60 * 1000;
+              const todayMs = Date.now();
+              const planStartMs = optimalStartMs > todayMs ? optimalStartMs : todayMs;
+              const planStartStr = new Date(planStartMs).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+              return (
+                <Animated.View entering={FadeInDown.duration(400)}>
+                  <View style={styles.planDurCard}>
+                    <View style={styles.planDurHeader}>
+                      <Feather name="sliders" size={14} color={T.blue} />
+                      <Text style={styles.planDurTitle}>When should your plan start?</Text>
+                    </View>
+                    <Text style={styles.planDurSub}>
+                      You need {ta.recommendedWeeks} weeks to prepare — you have {ta.weeksAvailable}. Start focused or begin building now.
+                    </Text>
+                    <View style={styles.planDurRow}>
+                      <TouchableOpacity
+                        style={[styles.planDurOpt, planStartMode === "optimal" && styles.planDurOptActive]}
+                        onPress={() => setPlanStartMode("optimal")}
+                        activeOpacity={0.8}
+                      >
+                        {planStartMode === "optimal" && (
+                          <View style={styles.planDurCheck}><Feather name="check" size={10} color="#fff" /></View>
+                        )}
+                        <Text style={[styles.planDurOptIcon]}>🎯</Text>
+                        <Text style={[styles.planDurOptLabel, planStartMode === "optimal" && { color: T.green }]}>Focused plan</Text>
+                        <Text style={[styles.planDurOptWeeks, planStartMode === "optimal" && { color: T.green }]}>{ta.recommendedWeeks} weeks</Text>
+                        <Text style={styles.planDurOptDate}>Starts {planStartStr}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.planDurOpt, planStartMode === "full" && styles.planDurOptActive]}
+                        onPress={() => setPlanStartMode("full")}
+                        activeOpacity={0.8}
+                      >
+                        {planStartMode === "full" && (
+                          <View style={styles.planDurCheck}><Feather name="check" size={10} color="#fff" /></View>
+                        )}
+                        <Text style={styles.planDurOptIcon}>📅</Text>
+                        <Text style={[styles.planDurOptLabel, planStartMode === "full" && { color: T.green }]}>Full duration</Text>
+                        <Text style={[styles.planDurOptWeeks, planStartMode === "full" && { color: T.green }]}>{ta.weeksAvailable} weeks</Text>
+                        <Text style={styles.planDurOptDate}>Starts today</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </Animated.View>
               );
@@ -1293,6 +1346,29 @@ const styles = StyleSheet.create({
 
   scheduleInfo: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
   scheduleInfoText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  planDurCard: {
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.blue + "35",
+    padding: 14, gap: 10, marginTop: 8,
+  },
+  planDurHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  planDurTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  planDurSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  planDurRow: { flexDirection: "row", gap: 10 },
+  planDurOpt: {
+    flex: 1, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1.5,
+    borderColor: T.border, padding: 12, gap: 3, alignItems: "center", position: "relative" as const,
+  },
+  planDurOptActive: { borderColor: T.green + "70", backgroundColor: T.greenDim },
+  planDurOptIcon: { fontSize: 22, marginBottom: 2 },
+  planDurOptLabel: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" as const },
+  planDurOptWeeks: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.textMuted, textAlign: "center" as const },
+  planDurOptDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" as const },
+  planDurCheck: {
+    position: "absolute" as const, top: 8, right: 8,
+    width: 18, height: 18, borderRadius: 9, backgroundColor: T.green,
+    alignItems: "center", justifyContent: "center",
+  },
 
   summaryCard: {
     backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.green + "25",

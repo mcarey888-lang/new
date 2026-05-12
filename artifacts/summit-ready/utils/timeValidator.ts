@@ -11,22 +11,23 @@ export type FitnessLevel = "Beginner" | "Average" | "Strong";
 // Alpine  = high-altitude or technical routes with objective hazards
 //           (Matterhorn, Mont Blanc, routes requiring crampon/ice-axe skills)
 //
-// Note: a fit person can summit Snowdon with 2-3 weeks of targeted preparation;
-// a beginner attempting the Matterhorn needs a full season of mountaineering.
+// Note: a fit person can do an easy hill with 1–2 weeks targeted prep;
+// Ben Nevis comfortably needs ~12 weeks from beginner fitness;
+// a beginner attempting the Matterhorn needs a full season.
 const MIN_WEEKS_BASE: Record<Difficulty, Record<FitnessLevel, number>> = {
   Easy:     { Beginner:  1, Average:  0, Strong:  0 },
-  Moderate: { Beginner:  3, Average:  1, Strong:  0 },
-  Hard:     { Beginner:  8, Average:  3, Strong:  1 },
+  Moderate: { Beginner:  6, Average:  3, Strong:  1 },
+  Hard:     { Beginner: 12, Average:  6, Strong:  2 },
   Alpine:   { Beginner: 24, Average: 12, Strong:  6 },
 };
 
-// Comfortable weeks — enough buffer for missed sessions and progressive build.
-// These are the "ideal" windows, not hard requirements.
+// Comfortable (recommended) weeks — enough buffer for a progressive build with
+// room for a missed session or two. These are the "sweet spot" windows.
 const MIN_REC_BASE: Record<Difficulty, Record<FitnessLevel, number>> = {
-  Easy:     { Beginner:  2, Average:  1, Strong:  1 },
-  Moderate: { Beginner:  5, Average:  3, Strong:  2 },
-  Hard:     { Beginner: 12, Average:  6, Strong:  3 },
-  Alpine:   { Beginner: 36, Average: 20, Strong: 12 },
+  Easy:     { Beginner:  4, Average:  2, Strong:  1 },
+  Moderate: { Beginner: 12, Average:  8, Strong:  4 },
+  Hard:     { Beginner: 20, Average: 12, Strong:  6 },
+  Alpine:   { Beginner: 36, Average: 24, Strong: 14 },
 };
 
 export function getTimeRequirement(
@@ -110,10 +111,14 @@ export function assessTime(
     status = "tight";
     message = `Enough time — ideally ${recommendedWeeks} weeks, you have ${weeksAvailable}`;
     detail = `You have the minimum you need. There's little buffer, so train consistently and treat every session as important.`;
+  } else if (weeksAvailable > recommendedWeeks * 2) {
+    status = "good";
+    message = `Plenty of time — only ${recommendedWeeks} weeks of training needed`;
+    detail = `For ${diffLabel[difficulty]} at your fitness level, ${recommendedWeeks} weeks is all the training you need. You have ${weeksAvailable} weeks available — we recommend a focused ${recommendedWeeks}-week plan starting closer to your summit date, but you can also choose to start now for a longer build.`;
   } else {
     status = "good";
     message = `Good — ${weeksAvailable} weeks gives solid preparation time`;
-    detail = `${recommendedWeeks} weeks is all you need for this route at your fitness level. You have ${weeksAvailable - recommendedWeeks} week${weeksAvailable - recommendedWeeks !== 1 ? "s" : ""} to spare — stay consistent and you'll arrive well prepared.`;
+    detail = `${recommendedWeeks} weeks is the sweet spot for this route at your fitness level. You have ${weeksAvailable - recommendedWeeks} extra week${weeksAvailable - recommendedWeeks !== 1 ? "s" : ""} of buffer — stay consistent and you'll arrive well prepared.`;
   }
 
   return { status, weeksAvailable, minWeeks, recommendedWeeks, message, detail };
