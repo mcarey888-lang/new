@@ -18,6 +18,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp, NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { useSubscription } from "@/lib/revenuecat";
+
+const FREE_HILLS_LIMIT = 3;
 
 const GRADE_COLOR: Record<string, string> = {
   "Easy": T.green,
@@ -59,6 +62,7 @@ export default function HillsScreen() {
     summitGoal, trainingPlan, nearbyHills, hillsLoading,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation,
   } = useApp();
+  const { isSubscribed } = useSubscription();
 
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
   const [userChangedRadius, setUserChangedRadius] = useState(false);
@@ -458,6 +462,31 @@ export default function HillsScreen() {
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
           const inPlan = hillsInPlan.includes(hill.name);
           const wasJustAdded = justAdded === hill.name;
+          const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
+
+          if (isLocked && i === FREE_HILLS_LIMIT) {
+            return (
+              <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
+                <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={styles.lockedCard}>
+                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.lockedIconWrap}>
+                    <Feather name="lock" size={22} color={T.green} />
+                  </View>
+                  <Text style={styles.lockedTitle}>
+                    {nearbyHills.length - FREE_HILLS_LIMIT} more hills found nearby
+                  </Text>
+                  <Text style={styles.lockedSub}>
+                    Upgrade to Summit Ready Pro to see all {nearbyHills.length} results, sort by elevation, and add any hill to your plan.
+                  </Text>
+                  <View style={styles.lockedBtn}>
+                    <Feather name="zap" size={13} color={T.bg} />
+                    <Text style={styles.lockedBtnText}>Unlock all hills</Text>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          }
+          if (isLocked) return null;
 
           return (
             <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
@@ -617,6 +646,24 @@ export default function HillsScreen() {
 }
 
 const styles = StyleSheet.create({
+  lockedCard: {
+    borderRadius: 18, borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: T.card, overflow: "hidden",
+    alignItems: "center", padding: 24, gap: 10, marginBottom: 8,
+  },
+  lockedIconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "50",
+    alignItems: "center", justifyContent: "center",
+  },
+  lockedTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
+  lockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+  lockedBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: T.green, borderRadius: 12,
+    paddingHorizontal: 20, paddingVertical: 10, marginTop: 4,
+  },
+  lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
   scroll: { paddingHorizontal: 18 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },

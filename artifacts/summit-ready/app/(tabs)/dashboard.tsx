@@ -516,17 +516,50 @@ export default function DashboardScreen() {
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.readinessInner}>
-              <ProgressRing score={readinessScore} size={148} strokeWidth={11} />
+              {/* Score ring — capped at 40 for free users */}
+              <View>
+                <ProgressRing score={!isSubscribed && readinessScore > 40 ? 40 : readinessScore} size={148} strokeWidth={11} />
+                {!isSubscribed && readinessScore > 40 && (
+                  <TouchableOpacity
+                    onPress={() => router.push("/paywall")}
+                    activeOpacity={0.85}
+                    style={styles.ringLockOverlay}
+                  >
+                    <BlurView intensity={18} style={StyleSheet.absoluteFill} />
+                    <Feather name="lock" size={20} color={T.green} />
+                    <Text style={styles.ringLockText}>Unlock score</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <View style={styles.readinessMeta}>
                 <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
-                <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                  <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-                </View>
-                <Text style={styles.trackingMsg}>{trackingMsg}</Text>
-                <Text style={styles.daysText}>
-                  {days > 0 ? `${days} days until summit` : "Summit day!"}
-                </Text>
+                {!isSubscribed && readinessScore > 40 ? (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => router.push("/paywall")}
+                      style={[styles.statusPill, { backgroundColor: T.greenDim }]}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="lock" size={11} color={T.green} />
+                      <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.trackingMsg}>Score above 40 — upgrade to track progress</Text>
+                    <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.8} style={styles.ringUpgradeBtn}>
+                      <Text style={styles.ringUpgradeBtnText}>See your full score →</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
+                      <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                      <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+                    </View>
+                    <Text style={styles.trackingMsg}>{trackingMsg}</Text>
+                    <Text style={styles.daysText}>
+                      {days > 0 ? `${days} days until summit` : "Summit day!"}
+                    </Text>
+                  </>
+                )}
                 <View style={styles.difficultyRow}>
                   <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
                     <Feather name="flag" size={11} color={T.textMuted} />
@@ -801,6 +834,22 @@ const styles = StyleSheet.create({
   },
   warningText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   warningDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  ringLockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 74,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  ringLockText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.green },
+  ringUpgradeBtn: {
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 10, backgroundColor: T.greenDim,
+    borderWidth: 1, borderColor: T.green + "40",
+    alignSelf: "flex-start",
+  },
+  ringUpgradeBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
   readinessCard: {
     borderRadius: 22,
     borderWidth: 1,

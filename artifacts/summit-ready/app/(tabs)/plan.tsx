@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
+import { useSubscription } from "@/lib/revenuecat";
 
 // ── Rep Tracker ───────────────────────────────────────────────────────────────
 // Shows summit-equivalent target reps, lets user log how many they actually
@@ -557,6 +558,7 @@ export default function PlanScreen() {
     await submitWeekSessions(weekNum);
   }
 
+  const { isSubscribed } = useSubscription();
   const currentWeek = getCurrentWeek(trainingPlan);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(
     new Set(currentWeek ? [currentWeek.weekNumber] : [])
@@ -699,30 +701,64 @@ export default function PlanScreen() {
           </View>
         </Animated.View>
 
-        {trainingPlan.map((week, i) => (
-          <WeekCard
-            key={week.weekNumber}
-            week={week}
-            isExpanded={expandedWeeks.has(week.weekNumber)}
-            onToggle={() => toggle(week.weekNumber)}
-            index={i}
-            completedPlanSessions={completedPlanSessions}
-            assignedHills={assignedHills}
-            nearbyHills={nearbyHills}
-            submittedPlanSessions={submittedPlanSessions}
-            sessionReps={sessionReps}
-            summitGoal={summitGoal}
-            onToggleSession={togglePlanSession}
-            onAssignHill={openHillPicker}
-            onSubmitWeek={handleSubmitWeek}
-            onSetReps={setSessionReps}
-            onEditSession={openEditSession}
-            onSwapExercise={openSwapExercise}
-          />
-        ))}
+        {trainingPlan.map((week, i) => {
+          const isPlanLocked = !isSubscribed && week.weekNumber > 1;
+          if (isPlanLocked && week.weekNumber === 2) {
+            return (
+              <Animated.View key={week.weekNumber} entering={FadeInDown.delay(i * 40).duration(400)}>
+                <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={planLockStyles.card}>
+                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={planLockStyles.iconWrap}>
+                    <Feather name="lock" size={22} color={T.green} />
+                  </View>
+                  <Text style={planLockStyles.title}>
+                    {trainingPlan.length - 1} more weeks in your plan
+                  </Text>
+                  <Text style={planLockStyles.sub}>
+                    Upgrade to unlock your full {trainingPlan.length}-week plan, AI-powered adaptation, and week-by-week guidance all the way to your summit.
+                  </Text>
+                  <View style={planLockStyles.featureRow}>
+                    {["Adaptive AI plan", "All weeks unlocked", "Progress tracking"].map(f => (
+                      <View key={f} style={planLockStyles.featureChip}>
+                        <Feather name="check" size={11} color={T.green} />
+                        <Text style={planLockStyles.featureText}>{f}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={planLockStyles.btn}>
+                    <Feather name="zap" size={13} color={T.bg} />
+                    <Text style={planLockStyles.btnText}>Unlock full plan</Text>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          }
+          if (isPlanLocked) return null;
+          return (
+            <WeekCard
+              key={week.weekNumber}
+              week={week}
+              isExpanded={expandedWeeks.has(week.weekNumber)}
+              onToggle={() => toggle(week.weekNumber)}
+              index={i}
+              completedPlanSessions={completedPlanSessions}
+              assignedHills={assignedHills}
+              nearbyHills={nearbyHills}
+              submittedPlanSessions={submittedPlanSessions}
+              sessionReps={sessionReps}
+              summitGoal={summitGoal}
+              onToggleSession={togglePlanSession}
+              onAssignHill={openHillPicker}
+              onSubmitWeek={handleSubmitWeek}
+              onSetReps={setSessionReps}
+              onEditSession={openEditSession}
+              onSwapExercise={openSwapExercise}
+            />
+          );
+        })}
       </ScrollView>
 
-      {completedCount > 0 && (
+      {completedCount > 0 && isSubscribed && (
         <View style={[styles.adjustBar, { paddingBottom: Platform.OS === "web" ? 16 : insets.bottom + 90 }]}>
           <TouchableOpacity
             onPress={adjustPlanWithAI}
@@ -974,6 +1010,35 @@ const mpStyles = StyleSheet.create({
     alignItems: "center",
   },
   cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+});
+
+const planLockStyles = StyleSheet.create({
+  card: {
+    borderRadius: 18, borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: T.card, overflow: "hidden",
+    alignItems: "center", padding: 24, gap: 10, marginBottom: 10,
+  },
+  iconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "50",
+    alignItems: "center", justifyContent: "center",
+  },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
+  sub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+  featureRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 2 },
+  featureChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, backgroundColor: T.greenDim,
+    borderWidth: 1, borderColor: T.green + "30",
+  },
+  featureText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.green },
+  btn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: T.green, borderRadius: 12,
+    paddingHorizontal: 20, paddingVertical: 10, marginTop: 4,
+  },
+  btnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 });
 
 const styles = StyleSheet.create({
