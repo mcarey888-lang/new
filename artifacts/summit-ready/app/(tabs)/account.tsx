@@ -312,35 +312,43 @@ export default function AccountScreen() {
             ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
           </Text>
           <View style={styles.achieveGrid}>
-            {ACHIEVEMENTS.map(a => {
-              const isUnlocked = unlockedAchievements.includes(a.id);
-              const tierColor = TIER_COLOR[a.tier];
+            {Array.from({ length: Math.ceil(ACHIEVEMENTS.length / 2) }, (_, rowIdx) => {
+              const pair = ACHIEVEMENTS.slice(rowIdx * 2, rowIdx * 2 + 2);
               return (
-                <View
-                  key={a.id}
-                  style={[
-                    styles.achieveCard,
-                    isUnlocked
-                      ? { borderColor: tierColor + "55" }
-                      : { opacity: 0.35 },
-                  ]}
-                >
-                  {isUnlocked && (
-                    <LinearGradient
-                      colors={[tierColor + "18", "transparent"]}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  )}
-                  <Text style={styles.achieveEmoji}>{isUnlocked ? a.emoji : "🔒"}</Text>
-                  <Text style={styles.achieveTitle} numberOfLines={1}>{a.title}</Text>
-                  <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
-                  {isUnlocked && (
-                    <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
-                      <Text style={[styles.achieveTierText, { color: tierColor }]}>
-                        {TIER_LABEL[a.tier]}
-                      </Text>
-                    </View>
-                  )}
+                <View key={rowIdx} style={styles.achieveRow}>
+                  {pair.map(a => {
+                    const isUnlocked = unlockedAchievements.includes(a.id);
+                    const tierColor = TIER_COLOR[a.tier];
+                    return (
+                      <View
+                        key={a.id}
+                        style={[
+                          styles.achieveCard,
+                          isUnlocked ? { borderColor: tierColor + "55" } : { opacity: 0.35 },
+                        ]}
+                      >
+                        {isUnlocked && (
+                          <LinearGradient
+                            colors={[tierColor + "18", "transparent"]}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        )}
+                        <View style={styles.achieveCardTop}>
+                          <Text style={styles.achieveEmoji}>{isUnlocked ? a.emoji : "🔒"}</Text>
+                          {isUnlocked && (
+                            <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
+                              <Text style={[styles.achieveTierText, { color: tierColor }]}>
+                                {TIER_LABEL[a.tier]}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.achieveTitle} numberOfLines={2}>{a.title}</Text>
+                        <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
+                      </View>
+                    );
+                  })}
+                  {pair.length === 1 && <View style={styles.achieveCardPlaceholder} />}
                 </View>
               );
             })}
@@ -592,20 +600,25 @@ const styles = StyleSheet.create({
   },
   restoreMsgText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
 
-  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  achieveGrid: { gap: 10 },
+  achieveRow: { flexDirection: "row", gap: 10 },
   achieveCard: {
-    width: "47%", flex: 1,
+    flex: 1,
     backgroundColor: T.card, borderRadius: 16,
     borderWidth: 1, borderColor: T.cardBorder,
-    padding: 12, gap: 4, overflow: "hidden",
-    alignItems: "flex-start",
+    padding: 12, gap: 6, overflow: "hidden",
   },
-  achieveEmoji: { fontSize: 26, marginBottom: 2 },
-  achieveTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.text },
-  achieveDesc: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 14 },
+  achieveCardPlaceholder: { flex: 1 },
+  achieveCardTop: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", marginBottom: 2,
+  },
+  achieveEmoji: { fontSize: 28 },
+  achieveTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  achieveDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15 },
   achieveTierBadge: {
-    marginTop: 4, paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 8, alignSelf: "flex-start",
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: 8,
   },
   achieveTierText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
 
