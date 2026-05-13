@@ -23,7 +23,7 @@ import { useApp } from "@/context/AppContext";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { ProgressRing } from "@/components/ProgressRing";
-import { getDaysRemaining, getWeeklyCompletion } from "@/utils/readinessScore";
+import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 
@@ -317,9 +317,157 @@ function StatCard({
   );
 }
 
+// ── Alpine Requirements Card ───────────────────────────────────────────────
+const ALPINE_CATEGORY_ICON: Record<string, string> = {
+  endurance: "heart",
+  altitude: "wind",
+  technical: "tool",
+  strength: "zap",
+  recovery: "moon",
+};
+const ALPINE_CATEGORY_COLOR: Record<string, string> = {
+  endurance: T.green,
+  altitude: T.blue,
+  technical: T.orange,
+  strength: T.purple,
+  recovery: "#A78BFA",
+};
+const ALPINE_BAND_LABEL: Record<string, string> = {
+  "high": "High Altitude",
+  "very-high": "Very High Altitude",
+  "extreme": "Extreme Altitude",
+};
+const ALPINE_TECH_LABEL: Record<string, string> = {
+  "walking": "Walking",
+  "scrambling": "Scrambling",
+  "basic-crampons": "Crampons Required",
+  "technical": "Technical Climbing",
+  "advanced-technical": "Advanced Technical",
+};
+
+function AlpineCard({
+  goal,
+  sessions,
+  trainingPlan,
+  loading,
+}: {
+  goal: import("@/context/AppContext").SummitGoal;
+  sessions: import("@/context/AppContext").Session[];
+  trainingPlan: import("@/context/AppContext").TrainingWeek[];
+  loading: boolean;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weeksElapsed = trainingPlan.filter(w => new Date(w.endDate) < today).length;
+  const profile = goal.alpineProfile;
+
+  if (loading) {
+    return (
+      <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+        <View style={styles.alpineCard}>
+          <LinearGradient colors={[T.blue + "15", "transparent"]} style={StyleSheet.absoluteFill} />
+          <View style={styles.alpineCardHeader}>
+            <View style={styles.alpineIconWrap}>
+              <Feather name="shield" size={13} color={T.blue} />
+            </View>
+            <Text style={styles.alpineCardTitle}>Alpine Requirements</Text>
+            <ActivityIndicator size="small" color={T.blue} style={{ marginLeft: "auto" as any }} />
+          </View>
+          <Text style={styles.alpineLoadingText}>Analysing {goal.mountainName}...</Text>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  if (!profile) return null;
+
+  const metCount = profile.requirements.filter(req =>
+    isRequirementMet(req, sessions, weeksElapsed)
+  ).length;
+
+  return (
+    <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+      <View style={styles.alpineCard}>
+        <LinearGradient colors={[T.blue + "12", "transparent"]} style={StyleSheet.absoluteFill} />
+
+        {/* Header */}
+        <View style={styles.alpineCardHeader}>
+          <View style={styles.alpineIconWrap}>
+            <Feather name="shield" size={13} color={T.blue} />
+          </View>
+          <Text style={styles.alpineCardTitle}>Alpine Requirements</Text>
+          <View style={styles.alpineAiBadge}>
+            <Text style={styles.alpineAiBadgeText}>AI</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <Text style={styles.alpineMetCount}>
+            {metCount}/{profile.requirements.length} met
+          </Text>
+        </View>
+
+        <View style={styles.alpineTechRow}>
+          <View style={styles.alpinePill}>
+            <Text style={styles.alpinePillText}>{ALPINE_BAND_LABEL[profile.altitudeBand] ?? profile.altitudeBand}</Text>
+          </View>
+          <View style={styles.alpinePill}>
+            <Text style={styles.alpinePillText}>{ALPINE_TECH_LABEL[profile.technicalLevel] ?? profile.technicalLevel}</Text>
+          </View>
+          <View style={styles.alpinePill}>
+            <Text style={styles.alpinePillText}>Min {profile.minimumWeeks}wk</Text>
+          </View>
+        </View>
+
+        <View style={styles.alpineDivider} />
+
+        {/* Requirements checklist */}
+        {profile.requirements.map((req) => {
+          const met = isRequirementMet(req, sessions, weeksElapsed);
+          const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
+          const iconName = ALPINE_CATEGORY_ICON[req.category] ?? "check-circle";
+          return (
+            <View key={req.id} style={styles.alpineReqRow}>
+              <View style={[styles.alpineReqIconWrap, { backgroundColor: color + "18" }]}>
+                <Feather name={iconName as any} size={12} color={color} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.alpineReqLabel}>{req.label}</Text>
+                <Text style={styles.alpineReqDetail}>{req.detail}</Text>
+              </View>
+              <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : "rgba(255,255,255,0.05)" }]}>
+                <Feather name={met ? "check" : "minus"} size={12} color={met ? T.green : T.textMuted} />
+              </View>
+            </View>
+          );
+        })}
+
+        <View style={styles.alpineDivider} />
+
+        {/* Key risks */}
+        <View style={styles.alpineRisksRow}>
+          <Text style={styles.alpineRisksLabel}>Key risks</Text>
+          <View style={styles.alpineRisksChips}>
+            {profile.keyRisks.map((risk, i) => (
+              <View key={i} style={styles.alpineRiskChip}>
+                <Feather name="alert-triangle" size={10} color={T.orange} />
+                <Text style={styles.alpineRiskText}>{risk}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Acclimatization note */}
+        <View style={styles.alpineAcclimRow}>
+          <Feather name="info" size={12} color={T.blue} />
+          <Text style={styles.alpineAcclimText}>{profile.acclimatizationNote}</Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -582,6 +730,16 @@ export default function DashboardScreen() {
           <StatCard icon="check-circle" label="Sessions Done" value={totalDone} accent={T.green} delay={200} />
           <StatCard icon="bar-chart-2" label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
         </View>
+
+        {/* Alpine Requirements — only shown for Alpine difficulty */}
+        {summitGoal.difficulty === "Alpine" && (
+          <AlpineCard
+            goal={summitGoal}
+            sessions={sessions}
+            trainingPlan={trainingPlan}
+            loading={alpineProfileLoading}
+          />
+        )}
 
         {/* Summit Goal Strip */}
         <Animated.View entering={FadeInDown.delay(260).duration(500)}>
@@ -1019,4 +1177,159 @@ const styles = StyleSheet.create({
     borderColor: T.green + "30",
   },
   secondaryActionText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.green },
+  alpineCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+    backgroundColor: T.card,
+    padding: 16,
+    marginBottom: 12,
+    overflow: "hidden",
+    gap: 10,
+  },
+  alpineCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  alpineIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: T.blue + "18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alpineCardTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: T.white,
+  },
+  alpineAiBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: T.blue + "22",
+  },
+  alpineAiBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: T.blue,
+    letterSpacing: 0.5,
+  },
+  alpineMetCount: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+  },
+  alpineTechRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  alpinePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: T.surface,
+  },
+  alpinePillText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: T.textMuted,
+  },
+  alpineDivider: {
+    height: 1,
+    backgroundColor: T.border,
+    opacity: 0.5,
+    marginHorizontal: -16,
+  },
+  alpineReqRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  alpineReqIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  alpineReqLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: T.white,
+    lineHeight: 18,
+  },
+  alpineReqDetail: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    lineHeight: 16,
+  },
+  alpineReqStatus: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  alpineRisksRow: {
+    gap: 6,
+  },
+  alpineRisksLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  alpineRisksChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  alpineRiskChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: T.orangeDim,
+    borderWidth: 1,
+    borderColor: T.orange + "30",
+  },
+  alpineRiskText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: T.orange,
+  },
+  alpineAcclimRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: T.blue + "0C",
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: T.blue + "20",
+  },
+  alpineAcclimText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    lineHeight: 18,
+    flex: 1,
+  },
+  alpineLoadingText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+  },
 });

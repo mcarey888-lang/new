@@ -1,4 +1,4 @@
-import { SummitGoal, TrainingWeek, Session, NearbyHill } from "@/context/AppContext";
+import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement } from "@/context/AppContext";
 
 // Maximum achievable score based on actual logged sessions and difficulty.
 // The cap prevents zero-session gaming but must not punish genuine plan completion.
@@ -23,6 +23,31 @@ function sessionCap(realSessions: number, difficulty: string): number {
 // being used. Mirrors the logic in plan.tsx RepStepper.
 export function calcTargetReps(summitElev: number, elevPerRep: number): number {
   return Math.max(1, Math.ceil(summitElev / Math.max(1, elevPerRep)));
+}
+
+// Check whether a single Alpine requirement has been met based on logged sessions.
+// Used both in the readiness score calculation and the dashboard checklist.
+export function isRequirementMet(
+  req: AlpineRequirement,
+  sessions: Session[],
+  weeksElapsed: number,
+): boolean {
+  if (!req.benchmark || req.benchmarkValue === undefined) return false;
+  const completed = sessions.filter(s => s.completed);
+  switch (req.benchmark) {
+    case "sessions_count":
+      return completed.length >= req.benchmarkValue;
+    case "max_elevation_m": {
+      const maxElev = completed.length > 0 ? Math.max(...completed.map(s => s.elevationGain)) : 0;
+      return maxElev >= req.benchmarkValue;
+    }
+    case "big_day_count":
+      return completed.filter(s => s.type === "bigDay").length >= req.benchmarkValue;
+    case "weeks_training":
+      return weeksElapsed >= req.benchmarkValue;
+    default:
+      return false;
+  }
 }
 
 export function calculateReadiness(
@@ -119,6 +144,28 @@ export function calculateReadiness(
     recentSessions.length >= 1 ? 4 :
     virtual > 0               ? 2 : 0;
 
+  // ── Alpine requirements progress (0–10 pts, Alpine only) ─────────────────
+  // Each measurable requirement that the user has met contributes points,
+  // reflecting mountain-specific preparation rather than just general fitness.
+  let alpineReqScore = 0;
+  if (goal.difficulty === "Alpine" && goal.alpineProfile?.requirements?.length) {
+    const measurable = goal.alpineProfile.requirements.filter(
+      r => r.benchmark && r.benchmarkValue !== undefined,
+    );
+    if (measurable.length > 0) {
+      let metCount = 0;
+      for (const req of measurable) {
+        switch (req.benchmark) {
+          case "sessions_count":  if (totalCompleted >= req.benchmarkValue!) metCount++; break;
+          case "max_elevation_m": if (maxElev >= req.benchmarkValue!) metCount++; break;
+          case "big_day_count":   if (bigDays.length >= req.benchmarkValue!) metCount++; break;
+          case "weeks_training":  if (weeksIncludingCurrent >= req.benchmarkValue!) metCount++; break;
+        }
+      }
+      alpineReqScore = Math.round((metCount / measurable.length) * 10);
+    }
+  }
+
   // ── Penalties ─────────────────────────────────────────────────────────────
   let penalty = 0;
   if (completed.length > 0) {
@@ -137,7 +184,7 @@ export function calculateReadiness(
   // ── 7. Fitness baseline from onboarding experience questions (0–43 pts) ────
   // (baseline is already declared above for the zero-session early return)
 
-  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty + baseline);
+  const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore + alpineReqScore - penalty + baseline);
 
   // Cap is based on real logged sessions only (not virtual).
   // Experienced athletes (high baseline) get a raised cap — but how much the

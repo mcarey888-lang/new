@@ -3,6 +3,24 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { generatePlan } from "@/utils/planGenerator";
 import { calculateReadiness } from "@/utils/readinessScore";
 
+export interface AlpineRequirement {
+  id: string;
+  category: "endurance" | "altitude" | "technical" | "strength" | "recovery";
+  label: string;
+  detail: string;
+  benchmark?: "sessions_count" | "max_elevation_m" | "big_day_count" | "weeks_training";
+  benchmarkValue?: number;
+}
+
+export interface AlpineProfile {
+  altitudeBand: "high" | "very-high" | "extreme";
+  technicalLevel: "walking" | "scrambling" | "basic-crampons" | "technical" | "advanced-technical";
+  minimumWeeks: number;
+  requirements: AlpineRequirement[];
+  keyRisks: string[];
+  acclimatizationNote: string;
+}
+
 export interface SummitGoal {
   mountainName: string;
   summitDate: string;
@@ -19,6 +37,7 @@ export interface SummitGoal {
   preferredHills?: NearbyHill[];
   fitnessBaseline?: number;
   planStartMode?: "optimal" | "full";
+  alpineProfile?: AlpineProfile;
 }
 
 export interface PlanSession {
@@ -78,6 +97,7 @@ interface AppState {
   isLoading: boolean;
   nearbyHills: NearbyHill[];
   hillsLoading: boolean;
+  alpineProfileLoading: boolean;
   completedPlanSessions: Record<string, boolean>;
   assignedHills: Record<string, NearbyHill>;
   planAdjusting: boolean;
@@ -114,6 +134,7 @@ const AppContext = createContext<AppState>({
   isLoading: true,
   nearbyHills: [],
   hillsLoading: false,
+  alpineProfileLoading: false,
   completedPlanSessions: {},
   assignedHills: {},
   planAdjusting: false,
@@ -158,6 +179,23 @@ const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
+
+async function fetchAlpineAssessment(
+  mountainName: string,
+  highestAltitude: number,
+): Promise<AlpineProfile | null> {
+  try {
+    const res = await fetch(`${API_BASE}/alpine-assessment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mountainName, highestAltitude, difficulty: "Alpine" }),
+    });
+    if (!res.ok) return null;
+    return await res.json() as AlpineProfile;
+  } catch {
+    return null;
+  }
+}
 
 const DEMO_GOAL: SummitGoal = {
   mountainName: "Hörnlihütte from Schwarzsee",
@@ -225,6 +263,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [nearbyHills, setNearbyHills] = useState<NearbyHill[]>([]);
   const [hillsLoading, setHillsLoading] = useState(false);
+  const [alpineProfileLoading, setAlpineProfileLoading] = useState(false);
   const [completedPlanSessions, setCompletedPlanSessions] = useState<Record<string, boolean>>({});
   const [assignedHills, setAssignedHills] = useState<Record<string, NearbyHill>>({});
   const [planAdjusting, setPlanAdjusting] = useState(false);
@@ -267,6 +306,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
+          // Fetch Alpine profile in background if not already stored
+          if (goal.difficulty === "Alpine" && !goal.alpineProfile) {
+            setAlpineProfileLoading(true);
+            fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+              if (profile) {
+                setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
+                const gs = await AsyncStorage.getItem(GOAL_KEY);
+                if (gs) {
+                  const g = JSON.parse(gs) as SummitGoal;
+                  await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
+                }
+              }
+              setAlpineProfileLoading(false);
+            });
+          }
         }
         // No else — fresh users start from the landing page with no pre-loaded data
       } catch {}
@@ -303,6 +357,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [REPS_KEY, "{}"],
       [HAS_VIEWED_PLAN_KEY, "false"],
     ]);
+    // Fire-and-forget Alpine profile fetch — doesn't block the goal save
+    if (goal.difficulty === "Alpine") {
+      setAlpineProfileLoading(true);
+      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+        if (profile) {
+          setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
+          const gs = await AsyncStorage.getItem(GOAL_KEY);
+          if (gs) {
+            const g = JSON.parse(gs) as SummitGoal;
+            await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
+          }
+        }
+        setAlpineProfileLoading(false);
+      });
+    }
   }, []);
 
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
@@ -611,7 +680,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       summitGoal, trainingPlan, sessions, readinessScore, isLoading,
-      nearbyHills, hillsLoading, completedPlanSessions, assignedHills,
+      nearbyHills, hillsLoading, alpineProfileLoading, completedPlanSessions, assignedHills,
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       hasViewedPlan, markPlanViewed,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
