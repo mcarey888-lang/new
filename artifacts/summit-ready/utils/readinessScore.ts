@@ -140,11 +140,19 @@ export function calculateReadiness(
   const raw = Math.max(0, consistencyScore + elevScore + bigDayScore + repScore + effortScore + recentScore - penalty + baseline);
 
   // Cap is based on real logged sessions only (not virtual).
-  // Experienced athletes (high baseline) get a raised cap so prior fitness
-  // is reflected without requiring many logged sessions first.
+  // Experienced athletes (high baseline) get a raised cap — but how much the
+  // baseline can lift the cap depends on difficulty. General fitness transfers
+  // well to Easy hikes but barely to Alpine mountains, which require
+  // specific training regardless of prior fitness.
+  const capBonus: Record<string, number> = {
+    Easy:     20,
+    Moderate: 14,
+    Hard:      8,
+    Alpine:    4,
+  };
+  const bonus = capBonus[goal.difficulty] ?? 14;
   const baseCap = sessionCap(completed.length, goal.difficulty);
-  // Experienced athletes (high baseline, max now 50) get a raised cap floor.
-  const cap = baseline > 0 ? Math.max(baseCap, Math.min(baseline + 20, 95)) : baseCap;
+  const cap = baseline > 0 ? Math.max(baseCap, Math.min(baseline + bonus, 95)) : baseCap;
   return Math.min(cap, raw);
 }
 
