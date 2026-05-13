@@ -19,10 +19,40 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Purchases from "react-native-purchases";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "@/context/AppContext";
+import { useApp, type CompletedGoal } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
+
+type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
+
+const DIFF_COLORS: Record<Difficulty, string> = {
+  Easy: T.green, Moderate: T.blue, Hard: T.orange, Alpine: "#FF4444",
+};
+
+const DIFF_ICONS: Record<Difficulty, string> = {
+  Easy: "🌿", Moderate: "🏔️", Hard: "⛰️", Alpine: "🗻",
+};
+
+const REFERENCE_PEAKS: { name: string; emoji: string; elevation: number; difficulty: Difficulty; location: string }[] = [
+  { name: "Mam Tor",       emoji: "⛰️", elevation: 130,  difficulty: "Easy",     location: "Peak District" },
+  { name: "Pen y Fan",     emoji: "🏔️", elevation: 296,  difficulty: "Easy",     location: "Brecon Beacons" },
+  { name: "Whernside",     emoji: "⛰️", elevation: 380,  difficulty: "Easy",     location: "Yorkshire Dales" },
+  { name: "Kinder Scout",  emoji: "⛰️", elevation: 200,  difficulty: "Moderate", location: "Peak District" },
+  { name: "Ingleborough",  emoji: "⛰️", elevation: 400,  difficulty: "Moderate", location: "Yorkshire Dales" },
+  { name: "Skiddaw",       emoji: "⛰️", elevation: 590,  difficulty: "Moderate", location: "Lake District" },
+  { name: "Helvellyn",     emoji: "🏔️", elevation: 700,  difficulty: "Moderate", location: "Lake District" },
+  { name: "Snowdon",       emoji: "🏔️", elevation: 730,  difficulty: "Moderate", location: "Snowdonia" },
+  { name: "Cairn Gorm",    emoji: "🏔️", elevation: 600,  difficulty: "Moderate", location: "Cairngorms" },
+  { name: "Blencathra",    emoji: "⛰️", elevation: 640,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Great Gable",   emoji: "⛰️", elevation: 850,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Scafell Pike",  emoji: "⛰️", elevation: 900,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Ben Macdui",    emoji: "🏔️", elevation: 1100, difficulty: "Hard",     location: "Cairngorms" },
+  { name: "Ben Nevis",     emoji: "🏔️", elevation: 1345, difficulty: "Hard",     location: "Scottish Highlands" },
+  { name: "Kilimanjaro",   emoji: "🗻", elevation: 1200, difficulty: "Hard",     location: "Tanzania" },
+  { name: "Mont Blanc",    emoji: "🗻", elevation: 2800, difficulty: "Alpine",   location: "French Alps" },
+  { name: "Denali",        emoji: "🗻", elevation: 3000, difficulty: "Alpine",   location: "Alaska, USA" },
+];
 
 const ACCOUNT_EMAIL_KEY = "summitready_account_email";
 
@@ -34,7 +64,28 @@ function maskId(id: string) {
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements } = useApp();
+  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
+
+  // Lifetime stats
+  const lifetimeSessions = sessions.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
+  const lifetimeElevation = sessions.reduce((s, sess) => s + sess.elevationGain, 0)
+    + completedGoals.reduce((s, g) => s + g.totalElevationTrained, 0);
+
+  // Max elevation any goal was trained for — used to compute "ready for" peaks
+  const maxTrainedElevation = Math.max(
+    summitGoal?.elevationGain ?? 0,
+    ...completedGoals.map(g => g.elevationGain),
+  );
+
+  // Already trained / currently training peak names (case-insensitive) to exclude from ready-for list
+  const trainedNames = new Set([
+    summitGoal?.mountainName.toLowerCase(),
+    ...completedGoals.map(g => g.mountainName.toLowerCase()),
+  ]);
+
+  const readyForPeaks = REFERENCE_PEAKS
+    .filter(p => p.elevation <= maxTrainedElevation && !trainedNames.has(p.name.toLowerCase()))
+    .slice(0, 8);
   const { customerInfo, isSubscribed, restore, isRestoring, refetchCustomerInfo } = useSubscription();
 
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
@@ -305,6 +356,92 @@ export default function AccountScreen() {
             </View>
           )}
         </Animated.View>
+
+        {/* Training History */}
+        {completedGoals.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              TRAINING HISTORY · {completedGoals.length} previous {completedGoals.length === 1 ? "goal" : "goals"}
+            </Text>
+            {[...completedGoals].reverse().map((g: CompletedGoal, i) => {
+              const dc = DIFF_COLORS[g.difficulty];
+              const totalKm = (g.totalElevationTrained / 1000).toFixed(1);
+              const dateStr = new Date(g.completedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+              return (
+                <View key={i} style={styles.historyCard}>
+                  <LinearGradient colors={[dc + "0D", "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.historyTop}>
+                    <Text style={styles.historyEmoji}>{DIFF_ICONS[g.difficulty]}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyMtn} numberOfLines={1}>{g.mountainName}</Text>
+                      <Text style={styles.historyElev}>{g.elevationGain}m elevation gain</Text>
+                    </View>
+                    <View style={[styles.historyDiffBadge, { backgroundColor: dc + "22", borderColor: dc + "40" }]}>
+                      <Text style={[styles.historyDiffText, { color: dc }]}>{g.difficulty}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.historyStatsRow}>
+                    <View style={styles.historyStatItem}>
+                      <Text style={styles.historyStatVal}>{g.sessionsLogged}</Text>
+                      <Text style={styles.historyStatLbl}>sessions</Text>
+                    </View>
+                    <View style={styles.historyStatDivider} />
+                    <View style={styles.historyStatItem}>
+                      <Text style={styles.historyStatVal}>{totalKm}k m</Text>
+                      <Text style={styles.historyStatLbl}>elevation trained</Text>
+                    </View>
+                    <View style={styles.historyStatDivider} />
+                    <View style={styles.historyStatItem}>
+                      <Text style={styles.historyStatVal}>{g.trainingWeeks}wk</Text>
+                      <Text style={styles.historyStatLbl}>plan</Text>
+                    </View>
+                    <View style={styles.historyStatDivider} />
+                    <View style={styles.historyStatItem}>
+                      <Text style={styles.historyStatVal}>{dateStr}</Text>
+                      <Text style={styles.historyStatLbl}>completed</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+            {/* Lifetime totals banner */}
+            <View style={styles.lifetimeBanner}>
+              <Feather name="trending-up" size={13} color={T.green} />
+              <Text style={styles.lifetimeText}>
+                Lifetime: <Text style={{ color: T.text }}>{lifetimeSessions} sessions</Text>
+                {"  ·  "}
+                <Text style={{ color: T.text }}>{(lifetimeElevation / 1000).toFixed(1)}k m</Text> total elevation
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Hills you're ready for */}
+        {readyForPeaks.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>HILLS YOU'RE READY FOR</Text>
+            <Text style={styles.readySubtext}>
+              Based on your training{completedGoals.length > 0 ? " history" : " goal"} — these peaks are within your range
+            </Text>
+            <View style={styles.readyGrid}>
+              {readyForPeaks.map((peak, i) => {
+                const dc = DIFF_COLORS[peak.difficulty];
+                return (
+                  <View key={i} style={[styles.readyChip, { borderColor: dc + "30" }]}>
+                    <Text style={styles.readyChipEmoji}>{peak.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.readyChipName}>{peak.name}</Text>
+                      <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m</Text>
+                    </View>
+                    <View style={[styles.readyDiffBadge, { backgroundColor: dc + "22" }]}>
+                      <Text style={[styles.readyDiffText, { color: dc }]}>{peak.difficulty}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         {/* Achievements */}
         <Animated.View entering={FadeInDown.delay(130).duration(400)} style={styles.section}>
@@ -621,6 +758,49 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   achieveTierText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
+
+  historyCard: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 14, gap: 12, overflow: "hidden",
+  },
+  historyTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  historyEmoji: { fontSize: 22 },
+  historyMtn: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  historyElev: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  historyDiffBadge: {
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1,
+  },
+  historyDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  historyStatsRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+  },
+  historyStatItem: { flex: 1, alignItems: "center", gap: 2 },
+  historyStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  historyStatLbl: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+  historyStatDivider: { width: 1, height: 28, backgroundColor: T.border },
+  lifetimeBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.greenDim, borderRadius: 12, padding: 10,
+    borderWidth: 1, borderColor: T.green + "25",
+  },
+  lifetimeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+
+  readySubtext: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: -2, marginBottom: 2 },
+  readyGrid: { gap: 8 },
+  readyChip: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 11, paddingHorizontal: 14,
+  },
+  readyChipEmoji: { fontSize: 20 },
+  readyChipName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  readyChipSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  readyDiffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  readyDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
 
   appInfo: { alignItems: "center", gap: 4, paddingTop: 8, paddingBottom: 4 },
   appInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },

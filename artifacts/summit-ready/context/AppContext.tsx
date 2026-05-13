@@ -22,6 +22,17 @@ export interface AlpineProfile {
   acclimatizationNote: string;
 }
 
+export interface CompletedGoal {
+  mountainName: string;
+  elevationGain: number;
+  highestAltitude: number;
+  difficulty: "Easy" | "Moderate" | "Hard" | "Alpine";
+  completedAt: string;
+  sessionsLogged: number;
+  totalElevationTrained: number;
+  trainingWeeks: number;
+}
+
 export interface SummitGoal {
   mountainName: string;
   summitDate: string;
@@ -130,6 +141,7 @@ interface AppState {
   unlockedAchievements: string[];
   newlyUnlocked: string[];
   clearNewlyUnlocked: () => void;
+  completedGoals: CompletedGoal[];
 }
 
 const AppContext = createContext<AppState>({
@@ -170,6 +182,7 @@ const AppContext = createContext<AppState>({
   unlockedAchievements: [],
   newlyUnlocked: [],
   clearNewlyUnlocked: () => {},
+  completedGoals: [],
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -185,6 +198,7 @@ const REPS_KEY = "summitready_session_reps";
 const EFFORTS_KEY = "summitready_session_efforts";
 const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
 const ACHIEVEMENTS_KEY = "summitready_achievements";
+const COMPLETED_GOALS_KEY = "summitready_completed_goals";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -285,14 +299,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
+  const [completedGoals, setCompletedGoals] = useState<CompletedGoal[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -319,6 +334,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
           if (achievementsStr) setUnlockedAchievements(JSON.parse(achievementsStr));
+          if (completedGoalsStr) setCompletedGoals(JSON.parse(completedGoalsStr));
           // Fetch Alpine profile in background if not already stored
           if (goal.difficulty === "Alpine" && !goal.alpineProfile) {
             setAlpineProfileLoading(true);
@@ -342,6 +358,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setSummitGoal = useCallback(async (goal: SummitGoal) => {
+    // Archive the outgoing goal + its training stats before wiping
+    if (summitGoal && sessions.length > 0) {
+      const archived: CompletedGoal = {
+        mountainName: summitGoal.mountainName,
+        elevationGain: summitGoal.elevationGain,
+        highestAltitude: summitGoal.highestAltitude,
+        difficulty: summitGoal.difficulty,
+        completedAt: new Date().toISOString().split("T")[0],
+        sessionsLogged: sessions.length,
+        totalElevationTrained: sessions.reduce((sum, s) => sum + s.elevationGain, 0),
+        trainingWeeks: trainingPlan.length,
+      };
+      const updatedHistory = [...completedGoals, archived];
+      setCompletedGoals(updatedHistory);
+      await AsyncStorage.setItem(COMPLETED_GOALS_KEY, JSON.stringify(updatedHistory));
+    }
     const plan = generatePlan(goal);
     setSummitGoalState(goal);
     setTrainingPlan(plan);
@@ -374,7 +406,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [ACHIEVEMENTS_KEY, "[]"],
     ]);
     // Fire-and-forget Alpine profile fetch — doesn't block the goal save
-    if (goal.difficulty === "Alpine") {
+    if (goal.difficulty === "Alpine") {  
       setAlpineProfileLoading(true);
       fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
         if (profile) {
@@ -388,7 +420,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAlpineProfileLoading(false);
       });
     }
-  }, []);
+  }, [summitGoal, sessions, trainingPlan, completedGoals]);
 
   const clearNewlyUnlocked = useCallback(() => {
     setNewlyUnlocked([]);
@@ -739,6 +771,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
       submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
+      completedGoals,
     }}>
       {children}
     </AppContext.Provider>
