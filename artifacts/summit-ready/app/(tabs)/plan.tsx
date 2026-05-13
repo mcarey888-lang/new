@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -615,12 +616,23 @@ function WeekCard({
               <>
                 <Text style={[styles.sectionHead, { marginTop: 14 }]}>SUGGESTED HILLS</Text>
                 {week.hills.slice(0, 2).map((h, i) => (
-                  <View key={i} style={styles.hillRow}>
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.hillRow}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const url = (h as any).lat && (h as any).lng
+                        ? `https://www.google.com/maps/search/?api=1&query=${(h as any).lat},${(h as any).lng}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name)}`;
+                      Linking.openURL(url);
+                    }}
+                  >
                     <Feather name="map-pin" size={13} color={T.green} />
                     <Text style={styles.hillRowText}>
                       {h.name} – {h.elevation}m × {h.repeats} = ~{h.totalElevation}m total
                     </Text>
-                  </View>
+                    <Feather name="external-link" size={11} color={T.textMuted} style={{ marginLeft: "auto" }} />
+                  </TouchableOpacity>
                 ))}
               </>
             )}

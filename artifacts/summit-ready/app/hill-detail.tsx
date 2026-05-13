@@ -52,20 +52,11 @@ interface HillDetail {
 }
 
 function openMaps(lat: number, lng: number, label: string) {
-  const encodedLabel = encodeURIComponent(label);
-  if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?q=${encodedLabel}&ll=${lat},${lng}`);
-  } else {
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
-  }
+  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
 }
 
 function openDirections(lat: number, lng: number) {
-  if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?daddr=${lat},${lng}&dirflg=d`);
-  } else {
-    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`);
-  }
+  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`);
 }
 
 export default function HillDetailScreen() {

@@ -588,11 +588,11 @@ export default function HillsScreen() {
                     onPress={() => {
                       if (hill.lat && hill.lng) {
                         Linking.openURL(
-                          `https://www.openstreetmap.org/?mlat=${hill.lat}&mlon=${hill.lng}#map=14/${hill.lat}/${hill.lng}`
+                          `https://www.google.com/maps/search/?api=1&query=${hill.lat},${hill.lng}`
                         );
                       } else {
                         Linking.openURL(
-                          `https://www.openstreetmap.org/search?query=${encodeURIComponent(hill.name)}`
+                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hill.name)}`
                         );
                       }
                     }}
