@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Dimensions,
   KeyboardAvoidingView,
@@ -17,7 +17,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Session, useApp } from "@/context/AppContext";
+import { Session, NearbyHill, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
 const SESSION_TYPES = [
@@ -51,6 +51,138 @@ function EffortPicker({ value, onChange }: { value: number; onChange: (v: number
   );
 }
 
+// ── Hill Search + Rep Picker ────────────────────────────────────────────────
+function HillSearchSection({
+  hills,
+  selectedHill,
+  reps,
+  onSelectHill,
+  onChangeReps,
+}: {
+  hills: NearbyHill[];
+  selectedHill: NearbyHill | null;
+  reps: number;
+  onSelectHill: (h: NearbyHill | null) => void;
+  onChangeReps: (r: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return hills.slice(0, 8);
+    const q = query.toLowerCase();
+    return hills.filter(h => h.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [query, hills]);
+
+  const showList = focused && !selectedHill && hills.length > 0;
+
+  return (
+    <View style={{ gap: 0 }}>
+      <Text style={styles.fLabel}>Hill</Text>
+
+      {selectedHill ? (
+        // Selected hill pill
+        <View style={styles.hillSelectedRow}>
+          <Text style={styles.hillEmoji}>{selectedHill.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.hillSelectedName}>{selectedHill.name}</Text>
+            <Text style={styles.hillSelectedMeta}>
+              {selectedHill.elevation}m gain · {selectedHill.grade} grade
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => { onSelectHill(null); setQuery(""); }}
+            style={styles.hillClearBtn}
+          >
+            <Feather name="x" size={14} color={T.textMuted} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.hillSearchWrap}>
+          <Feather name="search" size={15} color={T.textMuted} style={{ marginLeft: 14 }} />
+          <TextInput
+            style={styles.hillSearchInput}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={hills.length > 0 ? "Search your hills..." : "No hills found — add some in setup"}
+            placeholderTextColor={T.textDim}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 150)}
+            editable={hills.length > 0}
+          />
+        </View>
+      )}
+
+      {showList && (
+        <View style={styles.hillListBox}>
+          {filtered.length === 0 ? (
+            <Text style={styles.hillNoMatch}>No hills match "{query}"</Text>
+          ) : (
+            filtered.map((h, i) => (
+              <TouchableOpacity
+                key={h.name + i}
+                onPress={() => {
+                  onSelectHill(h);
+                  setFocused(false);
+                  setQuery("");
+                  Haptics.selectionAsync();
+                }}
+                style={[styles.hillListItem, i > 0 && styles.hillListDivider]}
+              >
+                <Text style={styles.hillItemEmoji}>{h.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hillItemName}>{h.name}</Text>
+                  <Text style={styles.hillItemMeta}>{h.elevation}m · {h.grade} · {h.distance.toFixed(1)}km</Text>
+                </View>
+                <Text style={styles.hillItemElev}>↑{h.elevation}m</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      )}
+
+      {/* Rep stepper — only visible once a hill is selected */}
+      {selectedHill && (
+        <View style={styles.repSection}>
+          <Text style={styles.fLabel}>Reps</Text>
+          <View style={styles.repRow}>
+            <TouchableOpacity
+              onPress={() => { if (reps > 1) { onChangeReps(reps - 1); Haptics.selectionAsync(); } }}
+              style={[styles.repBtn, { opacity: reps <= 1 ? 0.35 : 1 }]}
+            >
+              <Feather name="minus" size={18} color={T.white} />
+            </TouchableOpacity>
+
+            <View style={styles.repDisplay}>
+              <Text style={styles.repCount}>{reps}</Text>
+              <Text style={styles.repUnit}>rep{reps !== 1 ? "s" : ""}</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => { onChangeReps(reps + 1); Haptics.selectionAsync(); }}
+              style={styles.repBtn}
+            >
+              <Feather name="plus" size={18} color={T.white} />
+            </TouchableOpacity>
+
+            <View style={styles.repAutoFill}>
+              <Feather name="trending-up" size={12} color={T.orange} />
+              <Text style={styles.repAutoFillText}>
+                {selectedHill.elevation * reps}m gain
+              </Text>
+              <Text style={styles.repAutoFillSep}>·</Text>
+              <Feather name="map" size={12} color={T.blue} />
+              <Text style={[styles.repAutoFillText, { color: T.blue }]}>
+                {(selectedHill.distance * reps).toFixed(1)}km
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function SessionCard({ session, onDelete, onToggle, index }: {
   session: Session;
   onDelete: () => void;
@@ -70,11 +202,14 @@ function SessionCard({ session, onDelete, onToggle, index }: {
             <Feather name={t.icon} size={16} color={t.color} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.scTitle}>{t.label}</Text>
+            <Text style={styles.scTitle}>
+              {session.hillName ? session.hillName : t.label}
+            </Text>
             <Text style={styles.scDate}>
               {new Date(session.date).toLocaleDateString("en-GB", {
                 weekday: "short", day: "numeric", month: "short",
               })}
+              {session.reps ? ` · ${session.reps} rep${session.reps !== 1 ? "s" : ""}` : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -120,7 +255,7 @@ function SessionCard({ session, onDelete, onToggle, index }: {
 
 function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const { addSession, trainingPlan } = useApp();
+  const { addSession, trainingPlan, nearbyHills } = useApp();
   const [type, setType] = useState<"cardio" | "hill" | "bigDay">("cardio");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [dist, setDist] = useState("");
@@ -130,8 +265,43 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Hill repeats
+  const [selectedHill, setSelectedHill] = useState<NearbyHill | null>(null);
+  const [reps, setReps] = useState(3);
+
+  function handleSelectHill(h: NearbyHill | null) {
+    setSelectedHill(h);
+    if (h) {
+      setElev(String(h.elevation * reps));
+      setDist((h.distance * reps).toFixed(1));
+    }
+  }
+
+  function handleChangeReps(r: number) {
+    setReps(r);
+    if (selectedHill) {
+      setElev(String(selectedHill.elevation * r));
+      setDist((selectedHill.distance * r).toFixed(1));
+    }
+  }
+
+  function handleTypeChange(t: "cardio" | "hill" | "bigDay") {
+    setType(t);
+    if (t !== "hill") {
+      setSelectedHill(null);
+      setReps(3);
+    }
+  }
+
+  function reset() {
+    setType("cardio");
+    setDate(new Date().toISOString().split("T")[0]);
+    setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
+    setSelectedHill(null); setReps(3);
+  }
+
   async function save() {
-    if (!dist || !elev || !dur) return;
+    if (!elev || !dur) return;
     setSaving(true);
     const d = new Date(date);
     const weekNum = trainingPlan.find(w => {
@@ -140,19 +310,26 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
 
     await addSession({
       date, type,
-      distance: Number(dist),
+      distance: Number(dist) || 0,
       elevationGain: Number(elev),
       duration: Number(dur),
       effort: effort as 1 | 2 | 3 | 4 | 5,
       notes: notes.trim(),
       completed: true,
       weekNumber: weekNum,
+      hillName: selectedHill?.name,
+      reps: selectedHill ? reps : undefined,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaving(false);
     onClose();
-    setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
+    reset();
   }
+
+  // Validation: hill sessions only need elev + dur; others need dist too
+  const isValid = type === "hill"
+    ? !!elev && !!dur
+    : !!dist && !!elev && !!dur;
 
   const inp = [styles.input];
 
@@ -170,7 +347,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Session</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <TouchableOpacity onPress={() => { onClose(); reset(); }} style={styles.closeBtn}>
                 <Feather name="x" size={18} color={T.white} />
               </TouchableOpacity>
             </View>
@@ -180,7 +357,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
               {SESSION_TYPES.map(t => (
                 <TouchableOpacity
                   key={t.value}
-                  onPress={() => setType(t.value)}
+                  onPress={() => handleTypeChange(t.value)}
                   style={[
                     styles.typeBtn,
                     { borderColor: type === t.value ? t.color : T.border },
@@ -205,14 +382,35 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
               keyboardType="numbers-and-punctuation"
             />
 
+            {/* Hill search — only for Hill Repeats */}
+            {type === "hill" && (
+              <HillSearchSection
+                hills={nearbyHills}
+                selectedHill={selectedHill}
+                reps={reps}
+                onSelectHill={handleSelectHill}
+                onChangeReps={handleChangeReps}
+              />
+            )}
+
+            {/* Stats row — auto-filled from hill selection but always editable */}
             <View style={{ flexDirection: "row", gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fLabel}>Distance (km)</Text>
-                <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
-              </View>
+              {type !== "hill" && (
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fLabel}>Distance (km)</Text>
+                  <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.fLabel}>Elev. Gain (m)</Text>
-                <TextInput style={inp} value={elev} onChangeText={setElev} placeholder="450" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+                <TextInput
+                  style={[inp, selectedHill && styles.inputAutoFilled]}
+                  value={elev}
+                  onChangeText={setElev}
+                  placeholder="450"
+                  placeholderTextColor={T.textDim}
+                  keyboardType="number-pad"
+                />
               </View>
             </View>
 
@@ -235,8 +433,8 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
 
             <TouchableOpacity
               onPress={save}
-              disabled={saving}
-              style={[styles.saveBtn, { opacity: saving ? 0.7 : 1 }]}
+              disabled={saving || !isValid}
+              style={[styles.saveBtn, { opacity: saving || !isValid ? 0.5 : 1 }]}
               activeOpacity={0.85}
             >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.saveBtnGrad}>
@@ -406,6 +604,10 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: T.white,
   },
+  inputAutoFilled: {
+    borderColor: T.orange + "50",
+    backgroundColor: T.orange + "08",
+  },
   typeRow: { flexDirection: "row", gap: 8 },
   typeBtn: {
     flex: 1,
@@ -422,4 +624,111 @@ const styles = StyleSheet.create({
   saveBtn: { borderRadius: 16, overflow: "hidden", marginTop: 24 },
   saveBtnGrad: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  // Hill search
+  hillSearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: T.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.blue + "40",
+    height: 50,
+    gap: 8,
+  },
+  hillSearchInput: {
+    flex: 1,
+    height: 50,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: T.white,
+    paddingRight: 14,
+  },
+  hillListBox: {
+    backgroundColor: T.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+    marginTop: 6,
+    overflow: "hidden",
+  },
+  hillListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
+  },
+  hillListDivider: {
+    borderTopWidth: 1,
+    borderTopColor: T.border,
+  },
+  hillItemEmoji: { fontSize: 20 },
+  hillItemName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
+  hillItemMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  hillItemElev: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.orange },
+  hillSelectedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: T.blue + "12",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.blue + "40",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  hillEmoji: { fontSize: 24 },
+  hillSelectedName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  hillSelectedMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  hillClearBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: T.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hillNoMatch: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, padding: 14 },
+
+  // Rep stepper
+  repSection: { marginTop: 0 },
+  repRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  repBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  repDisplay: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+    minWidth: 52,
+    justifyContent: "center",
+  },
+  repCount: { fontSize: 28, fontFamily: "Inter_700Bold", color: T.white },
+  repUnit: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  repAutoFill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: T.surface,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  repAutoFillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange },
+  repAutoFillSep: { fontSize: 12, color: T.textDim },
 });

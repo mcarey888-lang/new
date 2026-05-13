@@ -87,6 +87,8 @@ export interface Session {
   notes: string;
   completed: boolean;
   weekNumber: number;
+  hillName?: string;
+  reps?: number;
 }
 
 interface AppState {
