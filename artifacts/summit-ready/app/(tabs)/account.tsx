@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -426,17 +427,26 @@ export default function AccountScreen() {
             <View style={styles.readyGrid}>
               {readyForPeaks.map((peak, i) => {
                 const dc = DIFF_COLORS[peak.difficulty];
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(peak.name)}`;
                 return (
-                  <View key={i} style={[styles.readyChip, { borderColor: dc + "30" }]}>
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.readyChip, { borderColor: dc + "30" }]}
+                    onPress={() => Linking.openURL(mapsUrl)}
+                    activeOpacity={0.75}
+                  >
                     <Text style={styles.readyChipEmoji}>{peak.emoji}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.readyChipName}>{peak.name}</Text>
-                      <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
+                        <Feather name="map-pin" size={10} color={T.textMuted} />
+                        <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m</Text>
+                      </View>
                     </View>
                     <View style={[styles.readyDiffBadge, { backgroundColor: dc + "22" }]}>
                       <Text style={[styles.readyDiffText, { color: dc }]}>{peak.difficulty}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
