@@ -153,7 +153,60 @@ function getMaxSessionsForDifficulty(difficulty: string, requestedDays: number):
   }
 }
 
-function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hills: TrainingWeek["hills"]): PlanSession[] {
+function createTaperEasyWalkSession(targetElev: number): PlanSession {
+  return {
+    type: "cardio",
+    label: "Easy Recovery Walk",
+    description: `A gentle, easy-paced walk — flat or very light incline only. Target around ${targetElev}m of elevation gain but stop whenever your legs feel tired. The goal is blood flow and loose legs, not fitness gains. No pushing, no hills. Think of this as active rest before summit day.`,
+    targetElevation: targetElev,
+    duration: "30–45 min",
+  };
+}
+
+function createTaperLightHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal): PlanSession {
+  const hill = hills[0];
+  if (!hill) {
+    return {
+      type: "hill",
+      label: "Light Hill Jog",
+      description: `One or two easy climbs on your training hill — no hammering, just enough to keep the legs sharp. Walk the descent fully. Target ${targetElev}m total gain. This is the last hill session before summit day; leave the tank full.`,
+      targetElevation: targetElev,
+      duration: "40–55 min",
+    };
+  }
+  const reps = Math.max(1, Math.round(targetElev / hill.elevation));
+  const totalGain = reps * hill.elevation;
+  return {
+    type: "hill",
+    label: `Light Hill Session — ${hill.name}`,
+    description: `${reps} easy ${reps === 1 ? "rep" : "reps"} of ${hill.name} (${hill.elevation}m each = ${totalGain}m total). Walk the whole thing — up and down. No effort, just movement. Your last real hill session before the summit; the goal is staying sharp, not getting fitter.`,
+    targetElevation: totalGain,
+    duration: "40–55 min",
+  };
+}
+
+function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hills: TrainingWeek["hills"], taperPos = 0): PlanSession[] {
+  // Taper week 2 (final week before summit): 2 easy walks only — legs must arrive fresh
+  if (taperPos >= 2) {
+    return [
+      createTaperEasyWalkSession(Math.round(weekElev * 0.5)),
+      createTaperEasyWalkSession(Math.round(weekElev * 0.5)),
+    ];
+  }
+
+  // Taper week 1: 1 light hill + 1–2 easy walks, no big day
+  if (taperPos === 1) {
+    const out: PlanSession[] = [
+      createTaperLightHillSession(weekElev, hills, goal),
+      createTaperEasyWalkSession(Math.round(weekElev * 0.4)),
+    ];
+    const requestedDays = Math.max(2, goal.trainingDaysPerWeek ?? 4);
+    if (requestedDays >= 4) {
+      out.push(createTaperEasyWalkSession(Math.round(weekElev * 0.3)));
+    }
+    return out;
+  }
+
   const requestedDays = Math.max(2, goal.trainingDaysPerWeek ?? 4);
   const totalDays = getMaxSessionsForDifficulty(goal.difficulty, requestedDays);
   const hillDays = Math.min(Math.max(1, goal.hillDaysPerWeek ?? 1), totalDays - 1);
@@ -259,7 +312,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
           ? "Peak intensity — push close to summit demands"
           : "Urgent build — maximise elevation gains fast",
         targetElevation: elevTarget,
-        sessions: createSessions(elevTarget, w, goal, hills),
+        sessions: createSessions(elevTarget, w, goal, hills, isTaper ? 2 : 0),
         isPeakWeek: isPeak,
         isTaperWeek: isTaper,
         isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
@@ -303,7 +356,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
         phase: isTaper ? "Taper" : isPeak ? "Peak" : w <= 2 ? "Base" : "Build",
         purpose,
         targetElevation: elevTarget,
-        sessions: createSessions(elevTarget, w, goal, hills),
+        sessions: createSessions(elevTarget, w, goal, hills, isTaper ? 2 : 0),
         isPeakWeek: isPeak,
         isTaperWeek: isTaper,
         isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
@@ -362,7 +415,7 @@ export function generatePlan(goal: SummitGoal): TrainingWeek[] {
         phase,
         purpose,
         targetElevation: Math.max(100, elevTarget),
-        sessions: createSessions(Math.max(100, elevTarget), w, goal, hills),
+        sessions: createSessions(Math.max(100, elevTarget), w, goal, hills, isTaperWeek ? w - baseWeeks - buildWeeks - peakWeeks : 0),
         isPeakWeek,
         isTaperWeek,
         isCurrentWeek: isCurrentWeek(weekStart, weekEnd),
