@@ -555,30 +555,40 @@ function WeekCard({
                       </View>
                     </View>
 
-                    {assignedHill ? (
-                      <>
-                        <View style={styles.assignedHillRow}>
-                          <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
-                          <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
-                          <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.directionsBtn}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            const dest = assignedHill.lat && assignedHill.lng
-                              ? `${assignedHill.lat},${assignedHill.lng}`
-                              : encodeURIComponent(`${assignedHill.name} car park`);
-                            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
-                          }}
-                        >
-                          <Feather name="navigation" size={11} color={T.blue} />
-                          <Text style={styles.directionsBtnText}>Get directions to start</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
-                    )}
+                    {(() => {
+                      const displayHill: (NearbyHill & { name: string }) | null =
+                        assignedHill ?? (canPickHill && week.hills[0] ? (week.hills[0] as any) : null);
+                      return (
+                        <>
+                          {assignedHill ? (
+                            <View style={styles.assignedHillRow}>
+                              <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
+                              <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
+                              <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
+                          )}
+                          {displayHill && (
+                            <TouchableOpacity
+                              style={styles.directionsBtn}
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                const dest = (displayHill as any).lat && (displayHill as any).lng
+                                  ? `${(displayHill as any).lat},${(displayHill as any).lng}`
+                                  : encodeURIComponent(`${displayHill.name} car park`);
+                                Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
+                              }}
+                            >
+                              <Feather name="navigation" size={11} color={T.blue} />
+                              <Text style={styles.directionsBtnText}>
+                                {assignedHill ? "Get directions to start" : `Directions to ${displayHill.name}`}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <View style={styles.sessionFooter}>
                       <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
