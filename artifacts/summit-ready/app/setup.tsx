@@ -54,6 +54,12 @@ const DIFF_ICONS: Record<Difficulty, string> = {
 const DIFF_COLORS: Record<Difficulty, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange, Alpine: "#FF4444",
 };
+const DIFF_DESC: Record<Difficulty, string> = {
+  Easy: "Gentle paths, low altitude",
+  Moderate: "Moorland & fell walking",
+  Hard: "Long days, rough terrain",
+  Alpine: "Glaciers & technical skills",
+};
 
 
 const EQUIPMENT_OPTIONS: { value: Equipment; icon: keyof typeof Feather.glyphMap; label: string; desc: string }[] = [
@@ -723,6 +729,7 @@ export default function SetupScreen() {
                   >
                     <Text style={styles.diffEmoji}>{DIFF_ICONS[d]}</Text>
                     <Text style={[styles.diffLabel, diff === d && { color: dc }]}>{d}</Text>
+                    <Text style={styles.diffDesc}>{DIFF_DESC[d]}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -1289,9 +1296,10 @@ const styles = StyleSheet.create({
   autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
 
   diffRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  diffBtn: { flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4 },
+  diffBtn: { flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4, paddingHorizontal: 4 },
   diffEmoji: { fontSize: 18 },
   diffLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  diffDesc: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 12 },
 
   quizRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   quizChip: {
