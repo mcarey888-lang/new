@@ -764,9 +764,9 @@ export default function PlanScreen() {
     setSwapModalOpen(true);
   }
 
-  async function handleSwapSelect(newLabel: string) {
+  async function handleSwapSelect(newLabel: string, newDescription: string) {
     if (!swapTarget) return;
-    await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, { label: newLabel });
+    await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, { label: newLabel, description: newDescription });
     setSwapModalOpen(false);
     setSwapTarget(null);
   }
@@ -1008,7 +1008,7 @@ export default function PlanScreen() {
               key={opt.name}
               style={editStyles.swapOption}
               activeOpacity={0.75}
-              onPress={() => handleSwapSelect(opt.name)}
+              onPress={() => handleSwapSelect(opt.name, opt.desc)}
             >
               <View style={editStyles.swapIcon}>
                 <Feather name={opt.icon as any} size={15} color={T.blue} />
