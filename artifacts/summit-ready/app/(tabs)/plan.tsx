@@ -53,7 +53,7 @@ function RepStepper({
       <View style={rsStyles.targetRow}>
         <Feather name="flag" size={11} color={T.orange} />
         <Text style={rsStyles.targetLabel}>
-          Summit target:{" "}
+          Today's target:{" "}
           <Text style={rsStyles.targetNum}>{targetReps} reps</Text>
         </Text>
         {targetElev !== null && (
@@ -593,9 +593,8 @@ function WeekCard({
                       const hill = assignedHill ?? week.hills[0] ?? null;
                       // elevPerRep: height gained per single rep on this hill
                       const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
-                      // targetReps: how many reps of this hill = summit elevation
-                      const summitElev = summitGoal?.elevationGain ?? s.targetElevation;
-                      const targetReps = Math.max(1, Math.ceil(summitElev / elevPerRep));
+                      // targetReps: how many reps of this hill to hit this session's elevation target
+                      const targetReps = Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <RepStepper
                           sessionKey={sessionKey}
