@@ -165,52 +165,191 @@ const { width } = Dimensions.get("window");
 function HillPickerModal({
   visible,
   hills,
+  location,
   onSelect,
+  onSearchAdd,
   onClose,
 }: {
   visible: boolean;
   hills: NearbyHill[];
+  location: string;
   onSelect: (hill: NearbyHill) => void;
+  onSearchAdd: (hill: NearbyHill) => void;
   onClose: () => void;
 }) {
+  const [query, setQuery] = React.useState("");
+  const [searching, setSearching] = React.useState(false);
+  const [searchResult, setSearchResult] = React.useState<NearbyHill | null>(null);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+
+  const filtered = React.useMemo(() => {
+    if (!query.trim()) return hills;
+    const q = query.toLowerCase();
+    return hills.filter(h => h.name.toLowerCase().includes(q));
+  }, [query, hills]);
+
+  async function searchOnline() {
+    const q = query.trim();
+    if (q.length < 2) return;
+    setSearching(true);
+    setSearchResult(null);
+    setSearchError(null);
+    try {
+      const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+        : "/api";
+      const res = await fetch(`${API_BASE}/hills-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hillName: q, location }),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json() as { hill: NearbyHill };
+      setSearchResult(data.hill);
+    } catch {
+      setSearchError("Couldn't find that hill — try a different name.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function handleSelect(hill: NearbyHill) {
+    if (searchResult && hill.name === searchResult.name) {
+      onSearchAdd(hill);
+    }
+    onSelect(hill);
+    setQuery("");
+    setSearchResult(null);
+    setSearchError(null);
+  }
+
+  function handleClose() {
+    setQuery("");
+    setSearchResult(null);
+    setSearchError(null);
+    onClose();
+  }
+
+  const showOnlineSearch = query.trim().length >= 2 && filtered.length === 0 && !searchResult;
+  const showOnlineBtn = query.trim().length >= 2 && !searching && !searchResult;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={mpStyles.overlay} activeOpacity={1} onPress={onClose} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <TouchableOpacity style={mpStyles.overlay} activeOpacity={1} onPress={handleClose} />
       <View style={mpStyles.sheet}>
         <View style={mpStyles.handle} />
         <Text style={mpStyles.title}>Choose a Hill</Text>
-        <Text style={mpStyles.subtitle}>Select a training hill for this session</Text>
 
-        {hills.length === 0 ? (
-          <View style={mpStyles.empty}>
-            <Feather name="map-pin" size={28} color={T.textDim} />
-            <Text style={mpStyles.emptyText}>No hills loaded yet</Text>
-            <Text style={mpStyles.emptyHint}>Go to the Hills tab to load nearby hills first</Text>
-          </View>
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
-            {hills.map((hill, i) => (
+        {/* Search bar */}
+        <View style={mpStyles.searchRow}>
+          <Feather name="search" size={15} color={T.textMuted} style={{ marginLeft: 12 }} />
+          <TextInput
+            style={mpStyles.searchInput}
+            value={query}
+            onChangeText={v => { setQuery(v); setSearchResult(null); setSearchError(null); }}
+            placeholder="Search your hills or find a new one…"
+            placeholderTextColor={T.textDim}
+            onSubmitEditing={searchOnline}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => { setQuery(""); setSearchResult(null); setSearchError(null); }} style={{ paddingRight: 12 }}>
+              <Feather name="x" size={14} color={T.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
+
+          {/* Online search result */}
+          {searchResult && (
+            <View style={mpStyles.searchResultCard}>
+              <View style={mpStyles.searchResultHeader}>
+                <Feather name="globe" size={12} color={T.blue} />
+                <Text style={mpStyles.searchResultLabel}>Online result</Text>
+              </View>
               <TouchableOpacity
-                key={i}
-                style={mpStyles.hillRow}
-                onPress={() => onSelect(hill)}
+                style={[mpStyles.hillRow, { borderBottomWidth: 0 }]}
+                onPress={() => handleSelect(searchResult)}
                 activeOpacity={0.7}
               >
-                <Text style={mpStyles.hillEmoji}>{hill.emoji}</Text>
+                <Text style={mpStyles.hillEmoji}>{searchResult.emoji}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={mpStyles.hillName}>{hill.name}</Text>
-                  <Text style={mpStyles.hillSub}>{hill.surface} · {hill.distance}km away</Text>
+                  <Text style={mpStyles.hillName}>{searchResult.name}</Text>
+                  <Text style={mpStyles.hillSub}>{searchResult.surface} · {searchResult.grade} grade</Text>
                 </View>
                 <View style={mpStyles.hillStats}>
-                  <Text style={mpStyles.hillElev}>{hill.elevation}m</Text>
-                  <Text style={mpStyles.hillReps}>×{hill.repeats}</Text>
+                  <Text style={mpStyles.hillElev}>{searchResult.elevation}m</Text>
+                  <Text style={mpStyles.hillReps}>×{searchResult.repeats}</Text>
                 </View>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+            </View>
+          )}
 
-        <TouchableOpacity style={mpStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+          {/* Search error */}
+          {searchError && (
+            <View style={mpStyles.searchErrorRow}>
+              <Feather name="alert-circle" size={14} color={T.orange} />
+              <Text style={mpStyles.searchErrorText}>{searchError}</Text>
+            </View>
+          )}
+
+          {/* "Search online" prompt when no local match */}
+          {showOnlineBtn && (
+            <TouchableOpacity style={mpStyles.onlineSearchBtn} onPress={searchOnline} activeOpacity={0.8}>
+              {searching ? (
+                <ActivityIndicator size="small" color={T.blue} />
+              ) : (
+                <Feather name="globe" size={14} color={T.blue} />
+              )}
+              <Text style={mpStyles.onlineSearchText}>
+                {searching ? "Searching…" : `Search online for "${query.trim()}"`}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {searching && (
+            <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <ActivityIndicator size="small" color={T.blue} />
+              <Text style={[mpStyles.hillSub, { marginTop: 8 }]}>Looking up hill data…</Text>
+            </View>
+          )}
+
+          {/* Local hills list */}
+          {filtered.length === 0 && !query.trim() ? (
+            <View style={mpStyles.empty}>
+              <Feather name="map-pin" size={28} color={T.textDim} />
+              <Text style={mpStyles.emptyText}>No hills loaded yet</Text>
+              <Text style={mpStyles.emptyHint}>Go to the Hills tab to load nearby hills, or search by name above</Text>
+            </View>
+          ) : filtered.length === 0 && query.trim() ? null : (
+            <>
+              {query.trim() ? null : (
+                <Text style={mpStyles.sectionLabel}>Your hills</Text>
+              )}
+              {filtered.map((hill, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={mpStyles.hillRow}
+                  onPress={() => handleSelect(hill)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mpStyles.hillEmoji}>{hill.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={mpStyles.hillName}>{hill.name}</Text>
+                    <Text style={mpStyles.hillSub}>{hill.surface} · {hill.distance}km away</Text>
+                  </View>
+                  <View style={mpStyles.hillStats}>
+                    <Text style={mpStyles.hillElev}>{hill.elevation}m</Text>
+                    <Text style={mpStyles.hillReps}>×{hill.repeats}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </ScrollView>
+
+        <TouchableOpacity style={mpStyles.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
           <Text style={mpStyles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -552,6 +691,7 @@ export default function PlanScreen() {
     setSessionReps,
     setSessionEffort,
     updatePlanSession,
+    addToNearbyHills,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -788,7 +928,9 @@ export default function PlanScreen() {
       <HillPickerModal
         visible={hillPickerOpen}
         hills={nearbyHills}
+        location={summitGoal?.location ?? ""}
         onSelect={handleHillSelect}
+        onSearchAdd={addToNearbyHills}
         onClose={() => { setHillPickerOpen(false); setActiveSession(null); }}
       />
 
@@ -1010,6 +1152,87 @@ const mpStyles = StyleSheet.create({
     alignItems: "center",
   },
   cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: T.surface,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: T.blue + "40",
+    height: 46,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 46,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: T.white,
+    paddingRight: 4,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  onlineSearchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: T.blue + "12",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginVertical: 6,
+  },
+  onlineSearchText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: T.blue,
+  },
+  searchResultCard: {
+    backgroundColor: T.blue + "0C",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+    marginBottom: 8,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+  },
+  searchResultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingTop: 10,
+    paddingHorizontal: 4,
+    paddingBottom: 4,
+  },
+  searchResultLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: T.blue,
+    letterSpacing: 0.3,
+  },
+  searchErrorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  searchErrorText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: T.orange,
+    flex: 1,
+  },
 });
 
 const planLockStyles = StyleSheet.create({
