@@ -731,6 +731,12 @@ export default function PlanScreen() {
   function handleHillSelect(hill: NearbyHill) {
     if (activeSession) {
       assignHillToSession(activeSession.weekNum, activeSession.sessionIdx, hill);
+      // Sync the session label and elevation to match the newly chosen hill
+      const newTargetElevation = hill.elevation * hill.repeats;
+      updatePlanSession(activeSession.weekNum, activeSession.sessionIdx, {
+        label: `Hill Repeats — ${hill.name}`,
+        targetElevation: newTargetElevation,
+      });
     }
     setHillPickerOpen(false);
     setActiveSession(null);

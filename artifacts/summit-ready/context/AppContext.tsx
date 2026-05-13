@@ -125,7 +125,7 @@ interface AppState {
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
-  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>) => Promise<void>;
+  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
   newlyUnlocked: string[];
@@ -650,7 +650,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
-    updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>
+    updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation">>
   ) => {
     const updatedPlan = trainingPlan.map(week => {
       if (week.weekNumber !== weekNum) return week;
