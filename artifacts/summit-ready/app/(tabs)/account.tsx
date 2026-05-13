@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 
 const ACCOUNT_EMAIL_KEY = "summitready_account_email";
 
@@ -33,7 +34,7 @@ function maskId(id: string) {
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan } = useApp();
+  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements } = useApp();
   const { customerInfo, isSubscribed, restore, isRestoring, refetchCustomerInfo } = useSubscription();
 
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
@@ -305,6 +306,47 @@ export default function AccountScreen() {
           )}
         </Animated.View>
 
+        {/* Achievements */}
+        <Animated.View entering={FadeInDown.delay(130).duration(400)} style={styles.section}>
+          <Text style={styles.sectionLabel}>
+            ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
+          </Text>
+          <View style={styles.achieveGrid}>
+            {ACHIEVEMENTS.map(a => {
+              const isUnlocked = unlockedAchievements.includes(a.id);
+              const tierColor = TIER_COLOR[a.tier];
+              return (
+                <View
+                  key={a.id}
+                  style={[
+                    styles.achieveCard,
+                    isUnlocked
+                      ? { borderColor: tierColor + "55" }
+                      : { opacity: 0.35 },
+                  ]}
+                >
+                  {isUnlocked && (
+                    <LinearGradient
+                      colors={[tierColor + "18", "transparent"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                  <Text style={styles.achieveEmoji}>{isUnlocked ? a.emoji : "🔒"}</Text>
+                  <Text style={styles.achieveTitle} numberOfLines={1}>{a.title}</Text>
+                  <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
+                  {isUnlocked && (
+                    <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
+                      <Text style={[styles.achieveTierText, { color: tierColor }]}>
+                        {TIER_LABEL[a.tier]}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </Animated.View>
+
         {/* Setup / Goal actions */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>TRAINING SETUP</Text>
@@ -549,6 +591,23 @@ const styles = StyleSheet.create({
     borderRadius: 12, padding: 12, borderWidth: 1,
   },
   restoreMsgText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+
+  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  achieveCard: {
+    width: "47%", flex: 1,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 12, gap: 4, overflow: "hidden",
+    alignItems: "flex-start",
+  },
+  achieveEmoji: { fontSize: 26, marginBottom: 2 },
+  achieveTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.text },
+  achieveDesc: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 14 },
+  achieveTierBadge: {
+    marginTop: 4, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, alignSelf: "flex-start",
+  },
+  achieveTierText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
 
   appInfo: { alignItems: "center", gap: 4, paddingTop: 8, paddingBottom: 4 },
   appInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },

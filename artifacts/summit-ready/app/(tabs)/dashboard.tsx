@@ -23,9 +23,11 @@ import { useApp } from "@/context/AppContext";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { ProgressRing } from "@/components/ProgressRing";
+import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
+import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 
 const MASCOT = require("@/assets/mascot.gif");
 
@@ -467,7 +469,7 @@ function AlpineCard({
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -731,6 +733,38 @@ export default function DashboardScreen() {
           <StatCard icon="bar-chart-2" label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
         </View>
 
+        {/* Achievements Strip */}
+        {unlockedAchievements.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(115).duration(500)}>
+            <TouchableOpacity
+              style={styles.achieveStrip}
+              onPress={() => router.push("/(tabs)/account")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#FFD70012", "transparent"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.achieveStripLeft}>
+                <View style={styles.achieveStripIcon}>
+                  <Text style={styles.achieveStripTrophy}>🏆</Text>
+                </View>
+                <View>
+                  <Text style={styles.achieveStripTitle}>Achievements</Text>
+                  <Text style={styles.achieveStripSub}>{unlockedAchievements.length} unlocked</Text>
+                </View>
+              </View>
+              <View style={styles.achieveStripEmojis}>
+                {[...unlockedAchievements].reverse().slice(0, 5).map(id => {
+                  const a = ACHIEVEMENTS.find(x => x.id === id);
+                  return a ? <Text key={id} style={styles.achieveStripEmoji}>{a.emoji}</Text> : null;
+                })}
+              </View>
+              <Feather name="chevron-right" size={14} color={T.textDim} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         {/* Alpine Requirements — only shown for Alpine difficulty */}
         {summitGoal.difficulty === "Alpine" && (
           <AlpineCard
@@ -939,6 +973,10 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {newlyUnlocked.length > 0 && (
+        <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
+      )}
     </LinearGradient>
   );
 }
@@ -1040,6 +1078,24 @@ const styles = StyleSheet.create({
   diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   diffText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+  achieveStrip: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: "#FFD70030",
+    paddingVertical: 12, paddingHorizontal: 14,
+    marginBottom: 12, overflow: "hidden",
+  },
+  achieveStripLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  achieveStripIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: "#FFD70015",
+    alignItems: "center", justifyContent: "center",
+  },
+  achieveStripTrophy: { fontSize: 18 },
+  achieveStripTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  achieveStripSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  achieveStripEmojis: { flexDirection: "row", gap: 2, alignItems: "center" },
+  achieveStripEmoji: { fontSize: 17 },
   statCard: {
     backgroundColor: T.card,
     borderRadius: 18,

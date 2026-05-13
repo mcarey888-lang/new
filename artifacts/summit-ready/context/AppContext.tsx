@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { generatePlan } from "@/utils/planGenerator";
 import { calculateReadiness } from "@/utils/readinessScore";
+import { computeUnlocked } from "@/utils/achievements";
 
 export interface AlpineRequirement {
   id: string;
@@ -126,6 +127,9 @@ interface AppState {
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
   updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
+  unlockedAchievements: string[];
+  newlyUnlocked: string[];
+  clearNewlyUnlocked: () => void;
 }
 
 const AppContext = createContext<AppState>({
@@ -163,6 +167,9 @@ const AppContext = createContext<AppState>({
   setSessionEffort: async () => {},
   updatePlanSession: async () => {},
   markPlanViewed: async () => {},
+  unlockedAchievements: [],
+  newlyUnlocked: [],
+  clearNewlyUnlocked: () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -177,6 +184,7 @@ const HILLS_IN_PLAN_KEY = "summitready_hills_in_plan";
 const REPS_KEY = "summitready_session_reps";
 const EFFORTS_KEY = "summitready_session_efforts";
 const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
+const ACHIEVEMENTS_KEY = "summitready_achievements";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -275,14 +283,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
   const [sessionEfforts, setSessionEffortsState] = useState<Record<string, 1 | 2 | 3 | 4 | 5>>({});
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
+  const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -308,6 +318,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
+          if (achievementsStr) setUnlockedAchievements(JSON.parse(achievementsStr));
           // Fetch Alpine profile in background if not already stored
           if (goal.difficulty === "Alpine" && !goal.alpineProfile) {
             setAlpineProfileLoading(true);
@@ -347,6 +358,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHasViewedPlan(false);
     const score = calculateReadiness(goal, plan, []);
     setReadinessScore(score);
+    setUnlockedAchievements([]);
+    setNewlyUnlocked([]);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
       [PLAN_KEY, JSON.stringify(plan)],
@@ -358,6 +371,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [ADJUST_NOTE_KEY, ""],
       [REPS_KEY, "{}"],
       [HAS_VIEWED_PLAN_KEY, "false"],
+      [ACHIEVEMENTS_KEY, "[]"],
     ]);
     // Fire-and-forget Alpine profile fetch — doesn't block the goal save
     if (goal.difficulty === "Alpine") {
@@ -376,14 +390,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearNewlyUnlocked = useCallback(() => {
+    setNewlyUnlocked([]);
+  }, []);
+
+  const checkAndNotifyAchievements = useCallback(async (
+    updatedSessions: Session[],
+    score: number,
+    submitted: Record<string, boolean>,
+    alreadyUnlocked: string[],
+  ) => {
+    const weekNums = new Set(
+      Object.keys(submitted).filter(k => submitted[k]).map(k => k.split("-")[0])
+    );
+    const computed = computeUnlocked(updatedSessions, score, weekNums.size);
+    const prev = new Set(alreadyUnlocked);
+    const newly: string[] = [];
+    for (const id of computed) {
+      if (!prev.has(id)) newly.push(id);
+    }
+    if (newly.length > 0) {
+      const all = [...alreadyUnlocked, ...newly];
+      setUnlockedAchievements(all);
+      setNewlyUnlocked(newly);
+      await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(all));
+    }
+  }, []);
+
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 6);
     const newSession: Session = { ...session, id };
     const updated = [newSession, ...sessions];
     setSessions(updated);
-    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills }));
+    let score = readinessScore;
+    if (summitGoal) {
+      score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills });
+      setReadinessScore(score);
+    }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
-  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills]);
+    checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements);
+  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, readinessScore, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
 
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
     const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
@@ -413,8 +459,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPlanAdjustNote(null);
     setReadinessScore(0);
     setHasViewedPlan(false);
+    setUnlockedAchievements([]);
+    setNewlyUnlocked([]);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY,
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY,
     ]);
   }, []);
 
@@ -518,11 +566,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [...toSubmit, ...sessions];
     setSessions(updated);
     setSubmittedPlanSessions(newSubmitted);
-    setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills }));
+    const score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills });
+    setReadinessScore(score);
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
     await AsyncStorage.setItem(SUBMITTED_KEY, JSON.stringify(newSubmitted));
+    checkAndNotifyAchievements(updated, score, newSubmitted, unlockedAchievements);
     return toSubmit.length;
-  }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills]);
+  }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills, unlockedAchievements, checkAndNotifyAchievements]);
 
   const addHillToPlan = useCallback(async (hill: NearbyHill) => {
     if (!summitGoal) return;
@@ -688,6 +738,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
       submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
+      unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
     }}>
       {children}
     </AppContext.Provider>
