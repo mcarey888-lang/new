@@ -556,11 +556,26 @@ function WeekCard({
                     </View>
 
                     {assignedHill ? (
-                      <View style={styles.assignedHillRow}>
-                        <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
-                        <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
-                        <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
-                      </View>
+                      <>
+                        <View style={styles.assignedHillRow}>
+                          <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
+                          <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
+                          <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.directionsBtn}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            const dest = assignedHill.lat && assignedHill.lng
+                              ? `${assignedHill.lat},${assignedHill.lng}`
+                              : encodeURIComponent(`${assignedHill.name} car park`);
+                            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
+                          }}
+                        >
+                          <Feather name="navigation" size={11} color={T.blue} />
+                          <Text style={styles.directionsBtnText}>Get directions to start</Text>
+                        </TouchableOpacity>
+                      </>
                     ) : (
                       <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
                     )}
@@ -621,17 +636,17 @@ function WeekCard({
                     style={styles.hillRow}
                     activeOpacity={0.7}
                     onPress={() => {
-                      const url = (h as any).lat && (h as any).lng
-                        ? `https://www.google.com/maps/search/?api=1&query=${(h as any).lat},${(h as any).lng}`
-                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name)}`;
-                      Linking.openURL(url);
+                      const dest = (h as any).lat && (h as any).lng
+                        ? `${(h as any).lat},${(h as any).lng}`
+                        : encodeURIComponent(`${h.name} car park`);
+                      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
                     }}
                   >
-                    <Feather name="map-pin" size={13} color={T.green} />
+                    <Feather name="navigation" size={13} color={T.blue} />
                     <Text style={styles.hillRowText}>
                       {h.name} – {h.elevation}m × {h.repeats} = ~{h.totalElevation}m total
                     </Text>
-                    <Feather name="external-link" size={11} color={T.textMuted} style={{ marginLeft: "auto" }} />
+                    <Text style={{ fontSize: 10, color: T.blue, fontFamily: "Inter_600SemiBold", marginLeft: "auto" }}>Directions</Text>
                   </TouchableOpacity>
                 ))}
               </>
@@ -1429,6 +1444,20 @@ const styles = StyleSheet.create({
   assignedHillEmoji: { fontSize: 13, marginRight: 4 },
   assignedHillName: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.white },
   assignedHillSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  directionsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: T.blueDim,
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+  },
+  directionsBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
   hillRow: {
     flexDirection: "row",
     alignItems: "flex-start",
