@@ -30,7 +30,7 @@ function Navigation() {
           <a href="#how-it-works" className="hover:text-primary transition-colors">How it Works</a>
         </div>
         <div>
-          <a href="#">
+          <a href="#how-it-works">
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(62,207,117,0.3)]">
               Get Started
             </Button>
@@ -66,7 +66,7 @@ function Hero() {
         </p>
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <a href="#" className="w-full sm:w-auto">
+          <a href="#how-it-works" className="w-full sm:w-auto">
             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-10 h-16 text-lg w-full transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(62,207,117,0.4)]">
               Start Your Plan
               <ChevronRight className="ml-2 w-5 h-5" />
@@ -204,7 +204,7 @@ function Readiness() {
             <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
               As you complete workouts, your score climbs. If you skip critical conditioning, it falls. The math is brutal, but the mountain is worse. We tell you the truth before you hit the trail.
             </p>
-            <a href="#">
+            <a href="#how-it-works">
               <Button variant="outline" className="rounded-full h-14 px-8 border-white/20 hover:bg-white/5 text-lg shadow-lg">
                 Start Tracking Free
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -295,7 +295,7 @@ function CTA() {
         <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
           The mountain won't lower its standards. Raise yours. Join thousands of climbers training smarter with SummitReady.
         </p>
-        <a href="#">
+        <a href="#how-it-works">
           <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-12 h-16 text-xl shadow-[0_0_40px_rgba(62,207,117,0.4)] transition-all hover:scale-105 active:scale-95">
             Get SummitReady Free
           </Button>
@@ -315,9 +315,9 @@ function Footer() {
         </div>
         
         <div className="flex gap-8 text-sm text-muted-foreground">
-          <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-          <a href="#" className="hover:text-primary transition-colors">Contact</a>
+          <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
+          <a href="/terms" className="hover:text-primary transition-colors">Terms of Service</a>
+          <a href="mailto:hello@summitready.uk" className="hover:text-primary transition-colors">Contact</a>
         </div>
         
         <p className="text-sm text-muted-foreground">
