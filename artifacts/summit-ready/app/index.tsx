@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import { Compass, MapPin, TrendingUp, Activity, ArrowRight, Loader } from "lucide-react-native";
+import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect } from "react";
@@ -21,10 +22,16 @@ export default function LandingScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center" }}>
-        <Feather name="loader" size={28} color={T.green} />
+        <Loader size={28} color={T.green} />
       </View>
     );
   }
+
+  const features: { icon: LucideIcon; text: string }[] = [
+    { icon: MapPin,    text: "Plans built around your summit date" },
+    { icon: TrendingUp, text: "Progressive elevation targets each week" },
+    { icon: Activity,  text: "Track sessions & watch readiness grow" },
+  ];
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -59,18 +66,17 @@ export default function LandingScreen() {
 
         {/* Feature pills */}
         <Animated.View entering={FadeInUp.delay(250).duration(600)} style={styles.features}>
-          {[
-            { icon: "map-pin" as const, text: "Plans built around your summit date" },
-            { icon: "trending-up" as const, text: "Progressive elevation targets each week" },
-            { icon: "activity" as const, text: "Track sessions & watch readiness grow" },
-          ].map((item, i) => (
-            <View key={i} style={styles.featureRow}>
-              <View style={styles.featureIconWrap}>
-                <Feather name={item.icon} size={16} color={T.green} />
+          {features.map((item, i) => {
+            const FIcon = item.icon;
+            return (
+              <View key={i} style={styles.featureRow}>
+                <View style={styles.featureIconWrap}>
+                  <FIcon size={16} color={T.green} />
+                </View>
+                <Text style={styles.featureText}>{item.text}</Text>
               </View>
-              <Text style={styles.featureText}>{item.text}</Text>
-            </View>
-          ))}
+            );
+          })}
         </Animated.View>
 
         {/* CTA */}
@@ -86,9 +92,9 @@ export default function LandingScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.ctaBtnGrad}
             >
-              <Feather name="compass" size={19} color="#fff" />
+              <Compass size={19} color="#fff" />
               <Text style={styles.ctaBtnText}>Create my training plan</Text>
-              <Feather name="arrow-right" size={17} color="#fff" />
+              <ArrowRight size={17} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
           <Text style={styles.demoNote}>

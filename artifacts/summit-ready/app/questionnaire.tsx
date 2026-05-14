@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -50,7 +50,7 @@ function OptionCard({
       </View>
       {selected && (
         <View style={[s.optionCheck, { backgroundColor: color }]}>
-          <Feather name="check" size={12} color="#fff" />
+          <Check size={12} color="#fff" />
         </View>
       )}
     </TouchableOpacity>
@@ -99,7 +99,7 @@ function StepMountain({ mountainName, setMountainName }: { mountainName: string;
       <Text style={s.stepTitle}>What's your summit goal?</Text>
       <Text style={s.stepSub}>We'll build your entire readiness assessment around this mountain.</Text>
       <View style={s.mountainInputWrap}>
-        <Feather name="map-pin" size={18} color={T.green} style={s.mountainIcon} />
+        <MapPin size={18} color={T.green} style={s.mountainIcon} />
         <TextInput
           style={s.mountainInput}
           value={mountainName}
@@ -271,7 +271,7 @@ function StepPlan({
             onPress={() => setTrainingDays(Math.max(2, trainingDays - 1))}
             style={s.stepperBtn} activeOpacity={0.7}
           >
-            <Feather name="minus" size={18} color={T.white} />
+            <Minus size={18} color={T.white} />
           </TouchableOpacity>
           <View style={s.stepperVal}>
             <Text style={s.stepperNum}>{trainingDays}</Text>
@@ -281,7 +281,7 @@ function StepPlan({
             onPress={() => setTrainingDays(Math.min(6, trainingDays + 1))}
             style={s.stepperBtn} activeOpacity={0.7}
           >
-            <Feather name="plus" size={18} color={T.white} />
+            <Plus size={18} color={T.white} />
           </TouchableOpacity>
         </View>
       </QGroup>
@@ -451,7 +451,7 @@ export default function QuestionnaireScreen() {
         {/* Header */}
         <View style={[s.header, { paddingTop: Platform.OS === "web" ? 20 : insets.top + 8 }]}>
           <TouchableOpacity onPress={goBack} style={s.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={20} color={T.white} />
+            <ArrowLeft size={20} color={T.white} />
           </TouchableOpacity>
           <View style={s.progressTrack}>
             <View style={[s.progressFill, { width: `${progress * 100}%` as any }]} />
@@ -487,7 +487,7 @@ export default function QuestionnaireScreen() {
               <Text style={s.nextBtnText}>
                 {isLast ? "See my readiness score" : "Next"}
               </Text>
-              <Feather name={isLast ? "zap" : "arrow-right"} size={18} color="#fff" />
+              {isLast ? <Zap size={18} color="#fff" /> : <ArrowRight size={18} color="#fff" />}
             </LinearGradient>
           </TouchableOpacity>
         </View>

@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import type { LucideIcon } from "lucide-react-native";
+import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, Navigation, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -52,7 +53,7 @@ function RepStepper({
     <View style={rsStyles.container}>
       {/* Target badge */}
       <View style={rsStyles.targetRow}>
-        <Feather name="flag" size={11} color={T.orange} />
+        <Flag size={11} color={T.orange} />
         <Text style={rsStyles.targetLabel}>
           Today's target:{" "}
           <Text style={rsStyles.targetNum}>{targetReps} reps</Text>
@@ -73,7 +74,7 @@ function RepStepper({
           disabled={displayReps <= 0}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather name="minus" size={12} color={displayReps <= 0 ? T.textDim : T.white} />
+          <Minus size={12} color={displayReps <= 0 ? T.textDim : T.white} />
         </TouchableOpacity>
 
         <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
@@ -86,7 +87,7 @@ function RepStepper({
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather name="plus" size={12} color={T.white} />
+          <Plus size={12} color={T.white} />
         </TouchableOpacity>
 
         {loggedElev !== null && (
@@ -97,7 +98,7 @@ function RepStepper({
 
         {hitTarget && (
           <View style={rsStyles.hitBadge}>
-            <Feather name="check" size={10} color={T.green} />
+            <Check size={10} color={T.green} />
             <Text style={rsStyles.hitText}>Target hit!</Text>
           </View>
         )}
@@ -243,7 +244,7 @@ function HillPickerModal({
 
         {/* Search bar */}
         <View style={mpStyles.searchRow}>
-          <Feather name="search" size={15} color={T.textMuted} style={{ marginLeft: 12 }} />
+          <Search size={15} color={T.textMuted} style={{ marginLeft: 12 }} />
           <TextInput
             style={mpStyles.searchInput}
             value={query}
@@ -255,7 +256,7 @@ function HillPickerModal({
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => { setQuery(""); setSearchResult(null); setSearchError(null); }} style={{ paddingRight: 12 }}>
-              <Feather name="x" size={14} color={T.textMuted} />
+              <X size={14} color={T.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -266,7 +267,7 @@ function HillPickerModal({
           {searchResult && (
             <View style={mpStyles.searchResultCard}>
               <View style={mpStyles.searchResultHeader}>
-                <Feather name="globe" size={12} color={T.blue} />
+                <Globe size={12} color={T.blue} />
                 <Text style={mpStyles.searchResultLabel}>Online result</Text>
               </View>
               <TouchableOpacity
@@ -290,7 +291,7 @@ function HillPickerModal({
           {/* Search error */}
           {searchError && (
             <View style={mpStyles.searchErrorRow}>
-              <Feather name="alert-circle" size={14} color={T.orange} />
+              <AlertCircle size={14} color={T.orange} />
               <Text style={mpStyles.searchErrorText}>{searchError}</Text>
             </View>
           )}
@@ -301,7 +302,7 @@ function HillPickerModal({
               {searching ? (
                 <ActivityIndicator size="small" color={T.blue} />
               ) : (
-                <Feather name="globe" size={14} color={T.blue} />
+                <Globe size={14} color={T.blue} />
               )}
               <Text style={mpStyles.onlineSearchText}>
                 {searching ? "Searching…" : `Search online for "${query.trim()}"`}
@@ -319,7 +320,7 @@ function HillPickerModal({
           {/* Local hills list */}
           {filtered.length === 0 && !query.trim() ? (
             <View style={mpStyles.empty}>
-              <Feather name="map-pin" size={28} color={T.textDim} />
+              <MapPin size={28} color={T.textDim} />
               <Text style={mpStyles.emptyText}>No hills loaded yet</Text>
               <Text style={mpStyles.emptyHint}>Go to the Hills tab to load nearby hills, or search by name above</Text>
             </View>
@@ -358,26 +359,26 @@ function HillPickerModal({
   );
 }
 
-function getExerciseAlternatives(label: string): { name: string; icon: string; desc: string }[] {
+function getExerciseAlternatives(label: string): { name: string; icon: LucideIcon; desc: string }[] {
   const l = label.toLowerCase();
   const isStairs = l.includes("stair") || l.includes("step") || l.includes("climb");
   const isRun = l.includes("run") || l.includes("jog") || l.includes("walk");
 
   const stairAlts = [
-    { name: "Incline Treadmill", icon: "trending-up", desc: "10–15% incline, brisk hike pace" },
-    { name: "StairMaster", icon: "layers", desc: "Continuous stair climbing machine" },
-    { name: "Stepper Machine", icon: "activity", desc: "Step machine for leg drive and cardio" },
-    { name: "Box Step-Ups", icon: "square", desc: "Weighted step-ups onto a box or bench" },
-    { name: "Weighted Stairs", icon: "package", desc: "Stairs with a loaded pack or weight vest" },
-    { name: "Elliptical (high resistance)", icon: "refresh-cw", desc: "High resistance, simulate climbing effort" },
+    { name: "Incline Treadmill", icon: TrendingUp, desc: "10–15% incline, brisk hike pace" },
+    { name: "StairMaster", icon: Layers, desc: "Continuous stair climbing machine" },
+    { name: "Stepper Machine", icon: Activity, desc: "Step machine for leg drive and cardio" },
+    { name: "Box Step-Ups", icon: Square, desc: "Weighted step-ups onto a box or bench" },
+    { name: "Weighted Stairs", icon: Package, desc: "Stairs with a loaded pack or weight vest" },
+    { name: "Elliptical (high resistance)", icon: RefreshCw, desc: "High resistance, simulate climbing effort" },
   ];
   const cardioAlts = [
-    { name: "Incline Treadmill", icon: "trending-up", desc: "10–15% incline, brisk hike pace" },
-    { name: "Indoor Cycling", icon: "wind", desc: "High cadence cycling for aerobic base" },
-    { name: "Rowing Machine", icon: "anchor", desc: "Full body cardio with strong leg drive" },
-    { name: "Elliptical", icon: "refresh-cw", desc: "Sustained aerobic effort, moderate resistance" },
-    { name: "StairMaster", icon: "layers", desc: "Continuous stair climbing machine" },
-    { name: "Swimming", icon: "droplet", desc: "Low impact aerobic conditioning" },
+    { name: "Incline Treadmill", icon: TrendingUp, desc: "10–15% incline, brisk hike pace" },
+    { name: "Indoor Cycling", icon: Wind, desc: "High cadence cycling for aerobic base" },
+    { name: "Rowing Machine", icon: Anchor, desc: "Full body cardio with strong leg drive" },
+    { name: "Elliptical", icon: RefreshCw, desc: "Sustained aerobic effort, moderate resistance" },
+    { name: "StairMaster", icon: Layers, desc: "Continuous stair climbing machine" },
+    { name: "Swimming", icon: Droplet, desc: "Low impact aerobic conditioning" },
   ];
   if (isStairs) return stairAlts;
   if (isRun) return cardioAlts;
@@ -479,13 +480,13 @@ function WeekCard({
                 <Text style={[styles.weekBadgeText, { color: T.green }]}>{completedInWeek}/{totalSessions}</Text>
               </View>
             )}
-            <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={T.textMuted} />
+            {isExpanded ? <ChevronUp size={18} color={T.textMuted} /> : <ChevronDown size={18} color={T.textMuted} />}
           </View>
         </View>
 
         <View style={styles.cardMeta}>
           <View style={[styles.elevChip, { backgroundColor: T.orangeDim }]}>
-            <Feather name="trending-up" size={12} color={T.orange} />
+            <TrendingUp size={12} color={T.orange} />
             <Text style={[styles.elevText, { color: T.orange }]}>{week.targetElevation}m</Text>
           </View>
           <Text style={styles.purposeSnippet} numberOfLines={isExpanded ? undefined : 1}>
@@ -495,7 +496,7 @@ function WeekCard({
 
         {week.adjustNote && (
           <View style={styles.adjustNoteBadge}>
-            <Feather name="zap" size={11} color={T.blue} />
+            <Zap size={11} color={T.blue} />
             <Text style={styles.adjustNoteText}>{week.adjustNote}</Text>
           </View>
         )}
@@ -525,7 +526,7 @@ function WeekCard({
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    {isDone && <Feather name="check" size={12} color="#fff" />}
+                    {isDone && <Check size={12} color="#fff" />}
                   </TouchableOpacity>
 
                   <View style={[
@@ -533,11 +534,7 @@ function WeekCard({
                     { backgroundColor: s.type === "bigDay" ? T.orangeDim : T.greenDim },
                     isDone && { opacity: 0.5 },
                   ]}>
-                    <Feather
-                      name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
-                      size={14}
-                      color={s.type === "bigDay" ? T.orange : T.green}
-                    />
+                    {s.type === "cardio" ? <Heart size={14} color={T.green} /> : s.type === "hill" ? <TrendingUp size={14} color={T.green} /> : <Flag size={14} color={T.orange} />}
                   </View>
 
                   <View style={{ flex: 1 }}>
@@ -550,7 +547,7 @@ function WeekCard({
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           activeOpacity={0.7}
                         >
-                          <Feather name="edit-2" size={13} color={T.textMuted} />
+                          <Pencil size={13} color={T.textMuted} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -580,7 +577,7 @@ function WeekCard({
                                 Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
                               }}
                             >
-                              <Feather name="navigation" size={11} color={T.blue} />
+                              <Navigation size={11} color={T.blue} />
                               <Text style={styles.directionsBtnText}>
                                 {assignedHill ? "Get directions to start" : `Directions to ${displayHill.name}`}
                               </Text>
@@ -598,7 +595,7 @@ function WeekCard({
                           style={styles.pickHillBtn}
                           activeOpacity={0.7}
                         >
-                          <Feather name="map-pin" size={11} color={T.green} />
+                          <MapPin size={11} color={T.green} />
                           <Text style={styles.pickHillText}>
                             {assignedHill ? "Change hill" : "Pick hill"}
                           </Text>
@@ -609,7 +606,7 @@ function WeekCard({
                           style={styles.swapBtn}
                           activeOpacity={0.7}
                         >
-                          <Feather name="refresh-cw" size={11} color={T.blue} />
+                          <RefreshCw size={11} color={T.blue} />
                           <Text style={styles.swapBtnText}>Swap exercise</Text>
                         </TouchableOpacity>
                       )}
@@ -652,7 +649,7 @@ function WeekCard({
                       Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
                     }}
                   >
-                    <Feather name="navigation" size={13} color={T.blue} />
+                    <Navigation size={13} color={T.blue} />
                     <Text style={styles.hillRowText}>
                       {h.name} – {h.elevation}m × {h.repeats} = ~{h.totalElevation}m total
                     </Text>
@@ -680,7 +677,7 @@ function WeekCard({
                     activeOpacity={0.8}
                   >
                     <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitWeekGrad}>
-                      <Feather name="check-circle" size={15} color="#fff" />
+                      <CheckCircle size={15} color="#fff" />
                       <Text style={styles.submitWeekText}>
                         Submit {unsubmitted} completed session{unsubmitted > 1 ? "s" : ""} → update progress
                       </Text>
@@ -691,7 +688,7 @@ function WeekCard({
               if (submitted > 0) {
                 return (
                   <View style={styles.submittedBanner}>
-                    <Feather name="check-circle" size={14} color={T.green} />
+                    <CheckCircle size={14} color={T.green} />
                     <Text style={styles.submittedBannerText}>
                       {submitted} session{submitted > 1 ? "s" : ""} submitted · dashboard updated
                     </Text>
@@ -819,7 +816,7 @@ export default function PlanScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
         <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
-          <Feather name="calendar" size={28} color={T.blue} />
+          <Calendar size={28} color={T.blue} />
         </View>
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
         <TouchableOpacity
@@ -861,7 +858,7 @@ export default function PlanScreen() {
               <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={styles.adjustNoteInner}>
                 <View style={styles.adjustNoteIcon}>
-                  <Feather name="cpu" size={14} color={T.blue} />
+                  <Cpu size={14} color={T.blue} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.adjustNoteTitle}>Plan adjusted by AI</Text>
@@ -891,7 +888,7 @@ export default function PlanScreen() {
                 <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={planLockStyles.card}>
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
                   <View style={planLockStyles.iconWrap}>
-                    <Feather name="lock" size={22} color={T.green} />
+                    <Lock size={22} color={T.green} />
                   </View>
                   <Text style={planLockStyles.title}>
                     {trainingPlan.length - 1} more weeks in your plan
@@ -902,13 +899,13 @@ export default function PlanScreen() {
                   <View style={planLockStyles.featureRow}>
                     {["Adaptive AI plan", "All weeks unlocked", "Progress tracking"].map(f => (
                       <View key={f} style={planLockStyles.featureChip}>
-                        <Feather name="check" size={11} color={T.green} />
+                        <Check size={11} color={T.green} />
                         <Text style={planLockStyles.featureText}>{f}</Text>
                       </View>
                     ))}
                   </View>
                   <View style={planLockStyles.btn}>
-                    <Feather name="zap" size={13} color={T.bg} />
+                    <Zap size={13} color={T.bg} />
                     <Text style={planLockStyles.btnText}>Unlock full plan</Text>
                   </View>
                 </TouchableOpacity>
@@ -956,7 +953,7 @@ export default function PlanScreen() {
                 </>
               ) : (
                 <>
-                  <Feather name="cpu" size={16} color="#fff" />
+                  <Cpu size={16} color="#fff" />
                   <Text style={styles.adjustBtnText}>
                     Adjust plan with AI · {completedCount} done
                   </Text>
@@ -982,7 +979,7 @@ export default function PlanScreen() {
         <View style={editStyles.sheet}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
-            <Feather name="edit-2" size={16} color={T.blue} />
+            <Pencil size={16} color={T.blue} />
             <Text style={editStyles.title}>Edit Session</Text>
           </View>
 
@@ -1025,7 +1022,7 @@ export default function PlanScreen() {
               activeOpacity={0.85}
             >
               <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={editStyles.saveBtnGrad}>
-                <Feather name="check" size={15} color="#fff" />
+                <Check size={15} color="#fff" />
                 <Text style={editStyles.saveText}>Save changes</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1039,7 +1036,7 @@ export default function PlanScreen() {
         <View style={editStyles.sheet}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
-            <Feather name="refresh-cw" size={16} color={T.blue} />
+            <RefreshCw size={16} color={T.blue} />
             <Text style={editStyles.title}>Swap Exercise</Text>
           </View>
           <Text style={editStyles.swapHint}>
@@ -1053,13 +1050,13 @@ export default function PlanScreen() {
               onPress={() => handleSwapSelect(opt.name, opt.desc)}
             >
               <View style={editStyles.swapIcon}>
-                <Feather name={opt.icon as any} size={15} color={T.blue} />
+                {(() => { const OIcon = opt.icon; return <OIcon size={15} color={T.blue} />; })()}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={editStyles.swapName}>{opt.name}</Text>
                 <Text style={editStyles.swapDesc}>{opt.desc}</Text>
               </View>
-              <Feather name="chevron-right" size={14} color={T.textMuted} />
+              <ChevronRight size={14} color={T.textMuted} />
             </TouchableOpacity>
           ))}
           <TouchableOpacity

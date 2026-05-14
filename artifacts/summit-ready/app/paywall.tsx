@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import type { LucideIcon } from "lucide-react-native";
+import { MapPin, TrendingUp, Navigation, Activity, Cpu, ShoppingBag, X, Zap, Gift, AlertCircle, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
@@ -18,12 +19,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "@/lib/revenuecat";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
 
-const FEATURES = [
-  { icon: "map-pin" as const,    title: "Personalised summit training",      desc: "Plans built entirely around your mountain, date, and fitness" },
-  { icon: "trending-up" as const, title: "Adaptive progression plans",        desc: "Your plan updates as you train — smarter every week" },
-  { icon: "navigation" as const,  title: "Local hikes matched to fitness",    desc: "Unlimited hill recommendations near you" },
-  { icon: "activity" as const,    title: "Summit readiness tracking",         desc: "Know exactly how ready you are, week by week" },
-  { icon: "cpu" as const,         title: "AI-powered coaching insights",      desc: "Get personalised feedback from your AI summit coach" },
+const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
+  { icon: MapPin,      title: "Personalised summit training",      desc: "Plans built entirely around your mountain, date, and fitness" },
+  { icon: TrendingUp,  title: "Adaptive progression plans",        desc: "Your plan updates as you train — smarter every week" },
+  { icon: Navigation,  title: "Local hikes matched to fitness",    desc: "Unlimited hill recommendations near you" },
+  { icon: Activity,    title: "Summit readiness tracking",         desc: "Know exactly how ready you are, week by week" },
+  { icon: Cpu,         title: "AI-powered coaching insights",      desc: "Get personalised feedback from your AI summit coach" },
 ];
 
 type ConfirmModalProps = {
@@ -40,7 +41,7 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
       <View style={confirmStyles.backdrop}>
         <View style={confirmStyles.sheet}>
           <View style={confirmStyles.iconWrap}>
-            <Feather name="shopping-bag" size={24} color={T.green} />
+            <ShoppingBag size={24} color={T.green} />
           </View>
           <Text style={confirmStyles.title}>Confirm Purchase</Text>
           <Text style={confirmStyles.body}>
@@ -135,7 +136,7 @@ export default function PaywallScreen() {
       >
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} activeOpacity={0.7}>
-            <Feather name="x" size={20} color={T.textMuted} />
+            <X size={20} color={T.textMuted} />
           </TouchableOpacity>
           <Image
             source={require("@/assets/images/logo.gif")}
@@ -146,7 +147,7 @@ export default function PaywallScreen() {
 
         <Animated.View entering={FadeInDown.delay(100).duration(600)} style={styles.heroSection}>
           <View style={styles.proBadge}>
-            <Feather name="zap" size={12} color={T.green} />
+            <Zap size={12} color={T.green} />
             <Text style={styles.proBadgeText}>SUMMIT READY PRO</Text>
           </View>
           {fromQuestionnaire && quizScore !== null ? (
@@ -198,22 +199,25 @@ export default function PaywallScreen() {
         )}
 
         <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.featuresSection}>
-          {FEATURES.map((f, i) => (
+          {FEATURES.map((f, i) => {
+            const FIcon = f.icon;
+            return (
             <View key={i} style={styles.featureRow}>
               <View style={styles.featureIconWrap}>
-                <Feather name={f.icon} size={16} color={T.green} />
+                <FIcon size={16} color={T.green} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.featureTitle}>{f.title}</Text>
                 <Text style={styles.featureDesc}>{f.desc}</Text>
               </View>
             </View>
-          ))}
+          );
+          })}
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.planSection}>
           <View style={styles.trialBanner}>
-            <Feather name="gift" size={14} color={T.green} />
+            <Gift size={14} color={T.green} />
             <Text style={styles.trialBannerText}>7-day free trial included — cancel anytime</Text>
           </View>
           <Text style={styles.planHeading}>Then choose your plan</Text>
@@ -258,14 +262,14 @@ export default function PaywallScreen() {
 
         {error && (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.errorBanner}>
-            <Feather name="alert-circle" size={14} color={T.orange} />
+            <AlertCircle size={14} color={T.orange} />
             <Text style={styles.errorText}>{error}</Text>
           </Animated.View>
         )}
 
         {restoreSuccess && (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.successBanner}>
-            <Feather name="check-circle" size={14} color={T.green} />
+            <CheckCircle size={14} color={T.green} />
             <Text style={styles.successText}>Purchases restored successfully!</Text>
           </Animated.View>
         )}
@@ -280,7 +284,7 @@ export default function PaywallScreen() {
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.ctaGrad}>
               {isPurchasing
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="zap" size={18} color="#fff" />}
+                : <Zap size={18} color="#fff" />}
               <Text style={styles.ctaText}>
                 {isPurchasing
                   ? "Processing…"

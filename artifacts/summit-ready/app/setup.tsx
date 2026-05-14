@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import type { LucideIcon } from "lucide-react-native";
+import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -62,11 +63,11 @@ const DIFF_DESC: Record<Difficulty, string> = {
 };
 
 
-const EQUIPMENT_OPTIONS: { value: Equipment; icon: keyof typeof Feather.glyphMap; label: string; desc: string }[] = [
-  { value: "gym",     icon: "activity",    label: "Gym membership",    desc: "Treadmill, step machine, weights" },
-  { value: "weights", icon: "trending-up", label: "Home weights",      desc: "Dumbbells, barbell, or kettlebell" },
-  { value: "bands",   icon: "link",        label: "Resistance bands",  desc: "Bands or bodyweight equipment" },
-  { value: "none",    icon: "map-pin",     label: "No equipment",      desc: "Walks, runs, stairs only" },
+const EQUIPMENT_OPTIONS: { value: Equipment; icon: LucideIcon; label: string; desc: string }[] = [
+  { value: "gym",     icon: Activity,   label: "Gym membership",    desc: "Treadmill, step machine, weights" },
+  { value: "weights", icon: TrendingUp, label: "Home weights",      desc: "Dumbbells, barbell, or kettlebell" },
+  { value: "bands",   icon: Link,       label: "Resistance bands",  desc: "Bands or bodyweight equipment" },
+  { value: "none",    icon: MapPin,     label: "No equipment",      desc: "Walks, runs, stairs only" },
 ];
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -353,7 +354,7 @@ export default function SetupScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Feather name="arrow-left" size={20} color={T.white} />
+              <ArrowLeft size={20} color={T.white} />
             </TouchableOpacity>
             <View>
               <Text style={styles.title}>Your Summit</Text>
@@ -362,7 +363,7 @@ export default function SetupScreen() {
           </View>
 
           {/* Fitness Assessment — slider quiz */}
-          <Section label="Your Fitness" icon="zap">
+          <Section label="Your Fitness" icon={Zap}>
             <Text style={styles.sectionDesc}>
               Slide each to where you honestly sit — this shapes your entire plan.
             </Text>
@@ -407,7 +408,7 @@ export default function SetupScreen() {
                 borderColor:
                   fit === "Strong" ? T.green + "40" : fit === "Average" ? T.orange + "40" : T.blue + "40",
               }]}>
-                <Feather name="zap" size={13} color={fit === "Strong" ? T.green : fit === "Average" ? T.orange : T.blue} />
+                <Zap size={13} color={fit === "Strong" ? T.green : fit === "Average" ? T.orange : T.blue} />
                 <Text style={styles.fitnessResultText}>
                   Assessed as:{" "}
                   <Text style={{
@@ -485,7 +486,7 @@ export default function SetupScreen() {
             </View>
           </Section>
 
-          <Section label="Mountain / Hike" icon="map-pin">
+          <Section label="Mountain / Hike" icon={MapPin}>
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Mountain or Hike Name</Text>
               <View style={styles.mountainInputRow}>
@@ -500,7 +501,7 @@ export default function SetupScreen() {
                 )}
                 {lookupState !== "loading" && name.trim().length >= 3 && (
                   <TouchableOpacity style={styles.lookupBtn} onPress={() => lookupMountain(name.trim())} activeOpacity={0.8}>
-                    <Feather name="search" size={16} color={T.green} />
+                    <Search size={16} color={T.green} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -515,7 +516,7 @@ export default function SetupScreen() {
             )}
             {lookupState === "error" && (
               <Animated.View entering={FadeInDown.duration(300)} style={[styles.lookupCard, styles.lookupError]}>
-                <Feather name="alert-circle" size={14} color={T.orange} />
+                <AlertCircle size={14} color={T.orange} />
                 <Text style={styles.lookupErrorText}>{lookupError}</Text>
               </Animated.View>
             )}
@@ -556,15 +557,15 @@ export default function SetupScreen() {
                         </View>
                         {isSelected && (
                           <View style={[styles.checkMark, { backgroundColor: dc }]}>
-                            <Feather name="check" size={12} color="#fff" />
+                            <Check size={12} color="#fff" />
                           </View>
                         )}
                       </View>
                       <Text style={styles.routeDesc} numberOfLines={2}>{route.description}</Text>
                       <View style={styles.routeStats}>
-                        <RouteStatPill icon="map" val={`${route.distance}km`} color={T.blue} />
-                        <RouteStatPill icon="trending-up" val={`${route.elevationGain}m`} color={T.orange} />
-                        <RouteStatPill icon="navigation" val={`${route.highestAltitude}m asl`} color={T.purple} />
+                        <RouteStatPill icon={Map} val={`${route.distance}km`} color={T.blue} />
+                        <RouteStatPill icon={TrendingUp} val={`${route.elevationGain}m`} color={T.orange} />
+                        <RouteStatPill icon={Navigation} val={`${route.highestAltitude}m asl`} color={T.purple} />
                       </View>
                     </TouchableOpacity>
                   );
@@ -574,19 +575,19 @@ export default function SetupScreen() {
           </Section>
 
           {/* Summit date */}
-          <Section label="Summit Date" icon="calendar">
+          <Section label="Summit Date" icon={Calendar}>
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Target Date</Text>
               <TouchableOpacity onPress={() => setCalOpen(true)} activeOpacity={0.8}
                 style={[styles.datePicker, errors.date ? { borderColor: T.red + "80" } : null]}
               >
-                <Feather name="calendar" size={16} color={date ? T.green : T.textDim} />
+                <Calendar size={16} color={date ? T.green : T.textDim} />
                 <Text style={[styles.datePickerText, !date && { color: T.textDim }]}>
                   {date
                     ? new Date(date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
                     : "Pick a date"}
                 </Text>
-                <Feather name="chevron-down" size={14} color={T.textDim} />
+                <ChevronDown size={14} color={T.textDim} />
               </TouchableOpacity>
               {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
@@ -595,16 +596,17 @@ export default function SetupScreen() {
             {timeAssessment && !errors.date && (() => {
               const ta = timeAssessment;
               const cfg = {
-                good:        { icon: "check-circle" as const, bg: T.greenDim,   border: T.green + "40",  text: T.green,   title: ta.message },
-                tight:       { icon: "clock"        as const, bg: T.orangeDim,  border: T.orange + "40", text: T.orange,  title: ta.message },
-                insufficient:{ icon: "alert-triangle" as const, bg: T.redDim ?? "rgba(255,68,68,0.12)", border: T.red + "40", text: T.red, title: ta.message },
-                impossible:  { icon: "x-circle"     as const, bg: T.redDim ?? "rgba(255,68,68,0.12)",   border: T.red + "60", text: T.red,   title: ta.message },
+                good:        { icon: CheckCircle,   bg: T.greenDim,   border: T.green + "40",  text: T.green,   title: ta.message },
+                tight:       { icon: Clock,         bg: T.orangeDim,  border: T.orange + "40", text: T.orange,  title: ta.message },
+                insufficient:{ icon: AlertTriangle, bg: T.redDim ?? "rgba(255,68,68,0.12)", border: T.red + "40", text: T.red, title: ta.message },
+                impossible:  { icon: XCircle,       bg: T.redDim ?? "rgba(255,68,68,0.12)",   border: T.red + "60", text: T.red,   title: ta.message },
               }[ta.status];
+              const CfgIcon = cfg.icon;
               return (
                 <Animated.View entering={FadeInDown.duration(350)}>
                   <View style={[styles.timeCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
                     <View style={styles.timeCardRow}>
-                      <Feather name={cfg.icon} size={15} color={cfg.text} />
+                      <CfgIcon size={15} color={cfg.text} />
                       <Text style={[styles.timeCardTitle, { color: cfg.text }]}>{cfg.title}</Text>
                     </View>
                     <Text style={styles.timeCardDetail}>{ta.detail}</Text>
@@ -643,7 +645,7 @@ export default function SetupScreen() {
                 <Animated.View entering={FadeInDown.duration(400)}>
                   <View style={styles.planDurCard}>
                     <View style={styles.planDurHeader}>
-                      <Feather name="sliders" size={14} color={T.blue} />
+                      <SlidersHorizontal size={14} color={T.blue} />
                       <Text style={styles.planDurTitle}>When should your plan start?</Text>
                     </View>
                     <Text style={styles.planDurSub}>
@@ -656,7 +658,7 @@ export default function SetupScreen() {
                         activeOpacity={0.8}
                       >
                         {planStartMode === "optimal" && (
-                          <View style={styles.planDurCheck}><Feather name="check" size={10} color="#fff" /></View>
+                          <View style={styles.planDurCheck}><Check size={10} color="#fff" /></View>
                         )}
                         <Text style={[styles.planDurOptIcon]}>🎯</Text>
                         <Text style={[styles.planDurOptLabel, planStartMode === "optimal" && { color: T.green }]}>Focused plan</Text>
@@ -669,7 +671,7 @@ export default function SetupScreen() {
                         activeOpacity={0.8}
                       >
                         {planStartMode === "full" && (
-                          <View style={styles.planDurCheck}><Feather name="check" size={10} color="#fff" /></View>
+                          <View style={styles.planDurCheck}><Check size={10} color="#fff" /></View>
                         )}
                         <Text style={styles.planDurOptIcon}>📅</Text>
                         <Text style={[styles.planDurOptLabel, planStartMode === "full" && { color: T.green }]}>Full duration</Text>
@@ -690,11 +692,11 @@ export default function SetupScreen() {
           />
 
           {/* Route details */}
-          <Section label="Route Details" icon="trending-up">
+          <Section label="Route Details" icon={TrendingUp}>
             {selectedRoute && (
               <Animated.View entering={FadeInDown.duration(300)}>
                 <View style={styles.autofillBanner}>
-                  <Feather name="zap" size={13} color={T.green} />
+                  <Zap size={13} color={T.green} />
                   <Text style={styles.autofillText}>Auto-filled from "{selectedRoute.name}" — edit if needed</Text>
                 </View>
               </Animated.View>
@@ -737,7 +739,7 @@ export default function SetupScreen() {
           </Section>
 
           {/* Equipment */}
-          <Section label="Available Equipment" icon="tool">
+          <Section label="Available Equipment" icon={Wrench}>
             <Text style={styles.sectionDesc}>
               Select everything you have access to — your plan will be tailored around what's available.
             </Text>
@@ -754,13 +756,13 @@ export default function SetupScreen() {
                       style={StyleSheet.absoluteFill}
                     />}
                     <View style={[styles.equipIcon, { backgroundColor: active ? (isNoneOpt ? T.blue + "20" : T.green + "20") : T.surface }]}>
-                      <Feather name={opt.icon} size={18} color={active ? (isNoneOpt ? T.blue : T.green) : T.textMuted} />
+                      {(() => { const EqIcon = opt.icon; return <EqIcon size={18} color={active ? (isNoneOpt ? T.blue : T.green) : T.textMuted} />; })()}
                     </View>
                     <Text style={[styles.equipLabel, active && { color: isNoneOpt ? T.blue : T.green }]}>{opt.label}</Text>
                     <Text style={styles.equipDesc}>{opt.desc}</Text>
                     {active && (
                       <View style={[styles.equipCheck, { backgroundColor: isNoneOpt ? T.blue : T.green }]}>
-                        <Feather name="check" size={10} color="#fff" />
+                        <Check size={10} color="#fff" />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -770,7 +772,7 @@ export default function SetupScreen() {
           </Section>
 
           {/* Training Schedule */}
-          <Section label="Training Schedule" icon="calendar">
+          <Section label="Training Schedule" icon={Calendar}>
             <Text style={styles.sectionDesc}>
               How many days per week can you commit to training? We'll build the plan around your availability.
             </Text>
@@ -788,7 +790,7 @@ export default function SetupScreen() {
             </View>
 
             <View style={styles.scheduleInfo}>
-              <Feather name="info" size={12} color={T.textMuted} />
+              <Info size={12} color={T.textMuted} />
               <Text style={styles.scheduleInfoText}>
                 {trainingDays} training days/week · {trainingDays - hillDays} non-hill session{trainingDays - hillDays !== 1 ? "s" : ""}
               </Text>
@@ -812,12 +814,12 @@ export default function SetupScreen() {
               <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <Text style={styles.summaryTitle}>Your weekly plan will include:</Text>
               <View style={styles.summaryRow}>
-                <Feather name="trending-up" size={13} color={T.green} />
+                <TrendingUp size={13} color={T.green} />
                 <Text style={styles.summaryText}>{hillDays} hill session{hillDays !== 1 ? "s" : ""} — repeats on local hills</Text>
               </View>
               {trainingDays - hillDays - 1 > 0 && (
                 <View style={styles.summaryRow}>
-                  <Feather name="heart" size={13} color={T.blue} />
+                  <Heart size={13} color={T.blue} />
                   <Text style={styles.summaryText}>
                     {trainingDays - hillDays - 1} cardio session{trainingDays - hillDays - 1 !== 1 ? "s" : ""} —{" "}
                     {equipment.includes("gym") ? "treadmill / step machine" : equipment.includes("none") || equipment.length === 0 ? "runs, walks, stairs" : "runs + resistance work"}
@@ -826,7 +828,7 @@ export default function SetupScreen() {
               )}
               {trainingDays >= 3 && (
                 <View style={styles.summaryRow}>
-                  <Feather name="flag" size={13} color={T.orange} />
+                  <Flag size={13} color={T.orange} />
                   <Text style={styles.summaryText}>1 big day — long hike or extended hill session</Text>
                 </View>
               )}
@@ -834,7 +836,7 @@ export default function SetupScreen() {
           </Section>
 
           {/* Location + Hill Picker */}
-          <Section label="Your Location" icon="map">
+          <Section label="Your Location" icon={Map}>
             <View style={styles.fieldWrap}>
               <Text style={styles.fLabel}>Training location</Text>
               <Text style={styles.fieldHint}>Town, city, or postcode — used to find your local training hills</Text>
@@ -863,7 +865,7 @@ export default function SetupScreen() {
               >
                 {hillSearchState === "loading"
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Feather name="search" size={15} color="#fff" />
+                  : <Search size={15} color="#fff" />
                 }
                 <Text style={hillStyles.findBtnText}>
                   {hillSearchState === "loading" ? "Searching…" : "Find hills"}
@@ -874,7 +876,7 @@ export default function SetupScreen() {
             {/* Specific hill search */}
             <View style={hillStyles.specificSearchCard}>
               <View style={hillStyles.specificSearchHeader}>
-                <Feather name="search" size={13} color={T.purple} />
+                <Search size={13} color={T.purple} />
                 <Text style={hillStyles.specificSearchTitle}>Search a specific hill</Text>
               </View>
               <View style={hillStyles.specificSearchRow}>
@@ -895,7 +897,7 @@ export default function SetupScreen() {
                 >
                   {specificSearching
                     ? <ActivityIndicator size="small" color="#fff" />
-                    : <Feather name="search" size={15} color="#fff" />
+                    : <Search size={15} color="#fff" />
                   }
                 </TouchableOpacity>
               </View>
@@ -907,7 +909,7 @@ export default function SetupScreen() {
             {/* Hill picker results */}
             {hillSearchState === "error" && (
               <Animated.View entering={FadeInDown.duration(300)} style={hillStyles.errorBanner}>
-                <Feather name="alert-circle" size={13} color={T.orange} />
+                <AlertCircle size={13} color={T.orange} />
                 <Text style={hillStyles.errorText}>Could not fetch hills — check your location and try again.</Text>
               </Animated.View>
             )}
@@ -954,14 +956,14 @@ export default function SetupScreen() {
                         </View>
                         {selected && (
                           <View style={hillStyles.checkCircle}>
-                            <Feather name="check" size={12} color="#fff" />
+                              <Check size={12} color="#fff" />
                           </View>
                         )}
                       </View>
                       <View style={hillStyles.hillStats}>
-                        <HillStatChip icon="trending-up" val={`${hill.elevation}m`} color={T.orange} />
-                        <HillStatChip icon="map-pin" val={`${hill.distance}km away`} color={T.blue} />
-                        <HillStatChip icon="repeat" val={`×${hill.repeats} reps`} color={T.purple} />
+                        <HillStatChip icon={TrendingUp} val={`${hill.elevation}m`} color={T.orange} />
+                        <HillStatChip icon={MapPin} val={`${hill.distance}km away`} color={T.blue} />
+                        <HillStatChip icon={Repeat} val={`×${hill.repeats} reps`} color={T.purple} />
                       </View>
                     </TouchableOpacity>
                   );
@@ -981,7 +983,7 @@ export default function SetupScreen() {
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitGrad}>
               {saving
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="check-circle" size={20} color="#fff" />}
+                : <CheckCircle size={20} color="#fff" />}
               <Text style={styles.submitText}>
                 {saving ? "Generating plan…" : "Generate my training plan"}
               </Text>
@@ -1018,11 +1020,11 @@ function CalendarModal({ visible, selected, calMonth, setCalMonth, onSelect, onC
         <TouchableOpacity activeOpacity={1} style={calStyles.sheet}>
           <View style={calStyles.header}>
             <TouchableOpacity onPress={() => changeMonth(-1)} style={calStyles.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Feather name="chevron-left" size={20} color={T.white} />
+              <ChevronLeft size={20} color={T.white} />
             </TouchableOpacity>
             <Text style={calStyles.monthLabel}>{MONTHS[month]} {year}</Text>
             <TouchableOpacity onPress={() => changeMonth(1)} style={calStyles.navBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Feather name="chevron-right" size={20} color={T.white} />
+              <ChevronRight size={20} color={T.white} />
             </TouchableOpacity>
           </View>
           <View style={calStyles.weekRow}>
@@ -1106,19 +1108,19 @@ const sliderStyles = StyleSheet.create({
   endText: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim },
 });
 
-function RouteStatPill({ icon, val, color }: { icon: keyof typeof Feather.glyphMap; val: string; color: string }) {
+function RouteStatPill({ icon: IconComp, val, color }: { icon: LucideIcon; val: string; color: string }) {
   return (
     <View style={[statStyles.pill, { backgroundColor: color + "15" }]}>
-      <Feather name={icon} size={11} color={color} />
+      <IconComp size={11} color={color} />
       <Text style={[statStyles.text, { color }]}>{val}</Text>
     </View>
   );
 }
 
-function HillStatChip({ icon, val, color }: { icon: keyof typeof Feather.glyphMap; val: string; color: string }) {
+function HillStatChip({ icon: IconComp, val, color }: { icon: LucideIcon; val: string; color: string }) {
   return (
     <View style={[hillStyles.statChip, { backgroundColor: color + "15" }]}>
-      <Feather name={icon} size={10} color={color} />
+      <IconComp size={10} color={color} />
       <Text style={[hillStyles.statChipText, { color }]}>{val}</Text>
     </View>
   );
@@ -1196,12 +1198,12 @@ const hillStyles = StyleSheet.create({
   },
 });
 
-function Section({ label, icon, children }: { label: string; icon: keyof typeof Feather.glyphMap; children: React.ReactNode }) {
+function Section({ label, icon: IconComp, children }: { label: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <View style={secStyles.wrap}>
       <View style={secStyles.head}>
         <View style={secStyles.iconBox}>
-          <Feather name={icon} size={15} color={T.green} />
+          <IconComp size={15} color={T.green} />
         </View>
         <Text style={secStyles.label}>{label}</Text>
       </View>

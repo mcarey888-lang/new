@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search, AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle, PlusCircle, RefreshCw, Zap, Lock, Map, Info } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -215,10 +215,10 @@ export default function HillsScreen() {
                   autoCorrect={false}
                 />
                 <TouchableOpacity onPress={confirmLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Feather name="check" size={16} color={T.green} />
+                  <Check size={16} color={T.green} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={cancelLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Feather name="x" size={16} color={T.textMuted} />
+                  <X size={16} color={T.textMuted} />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -226,7 +226,7 @@ export default function HillsScreen() {
                 <Text style={styles.subtitle}>
                   {summitGoal ? summitGoal.location : "Tap to set location"}
                 </Text>
-                <Feather name="edit-2" size={12} color={T.textMuted} style={{ marginTop: 1 }} />
+                <Pencil size={12} color={T.textMuted} style={{ marginTop: 1 }} />
               </TouchableOpacity>
             )}
           </View>
@@ -260,7 +260,7 @@ export default function HillsScreen() {
           <View style={styles.controlCard}>
             <View style={styles.controlRow}>
               <View style={styles.controlLabelRow}>
-                <Feather name="radio" size={13} color={T.green} />
+                <Radio size={13} color={T.green} />
                 <Text style={styles.controlLabel}>Search radius</Text>
               </View>
               <View style={styles.radiusStepper}>
@@ -271,7 +271,7 @@ export default function HillsScreen() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Feather name="minus" size={14} color={T.white} />
+                  <Minus size={14} color={T.white} />
                 </TouchableOpacity>
                 <View style={styles.radiusValueBox}>
                   <Text style={[styles.radiusValue, radiusChanged && { color: T.orange }]}>
@@ -286,7 +286,7 @@ export default function HillsScreen() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Feather name="plus" size={14} color={T.white} />
+                  <Plus size={14} color={T.white} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -295,7 +295,7 @@ export default function HillsScreen() {
 
             <View style={styles.controlRow}>
               <View style={styles.controlLabelRow}>
-                <Feather name="sliders" size={13} color={T.blue} />
+                <SlidersHorizontal size={13} color={T.blue} />
                 <Text style={styles.controlLabel}>Sort by</Text>
               </View>
               <View style={styles.sortChips}>
@@ -320,7 +320,7 @@ export default function HillsScreen() {
         <Animated.View entering={FadeInDown.delay(90).duration(400)}>
           <View style={styles.searchCard}>
             <View style={styles.searchLabelRow}>
-              <Feather name="search" size={13} color={T.purple} />
+              <Search size={13} color={T.purple} />
               <Text style={styles.searchLabel}>Search for a specific hill</Text>
             </View>
             <Text style={styles.searchHint}>Know a hill you want to train on? Search for it by name.</Text>
@@ -344,14 +344,14 @@ export default function HillsScreen() {
               >
                 {searchLoading
                   ? <ActivityIndicator size="small" color={T.white} />
-                  : <Feather name="search" size={16} color={T.white} />}
+                  : <Search size={16} color={T.white} />}
               </TouchableOpacity>
             </View>
 
             {/* Error */}
             {searchError && (
               <View style={styles.searchErrRow}>
-                <Feather name="alert-circle" size={13} color={T.red} />
+                <AlertCircle size={13} color={T.red} />
                 <Text style={styles.searchErrText}>{searchError}</Text>
               </View>
             )}
@@ -372,22 +372,22 @@ export default function HillsScreen() {
                 </View>
                 <View style={styles.searchResultStats}>
                   <View style={styles.searchStat}>
-                    <Feather name="trending-up" size={11} color={T.orange} />
+                    <TrendingUp size={11} color={T.orange} />
                     <Text style={styles.searchStatVal}>{searchResult.elevation}m</Text>
                     <Text style={styles.searchStatLbl}>per rep</Text>
                   </View>
                   <View style={styles.searchStat}>
-                    <Feather name="map-pin" size={11} color={T.green} />
+                    <MapPin size={11} color={T.green} />
                     <Text style={styles.searchStatVal}>{searchResult.distance}km</Text>
                     <Text style={styles.searchStatLbl}>away</Text>
                   </View>
                   <View style={styles.searchStat}>
-                    <Feather name="repeat" size={11} color={T.textMuted} />
+                    <Repeat size={11} color={T.textMuted} />
                     <Text style={styles.searchStatVal}>{searchResult.repeats}×</Text>
                     <Text style={styles.searchStatLbl}>recs</Text>
                   </View>
                   <View style={styles.searchStat}>
-                    <Feather name="bar-chart-2" size={11} color={T.purple} />
+                    <BarChart2 size={11} color={T.purple} />
                     <Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text>
                     <Text style={styles.searchStatLbl}>total</Text>
                   </View>
@@ -398,7 +398,7 @@ export default function HillsScreen() {
                   style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
                   activeOpacity={0.75}
                 >
-                  <Feather name={searchAdded ? "check-circle" : "plus-circle"} size={14} color={searchAdded ? T.green : T.purple} />
+                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
                   <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
                     {searchAdded ? "Added to your hills!" : "Add to my hills"}
                   </Text>
@@ -427,12 +427,12 @@ export default function HillsScreen() {
                 </>
               ) : radiusChanged ? (
                 <>
-                  <Feather name="search" size={15} color={T.orange} />
+                  <Search size={15} color={T.orange} />
                   <Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km radius</Text>
                 </>
               ) : (
                 <>
-                  <Feather name={nearbyHills.length > 0 ? "refresh-cw" : "zap"} size={15} color={T.green} />
+                  {nearbyHills.length > 0 ? <RefreshCw size={15} color={T.green} /> : <Zap size={15} color={T.green} />}
                   <Text style={styles.fetchBtnText}>
                     {nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}
                   </Text>
@@ -470,7 +470,7 @@ export default function HillsScreen() {
                 <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={styles.lockedCard}>
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
                   <View style={styles.lockedIconWrap}>
-                    <Feather name="lock" size={22} color={T.green} />
+                    <Lock size={22} color={T.green} />
                   </View>
                   <Text style={styles.lockedTitle}>
                     {nearbyHills.length - FREE_HILLS_LIMIT} more hills found nearby
@@ -479,7 +479,7 @@ export default function HillsScreen() {
                     Upgrade to Summit Ready Pro to see all {nearbyHills.length} results, sort by elevation, and add any hill to your plan.
                   </Text>
                   <View style={styles.lockedBtn}>
-                    <Feather name="zap" size={13} color={T.bg} />
+                    <Zap size={13} color={T.bg} />
                     <Text style={styles.lockedBtnText}>Unlock all hills</Text>
                   </View>
                 </TouchableOpacity>
@@ -524,17 +524,17 @@ export default function HillsScreen() {
 
                 <View style={styles.hillStats}>
                   <View style={styles.hillStat}>
-                    <Feather name="map-pin" size={12} color={T.green} />
+                    <MapPin size={12} color={T.green} />
                     <Text style={styles.hillStatVal}>{hill.distance}km</Text>
                     <Text style={styles.hillStatLbl}>away</Text>
                   </View>
                   <View style={styles.hillStat}>
-                    <Feather name="trending-up" size={12} color={T.orange} />
+                    <TrendingUp size={12} color={T.orange} />
                     <Text style={styles.hillStatVal}>{hill.elevation}m</Text>
                     <Text style={styles.hillStatLbl}>per climb</Text>
                   </View>
                   <View style={styles.hillStat}>
-                    <Feather name="repeat" size={12} color={T.textMuted} />
+                    <Repeat size={12} color={T.textMuted} />
                     <Text style={styles.hillStatVal}>{hill.repeats}×</Text>
                     <Text style={styles.hillStatLbl}>repeats</Text>
                   </View>
@@ -571,11 +571,7 @@ export default function HillsScreen() {
                     onPress={() => !inPlan && handleAddToPlan(hill)}
                     disabled={inPlan}
                   >
-                    <Feather
-                      name={wasJustAdded ? "check-circle" : inPlan ? "check" : "plus-circle"}
-                      size={14}
-                      color={inPlan ? T.green : T.blue}
-                    />
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
                     <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
                       {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
                     </Text>
@@ -597,7 +593,7 @@ export default function HillsScreen() {
                       }
                     }}
                   >
-                    <Feather name="map" size={14} color={T.green} />
+                    <Map size={14} color={T.green} />
                     <Text style={styles.mapBtnText}>Map</Text>
                   </TouchableOpacity>
 
@@ -622,7 +618,7 @@ export default function HillsScreen() {
                       })
                     }
                   >
-                    <Feather name="info" size={14} color={T.purple} />
+                    <Info size={14} color={T.purple} />
                     <Text style={styles.detailsBtnText}>Details</Text>
                   </TouchableOpacity>
                 </View>
@@ -630,7 +626,7 @@ export default function HillsScreen() {
                 {/* Plan impact note */}
                 {wasJustAdded && (
                   <View style={styles.impactNote}>
-                    <Feather name="zap" size={12} color={T.green} />
+                    <Zap size={12} color={T.green} />
                     <Text style={styles.impactText}>
                       Plan updated — hill sessions recalculated for {hill.name}
                     </Text>

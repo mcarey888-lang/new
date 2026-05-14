@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -220,7 +220,7 @@ export default function AccountScreen() {
             <View style={styles.avatarRow}>
               <View style={[styles.avatar, { backgroundColor: isGuest ? T.surface : T.greenDim }]}>
                 {isGuest
-                  ? <Feather name="user" size={24} color={T.textMuted} />
+                  ? <User size={24} color={T.textMuted} />
                   : <Text style={styles.avatarInitial}>{accountEmail![0].toUpperCase()}</Text>
                 }
               </View>
@@ -247,13 +247,13 @@ export default function AccountScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.signInBtnGrad}>
-                  <Feather name="log-in" size={15} color="#fff" />
+                  <LogIn size={15} color="#fff" />
                   <Text style={styles.signInBtnText}>Sign in with email</Text>
                 </LinearGradient>
               </TouchableOpacity>
             ) : (
               <View style={styles.signedInNote}>
-                <Feather name="shield" size={12} color={T.green} />
+                <Shield size={12} color={T.green} />
                 <Text style={styles.signedInNoteText}>
                   Your purchases are linked to this account and can be restored on any device.
                 </Text>
@@ -272,7 +272,7 @@ export default function AccountScreen() {
             />
             <View style={styles.subRow}>
               <View style={[styles.subIconBox, { backgroundColor: isSubscribed ? T.greenDim : T.surface }]}>
-                <Feather name={isSubscribed ? "zap" : "circle"} size={18} color={isSubscribed ? T.green : T.textMuted} />
+                {isSubscribed ? <Zap size={18} color={T.green} /> : <Circle size={18} color={T.textMuted} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.subPlanName, isSubscribed && { color: T.green }]}>
@@ -297,7 +297,7 @@ export default function AccountScreen() {
               <View style={styles.subFeatures}>
                 {["Adaptive AI training", "Unlimited hill sessions", "Advanced analytics", "AI coach feedback"].map(f => (
                   <View key={f} style={styles.subFeatureRow}>
-                    <Feather name="check" size={12} color={T.green} />
+                    <Check size={12} color={T.green} />
                     <Text style={styles.subFeatureText}>{f}</Text>
                   </View>
                 ))}
@@ -311,9 +311,9 @@ export default function AccountScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.upgradeBtnGrad}>
-                  <Feather name="zap" size={14} color="#fff" />
+                  <Zap size={14} color="#fff" />
                   <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
-                  <Feather name="arrow-right" size={13} color="#fff" />
+                  <ArrowRight size={13} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -347,7 +347,7 @@ export default function AccountScreen() {
           </View>
           {summitGoal && (
             <View style={styles.goalPill}>
-              <Feather name="flag" size={13} color={T.green} />
+              <Flag size={13} color={T.green} />
               <Text style={styles.goalPillText} numberOfLines={1}>
                 {summitGoal.mountainName}
               </Text>
@@ -407,7 +407,7 @@ export default function AccountScreen() {
             })}
             {/* Lifetime totals banner */}
             <View style={styles.lifetimeBanner}>
-              <Feather name="trending-up" size={13} color={T.green} />
+              <TrendingUp size={13} color={T.green} />
               <Text style={styles.lifetimeText}>
                 Lifetime: <Text style={{ color: T.text }}>{lifetimeSessions} sessions</Text>
                 {"  ·  "}
@@ -439,7 +439,7 @@ export default function AccountScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.readyChipName}>{peak.name}</Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
-                        <Feather name="map-pin" size={10} color={T.textMuted} />
+                        <MapPin size={10} color={T.textMuted} />
                         <Text style={styles.readyChipSub}>{peak.location} · {peak.elevation}m</Text>
                       </View>
                     </View>
@@ -507,12 +507,12 @@ export default function AccountScreen() {
           <Text style={styles.sectionLabel}>TRAINING SETUP</Text>
           <View style={styles.actionList}>
             <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/setup")} activeOpacity={0.7}>
-              <Feather name="compass" size={16} color={T.blue} />
+              <Compass size={16} color={T.blue} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.actionText}>Review or change setup</Text>
                 <Text style={styles.actionSub}>Update your goal, fitness level or mountain</Text>
               </View>
-              <Feather name="chevron-right" size={16} color={T.textDim} />
+              <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -523,22 +523,22 @@ export default function AccountScreen() {
           <View style={styles.actionList}>
             {restoreMsg && (
               <View style={[styles.restoreMsg, { borderColor: restoreMsg.type === "success" ? T.green + "30" : T.orange + "30", backgroundColor: restoreMsg.type === "success" ? T.greenDim : T.orangeDim }]}>
-                <Feather name={restoreMsg.type === "success" ? "check-circle" : "alert-circle"} size={14} color={restoreMsg.type === "success" ? T.green : T.orange} />
+                {restoreMsg.type === "success" ? <CheckCircle size={14} color={T.green} /> : <AlertCircle size={14} color={T.orange} />}
                 <Text style={[styles.restoreMsgText, { color: restoreMsg.type === "success" ? T.green : T.orange }]}>{restoreMsg.text}</Text>
               </View>
             )}
             <TouchableOpacity style={styles.actionRow} onPress={handleRestore} disabled={isRestoring} activeOpacity={0.7}>
               {isRestoring
                 ? <ActivityIndicator size="small" color={T.blue} />
-                : <Feather name="refresh-cw" size={16} color={T.blue} />}
+                : <RefreshCw size={16} color={T.blue} />}
               <Text style={styles.actionText}>Restore purchases</Text>
-              <Feather name="chevron-right" size={16} color={T.textDim} />
+              <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
             {isSubscribed && (
               <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/subscription")} activeOpacity={0.7}>
-                <Feather name="credit-card" size={16} color={T.green} />
+                <CreditCard size={16} color={T.green} />
                 <Text style={styles.actionText}>Manage subscription</Text>
-                <Feather name="chevron-right" size={16} color={T.textDim} />
+                <ChevronRight size={16} color={T.textDim} />
               </TouchableOpacity>
             )}
           </View>
@@ -550,24 +550,24 @@ export default function AccountScreen() {
           <View style={styles.actionList}>
             {!isGuest ? (
               <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>
-                <Feather name="log-out" size={16} color={T.orange} />
+                <LogOut size={16} color={T.orange} />
                 <Text style={[styles.actionText, { color: T.orange }]}>Sign out</Text>
-                <Feather name="chevron-right" size={16} color={T.textDim} />
+                <ChevronRight size={16} color={T.textDim} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={styles.actionRow} onPress={() => setSignInOpen(true)} activeOpacity={0.7}>
-                <Feather name="log-in" size={16} color={T.blue} />
+                <LogIn size={16} color={T.blue} />
                 <Text style={styles.actionText}>Sign in</Text>
-                <Feather name="chevron-right" size={16} color={T.textDim} />
+                <ChevronRight size={16} color={T.textDim} />
               </TouchableOpacity>
             )}
             <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleResetData} activeOpacity={0.7}>
-              <Feather name="trash-2" size={16} color="#FF4444" />
+              <Trash2 size={16} color="#FF4444" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionText, { color: "#FF4444" }]}>Reset all data</Text>
                 <Text style={styles.actionSub}>Deletes your goal, plan and session history</Text>
               </View>
-              <Feather name="chevron-right" size={16} color={T.textDim} />
+              <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -587,7 +587,7 @@ export default function AccountScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.modalTitleRow}>
               <View style={styles.modalIconBox}>
-                <Feather name="log-in" size={18} color={T.blue} />
+                <LogIn size={18} color={T.blue} />
               </View>
               <View>
                 <Text style={styles.modalTitle}>Sign in</Text>
@@ -608,13 +608,13 @@ export default function AccountScreen() {
             />
             {signInError ? (
               <View style={styles.errorRow}>
-                <Feather name="alert-circle" size={13} color={T.orange} />
+                <AlertCircle size={13} color={T.orange} />
                 <Text style={styles.errorText}>{signInError}</Text>
               </View>
             ) : null}
 
             <View style={styles.modalNote}>
-              <Feather name="info" size={12} color={T.textMuted} />
+              <Info size={12} color={T.textMuted} />
               <Text style={styles.modalNoteText}>
                 We use your email as a secure account ID to link RevenueCat purchases. No password required.
               </Text>
@@ -634,7 +634,7 @@ export default function AccountScreen() {
                   {signingIn
                     ? <ActivityIndicator size="small" color="#fff" />
                     : <>
-                        <Feather name="check" size={15} color="#fff" />
+                        <Check size={15} color="#fff" />
                         <Text style={styles.confirmText}>Sign in</Text>
                       </>
                   }

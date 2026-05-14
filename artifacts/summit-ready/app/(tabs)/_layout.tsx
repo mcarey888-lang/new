@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import { Home, Calendar, PenLine, Triangle, User } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { T } from "@/constants/theme";
@@ -42,7 +42,7 @@ export default function TabLayout() {
           title: "Dashboard",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Feather name="home" size={20} color={color} />
+              <Home size={20} color={color} />
             </View>
           ),
         }}
@@ -53,7 +53,7 @@ export default function TabLayout() {
           title: "Plan",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Feather name="calendar" size={20} color={color} />
+              <Calendar size={20} color={color} />
             </View>
           ),
         }}
@@ -64,7 +64,7 @@ export default function TabLayout() {
           title: "Log",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Feather name="edit-3" size={20} color={color} />
+              <PenLine size={20} color={color} />
             </View>
           ),
         }}
@@ -75,7 +75,7 @@ export default function TabLayout() {
           title: "Hills",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Feather name="triangle" size={20} color={color} />
+              <Triangle size={20} color={color} />
             </View>
           ),
         }}
@@ -86,7 +86,7 @@ export default function TabLayout() {
           title: "Account",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
-              <Feather name="user" size={20} color={color} />
+              <User size={20} color={color} />
             </View>
           ),
           tabBarActiveTintColor: T.blue,

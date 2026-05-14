@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import type { LucideIcon } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -190,11 +191,11 @@ function HeroContent({
         <View style={heroStyles.headerButtons}>
           {hasViewedPlan && (
             <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
-              <Feather name={isSubscribed ? "zap" : "lock"} size={13} color={isSubscribed ? T.green : T.purple} />
+              {isSubscribed ? <Zap size={13} color={T.green} /> : <Lock size={13} color={T.purple} />}
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
-            <Feather name="edit-2" size={14} color={T.green} />
+            <Pencil size={14} color={T.green} />
           </TouchableOpacity>
         </View>
       </View>
@@ -291,14 +292,14 @@ function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
 }
 
 function StatCard({
-  icon,
+  icon: IconComp,
   label,
   value,
   unit,
   accent,
   delay = 0,
 }: {
-  icon: keyof typeof Feather.glyphMap;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   unit?: string;
@@ -308,7 +309,7 @@ function StatCard({
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(500)} style={[styles.statCard, { width: CARD_W }]}>
       <View style={[styles.statIconRow, { backgroundColor: accent + "18" }]}>
-        <Feather name={icon} size={15} color={accent} />
+        <IconComp size={15} color={accent} />
       </View>
       <Text style={styles.statValue}>
         {value}
@@ -320,12 +321,12 @@ function StatCard({
 }
 
 // ── Alpine Requirements Card ───────────────────────────────────────────────
-const ALPINE_CATEGORY_ICON: Record<string, string> = {
-  endurance: "heart",
-  altitude: "wind",
-  technical: "tool",
-  strength: "zap",
-  recovery: "moon",
+const ALPINE_CATEGORY_ICON: Record<string, LucideIcon> = {
+  endurance: Heart,
+  altitude: Wind,
+  technical: Wrench,
+  strength: Zap,
+  recovery: Moon,
 };
 const ALPINE_CATEGORY_COLOR: Record<string, string> = {
   endurance: T.green,
@@ -370,7 +371,7 @@ function AlpineCard({
           <LinearGradient colors={[T.blue + "15", "transparent"]} style={StyleSheet.absoluteFill} />
           <View style={styles.alpineCardHeader}>
             <View style={styles.alpineIconWrap}>
-              <Feather name="shield" size={13} color={T.blue} />
+              <Shield size={13} color={T.blue} />
             </View>
             <Text style={styles.alpineCardTitle}>Alpine Requirements</Text>
             <ActivityIndicator size="small" color={T.blue} style={{ marginLeft: "auto" as any }} />
@@ -395,7 +396,7 @@ function AlpineCard({
         {/* Header */}
         <View style={styles.alpineCardHeader}>
           <View style={styles.alpineIconWrap}>
-            <Feather name="shield" size={13} color={T.blue} />
+            <Shield size={13} color={T.blue} />
           </View>
           <Text style={styles.alpineCardTitle}>Alpine Requirements</Text>
           <View style={styles.alpineAiBadge}>
@@ -425,18 +426,18 @@ function AlpineCard({
         {profile.requirements.map((req) => {
           const met = isRequirementMet(req, sessions, weeksElapsed);
           const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
-          const iconName = ALPINE_CATEGORY_ICON[req.category] ?? "check-circle";
+          const AlpineIcon = ALPINE_CATEGORY_ICON[req.category] ?? CheckCircle;
           return (
             <View key={req.id} style={styles.alpineReqRow}>
               <View style={[styles.alpineReqIconWrap, { backgroundColor: color + "18" }]}>
-                <Feather name={iconName as any} size={12} color={color} />
+                <AlpineIcon size={12} color={color} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.alpineReqLabel}>{req.label}</Text>
                 <Text style={styles.alpineReqDetail}>{req.detail}</Text>
               </View>
               <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : "rgba(255,255,255,0.05)" }]}>
-                <Feather name={met ? "check" : "minus"} size={12} color={met ? T.green : T.textMuted} />
+                {met ? <Check size={12} color={T.green} /> : <Minus size={12} color={T.textMuted} />}
               </View>
             </View>
           );
@@ -450,7 +451,7 @@ function AlpineCard({
           <View style={styles.alpineRisksChips}>
             {profile.keyRisks.map((risk, i) => (
               <View key={i} style={styles.alpineRiskChip}>
-                <Feather name="alert-triangle" size={10} color={T.orange} />
+                <AlertTriangle size={10} color={T.orange} />
                 <Text style={styles.alpineRiskText}>{risk}</Text>
               </View>
             ))}
@@ -459,7 +460,7 @@ function AlpineCard({
 
         {/* Acclimatization note */}
         <View style={styles.alpineAcclimRow}>
-          <Feather name="info" size={12} color={T.blue} />
+          <Info size={12} color={T.blue} />
           <Text style={styles.alpineAcclimText}>{profile.acclimatizationNote}</Text>
         </View>
       </View>
@@ -551,7 +552,7 @@ export default function DashboardScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 18 }}>
         <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" }}>
-          <Feather name="compass" size={28} color={T.green} />
+          <Compass size={28} color={T.green} />
         </View>
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
         <TouchableOpacity onPress={() => router.push("/setup")} style={styles.createPlanBtn}>
@@ -620,14 +621,14 @@ export default function DashboardScreen() {
               />
               <View style={styles.upgradeBannerLeft}>
                 <View style={styles.upgradeIconWrap}>
-                  <Feather name="zap" size={13} color={T.green} />
+                  <Zap size={13} color={T.green} />
                 </View>
                 <View style={{ gap: 1 }}>
                   <Text style={styles.upgradeBannerTitle}>Upgrade to Summit Ready Pro</Text>
                   <Text style={styles.upgradeBannerSub}>Unlock adaptive plans, AI coaching & more</Text>
                 </View>
               </View>
-              <Feather name="chevron-right" size={16} color={T.green} />
+              <ChevronRight size={16} color={T.green} />
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -641,11 +642,7 @@ export default function DashboardScreen() {
                 ? { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }
                 : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
             ]}>
-              <Feather
-                name={timeAssessment.status === "tight" ? "clock" : "alert-triangle"}
-                size={14}
-                color={timeAssessment.status === "tight" ? T.orange : T.red}
-              />
+              {timeAssessment.status === "tight" ? <Clock size={14} color={T.orange} /> : <AlertTriangle size={14} color={T.red} />}
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[styles.warningText, { color: timeAssessment.status === "tight" ? T.orange : T.red }]}>
                   {timeAssessment.message}
@@ -676,7 +673,7 @@ export default function DashboardScreen() {
                     style={styles.ringLockOverlay}
                   >
                     <BlurView intensity={28} style={StyleSheet.absoluteFill} />
-                    <Feather name="lock" size={20} color={T.green} />
+                    <Lock size={20} color={T.green} />
                     <Text style={styles.ringLockText}>Unlock score</Text>
                   </TouchableOpacity>
                 )}
@@ -690,7 +687,7 @@ export default function DashboardScreen() {
                       style={[styles.statusPill, { backgroundColor: T.greenDim }]}
                       activeOpacity={0.8}
                     >
-                      <Feather name="lock" size={11} color={T.green} />
+                      <Lock size={11} color={T.green} />
                       <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
                     </TouchableOpacity>
                     <Text style={styles.trackingMsg}>Score above 40 — upgrade to track progress</Text>
@@ -712,11 +709,11 @@ export default function DashboardScreen() {
                 )}
                 <View style={styles.difficultyRow}>
                   <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                    <Feather name="flag" size={11} color={T.textMuted} />
+                    <Flag size={11} color={T.textMuted} />
                     <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
                   </View>
                   <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                    <Feather name="zap" size={11} color={T.textMuted} />
+                    <Zap size={11} color={T.textMuted} />
                     <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
                   </View>
                 </View>
@@ -727,10 +724,10 @@ export default function DashboardScreen() {
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <StatCard icon="calendar" label="Days Remaining" value={days} accent={T.blue} delay={120} />
-          <StatCard icon="trending-up" label="Max Ascent" value={maxElev} unit="m" accent={T.orange} delay={160} />
-          <StatCard icon="check-circle" label="Sessions Done" value={totalDone} accent={T.green} delay={200} />
-          <StatCard icon="bar-chart-2" label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
+          <StatCard icon={Calendar} label="Days Remaining" value={days} accent={T.blue} delay={120} />
+          <StatCard icon={TrendingUp} label="Max Ascent" value={maxElev} unit="m" accent={T.orange} delay={160} />
+          <StatCard icon={CheckCircle} label="Sessions Done" value={totalDone} accent={T.green} delay={200} />
+          <StatCard icon={BarChart2} label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
         </View>
 
         {/* Achievements Strip */}
@@ -760,7 +757,7 @@ export default function DashboardScreen() {
                   return a ? <Text key={id} style={styles.achieveStripEmoji}>{a.emoji}</Text> : null;
                 })}
               </View>
-              <Feather name="chevron-right" size={14} color={T.textDim} />
+              <ChevronRight size={14} color={T.textDim} />
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -844,11 +841,7 @@ export default function DashboardScreen() {
               <View style={styles.sessionChips}>
                 {currentWeek.sessions.map((s, i) => (
                   <View key={i} style={[styles.sChip, { backgroundColor: T.surface }]}>
-                    <Feather
-                      name={s.type === "cardio" ? "heart" : s.type === "hill" ? "trending-up" : "flag"}
-                      size={11}
-                      color={s.type === "bigDay" ? T.orange : T.green}
-                    />
+                    {s.type === "cardio" ? <Heart size={11} color={T.green} /> : s.type === "hill" ? <TrendingUp size={11} color={T.green} /> : <Flag size={11} color={T.orange} />}
                     <Text style={styles.sChipText}>{s.label}</Text>
                   </View>
                 ))}
@@ -910,7 +903,7 @@ export default function DashboardScreen() {
                 style={styles.coachRefresh}
                 activeOpacity={0.7}
               >
-                <Feather name="refresh-cw" size={13} color={T.textMuted} />
+                <RefreshCw size={13} color={T.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -925,7 +918,7 @@ export default function DashboardScreen() {
               </View>
             ) : coachError ? (
               <TouchableOpacity onPress={fetchCoach} style={styles.coachLoading} activeOpacity={0.7}>
-                <Feather name="wifi-off" size={15} color={T.textMuted} />
+                <WifiOff size={15} color={T.textMuted} />
                 <Text style={styles.coachLoadingText}>Couldn't reach coach — tap to retry</Text>
               </TouchableOpacity>
             ) : coach ? (
@@ -959,7 +952,7 @@ export default function DashboardScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.primaryActionGrad}>
-              <Feather name="plus" size={18} color="#fff" />
+              <Plus size={18} color="#fff" />
               <Text style={styles.primaryActionText}>Log Session</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -968,7 +961,7 @@ export default function DashboardScreen() {
             style={styles.secondaryAction}
             activeOpacity={0.85}
           >
-            <Feather name="calendar" size={17} color={T.green} />
+            <Calendar size={17} color={T.green} />
             <Text style={styles.secondaryActionText}>View Plan</Text>
           </TouchableOpacity>
         </Animated.View>

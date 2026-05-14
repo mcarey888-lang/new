@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { ArrowLeft, Check, Zap, ArrowRight, RefreshCw, ChevronRight, Info, CheckCircle, AlertCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -70,7 +70,7 @@ export default function SubscriptionScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={20} color={T.white} />
+            <ArrowLeft size={20} color={T.white} />
           </TouchableOpacity>
           <View>
             <Text style={styles.title}>Subscription</Text>
@@ -111,7 +111,7 @@ export default function SubscriptionScreen() {
               <Text style={styles.comparePlanName}>Free</Text>
               {FREE_FEATURES.map((f, i) => (
                 <View key={i} style={styles.compareRow}>
-                  <Feather name="check" size={13} color={T.textMuted} />
+                  <Check size={13} color={T.textMuted} />
                   <Text style={styles.compareText}>{f}</Text>
                 </View>
               ))}
@@ -120,12 +120,12 @@ export default function SubscriptionScreen() {
             <View style={[styles.compareCol, styles.compareColPro]}>
               <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={styles.compareProHeader}>
-                <Feather name="zap" size={12} color={T.green} />
+                <Zap size={12} color={T.green} />
                 <Text style={styles.comparePlanNamePro}>Pro</Text>
               </View>
               {PRO_FEATURES.map((f, i) => (
                 <View key={i} style={styles.compareRow}>
-                  <Feather name="check" size={13} color={T.green} />
+                  <Check size={13} color={T.green} />
                   <Text style={[styles.compareText, { color: T.text }]}>{f}</Text>
                 </View>
               ))}
@@ -143,9 +143,9 @@ export default function SubscriptionScreen() {
               activeOpacity={0.85}
             >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.upgradeBtnGrad}>
-                <Feather name="zap" size={16} color="#fff" />
+                <Zap size={16} color="#fff" />
                 <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
-                <Feather name="arrow-right" size={15} color="#fff" />
+                <ArrowRight size={15} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -156,11 +156,9 @@ export default function SubscriptionScreen() {
               { borderColor: restoreMsg.type === "success" ? T.green + "30" : T.orange + "30",
                 backgroundColor: restoreMsg.type === "success" ? T.greenDim : T.orangeDim },
             ]}>
-              <Feather
-                name={restoreMsg.type === "success" ? "check-circle" : "alert-circle"}
-                size={14}
-                color={restoreMsg.type === "success" ? T.green : T.orange}
-              />
+              {restoreMsg.type === "success"
+                ? <CheckCircle size={14} color={T.green} />
+                : <AlertCircle size={14} color={T.orange} />}
               <Text style={[styles.restoreMsgText, { color: restoreMsg.type === "success" ? T.green : T.orange }]}>
                 {restoreMsg.text}
               </Text>
@@ -175,13 +173,13 @@ export default function SubscriptionScreen() {
           >
             {isRestoring
               ? <ActivityIndicator size="small" color={T.blue} />
-              : <Feather name="refresh-cw" size={16} color={T.blue} />}
+              : <RefreshCw size={16} color={T.blue} />}
             <Text style={styles.actionText}>Restore purchases</Text>
-            <Feather name="chevron-right" size={16} color={T.textDim} />
+            <ChevronRight size={16} color={T.textDim} />
           </TouchableOpacity>
 
           <View style={styles.noteCard}>
-            <Feather name="info" size={13} color={T.textDim} />
+            <Info size={13} color={T.textDim} />
             <Text style={styles.noteText}>
               To cancel, go to your device's App Store subscription settings. Your subscription continues until the end of the current billing period.
             </Text>

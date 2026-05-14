@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -182,7 +182,7 @@ export default function HillDetailScreen() {
             style={[styles.backBtn, { top: topInset + 12 }]}
             activeOpacity={0.8}
           >
-            <Feather name="arrow-left" size={18} color="#fff" />
+            <ArrowLeft size={18} color="#fff" />
           </TouchableOpacity>
 
           {/* Hill name overlay */}
@@ -193,13 +193,13 @@ export default function HillDetailScreen() {
               </View>
               {elevation && (
                 <View style={styles.elevBadge}>
-                  <Feather name="trending-up" size={11} color={T.orange} />
+                  <TrendingUp size={11} color={T.orange} />
                   <Text style={styles.elevText}>{elevation}m per climb</Text>
                 </View>
               )}
               {distance && (
                 <View style={styles.elevBadge}>
-                  <Feather name="map-pin" size={11} color={T.green} />
+                  <MapPin size={11} color={T.green} />
                   <Text style={styles.elevText}>{distance}km away</Text>
                 </View>
               )}
@@ -220,7 +220,7 @@ export default function HillDetailScreen() {
                   activeOpacity={0.8}
                 >
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  <Feather name="map" size={15} color={T.green} />
+                  <Map size={15} color={T.green} />
                   <Text style={styles.mapActionText}>View on map</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -229,7 +229,7 @@ export default function HillDetailScreen() {
                   activeOpacity={0.8}
                 >
                   <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  <Feather name="navigation" size={15} color={T.blue} />
+                  <Navigation size={15} color={T.blue} />
                   <Text style={[styles.mapActionText, { color: T.blue }]}>Get directions</Text>
                 </TouchableOpacity>
               </View>
@@ -245,7 +245,7 @@ export default function HillDetailScreen() {
 
           {detailError && (
             <View style={styles.errorCard}>
-              <Feather name="alert-circle" size={18} color={T.orange} />
+              <AlertCircle size={18} color={T.orange} />
               <Text style={styles.errorText}>
                 Couldn't load detailed info for this hill. Check your connection and try again.
               </Text>
@@ -266,7 +266,7 @@ export default function HillDetailScreen() {
               <Animated.View entering={FadeInDown.delay(120).duration(400)}>
                 <View style={styles.section}>
                   <View style={styles.sectionHeaderRow}>
-                    <Feather name="flag" size={15} color={T.green} />
+                    <Flag size={15} color={T.green} />
                     <Text style={styles.sectionTitle}>Start point</Text>
                   </View>
 
@@ -278,7 +278,7 @@ export default function HillDetailScreen() {
 
                     <View style={styles.startNameRow}>
                       <View style={styles.startIconBox}>
-                        <Feather name="flag" size={16} color={T.green} />
+                        <Flag size={16} color={T.green} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.startName}>{detail.startPoint.name}</Text>
@@ -294,7 +294,7 @@ export default function HillDetailScreen() {
 
                     {detail.startPoint.parkingNotes ? (
                       <View style={styles.parkingRow}>
-                        <Feather name="info" size={12} color={T.textMuted} />
+                        <Info size={12} color={T.textMuted} />
                         <Text style={styles.parkingText}>{detail.startPoint.parkingNotes}</Text>
                       </View>
                     ) : null}
@@ -305,7 +305,7 @@ export default function HillDetailScreen() {
                         onPress={() => openMaps(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
                         activeOpacity={0.8}
                       >
-                        <Feather name="map-pin" size={13} color={T.green} />
+                        <MapPin size={13} color={T.green} />
                         <Text style={styles.startMapBtnText}>View start on map</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -313,7 +313,7 @@ export default function HillDetailScreen() {
                         onPress={() => openDirections(detail.startPoint.lat, detail.startPoint.lng)}
                         activeOpacity={0.8}
                       >
-                        <Feather name="navigation" size={13} color={T.blue} />
+                        <Navigation size={13} color={T.blue} />
                         <Text style={[styles.startMapBtnText, { color: T.blue }]}>Drive there</Text>
                       </TouchableOpacity>
                     </View>
@@ -325,7 +325,7 @@ export default function HillDetailScreen() {
               <Animated.View entering={FadeInDown.delay(160).duration(400)}>
                 <View style={styles.section}>
                   <View style={styles.sectionHeaderRow}>
-                    <Feather name="compass" size={15} color={T.blue} />
+                    <Compass size={15} color={T.blue} />
                     <Text style={styles.sectionTitle}>Route options</Text>
                   </View>
 
@@ -349,7 +349,7 @@ export default function HillDetailScreen() {
                           <View style={{ flex: 1, gap: 2 }}>
                             {route.isRecommended && (
                               <View style={styles.recommendedBadge}>
-                                <Feather name="star" size={9} color={T.green} />
+                                <Star size={9} color={T.green} />
                                 <Text style={styles.recommendedText}>Best for training</Text>
                               </View>
                             )}
@@ -362,17 +362,17 @@ export default function HillDetailScreen() {
 
                         <View style={styles.routeStats}>
                           <View style={styles.routeStat}>
-                            <Feather name="map" size={11} color={T.textMuted} />
+                            <Map size={11} color={T.textMuted} />
                             <Text style={styles.routeStatVal}>{route.distance}km</Text>
                             <Text style={styles.routeStatLbl}>round trip</Text>
                           </View>
                           <View style={styles.routeStat}>
-                            <Feather name="trending-up" size={11} color={T.orange} />
+                            <TrendingUp size={11} color={T.orange} />
                             <Text style={styles.routeStatVal}>{route.elevationGain}m</Text>
                             <Text style={styles.routeStatLbl}>ascent</Text>
                           </View>
                           <View style={styles.routeStat}>
-                            <Feather name="clock" size={11} color={T.blue} />
+                            <Clock size={11} color={T.blue} />
                             <Text style={styles.routeStatVal}>{route.estimatedTime}</Text>
                           </View>
                         </View>
@@ -388,7 +388,7 @@ export default function HillDetailScreen() {
                           }}
                           activeOpacity={0.8}
                         >
-                          <Feather name="navigation" size={12} color={T.blue} />
+                          <Navigation size={12} color={T.blue} />
                           <Text style={styles.routeMapBtnText}>Navigate to start</Text>
                         </TouchableOpacity>
                       </View>

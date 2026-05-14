@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import type { LucideIcon } from "lucide-react-native";
+import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useState, useMemo } from "react";
@@ -20,10 +21,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Session, NearbyHill, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
-const SESSION_TYPES = [
-  { value: "cardio" as const, label: "Cardio", icon: "heart" as const, color: T.green },
-  { value: "hill" as const, label: "Hill Repeats", icon: "trending-up" as const, color: T.blue },
-  { value: "bigDay" as const, label: "Big Day", icon: "flag" as const, color: T.orange },
+const SESSION_TYPES: { value: "cardio" | "hill" | "bigDay"; label: string; icon: LucideIcon; color: string }[] = [
+  { value: "cardio", label: "Cardio", icon: Heart, color: T.green },
+  { value: "hill", label: "Hill Repeats", icon: TrendingUp, color: T.blue },
+  { value: "bigDay", label: "Big Day", icon: Flag, color: T.orange },
 ];
 
 function EffortPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -94,12 +95,12 @@ function HillSearchSection({
             onPress={() => { onSelectHill(null); setQuery(""); }}
             style={styles.hillClearBtn}
           >
-            <Feather name="x" size={14} color={T.textMuted} />
+            <X size={14} color={T.textMuted} />
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.hillSearchWrap}>
-          <Feather name="search" size={15} color={T.textMuted} style={{ marginLeft: 14 }} />
+          <Search size={15} color={T.textMuted} style={{ marginLeft: 14 }} />
           <TextInput
             style={styles.hillSearchInput}
             value={query}
@@ -150,7 +151,7 @@ function HillSearchSection({
               onPress={() => { if (reps > 1) { onChangeReps(reps - 1); Haptics.selectionAsync(); } }}
               style={[styles.repBtn, { opacity: reps <= 1 ? 0.35 : 1 }]}
             >
-              <Feather name="minus" size={18} color={T.white} />
+              <Minus size={18} color={T.white} />
             </TouchableOpacity>
 
             <View style={styles.repDisplay}>
@@ -162,16 +163,16 @@ function HillSearchSection({
               onPress={() => { onChangeReps(reps + 1); Haptics.selectionAsync(); }}
               style={styles.repBtn}
             >
-              <Feather name="plus" size={18} color={T.white} />
+              <Plus size={18} color={T.white} />
             </TouchableOpacity>
 
             <View style={styles.repAutoFill}>
-              <Feather name="trending-up" size={12} color={T.orange} />
+              <TrendingUp size={12} color={T.orange} />
               <Text style={styles.repAutoFillText}>
                 {selectedHill.elevation * reps}m gain
               </Text>
               <Text style={styles.repAutoFillSep}>·</Text>
-              <Feather name="map" size={12} color={T.blue} />
+              <Map size={12} color={T.blue} />
               <Text style={[styles.repAutoFillText, { color: T.blue }]}>
                 {(selectedHill.distance * reps).toFixed(1)}km
               </Text>
@@ -199,7 +200,7 @@ function SessionCard({ session, onDelete, onToggle, index }: {
         />
         <View style={styles.scTop}>
           <View style={[styles.scTypeIcon, { backgroundColor: t.color + "18" }]}>
-            <Feather name={t.icon} size={16} color={t.color} />
+            {(() => { const TIcon = t.icon; return <TIcon size={16} color={t.color} />; })()}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.scTitle}>
@@ -216,23 +217,26 @@ function SessionCard({ session, onDelete, onToggle, index }: {
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
             style={[styles.checkBtn, { backgroundColor: session.completed ? T.green : T.surface }]}
           >
-            <Feather name="check" size={13} color={session.completed ? "#fff" : T.textDim} />
+            <Check size={13} color={session.completed ? "#fff" : T.textDim} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onDelete} style={styles.delBtn}>
-            <Feather name="trash-2" size={14} color={T.textDim} />
+            <Trash2 size={14} color={T.textDim} />
           </TouchableOpacity>
         </View>
         <View style={styles.scStats}>
-          {[
-            { icon: "trending-up" as const, val: `${session.elevationGain}m`, color: T.orange },
-            { icon: "map" as const, val: `${session.distance}km`, color: T.blue },
-            { icon: "clock" as const, val: `${session.duration}min`, color: T.textMuted },
-          ].map((s, i) => (
+          {([
+            { icon: TrendingUp, val: `${session.elevationGain}m`, color: T.orange },
+            { icon: Map, val: `${session.distance}km`, color: T.blue },
+            { icon: Clock, val: `${session.duration}min`, color: T.textMuted },
+          ] as { icon: LucideIcon; val: string; color: string }[]).map((s, i) => {
+            const SIcon = s.icon;
+            return (
             <View key={i} style={styles.scStat}>
-              <Feather name={s.icon} size={11} color={s.color} />
+              <SIcon size={11} color={s.color} />
               <Text style={[styles.scStatText, { color: s.color }]}>{s.val}</Text>
             </View>
-          ))}
+          );
+          })}
           <View style={styles.effortDots}>
             {[1, 2, 3, 4, 5].map(n => (
               <View
@@ -348,7 +352,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log Session</Text>
               <TouchableOpacity onPress={() => { onClose(); reset(); }} style={styles.closeBtn}>
-                <Feather name="x" size={18} color={T.white} />
+                <X size={18} color={T.white} />
               </TouchableOpacity>
             </View>
 
@@ -364,7 +368,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
                     type === t.value && { backgroundColor: t.color + "18" },
                   ]}
                 >
-                  <Feather name={t.icon} size={15} color={type === t.value ? t.color : T.textMuted} />
+                  {(() => { const TBtnIcon = t.icon; return <TBtnIcon size={15} color={type === t.value ? t.color : T.textMuted} />; })()}
                   <Text style={[styles.typeBtnText, { color: type === t.value ? t.color : T.textMuted }]}>
                     {t.label}
                   </Text>
@@ -438,7 +442,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
               activeOpacity={0.85}
             >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.saveBtnGrad}>
-                <Feather name="check" size={18} color="#fff" />
+                <Check size={18} color="#fff" />
                 <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Log Session"}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -475,7 +479,7 @@ export default function LogScreen() {
           <Text style={styles.title}>Session Log</Text>
           <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.addBtn}>
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.addBtnGrad}>
-              <Feather name="plus" size={20} color="#fff" />
+              <Plus size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -484,19 +488,19 @@ export default function LogScreen() {
         <Animated.View entering={FadeInDown.delay(60).duration(400)}>
           <View style={styles.summaryStrip}>
             <View style={styles.summaryItem}>
-              <Feather name="trending-up" size={18} color={T.orange} />
+              <TrendingUp size={18} color={T.orange} />
               <Text style={styles.summaryVal}>{totalElev}m</Text>
               <Text style={styles.summaryLbl}>Total Elevation</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Feather name="map" size={18} color={T.blue} />
+              <Map size={18} color={T.blue} />
               <Text style={styles.summaryVal}>{totalDist.toFixed(1)}km</Text>
               <Text style={styles.summaryLbl}>Distance</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Feather name="check-circle" size={18} color={T.green} />
+              <CheckCircle size={18} color={T.green} />
               <Text style={styles.summaryVal}>{done.length}</Text>
               <Text style={styles.summaryLbl}>Sessions</Text>
             </View>
@@ -506,7 +510,7 @@ export default function LogScreen() {
         {sessions.length === 0 ? (
           <View style={styles.empty}>
             <View style={[styles.emptyIcon, { backgroundColor: T.blueDim }]}>
-              <Feather name="activity" size={30} color={T.blue} />
+              <Activity size={30} color={T.blue} />
             </View>
             <Text style={styles.emptyTitle}>No sessions yet</Text>
             <Text style={styles.emptySub}>Log your first training session</Text>
