@@ -25,9 +25,9 @@ function Navigation() {
           <span className="font-display font-bold text-xl tracking-tight">SummitReady</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-          <a href="#problem" className="hover:text-primary transition-colors">The Reality</a>
-          <a href="#features" className="hover:text-primary transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-primary transition-colors">How it Works</a>
+          <a href="#problem" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">The Reality</a>
+          <a href="#features" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Features</a>
+          <a href="#how-it-works" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">How it Works</a>
         </div>
         <div>
           <a href="#how-it-works">
@@ -51,7 +51,7 @@ function Hero() {
       </div>
       
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center max-w-5xl mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-primary mb-8 backdrop-blur-md uppercase tracking-widest shadow-[0_0_15px_rgba(62,207,117,0.15)]">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-bold text-primary mb-8 backdrop-blur-md uppercase tracking-widest shadow-[0_0_15px_rgba(62,207,117,0.15)]">
           <Activity className="w-4 h-4" />
           <span>AI-Powered Alpine Training</span>
         </div>
@@ -129,7 +129,7 @@ function Features() {
                   <CheckCircle2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground uppercase font-bold">Today's Workout</div>
+                  <div className="text-sm text-muted-foreground uppercase font-bold">Today's Workout</div>
                   <div className="font-bold">Weighted Hill Climb</div>
                 </div>
               </div>
@@ -194,7 +194,7 @@ function Readiness() {
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-20 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary mb-6 uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-bold text-primary mb-6 uppercase tracking-widest">
               The Algorithm
             </div>
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">Know exactly when you're ready.</h2>
@@ -227,11 +227,11 @@ function Readiness() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-5xl font-display font-bold text-white tracking-tighter">85</span>
-                  <span className="text-xs text-primary font-bold tracking-widest uppercase mt-1">Ready</span>
+                  <span className="text-sm text-primary font-bold tracking-widest uppercase mt-1">Ready</span>
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">Target: Mt. Rainier</div>
+                <div className="text-sm text-muted-foreground uppercase tracking-widest font-bold mb-1">Target: Mt. Rainier</div>
                 <div className="text-sm font-medium text-white bg-white/5 border border-white/10 px-3 py-1 rounded-full inline-block mt-2">Zone 3 Conditioning</div>
               </div>
             </div>
@@ -315,9 +315,9 @@ function Footer() {
         </div>
         
         <div className="flex gap-8 text-sm text-muted-foreground">
-          <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
-          <a href="/terms" className="hover:text-primary transition-colors">Terms of Service</a>
-          <a href="mailto:hello@summitready.uk" className="hover:text-primary transition-colors">Contact</a>
+          <a href="/privacy" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Privacy Policy</a>
+          <a href="/terms" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Terms of Service</a>
+          <a href="mailto:hello@summitready.uk" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Contact</a>
         </div>
         
         <p className="text-sm text-muted-foreground">
