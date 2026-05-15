@@ -1,22 +1,28 @@
 import {
+  AlertCircle,
+  BarChart2,
   Check,
   ChevronRight,
   Clock,
-  Crosshair,
   Map,
   MapPin,
   Minus,
   Plus,
+  PlusCircle,
+  CheckCircle,
+  Radio,
+  RefreshCw,
+  Repeat,
   Search,
   TrendingUp,
   Trash2,
   X,
+  Zap,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,254 +38,78 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp, type ExploreHike } from "@/context/AppContext";
+import { useApp, type ExploreHike, type NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
-// ── Storage key ───────────────────────────────────────────────────────────────
+// ── Storage keys ──────────────────────────────────────────────────────────────
 const LOCATION_KEY = "summitready_hikes_location";
+const RADIUS_KEY   = "summitready_hikes_radius";
+const HILLS_KEY    = "summitready_hikes_results";
 
-// ── Mock hike data ────────────────────────────────────────────────────────────
-// TODO: Replace with live trail API (e.g. OpenStreetMap Overpass, Komoot, AllTrails)
-// Endpoint pattern: GET /api/hikes-near-me?lat=...&lng=...&radius=25
+// ── API base ──────────────────────────────────────────────────────────────────
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 
-type TrainingValue = "easy" | "moderate" | "strong";
-type Difficulty = "Easy" | "Moderate" | "Hard";
+// ── Constants ─────────────────────────────────────────────────────────────────
+const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
 
-interface MockHike {
-  name: string;
-  distance: number;
-  duration: number;
-  elevationGain: number;
-  difficulty: Difficulty;
-  trainingValue: TrainingValue;
-  region: string;
-}
-
-const TV_LABEL: Record<TrainingValue, string> = {
-  easy: "Easy prep",
-  moderate: "Moderate prep",
-  strong: "Strong summit prep",
-};
-const TV_COLOR: Record<TrainingValue, string> = {
-  easy: T.green,
-  moderate: T.blue,
-  strong: T.orange,
+const GRADE_COLOR: Record<string, string> = {
+  "Easy": T.green,
+  "Easy–Mod": T.green,
+  "Moderate": T.blue,
+  "Hard": T.orange,
+  "Alpine": "#FF4444",
 };
 
-const ALL_HIKES: MockHike[] = [
-  // Peak District
-  { name: "Mam Tor Circuit",         distance: 6.5,  duration: 150, elevationGain: 320, difficulty: "Easy",     trainingValue: "easy",     region: "Peak District" },
-  { name: "Stanage Edge Ridge",       distance: 8.2,  duration: 180, elevationGain: 280, difficulty: "Easy",     trainingValue: "easy",     region: "Peak District" },
-  { name: "Kinder Scout Plateau",     distance: 12.5, duration: 300, elevationGain: 600, difficulty: "Moderate", trainingValue: "moderate", region: "Peak District" },
-  { name: "Lose Hill & Win Hill",     distance: 9.0,  duration: 210, elevationGain: 490, difficulty: "Moderate", trainingValue: "moderate", region: "Peak District" },
-  // Yorkshire Dales
-  { name: "Whernside from Ribblehead",distance: 12.0, duration: 270, elevationGain: 430, difficulty: "Moderate", trainingValue: "moderate", region: "Yorkshire Dales" },
-  { name: "Pen-y-ghent Summit Loop",  distance: 10.5, duration: 240, elevationGain: 490, difficulty: "Moderate", trainingValue: "moderate", region: "Yorkshire Dales" },
-  { name: "Ingleborough via Horton",  distance: 14.0, duration: 330, elevationGain: 560, difficulty: "Moderate", trainingValue: "moderate", region: "Yorkshire Dales" },
-  { name: "The Three Peaks Challenge", distance: 39.0, duration: 720, elevationGain: 1585, difficulty: "Hard",   trainingValue: "strong",   region: "Yorkshire Dales" },
-  // Lake District
-  { name: "Skiddaw via Carlside",     distance: 11.0, duration: 270, elevationGain: 840, difficulty: "Moderate", trainingValue: "moderate", region: "Lake District" },
-  { name: "Blencathra Sharp Edge",    distance: 9.5,  duration: 280, elevationGain: 670, difficulty: "Hard",     trainingValue: "strong",   region: "Lake District" },
-  { name: "Helvellyn via Striding Edge",distance:13.5,duration: 330, elevationGain: 850, difficulty: "Hard",     trainingValue: "strong",   region: "Lake District" },
-  { name: "Catbells & Maiden Moor",   distance: 7.5,  duration: 180, elevationGain: 490, difficulty: "Easy",     trainingValue: "easy",     region: "Lake District" },
-  // Brecon Beacons
-  { name: "Pen y Fan via Corn Du",    distance: 10.0, duration: 240, elevationGain: 590, difficulty: "Moderate", trainingValue: "moderate", region: "Brecon Beacons" },
-  { name: "Fan y Big Ridge",          distance: 11.5, duration: 270, elevationGain: 520, difficulty: "Moderate", trainingValue: "moderate", region: "Brecon Beacons" },
-  { name: "Brecon Beacons Horseshoe", distance: 14.0, duration: 360, elevationGain: 750, difficulty: "Hard",     trainingValue: "strong",   region: "Brecon Beacons" },
-  // Snowdonia
-  { name: "Snowdon Horseshoe",        distance: 11.5, duration: 360, elevationGain: 980, difficulty: "Hard",     trainingValue: "strong",   region: "Snowdonia" },
-  { name: "Snowdon Ranger Path",      distance: 9.0,  duration: 240, elevationGain: 760, difficulty: "Moderate", trainingValue: "moderate", region: "Snowdonia" },
-  { name: "Tryfan North Ridge",       distance: 7.5,  duration: 270, elevationGain: 620, difficulty: "Hard",     trainingValue: "strong",   region: "Snowdonia" },
-  // Cairngorms
-  { name: "Ben Macdui via Derry",     distance: 19.0, duration: 420, elevationGain: 900, difficulty: "Hard",     trainingValue: "strong",   region: "Cairngorms" },
-  { name: "Cairn Gorm Summit",        distance: 10.0, duration: 240, elevationGain: 610, difficulty: "Moderate", trainingValue: "moderate", region: "Cairngorms" },
-  { name: "Lairig Ghru (Partial)",    distance: 16.0, duration: 360, elevationGain: 530, difficulty: "Hard",     trainingValue: "strong",   region: "Cairngorms" },
-  // Scottish Highlands (general)
-  { name: "Ben Nevis Tourist Track",  distance: 16.0, duration: 420, elevationGain: 1350, difficulty: "Hard",    trainingValue: "strong",   region: "Scottish Highlands" },
-  { name: "The Cobbler (Ben Arthur)", distance: 10.5, duration: 270, elevationGain: 760, difficulty: "Hard",     trainingValue: "strong",   region: "Scottish Highlands" },
-  // South Downs / South England
-  { name: "Devil's Dyke to Truleigh", distance: 9.5,  duration: 210, elevationGain: 310, difficulty: "Easy",     trainingValue: "easy",     region: "South Downs" },
-  { name: "Butser Hill from QE Park", distance: 7.5,  duration: 150, elevationGain: 250, difficulty: "Easy",     trainingValue: "easy",     region: "South Downs" },
-  // Dartmoor
-  { name: "Yes Tor & High Willhays",  distance: 11.5, duration: 270, elevationGain: 480, difficulty: "Moderate", trainingValue: "moderate", region: "Dartmoor" },
-  { name: "Hay Tor & Hound Tor Loop", distance: 9.0,  duration: 210, elevationGain: 320, difficulty: "Easy",     trainingValue: "easy",     region: "Dartmoor" },
-];
+// ── Hill card ─────────────────────────────────────────────────────────────────
 
-// ── Location → region mapping ─────────────────────────────────────────────────
-// Maps search terms (city names, areas) to one or more matching regions,
-// ordered by proximity.
-
-interface RegionMatch { regions: string[]; label: string }
-
-const LOCATION_MAP: { keywords: string[]; regions: string[]; label: string }[] = [
-  { keywords: ["manchester", "sheffield", "derby", "nottingham", "stoke", "buxton", "chesterfield", "bakewell"], regions: ["Peak District", "Yorkshire Dales"], label: "Peak District & Yorkshire" },
-  { keywords: ["leeds", "bradford", "harrogate", "york", "skipton", "settle", "ingleton", "ripon", "ilkley"], regions: ["Yorkshire Dales", "Peak District"], label: "Yorkshire Dales & Peak District" },
-  { keywords: ["keswick", "windermere", "penrith", "carlisle", "ambleside", "grasmere", "kendal", "barrow", "whitehaven"], regions: ["Lake District", "Yorkshire Dales"], label: "Lake District" },
-  { keywords: ["cardiff", "bristol", "swansea", "newport", "merthyr", "abergavenny", "brecon"], regions: ["Brecon Beacons", "Snowdonia"], label: "Brecon Beacons & Snowdonia" },
-  { keywords: ["bangor", "wrexham", "chester", "llandudno", "caernarfon", "betws", "beddgelert", "conwy", "snowdon", "snowdonia", "llanberis"], regions: ["Snowdonia", "Brecon Beacons"], label: "Snowdonia" },
-  { keywords: ["edinburgh", "glasgow", "perth", "stirling", "dundee", "aviemore", "inverness", "aberdeen", "cairngorms", "braemar"], regions: ["Cairngorms", "Scottish Highlands"], label: "Scotland" },
-  { keywords: ["fort william", "ben nevis", "oban", "loch lomond", "loch ness", "highland", "highlands"], regions: ["Scottish Highlands", "Cairngorms"], label: "Scottish Highlands" },
-  { keywords: ["london", "brighton", "guildford", "worthing", "southampton", "portsmouth", "lewes", "eastbourne", "crawley"], regions: ["South Downs", "Dartmoor"], label: "South England" },
-  { keywords: ["exeter", "plymouth", "torquay", "newton abbot", "tavistock", "okehampton", "dartmoor"], regions: ["Dartmoor", "South Downs"], label: "Dartmoor & South West" },
-];
-
-function resolveLocation(query: string): RegionMatch | null {
-  if (!query.trim()) return null;
-  const q = query.toLowerCase().trim();
-  for (const entry of LOCATION_MAP) {
-    if (entry.keywords.some(k => q.includes(k) || k.includes(q.split(" ")[0]))) {
-      return { regions: entry.regions, label: entry.label };
-    }
-  }
-  return null;
-}
-
-function filterAndSortHikes(query: string): MockHike[] {
-  const match = resolveLocation(query);
-  if (!match) return ALL_HIKES;
-  const primary = match.regions[0];
-  const secondary = match.regions[1] ?? null;
-  return [
-    ...ALL_HIKES.filter(h => h.region === primary),
-    ...ALL_HIKES.filter(h => h.region === secondary && secondary !== primary),
-    ...ALL_HIKES.filter(h => h.region !== primary && h.region !== secondary),
-  ];
-}
-
-// ── Location Search Bar ───────────────────────────────────────────────────────
-
-interface LocationBarProps {
-  value: string;
-  onChange: (v: string) => void;
-  onGps: () => void;
-  gpsLoading: boolean;
-}
-
-function LocationBar({ value, onChange, onGps, gpsLoading }: LocationBarProps) {
-  const inputRef = useRef<TextInput>(null);
-
+function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => void }) {
+  const gc = GRADE_COLOR[hill.grade] ?? T.blue;
   return (
-    <View style={lb.wrap}>
-      <View style={lb.bar}>
-        <Search size={15} color={T.textDim} style={{ flexShrink: 0 }} />
-        <TextInput
-          ref={inputRef}
-          style={lb.input}
-          value={value}
-          onChangeText={onChange}
-          placeholder="Enter your location…"
-          placeholderTextColor={T.textDim}
-          returnKeyType="search"
-          clearButtonMode="never"
-          autoCorrect={false}
-          autoCapitalize="words"
-        />
-        {value.length > 0 && (
-          <TouchableOpacity onPress={() => onChange("")} hitSlop={8} style={lb.clearBtn}>
-            <X size={13} color={T.textMuted} />
-          </TouchableOpacity>
-        )}
-        <View style={lb.divider} />
-        <TouchableOpacity onPress={onGps} hitSlop={8} style={lb.gpsBtn} disabled={gpsLoading}>
-          {gpsLoading
-            ? <ActivityIndicator size={15} color={T.green} />
-            : <Crosshair size={15} color={T.green} />
-          }
-        </TouchableOpacity>
-      </View>
-      {value.trim() ? (
-        <LocationStatus query={value} />
-      ) : (
-        <Text style={lb.hint}>
-          Type a city or town — or tap{" "}
-          <Text style={{ color: T.green }}>⊕</Text>
-          {" "}to use GPS
-        </Text>
-      )}
-    </View>
-  );
-}
+    <View style={hc.card}>
+      <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
 
-function LocationStatus({ query }: { query: string }) {
-  const match = resolveLocation(query);
-  if (!match) {
-    return (
-      <Text style={lb.statusDim}>
-        No trail data for this area yet — showing all UK hikes
-      </Text>
-    );
-  }
-  return (
-    <View style={lb.statusRow}>
-      <MapPin size={11} color={T.green} />
-      <Text style={lb.statusGreen}>Showing hikes near {match.label}</Text>
-    </View>
-  );
-}
-
-const lb = StyleSheet.create({
-  wrap: { gap: 6 },
-  bar: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 12, paddingVertical: Platform.OS === "ios" ? 12 : 10,
-  },
-  input: {
-    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text,
-    paddingVertical: 0,
-  },
-  clearBtn: { padding: 2, backgroundColor: T.card, borderRadius: 8 },
-  divider: { width: 1, height: 18, backgroundColor: T.border },
-  gpsBtn: { padding: 4, width: 28, alignItems: "center" },
-  hint: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, paddingLeft: 2 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 4, paddingLeft: 2 },
-  statusGreen: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
-  statusDim: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, paddingLeft: 2 },
-});
-
-// ── Hike card ─────────────────────────────────────────────────────────────────
-
-const DIFF_COLOR: Record<Difficulty, string> = { Easy: T.green, Moderate: T.blue, Hard: T.orange };
-
-function HikeCard({ hike, onLog, highlighted }: { hike: MockHike; onLog: (name: string) => void; highlighted?: boolean }) {
-  return (
-    <View style={[hc.card, highlighted && hc.cardHighlighted]}>
       <View style={hc.top}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={hc.name}>{hike.name}</Text>
-          <Text style={hc.region}>📍 {hike.region}</Text>
+        <View style={[hc.iconBox, { backgroundColor: gc + "18" }]}>
+          <Text style={hc.emoji}>{hill.emoji}</Text>
         </View>
-        <View style={[hc.diffBadge, { backgroundColor: DIFF_COLOR[hike.difficulty] + "1A" }]}>
-          <Text style={[hc.diffText, { color: DIFF_COLOR[hike.difficulty] }]}>{hike.difficulty}</Text>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={hc.name}>{hill.name}</Text>
+          <Text style={hc.surface}>{hill.surface}</Text>
+        </View>
+        <View style={[hc.gradeBadge, { backgroundColor: gc + "20" }]}>
+          <Text style={[hc.gradeText, { color: gc }]}>{hill.grade}</Text>
         </View>
       </View>
 
       <View style={hc.stats}>
         <View style={hc.stat}>
-          <MapPin size={12} color={T.textDim} />
-          <Text style={hc.statText}>{hike.distance}km</Text>
+          <MapPin size={12} color={T.green} />
+          <Text style={hc.statVal}>{hill.distance}km</Text>
+          <Text style={hc.statLbl}>away</Text>
         </View>
         <View style={hc.stat}>
-          <TrendingUp size={12} color={T.textDim} />
-          <Text style={hc.statText}>{hike.elevationGain}m gain</Text>
+          <TrendingUp size={12} color={T.orange} />
+          <Text style={hc.statVal}>{hill.elevation}m</Text>
+          <Text style={hc.statLbl}>gain</Text>
         </View>
         <View style={hc.stat}>
-          <Clock size={12} color={T.textDim} />
-          <Text style={hc.statText}>{Math.floor(hike.duration / 60)}h {hike.duration % 60 > 0 ? `${hike.duration % 60}m` : ""}</Text>
+          <Repeat size={12} color={T.textMuted} />
+          <Text style={hc.statVal}>{hill.repeats}×</Text>
+          <Text style={hc.statLbl}>recs</Text>
+        </View>
+        <View style={hc.stat}>
+          <BarChart2 size={12} color={T.purple} />
+          <Text style={hc.statVal}>{hill.totalElevation}m</Text>
+          <Text style={hc.statLbl}>total</Text>
         </View>
       </View>
 
-      <View style={hc.bottom}>
-        <View style={[hc.tvBadge, { backgroundColor: TV_COLOR[hike.trainingValue] + "15" }]}>
-          <Text style={[hc.tvText, { color: TV_COLOR[hike.trainingValue] }]}>
-            {TV_LABEL[hike.trainingValue]}
-          </Text>
-        </View>
-        <TouchableOpacity style={hc.logBtn} onPress={() => onLog(hike.name)} activeOpacity={0.8}>
-          <Text style={hc.logBtnText}>Log this hike</Text>
-          <ChevronRight size={12} color={T.green} />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={hc.logBtn} onPress={() => onLog(hill.name)} activeOpacity={0.8}>
+        <Text style={hc.logBtnText}>Log a session here</Text>
+        <ChevronRight size={13} color={T.green} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -287,21 +117,23 @@ function HikeCard({ hike, onLog, highlighted }: { hike: MockHike; onLog: (name: 
 const hc = StyleSheet.create({
   card: {
     backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 16, gap: 12,
+    padding: 16, gap: 12, overflow: "hidden",
   },
-  cardHighlighted: { borderColor: "rgba(62,207,117,0.25)" },
   top: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  emoji: { fontSize: 18 },
   name: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
-  region: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  diffBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, flexShrink: 0 },
-  diffText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  surface: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  gradeBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, flexShrink: 0 },
+  gradeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   stats: { flexDirection: "row", gap: 14, flexWrap: "wrap" },
-  stat: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  bottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  tvBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  tvText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  logBtn: { flexDirection: "row", alignItems: "center", gap: 3 },
+  stat: { flexDirection: "row", alignItems: "center", gap: 3 },
+  statVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  logBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3,
+    borderTopWidth: 1, borderTopColor: T.border, paddingTop: 10, marginTop: 2,
+  },
   logBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
 });
 
@@ -309,7 +141,6 @@ const hc = StyleSheet.create({
 
 function LoggedHikeRow({ hike, onDelete }: { hike: ExploreHike; onDelete: (id: string) => void }) {
   const dateStr = new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-
   return (
     <View style={lh.row}>
       <View style={lh.iconWrap}>
@@ -317,14 +148,14 @@ function LoggedHikeRow({ hike, onDelete }: { hike: ExploreHike; onDelete: (id: s
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={lh.name}>{hike.name}</Text>
-        <View style={lh.stats}>
-          <Text style={lh.stat}>{dateStr}</Text>
+        <View style={lh.meta}>
+          <Text style={lh.dim}>{dateStr}</Text>
           <Text style={lh.dot}>·</Text>
-          <Text style={lh.stat}>{hike.distance}km</Text>
+          <Text style={lh.dim}>{hike.distance}km</Text>
           <Text style={lh.dot}>·</Text>
-          <Text style={lh.stat}>{hike.elevationGain}m</Text>
+          <Text style={lh.dim}>{hike.elevationGain}m gain</Text>
           <Text style={lh.dot}>·</Text>
-          <Text style={lh.stat}>{hike.timeTaken}min</Text>
+          <Text style={lh.dim}>{hike.timeTaken}min</Text>
         </View>
         {!!hike.notes && <Text style={lh.notes}>{hike.notes}</Text>}
       </View>
@@ -352,14 +183,29 @@ const lh = StyleSheet.create({
   },
   iconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   name: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  stats: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
-  stat: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  meta: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
+  dim: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   dot: { fontSize: 12, color: T.textDim },
   notes: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, fontStyle: "italic" },
   delBtn: { padding: 4, flexShrink: 0 },
 });
 
-// ── Stepper ───────────────────────────────────────────────────────────────────
+// ── Stepper helpers ───────────────────────────────────────────────────────────
+
+function stepRadius(current: number, dir: 1 | -1): number {
+  const idx = RADIUS_STEPS.indexOf(current);
+  if (idx === -1) {
+    return RADIUS_STEPS.reduce((p, c) =>
+      Math.abs(c - current) < Math.abs(p - current) ? c : p
+    );
+  }
+  const next = idx + dir;
+  if (next < 0) return RADIUS_STEPS[0];
+  if (next >= RADIUS_STEPS.length) return RADIUS_STEPS[RADIUS_STEPS.length - 1];
+  return RADIUS_STEPS[next];
+}
+
+// ── Numeric stepper ───────────────────────────────────────────────────────────
 
 function Stepper({ value, onChange, min = 0, step = 1 }: { value: number; onChange: (v: number) => void; min?: number; step?: number }) {
   return (
@@ -385,7 +231,6 @@ const st = StyleSheet.create({
 
 function LogHikeModal({ visible, prefillName, onClose }: { visible: boolean; prefillName?: string; onClose: () => void }) {
   const { logExploreHike } = useApp();
-
   const today = new Date().toISOString().split("T")[0];
   const [name, setName] = useState(prefillName ?? "");
   const [date, setDate] = useState(today);
@@ -408,7 +253,6 @@ function LogHikeModal({ visible, prefillName, onClose }: { visible: boolean; pre
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await logExploreHike({ name: name.trim(), date, distance, elevationGain, timeTaken, notes });
     setSaving(false);
-    setName("");
     setNotes("");
     onClose();
   }
@@ -416,78 +260,54 @@ function LogHikeModal({ visible, prefillName, onClose }: { visible: boolean; pre
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <View style={m.container}>
-          <View style={m.handle} />
-          <View style={m.header}>
-            <Text style={m.title}>Log a Hike</Text>
-            <TouchableOpacity onPress={onClose} style={m.closeBtn}>
+        <View style={md.container}>
+          <View style={md.handle} />
+          <View style={md.header}>
+            <Text style={md.title}>Log a Session</Text>
+            <TouchableOpacity onPress={onClose} style={md.closeBtn}>
               <X size={18} color={T.textMuted} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={m.scroll} showsVerticalScrollIndicator={false}>
-            <View style={m.field}>
-              <Text style={m.label}>Hike name *</Text>
-              <TextInput
-                style={m.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="e.g. Mam Tor Circuit"
-                placeholderTextColor={T.textDim}
-              />
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={md.scroll} showsVerticalScrollIndicator={false}>
+            <View style={md.field}>
+              <Text style={md.label}>Hill / trail name *</Text>
+              <TextInput style={md.input} value={name} onChangeText={setName} placeholder="e.g. Mam Tor" placeholderTextColor={T.textDim} />
             </View>
-
-            <View style={m.field}>
-              <Text style={m.label}>Date</Text>
-              <TextInput
-                style={m.input}
-                value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={T.textDim}
-              />
+            <View style={md.field}>
+              <Text style={md.label}>Date</Text>
+              <TextInput style={md.input} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={T.textDim} />
             </View>
-
-            <View style={m.row}>
-              <View style={[m.field, { flex: 1 }]}>
-                <Text style={m.label}>Distance (km)</Text>
+            <View style={md.row}>
+              <View style={[md.field, { flex: 1 }]}>
+                <Text style={md.label}>Distance (km)</Text>
                 <Stepper value={distance} onChange={setDistance} min={1} />
               </View>
-              <View style={[m.field, { flex: 1 }]}>
-                <Text style={m.label}>Time (min)</Text>
+              <View style={[md.field, { flex: 1 }]}>
+                <Text style={md.label}>Time (min)</Text>
                 <Stepper value={timeTaken} onChange={setTimeTaken} min={10} step={5} />
               </View>
             </View>
-
-            <View style={m.field}>
-              <Text style={m.label}>Elevation gain (m)</Text>
+            <View style={md.field}>
+              <Text style={md.label}>Elevation gain (m)</Text>
               <Stepper value={elevationGain} onChange={setElevationGain} min={0} step={50} />
             </View>
-
-            <View style={m.field}>
-              <Text style={m.label}>Notes (optional)</Text>
-              <TextInput
-                style={[m.input, m.textArea]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="How did it feel?"
-                placeholderTextColor={T.textDim}
-                multiline
-                numberOfLines={3}
-              />
+            <View style={md.field}>
+              <Text style={md.label}>Notes (optional)</Text>
+              <TextInput style={[md.input, md.textArea]} value={notes} onChangeText={setNotes} placeholder="How did it feel?" placeholderTextColor={T.textDim} multiline numberOfLines={3} />
             </View>
           </ScrollView>
 
-          <View style={m.footer}>
+          <View style={md.footer}>
             <TouchableOpacity
-              style={[m.saveBtn, (!name.trim() || saving) && { opacity: 0.5 }]}
+              style={[md.saveBtn, (!name.trim() || saving) && { opacity: 0.5 }]}
               onPress={handleSave}
               disabled={!name.trim() || saving}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={m.saveBtnGrad}>
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={md.saveBtnGrad}>
                 <Check size={18} color="#fff" />
-                <Text style={m.saveBtnText}>{saving ? "Saving…" : "Save hike"}</Text>
+                <Text style={md.saveBtnText}>{saving ? "Saving…" : "Save session"}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -497,7 +317,7 @@ function LogHikeModal({ visible, prefillName, onClose }: { visible: boolean; pre
   );
 }
 
-const m = StyleSheet.create({
+const md = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bg },
   handle: { width: 36, height: 4, backgroundColor: T.surface, borderRadius: 2, alignSelf: "center", marginTop: 12 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16 },
@@ -506,11 +326,7 @@ const m = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingBottom: 32, gap: 20 },
   field: { gap: 8 },
   label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
-  input: {
-    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
-  },
+  input: { backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: T.text },
   textArea: { height: 80, textAlignVertical: "top" },
   row: { flexDirection: "row", gap: 14 },
   footer: { paddingHorizontal: 20, paddingBottom: Platform.OS === "ios" ? 36 : 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: T.border },
@@ -525,80 +341,121 @@ export default function HikesScreen() {
   const insets = useSafeAreaInsets();
   const { exploreHikes, deleteExploreHike } = useApp();
 
-  const [location, setLocationText] = useState("");
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [prefillName, setPrefillName] = useState<string | undefined>(undefined);
+  // Location + radius
+  const [location, setLocation] = useState("");
+  const [radius, setRadius]     = useState(25);
+  const locInputRef = useRef<TextInput>(null);
 
-  // Load persisted location on mount
+  // AI hill results
+  const [hills, setHills]           = useState<NearbyHill[]>([]);
+  const [hillsLoading, setHillsLoading] = useState(false);
+  const [hillsError, setHillsError] = useState<string | null>(null);
+
+  // Specific hill search
+  const [searchText, setSearchText]         = useState("");
+  const [searchLoading, setSearchLoading]   = useState(false);
+  const [searchResult, setSearchResult]     = useState<NearbyHill | null>(null);
+  const [searchError, setSearchError]       = useState<string | null>(null);
+  const [searchAdded, setSearchAdded]       = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+
+  // Log hike modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [prefillName, setPrefillName]   = useState<string | undefined>(undefined);
+
+  // Load persisted state
   useEffect(() => {
-    AsyncStorage.getItem(LOCATION_KEY).then(v => {
-      if (v) setLocationText(v);
+    Promise.all([
+      AsyncStorage.getItem(LOCATION_KEY),
+      AsyncStorage.getItem(RADIUS_KEY),
+      AsyncStorage.getItem(HILLS_KEY),
+    ]).then(([loc, rad, saved]) => {
+      if (loc) setLocation(loc);
+      if (rad) setRadius(Number(rad));
+      if (saved) {
+        try { setHills(JSON.parse(saved) as NearbyHill[]); } catch { /* ignore */ }
+      }
     });
   }, []);
 
-  // Persist location whenever it changes
-  const handleLocationChange = useCallback((v: string) => {
-    setLocationText(v);
-    AsyncStorage.setItem(LOCATION_KEY, v);
-  }, []);
-
-  // GPS detection
-  const handleGps = useCallback(async () => {
-    if (Platform.OS === "web") {
-      // Web geolocation
-      if (!navigator.geolocation) {
-        Alert.alert("Not supported", "GPS is not available in this browser.");
-        return;
-      }
-      setGpsLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async pos => {
-          try {
-            const res = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-            const place = res[0];
-            const name = place?.city || place?.subregion || place?.region || place?.country || "";
-            handleLocationChange(name);
-          } catch {
-            Alert.alert("Location error", "Could not determine your location name.");
-          }
-          setGpsLoading(false);
-        },
-        () => {
-          Alert.alert("Location denied", "Allow location access to find hikes near you.");
-          setGpsLoading(false);
-        },
-      );
+  // Fetch hills from AI
+  const fetchHills = useCallback(async (loc?: string, rad?: number) => {
+    const useLoc = (loc ?? location).trim();
+    const useRad = rad ?? radius;
+    if (!useLoc) {
+      locInputRef.current?.focus();
       return;
     }
-
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Location denied", "Allow location access to find hikes near you.");
-      return;
-    }
-    setGpsLoading(true);
+    setHillsLoading(true);
+    setHillsError(null);
     try {
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const res = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      const place = res[0];
-      const name = place?.city || place?.subregion || place?.region || place?.country || "";
-      if (name) handleLocationChange(name);
-      else Alert.alert("Location unknown", "Could not determine your area from GPS.");
+      const res = await fetch(`${API_BASE}/hills-lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location: useLoc, radius: useRad }),
+      });
+      if (!res.ok) throw new Error("Lookup failed");
+      const data = await res.json() as { hills: NearbyHill[] };
+      setHills(data.hills);
+      await AsyncStorage.setItem(HILLS_KEY, JSON.stringify(data.hills));
     } catch {
-      Alert.alert("GPS error", "Could not get your location. Try again or type it manually.");
+      setHillsError("Couldn't load hills — check your connection and try again.");
+    } finally {
+      setHillsLoading(false);
     }
-    setGpsLoading(false);
-  }, [handleLocationChange]);
+  }, [location, radius]);
+
+  // Search for a specific hill
+  async function handleHillSearch() {
+    const query = searchText.trim();
+    if (query.length < 2) return;
+    setSearchLoading(true);
+    setSearchResult(null);
+    setSearchError(null);
+    setSearchAdded(false);
+    try {
+      const res = await fetch(`${API_BASE}/hills-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hillName: query, location: location.trim() }),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json() as { hill: NearbyHill };
+      setSearchResult(data.hill);
+    } catch {
+      setSearchError("Couldn't find that hill — try a different name or spelling.");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function handleAddSearchResult() {
+    if (!searchResult) return;
+    setHills(prev => {
+      const next = prev.some(h => h.name === searchResult.name) ? prev : [searchResult, ...prev];
+      AsyncStorage.setItem(HILLS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setSearchAdded(true);
+  }
+
+  function handleLocationChange(v: string) {
+    setLocation(v);
+    AsyncStorage.setItem(LOCATION_KEY, v);
+  }
+
+  function handleRadiusChange(dir: 1 | -1) {
+    const next = stepRadius(radius, dir);
+    setRadius(next);
+    AsyncStorage.setItem(RADIUS_KEY, String(next));
+  }
 
   function openLog(name?: string) {
     setPrefillName(name);
     setModalVisible(true);
   }
 
-  const visibleHikes = useMemo(() => filterAndSortHikes(location), [location]);
-  const match = useMemo(() => resolveLocation(location), [location]);
-  const primaryRegion = match?.regions[0] ?? null;
+  const hasFetched = hills.length > 0;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -611,44 +468,256 @@ export default function HikesScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
-        <Animated.View entering={FadeInDown.delay(60).duration(600)} style={p.header}>
+        <Animated.View entering={FadeInDown.delay(40).duration(600)} style={p.header}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={p.eyebrow}>HIKES NEAR ME</Text>
             <Text style={p.title}>Trail Finder</Text>
           </View>
           <TouchableOpacity style={p.logFab} onPress={() => openLog()} activeOpacity={0.85}>
             <Plus size={16} color="#fff" />
-            <Text style={p.logFabText}>Log hike</Text>
+            <Text style={p.logFabText}>Log session</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Location search bar */}
+        {/* Location + radius controls */}
+        <Animated.View entering={FadeInDown.delay(80).duration(600)}>
+          <View style={p.controlCard}>
+            {/* Location row */}
+            <View style={p.controlRow}>
+              <View style={p.controlLabelRow}>
+                <MapPin size={13} color={T.green} />
+                <Text style={p.controlLabel}>Your location</Text>
+              </View>
+              <View style={p.locInputWrap}>
+                <TextInput
+                  ref={locInputRef}
+                  style={p.locInput}
+                  value={location}
+                  onChangeText={handleLocationChange}
+                  placeholder="e.g. Manchester, Sheffield…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchHills()}
+                  autoCorrect={false}
+                  autoCapitalize="words"
+                />
+                {location.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => { handleLocationChange(""); setHills([]); setHillsError(null); }}
+                    hitSlop={8}
+                    style={p.clearBtn}
+                  >
+                    <X size={12} color={T.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            <View style={p.controlDivider} />
+
+            {/* Radius row */}
+            <View style={p.controlRow}>
+              <View style={p.controlLabelRow}>
+                <Radio size={13} color={T.blue} />
+                <Text style={p.controlLabel}>Search radius</Text>
+              </View>
+              <View style={p.radiusStepper}>
+                <TouchableOpacity
+                  onPress={() => handleRadiusChange(-1)}
+                  disabled={radius <= RADIUS_STEPS[0]}
+                  style={[p.stepBtn, radius <= RADIUS_STEPS[0] && { opacity: 0.3 }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Minus size={14} color={T.white} />
+                </TouchableOpacity>
+                <View style={p.radiusBox}>
+                  <Text style={p.radiusVal}>{radius}<Text style={p.radiusUnit}> km</Text></Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleRadiusChange(1)}
+                  disabled={radius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]}
+                  style={[p.stepBtn, radius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Plus size={14} color={T.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Find / Refresh button */}
         <Animated.View entering={FadeInDown.delay(120).duration(600)}>
-          <LocationBar
-            value={location}
-            onChange={handleLocationChange}
-            onGps={handleGps}
-            gpsLoading={gpsLoading}
-          />
+          <TouchableOpacity
+            onPress={() => fetchHills()}
+            disabled={hillsLoading}
+            style={[p.fetchBtn, hillsLoading && { opacity: 0.7 }]}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={hasFetched ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+              style={p.fetchBtnInner}
+            >
+              {hillsLoading ? (
+                <>
+                  <ActivityIndicator size="small" color={T.green} />
+                  <Text style={p.fetchBtnText}>Finding hills within {radius}km…</Text>
+                </>
+              ) : hasFetched ? (
+                <>
+                  <RefreshCw size={15} color={T.green} />
+                  <Text style={p.fetchBtnText}>Refresh with AI</Text>
+                </>
+              ) : (
+                <>
+                  <Zap size={15} color={T.green} />
+                  <Text style={p.fetchBtnText}>Find hikes with AI</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
-        {/* Hike list */}
-        <Animated.View entering={FadeInDown.delay(180).duration(600)} style={{ gap: 12 }}>
-          {visibleHikes.map((hike, i) => (
-            <HikeCard
-              key={`${hike.name}-${i}`}
-              hike={hike}
-              highlighted={!!primaryRegion && hike.region === primaryRegion}
-              onLog={name => openLog(name)}
-            />
-          ))}
+        {/* Error state */}
+        {hillsError && (
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View style={p.errCard}>
+              <AlertCircle size={14} color={T.red} />
+              <Text style={p.errText}>{hillsError}</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Empty state */}
+        {!hasFetched && !hillsLoading && !hillsError && (
+          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
+            <View style={p.emptyCard}>
+              <Text style={p.emptyEmoji}>🏔️</Text>
+              <Text style={p.emptyTitle}>No hills loaded yet</Text>
+              <Text style={p.emptyText}>
+                Enter your location above and tap{" "}
+                <Text style={{ color: T.green }}>Find hikes with AI</Text>
+                {" "}to discover real training hills near you.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Hill results */}
+        {hasFetched && (
+          <Animated.View entering={FadeInDown.delay(60).duration(600)} style={{ gap: 12 }}>
+            <Text style={p.sectionLabel}>HILLS NEAR {location.toUpperCase()}</Text>
+            {hills.map((hill, i) => (
+              <HillCard key={`${hill.name}-${i}`} hill={hill} onLog={name => openLog(name)} />
+            ))}
+          </Animated.View>
+        )}
+
+        {/* Specific hill search */}
+        <Animated.View entering={FadeInDown.delay(hasFetched ? 200 : 200).duration(600)}>
+          <View style={p.searchCard}>
+            <View style={p.searchLabelRow}>
+              <Search size={13} color={T.purple} />
+              <Text style={p.searchLabel}>Search a specific hill</Text>
+            </View>
+            <Text style={p.searchHint}>Know a hill you want to train on? Search it by name.</Text>
+            <View style={p.searchRow}>
+              <TextInput
+                ref={searchInputRef}
+                style={p.searchInput}
+                value={searchText}
+                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+                placeholder="e.g. Pendle Hill, Ben Nevis…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={handleHillSearch}
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={handleHillSearch}
+                disabled={searchLoading || searchText.trim().length < 2}
+                style={[p.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                activeOpacity={0.75}
+              >
+                {searchLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Search size={16} color="#fff" />}
+              </TouchableOpacity>
+            </View>
+
+            {searchError && (
+              <View style={p.searchErrRow}>
+                <AlertCircle size={13} color={T.red} />
+                <Text style={p.searchErrText}>{searchError}</Text>
+              </View>
+            )}
+
+            {searchResult && (
+              <View style={p.searchResult}>
+                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={p.searchResultTop}>
+                  <Text style={{ fontSize: 22 }}>{searchResult.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={p.searchResultName}>{searchResult.name}</Text>
+                    <Text style={p.searchResultSub}>{searchResult.surface}</Text>
+                  </View>
+                  <View style={[p.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
+                    <Text style={[p.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
+                  </View>
+                </View>
+                <View style={p.searchResultStats}>
+                  <View style={p.searchStat}>
+                    <TrendingUp size={11} color={T.orange} />
+                    <Text style={p.searchStatVal}>{searchResult.elevation}m</Text>
+                    <Text style={p.searchStatLbl}>gain</Text>
+                  </View>
+                  <View style={p.searchStat}>
+                    <MapPin size={11} color={T.green} />
+                    <Text style={p.searchStatVal}>{searchResult.distance}km</Text>
+                    <Text style={p.searchStatLbl}>away</Text>
+                  </View>
+                  <View style={p.searchStat}>
+                    <Repeat size={11} color={T.textMuted} />
+                    <Text style={p.searchStatVal}>{searchResult.repeats}×</Text>
+                    <Text style={p.searchStatLbl}>recs</Text>
+                  </View>
+                  <View style={p.searchStat}>
+                    <BarChart2 size={11} color={T.purple} />
+                    <Text style={p.searchStatVal}>{searchResult.totalElevation}m</Text>
+                    <Text style={p.searchStatLbl}>total</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddSearchResult}
+                  disabled={searchAdded}
+                  style={[p.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.75}
+                >
+                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
+                  <Text style={[p.searchAddText, searchAdded && { color: T.green }]}>
+                    {searchAdded ? "Added to results!" : "Add to my list"}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Log directly from search result */}
+                <TouchableOpacity
+                  onPress={() => openLog(searchResult.name)}
+                  style={p.searchLogBtn}
+                  activeOpacity={0.75}
+                >
+                  <Clock size={13} color={T.green} />
+                  <Text style={p.searchLogText}>Log a session here</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </Animated.View>
 
-        {/* Logged hike history */}
+        {/* Hike history */}
         {exploreHikes.length > 0 && (
           <Animated.View entering={FadeInDown.delay(260).duration(600)}>
             <View style={p.histHead}>
-              <Text style={p.histTitle}>YOUR HIKE HISTORY</Text>
+              <Text style={p.histTitle}>YOUR SESSION HISTORY</Text>
               <Text style={p.histCount}>{exploreHikes.length} logged</Text>
             </View>
             <View style={{ gap: 10 }}>
@@ -680,6 +749,77 @@ const p = StyleSheet.create({
     shadowColor: T.green, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
   },
   logFabText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  // Controls card
+  controlCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 14, gap: 12 },
+  controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  controlLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
+  controlLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  controlDivider: { height: 1, backgroundColor: T.border },
+  locInputWrap: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 10, paddingVertical: Platform.OS === "ios" ? 9 : 7,
+    gap: 6,
+  },
+  locInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, paddingVertical: 0 },
+  clearBtn: { padding: 2 },
+
+  // Radius stepper
+  radiusStepper: { flexDirection: "row", alignItems: "center", gap: 4 },
+  stepBtn: { width: 28, height: 28, backgroundColor: T.surface, borderRadius: 8, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: T.border },
+  radiusBox: { width: 58, alignItems: "center" },
+  radiusVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  radiusUnit: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  // Fetch button
+  fetchBtn: { borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: T.border },
+  fetchBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
+  fetchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+
+  // Error
+  errCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.red + "15", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: T.red + "30" },
+  errText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.red },
+
+  // Empty state
+  emptyCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 24, alignItems: "center", gap: 10 },
+  emptyEmoji: { fontSize: 36 },
+  emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 20 },
+
+  // Section label
+  sectionLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1, textTransform: "uppercase" },
+
+  // Hill search card
+  searchCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12, overflow: "hidden" },
+  searchLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  searchLabel: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  searchHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: -4 },
+  searchRow: { flexDirection: "row", gap: 8 },
+  searchInput: {
+    flex: 1, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 12, paddingVertical: Platform.OS === "ios" ? 11 : 9,
+    fontSize: 14, fontFamily: "Inter_400Regular", color: T.text,
+  },
+  searchBtn: { width: 44, backgroundColor: T.purple, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  searchErrText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.red },
+  searchResult: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, gap: 12, overflow: "hidden" },
+  searchResultTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  searchResultName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  searchResultSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  searchGradeBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, flexShrink: 0 },
+  searchGradeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  searchResultStats: { flexDirection: "row", gap: 14, flexWrap: "wrap" },
+  searchStat: { flexDirection: "row", alignItems: "center", gap: 3 },
+  searchStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  searchStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  searchAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: T.purpleDim, borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: T.purple + "30" },
+  searchAddText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.purple },
+  searchLogBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: T.greenDim, borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: T.green + "30" },
+  searchLogText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
+
+  // History
   histHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   histTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1, textTransform: "uppercase" },
   histCount: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
