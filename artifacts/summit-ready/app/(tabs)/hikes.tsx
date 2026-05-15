@@ -546,75 +546,8 @@ export default function HikesScreen() {
           </View>
         </Animated.View>
 
-        {/* Find / Refresh button */}
-        <Animated.View entering={FadeInDown.delay(120).duration(600)}>
-          <TouchableOpacity
-            onPress={() => fetchHills()}
-            disabled={hillsLoading}
-            style={[p.fetchBtn, hillsLoading && { opacity: 0.7 }]}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={hasFetched ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
-              style={p.fetchBtnInner}
-            >
-              {hillsLoading ? (
-                <>
-                  <ActivityIndicator size="small" color={T.green} />
-                  <Text style={p.fetchBtnText}>Finding hills within {radius}km…</Text>
-                </>
-              ) : hasFetched ? (
-                <>
-                  <RefreshCw size={15} color={T.green} />
-                  <Text style={p.fetchBtnText}>Refresh with AI</Text>
-                </>
-              ) : (
-                <>
-                  <Zap size={15} color={T.green} />
-                  <Text style={p.fetchBtnText}>Find hikes with AI</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Error state */}
-        {hillsError && (
-          <Animated.View entering={FadeInDown.duration(400)}>
-            <View style={p.errCard}>
-              <AlertCircle size={14} color={T.red} />
-              <Text style={p.errText}>{hillsError}</Text>
-            </View>
-          </Animated.View>
-        )}
-
-        {/* Empty state */}
-        {!hasFetched && !hillsLoading && !hillsError && (
-          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
-            <View style={p.emptyCard}>
-              <Text style={p.emptyEmoji}>🏔️</Text>
-              <Text style={p.emptyTitle}>No hills loaded yet</Text>
-              <Text style={p.emptyText}>
-                Enter your location above and tap{" "}
-                <Text style={{ color: T.green }}>Find hikes with AI</Text>
-                {" "}to discover real training hills near you.
-              </Text>
-            </View>
-          </Animated.View>
-        )}
-
-        {/* Hill results */}
-        {hasFetched && (
-          <Animated.View entering={FadeInDown.delay(60).duration(600)} style={{ gap: 12 }}>
-            <Text style={p.sectionLabel}>HILLS NEAR {location.toUpperCase()}</Text>
-            {hills.map((hill, i) => (
-              <HillCard key={`${hill.name}-${i}`} hill={hill} onLog={name => openLog(name)} />
-            ))}
-          </Animated.View>
-        )}
-
         {/* Specific hill search */}
-        <Animated.View entering={FadeInDown.delay(hasFetched ? 200 : 200).duration(600)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(600)}>
           <View style={p.searchCard}>
             <View style={p.searchLabelRow}>
               <Search size={13} color={T.purple} />
@@ -712,6 +645,73 @@ export default function HikesScreen() {
             )}
           </View>
         </Animated.View>
+
+        {/* Find / Refresh button */}
+        <Animated.View entering={FadeInDown.delay(160).duration(600)}>
+          <TouchableOpacity
+            onPress={() => fetchHills()}
+            disabled={hillsLoading}
+            style={[p.fetchBtn, hillsLoading && { opacity: 0.7 }]}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={hasFetched ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+              style={p.fetchBtnInner}
+            >
+              {hillsLoading ? (
+                <>
+                  <ActivityIndicator size="small" color={T.green} />
+                  <Text style={p.fetchBtnText}>Finding hills within {radius}km…</Text>
+                </>
+              ) : hasFetched ? (
+                <>
+                  <RefreshCw size={15} color={T.green} />
+                  <Text style={p.fetchBtnText}>Refresh with AI</Text>
+                </>
+              ) : (
+                <>
+                  <Zap size={15} color={T.green} />
+                  <Text style={p.fetchBtnText}>Find hikes with AI</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Error state */}
+        {hillsError && (
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View style={p.errCard}>
+              <AlertCircle size={14} color={T.red} />
+              <Text style={p.errText}>{hillsError}</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Empty state */}
+        {!hasFetched && !hillsLoading && !hillsError && (
+          <Animated.View entering={FadeInDown.delay(160).duration(600)}>
+            <View style={p.emptyCard}>
+              <Text style={p.emptyEmoji}>🏔️</Text>
+              <Text style={p.emptyTitle}>No hills loaded yet</Text>
+              <Text style={p.emptyText}>
+                Enter your location above and tap{" "}
+                <Text style={{ color: T.green }}>Find hikes with AI</Text>
+                {" "}to discover real training hills near you.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Hill results */}
+        {hasFetched && (
+          <Animated.View entering={FadeInDown.delay(60).duration(600)} style={{ gap: 12 }}>
+            <Text style={p.sectionLabel}>HILLS NEAR {location.toUpperCase()}</Text>
+            {hills.map((hill, i) => (
+              <HillCard key={`${hill.name}-${i}`} hill={hill} onLog={name => openLog(name)} />
+            ))}
+          </Animated.View>
+        )}
 
         {/* Hike history */}
         {exploreHikes.length > 0 && (
