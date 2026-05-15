@@ -1,4 +1,4 @@
-import { Compass, MapPin, TrendingUp, Activity, ArrowRight, Loader } from "lucide-react-native";
+import { Compass, MapPin, TrendingUp, Activity, Loader } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -11,13 +11,19 @@ import { T } from "@/constants/theme";
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, isLoading } = useApp();
+  const { summitGoal, isLoading, appMode } = useApp();
 
   useEffect(() => {
-    if (!isLoading && summitGoal) {
+    if (isLoading) return;
+    if (appMode === "summit" && summitGoal) {
       router.replace("/(tabs)/dashboard");
+    } else if (appMode === "summit") {
+      router.replace("/questionnaire");
+    } else if (appMode === "explore") {
+      router.replace("/(tabs)/explore");
     }
-  }, [isLoading, summitGoal]);
+    // appMode === null → stay on landing to present the choice
+  }, [isLoading, appMode, summitGoal]);
 
   if (isLoading) {
     return (
@@ -28,19 +34,15 @@ export default function LandingScreen() {
   }
 
   const features: { icon: LucideIcon; text: string }[] = [
-    { icon: MapPin,    text: "Plans built around your summit date" },
-    { icon: TrendingUp, text: "Progressive elevation targets each week" },
-    { icon: Activity,  text: "Track sessions & watch readiness grow" },
+    { icon: MapPin,    text: "Train for any mountain using hills near you" },
+    { icon: TrendingUp, text: "Structured plans or freestyle explore mode" },
+    { icon: Activity,  text: "Log sessions, earn badges, track progress" },
   ];
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      {/* Mountain silhouette decoration */}
       <View style={styles.mountainDeco} pointerEvents="none">
-        <LinearGradient
-          colors={["transparent", T.green + "08"]}
-          style={styles.mountainGlow}
-        />
+        <LinearGradient colors={["transparent", T.green + "08"]} style={styles.mountainGlow} />
       </View>
 
       <View
@@ -52,7 +54,6 @@ export default function LandingScreen() {
           },
         ]}
       >
-        {/* Hero */}
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.hero}>
           <Image
             source={require("@/assets/images/logo.gif")}
@@ -64,7 +65,6 @@ export default function LandingScreen() {
           </Text>
         </Animated.View>
 
-        {/* Feature pills */}
         <Animated.View entering={FadeInUp.delay(250).duration(600)} style={styles.features}>
           {features.map((item, i) => {
             const FIcon = item.icon;
@@ -79,11 +79,10 @@ export default function LandingScreen() {
           })}
         </Animated.View>
 
-        {/* CTA */}
         <Animated.View entering={FadeInUp.delay(420).duration(600)} style={styles.cta}>
           <TouchableOpacity
             style={styles.ctaBtn}
-            onPress={() => router.push("/questionnaire")}
+            onPress={() => router.push("/mode-select")}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -93,13 +92,10 @@ export default function LandingScreen() {
               style={styles.ctaBtnGrad}
             >
               <Compass size={19} color="#fff" />
-              <Text style={styles.ctaBtnText}>Create my training plan</Text>
-              <ArrowRight size={17} color="#fff" />
+              <Text style={styles.ctaBtnText}>Get started</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.demoNote}>
-            Free to start · No account needed
-          </Text>
+          <Text style={styles.demoNote}>Free to start · No account needed</Text>
         </Animated.View>
       </View>
     </LinearGradient>
@@ -107,87 +103,32 @@ export default function LandingScreen() {
 }
 
 const styles = StyleSheet.create({
-  mountainDeco: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 300,
-    overflow: "hidden",
-  },
-  mountainGlow: {
-    flex: 1,
-  },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 28,
-    justifyContent: "space-between",
-  },
-  hero: {
-    alignItems: "center",
-    gap: 12,
-  },
+  mountainDeco: { position: "absolute", bottom: 0, left: 0, right: 0, height: 300, overflow: "hidden" },
+  mountainGlow: { flex: 1 },
+  inner: { flex: 1, paddingHorizontal: 28, justifyContent: "space-between" },
+  hero: { alignItems: "center", gap: 12 },
   logo: { width: 390, height: 156 },
   tagline: {
-    fontSize: 17,
-    fontFamily: "Inter_400Regular",
-    color: T.textMuted,
-    textAlign: "center",
-    lineHeight: 26,
+    fontSize: 17, fontFamily: "Inter_400Regular", color: T.textMuted,
+    textAlign: "center", lineHeight: 26,
   },
   features: { gap: 10 },
   featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.border,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16,
+    borderWidth: 1, borderColor: T.border, paddingVertical: 14, paddingHorizontal: 16,
   },
   featureIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: T.greenDim,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36, height: 36, borderRadius: 10, backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center",
   },
-  featureText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: T.text,
-    lineHeight: 20,
-  },
+  featureText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 20 },
   cta: { alignItems: "center", gap: 12 },
   ctaBtn: {
-    width: "100%",
-    borderRadius: 18,
-    overflow: "hidden",
-    shadowColor: T.green,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    elevation: 10,
+    width: "100%", borderRadius: 18, overflow: "hidden",
+    shadowColor: T.green, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 10,
   },
-  ctaBtnGrad: {
-    height: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  ctaBtnText: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  demoNote: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: T.textDim,
-  },
+  ctaBtnGrad: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  demoNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
 });

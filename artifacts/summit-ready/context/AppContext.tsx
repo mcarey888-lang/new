@@ -103,6 +103,16 @@ export interface Session {
   reps?: number;
 }
 
+export interface ExploreHike {
+  id: string;
+  name: string;
+  date: string;
+  distance: number;
+  elevationGain: number;
+  timeTaken: number;
+  notes: string;
+}
+
 interface AppState {
   summitGoal: SummitGoal | null;
   trainingPlan: TrainingWeek[];
@@ -142,6 +152,11 @@ interface AppState {
   newlyUnlocked: string[];
   clearNewlyUnlocked: () => void;
   completedGoals: CompletedGoal[];
+  appMode: "summit" | "explore" | null;
+  exploreHikes: ExploreHike[];
+  setAppMode: (mode: "summit" | "explore") => Promise<void>;
+  logExploreHike: (hike: Omit<ExploreHike, "id">) => Promise<void>;
+  deleteExploreHike: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -183,6 +198,11 @@ const AppContext = createContext<AppState>({
   newlyUnlocked: [],
   clearNewlyUnlocked: () => {},
   completedGoals: [],
+  appMode: null,
+  exploreHikes: [],
+  setAppMode: async () => {},
+  logExploreHike: async () => {},
+  deleteExploreHike: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -199,6 +219,8 @@ const EFFORTS_KEY = "summitready_session_efforts";
 const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
 const ACHIEVEMENTS_KEY = "summitready_achievements";
 const COMPLETED_GOALS_KEY = "summitready_completed_goals";
+const APP_MODE_KEY = "summitready_app_mode";
+const EXPLORE_HIKES_KEY = "summitready_explore_hikes";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -300,14 +322,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const [completedGoals, setCompletedGoals] = useState<CompletedGoal[]>([]);
+  const [appMode, setAppModeState] = useState<"summit" | "explore" | null>(null);
+  const [exploreHikes, setExploreHikes] = useState<ExploreHike[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -378,6 +402,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
         // No else — fresh users start from the landing page with no pre-loaded data
+
+        if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
+        if (exploreHikesStr) setExploreHikes(JSON.parse(exploreHikesStr) as ExploreHike[]);
       } catch {}
       setIsLoading(false);
     })();
@@ -524,6 +551,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, "summitready_questionnaire_data",
     ]);
   }, []);
+
+  const setAppMode = useCallback(async (mode: "summit" | "explore") => {
+    setAppModeState(mode);
+    await AsyncStorage.setItem(APP_MODE_KEY, mode);
+  }, []);
+
+  const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    const newHike: ExploreHike = { ...hike, id };
+    const updated = [newHike, ...exploreHikes];
+    setExploreHikes(updated);
+    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
+  }, [exploreHikes]);
+
+  const deleteExploreHike = useCallback(async (id: string) => {
+    const updated = exploreHikes.filter(h => h.id !== id);
+    setExploreHikes(updated);
+    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
+  }, [exploreHikes]);
 
   const markPlanViewed = useCallback(async () => {
     if (hasViewedPlan) return;
@@ -809,6 +855,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
+      appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,
     }}>
       {children}
     </AppContext.Provider>

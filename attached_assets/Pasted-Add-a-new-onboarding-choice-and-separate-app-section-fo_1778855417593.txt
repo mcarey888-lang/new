@@ -1,0 +1,88 @@
+Add a new onboarding choice and separate app section for Summit Ready.
+
+Current app focus: users with a specific summit goal. I now want to support users who do not yet have a goal but want to explore local hikes, log hills, build fitness, and maybe choose a summit later.
+
+Add two main user paths:
+
+1. “I have a summit goal”
+2. “I want to explore”
+
+Requirements:
+
+- On first launch/onboarding, show a clean choice screen with these two options.
+- “I have a summit goal” should keep the current goal-based flow.
+- “I want to explore” should take users into a new Explore section.
+- Users should be able to switch between both modes later from the dashboard/profile/settings.
+
+Create a new Explore section with the following features:
+
+1. Explore Dashboard
+- Welcome message: “Start local. Build your mountain fitness.”
+- Show suggested nearby hikes/hills.
+- Show quick stats:
+  - hikes logged
+  - total distance
+  - total elevation gain
+  - current streak
+
+2. Local Hikes / Hills
+- Create a screen called “Hikes Near Me”.
+- Display a list/card layout of local routes.
+- Each card should include:
+  - route name
+  - distance
+  - estimated time
+  - elevation gain
+  - difficulty level
+  - training value: easy / moderate / strong summit prep
+- If real location/trail data is not available yet, use placeholder/mock data but structure the code so it can later connect to an API.
+
+3. Log a Hike
+- Add a simple “Log Hike” button.
+- Allow users to enter:
+  - hike name
+  - date
+  - distance
+  - elevation gain
+  - time taken
+  - notes
+- Save the logged hike to the user profile/state/database.
+- Show logged hikes in a history list.
+
+4. Progression / Motivation
+- Add simple achievement badges:
+  - First Hike Logged
+  - 5 Hikes Completed
+  - 1000m Elevation Gained
+  - 3 Hikes in 7 Days
+- Show progress towards the next badge.
+- Keep this simple and visually motivational.
+
+5. Suggested Next Challenge
+- Based on logged hikes and stats, show a card called “Suggested Next Challenge”.
+- Example logic:
+  - If user has logged fewer than 3 hikes, suggest “Complete 3 local hikes”.
+  - If user has over 1000m total elevation, suggest “Try a bigger hill challenge”.
+  - If user has over 5 hikes logged, suggest “Choose your first summit goal”.
+- Include a button: “Find a Summit Goal”.
+
+6. Navigation
+- Add Explore as its own main section/tab/card in the app.
+- Keep the existing Summit Goal section separate.
+- The user should clearly understand the two journeys:
+  - Goal mode = train for a chosen mountain
+  - Explore mode = discover hikes, log progress, and build towards a future goal
+
+Design style:
+- Keep it consistent with the existing Summit Ready design.
+- Use clean mountain/adventure styling.
+- Make it feel motivating but not overwhelming.
+- Mobile-first layout.
+- Use cards, icons, progress bars, and clear call-to-action buttons.
+
+Important:
+- Do not remove or break the existing summit goal flow.
+- Refactor only where needed.
+- Use mock data where required.
+- Add comments where future API integrations should go, especially for nearby hikes, maps, GPS tracking, and route data.
+- Make sure the app still runs without errors after the changes.

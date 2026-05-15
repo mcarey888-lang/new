@@ -1,13 +1,18 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Home, Calendar, PenLine, Triangle, User } from "lucide-react-native";
+import { Home, Calendar, PenLine, Triangle, User, Map, MapPin } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { T } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
 
 export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const { appMode } = useApp();
+
+  const isExplore = appMode === "explore";
+  const isSummit = appMode === "summit" || appMode === null;
 
   return (
     <Tabs
@@ -27,7 +32,7 @@ export default function TabLayout() {
           isIOS ? (
             <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: isWeb ? T.bg : T.bg }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: T.bg }]} />
           ),
         tabBarLabelStyle: {
           fontSize: 11,
@@ -36,10 +41,12 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* ── Summit-only tabs ── */}
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
+          href: isExplore ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Home size={20} color={color} />
@@ -51,6 +58,7 @@ export default function TabLayout() {
         name="plan"
         options={{
           title: "Plan",
+          href: isExplore ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Calendar size={20} color={color} />
@@ -58,6 +66,34 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* ── Explore-only tabs ── */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          href: isSummit ? null : undefined,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <Map size={20} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="hikes"
+        options={{
+          title: "Hikes",
+          href: isSummit ? null : undefined,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
+              <MapPin size={20} color={color} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* ── Shared tabs ── */}
       <Tabs.Screen
         name="log"
         options={{
@@ -73,6 +109,7 @@ export default function TabLayout() {
         name="hills"
         options={{
           title: "Hills",
+          href: isExplore ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Triangle size={20} color={color} />
@@ -99,10 +136,6 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   iconWrap: { width: 36, height: 26, alignItems: "center", justifyContent: "center" },
   activeIconWrap: {
-    width: 44,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
+    width: 44, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 10,
   },
 });
