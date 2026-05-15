@@ -5,7 +5,7 @@ import logoPath from "../../summit-ready/assets/images/logo.gif";
 import heroBgPath from "./assets/hero-bg.png";
 import featureMapPath from "./assets/feature-map.png";
 import featureClimbPath from "./assets/feature-climb.png";
-import { ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2, TrendingUp, Compass, Calendar, ShieldCheck, Smartphone } from "lucide-react";
+import { ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2, TrendingUp, Compass, Calendar, ShieldCheck, Smartphone, MapPin, ArrowRight as ArrowRightIcon, Footprints } from "lucide-react";
 
 function Navigation() {
   const [scrolled, setScrolled] = useState(false);
@@ -53,17 +53,17 @@ function Hero() {
       
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center max-w-5xl mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-bold text-primary mb-8 backdrop-blur-md uppercase tracking-widest shadow-[0_0_15px_rgba(62,207,117,0.15)]">
-          <Activity className="w-4 h-4" />
-          <span>AI-Powered Alpine Training</span>
+          <MapPin className="w-4 h-4" />
+          <span>Train Local. Climb Higher.</span>
         </div>
         
         <h1 className="text-6xl md:text-8xl lg:text-[7rem] font-display font-bold text-white mb-6 leading-[0.9] tracking-tighter drop-shadow-2xl">
-          The mountain doesn't care if you're ready. <br/>
-          <span className="text-primary italic">We do.</span>
+          Big mountains.<br/>
+          <span className="text-primary italic">Trained on hills near you.</span>
         </h1>
         
         <p className="text-lg md:text-2xl text-muted-foreground mb-12 max-w-3xl leading-relaxed drop-shadow-lg font-light">
-          Pick your summit. Tell us your baseline. Get a week-by-week training plan that tracks your readiness score from 0 to 100. It's like having a coach who knows the mountain and your body.
+          Tell us your target summit. SummitReady finds the hills near you and builds a week-by-week plan that uses your local terrain to simulate exactly what your mountain demands. Train where you live. Summit anywhere.
         </p>
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -88,26 +88,26 @@ function ProblemStatement() {
   return (
     <section id="problem" className="py-32 bg-background relative border-t border-white/5">
       <div className="container mx-auto px-4 max-w-4xl text-center">
-        <h2 className="text-3xl md:text-5xl font-display font-bold mb-8 text-white">Running won't get you to 14,000 feet.</h2>
+        <h2 className="text-3xl md:text-5xl font-display font-bold mb-8 text-white">You don't need to live near mountains to train for them.</h2>
         <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed mb-16">
-          Generic fitness plans prepare you for flat ground. Alpine ascents require vertical endurance, pack-weight progression, and altitude adaptation. We throw out the cookie-cutter templates and build a plan for your specific objective.
+          Most people think serious mountain training is only possible if you're already in the Alps or Rockies. SummitReady uses the hills right on your doorstep to build the vertical endurance, leg strength, and pack-carrying capacity your summit actually demands.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-8">
           <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <Mountain className="w-10 h-10 text-destructive mb-6" />
-            <h3 className="text-xl font-bold mb-3">Wrong Terrain</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">Most plans focus on mileage. We focus on elevation gain and terrain specificity.</p>
+            <MapPin className="w-10 h-10 text-primary mb-6" />
+            <h3 className="text-xl font-bold mb-3">Hills Near You</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">The app finds hills within reach of where you live and maps their elevation data into your weekly training sessions.</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <TrendingUp className="w-10 h-10 text-destructive mb-6" />
-            <h3 className="text-xl font-bold mb-3">Linear Progression</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">Your body doesn't adapt linearly. We periodize your load based on fatigue data.</p>
+            <TrendingUp className="w-10 h-10 text-primary mb-6" />
+            <h3 className="text-xl font-bold mb-3">Summit-Matched Workouts</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">Every session is reverse-engineered from your target mountain's elevation profile, distance, and technical demands.</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <Compass className="w-10 h-10 text-destructive mb-6" />
-            <h3 className="text-xl font-bold mb-3">One Size Fits All</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">A plan for Mt. Hood is useless for the Matterhorn. We build for the exact route.</p>
+            <Compass className="w-10 h-10 text-primary mb-6" />
+            <h3 className="text-xl font-bold mb-3">No Generic Plans</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">A plan for Ben Nevis looks nothing like a plan for Kilimanjaro. We build specifically for your route, your hills, your timeline.</p>
           </div>
         </div>
       </div>
@@ -148,19 +148,19 @@ function Features() {
           </div>
 
           <div className="order-1 lg:order-2">
-            <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">Built for the climb, <br/>tailored to you.</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">Your local hills.<br/>Your mountain's demands.</h2>
             <p className="text-muted-foreground mb-12 text-xl leading-relaxed">
-              Every mountain has a profile. We analyze the specific route's distance, elevation gain, and technical difficulty to reverse-engineer your success.
+              SummitReady analyses your target summit's full elevation profile and plots equivalent workouts on the hills closest to you — so every training day counts toward the real thing.
             </p>
             
             <div className="space-y-8">
               <div className="flex gap-6">
                 <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 shadow-lg">
-                  <Target className="w-6 h-6 text-primary" />
+                  <MapPin className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl mb-2 text-white">Mountain-Specific Logic</h3>
-                  <p className="text-muted-foreground leading-relaxed">We extract topographic data from your chosen route and build a training load that perfectly mirrors summit day demands.</p>
+                  <h3 className="font-bold text-xl mb-2 text-white">Local Hill Discovery</h3>
+                  <p className="text-muted-foreground leading-relaxed">Enter your location and we surface the hills within your reach — matched to your fitness level and scheduled into your weekly plan.</p>
                 </div>
               </div>
               <div className="flex gap-6">
@@ -169,7 +169,7 @@ function Features() {
                 </div>
                 <div>
                   <h3 className="font-bold text-xl mb-2 text-white">Adaptive Scheduling</h3>
-                  <p className="text-muted-foreground leading-relaxed">Missed a weekend long hike? Sick on a Tuesday? The AI coach automatically adjusts your upcoming week to keep you on track safely.</p>
+                  <p className="text-muted-foreground leading-relaxed">Missed a weekend hill session? Sick on a Tuesday? The AI coach automatically adjusts your upcoming week to keep you on track safely.</p>
                 </div>
               </div>
               <div className="flex gap-6">
@@ -177,8 +177,8 @@ function Features() {
                   <ShieldCheck className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl mb-2 text-white">Injury Prevention</h3>
-                  <p className="text-muted-foreground leading-relaxed">Built-in deload weeks, mobility routines, and fatigue monitoring to ensure you reach the trailhead healthy.</p>
+                  <h3 className="font-bold text-xl mb-2 text-white">Progressive Overload</h3>
+                  <p className="text-muted-foreground leading-relaxed">Week by week, your local hill sessions get harder — more elevation, heavier pack, longer time on feet — mirroring exactly what summit day will ask of you.</p>
                 </div>
               </div>
             </div>
@@ -247,9 +247,9 @@ function HowItWorks() {
   return (
     <section id="how-it-works" className="py-32 bg-[#081021] relative border-y border-white/5">
       <div className="container mx-auto px-4 text-center max-w-5xl">
-        <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">Three steps to the summit.</h2>
+        <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">From your front door to the summit.</h2>
         <p className="text-xl text-muted-foreground mb-20 max-w-2xl mx-auto">
-          We removed the guesswork. You just have to put in the work.
+          Three steps. Your target mountain. The hills near you. No gym required.
         </p>
 
         <div className="grid md:grid-cols-3 gap-12 relative">
@@ -260,23 +260,23 @@ function HowItWorks() {
               1
             </div>
             <h3 className="text-2xl font-bold mb-4 text-white">Pick Your Peak</h3>
-            <p className="text-muted-foreground leading-relaxed">Search our database of global summits. We instantly pull the route data, elevation profile, and technical demands.</p>
+            <p className="text-muted-foreground leading-relaxed">Search our database of global summits. We pull the full elevation profile, route distance, and technical demands of your chosen mountain.</p>
           </div>
           
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-24 h-24 rounded-full bg-background border-2 border-white/10 flex items-center justify-center text-3xl font-display font-bold text-primary mb-8 shadow-xl">
               2
             </div>
-            <h3 className="text-2xl font-bold mb-4 text-white">Assess Fitness</h3>
-            <p className="text-muted-foreground leading-relaxed">Take a 2-minute assessment. We gauge your current cardiovascular base, strength, and past alpine experience.</p>
+            <h3 className="text-2xl font-bold mb-4 text-white">Find Your Hills</h3>
+            <p className="text-muted-foreground leading-relaxed">Tell us where you are. We find climbable hills near you and match their elevation data to your summit's demands — your local terrain becomes your training ground.</p>
           </div>
 
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-24 h-24 rounded-full bg-background border-2 border-primary/50 flex items-center justify-center text-3xl font-display font-bold text-primary mb-8 shadow-[0_0_30px_rgba(62,207,117,0.2)]">
               3
             </div>
-            <h3 className="text-2xl font-bold mb-4 text-white">Execute Plan</h3>
-            <p className="text-muted-foreground leading-relaxed">Receive a dynamic weekly schedule of runs, rucks, climbs, and recovery. Log data and watch your readiness rise.</p>
+            <h3 className="text-2xl font-bold mb-4 text-white">Train & Track</h3>
+            <p className="text-muted-foreground leading-relaxed">Get a weekly schedule of hill sessions, rucks, and recovery built around your local terrain. Log each session and watch your Readiness Score climb toward 100.</p>
           </div>
         </div>
       </div>
@@ -344,10 +344,10 @@ function CTA() {
       
       <div className="container mx-auto px-4 text-center relative z-10 max-w-4xl">
         <h2 className="text-5xl md:text-7xl font-display font-bold text-white mb-8 tracking-tighter drop-shadow-lg">
-          Your summit awaits.
+          Your summit starts on the hill outside your door.
         </h2>
         <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-          The mountain won't lower its standards. Raise yours. Join thousands of climbers training smarter with SummitReady.
+          The mountain won't lower its standards. But you don't need to travel to mountains to meet them. Start training on the hills near you, today.
         </p>
         <a href="#get-started">
           <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-12 h-16 text-xl shadow-[0_0_40px_rgba(62,207,117,0.4)] transition-all hover:scale-105 active:scale-95">
