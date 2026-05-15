@@ -317,19 +317,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Migration: fix hill sessions whose targetElevation exceeds the week target
           // (caused by the old hill.repeats floor in createHillSession).
           let planWasMigrated = false;
-          const plan: TrainingWeek[] = rawPlan.map(week => {
-            const hill = week.hills[0];
-            if (!hill) return week;
-            const sessions = week.sessions.map(s => {
-              if (s.type !== "hill" || s.targetElevation <= week.targetElevation) return s;
-              const fixedReps = Math.max(1, Math.ceil((week.targetElevation * 0.5) / hill.elevation));
-              planWasMigrated = true;
-              return { ...s, targetElevation: fixedReps * hill.elevation };
+          let plan: TrainingWeek[];
+          try {
+            plan = rawPlan.map(week => {
+              const hill = week.hills?.[0];
+              if (!hill || !week.sessions) return week;
+              let weekChanged = false;
+              const sessions = week.sessions.map(s => {
+                if (s.type !== "hill" || s.targetElevation <= week.targetElevation) return s;
+                const fixedReps = Math.max(1, Math.ceil((week.targetElevation * 0.5) / hill.elevation));
+                weekChanged = true;
+                planWasMigrated = true;
+                return { ...s, targetElevation: fixedReps * hill.elevation };
+              });
+              return weekChanged ? { ...week, sessions } : week;
             });
-            return planWasMigrated ? { ...week, sessions } : week;
-          });
-          if (planWasMigrated) {
-            AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan)).catch(() => {});
+            if (planWasMigrated) {
+              AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan)).catch(() => {});
+            }
+          } catch {
+            plan = rawPlan;
           }
 
           const storedSessions: Session[] = sessionsStr ? JSON.parse(sessionsStr) : [];
