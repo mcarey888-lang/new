@@ -71,38 +71,17 @@ function MountainHero({
 
     async function fetchWikiImage() {
       try {
-        // Build search candidates: full name first, then individual words > 3 chars
-        const words = mountainName.split(/\s+/).filter(w => w.length > 3);
-        const candidates = [mountainName, ...words].slice(0, 4);
-
-        for (const candidate of candidates) {
-          if (cancelled) return;
-          // Step 1: opensearch to find the best matching article title
-          const searchRes = await fetch(
-            `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(candidate)}&limit=3&format=json&origin=*`
-          );
-          if (!searchRes.ok) continue;
-          const searchData = await searchRes.json();
-          const titles: string[] = searchData[1] ?? [];
-          if (titles.length === 0) continue;
-
-          // Step 2: use prop=pageimages (more reliable than REST summary)
-          // to fetch a thumbnail for each candidate article title
-          const joined = titles.slice(0, 3).map(t => encodeURIComponent(t)).join("|");
-          const imgRes = await fetch(
-            `https://en.wikipedia.org/w/api.php?action=query&titles=${joined}&prop=pageimages&format=json&pithumbsize=1200&origin=*`
-          );
-          if (!imgRes.ok) continue;
-          const imgData = await imgRes.json();
-          const pages: Record<string, any> = imgData.query?.pages ?? {};
-
-          // Pages come back in arbitrary order; pick the first one with a thumbnail
-          for (const page of Object.values(pages)) {
-            const url: string | undefined = page.thumbnail?.source;
-            if (url) {
-              if (!cancelled) { setImageUri(url); setLoading(false); }
-              return;
-            }
+        const res = await fetch(`${API_BASE}/mountain-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: mountainName }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { imageUrl: string | null };
+          if (data.imageUrl && !cancelled) {
+            setImageUri(data.imageUrl);
+            setLoading(false);
+            return;
           }
         }
       } catch {
