@@ -352,12 +352,12 @@ export default function SetupScreen() {
   }
 
   // Scoring: index 0 = unanswered, then option 1-N maps to pts
-  // Elevation: Under200=0, 200-500=10, 500-1000=20, 1000+=30 → max 30
-  // Running:   No=0, WithEffort=4, Easily=8                  → max 8
-  // Uphill:    Rarely=0, Monthly=2, Weekly+=5                → max 5  (total max 43)
-  const EXP_ELEV_PTS   = [0, 0, 10, 20, 30];
-  const EXP_RUN_PTS    = [0, 0, 4, 8];
-  const EXP_UPHILL_PTS = [0, 0, 2, 5];
+  // Elevation: Under200=0, 200-500=15, 500-1000=32, 1000+=45 → max 45
+  // Running:   No=0, WithEffort=7, Easily=14                 → max 14
+  // Uphill:    Rarely=0, Monthly=3, Weekly+=6                → max 6  (total max 65)
+  const EXP_ELEV_PTS   = [0, 0, 15, 32, 45];
+  const EXP_RUN_PTS    = [0, 0, 7, 14];
+  const EXP_UPHILL_PTS = [0, 0, 3, 6];
   // Questionnaire baseline takes priority over the in-setup chips when available
   const chipBaseline =
     (EXP_ELEV_PTS[expElevation] ?? 0) +

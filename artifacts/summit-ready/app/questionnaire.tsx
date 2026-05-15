@@ -469,7 +469,7 @@ function calcScore(
   score += pts([0, 0, 2, 5, 8], summitHistory);
   score += pts([0, 0, 2, 4], running);
   score += pts([0, 0, 0, 1, 2], strength);
-  return Math.min(50, score);
+  return Math.min(65, score);
 }
 
 function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {

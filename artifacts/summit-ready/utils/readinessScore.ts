@@ -192,10 +192,10 @@ export function calculateReadiness(
   // well to Easy hikes but barely to Alpine mountains, which require
   // specific training regardless of prior fitness.
   const capBonus: Record<string, number> = {
-    Easy:     20,
-    Moderate: 14,
-    Hard:      8,
-    Alpine:    4,
+    Easy:     22,
+    Moderate: 16,
+    Hard:     10,
+    Alpine:    6,
   };
   const bonus = capBonus[goal.difficulty] ?? 14;
   const baseCap = sessionCap(completed.length, goal.difficulty);
