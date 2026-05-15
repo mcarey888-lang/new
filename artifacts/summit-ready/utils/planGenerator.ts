@@ -114,7 +114,7 @@ function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goa
     };
   }
 
-  const targetReps = Math.max(hill.repeats, Math.ceil((targetElev * 0.5) / hill.elevation));
+  const targetReps = Math.max(1, Math.ceil((targetElev * 0.5) / hill.elevation));
   const totalGain = targetReps * hill.elevation;
   const pctOfSummit = Math.round((totalGain / goal.elevationGain) * 100);
 

@@ -312,7 +312,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (goalStr) {
           const goal: SummitGoal = JSON.parse(goalStr);
-          const plan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
+          const rawPlan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
+
+          // Migration: fix hill sessions whose targetElevation exceeds the week target
+          // (caused by the old hill.repeats floor in createHillSession).
+          let planWasMigrated = false;
+          const plan: TrainingWeek[] = rawPlan.map(week => {
+            const hill = week.hills[0];
+            if (!hill) return week;
+            const sessions = week.sessions.map(s => {
+              if (s.type !== "hill" || s.targetElevation <= week.targetElevation) return s;
+              const fixedReps = Math.max(1, Math.ceil((week.targetElevation * 0.5) / hill.elevation));
+              planWasMigrated = true;
+              return { ...s, targetElevation: fixedReps * hill.elevation };
+            });
+            return planWasMigrated ? { ...week, sessions } : week;
+          });
+          if (planWasMigrated) {
+            AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan)).catch(() => {});
+          }
+
           const storedSessions: Session[] = sessionsStr ? JSON.parse(sessionsStr) : [];
           const hills: NearbyHill[] = hillsStr ? JSON.parse(hillsStr) : [];
           const completed: Record<string, boolean> = completedStr ? JSON.parse(completedStr) : {};
@@ -621,11 +640,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updatedPlan = trainingPlan.map(week => {
       if (new Date(week.endDate) < today) return week;
 
-      const updatedSessions = week.sessions.map(s =>
-        s.type === "hill"
-          ? { ...s, targetElevation: hill.elevation * hill.repeats, label: `${hill.name} × ${hill.repeats}` }
-          : s
-      );
+      const updatedSessions = week.sessions.map(s => {
+        if (s.type !== "hill") return s;
+        // Calculate reps based on this week's elevation target (50% for hill session),
+        // not a fixed hill.repeats floor — avoids over-loading base-phase weeks.
+        const weekHillTarget = Math.round(week.targetElevation * 0.5);
+        const sessionRepsCount = Math.max(1, Math.ceil(weekHillTarget / hill.elevation));
+        const sessionElev = sessionRepsCount * hill.elevation;
+        const pct = Math.round((sessionElev / (summitGoal?.elevationGain ?? sessionElev)) * 100);
+        return {
+          ...s,
+          targetElevation: sessionElev,
+          label: `Hill Repeats — ${hill.name}`,
+          description: `${hill.name} (${hill.elevation}m per climb × ${sessionRepsCount} reps = ${sessionElev}m) — ${pct}% of your summit's ${summitGoal?.elevationGain ?? sessionElev}m elevation gain. ${hill.distance}km away. Walk or run up, walk down for recovery.`,
+        };
+      });
 
       const existingHills = week.hills.filter(h => h.name !== hill.name);
       const weekHills = [...existingHills, {
@@ -643,7 +672,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sessions: updatedSessions,
         hills: weekHills,
         targetElevation: sessionTotal || week.targetElevation,
-        adjustNote: `Recalculated for ${hill.name} (${hill.elevation}m × ${hill.repeats} reps = ${hill.totalElevation}m)`,
+        adjustNote: `Recalculated for ${hill.name} (${hill.elevation}m × reps scaled to week target)`,
       };
     });
 
