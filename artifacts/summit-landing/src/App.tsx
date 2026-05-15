@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import logoPath from "../../summit-ready/assets/images/logo.gif";
 import heroBgPath from "./assets/hero-bg.png";
 import featureMapPath from "./assets/feature-map.png";
 import featureClimbPath from "./assets/feature-climb.png";
-import { ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2, TrendingUp, Compass, Calendar, ShieldCheck } from "lucide-react";
+import { ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2, TrendingUp, Compass, Calendar, ShieldCheck, Smartphone } from "lucide-react";
 
 function Navigation() {
   const [scrolled, setScrolled] = useState(false);
@@ -30,7 +31,7 @@ function Navigation() {
           <a href="#how-it-works" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">How it Works</a>
         </div>
         <div>
-          <a href="#how-it-works">
+          <a href="#get-started">
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(62,207,117,0.3)]">
               Get Started
             </Button>
@@ -66,7 +67,7 @@ function Hero() {
         </p>
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <a href="#how-it-works" className="w-full sm:w-auto">
+          <a href="#get-started" className="w-full sm:w-auto">
             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-10 h-16 text-lg w-full transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(62,207,117,0.4)]">
               Start Your Plan
               <ChevronRight className="ml-2 w-5 h-5" />
@@ -204,7 +205,7 @@ function Readiness() {
             <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
               As you complete workouts, your score climbs. If you skip critical conditioning, it falls. The math is brutal, but the mountain is worse. We tell you the truth before you hit the trail.
             </p>
-            <a href="#how-it-works">
+            <a href="#get-started">
               <Button variant="outline" className="rounded-full h-14 px-8 border-white/20 hover:bg-white/5 text-lg shadow-lg">
                 Start Tracking Free
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -283,6 +284,59 @@ function HowItWorks() {
   );
 }
 
+function GetStarted() {
+  return (
+    <section id="get-started" className="py-32 bg-[#081021] relative border-t border-white/5">
+      <div className="container mx-auto px-4 text-center max-w-3xl">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-bold text-primary mb-6 uppercase tracking-widest">
+          <Smartphone className="w-4 h-4" />
+          Download the App
+        </div>
+        <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6 tracking-tighter">
+          Start your training today.
+        </h2>
+        <p className="text-xl text-muted-foreground mb-12 max-w-xl mx-auto">
+          SummitReady is available on iOS and Android. Download the app, complete the 2-minute questionnaire, and get your personalised plan instantly.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+          <a
+            href="https://apps.apple.com/app/summitready"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-white text-black font-semibold rounded-2xl px-6 py-4 hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[200px] justify-center"
+          >
+            <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            <div className="text-left">
+              <div className="text-xs leading-none mb-0.5 opacity-70">Download on the</div>
+              <div className="text-base leading-none">App Store</div>
+            </div>
+          </a>
+
+          <a
+            href="https://play.google.com/store/apps/details?id=uk.summitready.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-white text-black font-semibold rounded-2xl px-6 py-4 hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[200px] justify-center"
+          >
+            <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
+            </svg>
+            <div className="text-left">
+              <div className="text-xs leading-none mb-0.5 opacity-70">Get it on</div>
+              <div className="text-base leading-none">Google Play</div>
+            </div>
+          </a>
+        </div>
+
+        <p className="text-sm text-muted-foreground">Free to download · Premium plan available</p>
+      </div>
+    </section>
+  );
+}
+
 function CTA() {
   return (
     <section className="py-32 bg-background relative overflow-hidden">
@@ -295,7 +349,7 @@ function CTA() {
         <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
           The mountain won't lower its standards. Raise yours. Join thousands of climbers training smarter with SummitReady.
         </p>
-        <a href="#how-it-works">
+        <a href="#get-started">
           <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-12 h-16 text-xl shadow-[0_0_40px_rgba(62,207,117,0.4)] transition-all hover:scale-105 active:scale-95">
             Get SummitReady Free
           </Button>
@@ -315,8 +369,8 @@ function Footer() {
         </div>
         
         <div className="flex gap-8 text-sm text-muted-foreground">
-          <a href="/privacy" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Privacy Policy</a>
-          <a href="/terms" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Terms of Service</a>
+          <Link to="/privacy" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Terms of Service</Link>
           <a href="mailto:hello@summitready.uk" className="hover:text-primary transition-colors min-h-[48px] inline-flex items-center">Contact</a>
         </div>
         
@@ -342,6 +396,7 @@ export default function App() {
       <HowItWorks />
       <Readiness />
       <CTA />
+      <GetStarted />
       <Footer />
     </div>
   );
