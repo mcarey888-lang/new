@@ -20,6 +20,42 @@ import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
 export const QUIZ_KEY = "summitready_questionnaire_data";
 const TOTAL_STEPS = 7;
 
+const LOCATIONS = [
+  // English cities & large towns
+  "London", "Manchester", "Birmingham", "Bristol", "Liverpool", "Leeds", "Sheffield",
+  "Newcastle upon Tyne", "Nottingham", "Leicester", "Coventry", "Bradford", "Plymouth",
+  "Derby", "Wolverhampton", "Southampton", "Portsmouth", "Oxford", "Cambridge",
+  "Brighton", "Reading", "Norwich", "Milton Keynes", "Exeter", "Gloucester",
+  "Cheltenham", "Worcester", "Stoke-on-Trent", "Swindon", "Northampton", "Ipswich",
+  "York", "Hull", "Middlesbrough", "Sunderland", "Blackpool", "Preston", "Blackburn",
+  "Bolton", "Wigan", "Stockport", "Salford", "Huddersfield", "Halifax", "Wakefield",
+  "Rotherham", "Barnsley", "Doncaster",
+  // Lake District towns
+  "Keswick", "Ambleside", "Windermere", "Bowness-on-Windermere", "Kendal",
+  "Penrith", "Carlisle", "Coniston", "Grasmere", "Kirkby Stephen",
+  // Yorkshire Dales / Peak District
+  "Skipton", "Harrogate", "Ilkley", "Settle", "Hawes", "Richmond", "Ripon",
+  "Buxton", "Bakewell", "Castleton", "Matlock",
+  // North East England
+  "Hexham", "Alnwick", "Berwick-upon-Tweed",
+  // Scottish cities & towns
+  "Edinburgh", "Glasgow", "Aberdeen", "Dundee", "Perth", "Stirling", "Inverness",
+  "Fort William", "Aviemore", "Pitlochry", "Callander", "Aberfoyle", "Glencoe",
+  "Tyndrum", "Dunkeld", "Balloch", "Crieff",
+  // Wales
+  "Cardiff", "Swansea", "Newport", "Wrexham", "Bangor", "Caernarfon",
+  "Betws-y-Coed", "Llanberis", "Brecon", "Abergavenny", "Hay-on-Wye",
+  "Machynlleth", "Dolgellau", "Barmouth",
+  // Northern Ireland & Ireland
+  "Belfast", "Derry", "Dublin", "Cork", "Galway", "Limerick", "Killarney",
+  "Tralee", "Kilkenny", "Waterford",
+  // International hiking bases
+  "Chamonix, France", "Zermatt, Switzerland", "Grindelwald, Switzerland",
+  "Interlaken, Switzerland", "Innsbruck, Austria", "Salzburg, Austria",
+  "Courmayeur, Italy", "Aosta, Italy", "Kathmandu, Nepal",
+  "Cusco, Peru", "Cape Town, South Africa", "Nairobi, Kenya",
+];
+
 const MOUNTAINS = [
   // Scottish Munros & Corbetts
   "Ben Nevis", "Ben Macdui", "Braeriach", "Cairn Toul", "Cairn Gorm",
@@ -326,6 +362,12 @@ function StepPlan({
   equipment: Equipment[]; toggleEquipment: (v: Equipment) => void;
   location: string; setLocation: (v: string) => void;
 }) {
+  const [showLocSuggestions, setShowLocSuggestions] = useState(false);
+
+  const locSuggestions = location.trim().length >= 2
+    ? LOCATIONS.filter(l => l.toLowerCase().includes(location.toLowerCase())).slice(0, 6)
+    : [];
+
   const EQUIP_OPTS: { value: Equipment; label: string; icon: string }[] = [
     { value: "gym",     label: "Gym membership",   icon: "🏋️" },
     { value: "weights", label: "Home weights",      icon: "💪" },
@@ -381,12 +423,29 @@ function StepPlan({
         <TextInput
           style={s.locationInput}
           value={location}
-          onChangeText={setLocation}
+          onChangeText={v => { setLocation(v); setShowLocSuggestions(true); }}
+          onFocus={() => setShowLocSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowLocSuggestions(false), 200)}
           placeholder="City, town or postcode"
           placeholderTextColor={T.textDim}
           autoCorrect={false}
           returnKeyType="done"
         />
+        {showLocSuggestions && locSuggestions.length > 0 && (
+          <View style={s.suggestionsCard}>
+            {locSuggestions.map((name, i) => (
+              <TouchableOpacity
+                key={name}
+                style={[s.suggestionRow, i < locSuggestions.length - 1 && s.suggestionBorder]}
+                onPress={() => { setLocation(name); setShowLocSuggestions(false); }}
+                activeOpacity={0.7}
+              >
+                <MapPin size={13} color={T.textMuted} />
+                <Text style={s.suggestionText}>{name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <Text style={s.fieldHint}>Used to find local hills for your training sessions.</Text>
       </QGroup>
     </View>

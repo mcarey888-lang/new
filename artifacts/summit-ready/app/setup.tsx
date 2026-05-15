@@ -74,6 +74,34 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+const LOCATIONS = [
+  "London", "Manchester", "Birmingham", "Bristol", "Liverpool", "Leeds", "Sheffield",
+  "Newcastle upon Tyne", "Nottingham", "Leicester", "Coventry", "Bradford", "Plymouth",
+  "Derby", "Wolverhampton", "Southampton", "Portsmouth", "Oxford", "Cambridge",
+  "Brighton", "Reading", "Norwich", "Milton Keynes", "Exeter", "Gloucester",
+  "Cheltenham", "Worcester", "Stoke-on-Trent", "Swindon", "Northampton", "Ipswich",
+  "York", "Hull", "Middlesbrough", "Sunderland", "Blackpool", "Preston", "Blackburn",
+  "Bolton", "Wigan", "Stockport", "Salford", "Huddersfield", "Halifax", "Wakefield",
+  "Rotherham", "Barnsley", "Doncaster",
+  "Keswick", "Ambleside", "Windermere", "Bowness-on-Windermere", "Kendal",
+  "Penrith", "Carlisle", "Coniston", "Grasmere", "Kirkby Stephen",
+  "Skipton", "Harrogate", "Ilkley", "Settle", "Hawes", "Richmond", "Ripon",
+  "Buxton", "Bakewell", "Castleton", "Matlock",
+  "Hexham", "Alnwick", "Berwick-upon-Tweed",
+  "Edinburgh", "Glasgow", "Aberdeen", "Dundee", "Perth", "Stirling", "Inverness",
+  "Fort William", "Aviemore", "Pitlochry", "Callander", "Aberfoyle", "Glencoe",
+  "Tyndrum", "Dunkeld", "Balloch", "Crieff",
+  "Cardiff", "Swansea", "Newport", "Wrexham", "Bangor", "Caernarfon",
+  "Betws-y-Coed", "Llanberis", "Brecon", "Abergavenny", "Hay-on-Wye",
+  "Machynlleth", "Dolgellau", "Barmouth",
+  "Belfast", "Derry", "Dublin", "Cork", "Galway", "Limerick", "Killarney",
+  "Tralee", "Kilkenny", "Waterford",
+  "Chamonix, France", "Zermatt, Switzerland", "Grindelwald, Switzerland",
+  "Interlaken, Switzerland", "Innsbruck, Austria", "Salzburg, Austria",
+  "Courmayeur, Italy", "Aosta, Italy", "Kathmandu, Nepal",
+  "Cusco, Peru", "Cape Town, South Africa", "Nairobi, Kenya",
+];
+
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { setSummitGoal } = useApp();
@@ -96,6 +124,7 @@ export default function SetupScreen() {
   const [trainingDays, setTrainingDays] = useState(4);
   const [hillDays, setHillDays] = useState(2);
   const [loc, setLoc] = useState("");
+  const [showLocSuggestions, setShowLocSuggestions] = useState(false);
   const [radius, setRadius] = useState("25");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -868,12 +897,37 @@ export default function SetupScreen() {
               <Text style={styles.fieldHint}>Town, city, or postcode — used to find your local training hills</Text>
               <TextInput
                 style={inp("loc")} value={loc}
-                onChangeText={v => { setLoc(v); setHillSearchState("idle"); setSetupHills([]); setPreferredHills([]); }}
+                onChangeText={v => { setLoc(v); setShowLocSuggestions(true); setHillSearchState("idle"); setSetupHills([]); setPreferredHills([]); }}
+                onFocus={() => setShowLocSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowLocSuggestions(false), 200)}
                 placeholder="e.g. Leeds, UK or LS1 1AA"
                 placeholderTextColor={T.textDim}
                 returnKeyType="search"
                 onSubmitEditing={fetchSetupHills}
               />
+              {showLocSuggestions && loc.trim().length >= 2 && (
+                LOCATIONS.filter(l => l.toLowerCase().includes(loc.toLowerCase())).slice(0, 6).length > 0
+              ) && (
+                <View style={styles.locSuggestionsCard}>
+                  {LOCATIONS.filter(l => l.toLowerCase().includes(loc.toLowerCase())).slice(0, 6).map((name, i, arr) => (
+                    <TouchableOpacity
+                      key={name}
+                      style={[styles.locSuggestionRow, i < arr.length - 1 && styles.locSuggestionBorder]}
+                      onPress={() => {
+                        setLoc(name);
+                        setShowLocSuggestions(false);
+                        setHillSearchState("idle");
+                        setSetupHills([]);
+                        setPreferredHills([]);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <MapPin size={13} color={T.textMuted} />
+                      <Text style={styles.locSuggestionText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               {errors.loc && <Text style={styles.errorText}>{errors.loc}</Text>}
             </View>
 
@@ -1281,6 +1335,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white,
   },
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
+  locSuggestionsCard: {
+    backgroundColor: T.card, borderRadius: 12,
+    borderWidth: 1, borderColor: T.border,
+    overflow: "hidden", marginTop: 2,
+  },
+  locSuggestionRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  locSuggestionBorder: { borderBottomWidth: 1, borderBottomColor: T.border },
+  locSuggestionText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.white },
 
   mountainInputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   lookupSpinner: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
