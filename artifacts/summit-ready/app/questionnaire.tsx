@@ -499,6 +499,11 @@ export default function QuestionnaireScreen() {
       hillDays,
       equipment,
       location: location.trim(),
+      rawFitnessLevel: fitnessLevel,
+      rawExerciseFreq: exerciseFreq,
+      rawElevation: elevation,
+      rawRunning: running,
+      rawUphillFreq: uphillFreq,
     }));
 
     router.push({

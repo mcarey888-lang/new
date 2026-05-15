@@ -144,17 +144,43 @@ export default function SetupScreen() {
           hillDays?: number;
           equipment?: Equipment[];
           location?: string;
+          rawFitnessLevel?: number;
+          rawExerciseFreq?: number;
+          rawElevation?: number;
+          rawRunning?: number;
+          rawUphillFreq?: number;
         };
         if (data.mountainName) {
           skipLookupRef.current = true;
           setName(data.mountainName);
         }
-        if (data.fitnessLevel) setFit(data.fitnessLevel);
         if (data.trainingDays) setTrainingDays(data.trainingDays);
         if (data.hillDays) setHillDays(data.hillDays);
         if (data.equipment?.length) setEquipment(data.equipment);
         if (data.location) setLoc(data.location);
         if (typeof data.fitnessBaseline === "number") setPrefillBaseline(data.fitnessBaseline);
+
+        // Map raw questionnaire answers to fitness sliders so the
+        // slider-derivation effect produces the correct fitness level.
+        if (typeof data.rawFitnessLevel === "number") {
+          const readinessMap: Record<number, number> = { 1: 12, 2: 38, 3: 65, 4: 88 };
+          const mapped = readinessMap[data.rawFitnessLevel];
+          if (mapped !== undefined) setReadiness(mapped);
+        }
+        if (typeof data.rawExerciseFreq === "number") {
+          const freqMap: Record<number, number> = { 1: 10, 2: 30, 3: 62, 4: 85 };
+          const mapped = freqMap[data.rawExerciseFreq];
+          if (mapped !== undefined) setFreqSlider(mapped);
+        }
+
+        // Pre-fill experience chips — questionnaire indices map 1-to-1
+        if (typeof data.rawElevation === "number" && data.rawElevation > 0)
+          setExpElevation(data.rawElevation);
+        if (typeof data.rawRunning === "number" && data.rawRunning > 0)
+          setExpRunning(data.rawRunning);
+        // Questionnaire uphillFreq has 4 options; setup chips have 3 (rarely / monthly / weekly+)
+        if (typeof data.rawUphillFreq === "number" && data.rawUphillFreq > 0)
+          setExpUphill(Math.min(data.rawUphillFreq, 3));
       } catch {}
     });
   }, []);
