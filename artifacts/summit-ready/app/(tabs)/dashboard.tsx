@@ -722,28 +722,6 @@ export default function DashboardScreen() {
           </View>
         </Animated.View>
 
-        {/* Action Buttons — kept near top so always visible without scrolling */}
-        <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.actions}>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/log")}
-            style={styles.primaryAction}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.primaryActionGrad}>
-              <Plus size={18} color="#fff" />
-              <Text style={styles.primaryActionText}>Log Session</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/plan")}
-            style={styles.secondaryAction}
-            activeOpacity={0.85}
-          >
-            <Calendar size={17} color={T.green} />
-            <Text style={styles.secondaryActionText}>View Plan</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <StatCard icon={Calendar} label="Days Remaining" value={days} accent={T.blue} delay={120} />

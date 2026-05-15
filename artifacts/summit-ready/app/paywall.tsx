@@ -198,24 +198,7 @@ export default function PaywallScreen() {
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.featuresSection}>
-          {FEATURES.map((f, i) => {
-            const FIcon = f.icon;
-            return (
-            <View key={i} style={styles.featureRow}>
-              <View style={styles.featureIconWrap}>
-                <FIcon size={16} color={T.green} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
-              </View>
-            </View>
-          );
-          })}
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(300).duration(600)} style={styles.planSection}>
+        <Animated.View entering={FadeInDown.delay(220).duration(600)} style={styles.planSection}>
           <View style={styles.trialBanner}>
             <Gift size={14} color={T.green} />
             <Text style={styles.trialBannerText}>7-day free trial included — cancel anytime</Text>
@@ -274,7 +257,7 @@ export default function PaywallScreen() {
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInUp.delay(400).duration(600)} style={styles.ctaSection}>
+        <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.ctaSection}>
           <TouchableOpacity
             onPress={handleSubscribe}
             disabled={isPurchasing || !activePkg}
@@ -307,6 +290,23 @@ export default function PaywallScreen() {
               ? <ActivityIndicator size="small" color={T.textMuted} />
               : <Text style={styles.restoreText}>Restore purchases</Text>}
           </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.featuresSection}>
+          {FEATURES.map((f, i) => {
+            const FIcon = f.icon;
+            return (
+            <View key={i} style={styles.featureRow}>
+              <View style={styles.featureIconWrap}>
+                <FIcon size={16} color={T.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.featureTitle}>{f.title}</Text>
+                <Text style={styles.featureDesc}>{f.desc}</Text>
+              </View>
+            </View>
+          );
+          })}
         </Animated.View>
       </ScrollView>
 
