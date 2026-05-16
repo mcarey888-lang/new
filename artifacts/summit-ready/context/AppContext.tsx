@@ -593,12 +593,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
-    const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
-    const newHike: ExploreHike = { ...hike, id };
-    const updated = [newHike, ...exploreHikes];
-    setExploreHikes(updated);
-    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
-    await addSession({
+    const hikeId = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+    const newHike: ExploreHike = { ...hike, id: hikeId };
+    const updatedHikes = [newHike, ...exploreHikes];
+    setExploreHikes(updatedHikes);
+    await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updatedHikes));
+
+    const sessionId = (Date.now() + 1).toString() + Math.random().toString(36).slice(2, 8);
+    const newSession: Session = {
+      id: sessionId,
       date: hike.date,
       type: "bigDay",
       distance: hike.distance,
@@ -609,8 +612,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completed: true,
       weekNumber: 0,
       hillName: hike.name,
-    });
-  }, [exploreHikes, addSession]);
+    };
+    setSessions(prev => [newSession, ...prev]);
+    const existingStr = await AsyncStorage.getItem(SESSIONS_KEY);
+    const existing: Session[] = existingStr ? (JSON.parse(existingStr) as Session[]) : [];
+    await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify([newSession, ...existing]));
+  }, [exploreHikes]);
 
   const deleteExploreHike = useCallback(async (id: string) => {
     const updated = exploreHikes.filter(h => h.id !== id);
