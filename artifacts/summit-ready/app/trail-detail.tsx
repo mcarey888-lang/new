@@ -10,7 +10,7 @@ import {
   Wind,
   Package,
 } from "lucide-react-native";
-import { TrailMap } from "@/components/TrailMap";
+import { Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useRef, useState } from "react";
@@ -109,6 +109,7 @@ export default function TrailDetailScreen() {
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [mapImageError, setMapImageError] = useState(false);
 
   React.useEffect(() => {
     readLiveTrailsFromCache().then((trails) => {
@@ -122,8 +123,8 @@ export default function TrailDetailScreen() {
     return all.find((t) => t.id === params.id) ?? null;
   }, [params.id, customRoutes, liveTrails]);
 
-  // Reset image error state when trail changes
-  React.useEffect(() => { setImageError(false); }, [trail?.id]);
+  // Reset error states when trail changes
+  React.useEffect(() => { setImageError(false); setMapImageError(false); }, [trail?.id]);
 
   if (!cacheLoaded) {
     return (
@@ -303,13 +304,21 @@ export default function TrailDetailScreen() {
         {/* Route map */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.section}>
           <Text style={s.sectionTitle}>Route map</Text>
-          <TrailMap
-            landmarkName={extractLandmarkName(trail.name)}
-            trailLocation={trail.location}
-            difficultyColor={dc}
-            onInteractionStart={() => scrollRef.current?.setNativeProps({ scrollEnabled: false })}
-            onInteractionEnd={() => scrollRef.current?.setNativeProps({ scrollEnabled: true })}
-          />
+          <View style={s.mapContainer}>
+            {!mapImageError ? (
+              <Image
+                source={{ uri: `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400` }}
+                style={s.mapImage}
+                resizeMode="cover"
+                onError={() => setMapImageError(true)}
+              />
+            ) : (
+              <View style={[s.mapImage, s.mapFallback]}>
+                <Text style={{ fontSize: 32, opacity: 0.4 }}>{trail.emoji}</Text>
+                <Text style={s.mapFallbackText}>Route map unavailable</Text>
+              </View>
+            )}
+          </View>
         </Animated.View>
 
         {/* Weather */}
@@ -431,12 +440,10 @@ const s = StyleSheet.create({
   },
   benefitDot: { width: 8, height: 8, borderRadius: 4 },
   benefitText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  mapPlaceholder: {
-    height: 180, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    alignItems: "center", justifyContent: "center", gap: 10, overflow: "hidden", padding: 20,
-  },
-  mapTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.textMuted, textAlign: "center" },
-  mapBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 18 },
+  mapContainer: { borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: T.border },
+  mapImage: { width: "100%", height: 220 },
+  mapFallback: { backgroundColor: T.surface, alignItems: "center", justifyContent: "center", gap: 8 },
+  mapFallbackText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
   infoCard: {
     flexDirection: "row", gap: 12, alignItems: "flex-start",
     backgroundColor: T.blueDim, borderRadius: 14, borderWidth: 1, borderColor: T.blue + "25", padding: 14,

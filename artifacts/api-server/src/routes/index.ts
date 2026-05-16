@@ -7,6 +7,7 @@ import adjustPlanRouter from "./adjust-plan";
 import coachRouter from "./coach";
 import alpineRouter from "./alpine";
 import trailRouteRouter from "./trail-route";
+import trailMapImageRouter from "./trail-map-image";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(adjustPlanRouter);
 router.use(coachRouter);
 router.use(alpineRouter);
 router.use(trailRouteRouter);
+router.use(trailMapImageRouter);
 
 export default router;
