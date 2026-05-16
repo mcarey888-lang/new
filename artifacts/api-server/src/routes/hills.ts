@@ -335,9 +335,21 @@ const TrailSchema = z.object({
   difficulty: z.enum(["Easy", "Moderate", "Hard"]),
   terrain: z.enum(["woodland", "hill", "mountain", "coastal", "road", "mixed"]),
   routeType: z.enum(["loop", "out-and-back", "point-to-point"]),
-  bestFor: z.array(z.enum(["training", "family walk", "summit prep", "scenic walk"])),
+  bestFor: z
+    .array(z.string())
+    .transform((arr) =>
+      arr.filter((v): v is "training" | "family walk" | "summit prep" | "scenic walk" =>
+        ["training", "family walk", "summit prep", "scenic walk"].includes(v)
+      )
+    ),
   description: z.string(),
-  trainingBenefits: z.array(z.enum(["cardio", "elevation", "endurance", "pack weight"])),
+  trainingBenefits: z
+    .array(z.string())
+    .transform((arr) =>
+      arr.filter((v): v is "cardio" | "elevation" | "endurance" | "pack weight" =>
+        ["cardio", "elevation", "endurance", "pack weight"].includes(v)
+      )
+    ),
   emoji: z.string(),
 });
 
@@ -382,9 +394,9 @@ Other rules:
 - difficulty: Easy (≤200m gain or gentle), Moderate (200-500m or moderate terrain), Hard (500m+ or challenging terrain)
 - terrain: best single descriptor for the dominant terrain
 - routeType: "loop" (circular), "out-and-back" (same path both ways), "point-to-point" (different start/end)
-- bestFor: 1-3 relevant tags
+- bestFor: 1-3 tags describing WHO the trail suits — ONLY use: "training" (fitness/cardio focus), "family walk" (easy/accessible), "summit prep" (mountain preparation), "scenic walk" (beautiful but not fitness-focused). DO NOT put "endurance", "cardio" or any other word here — those belong in trainingBenefits only.
 - description: 2-3 sentences describing the route character, highlights and why it stands out. Be specific to the actual local geography.
-- trainingBenefits: "cardio" always, add "elevation" if significant climb, "endurance" for long routes, "pack weight" for demanding mountain routes
+- trainingBenefits: tags for the PHYSICAL training value — ONLY use: "cardio" (always include), "elevation" (significant climb), "endurance" (long route), "pack weight" (demanding mountain route). These are separate from bestFor.
 - emoji: single emoji representing the trail character
 - Include a range: some short easy walks, some long hard routes, some medium day hikes`;
 
