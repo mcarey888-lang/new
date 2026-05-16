@@ -17,6 +17,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  ImageBackground,
   Platform,
   ScrollView,
   StyleSheet,
@@ -70,6 +71,12 @@ const BEST_FOR_LABEL: Record<string, string> = {
   "scenic walk": "📸 Scenic",
 };
 
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
+
+const HERO_H = 290;
+
 const KIT_CHECKLIST = [
   "Map & compass (or GPS device)",
   "Waterproof jacket & trousers",
@@ -91,6 +98,8 @@ export default function TrailDetailScreen() {
   const [logVisible, setLogVisible] = useState(false);
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
     readLiveTrailsFromCache().then((trails) => {
@@ -103,6 +112,28 @@ export default function TrailDetailScreen() {
     const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
     return all.find((t) => t.id === params.id) ?? null;
   }, [params.id, customRoutes, liveTrails]);
+
+  useEffect(() => {
+    if (!trail) return;
+    let cancelled = false;
+    setImageUri(null);
+    setImageLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/mountain-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: `${trail.name} ${trail.location}` }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { imageUrl: string | null };
+          if (data.imageUrl && !cancelled) setImageUri(data.imageUrl);
+        }
+      } catch { /* fall through to gradient fallback */ }
+      if (!cancelled) setImageLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [trail?.name]);
 
   if (!cacheLoaded) {
     return (
@@ -155,32 +186,58 @@ export default function TrailDetailScreen() {
   }
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={[
-          s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12, paddingBottom: 40 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Back */}
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <ArrowLeft size={20} color={T.text} />
-        </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-        {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(400)} style={s.hero}>
-          <View style={[s.heroIcon, { backgroundColor: dc + "18" }]}>
-            <Text style={s.heroEmoji}>{trail.emoji}</Text>
-          </View>
-          <View style={{ flex: 1, gap: 4 }}>
+        {/* ── Hero Image ──────────────────────────────── */}
+        <View style={[s.heroContainer, { height: HERO_H }]}>
+          {imageLoading ? (
+            <LinearGradient colors={["#0E1A10", "#0D1117", T.bg]} style={StyleSheet.absoluteFill} />
+          ) : imageUri ? (
+            <ImageBackground
+              source={{ uri: imageUri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              onError={() => { setImageUri(null); }}
+            >
+              <LinearGradient
+                colors={["rgba(0,0,0,0.6)", "transparent"]}
+                style={[StyleSheet.absoluteFill, { bottom: "40%" }]}
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(8,10,14,0.92)", T.bg]}
+                style={[StyleSheet.absoluteFill, { top: "38%" }]}
+              />
+            </ImageBackground>
+          ) : (
+            <LinearGradient
+              colors={[dc + "55", "#0E1810", T.bg]}
+              style={StyleSheet.absoluteFill}
+            >
+              <Text style={s.heroFallbackEmoji}>{trail.emoji}</Text>
+            </LinearGradient>
+          )}
+
+          {/* Back button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[s.backBtn, { top: Platform.OS === "web" ? 16 : insets.top + 10 }]}
+          >
+            <ArrowLeft size={20} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Trail name + location pinned to bottom */}
+          <View style={s.heroTextBlock}>
             <Text style={s.heroName}>{trail.name}</Text>
             <View style={s.heroMeta}>
-              <MapPin size={12} color={T.textMuted} />
+              <MapPin size={13} color="rgba(255,255,255,0.7)" />
               <Text style={s.heroLocation}>{trail.location}</Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
+
+        {/* ── Content ─────────────────────────────────── */}
+        <View style={s.content}>
 
         {/* Stats row */}
         <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.statsCard}>
@@ -327,6 +384,8 @@ export default function TrailDetailScreen() {
             <View style={s.comingSoon}><Text style={s.comingSoonText}>Coming soon</Text></View>
           </TouchableOpacity>
         </Animated.View>
+
+        </View>{/* end content */}
       </ScrollView>
 
       <LogHikeModal
@@ -336,19 +395,22 @@ export default function TrailDetailScreen() {
         prefillElevation={trail.elevationGain}
         onClose={() => setLogVisible(false)}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, gap: 16 },
-  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
-  hero: { flexDirection: "row", alignItems: "center", gap: 14 },
-  heroIcon: { width: 54, height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  heroEmoji: { fontSize: 26 },
-  heroName: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
+  heroContainer: { position: "relative", overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  heroFallbackEmoji: { fontSize: 56, opacity: 0.7, marginBottom: 40 },
+  backBtn: {
+    position: "absolute", left: 16, width: 38, height: 38, borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center",
+  },
+  heroTextBlock: { position: "absolute", bottom: 0, left: 20, right: 20, paddingBottom: 18, gap: 5 },
+  heroName: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
   heroMeta: { flexDirection: "row", alignItems: "center", gap: 5 },
-  heroLocation: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  heroLocation: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
+  content: { paddingHorizontal: 20, paddingTop: 16, gap: 16 },
   statsCard: {
     flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
     borderWidth: 1, borderColor: T.border, padding: 16, justifyContent: "space-around",
