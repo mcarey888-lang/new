@@ -78,44 +78,18 @@ export default function HillDetailScreen() {
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState(false);
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const hillLat = lat ? parseFloat(lat) : null;
   const hillLng = lng ? parseFloat(lng) : null;
 
+  const heroImageUri = name && !imageError
+    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}`
+    : null;
+
   useEffect(() => {
     if (!name) return;
-
-    async function fetchWikiImage() {
-      try {
-        const words = name.split(/\s+/).filter(w => w.length > 3);
-        const candidates = [name, ...words].slice(0, 4);
-        for (const candidate of candidates) {
-          const searchRes = await fetch(
-            `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(candidate)}&limit=3&format=json&origin=*`
-          );
-          const searchData = await searchRes.json();
-          const titles: string[] = searchData[1] ?? [];
-          if (titles.length === 0) continue;
-          for (const t of titles) {
-            const summaryRes = await fetch(
-              `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`,
-              { headers: { Accept: "application/json" } }
-            );
-            const data = await summaryRes.json();
-            const url: string | undefined =
-              data.originalimage?.source ?? data.thumbnail?.source;
-            if (url) {
-              setImageUri(url);
-              setImageLoading(false);
-              return;
-            }
-          }
-        }
-      } catch {}
-      setImageLoading(false);
-    }
+    setImageError(false);
 
     async function fetchDetail() {
       try {
@@ -134,7 +108,6 @@ export default function HillDetailScreen() {
       }
     }
 
-    fetchWikiImage();
     fetchDetail();
   }, [name, location]);
 
@@ -149,15 +122,12 @@ export default function HillDetailScreen() {
       >
         {/* Hero image */}
         <View style={styles.heroContainer}>
-          {imageLoading ? (
-            <LinearGradient colors={["#0F2218", "#0A0C10"]} style={styles.heroImage}>
-              <ActivityIndicator color={T.green} style={{ marginTop: topInset + 60 }} />
-            </LinearGradient>
-          ) : imageUri ? (
+          {heroImageUri ? (
             <ImageBackground
-              source={{ uri: imageUri }}
+              source={{ uri: heroImageUri }}
               style={styles.heroImage}
               resizeMode="cover"
+              onError={() => setImageError(true)}
             >
               <LinearGradient
                 colors={["rgba(0,0,0,0.55)", "transparent"]}

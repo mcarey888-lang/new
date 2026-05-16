@@ -61,37 +61,13 @@ function MountainHero({
   isSubscribed: boolean;
   hasViewedPlan: boolean;
 }) {
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setImageUri(null);
-    setLoading(true);
+  useEffect(() => { setImageError(false); }, [mountainName]);
 
-    async function fetchWikiImage() {
-      try {
-        const res = await fetch(`${API_BASE}/mountain-image`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: mountainName }),
-        });
-        if (res.ok) {
-          const data = await res.json() as { imageUrl: string | null };
-          if (data.imageUrl && !cancelled) {
-            setImageUri(data.imageUrl);
-            setLoading(false);
-            return;
-          }
-        }
-      } catch {
-        /* fall through to gradient fallback */
-      }
-      if (!cancelled) setLoading(false);
-    }
-    fetchWikiImage();
-    return () => { cancelled = true; };
-  }, [mountainName]);
+  const heroImageUri = imageError
+    ? null
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
 
   const dateStr = summitDate
     ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
@@ -101,27 +77,12 @@ function MountainHero({
 
   return (
     <View style={heroStyles.container}>
-      {loading ? (
-        /* Shimmer while fetching */
-        <LinearGradient
-          colors={["#0F2218", "#0A0C10"]}
-          style={heroStyles.image}
-        >
-          <HeroContent
-            mountainName={mountainName}
-            dateStr={dateStr}
-            topInset={topInset}
-            onEdit={onEdit}
-            isSubscribed={isSubscribed}
-            hasViewedPlan={hasViewedPlan}
-          />
-        </LinearGradient>
-      ) : imageUri ? (
+      {heroImageUri ? (
         <ImageBackground
-          source={{ uri: imageUri }}
+          source={{ uri: heroImageUri }}
           style={heroStyles.image}
           resizeMode="cover"
-          onError={() => { setImageUri(null); }}
+          onError={() => { setImageError(true); }}
         >
           {/* top vignette */}
           <LinearGradient
