@@ -386,7 +386,7 @@ CRITICAL GEOGRAPHIC RULES (violations make the entire response worthless):
 5. location field: use the specific town/village and county the trail is actually in (e.g. "Rossendale, Lancashire" not "Peak District, Derbyshire" if the user is in BB4).
 
 Other rules:
-- Return 12-15 trails with a good mix of difficulties, terrains and route types
+- Return 8-10 trails with a good mix of difficulties, terrains and route types
 - name: real trail or walk name
 - distance: total route distance in km (round trip for out-and-back)
 - elevationGain: total ascent in metres for the full route
@@ -412,8 +412,8 @@ router.post("/trails-lookup", async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
-      max_completion_tokens: 2000,
+      model: "gpt-4o-mini",
+      max_completion_tokens: 1400,
       messages: [
         { role: "system", content: TRAILS_SYSTEM_PROMPT },
         {
