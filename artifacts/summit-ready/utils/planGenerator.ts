@@ -99,48 +99,74 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   return { type: "cardio", label: o.label, description: o.description, targetElevation: elevTarget, duration: dur };
 }
 
-function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal): PlanSession {
+function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {
   const hill = hills[0];
   const isEasy = goal.difficulty === "Easy";
   const hillDur = isEasy ? "45–60 min" : "60–90 min";
 
   if (!hill) {
+    const noHillRaw = Math.max(1, Math.ceil((targetElev * 0.5) / 150));
+    const noHillReps = weekNum <= 1 ? 1 : weekNum <= 2 ? Math.min(noHillRaw, 2) : noHillRaw;
     return {
       type: "hill",
       label: "Hill Repeats",
-      description: `Find your nearest hill and repeat climbs. Target ${Math.round(targetElev * 0.5)}m total elevation gain — ${Math.round((targetElev * 0.5 / goal.elevationGain) * 100)}% of your summit's ${goal.elevationGain}m.`,
+      description: `Find your nearest hill and repeat climbs. Target ${Math.round(targetElev * 0.5)}m total elevation gain — ${Math.round((targetElev * 0.5 / goal.elevationGain) * 100)}% of your summit's ${goal.elevationGain}m. Aim for ${noHillReps} ${noHillReps === 1 ? "rep" : "reps"} today.`,
       targetElevation: Math.round(targetElev * 0.5),
       duration: hillDur,
     };
   }
 
-  const targetReps = Math.max(1, Math.ceil((targetElev * 0.5) / hill.elevation));
+  const rawReps = Math.max(1, Math.ceil((targetElev * 0.5) / hill.elevation));
+  // Start slow and build: week 1 = 1 rep always, week 2 = max 2 reps, week 3+ = calculated
+  const targetReps = weekNum <= 1 ? 1 : weekNum <= 2 ? Math.min(rawReps, 2) : rawReps;
   const totalGain = targetReps * hill.elevation;
   const pctOfSummit = Math.round((totalGain / goal.elevationGain) * 100);
+  const repWord = targetReps === 1 ? "rep" : "reps";
+  const introNote = weekNum <= 1
+    ? " First session — keep it easy, focus on form and getting comfortable on the hill."
+    : weekNum <= 2
+    ? " Early training — settle into your pace and build confidence."
+    : "";
 
   return {
     type: "hill",
     label: `Hill Repeats — ${hill.name}`,
-    description: `${hill.name} (${hill.elevation}m per climb × ${targetReps} reps = ${totalGain}m) — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. ${hill.distance}km away. Walk or run up, walk down for recovery.`,
+    description: `${hill.name} (${hill.elevation}m per climb × ${targetReps} ${repWord} = ${totalGain}m) — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. ${hill.distance}km away. Walk or run up, walk down for recovery.${introNote}`,
     targetElevation: totalGain,
     duration: hillDur,
   };
 }
 
-function createBigDaySession(targetElev: number, goal: SummitGoal, hills: TrainingWeek["hills"]): PlanSession {
+function createBigDaySession(targetElev: number, goal: SummitGoal, hills: TrainingWeek["hills"], weekNum: number): PlanSession {
   const isEasy = goal.difficulty === "Easy";
   const bigTarget = Math.round(targetElev * 0.75);
-  const pctOfSummit = Math.round((bigTarget / goal.elevationGain) * 100);
   const hill = hills[0];
-  const hillDetail = hill
-    ? `${hill.name}: ${Math.ceil(bigTarget / hill.elevation)} repeats of ${hill.elevation}m = ${bigTarget}m`
-    : `a long hike or multi-hill route`;
+
+  let hillDetail: string;
+  let actualTarget = bigTarget;
+  if (hill) {
+    const rawReps = Math.ceil(bigTarget / hill.elevation);
+    // Cap reps in early weeks — build confidence before volume
+    const cappedReps = weekNum <= 1 ? 1 : weekNum <= 2 ? Math.min(rawReps, 2) : rawReps;
+    actualTarget = cappedReps * hill.elevation;
+    const repWord = cappedReps === 1 ? "repeat" : "repeats";
+    hillDetail = `${hill.name}: ${cappedReps} ${repWord} of ${hill.elevation}m = ${actualTarget}m`;
+  } else {
+    hillDetail = "a long hike or multi-hill route";
+  }
+
+  const pctOfSummit = Math.round((actualTarget / goal.elevationGain) * 100);
+  const introNote = weekNum <= 1
+    ? " This is your first big day — keep the pace easy and treat it as an exploration."
+    : weekNum <= 2
+    ? " Still early in training — go at a comfortable, sustainable effort."
+    : " Go at a steady, sustainable pace.";
 
   return {
     type: "bigDay",
     label: "Big Day Out",
-    description: `Full effort long session. Target: ${hillDetail} — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain. This session directly prepares your body for the demands of summit day. Go at a steady, sustainable pace.`,
-    targetElevation: bigTarget,
+    description: `Full effort long session. Target: ${hillDetail} — ${pctOfSummit}% of your summit's ${goal.elevationGain}m elevation gain.${introNote}`,
+    targetElevation: actualTarget,
     duration: isEasy ? "1–3 hours" : "2–5 hours",
   };
 }
@@ -214,9 +240,9 @@ function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hil
   const cardioDays = Math.max(0, totalDays - hillDays - bigDayCount);
 
   const out: PlanSession[] = [];
-  for (let i = 0; i < hillDays; i++) out.push(createHillSession(weekElev, hills, goal));
+  for (let i = 0; i < hillDays; i++) out.push(createHillSession(weekElev, hills, goal, weekNum));
   for (let i = 0; i < cardioDays; i++) out.push(createEquipmentCardioSession(weekElev, weekNum, goal, i));
-  if (bigDayCount > 0) out.push(createBigDaySession(weekElev, goal, hills));
+  if (bigDayCount > 0) out.push(createBigDaySession(weekElev, goal, hills, weekNum));
   return out;
 }
 
