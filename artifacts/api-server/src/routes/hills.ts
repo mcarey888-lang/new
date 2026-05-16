@@ -345,7 +345,7 @@ const TrailsResponseSchema = z.object({
   trails: z.array(TrailSchema),
 });
 
-const TRAILS_SYSTEM_PROMPT = `You are an expert hiking guide who knows trails worldwide. Given a location and radius, return a varied mix of real nearby walking and hiking trails suitable for outdoor enthusiasts. Return ONLY valid JSON — no markdown, no explanation:
+const TRAILS_SYSTEM_PROMPT = `You are an expert hiking guide with precise geographic knowledge. Your job is to return ONLY trails that genuinely exist within the specified radius of the given location. Geographic accuracy is the single most important rule — trails that are outside the radius are useless and harmful. Return ONLY valid JSON — no markdown, no explanation.
 
 {
   "trails": [
@@ -366,23 +366,27 @@ const TRAILS_SYSTEM_PROMPT = `You are an expert hiking guide who knows trails wo
   ]
 }
 
-Rules:
+CRITICAL GEOGRAPHIC RULES (violations make the entire response worthless):
+1. If the location is a UK postcode (e.g. "BB4 4BH", "M1 1AE", "EX1 1AA"), resolve it to its exact town and county FIRST — then find trails within the radius of that resolved location. BB4 = Rossendale, Lancashire. M1 = Manchester city centre. EX1 = Exeter, Devon. Never confuse postcode districts.
+2. Every single trail MUST start within the specified km radius of the given location. If the radius is 30km, no trail should be more than 30km from the centre point.
+3. Do NOT return trails from a different county, region or country unless the radius genuinely reaches there geographically.
+4. If you are uncertain whether a trail is within radius, do not include it.
+5. location field: use the specific town/village and county the trail is actually in (e.g. "Rossendale, Lancashire" not "Peak District, Derbyshire" if the user is in BB4).
+
+Other rules:
 - Return 12-15 trails with a good mix of difficulties, terrains and route types
-- name: real trail or walk name (e.g. "Great Ridge Loop", "Rivington Pike Circuit")
-- location: specific area name within the region (e.g. "Peak District, Derbyshire")
+- name: real trail or walk name
 - distance: total route distance in km (round trip for out-and-back)
 - elevationGain: total ascent in metres for the full route
 - estimatedTime: e.g. "1h 30m", "3h 00m", "5h 30m"
 - difficulty: Easy (≤200m gain or gentle), Moderate (200-500m or moderate terrain), Hard (500m+ or challenging terrain)
 - terrain: best single descriptor for the dominant terrain
 - routeType: "loop" (circular), "out-and-back" (same path both ways), "point-to-point" (different start/end)
-- bestFor: 1-3 relevant tags — "training" for fitness focus, "summit prep" for mountain prep, "family walk" for accessible/short, "scenic walk" for beautiful but not training-focused
-- description: 2-3 sentences describing the route character, highlights and why it stands out. Be evocative and specific.
-- trainingBenefits: relevant tags — "cardio" always, add "elevation" if significant climb, "endurance" for long routes, "pack weight" for demanding mountain routes
-- emoji: single emoji representing the trail character (🏔️ 🌿 ⛰️ 🌊 🌲 🪨 🗻 🏕️ 🌄 🗼 etc.)
-- Use real place names for the given location
-- Include a range: some short easy walks, some long hard routes, some medium day hikes
-- For UK: include fells, moors, coastal paths, forest trails, canal paths elevated routes. For other countries: use locally appropriate trail types.`;
+- bestFor: 1-3 relevant tags
+- description: 2-3 sentences describing the route character, highlights and why it stands out. Be specific to the actual local geography.
+- trainingBenefits: "cardio" always, add "elevation" if significant climb, "endurance" for long routes, "pack weight" for demanding mountain routes
+- emoji: single emoji representing the trail character
+- Include a range: some short easy walks, some long hard routes, some medium day hikes`;
 
 router.post("/trails-lookup", async (req, res) => {
   const { location, radius } = req.body as { location?: string; radius?: number };
@@ -402,7 +406,7 @@ router.post("/trails-lookup", async (req, res) => {
         { role: "system", content: TRAILS_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}"`,
+          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}". If this is a UK postcode, resolve it to the correct town and county first, then only return trails genuinely within ${r}km of that resolved location. Do not return trails from other regions.`,
         },
       ],
     });
