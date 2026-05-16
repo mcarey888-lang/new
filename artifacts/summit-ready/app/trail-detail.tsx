@@ -77,6 +77,15 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 const HERO_H = 290;
 
+function extractLandmarkName(trailName: string): string {
+  return trailName
+    .replace(/\s+via\s+.+$/i, "")
+    .replace(/\s+(Circular|Circuit|Loop)$/i, "")
+    .replace(/\s+(Tourist\s+Route|Easy\s+Day|Long\s+Walk|Route|Walk|Path|Section)$/i, "")
+    .replace(/\s+(North|South|East|West)\s+Ridge$/i, "")
+    .trim();
+}
+
 const KIT_CHECKLIST = [
   "Map & compass (or GPS device)",
   "Waterproof jacket & trousers",
@@ -123,7 +132,7 @@ export default function TrailDetailScreen() {
         const res = await fetch(`${API_BASE}/mountain-image`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: `${trail.name} ${trail.location}` }),
+          body: JSON.stringify({ name: extractLandmarkName(trail.name) }),
         });
         if (res.ok) {
           const data = await res.json() as { imageUrl: string | null };
