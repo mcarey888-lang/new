@@ -142,7 +142,7 @@ export default function TrailListScreen() {
 
     try {
       const trails = await fetchLiveTrails(loc, radius);
-      if (!overrideLocation) await saveLiveTrailsCache(trails, loc, radius);
+      await saveLiveTrailsCache(trails, loc, radius);
       setLiveTrails(trails);
       liveTrailsRef.current = trails;
       setLocationLabel(loc);
