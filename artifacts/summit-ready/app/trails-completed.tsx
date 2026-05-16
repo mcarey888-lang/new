@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,16 +8,23 @@ import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import { SAMPLE_TRAILS } from "@/constants/trailData";
+import type { Trail } from "@/constants/trailData";
 import { TrailCard } from "@/components/TrailCard";
+import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
 
 export default function TrailsCompletedScreen() {
   const insets = useSafeAreaInsets();
   const { completedTrailIds, savedTrailIds, customRoutes } = useApp();
+  const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+
+  useEffect(() => {
+    readLiveTrailsFromCache().then(setLiveTrails);
+  }, []);
 
   const completed = useMemo(() => {
-    const all = [...customRoutes, ...SAMPLE_TRAILS];
+    const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
     return all.filter((t) => completedTrailIds.includes(t.id));
-  }, [completedTrailIds, customRoutes]);
+  }, [completedTrailIds, customRoutes, liveTrails]);
 
   const totalKm = completed.reduce((sum, t) => sum + t.distance, 0);
   const totalElevation = completed.reduce((sum, t) => sum + t.elevationGain, 0);

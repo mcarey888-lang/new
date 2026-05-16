@@ -1,7 +1,8 @@
-import { ArrowLeft, MapPin, Search, SlidersHorizontal, X } from "lucide-react-native";
+import { ArrowLeft, MapPin, Search, SlidersHorizontal, X, RefreshCw } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,8 +17,17 @@ import { router, useLocalSearchParams } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import { SAMPLE_TRAILS } from "@/constants/trailData";
-import type { TrailDifficulty, TrailTerrain, TrailBestFor, TrailRouteType } from "@/constants/trailData";
+import type { Trail, TrailDifficulty, TrailTerrain, TrailBestFor, TrailRouteType } from "@/constants/trailData";
 import { TrailCard } from "@/components/TrailCard";
+import {
+  LIVE_TRAILS_CACHE_KEY,
+  makeTrailId,
+  loadLiveTrailsCache,
+  saveLiveTrailsCache,
+} from "@/utils/liveTrailsCache";
+
+export { LIVE_TRAILS_CACHE_KEY };
+export type { LiveTrailsCache } from "@/utils/liveTrailsCache";
 
 type Difficulty = TrailDifficulty | "All";
 type Terrain = TrailTerrain | "All";
@@ -28,6 +38,24 @@ const DIFFICULTIES: Difficulty[] = ["All", "Easy", "Moderate", "Hard"];
 const TERRAINS: Terrain[] = ["All", "woodland", "hill", "mountain", "coastal", "road", "mixed"];
 const BEST_FOR: BestFor[] = ["All", "training", "family walk", "summit prep", "scenic walk"];
 const ROUTE_TYPES: RouteType[] = ["All", "loop", "out-and-back", "point-to-point"];
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
+
+async function fetchLiveTrails(location: string, radius: number): Promise<Trail[]> {
+  const res = await fetch(`${API_BASE}/trails-lookup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ location, radius }),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json() as { trails: Omit<Trail, "id">[] };
+  return data.trails.map((t) => ({
+    ...t,
+    id: makeTrailId(t.name, t.location),
+  }));
+}
 
 function Chip<T extends string>({ label, active, onPress }: { label: T; active: boolean; onPress: () => void }) {
   return (
@@ -67,7 +95,7 @@ function FilterRow<T extends string>({
 export default function TrailListScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ q?: string }>();
-  const { savedTrailIds, completedTrailIds, customRoutes } = useApp();
+  const { savedTrailIds, completedTrailIds, customRoutes, summitGoal } = useApp();
 
   const [query, setQuery] = useState(params.q ?? "");
   const [locationQuery, setLocationQuery] = useState("");
@@ -77,9 +105,68 @@ export default function TrailListScreen() {
   const [bestFor, setBestFor] = useState<BestFor>("All");
   const [routeType, setRouteType] = useState<RouteType>("All");
 
+  const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+  const [trailsLoading, setTrailsLoading] = useState(false);
+  const [trailsError, setTrailsError] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const liveTrailsRef = useRef<Trail[]>([]);
+
+  const location = summitGoal?.location ?? null;
+  const radius = summitGoal?.maxRadius ?? 30;
+
+  const loadTrails = useCallback(async (forceRefresh = false) => {
+    if (!location) {
+      setLiveTrails(SAMPLE_TRAILS);
+      liveTrailsRef.current = SAMPLE_TRAILS;
+      setUsingFallback(true);
+      return;
+    }
+
+    setTrailsLoading(true);
+    setTrailsError(null);
+
+    if (!forceRefresh) {
+      const cached = await loadLiveTrailsCache(location, radius);
+      if (cached && cached.length > 0) {
+        setLiveTrails(cached);
+        liveTrailsRef.current = cached;
+        setLocationLabel(location);
+        setUsingFallback(false);
+        setTrailsLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const trails = await fetchLiveTrails(location, radius);
+      await saveLiveTrailsCache(trails, location, radius);
+      setLiveTrails(trails);
+      liveTrailsRef.current = trails;
+      setLocationLabel(location);
+      setUsingFallback(false);
+    } catch {
+      setTrailsError("Could not load trails — showing sample data.");
+      const current = liveTrailsRef.current;
+      if (current.length === 0) {
+        setLiveTrails(SAMPLE_TRAILS);
+        liveTrailsRef.current = SAMPLE_TRAILS;
+        setUsingFallback(true);
+      }
+    } finally {
+      setTrailsLoading(false);
+    }
+  }, [location, radius]);
+
+  useEffect(() => {
+    loadTrails(false);
+  }, [loadTrails]);
+
+  const baseTrails = liveTrails.length > 0 ? liveTrails : SAMPLE_TRAILS;
+
   const allTrails = useMemo(
-    () => [...customRoutes, ...SAMPLE_TRAILS],
-    [customRoutes]
+    () => [...customRoutes, ...baseTrails],
+    [customRoutes, baseTrails]
   );
 
   const filtered = useMemo(() => {
@@ -135,6 +222,17 @@ export default function TrailListScreen() {
             <Text style={s.title}>All Trails</Text>
           </View>
           <TouchableOpacity
+            onPress={() => loadTrails(true)}
+            style={s.refreshBtn}
+            activeOpacity={0.7}
+            disabled={trailsLoading}
+          >
+            {trailsLoading
+              ? <ActivityIndicator size="small" color={T.green} />
+              : <RefreshCw size={17} color={T.textMuted} />
+            }
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => setShowFilters((v) => !v)}
             style={[s.filterBtn, showFilters && s.filterBtnActive]}
           >
@@ -162,7 +260,7 @@ export default function TrailListScreen() {
           )}
         </Animated.View>
 
-        {/* Location bar */}
+        {/* Location filter bar */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.locationWrap}>
           <MapPin size={15} color={locationQuery.length > 0 ? T.green : T.textMuted} />
           <TextInput
@@ -181,6 +279,30 @@ export default function TrailListScreen() {
             </TouchableOpacity>
           )}
         </Animated.View>
+
+        {/* Location / status banner */}
+        {!trailsLoading && (locationLabel || trailsError || usingFallback) && (
+          <Animated.View entering={FadeInDown.delay(90).duration(300)} style={[
+            s.banner,
+            trailsError ? s.bannerError : (usingFallback ? s.bannerWarn : s.bannerOk),
+          ]}>
+            <Text style={[s.bannerText, trailsError ? s.bannerTextError : (usingFallback ? s.bannerTextWarn : s.bannerTextOk)]}>
+              {trailsError
+                ? trailsError
+                : usingFallback
+                  ? "No location set — showing sample UK trails"
+                  : `Trails near ${locationLabel}`}
+            </Text>
+          </Animated.View>
+        )}
+
+        {/* Loading state */}
+        {trailsLoading && liveTrails.length === 0 && (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color={T.green} />
+            <Text style={s.loadingText}>Finding trails near {location ?? "you"}…</Text>
+          </View>
+        )}
 
         {/* Filters */}
         {showFilters && (
@@ -201,36 +323,40 @@ export default function TrailListScreen() {
         )}
 
         {/* Results count */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <Text style={s.resultCount}>
-            {filtered.length} trail{filtered.length !== 1 ? "s" : ""}
-            {hasActiveFilters || query ? " found" : ""}
-          </Text>
-        </Animated.View>
+        {(!trailsLoading || liveTrails.length > 0) && (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+            <Text style={s.resultCount}>
+              {filtered.length} trail{filtered.length !== 1 ? "s" : ""}
+              {hasActiveFilters || query || locationQuery ? " found" : ""}
+            </Text>
+          </Animated.View>
+        )}
 
         {/* Trail list */}
-        <View style={s.list}>
-          {filtered.length === 0 ? (
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>🔍</Text>
-              <Text style={s.emptyTitle}>No trails found</Text>
-              <Text style={s.emptyBody}>Try adjusting your search or filters.</Text>
-            </View>
-          ) : (
-            filtered.map((trail, i) => (
-              <Animated.View key={trail.id} entering={FadeInDown.delay(i * 40).duration(400)}>
-                <TrailCard
-                  trail={trail}
-                  isSaved={savedTrailIds.includes(trail.id)}
-                  isCompleted={completedTrailIds.includes(trail.id)}
-                  onPress={() =>
-                    router.push({ pathname: "/trail-detail", params: { id: trail.id } })
-                  }
-                />
-              </Animated.View>
-            ))
-          )}
-        </View>
+        {(!trailsLoading || liveTrails.length > 0) && (
+          <View style={s.list}>
+            {filtered.length === 0 ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>🔍</Text>
+                <Text style={s.emptyTitle}>No trails found</Text>
+                <Text style={s.emptyBody}>Try adjusting your search or filters.</Text>
+              </View>
+            ) : (
+              filtered.map((trail, i) => (
+                <Animated.View key={trail.id} entering={FadeInDown.delay(i * 40).duration(400)}>
+                  <TrailCard
+                    trail={trail}
+                    isSaved={savedTrailIds.includes(trail.id)}
+                    isCompleted={completedTrailIds.includes(trail.id)}
+                    onPress={() =>
+                      router.push({ pathname: "/trail-detail", params: { id: trail.id } })
+                    }
+                  />
+                </Animated.View>
+              ))
+            )}
+          </View>
+        )}
       </ScrollView>
     </LinearGradient>
   );
@@ -242,6 +368,7 @@ const s = StyleSheet.create({
   backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
+  refreshBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   filterBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   filterBtnActive: { backgroundColor: T.greenDim },
   filterDot: { position: "absolute", top: 8, right: 8, width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
@@ -256,6 +383,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 11,
   },
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text },
+  banner: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
+  bannerOk: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
+  bannerWarn: { backgroundColor: T.surface, borderColor: T.border },
+  bannerError: { backgroundColor: "#2a1a1a", borderColor: "#c0392b40" },
+  bannerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  bannerTextOk: { color: T.green },
+  bannerTextWarn: { color: T.textMuted },
+  bannerTextError: { color: "#e74c3c" },
+  loadingWrap: { alignItems: "center", paddingVertical: 48, gap: 12 },
+  loadingText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
   filtersCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 16, gap: 14 },
   filtersHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   filtersTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },

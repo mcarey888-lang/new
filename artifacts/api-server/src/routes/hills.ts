@@ -326,4 +326,118 @@ router.post("/hill-detail", async (req, res) => {
   }
 });
 
+const TrailSchema = z.object({
+  name: z.string(),
+  location: z.string(),
+  distance: z.number(),
+  elevationGain: z.number(),
+  estimatedTime: z.string(),
+  difficulty: z.enum(["Easy", "Moderate", "Hard"]),
+  terrain: z.enum(["woodland", "hill", "mountain", "coastal", "road", "mixed"]),
+  routeType: z.enum(["loop", "out-and-back", "point-to-point"]),
+  bestFor: z.array(z.enum(["training", "family walk", "summit prep", "scenic walk"])),
+  description: z.string(),
+  trainingBenefits: z.array(z.enum(["cardio", "elevation", "endurance", "pack weight"])),
+  emoji: z.string(),
+});
+
+const TrailsResponseSchema = z.object({
+  trails: z.array(TrailSchema),
+});
+
+const TRAILS_SYSTEM_PROMPT = `You are an expert hiking guide who knows trails worldwide. Given a location and radius, return a varied mix of real nearby walking and hiking trails suitable for outdoor enthusiasts. Return ONLY valid JSON — no markdown, no explanation:
+
+{
+  "trails": [
+    {
+      "name": string,
+      "location": string,
+      "distance": number,
+      "elevationGain": number,
+      "estimatedTime": string,
+      "difficulty": "Easy" | "Moderate" | "Hard",
+      "terrain": "woodland" | "hill" | "mountain" | "coastal" | "road" | "mixed",
+      "routeType": "loop" | "out-and-back" | "point-to-point",
+      "bestFor": array of "training" | "family walk" | "summit prep" | "scenic walk",
+      "description": string,
+      "trainingBenefits": array of "cardio" | "elevation" | "endurance" | "pack weight",
+      "emoji": string
+    }
+  ]
+}
+
+Rules:
+- Return 12-15 trails with a good mix of difficulties, terrains and route types
+- name: real trail or walk name (e.g. "Great Ridge Loop", "Rivington Pike Circuit")
+- location: specific area name within the region (e.g. "Peak District, Derbyshire")
+- distance: total route distance in km (round trip for out-and-back)
+- elevationGain: total ascent in metres for the full route
+- estimatedTime: e.g. "1h 30m", "3h 00m", "5h 30m"
+- difficulty: Easy (≤200m gain or gentle), Moderate (200-500m or moderate terrain), Hard (500m+ or challenging terrain)
+- terrain: best single descriptor for the dominant terrain
+- routeType: "loop" (circular), "out-and-back" (same path both ways), "point-to-point" (different start/end)
+- bestFor: 1-3 relevant tags — "training" for fitness focus, "summit prep" for mountain prep, "family walk" for accessible/short, "scenic walk" for beautiful but not training-focused
+- description: 2-3 sentences describing the route character, highlights and why it stands out. Be evocative and specific.
+- trainingBenefits: relevant tags — "cardio" always, add "elevation" if significant climb, "endurance" for long routes, "pack weight" for demanding mountain routes
+- emoji: single emoji representing the trail character (🏔️ 🌿 ⛰️ 🌊 🌲 🪨 🗻 🏕️ 🌄 🗼 etc.)
+- Use real place names for the given location
+- Include a range: some short easy walks, some long hard routes, some medium day hikes
+- For UK: include fells, moors, coastal paths, forest trails, canal paths elevated routes. For other countries: use locally appropriate trail types.`;
+
+router.post("/trails-lookup", async (req, res) => {
+  const { location, radius } = req.body as { location?: string; radius?: number };
+
+  if (!location || typeof location !== "string" || location.trim().length < 2) {
+    res.status(400).json({ error: "Location required" });
+    return;
+  }
+
+  const r = Number(radius) || 30;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 2000,
+      messages: [
+        { role: "system", content: TRAILS_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}"`,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) {
+      req.log.error({ response: JSON.stringify(response).slice(0, 400) }, "Empty trails response");
+      res.status(500).json({ error: "No response from AI" });
+      return;
+    }
+
+    const cleaned = content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) {
+        res.status(500).json({ error: "Could not parse trails data" });
+        return;
+      }
+      parsed = JSON.parse(match[0]);
+    }
+
+    const validated = TrailsResponseSchema.parse(parsed);
+    res.json(validated);
+  } catch (err) {
+    req.log.error({ err }, "Trails lookup failed");
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: `Trails lookup failed: ${msg}` });
+  }
+});
+
 export default router;

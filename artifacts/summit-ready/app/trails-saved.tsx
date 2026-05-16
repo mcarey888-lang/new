@@ -1,6 +1,6 @@
 import { ArrowLeft, Bookmark } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,16 +8,23 @@ import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import { SAMPLE_TRAILS } from "@/constants/trailData";
+import type { Trail } from "@/constants/trailData";
 import { TrailCard } from "@/components/TrailCard";
+import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
 
 export default function TrailsSavedScreen() {
   const insets = useSafeAreaInsets();
   const { savedTrailIds, completedTrailIds, customRoutes } = useApp();
+  const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+
+  useEffect(() => {
+    readLiveTrailsFromCache().then(setLiveTrails);
+  }, []);
 
   const saved = useMemo(() => {
-    const all = [...customRoutes, ...SAMPLE_TRAILS];
+    const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
     return all.filter((t) => savedTrailIds.includes(t.id));
-  }, [savedTrailIds, customRoutes]);
+  }, [savedTrailIds, customRoutes, liveTrails]);
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>

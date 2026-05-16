@@ -13,8 +13,9 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -31,6 +32,7 @@ import { useApp } from "@/context/AppContext";
 import { SAMPLE_TRAILS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { LogHikeModal } from "@/components/LogHikeModal";
+import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
 
 const DIFF_COLOR: Record<string, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange,
@@ -87,11 +89,30 @@ export default function TrailDetailScreen() {
   const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes } = useApp();
 
   const [logVisible, setLogVisible] = useState(false);
+  const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+  const [cacheLoaded, setCacheLoaded] = useState(false);
+
+  useEffect(() => {
+    readLiveTrailsFromCache().then((trails) => {
+      setLiveTrails(trails);
+      setCacheLoaded(true);
+    });
+  }, []);
 
   const trail: Trail | null = useMemo(() => {
-    const all = [...customRoutes, ...SAMPLE_TRAILS];
+    const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
     return all.find((t) => t.id === params.id) ?? null;
-  }, [params.id, customRoutes]);
+  }, [params.id, customRoutes, liveTrails]);
+
+  if (!cacheLoaded) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={T.green} />
+        </View>
+      </LinearGradient>
+    );
+  }
 
   if (!trail) {
     return (
