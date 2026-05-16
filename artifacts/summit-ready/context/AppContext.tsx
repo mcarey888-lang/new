@@ -86,6 +86,9 @@ export interface NearbyHill {
   emoji: string;
   lat?: number;
   lng?: number;
+  routeType?: "hill" | "circular" | "out-and-back";
+  routeDistance?: number;
+  estimatedTime?: string;
 }
 
 export interface Session {

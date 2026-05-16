@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
   Zap,
+  Route,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -66,6 +67,9 @@ const GRADE_COLOR: Record<string, string> = {
 
 function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => void }) {
   const gc = GRADE_COLOR[hill.grade] ?? T.blue;
+  const isRoute = hill.routeType === "circular" || hill.routeType === "out-and-back";
+  const routeLabel = hill.routeType === "circular" ? "Circular" : hill.routeType === "out-and-back" ? "Out & back" : null;
+
   return (
     <View style={hc.card}>
       <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
@@ -78,8 +82,16 @@ function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => 
           <Text style={hc.name}>{hill.name}</Text>
           <Text style={hc.surface}>{hill.surface}</Text>
         </View>
-        <View style={[hc.gradeBadge, { backgroundColor: gc + "20" }]}>
-          <Text style={[hc.gradeText, { color: gc }]}>{hill.grade}</Text>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <View style={[hc.gradeBadge, { backgroundColor: gc + "20" }]}>
+            <Text style={[hc.gradeText, { color: gc }]}>{hill.grade}</Text>
+          </View>
+          {routeLabel && (
+            <View style={hc.routeBadge}>
+              <Route size={9} color={T.blue} />
+              <Text style={hc.routeBadgeText}>{routeLabel}</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -94,16 +106,36 @@ function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => 
           <Text style={hc.statVal}>{hill.elevation}m</Text>
           <Text style={hc.statLbl}>gain</Text>
         </View>
-        <View style={hc.stat}>
-          <Repeat size={12} color={T.textMuted} />
-          <Text style={hc.statVal}>1×</Text>
-          <Text style={hc.statLbl}>reps</Text>
-        </View>
-        <View style={hc.stat}>
-          <BarChart2 size={12} color={T.purple} />
-          <Text style={hc.statVal}>{hill.elevation}m</Text>
-          <Text style={hc.statLbl}>total</Text>
-        </View>
+        {isRoute ? (
+          <>
+            {hill.routeDistance != null && (
+              <View style={hc.stat}>
+                <Route size={12} color={T.blue} />
+                <Text style={hc.statVal}>{hill.routeDistance}km</Text>
+                <Text style={hc.statLbl}>route</Text>
+              </View>
+            )}
+            {hill.estimatedTime && (
+              <View style={hc.stat}>
+                <Clock size={12} color={T.purple} />
+                <Text style={hc.statVal}>{hill.estimatedTime}</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            <View style={hc.stat}>
+              <Repeat size={12} color={T.textMuted} />
+              <Text style={hc.statVal}>1×</Text>
+              <Text style={hc.statLbl}>reps</Text>
+            </View>
+            <View style={hc.stat}>
+              <BarChart2 size={12} color={T.purple} />
+              <Text style={hc.statVal}>{hill.elevation}m</Text>
+              <Text style={hc.statLbl}>total</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <TouchableOpacity style={hc.logBtn} onPress={() => onLog(hill.name)} activeOpacity={0.8}>
@@ -126,6 +158,12 @@ const hc = StyleSheet.create({
   surface: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   gradeBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, flexShrink: 0 },
   gradeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  routeBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+    backgroundColor: T.blueDim, borderWidth: 1, borderColor: T.blue + "40",
+  },
+  routeBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.blue },
   stats: { flexDirection: "row", gap: 14, flexWrap: "wrap" },
   stat: { flexDirection: "row", alignItems: "center", gap: 3 },
   statVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },

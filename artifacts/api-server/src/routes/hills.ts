@@ -15,13 +15,16 @@ const HillSchema = z.object({
   emoji: z.string(),
   lat: z.number().optional(),
   lng: z.number().optional(),
+  routeType: z.enum(["hill", "circular", "out-and-back"]).optional(),
+  routeDistance: z.number().optional(),
+  estimatedTime: z.string().optional(),
 });
 
 const HillsResponseSchema = z.object({
   hills: z.array(HillSchema),
 });
 
-const SYSTEM_PROMPT = `You are an expert on local hiking and trail running areas. Given a location and radius, return realistic nearby hills and trails suitable for mountain training. Return ONLY valid JSON — no markdown, no explanation:
+const SYSTEM_PROMPT = `You are an expert on local hiking and trail running areas. Given a location and radius, return a mix of nearby hills (good for repeats) AND circular/out-and-back hiking routes (like AllTrails). Return ONLY valid JSON — no markdown, no explanation:
 
 {
   "hills": [
@@ -35,22 +38,28 @@ const SYSTEM_PROMPT = `You are an expert on local hiking and trail running areas
       "grade": "Easy" | "Easy–Mod" | "Moderate" | "Hard" | "Alpine",
       "emoji": "🌿" | "⛰️" | "🏔️" | "🗻",
       "lat": number,
-      "lng": number
+      "lng": number,
+      "routeType": "hill" | "circular" | "out-and-back",
+      "routeDistance": number | null,
+      "estimatedTime": string | null
     }
   ]
 }
 
 Rules:
-- elevation = elevation gain per climb in metres (not total ascent)
-- distance = distance from the given location in km (must be within the radius)
-- repeats = recommended number of repeats for a good training session (1-5)
+- Return 8-10 results total: roughly half hills, half circular or out-and-back hiking routes
+- elevation = total elevation gain in metres for the outing (for hills: gain per climb; for routes: total ascent of the full circuit)
+- distance = distance from the given location to the trailhead in km (must be within the radius)
+- repeats = 1 for routes; recommended repeats (1-5) for hills
 - totalElevation = elevation × repeats
-- surface = brief description e.g. "Grassy moorland", "Rocky path", "Mixed trail", "Technical scramble"
+- surface = brief description e.g. "Grassy moorland", "Rocky path", "Circular fell walk", "Forest trail"
 - grade: Easy ≤ 200m, Easy–Mod 150-300m, Moderate 250-450m, Hard 400-700m, Alpine 600m+
-- Return 5-7 hills spread across different distances and difficulties
+- routeType: "hill" for standalone hills good for repeats; "circular" for loop routes; "out-and-back" for there-and-back routes
+- routeDistance: total circuit/route distance in km for circular or out-and-back routes; null for hills
+- estimatedTime: estimated walking time e.g. "1.5–2 hrs", "3–4 hrs"; null for pure hills
 - Use real place names and realistic hills/trails for the given location
 - lat/lng = accurate GPS coordinates of the hill summit or main trailhead (decimal degrees, 4 decimal places)
-- For UK: use moors, fells, peaks. Alps: use cols and ridges. Pyrénées: use cols. Rocky Mountains: use peaks/passes.
+- For UK: include fells, moors, and popular circular walks. For Alps/Pyrénées: include cols and ridge routes. For Rockies: use peaks and loop trails.
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine`;
 
 const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running areas worldwide. Given a specific hill or trail name and a base location, return realistic data for that hill. Return ONLY valid JSON — no markdown, no explanation:
