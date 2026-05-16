@@ -15,9 +15,9 @@ const HillSchema = z.object({
   emoji: z.string(),
   lat: z.number().optional(),
   lng: z.number().optional(),
-  routeType: z.enum(["hill", "circular", "out-and-back"]).optional(),
-  routeDistance: z.number().optional(),
-  estimatedTime: z.string().optional(),
+  routeType: z.enum(["hill", "circular", "out-and-back"]).nullish(),
+  routeDistance: z.number().nullish(),
+  estimatedTime: z.string().nullish(),
 });
 
 const HillsResponseSchema = z.object({
