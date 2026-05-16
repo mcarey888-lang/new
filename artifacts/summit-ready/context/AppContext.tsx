@@ -72,7 +72,7 @@ export interface TrainingWeek {
   isCurrentWeek: boolean;
   startDate: string;
   endDate: string;
-  hills: { name: string; elevation: number; distance: number; repeats: number; totalElevation: number }[];
+  hills: { name: string; elevation: number; distance: number; repeats: number; totalElevation: number; lat?: number; lng?: number }[];
   adjustNote?: string;
 }
 

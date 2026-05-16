@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Image,
   ImageBackground,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -51,13 +50,7 @@ interface HillDetail {
   routes: HillRoute[];
 }
 
-function openMaps(lat: number, lng: number, label: string) {
-  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
-}
-
-function openDirections(lat: number, lng: number) {
-  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`);
-}
+import { openMapPin, openMapDirections } from "@/utils/openMaps";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -186,7 +179,7 @@ export default function HillDetailScreen() {
               <View style={styles.mapActionsRow}>
                 <TouchableOpacity
                   style={styles.mapActionBtn}
-                  onPress={() => openMaps(hillLat, hillLng, name)}
+                  onPress={() => openMapPin(hillLat, hillLng, name ?? "")}
                   activeOpacity={0.8}
                 >
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -195,7 +188,7 @@ export default function HillDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.mapActionBtn}
-                  onPress={() => openDirections(hillLat, hillLng)}
+                  onPress={() => openMapDirections(hillLat, hillLng, name ?? "")}
                   activeOpacity={0.8}
                 >
                   <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -272,7 +265,7 @@ export default function HillDetailScreen() {
                     <View style={styles.startActionsRow}>
                       <TouchableOpacity
                         style={styles.startMapBtn}
-                        onPress={() => openMaps(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
+                        onPress={() => openMapPin(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
                         activeOpacity={0.8}
                       >
                         <MapPin size={13} color={T.green} />
@@ -280,7 +273,7 @@ export default function HillDetailScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.startMapBtn, { borderColor: T.blue + "50" }]}
-                        onPress={() => openDirections(detail.startPoint.lat, detail.startPoint.lng)}
+                        onPress={() => openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
                         activeOpacity={0.8}
                       >
                         <Navigation size={13} color={T.blue} />
@@ -354,7 +347,7 @@ export default function HillDetailScreen() {
                           onPress={() => {
                             const lat = detail.startPoint.lat;
                             const lng = detail.startPoint.lng;
-                            openDirections(lat, lng);
+                            openMapDirections(lat, lng, detail.startPoint.name);
                           }}
                           activeOpacity={0.8}
                         >

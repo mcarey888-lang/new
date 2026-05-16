@@ -2,9 +2,9 @@ import { Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search, AlertC
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -651,17 +651,7 @@ export default function HillsScreen() {
                   <TouchableOpacity
                     style={styles.mapBtn}
                     activeOpacity={0.7}
-                    onPress={() => {
-                      if (hill.lat && hill.lng) {
-                        Linking.openURL(
-                          `https://www.google.com/maps/search/?api=1&query=${hill.lat},${hill.lng}`
-                        );
-                      } else {
-                        Linking.openURL(
-                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hill.name)}`
-                        );
-                      }
-                    }}
+                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
                   >
                     <Map size={14} color={T.green} />
                     <Text style={styles.mapBtnText}>Map</Text>

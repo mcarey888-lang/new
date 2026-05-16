@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
   Alert,
@@ -427,12 +428,11 @@ export default function AccountScreen() {
             <View style={styles.readyGrid}>
               {readyForPeaks.map((peak, i) => {
                 const dc = DIFF_COLORS[peak.difficulty];
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(peak.name)}`;
                 return (
                   <TouchableOpacity
                     key={i}
                     style={[styles.readyChip, { borderColor: dc + "30" }]}
-                    onPress={() => Linking.openURL(mapsUrl)}
+                    onPress={() => openMapSearch(peak.name)}
                     activeOpacity={0.75}
                   >
                     <Text style={styles.readyChipEmoji}>{peak.emoji}</Text>

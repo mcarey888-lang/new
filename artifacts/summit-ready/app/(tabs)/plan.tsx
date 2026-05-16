@@ -3,10 +3,10 @@ import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, Chevro
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
+import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
   Dimensions,
-  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -570,12 +570,7 @@ function WeekCard({
                             <TouchableOpacity
                               style={styles.directionsBtn}
                               activeOpacity={0.7}
-                              onPress={() => {
-                                const dest = (displayHill as any).lat && (displayHill as any).lng
-                                  ? `${(displayHill as any).lat},${(displayHill as any).lng}`
-                                  : encodeURIComponent(`${displayHill.name} car park`);
-                                Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
-                              }}
+                              onPress={() => openMapsForHill((displayHill as any).lat, (displayHill as any).lng, displayHill.name, true)}
                             >
                               <Navigation size={11} color={T.blue} />
                               <Text style={styles.directionsBtnText}>
@@ -642,12 +637,7 @@ function WeekCard({
                     key={i}
                     style={styles.hillRow}
                     activeOpacity={0.7}
-                    onPress={() => {
-                      const dest = (h as any).lat && (h as any).lng
-                        ? `${(h as any).lat},${(h as any).lng}`
-                        : encodeURIComponent(`${h.name} car park`);
-                      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
-                    }}
+                    onPress={() => openMapsForHill(h.lat, h.lng, h.name, true)}
                   >
                     <Navigation size={13} color={T.blue} />
                     <Text style={styles.hillRowText}>
