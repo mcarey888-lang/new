@@ -99,6 +99,7 @@ export default function TrailListScreen() {
 
   const [query, setQuery] = useState(params.q ?? "");
   const [locationQuery, setLocationQuery] = useState("");
+  const [locationSearching, setLocationSearching] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>("All");
   const [terrain, setTerrain] = useState<Terrain>("All");
@@ -112,11 +113,12 @@ export default function TrailListScreen() {
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const liveTrailsRef = useRef<Trail[]>([]);
 
-  const location = summitGoal?.location ?? null;
+  const defaultLocation = summitGoal?.location ?? null;
   const radius = summitGoal?.maxRadius ?? 30;
 
-  const loadTrails = useCallback(async (forceRefresh = false) => {
-    if (!location) {
+  const loadTrails = useCallback(async (forceRefresh = false, overrideLocation?: string) => {
+    const loc = overrideLocation ?? defaultLocation;
+    if (!loc) {
       setLiveTrails(SAMPLE_TRAILS);
       liveTrailsRef.current = SAMPLE_TRAILS;
       setUsingFallback(true);
@@ -126,12 +128,12 @@ export default function TrailListScreen() {
     setTrailsLoading(true);
     setTrailsError(null);
 
-    if (!forceRefresh) {
-      const cached = await loadLiveTrailsCache(location, radius);
+    if (!forceRefresh && !overrideLocation) {
+      const cached = await loadLiveTrailsCache(loc, radius);
       if (cached && cached.length > 0) {
         setLiveTrails(cached);
         liveTrailsRef.current = cached;
-        setLocationLabel(location);
+        setLocationLabel(loc);
         setUsingFallback(false);
         setTrailsLoading(false);
         return;
@@ -139,11 +141,11 @@ export default function TrailListScreen() {
     }
 
     try {
-      const trails = await fetchLiveTrails(location, radius);
-      await saveLiveTrailsCache(trails, location, radius);
+      const trails = await fetchLiveTrails(loc, radius);
+      if (!overrideLocation) await saveLiveTrailsCache(trails, loc, radius);
       setLiveTrails(trails);
       liveTrailsRef.current = trails;
-      setLocationLabel(location);
+      setLocationLabel(loc);
       setUsingFallback(false);
     } catch {
       setTrailsError("Could not load trails — showing sample data.");
@@ -156,11 +158,28 @@ export default function TrailListScreen() {
     } finally {
       setTrailsLoading(false);
     }
-  }, [location, radius]);
+  }, [defaultLocation, radius]);
 
   useEffect(() => {
     loadTrails(false);
   }, [loadTrails]);
+
+  const searchByLocation = useCallback(async () => {
+    const trimmed = locationQuery.trim();
+    if (!trimmed) {
+      setLocationQuery("");
+      loadTrails(true, defaultLocation ?? undefined);
+      return;
+    }
+    setLocationSearching(true);
+    await loadTrails(true, trimmed);
+    setLocationSearching(false);
+  }, [locationQuery, loadTrails, defaultLocation]);
+
+  const clearLocationSearch = useCallback(() => {
+    setLocationQuery("");
+    loadTrails(false, defaultLocation ?? undefined);
+  }, [loadTrails, defaultLocation]);
 
   const baseTrails = liveTrails.length > 0 ? liveTrails : SAMPLE_TRAILS;
 
@@ -180,17 +199,13 @@ export default function TrailListScreen() {
           t.terrain.toLowerCase().includes(q);
         if (!match) return false;
       }
-      if (locationQuery.trim()) {
-        const lq = locationQuery.toLowerCase();
-        if (!t.location.toLowerCase().includes(lq)) return false;
-      }
       if (difficulty !== "All" && t.difficulty !== difficulty) return false;
       if (terrain !== "All" && t.terrain !== terrain) return false;
       if (routeType !== "All" && t.routeType !== routeType) return false;
       if (bestFor !== "All" && !t.bestFor.includes(bestFor as TrailBestFor)) return false;
       return true;
     });
-  }, [allTrails, query, locationQuery, difficulty, terrain, bestFor, routeType]);
+  }, [allTrails, query, difficulty, terrain, bestFor, routeType]);
 
   const hasActiveFilters =
     difficulty !== "All" || terrain !== "All" || bestFor !== "All" || routeType !== "All";
@@ -260,24 +275,36 @@ export default function TrailListScreen() {
           )}
         </Animated.View>
 
-        {/* Location filter bar */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.locationWrap}>
+        {/* Location search bar */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={[s.locationWrap, locationQuery.length > 0 && s.locationWrapActive]}>
           <MapPin size={15} color={locationQuery.length > 0 ? T.green : T.textMuted} />
           <TextInput
             style={s.searchInput}
             value={locationQuery}
             onChangeText={setLocationQuery}
-            placeholder="Enter location or search area…"
+            placeholder="Enter location, town or postcode…"
             placeholderTextColor={T.textDim}
             autoCorrect={false}
             autoCapitalize="words"
             returnKeyType="search"
+            onSubmitEditing={searchByLocation}
+            blurOnSubmit={false}
           />
-          {locationQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setLocationQuery("")} hitSlop={8}>
+          {locationQuery.length > 0 && !locationSearching && (
+            <TouchableOpacity onPress={clearLocationSearch} hitSlop={8}>
               <X size={14} color={T.textMuted} />
             </TouchableOpacity>
           )}
+          {locationSearching
+            ? <ActivityIndicator size="small" color={T.green} style={{ marginLeft: 4 }} />
+            : locationQuery.length > 0
+              ? (
+                <TouchableOpacity onPress={searchByLocation} style={s.searchAreaBtn} activeOpacity={0.75}>
+                  <Text style={s.searchAreaBtnText}>Search</Text>
+                </TouchableOpacity>
+              )
+              : null
+          }
         </Animated.View>
 
         {/* Location / status banner */}
@@ -300,7 +327,7 @@ export default function TrailListScreen() {
         {trailsLoading && liveTrails.length === 0 && (
           <View style={s.loadingWrap}>
             <ActivityIndicator size="large" color={T.green} />
-            <Text style={s.loadingText}>Finding trails near {location ?? "you"}…</Text>
+            <Text style={s.loadingText}>Finding trails near {defaultLocation ?? "you"}…</Text>
           </View>
         )}
 
@@ -382,6 +409,12 @@ const s = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 11,
   },
+  locationWrapActive: { borderColor: T.green + "60" },
+  searchAreaBtn: {
+    backgroundColor: T.greenDim, borderRadius: 8, borderWidth: 1, borderColor: T.green + "50",
+    paddingHorizontal: 10, paddingVertical: 5, flexShrink: 0,
+  },
+  searchAreaBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text },
   banner: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
   bannerOk: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
