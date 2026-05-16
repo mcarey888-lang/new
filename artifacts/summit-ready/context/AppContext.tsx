@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { generatePlan } from "@/utils/planGenerator";
 import { calculateReadiness } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
+import type { Trail } from "@/constants/trailData";
 
 export interface AlpineRequirement {
   id: string;
@@ -160,6 +161,15 @@ interface AppState {
   setAppMode: (mode: "summit" | "explore") => Promise<void>;
   logExploreHike: (hike: Omit<ExploreHike, "id">) => Promise<void>;
   deleteExploreHike: (id: string) => Promise<void>;
+  savedTrailIds: string[];
+  completedTrailIds: string[];
+  customRoutes: Trail[];
+  saveTrail: (id: string) => Promise<void>;
+  unsaveTrail: (id: string) => Promise<void>;
+  completeTrail: (id: string) => Promise<void>;
+  uncompleteTrail: (id: string) => Promise<void>;
+  addCustomRoute: (route: Omit<Trail, "id" | "isCustom" | "createdAt">) => Promise<void>;
+  deleteCustomRoute: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -206,6 +216,15 @@ const AppContext = createContext<AppState>({
   setAppMode: async () => {},
   logExploreHike: async () => {},
   deleteExploreHike: async () => {},
+  savedTrailIds: [],
+  completedTrailIds: [],
+  customRoutes: [],
+  saveTrail: async () => {},
+  unsaveTrail: async () => {},
+  completeTrail: async () => {},
+  uncompleteTrail: async () => {},
+  addCustomRoute: async () => {},
+  deleteCustomRoute: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -224,6 +243,9 @@ const ACHIEVEMENTS_KEY = "summitready_achievements";
 const COMPLETED_GOALS_KEY = "summitready_completed_goals";
 const APP_MODE_KEY = "summitready_app_mode";
 const EXPLORE_HIKES_KEY = "summitready_explore_hikes";
+const SAVED_TRAILS_KEY = "summitready_saved_trails";
+const COMPLETED_TRAILS_KEY = "summitready_completed_trails";
+const CUSTOM_ROUTES_KEY = "summitready_custom_routes";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -327,14 +349,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [completedGoals, setCompletedGoals] = useState<CompletedGoal[]>([]);
   const [appMode, setAppModeState] = useState<"summit" | "explore" | null>(null);
   const [exploreHikes, setExploreHikes] = useState<ExploreHike[]>([]);
+  const [savedTrailIds, setSavedTrailIds] = useState<string[]>([]);
+  const [completedTrailIds, setCompletedTrailIds] = useState<string[]>([]);
+  const [customRoutes, setCustomRoutes] = useState<Trail[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -408,6 +433,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
         if (exploreHikesStr) setExploreHikes(JSON.parse(exploreHikesStr) as ExploreHike[]);
+        if (savedTrailsStr) setSavedTrailIds(JSON.parse(savedTrailsStr) as string[]);
+        if (completedTrailsStr) setCompletedTrailIds(JSON.parse(completedTrailsStr) as string[]);
+        if (customRoutesStr) setCustomRoutes(JSON.parse(customRoutesStr) as Trail[]);
       } catch {}
       setIsLoading(false);
     })();
@@ -551,8 +579,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNewlyUnlocked([]);
     setCompletedGoals([]);
     setAppModeState(null);
+    setSavedTrailIds([]);
+    setCompletedTrailIds([]);
+    setCustomRoutes([]);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, "summitready_questionnaire_data",
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, "summitready_questionnaire_data",
     ]);
   }, []);
 
@@ -574,6 +605,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExploreHikes(updated);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
   }, [exploreHikes]);
+
+  const saveTrail = useCallback(async (id: string) => {
+    const updated = savedTrailIds.includes(id) ? savedTrailIds : [...savedTrailIds, id];
+    setSavedTrailIds(updated);
+    await AsyncStorage.setItem(SAVED_TRAILS_KEY, JSON.stringify(updated));
+  }, [savedTrailIds]);
+
+  const unsaveTrail = useCallback(async (id: string) => {
+    const updated = savedTrailIds.filter(s => s !== id);
+    setSavedTrailIds(updated);
+    await AsyncStorage.setItem(SAVED_TRAILS_KEY, JSON.stringify(updated));
+  }, [savedTrailIds]);
+
+  const completeTrail = useCallback(async (id: string) => {
+    const updated = completedTrailIds.includes(id) ? completedTrailIds : [...completedTrailIds, id];
+    setCompletedTrailIds(updated);
+    await AsyncStorage.setItem(COMPLETED_TRAILS_KEY, JSON.stringify(updated));
+  }, [completedTrailIds]);
+
+  const uncompleteTrail = useCallback(async (id: string) => {
+    const updated = completedTrailIds.filter(c => c !== id);
+    setCompletedTrailIds(updated);
+    await AsyncStorage.setItem(COMPLETED_TRAILS_KEY, JSON.stringify(updated));
+  }, [completedTrailIds]);
+
+  const addCustomRoute = useCallback(async (route: Omit<Trail, "id" | "isCustom" | "createdAt">) => {
+    const id = "custom_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
+    const newRoute: Trail = { ...route, id, isCustom: true, createdAt: new Date().toISOString().split("T")[0] };
+    const updated = [newRoute, ...customRoutes];
+    setCustomRoutes(updated);
+    await AsyncStorage.setItem(CUSTOM_ROUTES_KEY, JSON.stringify(updated));
+  }, [customRoutes]);
+
+  const deleteCustomRoute = useCallback(async (id: string) => {
+    const updated = customRoutes.filter(r => r.id !== id);
+    setCustomRoutes(updated);
+    await AsyncStorage.setItem(CUSTOM_ROUTES_KEY, JSON.stringify(updated));
+  }, [customRoutes]);
 
   const markPlanViewed = useCallback(async () => {
     if (hasViewedPlan) return;
@@ -862,6 +931,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
       appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,
+      savedTrailIds, completedTrailIds, customRoutes,
+      saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
     }}>
       {children}
     </AppContext.Provider>

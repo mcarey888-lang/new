@@ -1,0 +1,389 @@
+import {
+  ArrowLeft,
+  Bookmark,
+  CheckCircle,
+  Clock,
+  Map,
+  MapPin,
+  PenLine,
+  Navigation,
+  TrendingUp,
+  Wind,
+  Package,
+} from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import React, { useMemo, useState } from "react";
+import {
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
+import { T } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
+import { SAMPLE_TRAILS } from "@/constants/trailData";
+import type { Trail, TrailBenefit } from "@/constants/trailData";
+import { LogHikeModal } from "@/components/LogHikeModal";
+
+const DIFF_COLOR: Record<string, string> = {
+  Easy: T.green, Moderate: T.blue, Hard: T.orange,
+};
+
+const ROUTE_LABEL: Record<string, string> = {
+  loop: "🔄 Loop",
+  "out-and-back": "↔️ Out & back",
+  "point-to-point": "→ Point-to-point",
+};
+
+const TERRAIN_EMOJI: Record<string, string> = {
+  woodland: "🌲", hill: "⛰️", mountain: "🏔️",
+  coastal: "🌊", road: "🛣️", mixed: "🗺️",
+};
+
+const BENEFIT_LABEL: Record<TrailBenefit, string> = {
+  cardio: "Good for cardio",
+  elevation: "Good for elevation training",
+  endurance: "Good for long endurance",
+  "pack weight": "Good for pack weight training",
+};
+
+const BENEFIT_COLOR: Record<TrailBenefit, string> = {
+  cardio: T.green,
+  elevation: T.orange,
+  endurance: T.purple,
+  "pack weight": T.blue,
+};
+
+const BEST_FOR_LABEL: Record<string, string> = {
+  training: "🏃 Training",
+  "family walk": "👨‍👩‍👧 Family",
+  "summit prep": "🏔️ Summit prep",
+  "scenic walk": "📸 Scenic",
+};
+
+const KIT_CHECKLIST = [
+  "Map & compass (or GPS device)",
+  "Waterproof jacket & trousers",
+  "Warm mid-layer fleece",
+  "Water — minimum 1.5L per person",
+  "High-energy snacks & lunch",
+  "First aid kit",
+  "Head torch with spare batteries",
+  "Whistle & emergency foil blanket",
+  "Sturdy walking boots",
+  "Trekking poles (optional but helpful on descents)",
+];
+
+export default function TrailDetailScreen() {
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ id: string }>();
+  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes } = useApp();
+
+  const [logVisible, setLogVisible] = useState(false);
+
+  const trail: Trail | null = useMemo(() => {
+    const all = [...customRoutes, ...SAMPLE_TRAILS];
+    return all.find((t) => t.id === params.id) ?? null;
+  }, [params.id, customRoutes]);
+
+  if (!trail) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: T.textMuted, fontFamily: "Inter_400Regular" }}>Trail not found.</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  const isSaved = savedTrailIds.includes(trail.id);
+  const isCompleted = completedTrailIds.includes(trail.id);
+  const dc = DIFF_COLOR[trail.difficulty] ?? T.blue;
+
+  async function handleSaveToggle() {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (isSaved) {
+      await unsaveTrail(trail!.id);
+    } else {
+      await saveTrail(trail!.id);
+    }
+  }
+
+  async function handleCompleteToggle() {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (isCompleted) {
+      if (Platform.OS === "web") {
+        await uncompleteTrail(trail!.id);
+      } else {
+        Alert.alert("Remove completion?", "This will remove this route from your completed list.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Remove", style: "destructive", onPress: () => uncompleteTrail(trail!.id) },
+        ]);
+      }
+    } else {
+      await completeTrail(trail!.id);
+    }
+  }
+
+  return (
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[
+          s.scroll,
+          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12, paddingBottom: 40 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Back */}
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <ArrowLeft size={20} color={T.text} />
+        </TouchableOpacity>
+
+        {/* Hero */}
+        <Animated.View entering={FadeInDown.duration(400)} style={s.hero}>
+          <View style={[s.heroIcon, { backgroundColor: dc + "18" }]}>
+            <Text style={s.heroEmoji}>{trail.emoji}</Text>
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={s.heroName}>{trail.name}</Text>
+            <View style={s.heroMeta}>
+              <MapPin size={12} color={T.textMuted} />
+              <Text style={s.heroLocation}>{trail.location}</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Stats row */}
+        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.statsCard}>
+          <View style={s.statItem}>
+            <MapPin size={16} color={T.green} />
+            <Text style={s.statVal}>{trail.distance}km</Text>
+            <Text style={s.statLbl}>Distance</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <TrendingUp size={16} color={T.orange} />
+            <Text style={s.statVal}>{trail.elevationGain}m</Text>
+            <Text style={s.statLbl}>Elevation gain</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Clock size={16} color={T.purple} />
+            <Text style={s.statVal}>{trail.estimatedTime}</Text>
+            <Text style={s.statLbl}>Est. time</Text>
+          </View>
+        </Animated.View>
+
+        {/* Tags */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.tagsRow}>
+          <View style={[s.tag, { backgroundColor: dc + "20" }]}>
+            <Text style={[s.tagText, { color: dc }]}>{trail.difficulty}</Text>
+          </View>
+          <View style={s.tag}>
+            <Text style={s.tagText}>{TERRAIN_EMOJI[trail.terrain]} {trail.terrain}</Text>
+          </View>
+          <View style={s.tag}>
+            <Text style={s.tagText}>{ROUTE_LABEL[trail.routeType]}</Text>
+          </View>
+        </Animated.View>
+
+        {/* Best for */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={s.tagsRow}>
+          {trail.bestFor.map((b) => (
+            <View key={b} style={[s.tag, s.tagBlue]}>
+              <Text style={[s.tagText, { color: T.blue }]}>{BEST_FOR_LABEL[b]}</Text>
+            </View>
+          ))}
+        </Animated.View>
+
+        {/* Description */}
+        <Animated.View entering={FadeInDown.delay(110).duration(400)} style={s.section}>
+          <Text style={s.sectionTitle}>About this route</Text>
+          <Text style={s.description}>{trail.description}</Text>
+        </Animated.View>
+
+        {/* Training benefits */}
+        <Animated.View entering={FadeInDown.delay(130).duration(400)} style={s.section}>
+          <Text style={s.sectionTitle}>Training benefits</Text>
+          <View style={s.benefitsGrid}>
+            {trail.trainingBenefits.map((b) => (
+              <View key={b} style={[s.benefitBadge, { backgroundColor: BENEFIT_COLOR[b] + "18", borderColor: BENEFIT_COLOR[b] + "30" }]}>
+                <View style={[s.benefitDot, { backgroundColor: BENEFIT_COLOR[b] }]} />
+                <Text style={[s.benefitText, { color: BENEFIT_COLOR[b] }]}>{BENEFIT_LABEL[b]}</Text>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* Map placeholder */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.section}>
+          <Text style={s.sectionTitle}>Route map</Text>
+          <View style={s.mapPlaceholder}>
+            <LinearGradient
+              colors={[T.surface, T.card]}
+              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+            />
+            <Map size={32} color={T.textDim} />
+            <Text style={s.mapTitle}>Interactive route map coming soon</Text>
+            <Text style={s.mapBody}>GPS navigation and live tracking will be available in a future update.</Text>
+          </View>
+        </Animated.View>
+
+        {/* Weather */}
+        <Animated.View entering={FadeInDown.delay(160).duration(400)} style={s.section}>
+          <Text style={s.sectionTitle}>Weather & conditions</Text>
+          <View style={s.infoCard}>
+            <Wind size={18} color={T.blue} />
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={s.infoTitle}>Check before you go</Text>
+              <Text style={s.infoBody}>Mountain weather can change rapidly. Always check a reliable forecast (Met Office, Mountain Weather) before setting out, and be prepared to turn back if conditions deteriorate.</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Kit checklist */}
+        <Animated.View entering={FadeInDown.delay(170).duration(400)} style={s.section}>
+          <View style={s.sectionHeader}>
+            <Package size={14} color={T.orange} />
+            <Text style={s.sectionTitle}>Suggested kit</Text>
+          </View>
+          <View style={s.kitCard}>
+            {KIT_CHECKLIST.map((item) => (
+              <View key={item} style={s.kitItem}>
+                <View style={s.kitDot} />
+                <Text style={s.kitText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* Notes (custom routes only) */}
+        {trail.notes && (
+          <Animated.View entering={FadeInDown.delay(180).duration(400)} style={s.section}>
+            <Text style={s.sectionTitle}>Your notes</Text>
+            <View style={s.notesCard}>
+              <Text style={s.notesText}>{trail.notes}</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Action buttons */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={s.actions}>
+          <TouchableOpacity style={s.actionPrimary} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.actionGrad}>
+              <PenLine size={18} color="#fff" />
+              <Text style={s.actionPrimaryText}>Log a session</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View style={s.actionRow}>
+            <TouchableOpacity style={[s.actionSecondary, isSaved && s.actionSecondaryActive]} onPress={handleSaveToggle} activeOpacity={0.8}>
+              <Bookmark size={16} color={isSaved ? T.blue : T.textMuted} fill={isSaved ? T.blue : "transparent"} />
+              <Text style={[s.actionSecondaryText, isSaved && { color: T.blue }]}>
+                {isSaved ? "Saved" : "Save route"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[s.actionSecondary, isCompleted && s.actionSecondaryGreen]} onPress={handleCompleteToggle} activeOpacity={0.8}>
+              <CheckCircle size={16} color={isCompleted ? T.green : T.textMuted} />
+              <Text style={[s.actionSecondaryText, isCompleted && { color: T.green }]}>
+                {isCompleted ? "Completed ✓" : "Mark complete"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={s.actionStart} activeOpacity={0.85}>
+            <Navigation size={16} color={T.text} />
+            <Text style={s.actionStartText}>Start route</Text>
+            <View style={s.comingSoon}><Text style={s.comingSoonText}>Coming soon</Text></View>
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
+
+      <LogHikeModal
+        visible={logVisible}
+        prefillName={trail.name}
+        onClose={() => setLogVisible(false)}
+      />
+    </LinearGradient>
+  );
+}
+
+const s = StyleSheet.create({
+  scroll: { paddingHorizontal: 20, gap: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  hero: { flexDirection: "row", alignItems: "center", gap: 14 },
+  heroIcon: { width: 54, height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  heroEmoji: { fontSize: 26 },
+  heroName: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
+  heroMeta: { flexDirection: "row", alignItems: "center", gap: 5 },
+  heroLocation: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statsCard: {
+    flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.border, padding: 16, justifyContent: "space-around",
+  },
+  statItem: { alignItems: "center", gap: 6 },
+  statVal: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
+  statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statDivider: { width: 1, backgroundColor: T.border },
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border },
+  tagBlue: { backgroundColor: T.blueDim, borderColor: T.blue + "30" },
+  tagText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "capitalize" },
+  section: { gap: 10 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  description: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 22 },
+  benefitsGrid: { gap: 8 },
+  benefitBadge: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    padding: 12, borderRadius: 12, borderWidth: 1,
+  },
+  benefitDot: { width: 8, height: 8, borderRadius: 4 },
+  benefitText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  mapPlaceholder: {
+    height: 180, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    alignItems: "center", justifyContent: "center", gap: 10, overflow: "hidden", padding: 20,
+  },
+  mapTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.textMuted, textAlign: "center" },
+  mapBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 18 },
+  infoCard: {
+    flexDirection: "row", gap: 12, alignItems: "flex-start",
+    backgroundColor: T.blueDim, borderRadius: 14, borderWidth: 1, borderColor: T.blue + "25", padding: 14,
+  },
+  infoTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  infoBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  kitCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, gap: 10 },
+  kitItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  kitDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: T.orange, marginTop: 7, flexShrink: 0 },
+  kitText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1, lineHeight: 20 },
+  notesCard: { backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, padding: 14 },
+  notesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20, fontStyle: "italic" },
+  actions: { gap: 10 },
+  actionPrimary: { borderRadius: 16, overflow: "hidden" },
+  actionGrad: { height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  actionPrimaryText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  actionRow: { flexDirection: "row", gap: 10 },
+  actionSecondary: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 13,
+  },
+  actionSecondaryActive: { backgroundColor: T.blueDim, borderColor: T.blue + "40" },
+  actionSecondaryGreen: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
+  actionSecondaryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  actionStart: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 13,
+    opacity: 0.6,
+  },
+  actionStartText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  comingSoon: { backgroundColor: T.orangeDim, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  comingSoonText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: T.orange },
+});
