@@ -538,7 +538,7 @@ export default function QuestionnaireScreen() {
 
   function goBack() {
     if (step === 0) {
-      router.back();
+      router.replace("/mode-select");
     } else {
       setAnimKey(k => k + 1);
       setStep(s => s - 1);
