@@ -1,4 +1,4 @@
-import { ArrowLeft, Search, SlidersHorizontal, X } from "lucide-react-native";
+import { ArrowLeft, MapPin, Search, SlidersHorizontal, X } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, useState } from "react";
 import {
@@ -70,6 +70,7 @@ export default function TrailListScreen() {
   const { savedTrailIds, completedTrailIds, customRoutes } = useApp();
 
   const [query, setQuery] = useState(params.q ?? "");
+  const [locationQuery, setLocationQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>("All");
   const [terrain, setTerrain] = useState<Terrain>("All");
@@ -92,13 +93,17 @@ export default function TrailListScreen() {
           t.terrain.toLowerCase().includes(q);
         if (!match) return false;
       }
+      if (locationQuery.trim()) {
+        const lq = locationQuery.toLowerCase();
+        if (!t.location.toLowerCase().includes(lq)) return false;
+      }
       if (difficulty !== "All" && t.difficulty !== difficulty) return false;
       if (terrain !== "All" && t.terrain !== terrain) return false;
       if (routeType !== "All" && t.routeType !== routeType) return false;
       if (bestFor !== "All" && !t.bestFor.includes(bestFor as TrailBestFor)) return false;
       return true;
     });
-  }, [allTrails, query, difficulty, terrain, bestFor, routeType]);
+  }, [allTrails, query, locationQuery, difficulty, terrain, bestFor, routeType]);
 
   const hasActiveFilters =
     difficulty !== "All" || terrain !== "All" || bestFor !== "All" || routeType !== "All";
@@ -145,13 +150,33 @@ export default function TrailListScreen() {
             style={s.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search by name, location, difficulty…"
+            placeholder="Search by name, difficulty…"
             placeholderTextColor={T.textDim}
             autoCorrect={false}
             autoCapitalize="none"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery("")} hitSlop={8}>
+              <X size={14} color={T.textMuted} />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+
+        {/* Location bar */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.locationWrap}>
+          <MapPin size={15} color={locationQuery.length > 0 ? T.green : T.textMuted} />
+          <TextInput
+            style={s.searchInput}
+            value={locationQuery}
+            onChangeText={setLocationQuery}
+            placeholder="Enter location or search area…"
+            placeholderTextColor={T.textDim}
+            autoCorrect={false}
+            autoCapitalize="words"
+            returnKeyType="search"
+          />
+          {locationQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setLocationQuery("")} hitSlop={8}>
               <X size={14} color={T.textMuted} />
             </TouchableOpacity>
           )}
@@ -176,7 +201,7 @@ export default function TrailListScreen() {
         )}
 
         {/* Results count */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
           <Text style={s.resultCount}>
             {filtered.length} trail{filtered.length !== 1 ? "s" : ""}
             {hasActiveFilters || query ? " found" : ""}
@@ -221,6 +246,11 @@ const s = StyleSheet.create({
   filterBtnActive: { backgroundColor: T.greenDim },
   filterDot: { position: "absolute", top: 8, right: 8, width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
   searchWrap: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  locationWrap: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 11,
