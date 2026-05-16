@@ -23,9 +23,11 @@ interface TrailMapProps {
   landmarkName: string;
   trailLocation: string;
   difficultyColor: string;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
-export function TrailMap({ landmarkName, trailLocation, difficultyColor }: TrailMapProps) {
+export function TrailMap({ landmarkName, trailLocation, difficultyColor, onInteractionStart, onInteractionEnd }: TrailMapProps) {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<MapView>(null);
@@ -81,6 +83,14 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor }: Trail
 
   return (
     <View style={s.container}>
+      {/* Touch intercept: disables parent ScrollView scrolling while the map is being used */}
+      <View
+        style={StyleSheet.absoluteFill}
+        onTouchStart={() => onInteractionStart?.()}
+        onTouchEnd={() => onInteractionEnd?.()}
+        onTouchCancel={() => onInteractionEnd?.()}
+        pointerEvents="box-none"
+      />
       <MapView
         ref={mapRef}
         provider={PROVIDER_DEFAULT}

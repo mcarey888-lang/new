@@ -14,6 +14,52 @@ function simplifyCoords(coords: Coord[], maxPoints: number): Coord[] {
   return out;
 }
 
+// Greedily chain way segments end-to-end so the polyline forms a
+// recognisable trail rather than a chaotic zigzag of unordered segments.
+// MAX_JUMP_DEG: ~600 m — if the nearest next segment is further away than
+// this, stop stitching (it's a separate disconnected trail section).
+const MAX_JUMP_DEG = 0.006;
+
+function stitchWays(ways: Coord[][]): Coord[] {
+  if (ways.length === 0) return [];
+  if (ways.length === 1) return ways[0];
+
+  const dist2 = (a: Coord, b: Coord) =>
+    (a.lat - b.lat) ** 2 + (a.lng - b.lng) ** 2;
+
+  const remaining = ways.map(w => [...w]);
+  // Start with the longest segment for best anchoring
+  remaining.sort((a, b) => b.length - a.length);
+  const stitched: Coord[] = [...remaining.shift()!];
+
+  while (remaining.length > 0) {
+    const tail = stitched[stitched.length - 1];
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    let reversed = false;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const w = remaining[i];
+      const ds = dist2(tail, w[0]);
+      const de = dist2(tail, w[w.length - 1]);
+      if (ds < bestDist) { bestDist = ds; bestIdx = i; reversed = false; }
+      if (de < bestDist) { bestDist = de; bestIdx = i; reversed = true; }
+    }
+
+    // Stop if the nearest unconnected segment is too far away — it is a
+    // separate trail that happens to share the same OSM name.
+    if (Math.sqrt(bestDist) > MAX_JUMP_DEG) break;
+
+    const w = remaining.splice(bestIdx, 1)[0];
+    const seg = reversed ? [...w].reverse() : w;
+    // Skip duplicate start point when segments connect exactly
+    const skip = dist2(stitched[stitched.length - 1], seg[0]) < 1e-12;
+    stitched.push(...(skip ? seg.slice(1) : seg));
+  }
+
+  return stitched;
+}
+
 router.post("/trail-route", async (req, res) => {
   const { name, location } = req.body as { name?: string; location?: string };
 
@@ -79,24 +125,26 @@ out geom;`;
     };
     const data = await overpassRes.json() as { elements: OSMElement[] };
 
-    const allCoords: Coord[] = [];
+    const allWays: Coord[][] = [];
 
     for (const el of data.elements) {
-      if (el.type === "way" && el.geometry) {
-        for (const pt of el.geometry) allCoords.push({ lat: pt.lat, lng: pt.lon });
+      if (el.type === "way" && el.geometry && el.geometry.length > 1) {
+        allWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
       } else if (el.type === "relation" && el.members) {
         for (const m of el.members) {
-          if (m.type === "way" && m.geometry) {
-            for (const pt of m.geometry) allCoords.push({ lat: pt.lat, lng: pt.lon });
+          if (m.type === "way" && m.geometry && m.geometry.length > 1) {
+            allWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
           }
         }
       }
     }
 
-    if (allCoords.length > 0) {
-      const simplified = simplifyCoords(allCoords, 350);
-      const avgLat = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
-      const avgLng = allCoords.reduce((s, c) => s + c.lng, 0) / allCoords.length;
+    if (allWays.length > 0) {
+      // Stitch segments into a connected polyline before simplifying
+      const stitched = stitchWays(allWays);
+      const simplified = simplifyCoords(stitched, 350);
+      const avgLat = stitched.reduce((s, c) => s + c.lat, 0) / stitched.length;
+      const avgLng = stitched.reduce((s, c) => s + c.lng, 0) / stitched.length;
       res.json({ coords: simplified, center: { lat: avgLat, lng: avgLng }, found: true });
     } else {
       res.json({ coords: [], center: { lat: centerLat, lng: centerLng }, found: false });

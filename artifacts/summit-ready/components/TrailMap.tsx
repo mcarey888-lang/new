@@ -16,6 +16,8 @@ interface TrailMapProps {
   landmarkName: string;
   trailLocation: string;
   difficultyColor: string;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 // Singleton CDN loader — only fetches Leaflet once per page session

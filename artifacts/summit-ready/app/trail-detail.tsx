@@ -13,7 +13,7 @@ import {
 import { TrailMap } from "@/components/TrailMap";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -103,6 +103,7 @@ export default function TrailDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes } = useApp();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [logVisible, setLogVisible] = useState(false);
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
@@ -182,7 +183,12 @@ export default function TrailDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+      >
 
         {/* ── Hero Image ──────────────────────────────── */}
         <View style={[s.heroContainer, { height: HERO_H }]}>
@@ -301,6 +307,8 @@ export default function TrailDetailScreen() {
             landmarkName={extractLandmarkName(trail.name)}
             trailLocation={trail.location}
             difficultyColor={dc}
+            onInteractionStart={() => scrollRef.current?.setNativeProps({ scrollEnabled: false })}
+            onInteractionEnd={() => scrollRef.current?.setNativeProps({ scrollEnabled: true })}
           />
         </Animated.View>
 
