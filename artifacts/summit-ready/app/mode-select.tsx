@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Compass, Map, Mountain } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Compass, Map, Mountain } from "lucide-react-native";
 import React from "react";
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -33,6 +33,15 @@ export default function ModeSelectScreen() {
           },
         ]}
       >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.backBtn, { top: Platform.OS === "web" ? 16 : insets.top + 8 }]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <ChevronLeft size={22} color={T.textMuted} />
+        </TouchableOpacity>
+
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.header}>
           <Image
             source={require("@/assets/images/logo.gif")}
@@ -114,6 +123,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: "space-between",
+  },
+  backBtn: {
+    position: "absolute",
+    left: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: { alignItems: "center", gap: 10 },
   logo: { width: 300, height: 120 },
