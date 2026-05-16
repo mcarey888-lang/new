@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { Home, Calendar, PenLine, Triangle, User, Map, MapPin } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 
@@ -10,9 +11,12 @@ export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const { appMode } = useApp();
+  const insets = useSafeAreaInsets();
 
   const isExplore = appMode === "explore";
   const isSummit = appMode === "summit" || appMode === null;
+
+  const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
 
   return (
     <Tabs
@@ -26,7 +30,8 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: "rgba(255,255,255,0.06)",
           elevation: 0,
-          height: isWeb ? 80 : 60,
+          height: tabBarHeight,
+          paddingBottom: isWeb ? 12 : insets.bottom,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -37,7 +42,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontFamily: "Inter_600SemiBold",
-          marginBottom: isWeb ? 12 : 2,
+          marginBottom: isWeb ? 0 : 2,
         },
       }}
     >
