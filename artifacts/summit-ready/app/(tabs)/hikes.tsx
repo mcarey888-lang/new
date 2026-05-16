@@ -88,15 +88,14 @@ interface CategoryCardProps {
   subtitle: string;
   color: string;
   onPress: () => void;
-  wide?: boolean;
   badge?: number;
 }
 
-function CategoryCard({ emoji, title, subtitle, color, onPress, wide, badge }: CategoryCardProps) {
+function CategoryCard({ emoji, title, subtitle, color, onPress, badge }: CategoryCardProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[cc.card, wide && cc.cardWide]}
+      style={cc.card}
       activeOpacity={0.82}
     >
       <LinearGradient
@@ -126,11 +125,10 @@ function CategoryCard({ emoji, title, subtitle, color, onPress, wide, badge }: C
 
 const cc = StyleSheet.create({
   card: {
-    flex: 1, backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
     padding: 14, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden",
     minHeight: 72,
   },
-  cardWide: { flex: 0 },
   iconBox: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   emoji: { fontSize: 18 },
   title: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
@@ -196,42 +194,36 @@ export default function HikesScreen() {
 
         {/* Category grid */}
         <Animated.View entering={FadeInDown.delay(80).duration(600)} style={p.grid}>
-          {/* Row 1 */}
-          <View style={p.gridRow}>
-            <CategoryCard
-              emoji="🗺️"
-              title="Nearby Trails"
-              subtitle="Browse trails"
-              color={T.blue}
-              onPress={() => router.push("/trail-list")}
-            />
-            <CategoryCard
-              emoji="⛰️"
-              title="Training Hills"
-              subtitle="AI-powered lookup"
-              color={T.orange}
-              onPress={() => router.push("/hills-finder")}
-            />
-          </View>
-          {/* Row 2 */}
-          <View style={p.gridRow}>
-            <CategoryCard
-              emoji="🔖"
-              title="Saved Routes"
-              subtitle={savedTrailIds.length === 1 ? "saved" : "saved"}
-              color={T.blue}
-              badge={savedTrailIds.length}
-              onPress={() => router.push("/trails-saved")}
-            />
-            <CategoryCard
-              emoji="✅"
-              title="Completed"
-              subtitle={completedTrailIds.length === 1 ? "completed" : "completed"}
-              color={T.green}
-              badge={completedTrailIds.length}
-              onPress={() => router.push("/trails-completed")}
-            />
-          </View>
+          <CategoryCard
+            emoji="🗺️"
+            title="Nearby Trails"
+            subtitle="Browse trails"
+            color={T.blue}
+            onPress={() => router.push("/trail-list")}
+          />
+          <CategoryCard
+            emoji="⛰️"
+            title="Training Hills"
+            subtitle="AI-powered hill lookup"
+            color={T.orange}
+            onPress={() => router.push("/hills-finder")}
+          />
+          <CategoryCard
+            emoji="🔖"
+            title="Saved Routes"
+            subtitle="Trails you've bookmarked"
+            color={T.blue}
+            badge={savedTrailIds.length}
+            onPress={() => router.push("/trails-saved")}
+          />
+          <CategoryCard
+            emoji="✅"
+            title="Completed Trails"
+            subtitle="Trails you've finished"
+            color={T.green}
+            badge={completedTrailIds.length}
+            onPress={() => router.push("/trails-completed")}
+          />
           {/* Row 3 — full width */}
           <TouchableOpacity
             style={p.createCard}
@@ -312,7 +304,6 @@ const p = StyleSheet.create({
   statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
   statDivider: { width: 1, backgroundColor: T.border },
   grid: { gap: 10 },
-  gridRow: { flexDirection: "row", gap: 10 },
   createCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
