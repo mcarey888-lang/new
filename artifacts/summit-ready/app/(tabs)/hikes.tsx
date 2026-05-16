@@ -96,8 +96,8 @@ function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => 
         </View>
         <View style={hc.stat}>
           <Repeat size={12} color={T.textMuted} />
-          <Text style={hc.statVal}>{hill.repeats}×</Text>
-          <Text style={hc.statLbl}>recs</Text>
+          <Text style={hc.statVal}>1×</Text>
+          <Text style={hc.statLbl}>reps</Text>
         </View>
         <View style={hc.stat}>
           <BarChart2 size={12} color={T.purple} />
@@ -611,8 +611,8 @@ export default function HikesScreen() {
                   </View>
                   <View style={p.searchStat}>
                     <Repeat size={11} color={T.textMuted} />
-                    <Text style={p.searchStatVal}>{searchResult.repeats}×</Text>
-                    <Text style={p.searchStatLbl}>recs</Text>
+                    <Text style={p.searchStatVal}>1×</Text>
+                    <Text style={p.searchStatLbl}>reps</Text>
                   </View>
                   <View style={p.searchStat}>
                     <BarChart2 size={11} color={T.purple} />
