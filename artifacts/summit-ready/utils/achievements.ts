@@ -1,4 +1,4 @@
-import { Session } from "@/context/AppContext";
+import { Session, ExploreHike } from "@/context/AppContext";
 
 export type AchievementTier = "bronze" | "silver" | "gold";
 export type AchievementCategory = "sessions" | "elevation" | "hills" | "bigday" | "readiness" | "consistency";
@@ -70,19 +70,23 @@ export function computeUnlocked(
   sessions: Session[],
   readinessScore: number,
   submittedWeekCount: number,
+  exploreHikes: ExploreHike[] = [],
 ): Set<string> {
   const completed = sessions.filter(s => s.completed);
-  const totalElev  = completed.reduce((a, s) => a + s.elevationGain, 0);
+  // Explore hikes count as completed sessions and elevation
+  const totalElev  = completed.reduce((a, s) => a + s.elevationGain, 0)
+    + exploreHikes.reduce((a, h) => a + h.elevationGain, 0);
+  const totalCompleted = completed.length + exploreHikes.length;
   const hillSessions = completed.filter(s => s.type === "hill");
   const bigDays      = completed.filter(s => s.type === "bigDay");
 
   const u = new Set<string>();
 
-  if (completed.length >= 1)  u.add("first_session");
-  if (completed.length >= 5)  u.add("sessions_5");
-  if (completed.length >= 10) u.add("sessions_10");
-  if (completed.length >= 25) u.add("sessions_25");
-  if (completed.length >= 50) u.add("sessions_50");
+  if (totalCompleted >= 1)  u.add("first_session");
+  if (totalCompleted >= 5)  u.add("sessions_5");
+  if (totalCompleted >= 10) u.add("sessions_10");
+  if (totalCompleted >= 25) u.add("sessions_25");
+  if (totalCompleted >= 50) u.add("sessions_50");
 
   if (totalElev >= 1000)  u.add("elev_1000");
   if (totalElev >= 5000)  u.add("elev_5000");

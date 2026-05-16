@@ -515,11 +515,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     score: number,
     submitted: Record<string, boolean>,
     alreadyUnlocked: string[],
+    hikes: ExploreHike[] = [],
   ) => {
     const weekNums = new Set(
       Object.keys(submitted).filter(k => submitted[k]).map(k => k.split("-")[0])
     );
-    const computed = computeUnlocked(updatedSessions, score, weekNums.size);
+    const computed = computeUnlocked(updatedSessions, score, weekNums.size, hikes);
     const prev = new Set(alreadyUnlocked);
     const newly: string[] = [];
     for (const id of computed) {
@@ -544,8 +545,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setReadinessScore(score);
     }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
-    checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements);
-  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, readinessScore, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
+    checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements, exploreHikes);
+  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
     const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
@@ -598,7 +599,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [newHike, ...exploreHikes];
     setExploreHikes(updated);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
-  }, [exploreHikes]);
+    checkAndNotifyAchievements(sessions, readinessScore, submittedPlanSessions, unlockedAchievements, updated);
+  }, [exploreHikes, sessions, readinessScore, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
 
   const deleteExploreHike = useCallback(async (id: string) => {
     const updated = exploreHikes.filter(h => h.id !== id);
@@ -750,9 +752,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setReadinessScore(score);
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
     await AsyncStorage.setItem(SUBMITTED_KEY, JSON.stringify(newSubmitted));
-    checkAndNotifyAchievements(updated, score, newSubmitted, unlockedAchievements);
+    checkAndNotifyAchievements(updated, score, newSubmitted, unlockedAchievements, exploreHikes);
     return toSubmit.length;
-  }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills, unlockedAchievements, checkAndNotifyAchievements]);
+  }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
   const addHillToPlan = useCallback(async (hill: NearbyHill) => {
     if (!summitGoal) return;

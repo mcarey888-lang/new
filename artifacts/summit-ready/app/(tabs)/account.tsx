@@ -65,7 +65,7 @@ function maskId(id: string) {
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
+  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
 
   // Lifetime stats
   const lifetimeSessions = sessions.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
@@ -326,7 +326,7 @@ export default function AccountScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <Text style={styles.statVal}>{sessions.length}</Text>
+              <Text style={styles.statVal}>{sessions.length + exploreHikes.length}</Text>
               <Text style={styles.statLbl}>Sessions logged</Text>
             </View>
             <View style={styles.statBox}>
