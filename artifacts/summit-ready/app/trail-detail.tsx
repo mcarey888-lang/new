@@ -3,7 +3,6 @@ import {
   Bookmark,
   CheckCircle,
   Clock,
-  Map,
   MapPin,
   PenLine,
   Navigation,
@@ -11,6 +10,7 @@ import {
   Wind,
   Package,
 } from "lucide-react-native";
+import { TrailMap } from "@/components/TrailMap";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useState } from "react";
@@ -310,18 +310,14 @@ export default function TrailDetailScreen() {
           </View>
         </Animated.View>
 
-        {/* Map placeholder */}
+        {/* Route map */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.section}>
           <Text style={s.sectionTitle}>Route map</Text>
-          <View style={s.mapPlaceholder}>
-            <LinearGradient
-              colors={[T.surface, T.card]}
-              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-            />
-            <Map size={32} color={T.textDim} />
-            <Text style={s.mapTitle}>Interactive route map coming soon</Text>
-            <Text style={s.mapBody}>GPS navigation and live tracking will be available in a future update.</Text>
-          </View>
+          <TrailMap
+            landmarkName={extractLandmarkName(trail.name)}
+            trailLocation={trail.location}
+            difficultyColor={dc}
+          />
         </Animated.View>
 
         {/* Weather */}

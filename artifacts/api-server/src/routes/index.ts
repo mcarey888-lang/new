@@ -6,6 +6,7 @@ import hillsRouter from "./hills";
 import adjustPlanRouter from "./adjust-plan";
 import coachRouter from "./coach";
 import alpineRouter from "./alpine";
+import trailRouteRouter from "./trail-route";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(hillsRouter);
 router.use(adjustPlanRouter);
 router.use(coachRouter);
 router.use(alpineRouter);
+router.use(trailRouteRouter);
 
 export default router;

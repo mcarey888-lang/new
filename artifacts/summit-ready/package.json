@@ -58,6 +58,7 @@
   "dependencies": {
     "@react-native-community/slider": "^5.2.0",
     "lucide-react-native": "^1.14.0",
+    "react-native-maps": "1.14.0",
     "react-native-purchases": "^10.1.0"
   }
 }
