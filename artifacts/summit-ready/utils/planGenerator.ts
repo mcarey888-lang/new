@@ -43,14 +43,15 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     : (weekNum < 4 ? "30–40 min" : "40–55 min");
 
   if (hasGym(goal)) {
+    const stepperFloors = Math.round(elevTarget / 3);
     const opts = [
       {
         label: "Incline Treadmill",
         description: `Set the treadmill to 8–12% incline and walk or jog at a pace where you can hold a conversation. Keep your heart rate in zone 2–3 for the full duration. Focus on steady foot strike and upright posture — the same mechanics you'll use on the mountain.`,
       },
       {
-        label: "StairMaster / Step Machine",
-        description: `Set the StairMaster or step machine to a moderate resistance and maintain a consistent stepping rhythm for the full session. Do not lean on the handrails — engage your legs and core as you would on a real ascent. This is one of the most specific gym exercises for summit fitness.`,
+        label: "Stepper Machine",
+        description: `Today's elevation target is ${elevTarget}m — that's approximately ${stepperFloors} floors on the stepper (most machines count ~3m per floor). Set a moderate resistance and aim to hit ${stepperFloors} floors before you finish. Maintain a steady rhythm throughout; do not lean on the handrails — keep your weight through your legs and core, exactly as you would on a real ascent. Zone 2–3 effort: you should be able to speak in short sentences.`,
       },
       {
         label: "Incline Treadmill + Leg Strength",
