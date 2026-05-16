@@ -31,9 +31,15 @@ export function openMapDirections(lat: number, lng: number, label: string) {
 }
 
 export function openMapSearch(name: string) {
-  Linking.openURL(
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
-  );
+  if (Platform.OS === "ios") {
+    Linking.openURL(`maps://?q=${encodeURIComponent(name)}`);
+  } else if (Platform.OS === "android") {
+    Linking.openURL(`geo:0,0?q=${encodeURIComponent(name)}`);
+  } else {
+    Linking.openURL(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
+    );
+  }
 }
 
 export function openMapsForHill(
@@ -50,9 +56,19 @@ export function openMapsForHill(
     }
   } else {
     if (directions) {
-      Linking.openURL(
-        `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name + " car park")}&travelmode=driving`
-      );
+      if (Platform.OS === "ios") {
+        Linking.openURL(
+          `maps://?q=${encodeURIComponent(name + " car park")}`
+        );
+      } else if (Platform.OS === "android") {
+        Linking.openURL(
+          `geo:0,0?q=${encodeURIComponent(name + " car park")}`
+        );
+      } else {
+        Linking.openURL(
+          `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name + " car park")}&travelmode=driving`
+        );
+      }
     } else {
       openMapSearch(name);
     }
