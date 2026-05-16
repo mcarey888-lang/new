@@ -201,7 +201,7 @@ router.post("/hills-search", async (req, res) => {
 });
 
 router.post("/hills-lookup", async (req, res) => {
-  const { location, radius } = req.body as { location?: string; radius?: number };
+  const { location, radius, minElevation } = req.body as { location?: string; radius?: number; minElevation?: number };
 
   if (!location || typeof location !== "string" || location.trim().length < 2) {
     res.status(400).json({ error: "Location required" });
@@ -209,8 +209,14 @@ router.post("/hills-lookup", async (req, res) => {
   }
 
   const r = Number(radius) || 25;
+  const minElev = Number(minElevation) || 0;
 
   try {
+    let userMsg = `Find training hills within ${r}km of: "${location.trim()}"`;
+    if (minElev > 0) {
+      userMsg += `. Prioritise hills with at least ${minElev}m elevation gain per climb. If fewer than 3 hills meeting this minimum exist within ${r}km, include the nearest qualifying hills even if they are slightly outside the radius — clearly note their actual distance. Return at least 5 results total.`;
+    }
+
     const response = await openai.chat.completions.create({
       model: "gpt-5.4",
       max_completion_tokens: 1200,
@@ -218,7 +224,7 @@ router.post("/hills-lookup", async (req, res) => {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Find training hills within ${r}km of: "${location.trim()}"`,
+          content: userMsg,
         },
       ],
     });

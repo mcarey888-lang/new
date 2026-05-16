@@ -135,7 +135,7 @@ interface AppState {
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearPlan: () => Promise<void>;
-  fetchNearbyHills: (radiusOverride?: number) => Promise<void>;
+  fetchNearbyHills: (radiusOverride?: number, minElevation?: number) => Promise<void>;
   togglePlanSession: (weekNum: number, sessionIdx: number) => Promise<void>;
   assignHillToSession: (weekNum: number, sessionIdx: number, hill: NearbyHill) => Promise<void>;
   adjustPlanWithAI: () => Promise<void>;
@@ -577,15 +577,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(HAS_VIEWED_PLAN_KEY, "true");
   }, [hasViewedPlan]);
 
-  const fetchNearbyHills = useCallback(async (radiusOverride?: number) => {
+  const fetchNearbyHills = useCallback(async (radiusOverride?: number, minElevation?: number) => {
     if (!summitGoal) return;
     setHillsLoading(true);
     try {
       const radius = radiusOverride ?? summitGoal.maxRadius;
+      const body: Record<string, unknown> = { location: summitGoal.location, radius };
+      if (minElevation && minElevation > 0) body.minElevation = minElevation;
       const res = await fetch(`${API_BASE}/hills-lookup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location: summitGoal.location, radius }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Hills lookup failed");
       const data: { hills: NearbyHill[] } = await res.json();

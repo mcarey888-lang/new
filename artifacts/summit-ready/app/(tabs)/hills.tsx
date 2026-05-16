@@ -1,4 +1,4 @@
-import { Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search, AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle, PlusCircle, RefreshCw, Zap, Lock, Map, Info } from "lucide-react-native";
+import { Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search, AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle, PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -39,6 +39,7 @@ const GRADE_SCORE: Record<string, number> = {
 };
 
 const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+const ELEV_STEPS = [0, 50, 100, 150, 200, 300, 400, 500, 600, 800];
 type SortKey = "distance" | "elevation" | "popularity";
 
 function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
@@ -66,6 +67,8 @@ export default function HillsScreen() {
 
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
   const [userChangedRadius, setUserChangedRadius] = useState(false);
+  const [minElevation, setMinElevation] = useState(0);
+  const [userChangedMinElev, setUserChangedMinElev] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("distance");
 
   const [editingLoc, setEditingLoc] = useState(false);
@@ -96,6 +99,7 @@ export default function HillsScreen() {
   }, [summitGoal?.maxRadius, userChangedRadius]);
 
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
+  const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
 
   const targetElev = summitGoal?.elevationGain ?? 1000;
   const currentWeek = trainingPlan.find(w => {
@@ -117,6 +121,17 @@ export default function HillsScreen() {
     } else {
       const next = idx + dir;
       if (next >= 0 && next < RADIUS_STEPS.length) setLocalRadius(RADIUS_STEPS[next]);
+    }
+  }
+
+  function stepMinElev(dir: 1 | -1) {
+    setUserChangedMinElev(true);
+    const idx = ELEV_STEPS.indexOf(minElevation);
+    if (idx === -1) {
+      setMinElevation(0);
+    } else {
+      const next = idx + dir;
+      if (next >= 0 && next < ELEV_STEPS.length) setMinElevation(ELEV_STEPS[next]);
     }
   }
 
@@ -295,6 +310,45 @@ export default function HillsScreen() {
 
             <View style={styles.controlRow}>
               <View style={styles.controlLabelRow}>
+                <Mountain size={13} color={T.orange} />
+                <Text style={styles.controlLabel}>Min elevation</Text>
+              </View>
+              <View style={styles.radiusStepper}>
+                <TouchableOpacity
+                  onPress={() => stepMinElev(-1)}
+                  disabled={minElevation <= ELEV_STEPS[0]}
+                  style={[styles.stepBtn, minElevation <= ELEV_STEPS[0] && { opacity: 0.3 }]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Minus size={14} color={T.white} />
+                </TouchableOpacity>
+                <View style={styles.radiusValueBox}>
+                  {minElevation === 0 ? (
+                    <Text style={styles.radiusValue}>Any</Text>
+                  ) : (
+                    <Text style={[styles.radiusValue, { color: T.orange }]}>
+                      {minElevation}
+                      <Text style={styles.radiusUnit}>m+</Text>
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={() => stepMinElev(1)}
+                  disabled={minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1]}
+                  style={[styles.stepBtn, minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1] && { opacity: 0.3 }]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Plus size={14} color={T.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.controlDivider} />
+
+            <View style={styles.controlRow}>
+              <View style={styles.controlLabelRow}>
                 <SlidersHorizontal size={13} color={T.blue} />
                 <Text style={styles.controlLabel}>Sort by</Text>
               </View>
@@ -411,24 +465,28 @@ export default function HillsScreen() {
         {/* Fetch / Refresh button */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
           <TouchableOpacity
-            onPress={() => fetchNearbyHills(localRadius)}
+            onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined)}
             disabled={hillsLoading}
             style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={radiusChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+              colors={settingsChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
               style={styles.fetchBtnInner}
             >
               {hillsLoading ? (
                 <>
                   <ActivityIndicator size="small" color={T.green} />
-                  <Text style={styles.fetchBtnText}>Finding hills within {localRadius}km…</Text>
+                  <Text style={styles.fetchBtnText}>
+                    Finding hills{minElevation > 0 ? ` ${minElevation}m+` : ""} within {localRadius}km…
+                  </Text>
                 </>
-              ) : radiusChanged ? (
+              ) : settingsChanged ? (
                 <>
                   <Search size={15} color={T.orange} />
-                  <Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km radius</Text>
+                  <Text style={[styles.fetchBtnText, { color: T.orange }]}>
+                    Search {localRadius}km{minElevation > 0 ? ` · min ${minElevation}m` : ""}
+                  </Text>
                 </>
               ) : (
                 <>
@@ -441,6 +499,18 @@ export default function HillsScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
+
+        {/* Outside-radius notice */}
+        {minElevation > 0 && nearbyHills.length > 0 && nearbyHills.some(h => h.distance > localRadius) && (
+          <Animated.View entering={FadeInDown.delay(110).duration(400)}>
+            <View style={styles.outsideRadiusNote}>
+              <Info size={13} color={T.orange} />
+              <Text style={styles.outsideRadiusText}>
+                Some results are beyond {localRadius}km — no {minElevation}m+ hills were found closer, so the nearest qualifying hills are shown.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* Empty state */}
         {nearbyHills.length === 0 && !hillsLoading && (
@@ -737,6 +807,15 @@ const styles = StyleSheet.create({
   radiusValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
   radiusUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
 
+  outsideRadiusNote: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: T.orangeDim, borderRadius: 12, borderWidth: 1,
+    borderColor: T.orange + "40", padding: 12, marginBottom: 12,
+  },
+  outsideRadiusText: {
+    flex: 1, fontSize: 12, fontFamily: "Inter_400Regular",
+    color: T.orange, lineHeight: 17,
+  },
   sortChips: { flexDirection: "row", gap: 6 },
   sortChip: {
     paddingHorizontal: 10,
