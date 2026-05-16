@@ -18,7 +18,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Session, NearbyHill, useApp } from "@/context/AppContext";
+import { Session, ExploreHike, NearbyHill, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
 const SESSION_TYPES: { value: "cardio" | "hill" | "bigDay"; label: string; icon: LucideIcon; color: string }[] = [
@@ -257,6 +257,51 @@ function SessionCard({ session, onDelete, onToggle, index }: {
   );
 }
 
+function ExploreHikeCard({ hike, onDelete, index }: {
+  hike: ExploreHike;
+  onDelete: () => void;
+  index: number;
+}) {
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
+      <View style={styles.sessionCard}>
+        <LinearGradient colors={[T.green + "08", "transparent"]} style={StyleSheet.absoluteFill} />
+        <View style={styles.scTop}>
+          <View style={[styles.scTypeIcon, { backgroundColor: T.green + "18" }]}>
+            <Map size={16} color={T.green} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.scTitle}>{hike.name}</Text>
+            <Text style={styles.scDate}>
+              {new Date(hike.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+              {" · Trail / Hike"}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onDelete} style={styles.delBtn}>
+            <Trash2 size={14} color={T.textDim} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.scStats}>
+          {([
+            { icon: TrendingUp, val: `${hike.elevationGain}m`, color: T.orange },
+            { icon: Map, val: `${hike.distance}km`, color: T.blue },
+            { icon: Clock, val: `${hike.timeTaken}min`, color: T.textMuted },
+          ] as { icon: LucideIcon; val: string; color: string }[]).map((s, i) => {
+            const SIcon = s.icon;
+            return (
+              <View key={i} style={styles.scStat}>
+                <SIcon size={11} color={s.color} />
+                <Text style={[styles.scStatText, { color: s.color }]}>{s.val}</Text>
+              </View>
+            );
+          })}
+        </View>
+        {!!hike.notes && <Text style={styles.scNotes} numberOfLines={2}>{hike.notes}</Text>}
+      </View>
+    </Animated.View>
+  );
+}
+
 function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { addSession, trainingPlan, nearbyHills } = useApp();
@@ -453,14 +498,34 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   );
 }
 
+type LogItem =
+  | { kind: "session"; data: Session }
+  | { kind: "hike"; data: ExploreHike };
+
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
-  const { sessions, deleteSession, updateSession } = useApp();
+  const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const done = sessions.filter(s => s.completed);
-  const totalElev = done.reduce((a, s) => a + s.elevationGain, 0);
-  const totalDist = done.reduce((a, s) => a + s.distance, 0);
+  const allItems = useMemo<LogItem[]>(() => {
+    const items: LogItem[] = [
+      ...sessions.map(s => ({ kind: "session" as const, data: s })),
+      ...exploreHikes.map(h => ({ kind: "hike" as const, data: h })),
+    ];
+    return items.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+  }, [sessions, exploreHikes]);
+
+  const totalElev = useMemo(() =>
+    sessions.filter(s => s.completed).reduce((a, s) => a + s.elevationGain, 0) +
+    exploreHikes.reduce((a, h) => a + h.elevationGain, 0),
+  [sessions, exploreHikes]);
+
+  const totalDist = useMemo(() =>
+    sessions.filter(s => s.completed).reduce((a, s) => a + s.distance, 0) +
+    exploreHikes.reduce((a, h) => a + h.distance, 0),
+  [sessions, exploreHikes]);
+
+  const totalCount = sessions.filter(s => s.completed).length + exploreHikes.length;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -501,19 +566,19 @@ export default function LogScreen() {
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <CheckCircle size={18} color={T.green} />
-              <Text style={styles.summaryVal}>{done.length}</Text>
+              <Text style={styles.summaryVal}>{totalCount}</Text>
               <Text style={styles.summaryLbl}>Sessions</Text>
             </View>
           </View>
         </Animated.View>
 
-        {sessions.length === 0 ? (
+        {allItems.length === 0 ? (
           <View style={styles.empty}>
             <View style={[styles.emptyIcon, { backgroundColor: T.blueDim }]}>
               <Activity size={30} color={T.blue} />
             </View>
             <Text style={styles.emptyTitle}>No sessions yet</Text>
-            <Text style={styles.emptySub}>Log your first training session</Text>
+            <Text style={styles.emptySub}>Log your first training session or hike</Text>
             <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.emptyBtn}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.emptyBtnGrad}>
                 <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Log a session</Text>
@@ -521,15 +586,24 @@ export default function LogScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          sessions.map((s, i) => (
-            <SessionCard
-              key={s.id}
-              session={s}
-              index={i}
-              onDelete={() => deleteSession(s.id)}
-              onToggle={() => updateSession(s.id, { completed: !s.completed })}
-            />
-          ))
+          allItems.map((item, i) =>
+            item.kind === "session" ? (
+              <SessionCard
+                key={item.data.id}
+                session={item.data}
+                index={i}
+                onDelete={() => deleteSession(item.data.id)}
+                onToggle={() => updateSession(item.data.id, { completed: !item.data.completed })}
+              />
+            ) : (
+              <ExploreHikeCard
+                key={item.data.id}
+                hike={item.data}
+                index={i}
+                onDelete={() => deleteExploreHike(item.data.id)}
+              />
+            )
+          )
         )}
       </ScrollView>
       <AddModal visible={modalOpen} onClose={() => setModalOpen(false)} />
