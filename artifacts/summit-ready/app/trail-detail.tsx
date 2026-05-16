@@ -150,6 +150,7 @@ export default function TrailDetailScreen() {
       }
     } else {
       await completeTrail(trail!.id);
+      setLogVisible(true);
     }
   }
 
@@ -331,6 +332,8 @@ export default function TrailDetailScreen() {
       <LogHikeModal
         visible={logVisible}
         prefillName={trail.name}
+        prefillDistance={trail.distance}
+        prefillElevation={trail.elevationGain}
         onClose={() => setLogVisible(false)}
       />
     </LinearGradient>

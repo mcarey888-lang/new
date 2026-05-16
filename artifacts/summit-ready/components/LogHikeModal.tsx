@@ -33,16 +33,18 @@ function Stepper({ value, onChange, min = 0, step = 1 }: { value: number; onChan
 interface Props {
   visible: boolean;
   prefillName?: string;
+  prefillDistance?: number;
+  prefillElevation?: number;
   onClose: () => void;
 }
 
-export function LogHikeModal({ visible, prefillName, onClose }: Props) {
+export function LogHikeModal({ visible, prefillName, prefillDistance, prefillElevation, onClose }: Props) {
   const { logExploreHike } = useApp();
   const today = new Date().toISOString().split("T")[0];
   const [name, setName] = useState(prefillName ?? "");
   const [date, setDate] = useState(today);
-  const [distance, setDistance] = useState(5);
-  const [elevationGain, setElevationGain] = useState(200);
+  const [distance, setDistance] = useState(prefillDistance ?? 5);
+  const [elevationGain, setElevationGain] = useState(prefillElevation ?? 200);
   const [timeTaken, setTimeTaken] = useState(90);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -51,8 +53,10 @@ export function LogHikeModal({ visible, prefillName, onClose }: Props) {
     if (visible) {
       setName(prefillName ?? "");
       setDate(today);
+      if (prefillDistance !== undefined) setDistance(prefillDistance);
+      if (prefillElevation !== undefined) setElevationGain(prefillElevation);
     }
-  }, [visible, prefillName]);
+  }, [visible, prefillName, prefillDistance, prefillElevation]);
 
   async function handleSave() {
     if (!name.trim()) return;
