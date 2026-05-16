@@ -598,7 +598,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [newHike, ...exploreHikes];
     setExploreHikes(updated);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
-  }, [exploreHikes]);
+    await addSession({
+      date: hike.date,
+      type: "bigDay",
+      distance: hike.distance,
+      elevationGain: hike.elevationGain,
+      duration: hike.timeTaken,
+      effort: 3,
+      notes: hike.name + (hike.notes ? ` — ${hike.notes}` : ""),
+      completed: true,
+      weekNumber: 0,
+      hillName: hike.name,
+    });
+  }, [exploreHikes, addSession]);
 
   const deleteExploreHike = useCallback(async (id: string) => {
     const updated = exploreHikes.filter(h => h.id !== id);
