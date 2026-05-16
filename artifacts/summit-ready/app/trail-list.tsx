@@ -1,5 +1,6 @@
 import { ArrowLeft, MapPin, Search, SlidersHorizontal, X, RefreshCw } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -28,6 +29,8 @@ import {
 
 export { LIVE_TRAILS_CACHE_KEY };
 export type { LiveTrailsCache } from "@/utils/liveTrailsCache";
+
+const LAST_TRAIL_LOCATION_KEY = "summitready_last_trail_location";
 
 type Difficulty = TrailDifficulty | "All";
 type Terrain = TrailTerrain | "All";
@@ -112,6 +115,7 @@ export default function TrailListScreen() {
   const [usingFallback, setUsingFallback] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const liveTrailsRef = useRef<Trail[]>([]);
+  const firstMountRef = useRef(true);
 
   const defaultLocation = summitGoal?.location ?? null;
   const radius = summitGoal?.maxRadius ?? 30;
@@ -128,7 +132,7 @@ export default function TrailListScreen() {
     setTrailsLoading(true);
     setTrailsError(null);
 
-    if (!forceRefresh && !overrideLocation) {
+    if (!forceRefresh) {
       const cached = await loadLiveTrailsCache(loc, radius);
       if (cached && cached.length > 0) {
         setLiveTrails(cached);
@@ -161,18 +165,32 @@ export default function TrailListScreen() {
   }, [defaultLocation, radius]);
 
   useEffect(() => {
-    loadTrails(false);
+    if (firstMountRef.current) {
+      firstMountRef.current = false;
+      AsyncStorage.getItem(LAST_TRAIL_LOCATION_KEY).then(saved => {
+        if (saved) {
+          setLocationQuery(saved);
+          loadTrails(false, saved);
+        } else {
+          loadTrails(false);
+        }
+      });
+    } else {
+      loadTrails(false);
+    }
   }, [loadTrails]);
 
   const searchByLocation = useCallback(async () => {
     const trimmed = locationQuery.trim();
     if (!trimmed) {
       setLocationQuery("");
+      await AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
       loadTrails(true, defaultLocation ?? undefined);
       return;
     }
     setLocationSearching(true);
     await loadTrails(true, trimmed);
+    await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, trimmed);
     setLocationSearching(false);
   }, [locationQuery, loadTrails, defaultLocation]);
 
