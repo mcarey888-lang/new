@@ -13,7 +13,7 @@ import {
 import { TrailMap } from "@/components/TrailMap";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -107,10 +107,9 @@ export default function TrailDetailScreen() {
   const [logVisible, setLogVisible] = useState(false);
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     readLiveTrailsFromCache().then((trails) => {
       setLiveTrails(trails);
       setCacheLoaded(true);
@@ -122,27 +121,8 @@ export default function TrailDetailScreen() {
     return all.find((t) => t.id === params.id) ?? null;
   }, [params.id, customRoutes, liveTrails]);
 
-  useEffect(() => {
-    if (!trail) return;
-    let cancelled = false;
-    setImageUri(null);
-    setImageLoading(true);
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/mountain-image`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: extractLandmarkName(trail.name) }),
-        });
-        if (res.ok) {
-          const data = await res.json() as { imageUrl: string | null };
-          if (data.imageUrl && !cancelled) setImageUri(data.imageUrl);
-        }
-      } catch { /* fall through to gradient fallback */ }
-      if (!cancelled) setImageLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [trail?.name]);
+  // Reset image error state when trail changes
+  React.useEffect(() => { setImageError(false); }, [trail?.id]);
 
   if (!cacheLoaded) {
     return (
@@ -167,6 +147,12 @@ export default function TrailDetailScreen() {
   const isSaved = savedTrailIds.includes(trail.id);
   const isCompleted = completedTrailIds.includes(trail.id);
   const dc = DIFF_COLOR[trail.difficulty] ?? T.blue;
+
+  // Build the image URL — the server proxies Wikimedia so the native app
+  // always loads from our own domain (avoids Wikimedia CDN issues on Android)
+  const heroImageUri = imageError
+    ? null
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(extractLandmarkName(trail.name))}`;
 
   async function handleSaveToggle() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -200,14 +186,12 @@ export default function TrailDetailScreen() {
 
         {/* ── Hero Image ──────────────────────────────── */}
         <View style={[s.heroContainer, { height: HERO_H }]}>
-          {imageLoading ? (
-            <LinearGradient colors={["#0E1A10", "#0D1117", T.bg]} style={StyleSheet.absoluteFill} />
-          ) : imageUri ? (
+          {heroImageUri ? (
             <ImageBackground
-              source={{ uri: imageUri }}
+              source={{ uri: heroImageUri }}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
-              onError={() => { setImageUri(null); }}
+              onError={() => { setImageError(true); }}
             >
               <LinearGradient
                 colors={["rgba(0,0,0,0.6)", "transparent"]}
