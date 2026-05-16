@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -28,6 +28,7 @@ interface TrailMapProps {
 export function TrailMap({ landmarkName, trailLocation, difficultyColor }: TrailMapProps) {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [loading, setLoading] = useState(true);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,9 +75,14 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor }: Trail
   const hasRoute = routeData?.found && (routeData.coords?.length ?? 0) > 1;
   const latDelta = hasRoute ? 0.06 : 0.12;
 
+  const coordinates = hasRoute && routeData
+    ? routeData.coords.map(c => ({ latitude: c.lat, longitude: c.lng }))
+    : [];
+
   return (
     <View style={s.container}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
         initialRegion={{
@@ -85,38 +91,37 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor }: Trail
           latitudeDelta: latDelta,
           longitudeDelta: latDelta * 1.5,
         }}
-        mapType="terrain"
         showsCompass={false}
         showsScale
         showsUserLocation={false}
         toolbarEnabled={false}
+        onMapReady={() => {
+          if (hasRoute && coordinates.length > 1) {
+            mapRef.current?.fitToCoordinates(coordinates, {
+              edgePadding: { top: 32, right: 32, bottom: 32, left: 32 },
+              animated: false,
+            });
+          }
+        }}
       >
-        {hasRoute && routeData && (
+        {hasRoute && coordinates.length > 0 && (
           <Polyline
-            coordinates={routeData.coords.map(c => ({
-              latitude: c.lat,
-              longitude: c.lng,
-            }))}
+            coordinates={coordinates}
             strokeColor={difficultyColor}
-            strokeWidth={3.5}
+            strokeWidth={4}
+            lineDashPattern={undefined}
           />
         )}
-        {hasRoute && routeData && routeData.coords.length > 0 && (
+        {hasRoute && coordinates.length > 0 && (
           <Marker
-            coordinate={{
-              latitude: routeData.coords[0].lat,
-              longitude: routeData.coords[0].lng,
-            }}
+            coordinate={coordinates[0]}
             title="Start"
             pinColor={difficultyColor}
           />
         )}
-        {hasRoute && routeData && routeData.coords.length > 1 && (
+        {hasRoute && coordinates.length > 1 && (
           <Marker
-            coordinate={{
-              latitude: routeData.coords[routeData.coords.length - 1].lat,
-              longitude: routeData.coords[routeData.coords.length - 1].lng,
-            }}
+            coordinate={coordinates[coordinates.length - 1]}
             title="End"
             pinColor="#888"
           />
