@@ -153,11 +153,10 @@ export default function TrailDetailScreen() {
   const isCompleted = completedTrailIds.includes(trail.id);
   const dc = DIFF_COLOR[trail.difficulty] ?? T.blue;
 
-  // Build the image URL — the server proxies Wikimedia so the native app
-  // always loads from our own domain (avoids Wikimedia CDN issues on Android)
+  // Build the image URL — server proxies a Mapbox satellite tile so the token stays server-side
   const heroImageUri = imageError
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(extractLandmarkName(trail.name))}`;
+    : `${API_BASE}/mountain-image?location=${encodeURIComponent(trail.location)}&width=800&height=400`;
 
   async function handleSaveToggle() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
