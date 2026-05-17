@@ -123,12 +123,16 @@ function buildHtml(opts: {
   color: string;
   routeCoords: Array<[number, number]>;
   center: Coord;
+  userLat: number | null;
+  userLng: number | null;
 }): string {
-  const { token, trailName, color, routeCoords, center } = opts;
+  const { token, trailName, color, routeCoords, center, userLat, userLng } = opts;
   const pinCenter = routeCoords.length > 0 ? routeCoords[0] : [center.lng, center.lat];
   const coordsJson = JSON.stringify(routeCoords);
   const safeTitle = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const jsName = JSON.stringify(trailName);
+  const initLat = userLat !== null ? userLat.toFixed(6) : "null";
+  const initLng = userLng !== null ? userLng.toFixed(6) : "null";
 
   return `<!DOCTYPE html>
 <html>
@@ -147,6 +151,7 @@ html,body{height:100%;background:#111;overflow:hidden}
 .mapboxgl-ctrl-attrib{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.6)!important}
 .mapboxgl-ctrl-attrib a{color:rgba(255,255,255,0.5)!important}
 .trail-label{background:rgba(20,20,20,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-family:-apple-system,sans-serif;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+.user-dot{width:18px;height:18px;border-radius:50%;background:#007AFF;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,122,255,0.35),0 2px 6px rgba(0,0,0,0.4)}
 </style>
 </head>
 <body>
@@ -160,6 +165,10 @@ var pinLng=${pinCenter[0]};
 var pinLat=${pinCenter[1]};
 var mapCenter=[${center.lng},${center.lat}];
 
+// Injected from native GPS via URL param or injectJavaScript
+var initUserLat=${initLat};
+var initUserLng=${initLng};
+
 var map=new mapboxgl.Map({
   container:"map",
   style:"mapbox://styles/mapbox/outdoors-v12",
@@ -171,12 +180,33 @@ var map=new mapboxgl.Map({
 
 map.addControl(new mapboxgl.NavigationControl({showCompass:true,showZoom:true}),"top-right");
 
+// GeolocateControl — for live tracking after initial position shown
 var geolocate=new mapboxgl.GeolocateControl({
   positionOptions:{enableHighAccuracy:true},
   trackUserLocation:true,
   showUserHeading:true
 });
 map.addControl(geolocate,"top-right");
+
+// Native-injected user location dot
+var userMarker=null;
+
+function placeUserDot(lat,lng){
+  var el=document.createElement("div");
+  el.className="user-dot";
+  if(userMarker){
+    userMarker.setLngLat([lng,lat]);
+  } else {
+    userMarker=new mapboxgl.Marker({element:el,anchor:"center"})
+      .setLngLat([lng,lat])
+      .addTo(map);
+  }
+}
+
+// Called by TrailMapModal.injectJavaScript when coords arrive after page load
+window.updateUserLocation=function(lat,lng){
+  placeUserDot(lat,lng);
+};
 
 map.on("load",function(){
   if(routeCoords&&routeCoords.length>1){
@@ -194,9 +224,6 @@ map.on("load",function(){
       paint:{"line-color":color,"line-width":5}
     });
 
-    var el=document.createElement("div");
-    el.className="trail-label";
-    el.textContent=trailName;
     new mapboxgl.Marker({color:color,scale:1.1})
       .setLngLat([pinLng,pinLat])
       .setPopup(new mapboxgl.Popup({offset:28,closeButton:false}).setHTML("<b style='font-family:-apple-system,sans-serif'>"+trailName+"</b>"))
@@ -206,7 +233,14 @@ map.on("load",function(){
     map.fitBounds(bounds,{padding:{top:100,bottom:80,left:50,right:50},maxZoom:14,duration:800});
   }
 
-  setTimeout(function(){try{geolocate.trigger()}catch(e){}},1400);
+  // Show native-provided GPS position immediately (no permission prompt needed)
+  if(initUserLat!==null&&initUserLng!==null){
+    placeUserDot(initUserLat,initUserLng);
+  }
+
+  // Also trigger the Mapbox GeolocateControl for live tracking
+  // Wrapped in try/catch — silently skipped if WebView geolocation is unavailable
+  setTimeout(function(){try{geolocate.trigger()}catch(e){}},1000);
 });
 </script>
 </body>
@@ -216,13 +250,21 @@ map.on("load",function(){
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 router.get("/trail-map-web", async (req, res) => {
-  const { name, location, color = "3ECF75" } = req.query as Record<string, string>;
+  const { name, location, color = "3ECF75", userLat, userLng } = req.query as Record<string, string>;
 
   const token = process.env.MAPBOX_TOKEN;
   if (!token) { res.status(503).send("Mapbox token not configured"); return; }
   if (!name || name.trim().length < 2) { res.status(400).send("name required"); return; }
 
   const safeColor = color.replace(/[^0-9a-fA-F]/g, "").slice(0, 6) || "3ECF75";
+
+  const parsedUserLat = userLat ? parseFloat(userLat) : null;
+  const parsedUserLng = userLng ? parseFloat(userLng) : null;
+  const validUserCoords =
+    parsedUserLat !== null && parsedUserLng !== null &&
+    isFinite(parsedUserLat) && isFinite(parsedUserLng) &&
+    parsedUserLat >= -90 && parsedUserLat <= 90 &&
+    parsedUserLng >= -180 && parsedUserLng <= 180;
 
   const center = await geocodeLocation(location || "United Kingdom");
   const radiusKm = estimateRadiusKm(name);
@@ -234,6 +276,8 @@ router.get("/trail-map-web", async (req, res) => {
     color: safeColor,
     routeCoords: routeCoords ?? [],
     center,
+    userLat: validUserCoords ? parsedUserLat : null,
+    userLng: validUserCoords ? parsedUserLng : null,
   });
 
   res.set("Content-Type", "text/html; charset=utf-8");
