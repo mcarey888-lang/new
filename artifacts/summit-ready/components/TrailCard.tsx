@@ -1,4 +1,4 @@
-import { Bookmark, CheckCircle, Clock, MapPin, TrendingUp } from "lucide-react-native";
+import { Bookmark, CheckCircle, Clock, Footprints, TrendingUp } from "lucide-react-native";
 import React, { useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { T } from "@/constants/theme";
@@ -109,7 +109,7 @@ export function TrailCard({ trail, isSaved, isCompleted, onPress, compact }: Pro
       {!compact && (
         <View style={s.stats}>
           <View style={s.stat}>
-            <MapPin size={11} color={T.green} />
+            <Footprints size={11} color={T.green} />
             <Text style={s.statVal}>{trail.distance}km</Text>
           </View>
           <View style={s.stat}>

@@ -418,7 +418,7 @@ router.post("/trails-lookup", async (req, res) => {
         { role: "system", content: TRAILS_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}". If this is a UK postcode, resolve it to the correct town and county first, then only return trails genuinely within ${r}km of that resolved location. Do not return trails from other regions.`,
+          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}". If this is a UK postcode, resolve it to the correct town and county first. IMPORTANT: every trail you return MUST be physically located within ${r}km of that location — do NOT include trails from other national parks, regions, or counties. For example, if searching Peak District, do NOT include Lake District, Snowdonia, or Yorkshire Dales trails. Set the "location" field of each trail to the actual region/town it is in (e.g. "Peak District, Derbyshire"), not the search term.`,
         },
       ],
     });
@@ -448,7 +448,25 @@ router.post("/trails-lookup", async (req, res) => {
     }
 
     const validated = TrailsResponseSchema.parse(parsed);
-    res.json(validated);
+
+    // Post-filter: remove any trail whose location doesn't share all significant
+    // keywords with the search location (guards against GPT hallucinating trails
+    // from completely different regions, e.g. returning Lake District trails when
+    // searching for Peak District).
+    const searchWords = location.trim().toLowerCase()
+      .split(/[\s,]+/)
+      .filter(w => w.length >= 4);
+
+    const relevantTrails = searchWords.length === 0
+      ? validated.trails
+      : validated.trails.filter(t => {
+          const loc = t.location.toLowerCase();
+          return searchWords.every(w => loc.includes(w));
+        });
+
+    // If the filter removed everything (GPT returned entirely wrong region),
+    // return all results rather than an empty list — better to show something.
+    res.json({ trails: relevantTrails.length > 0 ? relevantTrails : validated.trails });
   } catch (err) {
     req.log.error({ err }, "Trails lookup failed");
     const msg = err instanceof Error ? err.message : "Unknown error";
