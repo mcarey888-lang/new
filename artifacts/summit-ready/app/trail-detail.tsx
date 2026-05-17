@@ -12,7 +12,7 @@ import {
   Package,
 } from "lucide-react-native";
 import { Image } from "react-native";
-import { openTrailMapChooser } from "@/utils/openMaps";
+import { TrailMapModal } from "@/components/TrailMapModal";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useRef, useState } from "react";
@@ -108,6 +108,7 @@ export default function TrailDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const [logVisible, setLogVisible] = useState(false);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -311,7 +312,7 @@ export default function TrailDetailScreen() {
             activeOpacity={0.88}
             onPress={() => {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              openTrailMapChooser(trail.name, trail.location);
+              setMapModalOpen(true);
             }}
           >
             {!mapImageError ? (
@@ -329,7 +330,7 @@ export default function TrailDetailScreen() {
             )}
             <View style={s.mapOpenHint}>
               <ExternalLink size={11} color="rgba(255,255,255,0.8)" />
-              <Text style={s.mapOpenHintText}>Tap to open in maps</Text>
+              <Text style={s.mapOpenHintText}>Tap for interactive map</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -413,6 +414,12 @@ export default function TrailDetailScreen() {
         prefillDistance={trail.distance}
         prefillElevation={trail.elevationGain}
         onClose={() => setLogVisible(false)}
+      />
+
+      <TrailMapModal
+        visible={mapModalOpen}
+        url={`${API_BASE}/trail-map-web?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}`}
+        onClose={() => setMapModalOpen(false)}
       />
     </View>
   );
