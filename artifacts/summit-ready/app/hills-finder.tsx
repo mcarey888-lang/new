@@ -4,6 +4,7 @@ import {
   BarChart2,
   ChevronRight,
   Clock,
+  Info,
   MapPin,
   Minus,
   Plus,
@@ -77,10 +78,35 @@ function Stepper({ value, onChange, min = 0, step = 1 }: { value: number; onChan
   );
 }
 
-function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => void }) {
+function HillCard({
+  hill,
+  location,
+  onLog,
+}: {
+  hill: NearbyHill;
+  location: string;
+  onLog: (name: string) => void;
+}) {
   const gc = GRADE_COLOR[hill.grade] ?? T.blue;
   const isRoute = hill.routeType === "circular" || hill.routeType === "out-and-back";
   const routeLabel = hill.routeType === "circular" ? "Circular" : hill.routeType === "out-and-back" ? "Out & back" : null;
+
+  function openDetails() {
+    router.push({
+      pathname: "/hill-detail",
+      params: {
+        name: hill.name,
+        location,
+        lat:       hill.lat?.toString()       ?? "",
+        lng:       hill.lng?.toString()       ?? "",
+        elevation: hill.elevation.toString(),
+        distance:  hill.distance.toString(),
+        grade:     hill.grade,
+        surface:   hill.surface,
+        emoji:     hill.emoji,
+      },
+    });
+  }
 
   return (
     <View style={hc.card}>
@@ -147,10 +173,18 @@ function HillCard({ hill, onLog }: { hill: NearbyHill; onLog: (name: string) => 
           </>
         )}
       </View>
-      <TouchableOpacity style={hc.logBtn} onPress={() => onLog(hill.name)} activeOpacity={0.8}>
-        <Text style={hc.logBtnText}>Log a session here</Text>
-        <ChevronRight size={13} color={T.green} />
-      </TouchableOpacity>
+
+      {/* Action row */}
+      <View style={hc.actionRow}>
+        <TouchableOpacity style={hc.detailsBtn} onPress={openDetails} activeOpacity={0.8}>
+          <Info size={13} color={T.purple} />
+          <Text style={hc.detailsBtnText}>Details</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={hc.logBtn} onPress={() => onLog(hill.name)} activeOpacity={0.8}>
+          <Text style={hc.logBtnText}>Log a session here</Text>
+          <ChevronRight size={13} color={T.green} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -462,7 +496,7 @@ export default function HillsFinderScreen() {
             <Text style={p.sectionLabel}>HILLS & ROUTES NEAR {location.toUpperCase()}</Text>
             {hills.map((hill, i) => (
               <Animated.View key={hill.name + i} entering={FadeInDown.delay(i * 50).duration(500)}>
-                <HillCard hill={hill} onLog={openLog} />
+                <HillCard hill={hill} location={location} onLog={openLog} />
               </Animated.View>
             ))}
           </Animated.View>
@@ -489,7 +523,10 @@ const hc = StyleSheet.create({
   stat: { flexDirection: "row", alignItems: "center", gap: 3 },
   statVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
   statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  logBtn: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, borderTopWidth: 1, borderTopColor: T.border, paddingTop: 10, marginTop: 2 },
+  actionRow: { flexDirection: "row", alignItems: "center", borderTopWidth: 1, borderTopColor: T.border, paddingTop: 10, marginTop: 2, gap: 8 },
+  detailsBtn: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.purpleDim, borderRadius: 10, borderWidth: 1, borderColor: T.purple + "30", paddingHorizontal: 12, paddingVertical: 8 },
+  detailsBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.purple },
+  logBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3 },
   logBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
 });
 
