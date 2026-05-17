@@ -12,7 +12,7 @@ import {
   Package,
 } from "lucide-react-native";
 import { Image } from "react-native";
-import { openMapSearch } from "@/utils/openMaps";
+import { openTrailMapChooser } from "@/utils/openMaps";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useRef, useState } from "react";
@@ -311,7 +311,7 @@ export default function TrailDetailScreen() {
             activeOpacity={0.88}
             onPress={() => {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              openMapSearch(`${extractLandmarkName(trail.name)} ${trail.location}`);
+              openTrailMapChooser(trail.name, trail.location);
             }}
           >
             {!mapImageError ? (
