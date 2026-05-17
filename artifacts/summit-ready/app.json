@@ -14,9 +14,20 @@
       "backgroundColor": "#0B1120"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "uk.summitready.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan."
+      }
     },
-    "android": {},
+    "android": {
+      "package": "uk.summitready.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,7 +39,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
