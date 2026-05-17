@@ -1,6 +1,10 @@
-import { ArrowLeft, MapPin, Search, SlidersHorizontal, X, RefreshCw } from "lucide-react-native";
+import {
+  ArrowLeft, LocateFixed, MapPin, Minus, Plus,
+  RefreshCw, Search, SlidersHorizontal, X,
+} from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -42,15 +46,33 @@ const TERRAINS: Terrain[] = ["All", "woodland", "hill", "mountain", "coastal", "
 const BEST_FOR: BestFor[] = ["All", "training", "family walk", "summit prep", "scenic walk"];
 const ROUTE_TYPES: RouteType[] = ["All", "loop", "out-and-back", "point-to-point"];
 
+const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+const ELEVATION_STEPS = [null, 50, 100, 150, 200, 300, 500];
+const DURATION_STEPS = [null, 1, 2, 3, 4, 5, 6, 8];
+const DISTANCE_STEPS = [null, 5, 10, 15, 20, 30, 40];
+
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
-async function fetchLiveTrails(location: string, radius: number): Promise<Trail[]> {
+interface TrailFilters {
+  radius: number;
+  minElevation: number | null;
+  maxDuration: number | null;
+  maxDistance: number | null;
+}
+
+async function fetchLiveTrails(location: string, filters: TrailFilters): Promise<Trail[]> {
   const res = await fetch(`${API_BASE}/trails-lookup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ location, radius }),
+    body: JSON.stringify({
+      location,
+      radius: filters.radius,
+      minElevation: filters.minElevation,
+      maxDuration: filters.maxDuration,
+      maxDistance: filters.maxDistance,
+    }),
   });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   const data = await res.json() as { trails: Omit<Trail, "id">[] };
@@ -60,28 +82,26 @@ async function fetchLiveTrails(location: string, radius: number): Promise<Trail[
   }));
 }
 
+function parseDurationHours(time: string): number {
+  const h = time.match(/(\d+)h/);
+  const m = time.match(/(\d+)m/);
+  return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
+}
+
+function stepperLabel<T>(val: T, formatter: (v: NonNullable<T>) => string): string {
+  return val == null ? "Any" : formatter(val as NonNullable<T>);
+}
+
 function Chip<T extends string>({ label, active, onPress }: { label: T; active: boolean; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[s.chip, active && s.chipActive]}
-      activeOpacity={0.75}
-    >
+    <TouchableOpacity onPress={onPress} style={[s.chip, active && s.chipActive]} activeOpacity={0.75}>
       <Text style={[s.chipText, active && s.chipTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-function FilterRow<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: T[];
-  value: T;
-  onChange: (v: T) => void;
+function FilterRow<T extends string>({ label, options, value, onChange }: {
+  label: string; options: T[]; value: T; onChange: (v: T) => void;
 }) {
   return (
     <View style={s.filterRow}>
@@ -95,19 +115,53 @@ function FilterRow<T extends string>({
   );
 }
 
+function StepperRow({
+  icon, label, value, onDecrement, onIncrement,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onDecrement: () => void;
+  onIncrement: () => void;
+}) {
+  return (
+    <View style={s.stepperRow}>
+      <View style={s.stepperLabelWrap}>
+        {icon}
+        <Text style={s.stepperLabel}>{label}</Text>
+      </View>
+      <View style={s.stepperCtrl}>
+        <TouchableOpacity onPress={onDecrement} style={s.stepperBtn} hitSlop={6}>
+          <Minus size={13} color={T.text} />
+        </TouchableOpacity>
+        <Text style={s.stepperVal}>{value}</Text>
+        <TouchableOpacity onPress={onIncrement} style={s.stepperBtn} hitSlop={6}>
+          <Plus size={13} color={T.text} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function TrailListScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ q?: string }>();
-  const { savedTrailIds, completedTrailIds, customRoutes, summitGoal } = useApp();
+  const { savedTrailIds, completedTrailIds, customRoutes } = useApp();
 
   const [query, setQuery] = useState(params.q ?? "");
   const [locationQuery, setLocationQuery] = useState("");
-  const [locationSearching, setLocationSearching] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
   const [difficulty, setDifficulty] = useState<Difficulty>("All");
   const [terrain, setTerrain] = useState<Terrain>("All");
   const [bestFor, setBestFor] = useState<BestFor>("All");
   const [routeType, setRouteType] = useState<RouteType>("All");
+
+  const [radius, setRadius] = useState(30);
+  const [minElevation, setMinElevation] = useState<number | null>(null);
+  const [maxDuration, setMaxDuration] = useState<number | null>(null);
+  const [maxDistance, setMaxDistance] = useState<number | null>(null);
 
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(false);
@@ -117,23 +171,16 @@ export default function TrailListScreen() {
   const liveTrailsRef = useRef<Trail[]>([]);
   const firstMountRef = useRef(true);
 
-  const defaultLocation = summitGoal?.location ?? null;
-  const radius = summitGoal?.maxRadius ?? 30;
-
-  const loadTrails = useCallback(async (forceRefresh = false, overrideLocation?: string) => {
-    const loc = overrideLocation ?? defaultLocation;
-    if (!loc) {
-      setLiveTrails(SAMPLE_TRAILS);
-      liveTrailsRef.current = SAMPLE_TRAILS;
-      setUsingFallback(true);
-      return;
-    }
-
+  const loadTrails = useCallback(async (
+    loc: string,
+    filters: TrailFilters,
+    forceRefresh = false,
+  ) => {
     setTrailsLoading(true);
     setTrailsError(null);
 
     if (!forceRefresh) {
-      const cached = await loadLiveTrailsCache(loc, radius);
+      const cached = await loadLiveTrailsCache(loc, filters.radius);
       if (cached && cached.length > 0) {
         setLiveTrails(cached);
         liveTrailsRef.current = cached;
@@ -145,16 +192,15 @@ export default function TrailListScreen() {
     }
 
     try {
-      const trails = await fetchLiveTrails(loc, radius);
-      await saveLiveTrailsCache(trails, loc, radius);
+      const trails = await fetchLiveTrails(loc, filters);
+      await saveLiveTrailsCache(trails, loc, filters.radius);
       setLiveTrails(trails);
       liveTrailsRef.current = trails;
       setLocationLabel(loc);
       setUsingFallback(false);
     } catch {
       setTrailsError("Could not load trails — showing sample data.");
-      const current = liveTrailsRef.current;
-      if (current.length === 0) {
+      if (liveTrailsRef.current.length === 0) {
         setLiveTrails(SAMPLE_TRAILS);
         liveTrailsRef.current = SAMPLE_TRAILS;
         setUsingFallback(true);
@@ -162,49 +208,126 @@ export default function TrailListScreen() {
     } finally {
       setTrailsLoading(false);
     }
-  }, [defaultLocation, radius]);
+  }, []);
+
+  const detectGPS = useCallback(async () => {
+    if (Platform.OS === "web") {
+      if (!("geolocation" in navigator)) return;
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const r = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`,
+              { headers: { "User-Agent": "SummitReady/1.0" } },
+            );
+            const d = await r.json() as { address?: { city?: string; town?: string; county?: string; state?: string } };
+            const addr = d.address ?? {};
+            const place = [addr.city ?? addr.town, addr.county ?? addr.state].filter(Boolean).join(", ");
+            if (place) {
+              setLocationQuery(place);
+              await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, place);
+              loadTrails(place, { radius, minElevation, maxDuration, maxDistance }, true);
+            }
+          } catch { /* ignore */ } finally {
+            setGpsLoading(false);
+          }
+        },
+        () => setGpsLoading(false),
+        { timeout: 10000 },
+      );
+      return;
+    }
+
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") { setGpsLoading(false); return; }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const geo = await Location.reverseGeocodeAsync({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      if (geo.length > 0) {
+        const a = geo[0];
+        const place = [a.city ?? a.district ?? a.subregion, a.region ?? a.subregion]
+          .filter(Boolean)
+          .join(", ");
+        if (place) {
+          setLocationQuery(place);
+          await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, place);
+          loadTrails(place, { radius, minElevation, maxDuration, maxDistance }, true);
+        }
+      }
+    } catch { /* ignore */ } finally {
+      setGpsLoading(false);
+    }
+  }, [radius, minElevation, maxDuration, maxDistance, loadTrails]);
 
   useEffect(() => {
-    if (firstMountRef.current) {
-      firstMountRef.current = false;
-      AsyncStorage.getItem(LAST_TRAIL_LOCATION_KEY).then(saved => {
-        if (saved) {
-          setLocationQuery(saved);
-          loadTrails(false, saved);
-        } else {
-          loadTrails(false);
-        }
-      });
-    } else {
-      loadTrails(false);
-    }
-  }, [loadTrails]);
+    if (!firstMountRef.current) return;
+    firstMountRef.current = false;
+
+    AsyncStorage.getItem(LAST_TRAIL_LOCATION_KEY).then(saved => {
+      if (saved) {
+        setLocationQuery(saved);
+        loadTrails(saved, { radius, minElevation, maxDuration, maxDistance }, false);
+      } else {
+        detectGPS();
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const searchByLocation = useCallback(async () => {
     const trimmed = locationQuery.trim();
     if (!trimmed) {
       setLocationQuery("");
       await AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
-      loadTrails(true, defaultLocation ?? undefined);
+      setLiveTrails(SAMPLE_TRAILS);
+      liveTrailsRef.current = SAMPLE_TRAILS;
+      setUsingFallback(true);
+      setLocationLabel(null);
       return;
     }
-    setLocationSearching(true);
-    await loadTrails(true, trimmed);
     await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, trimmed);
-    setLocationSearching(false);
-  }, [locationQuery, loadTrails, defaultLocation]);
+    loadTrails(trimmed, { radius, minElevation, maxDuration, maxDistance }, true);
+  }, [locationQuery, radius, minElevation, maxDuration, maxDistance, loadTrails]);
 
   const clearLocationSearch = useCallback(() => {
     setLocationQuery("");
-    loadTrails(false, defaultLocation ?? undefined);
-  }, [loadTrails, defaultLocation]);
+    setLocationLabel(null);
+    setLiveTrails(SAMPLE_TRAILS);
+    liveTrailsRef.current = SAMPLE_TRAILS;
+    setUsingFallback(true);
+    AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
+  }, []);
+
+  function stepRadius(dir: 1 | -1) {
+    const idx = RADIUS_STEPS.indexOf(radius);
+    const next = idx + dir;
+    if (next >= 0 && next < RADIUS_STEPS.length) setRadius(RADIUS_STEPS[next]);
+  }
+
+  function stepElevation(dir: 1 | -1) {
+    const idx = ELEVATION_STEPS.indexOf(minElevation);
+    const next = idx + dir;
+    if (next >= 0 && next < ELEVATION_STEPS.length) setMinElevation(ELEVATION_STEPS[next]);
+  }
+
+  function stepDuration(dir: 1 | -1) {
+    const idx = DURATION_STEPS.indexOf(maxDuration);
+    const next = idx + dir;
+    if (next >= 0 && next < DURATION_STEPS.length) setMaxDuration(DURATION_STEPS[next]);
+  }
+
+  function stepDistance(dir: 1 | -1) {
+    const idx = DISTANCE_STEPS.indexOf(maxDistance);
+    const next = idx + dir;
+    if (next >= 0 && next < DISTANCE_STEPS.length) setMaxDistance(DISTANCE_STEPS[next]);
+  }
 
   const baseTrails = liveTrails.length > 0 ? liveTrails : SAMPLE_TRAILS;
-
-  const allTrails = useMemo(
-    () => [...customRoutes, ...baseTrails],
-    [customRoutes, baseTrails]
-  );
+  const allTrails = useMemo(() => [...customRoutes, ...baseTrails], [customRoutes, baseTrails]);
 
   const filtered = useMemo(() => {
     return allTrails.filter((t) => {
@@ -221,12 +344,15 @@ export default function TrailListScreen() {
       if (terrain !== "All" && t.terrain !== terrain) return false;
       if (routeType !== "All" && t.routeType !== routeType) return false;
       if (bestFor !== "All" && !t.bestFor.includes(bestFor as TrailBestFor)) return false;
+      if (minElevation != null && t.elevationGain < minElevation) return false;
+      if (maxDuration != null && parseDurationHours(t.estimatedTime) > maxDuration) return false;
+      if (maxDistance != null && t.distance > maxDistance) return false;
       return true;
     });
-  }, [allTrails, query, difficulty, terrain, bestFor, routeType]);
+  }, [allTrails, query, difficulty, terrain, bestFor, routeType, minElevation, maxDuration, maxDistance]);
 
-  const hasActiveFilters =
-    difficulty !== "All" || terrain !== "All" || bestFor !== "All" || routeType !== "All";
+  const hasActiveChipFilters = difficulty !== "All" || terrain !== "All" || bestFor !== "All" || routeType !== "All";
+  const hasSearchFilters = minElevation != null || maxDuration != null || maxDistance != null;
 
   function clearFilters() {
     setDifficulty("All");
@@ -255,7 +381,7 @@ export default function TrailListScreen() {
             <Text style={s.title}>All Trails</Text>
           </View>
           <TouchableOpacity
-            onPress={() => loadTrails(true)}
+            onPress={() => locationQuery.trim() && loadTrails(locationQuery.trim(), { radius, minElevation, maxDuration, maxDistance }, true)}
             style={s.refreshBtn}
             activeOpacity={0.7}
             disabled={trailsLoading}
@@ -270,12 +396,12 @@ export default function TrailListScreen() {
             style={[s.filterBtn, showFilters && s.filterBtnActive]}
           >
             <SlidersHorizontal size={17} color={showFilters ? T.green : T.textMuted} />
-            {hasActiveFilters && <View style={s.filterDot} />}
+            {hasActiveChipFilters && <View style={s.filterDot} />}
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Search bar */}
-        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.searchWrap}>
+        {/* Name search */}
+        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.searchWrap}>
           <Search size={15} color={T.textMuted} />
           <TextInput
             style={s.searchInput}
@@ -293,39 +419,96 @@ export default function TrailListScreen() {
           )}
         </Animated.View>
 
-        {/* Location search bar */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={[s.locationWrap, locationQuery.length > 0 && s.locationWrapActive]}>
-          <MapPin size={15} color={locationQuery.length > 0 ? T.green : T.textMuted} />
-          <TextInput
-            style={s.searchInput}
-            value={locationQuery}
-            onChangeText={setLocationQuery}
-            placeholder="Enter location, town or postcode…"
-            placeholderTextColor={T.textDim}
-            autoCorrect={false}
-            autoCapitalize="words"
-            returnKeyType="search"
-            onSubmitEditing={searchByLocation}
-            blurOnSubmit={false}
-          />
-          {locationQuery.length > 0 && !locationSearching && (
-            <TouchableOpacity onPress={clearLocationSearch} hitSlop={8}>
-              <X size={14} color={T.textMuted} />
+        {/* Search options card */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.searchCard}>
+
+          {/* Location row */}
+          <View style={[s.locationWrap, locationQuery.length > 0 && s.locationWrapActive]}>
+            <MapPin size={14} color={locationQuery.length > 0 ? T.green : T.textMuted} />
+            <TextInput
+              style={[s.searchInput, { fontSize: 13 }]}
+              value={locationQuery}
+              onChangeText={setLocationQuery}
+              placeholder="Town, postcode or region…"
+              placeholderTextColor={T.textDim}
+              autoCorrect={false}
+              autoCapitalize="words"
+              returnKeyType="search"
+              onSubmitEditing={searchByLocation}
+              blurOnSubmit={false}
+            />
+            {locationQuery.length > 0 && !trailsLoading && (
+              <TouchableOpacity onPress={clearLocationSearch} hitSlop={8}>
+                <X size={13} color={T.textMuted} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={detectGPS}
+              style={s.gpsBtn}
+              activeOpacity={0.7}
+              hitSlop={6}
+              disabled={gpsLoading}
+            >
+              {gpsLoading
+                ? <ActivityIndicator size="small" color={T.green} />
+                : <LocateFixed size={15} color={T.green} />
+              }
             </TouchableOpacity>
-          )}
-          {locationSearching
-            ? <ActivityIndicator size="small" color={T.green} style={{ marginLeft: 4 }} />
-            : locationQuery.length > 0
-              ? (
-                <TouchableOpacity onPress={searchByLocation} style={s.searchAreaBtn} activeOpacity={0.75}>
-                  <Text style={s.searchAreaBtnText}>Search</Text>
-                </TouchableOpacity>
-              )
-              : null
-          }
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Steppers */}
+          <StepperRow
+            icon={<MapPin size={12} color={T.textMuted} />}
+            label="Search radius"
+            value={`${radius}km`}
+            onDecrement={() => stepRadius(-1)}
+            onIncrement={() => stepRadius(1)}
+          />
+          <StepperRow
+            icon={<Text style={s.stepperEmoji}>⛰</Text>}
+            label="Min elevation"
+            value={stepperLabel(minElevation, v => `${v}m+`)}
+            onDecrement={() => stepElevation(-1)}
+            onIncrement={() => stepElevation(1)}
+          />
+          <StepperRow
+            icon={<Text style={s.stepperEmoji}>⏱</Text>}
+            label="Max duration"
+            value={stepperLabel(maxDuration, v => `${v}h`)}
+            onDecrement={() => stepDuration(-1)}
+            onIncrement={() => stepDuration(1)}
+          />
+          <StepperRow
+            icon={<Text style={s.stepperEmoji}>📏</Text>}
+            label="Max distance"
+            value={stepperLabel(maxDistance, v => `${v}km`)}
+            onDecrement={() => stepDistance(-1)}
+            onIncrement={() => stepDistance(1)}
+          />
+
+          <View style={s.divider} />
+
+          {/* Search button */}
+          <TouchableOpacity
+            style={[s.searchBtn, (!locationQuery.trim() || trailsLoading) && s.searchBtnDisabled]}
+            activeOpacity={0.8}
+            disabled={!locationQuery.trim() || trailsLoading}
+            onPress={searchByLocation}
+          >
+            {trailsLoading
+              ? <ActivityIndicator size="small" color="#000" />
+              : <Search size={14} color="#000" />
+            }
+            <Text style={s.searchBtnText}>
+              {trailsLoading ? "Searching…" : "Search trails"}
+            </Text>
+          </TouchableOpacity>
+
         </Animated.View>
 
-        {/* Location / status banner */}
+        {/* Status banner */}
         {!trailsLoading && (locationLabel || trailsError || usingFallback) && (
           <Animated.View entering={FadeInDown.delay(90).duration(300)} style={[
             s.banner,
@@ -335,26 +518,26 @@ export default function TrailListScreen() {
               {trailsError
                 ? trailsError
                 : usingFallback
-                  ? "No location set — showing sample UK trails"
-                  : `Trails near ${locationLabel}`}
+                  ? "Enable location or enter a place to find nearby trails"
+                  : `Showing trails within ${radius}km of ${locationLabel}${hasSearchFilters ? " · filtered" : ""}`}
             </Text>
           </Animated.View>
         )}
 
-        {/* Loading state */}
+        {/* Loading */}
         {trailsLoading && liveTrails.length === 0 && (
           <View style={s.loadingWrap}>
             <ActivityIndicator size="large" color={T.green} />
-            <Text style={s.loadingText}>Finding trails near {defaultLocation ?? "you"}…</Text>
+            <Text style={s.loadingText}>Finding trails near {locationLabel ?? locationQuery ?? "you"}…</Text>
           </View>
         )}
 
-        {/* Filters */}
+        {/* Chip filters (difficulty, terrain, etc.) */}
         {showFilters && (
           <Animated.View entering={FadeInDown.duration(300)} style={s.filtersCard}>
             <View style={s.filtersHeader}>
               <Text style={s.filtersTitle}>Filters</Text>
-              {hasActiveFilters && (
+              {hasActiveChipFilters && (
                 <TouchableOpacity onPress={clearFilters}>
                   <Text style={s.clearText}>Clear all</Text>
                 </TouchableOpacity>
@@ -367,12 +550,12 @@ export default function TrailListScreen() {
           </Animated.View>
         )}
 
-        {/* Results count */}
+        {/* Result count */}
         {(!trailsLoading || liveTrails.length > 0) && (
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
             <Text style={s.resultCount}>
-              {filtered.length} trail{filtered.length !== 1 ? "s" : ""}
-              {hasActiveFilters || query || locationQuery ? " found" : ""}
+              {filtered.length} trail{filtered.length !== 1 ? "s" : ""}{" "}
+              {hasActiveChipFilters || hasSearchFilters || query || locationQuery ? "found" : ""}
             </Text>
           </Animated.View>
         )}
@@ -393,9 +576,7 @@ export default function TrailListScreen() {
                     trail={trail}
                     isSaved={savedTrailIds.includes(trail.id)}
                     isCompleted={completedTrailIds.includes(trail.id)}
-                    onPress={() =>
-                      router.push({ pathname: "/trail-detail", params: { id: trail.id } })
-                    }
+                    onPress={() => router.push({ pathname: "/trail-detail", params: { id: trail.id } })}
                   />
                 </Animated.View>
               ))
@@ -408,7 +589,7 @@ export default function TrailListScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, gap: 14 },
+  scroll: { paddingHorizontal: 20, gap: 12 },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
   backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
@@ -422,18 +603,48 @@ const s = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 11,
   },
-  locationWrap: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 14, paddingVertical: 11,
-  },
-  locationWrapActive: { borderColor: T.green + "60" },
-  searchAreaBtn: {
-    backgroundColor: T.greenDim, borderRadius: 8, borderWidth: 1, borderColor: T.green + "50",
-    paddingHorizontal: 10, paddingVertical: 5, flexShrink: 0,
-  },
-  searchAreaBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text },
+
+  searchCard: {
+    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    paddingVertical: 4, overflow: "hidden",
+  },
+  locationWrap: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  locationWrapActive: { backgroundColor: T.greenDim + "22" },
+  gpsBtn: {
+    width: 30, height: 30, borderRadius: 8, backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  divider: { height: 1, backgroundColor: T.border, marginHorizontal: 14 },
+
+  stepperRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  stepperLabelWrap: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  stepperLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text },
+  stepperEmoji: { fontSize: 12, width: 12, textAlign: "center" },
+  stepperCtrl: { flexDirection: "row", alignItems: "center", gap: 0 },
+  stepperBtn: {
+    width: 28, height: 28, borderRadius: 8, backgroundColor: T.surface,
+    borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center",
+  },
+  stepperVal: {
+    width: 56, textAlign: "center",
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green,
+  },
+
+  searchBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    margin: 12, marginTop: 8, borderRadius: 12, paddingVertical: 12,
+    backgroundColor: T.green,
+  },
+  searchBtnDisabled: { opacity: 0.45 },
+  searchBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#000" },
+
   banner: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
   bannerOk: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
   bannerWarn: { backgroundColor: T.surface, borderColor: T.border },

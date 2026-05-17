@@ -401,7 +401,13 @@ Other rules:
 - Include a range: some short easy walks, some long hard routes, some medium day hikes`;
 
 router.post("/trails-lookup", async (req, res) => {
-  const { location, radius } = req.body as { location?: string; radius?: number };
+  const { location, radius, minElevation, maxDuration, maxDistance } = req.body as {
+    location?: string;
+    radius?: number;
+    minElevation?: number | null;
+    maxDuration?: number | null;
+    maxDistance?: number | null;
+  };
 
   if (!location || typeof location !== "string" || location.trim().length < 2) {
     res.status(400).json({ error: "Location required" });
@@ -409,6 +415,14 @@ router.post("/trails-lookup", async (req, res) => {
   }
 
   const r = Number(radius) || 30;
+
+  const constraints: string[] = [];
+  if (minElevation) constraints.push(`Minimum elevation gain: ${minElevation}m (exclude trails with less ascent).`);
+  if (maxDuration) constraints.push(`Maximum duration: ${maxDuration} hours (exclude longer routes).`);
+  if (maxDistance) constraints.push(`Maximum trail distance: ${maxDistance}km (exclude longer routes).`);
+  const constraintText = constraints.length > 0
+    ? ` Additional criteria the user requires: ${constraints.join(" ")}`
+    : "";
 
   try {
     const response = await openai.chat.completions.create({
@@ -418,7 +432,7 @@ router.post("/trails-lookup", async (req, res) => {
         { role: "system", content: TRAILS_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}". If this is a UK postcode, resolve it to the correct town and county first. IMPORTANT: every trail you return MUST be physically located within ${r}km of that location — do NOT include trails from other national parks, regions, or counties. For example, if searching Peak District, do NOT include Lake District, Snowdonia, or Yorkshire Dales trails. Set the "location" field of each trail to the actual region/town it is in (e.g. "Peak District, Derbyshire"), not the search term.`,
+          content: `Find real walking and hiking trails within ${r}km of: "${location.trim()}". If this is a UK postcode, resolve it to the correct town and county first. IMPORTANT: every trail you return MUST be physically located within ${r}km of that location — do NOT include trails from other national parks, regions, or counties. For example, if searching Peak District, do NOT include Lake District, Snowdonia, or Yorkshire Dales trails. Set the "location" field of each trail to the actual region/town it is in (e.g. "Peak District, Derbyshire"), not the search term.${constraintText}`,
         },
       ],
     });
