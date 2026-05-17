@@ -3,6 +3,7 @@ import {
   Bookmark,
   CheckCircle,
   Clock,
+  ExternalLink,
   MapPin,
   PenLine,
   Navigation,
@@ -11,6 +12,7 @@ import {
   Package,
 } from "lucide-react-native";
 import { Image } from "react-native";
+import { openMapSearch } from "@/utils/openMaps";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useRef, useState } from "react";
@@ -304,7 +306,14 @@ export default function TrailDetailScreen() {
         {/* Route map */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={s.section}>
           <Text style={s.sectionTitle}>Route map</Text>
-          <View style={s.mapContainer}>
+          <TouchableOpacity
+            style={s.mapContainer}
+            activeOpacity={0.88}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              openMapSearch(`${extractLandmarkName(trail.name)} ${trail.location}`);
+            }}
+          >
             {!mapImageError ? (
               <Image
                 source={{ uri: `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400` }}
@@ -318,7 +327,11 @@ export default function TrailDetailScreen() {
                 <Text style={s.mapFallbackText}>Route map unavailable</Text>
               </View>
             )}
-          </View>
+            <View style={s.mapOpenHint}>
+              <ExternalLink size={11} color="rgba(255,255,255,0.8)" />
+              <Text style={s.mapOpenHintText}>Tap to open in maps</Text>
+            </View>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Weather */}
@@ -444,6 +457,13 @@ const s = StyleSheet.create({
   mapImage: { width: "100%", height: 220 },
   mapFallback: { backgroundColor: T.surface, alignItems: "center", justifyContent: "center", gap: 8 },
   mapFallbackText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  mapOpenHint: {
+    position: "absolute", bottom: 8, right: 10,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  mapOpenHintText: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
   infoCard: {
     flexDirection: "row", gap: 12, alignItems: "flex-start",
     backgroundColor: T.blueDim, borderRadius: 14, borderWidth: 1, borderColor: T.blue + "25", padding: 14,

@@ -60,11 +60,31 @@ function toMapboxGeoJsonPath(coords: Coord[], color: string): string {
   return `geojson(${encodeURIComponent(JSON.stringify(geojson))})`;
 }
 
+function extractBaseNames(name: string): string[] {
+  const variants = new Set<string>();
+  variants.add(name.trim());
+
+  // Strip common route-type suffixes
+  const stripped = name
+    .replace(/\s+via\s+.+$/i, "")
+    .replace(/\s+(Circular|Circuit|Loop|Route|Walk|Path|Trail|Scramble|Horseshoe|Ridge)$/i, "")
+    .replace(/\s+(Easy\s+Day|Long\s+Walk|Tourist\s+Route|Section)$/i, "")
+    .replace(/\s+(North|South|East|West)\s+(Ridge|Face|Approach)$/i, "")
+    .trim();
+
+  if (stripped && stripped !== name.trim()) variants.add(stripped);
+
+  // Also try just the first two words (often the summit name)
+  const words = stripped.split(/\s+/);
+  if (words.length >= 3) variants.add(words.slice(0, 2).join(" "));
+
+  return [...variants].filter(v => v.length >= 3);
+}
+
 async function fetchRouteCoords(
   name: string,
   location?: string
 ): Promise<{ coords: Coord[]; center: Coord } | null> {
-  const safeName = name.trim().replace(/[^a-zA-Z0-9\s&''-]/g, "");
   let centerLat = 54.0, centerLng = -2.0;
   const pad = 0.6;
 
@@ -90,25 +110,6 @@ async function fetchRouteCoords(
   const west = (centerLng - pad * 1.6).toFixed(4);
   const east = (centerLng + pad * 1.6).toFixed(4);
 
-  const q = `[out:json][timeout:25];
-(
-  relation["type"="route"]["route"~"hiking|foot|walking"]["name"~"${safeName}",i](${south},${west},${north},${east});
-  way["highway"]["name"~"${safeName}",i](${south},${west},${north},${east});
-);
-out geom;`;
-
-  const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": "SummitReady/1.0",
-    },
-    body: `data=${encodeURIComponent(q)}`,
-    signal: AbortSignal.timeout(28000),
-  });
-
-  if (!overpassRes.ok) return null;
-
   type OSMNode = { lat: number; lon: number };
   type OSMElement = {
     type: "way" | "relation" | "node";
@@ -116,29 +117,57 @@ out geom;`;
     members?: Array<{ type: string; role?: string; geometry?: OSMNode[] }>;
   };
 
-  const data = await overpassRes.json() as { elements: OSMElement[] };
-  const allWays: Coord[][] = [];
+  // Try progressively simpler name variants — OSM often stores routes under the
+  // base peak name rather than the full "X Circular via Y" trail name.
+  const nameVariants = extractBaseNames(name);
 
-  for (const el of data.elements) {
-    if (el.type === "way" && el.geometry && el.geometry.length > 1) {
-      allWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
-    } else if (el.type === "relation" && el.members) {
-      for (const m of el.members) {
-        if (m.type === "way" && m.geometry && m.geometry.length > 1) {
-          allWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+  for (const variant of nameVariants) {
+    const safeName = variant.replace(/[^a-zA-Z0-9\s&''.-]/g, "");
+    const q = `[out:json][timeout:25];
+(
+  relation["type"="route"]["route"~"hiking|foot|walking"]["name"~"${safeName}",i](${south},${west},${north},${east});
+  way["highway"]["name"~"${safeName}",i](${south},${west},${north},${east});
+);
+out geom;`;
+
+    const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "SummitReady/1.0",
+      },
+      body: `data=${encodeURIComponent(q)}`,
+      signal: AbortSignal.timeout(28000),
+    });
+
+    if (!overpassRes.ok) continue;
+
+    const data = await overpassRes.json() as { elements: OSMElement[] };
+    const allWays: Coord[][] = [];
+
+    for (const el of data.elements) {
+      if (el.type === "way" && el.geometry && el.geometry.length > 1) {
+        allWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+      } else if (el.type === "relation" && el.members) {
+        for (const m of el.members) {
+          if (m.type === "way" && m.geometry && m.geometry.length > 1) {
+            allWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+          }
         }
       }
     }
+
+    if (allWays.length === 0) continue;
+
+    const stitched = stitchWays(allWays);
+    const center = {
+      lat: stitched.reduce((s, c) => s + c.lat, 0) / stitched.length,
+      lng: stitched.reduce((s, c) => s + c.lng, 0) / stitched.length,
+    };
+    return { coords: stitched, center };
   }
 
-  if (allWays.length === 0) return null;
-
-  const stitched = stitchWays(allWays);
-  const center = {
-    lat: stitched.reduce((s, c) => s + c.lat, 0) / stitched.length,
-    lng: stitched.reduce((s, c) => s + c.lng, 0) / stitched.length,
-  };
-  return { coords: stitched, center };
+  return null;
 }
 
 // GET /api/trail-map-image?name=Kinder+Scout+Circular&location=Peak+District&color=3ECF75&width=800&height=400

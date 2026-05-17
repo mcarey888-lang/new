@@ -12,7 +12,7 @@ export interface LiveTrailsCache {
 }
 
 export function makeTrailId(name: string, location: string): string {
-  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 32);
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return `live_${slug(name)}_${slug(location)}`;
 }
 

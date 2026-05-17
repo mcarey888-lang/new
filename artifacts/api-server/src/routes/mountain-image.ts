@@ -2,20 +2,38 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
+function titleIsRelevant(title: string, originalName: string): boolean {
+  const titleLower = title.toLowerCase();
+  const nameWords = originalName.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  if (nameWords.length === 0) return true;
+  const matchCount = nameWords.filter(w => titleLower.includes(w)).length;
+  return matchCount / nameWords.length > 0.5;
+}
+
 async function findWikimediaUrl(name: string): Promise<string | null> {
   const mountain = name.trim();
-  const words = mountain.split(/\s+/).filter(w => w.length > 3);
-  const candidates = [mountain, ...words].slice(0, 4);
 
-  for (const candidate of candidates) {
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(candidate)}&limit=3&format=json`;
+  // Try geographic qualifiers first — avoids matching famous people or places
+  // that share a word with the hill name (e.g. "Clough Head" → "Brian Clough")
+  const queries = [
+    `${mountain} fell`,
+    `${mountain} mountain`,
+    `${mountain} hill`,
+    mountain,
+  ];
+
+  for (const query of queries) {
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=5&format=json`;
     const searchRes = await fetch(searchUrl, {
       headers: { "Accept": "application/json", "User-Agent": "SummitReady/1.0" },
     });
     if (!searchRes.ok) continue;
 
     const searchData = await searchRes.json() as [string, string[], string[], string[]];
-    const titles: string[] = searchData[1] ?? [];
+    const allTitles: string[] = searchData[1] ?? [];
+
+    // Filter to titles that are actually related to the original query
+    const titles = allTitles.filter(t => titleIsRelevant(t, mountain));
     if (titles.length === 0) continue;
 
     const joined = titles.slice(0, 3).join("|");
@@ -25,12 +43,12 @@ async function findWikimediaUrl(name: string): Promise<string | null> {
     });
     if (!imgRes.ok) continue;
 
-    const imgData = await imgRes.json() as { query?: { pages?: Record<string, { thumbnail?: { source: string } }> } };
+    const imgData = await imgRes.json() as { query?: { pages?: Record<string, { title?: string; thumbnail?: { source: string } }> } };
     const pages = imgData.query?.pages ?? {};
 
     for (const page of Object.values(pages)) {
       const url = page.thumbnail?.source;
-      if (url) return url;
+      if (url && page.title && titleIsRelevant(page.title, mountain)) return url;
     }
   }
 
