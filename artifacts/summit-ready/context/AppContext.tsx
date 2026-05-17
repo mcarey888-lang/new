@@ -170,6 +170,7 @@ interface AppState {
   uncompleteTrail: (id: string) => Promise<void>;
   addCustomRoute: (route: Omit<Trail, "id" | "isCustom" | "createdAt">) => Promise<void>;
   deleteCustomRoute: (id: string) => Promise<void>;
+  reloadApp: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -225,6 +226,7 @@ const AppContext = createContext<AppState>({
   uncompleteTrail: async () => {},
   addCustomRoute: async () => {},
   deleteCustomRoute: async () => {},
+  reloadApp: async () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -327,6 +329,7 @@ const DEMO_SESSIONS: Session[] = [
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [loadKey, setLoadKey] = useState(0);
   const [summitGoal, setSummitGoalState] = useState<SummitGoal | null>(null);
   const [trainingPlan, setTrainingPlan] = useState<TrainingWeek[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -353,8 +356,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [completedTrailIds, setCompletedTrailIds] = useState<string[]>([]);
   const [customRoutes, setCustomRoutes] = useState<Trail[]>([]);
 
+  const reloadApp = useCallback(async () => {
+    setSummitGoalState(null);
+    setTrainingPlan([]);
+    setSessions([]);
+    setReadinessScore(0);
+    setNearbyHills([]);
+    setCompletedPlanSessions({});
+    setAssignedHills({});
+    setPlanAdjustNote(null);
+    setSubmittedPlanSessions({});
+    setHillsInPlan([]);
+    setSessionRepsState({});
+    setSessionEffortsState({});
+    setHasViewedPlan(false);
+    setUnlockedAchievements([]);
+    setNewlyUnlocked([]);
+    setCompletedGoals([]);
+    setAppModeState(null);
+    setExploreHikes([]);
+    setSavedTrailIds([]);
+    setCompletedTrailIds([]);
+    setCustomRoutes([]);
+    setLoadKey(k => k + 1);
+  }, []);
+
   useEffect(() => {
     (async () => {
+      setIsLoading(true);
       try {
         const pairs = await AsyncStorage.multiGet([
           GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY,
@@ -439,7 +468,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch {}
       setIsLoading(false);
     })();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadKey]);
 
   const setSummitGoal = useCallback(async (goal: SummitGoal) => {
     // Archive the outgoing goal + its training stats before wiping
@@ -935,6 +965,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,
       savedTrailIds, completedTrailIds, customRoutes,
       saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
+      reloadApp,
     }}>
       {children}
     </AppContext.Provider>

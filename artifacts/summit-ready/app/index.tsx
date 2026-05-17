@@ -2,16 +2,39 @@ import { Compass, MapPin, TrendingUp, Activity, Loader } from "lucide-react-nati
 import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { DevToolsModal } from "@/components/DevToolsModal";
+
+const DEV_TAPS_REQUIRED = 5;
+const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, isLoading, appMode } = useApp();
+
+  const [devModalVisible, setDevModalVisible] = useState(false);
+  const tapCount = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleLogoPress() {
+    tapCount.current += 1;
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+
+    if (tapCount.current >= DEV_TAPS_REQUIRED) {
+      tapCount.current = 0;
+      setDevModalVisible(true);
+      return;
+    }
+
+    tapTimer.current = setTimeout(() => {
+      tapCount.current = 0;
+    }, DEV_TAP_WINDOW_MS);
+  }
 
   useEffect(() => {
     if (isLoading) return;
@@ -22,7 +45,6 @@ export default function LandingScreen() {
     } else if (appMode === "explore") {
       router.replace("/(tabs)/explore");
     }
-    // appMode === null → stay on landing to present the choice
   }, [isLoading, appMode, summitGoal]);
 
   if (isLoading) {
@@ -55,11 +77,13 @@ export default function LandingScreen() {
         ]}
       >
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.hero}>
-          <Image
-            source={require("@/assets/images/logo.gif")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <TouchableOpacity onPress={handleLogoPress} activeOpacity={1}>
+            <Image
+              source={require("@/assets/images/logo.gif")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           <Text style={styles.tagline}>
             Train for any mountain{"\n"}using hills near you
           </Text>
@@ -98,6 +122,11 @@ export default function LandingScreen() {
           <Text style={styles.demoNote}>Free to start · No account needed</Text>
         </Animated.View>
       </View>
+
+      <DevToolsModal
+        visible={devModalVisible}
+        onClose={() => setDevModalVisible(false)}
+      />
     </LinearGradient>
   );
 }
