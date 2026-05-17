@@ -171,6 +171,7 @@ export default function TrailDetailScreen() {
   async function handleDelete() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (Platform.OS === "web") {
+      if (!window.confirm("Delete this route?\n\nThis will permanently remove your custom route. This can't be undone.")) return;
       await deleteCustomRoute(trail!.id);
       router.back();
     } else {
