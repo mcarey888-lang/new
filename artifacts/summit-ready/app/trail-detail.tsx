@@ -7,6 +7,7 @@ import {
   MapPin,
   PenLine,
   Navigation,
+  Trash2,
   TrendingUp,
   Wind,
   Package,
@@ -104,7 +105,7 @@ const KIT_CHECKLIST = [
 export default function TrailDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
-  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes } = useApp();
+  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes, deleteCustomRoute } = useApp();
   const scrollRef = useRef<ScrollView>(null);
 
   const [logVisible, setLogVisible] = useState(false);
@@ -156,7 +157,7 @@ export default function TrailDetailScreen() {
   // Build the image URL — server proxies a Mapbox satellite tile so the token stays server-side
   const heroImageUri = imageError
     ? null
-    : `${API_BASE}/mountain-image?location=${encodeURIComponent(trail.location)}&width=800&height=400`;
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(extractLandmarkName(trail.name))}&width=800&height=400`;
 
   async function handleSaveToggle() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -164,6 +165,30 @@ export default function TrailDetailScreen() {
       await unsaveTrail(trail!.id);
     } else {
       await saveTrail(trail!.id);
+    }
+  }
+
+  async function handleDelete() {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (Platform.OS === "web") {
+      await deleteCustomRoute(trail!.id);
+      router.back();
+    } else {
+      Alert.alert(
+        "Delete route?",
+        "This will permanently remove your custom route. This can't be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await deleteCustomRoute(trail!.id);
+              router.back();
+            },
+          },
+        ],
+      );
     }
   }
 
@@ -402,6 +427,13 @@ export default function TrailDetailScreen() {
             <Text style={s.actionStartText}>Start route</Text>
             <View style={s.comingSoon}><Text style={s.comingSoonText}>Coming soon</Text></View>
           </TouchableOpacity>
+
+          {trail.isCustom && (
+            <TouchableOpacity style={s.actionDelete} onPress={handleDelete} activeOpacity={0.8}>
+              <Trash2 size={15} color={T.red ?? "#FF4D4F"} />
+              <Text style={s.actionDeleteText}>Delete this route</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         </View>{/* end content */}
@@ -502,4 +534,10 @@ const s = StyleSheet.create({
   actionStartText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
   comingSoon: { backgroundColor: T.orangeDim, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   comingSoonText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: T.orange },
+  actionDelete: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: T.redDim, borderRadius: 14, borderWidth: 1, borderColor: T.red + "30",
+    paddingVertical: 13,
+  },
+  actionDeleteText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.red },
 });
