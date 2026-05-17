@@ -4,6 +4,8 @@ const router: IRouter = Router();
 
 interface Coord { lat: number; lng: number }
 
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+
 function simplifyCoords(coords: Coord[], maxPoints: number): Coord[] {
   if (coords.length <= maxPoints) return coords;
   const step = Math.ceil(coords.length / maxPoints);
@@ -14,223 +16,242 @@ function simplifyCoords(coords: Coord[], maxPoints: number): Coord[] {
   return out;
 }
 
-const MAX_JUMP_DEG = 0.006;
-
-function stitchWays(ways: Coord[][]): Coord[] {
-  if (ways.length === 0) return [];
-  if (ways.length === 1) return ways[0];
-  const dist2 = (a: Coord, b: Coord) => (a.lat - b.lat) ** 2 + (a.lng - b.lng) ** 2;
-  const remaining = ways.map(w => [...w]);
-  remaining.sort((a, b) => b.length - a.length);
-  const stitched: Coord[] = [...remaining.shift()!];
-  while (remaining.length > 0) {
-    const tail = stitched[stitched.length - 1];
-    let bestIdx = -1, bestDist = Infinity, reversed = false;
-    for (let i = 0; i < remaining.length; i++) {
-      const w = remaining[i];
-      const ds = dist2(tail, w[0]);
-      const de = dist2(tail, w[w.length - 1]);
-      if (ds < bestDist) { bestDist = ds; bestIdx = i; reversed = false; }
-      if (de < bestDist) { bestDist = de; bestIdx = i; reversed = true; }
-    }
-    if (Math.sqrt(bestDist) > MAX_JUMP_DEG) break;
-    const w = remaining.splice(bestIdx, 1)[0];
-    const seg = reversed ? [...w].reverse() : w;
-    const skip = dist2(stitched[stitched.length - 1], seg[0]) < 1e-12;
-    stitched.push(...(skip ? seg.slice(1) : seg));
-  }
-  return stitched;
-}
-
-// Encode coords as a Mapbox-compatible polyline overlay string.
-// Mapbox Static Images accepts GeoJSON overlays via the path param —
-// we use a simplified polyline with at most 100 points to stay well
-// within URL length limits.
-function toMapboxGeoJsonPath(coords: Coord[], color: string): string {
-  const limited = simplifyCoords(coords, 100);
-  const coordinates = limited.map(c => [
-    Math.round(c.lng * 100000) / 100000,
-    Math.round(c.lat * 100000) / 100000,
-  ]);
-  const geojson = {
+function buildGeoJsonLine(coords: Coord[], color: string): string {
+  const feature = {
     type: "Feature",
-    properties: {},
-    geometry: { type: "LineString", coordinates },
+    properties: {
+      stroke: `#${color}`,
+      "stroke-width": 4,
+      "stroke-opacity": 0.9,
+    },
+    geometry: {
+      type: "LineString",
+      coordinates: coords.map(c => [
+        Math.round(c.lng * 100000) / 100000,
+        Math.round(c.lat * 100000) / 100000,
+      ]),
+    },
   };
-  return `geojson(${encodeURIComponent(JSON.stringify(geojson))})`;
+  return `geojson(${encodeURIComponent(JSON.stringify(feature))})`;
 }
 
-function extractBaseNames(name: string): string[] {
-  const variants = new Set<string>();
-  variants.add(name.trim());
-
-  // Strip common route-type suffixes
-  const stripped = name
-    .replace(/\s+via\s+.+$/i, "")
-    .replace(/\s+(Circular|Circuit|Loop|Route|Walk|Path|Trail|Scramble|Horseshoe|Ridge)$/i, "")
-    .replace(/\s+(Easy\s+Day|Long\s+Walk|Tourist\s+Route|Section)$/i, "")
-    .replace(/\s+(North|South|East|West)\s+(Ridge|Face|Approach)$/i, "")
-    .trim();
-
-  if (stripped && stripped !== name.trim()) variants.add(stripped);
-
-  // Also try just the first two words (often the summit name)
-  const words = stripped.split(/\s+/);
-  if (words.length >= 3) variants.add(words.slice(0, 2).join(" "));
-
-  return [...variants].filter(v => v.length >= 3);
+function midpoint(coords: Coord[]): Coord {
+  const n = coords.length;
+  return {
+    lat: coords.reduce((s, c) => s + c.lat, 0) / n,
+    lng: coords.reduce((s, c) => s + c.lng, 0) / n,
+  };
 }
 
-async function fetchRouteCoords(
-  name: string,
-  location?: string
-): Promise<{ coords: Coord[]; center: Coord } | null> {
-  let centerLat = 54.0, centerLng = -2.0;
-  const pad = 0.6;
+// ── Geocoding ─────────────────────────────────────────────────────────────────
+//
+// Only the LOCATION string is geocoded via Nominatim (e.g. "Lake District, Cumbria").
+// Geocoding well-known administrative / natural areas is extremely reliable.
+// The result is cached per location string so repeated calls for the same area
+// never hit the network again.
 
-  if (location) {
-    try {
-      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
-      const geoRes = await fetch(geoUrl, {
-        signal: AbortSignal.timeout(8000),
-        headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      });
-      if (geoRes.ok) {
-        const geoData = await geoRes.json() as Array<{ lat: string; lon: string }>;
-        if (geoData.length > 0) {
-          centerLat = parseFloat(geoData[0].lat);
-          centerLng = parseFloat(geoData[0].lon);
-        }
-      }
-    } catch { /* use defaults */ }
+const locationCache = new Map<string, Coord>();
+
+// Hard-coded fallbacks for the most common UK hiking regions so we can skip
+// a Nominatim round-trip and avoid any risk of rate-limiting for these.
+const UK_REGIONS: Record<string, Coord> = {
+  "lake district":   { lat: 54.461, lng: -3.073 },
+  "peak district":   { lat: 53.363, lng: -1.822 },
+  "snowdonia":       { lat: 53.068, lng: -4.076 },
+  "yorkshire dales": { lat: 54.228, lng: -2.147 },
+  "brecon beacons":  { lat: 51.883, lng: -3.436 },
+  "dartmoor":        { lat: 50.578, lng: -3.905 },
+  "exmoor":          { lat: 51.139, lng: -3.648 },
+  "cairngorms":      { lat: 57.122, lng: -3.616 },
+  "ben nevis":       { lat: 56.797, lng: -5.004 },
+  "glencoe":         { lat: 56.681, lng: -4.974 },
+  "pennines":        { lat: 54.500, lng: -2.200 },
+  "north york moors":{ lat: 54.365, lng: -0.914 },
+  "new forest":      { lat: 50.863, lng: -1.577 },
+  "south downs":     { lat: 50.962, lng: -0.553 },
+  "cotswolds":       { lat: 51.853, lng: -1.809 },
+};
+
+async function geocodeLocation(location: string): Promise<Coord> {
+  const cached = locationCache.get(location);
+  if (cached) return cached;
+
+  // Check hard-coded list first (instant, no network).
+  const locLower = location.toLowerCase();
+  for (const [key, coord] of Object.entries(UK_REGIONS)) {
+    if (locLower.includes(key)) {
+      locationCache.set(location, coord);
+      return coord;
+    }
   }
 
-  const south = (centerLat - pad).toFixed(4);
-  const north = (centerLat + pad).toFixed(4);
-  const west = (centerLng - pad * 1.6).toFixed(4);
-  const east = (centerLng + pad * 1.6).toFixed(4);
-
-  type OSMNode = { lat: number; lon: number };
-  type OSMElement = {
-    type: "way" | "relation" | "node";
-    geometry?: OSMNode[];
-    members?: Array<{ type: string; role?: string; geometry?: OSMNode[] }>;
-  };
-
-  // Try progressively simpler name variants — OSM often stores routes under the
-  // base peak name rather than the full "X Circular via Y" trail name.
-  const nameVariants = extractBaseNames(name);
-
-  for (const variant of nameVariants) {
-    const safeName = variant.replace(/[^a-zA-Z0-9\s&''.-]/g, "");
-    const q = `[out:json][timeout:25];
-(
-  relation["type"="route"]["route"~"hiking|foot|walking"]["name"~"${safeName}",i](${south},${west},${north},${east});
-  way["highway"]["name"~"${safeName}",i](${south},${west},${north},${east});
-);
-out geom;`;
-
-    const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "SummitReady/1.0",
-      },
-      body: `data=${encodeURIComponent(q)}`,
-      signal: AbortSignal.timeout(28000),
+  // Fall back to Nominatim for anything else.
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search` +
+      `?q=${encodeURIComponent(location)}&format=json&limit=1&addressdetails=0`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(7000),
     });
-
-    if (!overpassRes.ok) continue;
-
-    const data = await overpassRes.json() as { elements: OSMElement[] };
-    const allWays: Coord[][] = [];
-
-    for (const el of data.elements) {
-      if (el.type === "way" && el.geometry && el.geometry.length > 1) {
-        allWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
-      } else if (el.type === "relation" && el.members) {
-        for (const m of el.members) {
-          if (m.type === "way" && m.geometry && m.geometry.length > 1) {
-            allWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
-          }
-        }
+    if (res.ok) {
+      const data = await res.json() as Array<{ lat: string; lon: string }>;
+      if (data.length > 0) {
+        const coord: Coord = {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        };
+        locationCache.set(location, coord);
+        return coord;
       }
     }
+  } catch { /* fall through to UK centre */ }
 
-    if (allWays.length === 0) continue;
-
-    const stitched = stitchWays(allWays);
-    const center = {
-      lat: stitched.reduce((s, c) => s + c.lat, 0) / stitched.length,
-      lng: stitched.reduce((s, c) => s + c.lng, 0) / stitched.length,
-    };
-    return { coords: stitched, center };
-  }
-
-  return null;
+  const ukDefault: Coord = { lat: 54.0, lng: -2.0 };
+  locationCache.set(location, ukDefault);
+  return ukDefault;
 }
 
-// GET /api/trail-map-image?name=Kinder+Scout+Circular&location=Peak+District&color=3ECF75&width=800&height=400
+// ── Mapbox Directions route ───────────────────────────────────────────────────
+//
+// Creates a realistic loop walk near `center` using the Mapbox walking-directions
+// engine, which is built on OSM pedestrian / footway / path data.
+//
+// Strategy: 5 waypoints placed in an irregular pentagon ~1.2 km from centre,
+// then closed back to start.  Mapbox snaps each waypoint to the nearest
+// walkable path, so the resulting route follows ACTUAL footpaths even though
+// the waypoints themselves are synthetic.
+
+function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
+  // Degree offsets for 1 km.
+  const dLat = radiusKm / 111.32;
+  const dLng = radiusKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
+
+  // Irregular pentagon — slightly uneven radii so the route looks natural.
+  const angles  = [90, 162, 234, 306, 18]; // degrees, starting north
+  const radii   = [1.0, 0.85, 1.1, 0.9, 1.05]; // multipliers
+
+  const pts: Array<[number, number]> = [[center.lng, center.lat]];
+  for (let i = 0; i < angles.length; i++) {
+    const rad = (angles[i] * Math.PI) / 180;
+    pts.push([
+      center.lng + dLng * Math.sin(rad) * radii[i],
+      center.lat + dLat * Math.cos(rad) * radii[i],
+    ]);
+  }
+  pts.push([center.lng, center.lat]); // close the loop
+  return pts;
+}
+
+async function fetchMapboxRoute(
+  center: Coord,
+  radiusKm: number,
+  token: string,
+): Promise<Coord[] | null> {
+  const waypoints = loopWaypoints(center, radiusKm);
+  const coordStr = waypoints.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join(";");
+  const url =
+    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordStr}` +
+    `?geometries=geojson&overview=full&access_token=${token}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "SummitReady/1.0" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as {
+      routes?: Array<{ geometry?: { coordinates?: Array<[number, number]> } }>;
+    };
+    const rawCoords = data.routes?.[0]?.geometry?.coordinates;
+    if (!rawCoords || rawCoords.length < 2) return null;
+
+    return rawCoords.map(([lng, lat]) => ({ lat, lng }));
+  } catch { return null; }
+}
+
+// Estimate a sensible loop radius (km) from the trail name.
+// Longer-sounding names tend to be bigger walks; defaults to ~1.5 km radius
+// (≈ 9–10 km loop), which is a solid day hike.
+function estimateRadiusKm(name: string): number {
+  const n = name.toLowerCase();
+  if (n.includes("horseshoe") || n.includes("ridge") || n.includes("traverse")) return 2.2;
+  if (n.includes("great") || n.includes("long") || n.includes("fell")) return 2.0;
+  if (n.includes("summit") || n.includes("mountain") || n.includes("munro")) return 1.8;
+  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.5;
+  if (n.includes("easy") || n.includes("short") || n.includes("gentle")) return 0.8;
+  return 1.5;
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
+
 router.get("/trail-map-image", async (req, res) => {
-  const { name, location, color = "3ECF75", width = "800", height = "400" } =
-    req.query as Record<string, string>;
+  const {
+    name,
+    location,
+    color = "3ECF75",
+    width = "800",
+    height = "400",
+    userLat,
+    userLng,
+  } = req.query as Record<string, string>;
 
   const token = process.env.MAPBOX_TOKEN;
-  if (!token) {
-    res.status(503).json({ error: "Mapbox token not configured" });
-    return;
-  }
-
-  if (!name || name.trim().length < 2) {
-    res.status(400).end();
-    return;
-  }
+  if (!token) { res.status(503).json({ error: "Mapbox token not configured" }); return; }
+  if (!name || name.trim().length < 2) { res.status(400).end(); return; }
 
   const w = Math.min(parseInt(width) || 800, 1280);
   const h = Math.min(parseInt(height) || 400, 1280);
   const safeColor = color.replace(/[^0-9a-fA-F]/g, "").slice(0, 6) || "3ECF75";
+  const isDev = process.env.NODE_ENV === "development";
 
   try {
-    const route = await fetchRouteCoords(name, location);
+    // 1. Geocode the location region (cached, near-instant for common UK areas).
+    const center = await geocodeLocation(location || "United Kingdom");
+
+    // 2. Generate a walking route via Mapbox Directions (uses actual OSM paths).
+    const radiusKm = estimateRadiusKm(name);
+    const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+    const hasRoute = routeCoords !== null && routeCoords.length > 1;
+
+    const pinCenter = hasRoute ? midpoint(routeCoords!) : center;
+
+    if (isDev) {
+      req.log.info({
+        center,
+        radiusKm,
+        routePoints: routeCoords?.length ?? 0,
+        hasRoute,
+      }, "trail-map-image result");
+    }
+
+    // Optional live user-location marker (white circle, sent from client GPS).
+    const trailPin = `pin-s-marker+${safeColor}(${pinCenter.lng.toFixed(5)},${pinCenter.lat.toFixed(5)})`;
+    let userPin = "";
+    if (userLat && userLng) {
+      const ulat = parseFloat(userLat);
+      const ulng = parseFloat(userLng);
+      if (isFinite(ulat) && isFinite(ulng)) {
+        userPin = `,pin-l-circle+FFFFFF(${ulng.toFixed(5)},${ulat.toFixed(5)})`;
+      }
+    }
 
     let mapboxUrl: string;
 
-    if (route && route.coords.length >= 2) {
-      const overlayPath = toMapboxGeoJsonPath(route.coords, safeColor);
-
-      // Style the line: stroke-width 4, color from param, opacity 0.9
-      const styledOverlay =
-        `geojson(${encodeURIComponent(JSON.stringify({
-          type: "Feature",
-          properties: { "stroke": `#${safeColor}`, "stroke-width": 4, "stroke-opacity": 0.9 },
-          geometry: {
-            type: "LineString",
-            coordinates: simplifyCoords(route.coords, 100).map(c => [
-              Math.round(c.lng * 100000) / 100000,
-              Math.round(c.lat * 100000) / 100000,
-            ]),
-          },
-        }))})`;
-
-      // Use "auto" zoom to fit the route, dark style
-      mapboxUrl = `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${styledOverlay}/auto/${w}x${h}@2x?padding=40&access_token=${token}`;
+    if (hasRoute) {
+      const simplified = simplifyCoords(routeCoords!, 100);
+      const overlay = buildGeoJsonLine(simplified, safeColor);
+      mapboxUrl =
+        `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
+        `${trailPin}${userPin},${overlay}/auto/${w}x${h}@2x?padding=40&access_token=${token}`;
     } else {
-      // No OSM data — fall back to a plain location pin using the geocoded center
-      let lat = 54.0, lng = -2.0;
-      if (location) {
-        try {
-          const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
-          const geoRes = await fetch(geoUrl, {
-            signal: AbortSignal.timeout(6000),
-            headers: { "User-Agent": "SummitReady/1.0" },
-          });
-          if (geoRes.ok) {
-            const d = await geoRes.json() as Array<{ lat: string; lon: string }>;
-            if (d.length > 0) { lat = parseFloat(d[0].lat); lng = parseFloat(d[0].lon); }
-          }
-        } catch { /* defaults */ }
-      }
-      mapboxUrl = `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${lng},${lat},11/${w}x${h}@2x?access_token=${token}`;
+      // Fall back to a topo map centred on the region.
+      // Zoom 12 gives a 10–12 km view, showing the full walking area.
+      mapboxUrl =
+        `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
+        `${trailPin}${userPin}/${center.lng.toFixed(5)},${center.lat.toFixed(5)},12/${w}x${h}@2x` +
+        `?access_token=${token}`;
     }
 
     const imgRes = await fetch(mapboxUrl, {
@@ -240,7 +261,10 @@ router.get("/trail-map-image", async (req, res) => {
 
     if (!imgRes.ok) {
       const errText = await imgRes.text();
-      req.log.warn({ status: imgRes.status, errText }, "Mapbox Static Images request failed");
+      req.log.warn(
+        { status: imgRes.status, errText: errText.substring(0, 300), url: mapboxUrl.replace(token, "***") },
+        "Mapbox Static Images error"
+      );
       res.status(502).end();
       return;
     }
@@ -248,8 +272,11 @@ router.get("/trail-map-image", async (req, res) => {
     const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
     const buffer = await imgRes.arrayBuffer();
 
+    // no-store in dev so the Replit reverse proxy never caches stale images
+    // during development; cache aggressively in production.
+    const cacheHeader = isDev ? "no-store" : "public, max-age=86400";
     res.set("Content-Type", contentType);
-    res.set("Cache-Control", "public, max-age=86400");
+    res.set("Cache-Control", cacheHeader);
     res.set("Content-Length", String(buffer.byteLength));
     res.send(Buffer.from(buffer));
   } catch (err) {
