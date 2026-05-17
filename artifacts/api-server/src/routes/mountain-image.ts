@@ -27,31 +27,64 @@ function cleanName(name: string): string {
     .trim();
 }
 
+// Patterns in the image filename that suggest it is NOT a landscape/mountain photo
+const REJECT_FILENAME_PATTERNS = [
+  /portrait/i, /headshot/i, /bust/i, /painting/i, /drawing/i,
+  /statue/i, /monument/i, /plaque/i, /gravestone/i,
+  /\bhorse\b/i, /\bcow\b/i, /\bdog\b/i, /\bsheep\b/i, /\bgoat\b/i,
+  /\bbird\b/i, /\bfish\b/i, /\binsect\b/i,
+  /coat.of.arms/i, /\bflag\b/i, /\blogo\b/i, /\bbadge\b/i, /\bseal\b/i,
+  /\bmap\b/i, /\bdiagram\b/i, /\bchart\b/i, /\bicon\b/i,
+  /\bperson\b/i, /\bpeople\b/i, /\bman\b/i, /\bwoman\b/i,
+];
+
+/**
+ * Returns false if the image URL looks like a person/animal/non-landscape photo.
+ * Checks the filename for red-flag keywords and rejects portrait-oriented images
+ * (height > width * 1.15 — typical of headshots and people photos).
+ */
+function isImageSuitable(thumbUrl: string, imgWidth?: number, imgHeight?: number): boolean {
+  // Extract just the filename portion from the CDN URL
+  const filename = decodeURIComponent(thumbUrl.split("/").pop() ?? "").toLowerCase();
+
+  if (REJECT_FILENAME_PATTERNS.some(p => p.test(filename))) return false;
+
+  // Portrait orientation (significantly taller than wide) = person photo
+  if (imgWidth && imgHeight && imgHeight > imgWidth * 1.15) return false;
+
+  return true;
+}
+
+interface WikiPageRaw {
+  thumbnail?: { source: string; width?: number; height?: number };
+  original?:  { source: string; width?: number; height?: number };
+  coordinates?: Array<{ lat: number; lon: number; primary?: boolean }>;
+}
+
 async function queryWikipedia(title: string): Promise<WikiResult> {
   const url =
     `https://en.wikipedia.org/w/api.php?action=query` +
     `&titles=${encodeURIComponent(title)}` +
-    `&prop=pageimages%7Ccoordinates&pithumbsize=800&pilicense=any` +
+    `&prop=pageimages%7Ccoordinates&pithumbsize=960&piprop=thumbnail%7Coriginal&pilicense=any` +
     `&format=json&formatversion=2`;
 
   const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(7000) });
   if (!res.ok) return { thumbUrl: null, coord: null };
 
-  const data = await res.json() as {
-    query?: {
-      pages?: Array<{
-        thumbnail?:   { source: string };
-        coordinates?: Array<{ lat: number; lon: number; primary?: boolean }>;
-      }>;
-    };
-  };
+  const data = await res.json() as { query?: { pages?: WikiPageRaw[] } };
 
   const page = data.query?.pages?.[0];
   if (!page) return { thumbUrl: null, coord: null };
 
-  const thumbUrl  = page.thumbnail?.source ?? null;
   const coordData = page.coordinates?.find(c => c.primary) ?? page.coordinates?.[0];
   const coord     = coordData ? { lat: coordData.lat, lng: coordData.lon } : null;
+
+  // Use original dimensions for the orientation check when available
+  const checkW = page.original?.width  ?? page.thumbnail?.width;
+  const checkH = page.original?.height ?? page.thumbnail?.height;
+  const rawUrl = page.thumbnail?.source ?? null;
+
+  const thumbUrl = rawUrl && isImageSuitable(rawUrl, checkW, checkH) ? rawUrl : null;
 
   return { thumbUrl, coord };
 }
@@ -75,10 +108,13 @@ async function getWikiData(raw: string): Promise<WikiResult> {
       const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(6000) });
       if (res.ok) {
         const data = await res.json() as {
-          thumbnail?: { source: string };
+          thumbnail?: { source: string; width?: number; height?: number };
           coordinates?: { lat: number; lon: number };
         };
-        result.thumbUrl = data.thumbnail?.source ?? null;
+        const src = data.thumbnail?.source ?? null;
+        if (src && isImageSuitable(src, data.thumbnail?.width, data.thumbnail?.height)) {
+          result.thumbUrl = src;
+        }
         if (!result.coord && data.coordinates) {
           result.coord = { lat: data.coordinates.lat, lng: data.coordinates.lon };
         }
@@ -86,23 +122,27 @@ async function getWikiData(raw: string): Promise<WikiResult> {
     } catch { /* fall through */ }
   }
 
-  // 3. Search for canonical title, retry once
+  // 3. Search for canonical title with "mountain" bias, retry once
   if (!result.thumbUrl) {
     try {
       const url =
         `https://en.wikipedia.org/w/api.php?action=query` +
-        `&list=search&srsearch=${encodeURIComponent(name + " mountain")}` +
-        `&srlimit=1&format=json&formatversion=2`;
+        `&list=search&srsearch=${encodeURIComponent(name + " mountain OR hill OR peak OR fell OR ridge")}` +
+        `&srlimit=3&format=json&formatversion=2`;
       const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const data = await res.json() as {
           query?: { search?: Array<{ title: string }> };
         };
-        const title = data.query?.search?.[0]?.title;
-        if (title && title.toLowerCase() !== name.toLowerCase()) {
-          const r2 = await getWikiData(title);
-          wikiCache.set(raw, r2);
-          return r2;
+        const hits = data.query?.search ?? [];
+        for (const hit of hits) {
+          if (hit.title.toLowerCase() === name.toLowerCase()) continue;
+          const r2 = await queryWikipedia(hit.title);
+          if (r2.thumbUrl) {
+            // Keep coordinates from earlier step if we already have them
+            wikiCache.set(raw, { thumbUrl: r2.thumbUrl, coord: result.coord ?? r2.coord });
+            return wikiCache.get(raw)!;
+          }
         }
       }
     } catch { /* fall through */ }
