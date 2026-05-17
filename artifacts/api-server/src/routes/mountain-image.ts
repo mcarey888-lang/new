@@ -2,101 +2,94 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-// ── Wikipedia photo cache ─────────────────────────────────────────────────────
+// ── Wikipedia photo lookup ────────────────────────────────────────────────────
+//
+// We use the MediaWiki pageimages API with pithumbsize=800.
+// Wikimedia generates a ~960px thumbnail for this request which we proxy.
+// The thumbnail is typically 150–250 KB — fast enough for a mobile hero image.
+//
+// The thumbnail URL is cached in-process so repeat visits are instant.
 
-const photoCache = new Map<string, string | null>(); // name → image URL or null
+const photoCache = new Map<string, string | null>();
 
-/**
- * Try to get a real summit/mountain photo from Wikipedia.
- * Uses the REST summary API first (fast, single request).
- * Falls back to the MediaWiki pageimages API for a higher-res thumbnail.
- * Returns the image URL string, or null if nothing found.
- */
-async function getWikipediaPhoto(name: string): Promise<string | null> {
-  const cached = photoCache.get(name);
+const WIKI_HEADERS = {
+  "User-Agent": "SummitReady/1.0 (hiking training app)",
+};
+
+function cleanName(name: string): string {
+  return name
+    .replace(/\s*\(.*?\)\s*/g, "")  // strip parentheticals "(Goûter Route)" etc.
+    .replace(/\s+route$/i, "")
+    .trim();
+}
+
+async function getWikiThumbUrl(raw: string): Promise<string | null> {
+  const cached = photoCache.get(raw);
   if (cached !== undefined) return cached;
 
-  // Clean the name for Wikipedia: strip common suffixes that confuse the lookup
-  const searchName = name
-    .replace(/\s*\(.*?\)\s*/g, "")   // remove parenthetical e.g. "(Goûter Route)"
-    .replace(/\s+route$/i, "")        // remove trailing "route"
-    .trim();
+  const name = cleanName(raw);
+  let found: string | null = null;
 
-  // 1. REST summary API — fast, returns originalimage.source
+  // 1. pageimages API — requests an ~800px thumbnail (Wikimedia returns ~960px)
   try {
-    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchName)}`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app; contact@summitready.app)" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (res.ok) {
-      const data = await res.json() as {
-        originalimage?: { source: string };
-        thumbnail?: { source: string };
-        type?: string;
-      };
-      // Prefer original, fall back to thumbnail
-      const src = data.originalimage?.source ?? data.thumbnail?.source ?? null;
-      if (src) {
-        photoCache.set(name, src);
-        return src;
-      }
-    }
-  } catch { /* fall through to next strategy */ }
-
-  // 2. MediaWiki pageimages API — wider search, higher-res thumbnail
-  try {
-    const apiUrl =
+    const url =
       `https://en.wikipedia.org/w/api.php?action=query` +
-      `&titles=${encodeURIComponent(searchName)}` +
-      `&prop=pageimages&pithumbsize=1200&pilicense=any` +
+      `&titles=${encodeURIComponent(name)}` +
+      `&prop=pageimages&pithumbsize=800&pilicense=any` +
       `&format=json&formatversion=2`;
-    const res = await fetch(apiUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app; contact@summitready.app)" },
-      signal: AbortSignal.timeout(6000),
-    });
+
+    const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(6000) });
     if (res.ok) {
       const data = await res.json() as {
         query?: { pages?: Array<{ thumbnail?: { source: string } }> };
       };
-      const pages = data.query?.pages ?? [];
-      const src = pages[0]?.thumbnail?.source ?? null;
-      if (src) {
-        photoCache.set(name, src);
-        return src;
-      }
+      found = data.query?.pages?.[0]?.thumbnail?.source ?? null;
     }
   } catch { /* fall through */ }
 
-  // 3. MediaWiki search — handles misspellings / partial names
-  try {
-    const searchUrl =
-      `https://en.wikipedia.org/w/api.php?action=query` +
-      `&list=search&srsearch=${encodeURIComponent(searchName + " mountain")}` +
-      `&srlimit=1&format=json&formatversion=2`;
-    const sRes = await fetch(searchUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app; contact@summitready.app)" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (sRes.ok) {
-      const sData = await sRes.json() as {
-        query?: { search?: Array<{ title: string }> };
-      };
-      const title = sData.query?.search?.[0]?.title;
-      if (title && title !== searchName) {
-        // Recurse once with the canonical title
-        const found = await getWikipediaPhoto(title);
-        photoCache.set(name, found);
-        return found;
+  // 2. REST summary thumbnail (fallback — smaller but reliable)
+  if (!found) {
+    try {
+      const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`;
+      const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = await res.json() as {
+          thumbnail?: { source: string };
+          originalimage?: { source: string };
+        };
+        found = data.thumbnail?.source ?? data.originalimage?.source ?? null;
       }
-    }
-  } catch { /* fall through */ }
+    } catch { /* fall through */ }
+  }
 
-  photoCache.set(name, null);
-  return null;
+  // 3. Search for canonical title, then retry once
+  if (!found) {
+    try {
+      const url =
+        `https://en.wikipedia.org/w/api.php?action=query` +
+        `&list=search&srsearch=${encodeURIComponent(name + " mountain")}` +
+        `&srlimit=1&format=json&formatversion=2`;
+      const res = await fetch(url, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json() as {
+          query?: { search?: Array<{ title: string }> };
+        };
+        const title = data.query?.search?.[0]?.title;
+        if (title && title.toLowerCase() !== name.toLowerCase()) {
+          // single recursive call with the canonical title
+          found = await getWikiThumbUrl(title);
+          photoCache.set(raw, found);
+          return found;
+        }
+      }
+    } catch { /* fall through */ }
+  }
+
+  photoCache.set(raw, found);
+  return found;
 }
 
-// ── Geocoding (fallback for Mapbox satellite) ─────────────────────────────────
+// ── Geocoding (Mapbox satellite fallback) ─────────────────────────────────────
 
 interface Coord { lat: number; lng: number }
 const locationCache = new Map<string, Coord>();
@@ -107,7 +100,6 @@ const UK_REGIONS: Record<string, Coord> = {
   "snowdonia":        { lat: 53.068, lng: -4.076 },
   "yorkshire dales":  { lat: 54.228, lng: -2.147 },
   "brecon beacons":   { lat: 51.883, lng: -3.436 },
-  "dartmoor":         { lat: 50.578, lng: -3.905 },
   "cairngorms":       { lat: 57.122, lng: -3.616 },
   "ben nevis":        { lat: 56.797, lng: -5.004 },
   "glencoe":          { lat: 56.681, lng: -4.974 },
@@ -118,78 +110,35 @@ const UK_REGIONS: Record<string, Coord> = {
 async function geocodeName(name: string): Promise<Coord> {
   const cached = locationCache.get(name);
   if (cached) return cached;
-
-  const nameLower = name.toLowerCase();
+  const lower = name.toLowerCase();
   for (const [key, coord] of Object.entries(UK_REGIONS)) {
-    if (nameLower.includes(key)) {
-      locationCache.set(name, coord);
-      return coord;
-    }
+    if (lower.includes(key)) { locationCache.set(name, coord); return coord; }
   }
-
   try {
     const url =
       `https://nominatim.openstreetmap.org/search` +
-      `?q=${encodeURIComponent(name + " mountain")}&format=json&limit=1&addressdetails=0`;
+      `?q=${encodeURIComponent(name + " mountain")}&format=json&limit=1`;
     const res = await fetch(url, {
       headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
       const data = await res.json() as Array<{ lat: string; lon: string }>;
-      if (data.length > 0) {
+      if (data[0]) {
         const coord: Coord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
         locationCache.set(name, coord);
         return coord;
       }
     }
   } catch { /* fall through */ }
-
   return { lat: 52.5, lng: -1.5 };
 }
 
-// ── Satellite fallback ────────────────────────────────────────────────────────
-
-async function serveSatellite(
-  req: Parameters<Parameters<typeof router.get>[1]>[0],
-  res: Parameters<Parameters<typeof router.get>[1]>[1],
-  name: string,
-  width: number,
-  height: number,
-) {
-  const token = process.env.MAPBOX_TOKEN;
-  if (!token) { res.status(503).end(); return; }
-
-  try {
-    const { lat, lng } = await geocodeName(name);
-
-    const url =
-      `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/` +
-      `${lng.toFixed(5)},${lat.toFixed(5)},13,0/${width}x${height}@2x` +
-      `?access_token=${token}`;
-
-    const imgRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!imgRes.ok) { res.status(imgRes.status).end(); return; }
-
-    const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
-    const buffer = await imgRes.arrayBuffer();
-    res.set("Content-Type", contentType);
-    res.set("Cache-Control", "public, max-age=604800");
-    res.set("Content-Length", String(buffer.byteLength));
-    res.send(Buffer.from(buffer));
-  } catch (err) {
-    req.log.warn({ err }, "Mountain satellite fallback failed");
-    res.status(500).end();
-  }
-}
-
-// ── GET /api/mountain-image?name=Ben+Nevis ────────────────────────────────────
+// ── GET /api/mountain-image?name=Allalinhorn ──────────────────────────────────
 //
-// 1. Tries Wikipedia for a real summit photograph.
-// 2. Falls back to a Mapbox satellite tile centred on the mountain's coords.
-//
-// The `location` param is also accepted for backwards-compatibility with any
-// callers that pass the trail location string instead of the hill name.
+// 1. Fetches a ~960px Wikipedia thumbnail and proxies it.
+//    Thumbnail is ~150–250 KB — ideal for a mobile hero image.
+// 2. Falls back to Mapbox satellite if Wikipedia has no image.
 
 router.get("/mountain-image", async (req, res) => {
   const name =
@@ -200,18 +149,14 @@ router.get("/mountain-image", async (req, res) => {
   const width  = Math.min(parseInt(String(req.query["width"]  ?? "800"), 10) || 800, 1280);
   const height = Math.min(parseInt(String(req.query["height"] ?? "400"), 10) || 400, 800);
 
-  if (!name) {
-    res.status(400).end();
-    return;
-  }
+  if (!name) { res.status(400).end(); return; }
 
   try {
-    const photoUrl = await getWikipediaPhoto(name);
+    const thumbUrl = await getWikiThumbUrl(name);
 
-    if (photoUrl) {
-      // Proxy the Wikipedia image so we can set cache headers and avoid CORS
-      const imgRes = await fetch(photoUrl, {
-        headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+    if (thumbUrl) {
+      const imgRes = await fetch(thumbUrl, {
+        headers: WIKI_HEADERS,
         signal: AbortSignal.timeout(10000),
       });
 
@@ -226,15 +171,32 @@ router.get("/mountain-image", async (req, res) => {
       }
     }
 
-    // Wikipedia had no image or fetch failed — use satellite
-    await serveSatellite(req, res, name, width, height);
+    // ── Mapbox satellite fallback ────────────────────────────────────────────
+    const token = process.env.MAPBOX_TOKEN;
+    if (!token) { res.status(503).end(); return; }
+
+    const { lat, lng } = await geocodeName(name);
+    const mapUrl =
+      `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/` +
+      `${lng.toFixed(5)},${lat.toFixed(5)},13,0/${width}x${height}@2x` +
+      `?access_token=${token}`;
+
+    const imgRes = await fetch(mapUrl, { signal: AbortSignal.timeout(8000) });
+    if (!imgRes.ok) { res.status(imgRes.status).end(); return; }
+
+    const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
+    const buffer = await imgRes.arrayBuffer();
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "public, max-age=604800");
+    res.set("Content-Length", String(buffer.byteLength));
+    res.send(Buffer.from(buffer));
+
   } catch (err) {
     req.log.warn({ err }, "Mountain image failed");
     res.status(500).end();
   }
 });
 
-// POST — legacy endpoint kept for compatibility
 router.post("/mountain-image", async (_req, res) => {
   res.json({ imageUrl: null });
 });
