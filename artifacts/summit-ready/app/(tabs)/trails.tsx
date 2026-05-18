@@ -5,6 +5,7 @@ import {
   CheckCircle,
   ChevronRight,
   Compass,
+  Footprints,
   Info,
   Lock,
   Map,
@@ -365,6 +366,21 @@ export default function TrailsScreen() {
             </Text>
           </View>
           <ChevronRight size={16} color={T.textDim} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
+          <LinearGradient
+            colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={s.startHikingIconWrap}>
+            <Footprints size={20} color={T.green} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={s.startHikingTitle}>Start Hiking</Text>
+            <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
+          </View>
+          <ChevronRight size={16} color={T.green} />
         </TouchableOpacity>
       </View>
     );
@@ -799,6 +815,21 @@ export default function TrailsScreen() {
         <Animated.View entering={FadeInDown.delay(100).duration(600)}>
           {activeChip === "all" && (
             <View style={{ gap: 10 }}>
+              <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={s.startHikingIconWrap}>
+                  <Footprints size={20} color={T.green} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={s.startHikingTitle}>Start Hiking</Text>
+                  <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
+                </View>
+                <ChevronRight size={16} color={T.green} />
+              </TouchableOpacity>
               <CategoryCard
                 emoji="🗺️" title="Browse Trails" subtitle="Explore routes near you"
                 color={T.blue} onPress={() => router.push("/trail-list")}
@@ -900,6 +931,20 @@ const s = StyleSheet.create({
   chipActive: { borderColor: T.green + "60", backgroundColor: T.greenDim },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   chipTextActive: { color: T.green },
+
+  startHikingCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderRadius: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: T.green + "35",
+    paddingVertical: 14, paddingHorizontal: 14,
+  },
+  startHikingIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center",
+  },
+  startHikingTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.green },
+  startHikingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   createCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
