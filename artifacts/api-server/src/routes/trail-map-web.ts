@@ -131,107 +131,6 @@ async function fetchMapboxRoute(
   } catch { return null; }
 }
 
-// ── Waymarked Trails (OpenStreetMap hiking route data) ────────────────────────
-//
-// Waymarked Trails aggregates signed hiking routes from OSM.  We search by the
-// trail name to get an OSM relation ID, then fetch its actual GPS geometry.
-// This is tried first; the synthetic Mapbox loop is only used as a fallback.
-
-interface WaymarkedResult { id: number; name: string }
-
-/**
- * Check that a Waymarked Trails result name is actually related to the
- * searched trail name.  Without this, fuzzy search returns the same popular
- * local OSM route for every trail in a region, making all cards look identical.
- *
- * Strategy: strip stop-words and very short tokens, then require at least one
- * meaningful word from the query to appear in the result name.
- */
-const TRAIL_STOP_WORDS = new Set([
-  "the","and","for","via","with","from","around","across","over","along",
-  "loop","walk","circular","route","trail","path","way","hike","ridge",
-  "circuit","round","tour","ascent","descent","traverse","horseshoe",
-]);
-function namesOverlap(query: string, result: string): boolean {
-  const tokens = (s: string) =>
-    s.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !TRAIL_STOP_WORDS.has(w));
-  const qTokens = tokens(query);
-  const rLower = result.toLowerCase();
-  return qTokens.some(t => rLower.includes(t));
-}
-
-/** Haversine distance in km between two lat/lng points. */
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/** Geographic midpoint of a GeoJSON coordinate array ([lng, lat] pairs). */
-function coordsMidpointWeb(coords: Array<[number, number]>): [number, number] {
-  const n = coords.length;
-  return [
-    coords.reduce((s, c) => s + c[0], 0) / n,
-    coords.reduce((s, c) => s + c[1], 0) / n,
-  ];
-}
-
-async function fetchWaymarkedTrail(
-  trailName: string,
-): Promise<Array<[number, number]> | null> {
-  try {
-    const searchUrl =
-      `https://hiking.waymarkedtrails.org/api/v1/list/search` +
-      `?query=${encodeURIComponent(trailName)}&limit=5`;
-    const searchRes = await fetch(searchUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json() as { results?: WaymarkedResult[] };
-    const best = searchData.results?.[0];
-    // Reject results whose name shares no meaningful words with the query —
-    // this prevents a popular regional route from being shown for every trail.
-    if (!best || !namesOverlap(trailName, best.name)) return null;
-    const routeId = best.id;
-
-    const geoUrl =
-      `https://hiking.waymarkedtrails.org/api/v1/details/relation/${routeId}/geometry`;
-    const geoRes = await fetch(geoUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!geoRes.ok) return null;
-
-    const geo = await geoRes.json() as {
-      type: string;
-      features?: Array<{
-        geometry: {
-          type: string;
-          coordinates: unknown;
-        };
-      }>;
-    };
-
-    const coords: Array<[number, number]> = [];
-    for (const feature of geo.features ?? []) {
-      const g = feature.geometry;
-      if (g.type === "LineString") {
-        coords.push(...(g.coordinates as Array<[number, number]>));
-      } else if (g.type === "MultiLineString") {
-        for (const seg of g.coordinates as Array<Array<[number, number]>>) {
-          coords.push(...seg);
-        }
-      }
-    }
-    return coords.length >= 2 ? coords : null;
-  } catch { return null; }
-}
-
 /**
  * Calculate the loop radius from the actual trail distance when available.
  *
@@ -410,26 +309,12 @@ router.get("/trail-map-web", async (req, res) => {
 
   const distanceKm = distance ? parseFloat(distance) : undefined;
 
-  // Run geocoding and Waymarked Trails lookup in parallel for speed.
-  // Waymarked returns the real OSM GPS track; geocoding gives the center
-  // for the fallback synthetic route and for the initial map viewport.
-  const [center, waymarkedCoords] = await Promise.all([
-    geocodeLocation(location || "United Kingdom", name.trim()),
-    fetchWaymarkedTrail(name.trim()),
-  ]);
-
-  let routeCoords: Array<[number, number]> | null = waymarkedCoords;
-  if (routeCoords) {
-    // A name match alone isn't sufficient — an OSM route can share words with
-    // an AI-generated trail name but be in a completely different area. Reject
-    // any Waymarked result whose midpoint is > 20 km from the geocoded location.
-    const [midLng, midLat] = coordsMidpointWeb(routeCoords);
-    if (haversineKm(center.lat, center.lng, midLat, midLng) > 20) routeCoords = null;
-  }
-  if (!routeCoords) {
-    const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
-    routeCoords = await fetchMapboxRoute(center, radiusKm, token);
-  }
+  // Geocode the specific location then build a correctly-scaled walking loop.
+  // Mapbox Directions snaps waypoints to real OSM footpaths, so the route
+  // follows actual paths even though the waypoints are algorithmically placed.
+  const center = await geocodeLocation(location || "United Kingdom", name.trim());
+  const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
+  const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
 
   const html = buildHtml({
     token,

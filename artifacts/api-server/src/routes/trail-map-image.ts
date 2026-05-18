@@ -126,78 +126,6 @@ async function geocodeLocation(location: string, trailName?: string): Promise<Co
   return result;
 }
 
-// ── Waymarked Trails (OpenStreetMap hiking route data) ────────────────────────
-
-interface WaymarkedResult { id: number; name: string }
-
-const TRAIL_STOP_WORDS = new Set([
-  "the","and","for","via","with","from","around","across","over","along",
-  "loop","walk","circular","route","trail","path","way","hike","ridge",
-  "circuit","round","tour","ascent","descent","traverse","horseshoe",
-]);
-function namesOverlap(query: string, result: string): boolean {
-  const tokens = (s: string) =>
-    s.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !TRAIL_STOP_WORDS.has(w));
-  const qTokens = tokens(query);
-  const rLower = result.toLowerCase();
-  return qTokens.some(t => rLower.includes(t));
-}
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function fetchWaymarkedTrail(trailName: string): Promise<Coord[] | null> {
-  try {
-    const searchUrl =
-      `https://hiking.waymarkedtrails.org/api/v1/list/search` +
-      `?query=${encodeURIComponent(trailName)}&limit=5`;
-    const searchRes = await fetch(searchUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json() as { results?: WaymarkedResult[] };
-    const best = searchData.results?.[0];
-    if (!best || !namesOverlap(trailName, best.name)) return null;
-    const routeId = best.id;
-
-    const geoUrl =
-      `https://hiking.waymarkedtrails.org/api/v1/details/relation/${routeId}/geometry`;
-    const geoRes = await fetch(geoUrl, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!geoRes.ok) return null;
-
-    const geo = await geoRes.json() as {
-      type: string;
-      features?: Array<{ geometry: { type: string; coordinates: unknown } }>;
-    };
-
-    const coords: Coord[] = [];
-    for (const feature of geo.features ?? []) {
-      const g = feature.geometry;
-      if (g.type === "LineString") {
-        for (const [lng, lat] of g.coordinates as Array<[number, number]>) {
-          coords.push({ lat, lng });
-        }
-      } else if (g.type === "MultiLineString") {
-        for (const seg of g.coordinates as Array<Array<[number, number]>>) {
-          for (const [lng, lat] of seg) coords.push({ lat, lng });
-        }
-      }
-    }
-    return coords.length >= 2 ? coords : null;
-  } catch { return null; }
-}
-
 // ── Mapbox Directions route ───────────────────────────────────────────────────
 //
 // Creates a realistic loop walk near `center` using the Mapbox walking-directions
@@ -295,26 +223,10 @@ router.get("/trail-map-image", async (req, res) => {
   const distanceKm = distance ? parseFloat(distance) : undefined;
 
   try {
-    // Run geocoding and Waymarked Trails lookup in parallel for speed.
-    // Waymarked returns the real OSM GPS track; geocoding gives the center
-    // for the fallback synthetic route and for the map pin position.
-    const [center, waymarkedCoords] = await Promise.all([
-      geocodeLocation(location || "United Kingdom", name.trim()),
-      fetchWaymarkedTrail(name.trim()),
-    ]);
-
-    let routeCoords: Coord[] | null = waymarkedCoords;
-    if (routeCoords) {
-      // Reject Waymarked results whose midpoint is > 20 km from the geocoded
-      // trail location — name matches alone can be misleading for AI-generated
-      // trail names that share words with unrelated OSM routes in the same region.
-      const mid = midpoint(routeCoords);
-      if (haversineKm(center.lat, center.lng, mid.lat, mid.lng) > 20) routeCoords = null;
-    }
-    if (!routeCoords) {
-      const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
-      routeCoords = await fetchMapboxRoute(center, radiusKm, token);
-    }
+    // Geocode the specific location then build a correctly-scaled walking loop.
+    const center = await geocodeLocation(location || "United Kingdom", name.trim());
+    const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
+    const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
     const hasRoute = routeCoords !== null && routeCoords.length > 1;
 
     const pinCenter = hasRoute ? midpoint(routeCoords!) : center;
@@ -322,7 +234,7 @@ router.get("/trail-map-image", async (req, res) => {
     if (isDev) {
       req.log.info({
         center,
-        routeSource: waymarkedCoords ? "waymarked" : "synthetic",
+        radiusKm,
         routePoints: routeCoords?.length ?? 0,
         hasRoute,
       }, "trail-map-image result");
