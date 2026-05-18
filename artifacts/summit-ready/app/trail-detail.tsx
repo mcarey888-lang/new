@@ -418,7 +418,12 @@ export default function TrailDetailScreen() {
               <View style={s.startActionsRow}>
                 <TouchableOpacity
                   style={s.startMapBtn}
-                  onPress={() => openMapPin(startPoint.lat, startPoint.lng, startPoint.name)}
+                  onPress={() => {
+                    const query = startPoint.postcode
+                      ? `${startPoint.name}, ${startPoint.postcode}`
+                      : startPoint.name;
+                    openMapSearch(query);
+                  }}
                   activeOpacity={0.8}
                 >
                   <Map size={13} color={T.green} />
@@ -427,7 +432,9 @@ export default function TrailDetailScreen() {
                 <TouchableOpacity
                   style={[s.startMapBtn, { borderColor: T.blue + "50" }]}
                   onPress={() => {
-                    const dest = startPoint.postcode || `${startPoint.lat},${startPoint.lng}`;
+                    const dest = startPoint.postcode
+                      ? `${startPoint.name}, ${startPoint.postcode}`
+                      : startPoint.name;
                     openMapSearch(dest);
                   }}
                   activeOpacity={0.8}
