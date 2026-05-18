@@ -167,7 +167,12 @@ var centerPin=L.circleMarker(mapCenter,{
 fetch("/api/trail-route",{
   method:"POST",
   headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({name:trailName,location:trailLocation})
+  body:JSON.stringify({
+    name:trailName,
+    location:trailLocation,
+    lat:mapCenter[0],
+    lng:mapCenter[1]
+  })
 })
 .then(function(r){return r.json();})
 .then(function(data){

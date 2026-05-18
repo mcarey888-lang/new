@@ -61,7 +61,12 @@ function stitchWays(ways: Coord[][]): Coord[] {
 }
 
 router.post("/trail-route", async (req, res) => {
-  const { name, location } = req.body as { name?: string; location?: string };
+  const { name, location, lat, lng } = req.body as {
+    name?: string;
+    location?: string;
+    lat?: number | string;
+    lng?: number | string;
+  };
 
   if (!name || typeof name !== "string" || name.trim().length < 2) {
     res.status(400).json({ coords: [], center: null, found: false });
@@ -75,7 +80,17 @@ router.post("/trail-route", async (req, res) => {
     let centerLng = -2.0;
     const pad = 0.6;
 
-    if (location) {
+    // Prefer caller-supplied coords (e.g. OSM centre from seeded trails) to
+    // avoid a Nominatim geocode call that may be rate-limited or inaccurate.
+    const parsedLat = typeof lat === "string" ? parseFloat(lat) : (lat ?? NaN);
+    const parsedLng = typeof lng === "string" ? parseFloat(lng) : (lng ?? NaN);
+
+    if (isFinite(parsedLat) && isFinite(parsedLng) &&
+        parsedLat >= -90 && parsedLat <= 90 &&
+        parsedLng >= -180 && parsedLng <= 180) {
+      centerLat = parsedLat;
+      centerLng = parsedLng;
+    } else if (location) {
       const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
       const geoRes = await fetch(geoUrl, {
         signal: AbortSignal.timeout(8000),
