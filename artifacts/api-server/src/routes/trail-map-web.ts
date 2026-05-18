@@ -81,7 +81,95 @@ async function geocodeLocation(location: string): Promise<Coord> {
   return result;
 }
 
-// ── Mapbox Directions route ───────────────────────────────────────────────────
+// ── Overpass API (real OSM hiking route data) ─────────────────────────────────
+//
+// Query for hiking route relations near the geocoded location centre.
+// Uses proximity only — no name-matching — so well-known routes in the area
+// are found reliably regardless of how the AI named the trail.
+//
+// Only used by the interactive map (trail-map-web).  Card thumbnails use the
+// synthetic Mapbox loop for speed since 8+ load in parallel on the trail list.
+
+/** Geographic midpoint of a GeoJSON [lng, lat] array. */
+function midpointWeb(coords: Array<[number, number]>): [number, number] {
+  const n = coords.length;
+  return [
+    coords.reduce((s, c) => s + c[0], 0) / n,
+    coords.reduce((s, c) => s + c[1], 0) / n,
+  ];
+}
+
+/** Thin an array to at most maxPts entries, keeping first and last. */
+function thinCoords(coords: Array<[number, number]>, maxPts: number): Array<[number, number]> {
+  if (coords.length <= maxPts) return coords;
+  const step = Math.ceil(coords.length / maxPts);
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < coords.length; i += step) out.push(coords[i]);
+  const last = coords[coords.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
+async function fetchOverpassRoute(
+  center: Coord,
+  radiusKm: number,
+): Promise<Array<[number, number]> | null> {
+  try {
+    // Search radius: 4× the loop radius so we catch routes in the wider area,
+    // capped at 6 km to keep Overpass response times short.
+    const radiusM = Math.min(6000, Math.round(radiusKm * 4000));
+    const query =
+      `[out:json][timeout:10];` +
+      `relation["type"="route"]["route"="hiking"](around:${radiusM},${center.lat},${center.lng});` +
+      `out body geom;`;
+
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "SummitReady/1.0 (hiking training app)",
+      },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as {
+      elements: Array<{
+        type: string;
+        members?: Array<{
+          type: string;
+          geometry?: Array<{ lat: number; lon: number }>;
+        }>;
+      }>;
+    };
+
+    const relations = data.elements.filter(e => e.type === "relation");
+    if (!relations.length) return null;
+
+    // Pick the relation whose centroid is closest to the search centre.
+    let bestCoords: Array<[number, number]> = [];
+    let bestDist = Infinity;
+
+    for (const rel of relations) {
+      const coords: Array<[number, number]> = [];
+      for (const m of rel.members ?? []) {
+        if (m.type === "way" && m.geometry) {
+          for (const g of m.geometry) coords.push([g.lon, g.lat]);
+        }
+      }
+      if (coords.length < 4) continue;
+
+      const [midLng, midLat] = midpointWeb(coords);
+      const dist = Math.hypot(midLat - center.lat, midLng - center.lng);
+      if (dist < bestDist) { bestDist = dist; bestCoords = coords; }
+    }
+
+    return bestCoords.length >= 4 ? thinCoords(bestCoords, 400) : null;
+  } catch { return null; }
+}
+
+// ── Synthetic Mapbox walking loop ─────────────────────────────────────────────
 
 function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
   const dLat = radiusKm / 111.32;
@@ -305,12 +393,23 @@ router.get("/trail-map-web", async (req, res) => {
 
   const distanceKm = distance ? parseFloat(distance) : undefined;
 
-  // Geocode the region centre (cached per location string), then apply a
-  // deterministic per-trail offset so every trail gets a unique map position.
   const base = await geocodeLocation(location || "United Kingdom");
-  const center = trailCenter(base, name.trim());
   const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
-  const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+
+  // Try Overpass first — returns the real OSM hiking route closest to the
+  // geocoded location, using proximity rather than name-matching.
+  let routeCoords: Array<[number, number]> | null = await fetchOverpassRoute(base, radiusKm);
+
+  // Fall back to a synthetic Mapbox walking loop with a per-trail unique offset
+  // so the route stays in the right area even without an Overpass match.
+  let center: Coord;
+  if (routeCoords) {
+    const [lng, lat] = midpointWeb(routeCoords);
+    center = { lat, lng };
+  } else {
+    center = trailCenter(base, name.trim());
+    routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+  }
 
   const html = buildHtml({
     token,
