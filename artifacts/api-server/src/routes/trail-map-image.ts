@@ -72,44 +72,106 @@ const UK_REGIONS: Record<string, Coord> = {
   "cotswolds":       { lat: 51.853, lng: -1.809 },
 };
 
-async function geocodeLocation(location: string): Promise<Coord> {
-  const cached = locationCache.get(location);
-  if (cached) return cached;
+function extractPlaceName(trailName: string): string {
+  return trailName
+    .replace(/\b(circular|loop|route|walk|trail|path|way|hike|horseshoe|round|ridge|traverse|tour|circuit|summit|ascent|descent|via|through|across)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  // Check hard-coded list first (instant, no network).
-  const locLower = location.toLowerCase();
-  for (const [key, coord] of Object.entries(UK_REGIONS)) {
-    if (locLower.includes(key)) {
-      locationCache.set(location, coord);
-      return coord;
-    }
-  }
-
-  // Fall back to Nominatim for anything else.
+async function nominatimSearch(query: string): Promise<Coord | null> {
   try {
     const url =
       `https://nominatim.openstreetmap.org/search` +
-      `?q=${encodeURIComponent(location)}&format=json&limit=1&addressdetails=0`;
+      `?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=0`;
     const res = await fetch(url, {
       headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
       signal: AbortSignal.timeout(7000),
     });
-    if (res.ok) {
-      const data = await res.json() as Array<{ lat: string; lon: string }>;
-      if (data.length > 0) {
-        const coord: Coord = {
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-        };
-        locationCache.set(location, coord);
-        return coord;
+    if (!res.ok) return null;
+    const data = await res.json() as Array<{ lat: string; lon: string }>;
+    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch { /* fall through */ }
+  return null;
+}
+
+async function geocodeLocation(location: string, trailName?: string): Promise<Coord> {
+  const cacheKey = `${trailName ?? ""}::${location}`;
+  const cached = locationCache.get(cacheKey);
+  if (cached) return cached;
+
+  const locLower = location.toLowerCase();
+  for (const [key, coord] of Object.entries(UK_REGIONS)) {
+    if (locLower.includes(key)) {
+      locationCache.set(cacheKey, coord);
+      return coord;
+    }
+  }
+
+  // Try specific place name first (e.g. "Dovestones Reservoir, Greenfield, Greater Manchester")
+  if (trailName) {
+    const placeName = extractPlaceName(trailName);
+    if (placeName.length > 2 && placeName.toLowerCase() !== location.toLowerCase()) {
+      const specific = await nominatimSearch(`${placeName}, ${location}`);
+      if (specific) {
+        locationCache.set(cacheKey, specific);
+        return specific;
       }
     }
-  } catch { /* fall through to UK centre */ }
+  }
 
-  const ukDefault: Coord = { lat: 54.0, lng: -2.0 };
-  locationCache.set(location, ukDefault);
-  return ukDefault;
+  const coord = await nominatimSearch(location);
+  const result = coord ?? { lat: 54.0, lng: -2.0 };
+  locationCache.set(cacheKey, result);
+  return result;
+}
+
+// ── Waymarked Trails (OpenStreetMap hiking route data) ────────────────────────
+
+interface WaymarkedResult { id: number; name: string }
+
+async function fetchWaymarkedTrail(trailName: string): Promise<Coord[] | null> {
+  try {
+    const searchUrl =
+      `https://hiking.waymarkedtrails.org/api/v1/list/search` +
+      `?query=${encodeURIComponent(trailName)}&limit=5`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json() as { results?: WaymarkedResult[] };
+    const routeId = searchData.results?.[0]?.id;
+    if (!routeId) return null;
+
+    const geoUrl =
+      `https://hiking.waymarkedtrails.org/api/v1/details/relation/${routeId}/geometry`;
+    const geoRes = await fetch(geoUrl, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!geoRes.ok) return null;
+
+    const geo = await geoRes.json() as {
+      type: string;
+      features?: Array<{ geometry: { type: string; coordinates: unknown } }>;
+    };
+
+    const coords: Coord[] = [];
+    for (const feature of geo.features ?? []) {
+      const g = feature.geometry;
+      if (g.type === "LineString") {
+        for (const [lng, lat] of g.coordinates as Array<[number, number]>) {
+          coords.push({ lat, lng });
+        }
+      } else if (g.type === "MultiLineString") {
+        for (const seg of g.coordinates as Array<Array<[number, number]>>) {
+          for (const [lng, lat] of seg) coords.push({ lat, lng });
+        }
+      }
+    }
+    return coords.length >= 2 ? coords : null;
+  } catch { return null; }
 }
 
 // ── Mapbox Directions route ───────────────────────────────────────────────────
@@ -171,17 +233,17 @@ async function fetchMapboxRoute(
   } catch { return null; }
 }
 
-// Estimate a sensible loop radius (km) from the trail name.
-// Longer-sounding names tend to be bigger walks; defaults to ~1.5 km radius
-// (≈ 9–10 km loop), which is a solid day hike.
-function estimateRadiusKm(name: string): number {
+function estimateRadiusKm(name: string, distanceKm?: number): number {
+  if (distanceKm && distanceKm > 0) {
+    return Math.min(3.5, Math.max(0.5, distanceKm / 8.48));
+  }
   const n = name.toLowerCase();
   if (n.includes("horseshoe") || n.includes("ridge") || n.includes("traverse")) return 2.2;
   if (n.includes("great") || n.includes("long") || n.includes("fell")) return 2.0;
   if (n.includes("summit") || n.includes("mountain") || n.includes("munro")) return 1.8;
-  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.5;
+  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.2;
   if (n.includes("easy") || n.includes("short") || n.includes("gentle")) return 0.8;
-  return 1.5;
+  return 1.2;
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -193,6 +255,7 @@ router.get("/trail-map-image", async (req, res) => {
     color = "3ECF75",
     width = "800",
     height = "400",
+    distance,
     userLat,
     userLng,
   } = req.query as Record<string, string>;
@@ -205,14 +268,22 @@ router.get("/trail-map-image", async (req, res) => {
   const h = Math.min(parseInt(height) || 400, 1280);
   const safeColor = color.replace(/[^0-9a-fA-F]/g, "").slice(0, 6) || "3ECF75";
   const isDev = process.env.NODE_ENV === "development";
+  const distanceKm = distance ? parseFloat(distance) : undefined;
 
   try {
-    // 1. Geocode the location region (cached, near-instant for common UK areas).
-    const center = await geocodeLocation(location || "United Kingdom");
+    // Run geocoding and Waymarked Trails lookup in parallel for speed.
+    // Waymarked returns the real OSM GPS track; geocoding gives the center
+    // for the fallback synthetic route and for the map pin position.
+    const [center, waymarkedCoords] = await Promise.all([
+      geocodeLocation(location || "United Kingdom", name.trim()),
+      fetchWaymarkedTrail(name.trim()),
+    ]);
 
-    // 2. Generate a walking route via Mapbox Directions (uses actual OSM paths).
-    const radiusKm = estimateRadiusKm(name);
-    const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+    let routeCoords: Coord[] | null = waymarkedCoords;
+    if (!routeCoords) {
+      const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
+      routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+    }
     const hasRoute = routeCoords !== null && routeCoords.length > 1;
 
     const pinCenter = hasRoute ? midpoint(routeCoords!) : center;
@@ -220,7 +291,7 @@ router.get("/trail-map-image", async (req, res) => {
     if (isDev) {
       req.log.info({
         center,
-        radiusKm,
+        routeSource: waymarkedCoords ? "waymarked" : "synthetic",
         routePoints: routeCoords?.length ?? 0,
         hasRoute,
       }, "trail-map-image result");

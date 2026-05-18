@@ -131,6 +131,63 @@ async function fetchMapboxRoute(
   } catch { return null; }
 }
 
+// ── Waymarked Trails (OpenStreetMap hiking route data) ────────────────────────
+//
+// Waymarked Trails aggregates signed hiking routes from OSM.  We search by the
+// trail name to get an OSM relation ID, then fetch its actual GPS geometry.
+// This is tried first; the synthetic Mapbox loop is only used as a fallback.
+
+interface WaymarkedResult { id: number; name: string }
+
+async function fetchWaymarkedTrail(
+  trailName: string,
+): Promise<Array<[number, number]> | null> {
+  try {
+    const searchUrl =
+      `https://hiking.waymarkedtrails.org/api/v1/list/search` +
+      `?query=${encodeURIComponent(trailName)}&limit=5`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json() as { results?: WaymarkedResult[] };
+    const routeId = searchData.results?.[0]?.id;
+    if (!routeId) return null;
+
+    const geoUrl =
+      `https://hiking.waymarkedtrails.org/api/v1/details/relation/${routeId}/geometry`;
+    const geoRes = await fetch(geoUrl, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!geoRes.ok) return null;
+
+    const geo = await geoRes.json() as {
+      type: string;
+      features?: Array<{
+        geometry: {
+          type: string;
+          coordinates: unknown;
+        };
+      }>;
+    };
+
+    const coords: Array<[number, number]> = [];
+    for (const feature of geo.features ?? []) {
+      const g = feature.geometry;
+      if (g.type === "LineString") {
+        coords.push(...(g.coordinates as Array<[number, number]>));
+      } else if (g.type === "MultiLineString") {
+        for (const seg of g.coordinates as Array<Array<[number, number]>>) {
+          coords.push(...seg);
+        }
+      }
+    }
+    return coords.length >= 2 ? coords : null;
+  } catch { return null; }
+}
+
 /**
  * Calculate the loop radius from the actual trail distance when available.
  *
@@ -309,11 +366,19 @@ router.get("/trail-map-web", async (req, res) => {
 
   const distanceKm = distance ? parseFloat(distance) : undefined;
 
-  // Use the trail name to get a more specific geocode (e.g. the reservoir itself,
-  // not just the town), then fall back to the location field.
-  const center = await geocodeLocation(location || "United Kingdom", name.trim());
-  const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
-  const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+  // Run geocoding and Waymarked Trails lookup in parallel for speed.
+  // Waymarked returns the real OSM GPS track; geocoding gives the center
+  // for the fallback synthetic route and for the initial map viewport.
+  const [center, waymarkedCoords] = await Promise.all([
+    geocodeLocation(location || "United Kingdom", name.trim()),
+    fetchWaymarkedTrail(name.trim()),
+  ]);
+
+  let routeCoords: Array<[number, number]> | null = waymarkedCoords;
+  if (!routeCoords) {
+    const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
+    routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+  }
 
   const html = buildHtml({
     token,

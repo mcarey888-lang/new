@@ -342,7 +342,7 @@ export default function TrailDetailScreen() {
           >
             {!mapImageError ? (
               <Image
-                source={{ uri: `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400` }}
+                source={{ uri: `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400&distance=${trail.distance}` }}
                 style={s.mapImage}
                 resizeMode="cover"
                 onError={() => setMapImageError(true)}
