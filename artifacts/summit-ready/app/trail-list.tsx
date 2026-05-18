@@ -25,18 +25,7 @@ import { useApp } from "@/context/AppContext";
 import { SAMPLE_TRAILS } from "@/constants/trailData";
 import type { Trail, TrailDifficulty, TrailTerrain, TrailBestFor, TrailRouteType } from "@/constants/trailData";
 import { TrailCard } from "@/components/TrailCard";
-import {
-  LIVE_TRAILS_CACHE_KEY,
-  makeTrailId,
-  loadLiveTrailsCache,
-  saveLiveTrailsCache,
-  clearLiveTrailsCache,
-  getLiveTrailsCacheTimestamp,
-} from "@/utils/liveTrailsCache";
 import { loadSeededTrails } from "@/utils/seededTrailsCache";
-
-export { LIVE_TRAILS_CACHE_KEY };
-export type { LiveTrailsCache } from "@/utils/liveTrailsCache";
 
 const LAST_TRAIL_LOCATION_KEY = "summitready_last_trail_location";
 
@@ -66,40 +55,20 @@ const ELEVATION_STEPS = [null, 50, 100, 150, 200, 300, 500];
 const DURATION_STEPS = [null, 1, 2, 3, 4, 5, 6, 8];
 const DISTANCE_STEPS = [null, 5, 10, 15, 20, 30, 40];
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
-
-interface TrailFilters {
-  radius: number;
-  minElevation: number | null;
-  maxDuration: number | null;
-  maxDistance: number | null;
-}
-
 interface LatLng {
   latitude: number;
   longitude: number;
 }
 
-async function fetchLiveTrails(location: string, filters: TrailFilters): Promise<Trail[]> {
-  const res = await fetch(`${API_BASE}/trails-lookup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      location,
-      radius: filters.radius,
-      minElevation: filters.minElevation,
-      maxDuration: filters.maxDuration,
-      maxDistance: filters.maxDistance,
-    }),
-  });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  const data = await res.json() as { trails: Omit<Trail, "id">[] };
-  return data.trails.map((t) => ({
-    ...t,
-    id: makeTrailId(t.name, t.location),
-  }));
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 async function geocodeLocationString(place: string): Promise<LatLng | null> {
@@ -218,70 +187,25 @@ export default function TrailListScreen() {
   const [maxDuration, setMaxDuration] = useState<number | null>(null);
   const [maxDistance, setMaxDistance] = useState<number | null>(null);
 
-  const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [seededTrails, setSeededTrails] = useState<Trail[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(false);
   const [trailsError, setTrailsError] = useState<string | null>(null);
-  const [usingFallback, setUsingFallback] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
-  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
-  const liveTrailsRef = useRef<Trail[]>([]);
+  const [locationCoords, setLocationCoords] = useState<LatLng | null>(null);
   const firstMountRef = useRef(true);
-  const prevGoalLocationRef = useRef<string | null>(null);
 
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
 
   useEffect(() => {
-    const placeToGeocode = locationLabel ?? summitGoal?.location ?? null;
-    if (!placeToGeocode) return;
-    geocodeLocationString(placeToGeocode).then((coords) => {
-      if (coords) setMapCenter(coords);
-    });
-  }, [locationLabel, summitGoal?.location]);
+    if (locationCoords) setMapCenter(locationCoords);
+  }, [locationCoords]);
 
-  const loadTrails = useCallback(async (
-    loc: string,
-    filters: TrailFilters,
-    forceRefresh = false,
-  ) => {
-    setTrailsLoading(true);
+  const applyLocation = useCallback(async (place: string, coords: LatLng) => {
+    setLocationCoords(coords);
+    setLocationLabel(place);
+    setMapCenter(coords);
     setTrailsError(null);
-
-    if (!forceRefresh) {
-      const cached = await loadLiveTrailsCache(loc, filters.radius);
-      if (cached && cached.length > 0) {
-        setLiveTrails(cached);
-        liveTrailsRef.current = cached;
-        setLocationLabel(loc);
-        setUsingFallback(false);
-        setTrailsLoading(false);
-        const ts = await getLiveTrailsCacheTimestamp(loc, filters.radius);
-        setCacheTimestamp(ts);
-        return;
-      }
-    }
-
-    try {
-      const trails = await fetchLiveTrails(loc, filters);
-      const now = Date.now();
-      await saveLiveTrailsCache(trails, loc, filters.radius);
-      setLiveTrails(trails);
-      liveTrailsRef.current = trails;
-      setLocationLabel(loc);
-      setUsingFallback(false);
-      setCacheTimestamp(now);
-    } catch {
-      setTrailsError("Could not load trails — showing sample data.");
-      if (liveTrailsRef.current.length === 0) {
-        setLiveTrails(SAMPLE_TRAILS);
-        liveTrailsRef.current = SAMPLE_TRAILS;
-        setUsingFallback(true);
-        setCacheTimestamp(null);
-      }
-    } finally {
-      setTrailsLoading(false);
-    }
   }, []);
 
   const detectGPS = useCallback(async () => {
@@ -301,7 +225,7 @@ export default function TrailListScreen() {
             if (place) {
               setLocationQuery(place);
               await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, place);
-              loadTrails(place, { radius, minElevation, maxDuration, maxDistance }, true);
+              await applyLocation(place, { latitude: pos.coords.latitude, longitude: pos.coords.longitude });
             }
           } catch { /* ignore */ } finally {
             setGpsLoading(false);
@@ -330,22 +254,27 @@ export default function TrailListScreen() {
         if (place) {
           setLocationQuery(place);
           await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, place);
-          loadTrails(place, { radius, minElevation, maxDuration, maxDistance }, true);
+          await applyLocation(place, { latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         }
       }
     } catch { /* ignore */ } finally {
       setGpsLoading(false);
     }
-  }, [radius, minElevation, maxDuration, maxDistance, loadTrails]);
+  }, [applyLocation]);
 
   useEffect(() => {
     if (!firstMountRef.current) return;
     firstMountRef.current = false;
 
-    AsyncStorage.getItem(LAST_TRAIL_LOCATION_KEY).then(saved => {
+    AsyncStorage.getItem(LAST_TRAIL_LOCATION_KEY).then(async (saved) => {
       if (saved) {
         setLocationQuery(saved);
-        loadTrails(saved, { radius, minElevation, maxDuration, maxDistance }, false);
+        setTrailsLoading(true);
+        const coords = await geocodeLocationString(saved);
+        setTrailsLoading(false);
+        if (coords) {
+          await applyLocation(saved, coords);
+        }
       } else {
         detectGPS();
       }
@@ -357,38 +286,31 @@ export default function TrailListScreen() {
     loadSeededTrails().then(setSeededTrails).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-invalidate the trail cache when the user's goal location changes
-  useEffect(() => {
-    const goalLoc = summitGoal?.location ?? null;
-    if (goalLoc && prevGoalLocationRef.current !== null && prevGoalLocationRef.current !== goalLoc) {
-      clearLiveTrailsCache().then(() => {
-        setCacheTimestamp(null);
-      });
-    }
-    prevGoalLocationRef.current = goalLoc;
-  }, [summitGoal?.location]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const searchByLocation = useCallback(async () => {
     const trimmed = locationQuery.trim();
     if (!trimmed) {
       setLocationQuery("");
-      await AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
-      setLiveTrails(SAMPLE_TRAILS);
-      liveTrailsRef.current = SAMPLE_TRAILS;
-      setUsingFallback(true);
+      setLocationCoords(null);
       setLocationLabel(null);
+      await AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
       return;
     }
+    setTrailsLoading(true);
+    setTrailsError(null);
     await AsyncStorage.setItem(LAST_TRAIL_LOCATION_KEY, trimmed);
-    loadTrails(trimmed, { radius, minElevation, maxDuration, maxDistance }, true);
-  }, [locationQuery, radius, minElevation, maxDuration, maxDistance, loadTrails]);
+    const coords = await geocodeLocationString(trimmed);
+    setTrailsLoading(false);
+    if (coords) {
+      await applyLocation(trimmed, coords);
+    } else {
+      setTrailsError(`Could not find "${trimmed}" — try a different place name.`);
+    }
+  }, [locationQuery, applyLocation]);
 
   const clearLocationSearch = useCallback(() => {
     setLocationQuery("");
     setLocationLabel(null);
-    setLiveTrails(SAMPLE_TRAILS);
-    liveTrailsRef.current = SAMPLE_TRAILS;
-    setUsingFallback(true);
+    setLocationCoords(null);
     AsyncStorage.removeItem(LAST_TRAIL_LOCATION_KEY);
   }, []);
 
@@ -416,13 +338,19 @@ export default function TrailListScreen() {
     if (next >= 0 && next < DISTANCE_STEPS.length) setMaxDistance(DISTANCE_STEPS[next]);
   }
 
-  const baseTrails = liveTrails.length > 0 ? liveTrails : SAMPLE_TRAILS;
   const allTrails = useMemo(() => {
-    const primary = [...customRoutes, ...baseTrails];
-    const primaryIds = new Set(primary.map((t) => t.id));
-    const extra = seededTrails.filter((t) => !primaryIds.has(t.id));
-    return [...primary, ...extra];
-  }, [customRoutes, baseTrails, seededTrails]);
+    const base = seededTrails.length > 0 ? seededTrails : SAMPLE_TRAILS;
+    let nearby = base;
+    if (locationCoords) {
+      nearby = base.filter((t) => {
+        if (t.lat == null || t.lng == null) return false;
+        return haversineKm(locationCoords.latitude, locationCoords.longitude, t.lat, t.lng) <= radius;
+      });
+      if (nearby.length === 0) nearby = base;
+    }
+    const customIds = new Set(customRoutes.map((t) => t.id));
+    return [...customRoutes, ...nearby.filter((t) => !customIds.has(t.id))];
+  }, [customRoutes, seededTrails, locationCoords, radius]);
 
   const filtered = useMemo(() => {
     return allTrails.filter((t) => {
@@ -503,13 +431,7 @@ export default function TrailListScreen() {
         <Text style={s.title}>All Trails</Text>
       </View>
       <TouchableOpacity
-        onPress={async () => {
-          const loc = locationQuery.trim();
-          if (!loc) return;
-          await clearLiveTrailsCache();
-          setCacheTimestamp(null);
-          loadTrails(loc, { radius, minElevation, maxDuration, maxDistance }, true);
-        }}
+        onPress={searchByLocation}
         style={s.refreshBtn}
         activeOpacity={0.7}
         disabled={trailsLoading}
@@ -701,39 +623,23 @@ export default function TrailListScreen() {
         </Animated.View>
 
         {/* Status banner */}
-        {!trailsLoading && (locationLabel || trailsError || usingFallback) && (
+        {!trailsLoading && (locationLabel || trailsError) && (
           <Animated.View entering={FadeInDown.delay(90).duration(300)} style={[
             s.banner,
-            trailsError ? s.bannerError : (usingFallback ? s.bannerWarn : s.bannerOk),
+            trailsError ? s.bannerError : s.bannerOk,
           ]}>
-            {trailsError || usingFallback ? (
-              <Text style={[s.bannerText, trailsError ? s.bannerTextError : s.bannerTextWarn]}>
-                {trailsError ?? "Enable location or enter a place to find nearby trails"}
-              </Text>
+            {trailsError ? (
+              <Text style={[s.bannerText, s.bannerTextError]}>{trailsError}</Text>
             ) : (
-              <View style={s.bannerRow}>
-                <Text style={[s.bannerText, s.bannerTextOk]} numberOfLines={2}>
-                  {`Within ${radius}km of ${locationLabel}${hasSearchFilters ? " · filtered" : ""}${cacheTimestamp ? ` · Updated ${formatTimeAgo(cacheTimestamp)}` : ""}`}
-                </Text>
-                <TouchableOpacity
-                  onPress={async () => {
-                    if (!locationLabel) return;
-                    await clearLiveTrailsCache();
-                    setCacheTimestamp(null);
-                    loadTrails(locationLabel, { radius, minElevation, maxDuration, maxDistance }, true);
-                  }}
-                  disabled={trailsLoading}
-                  hitSlop={8}
-                >
-                  <Text style={s.bannerRefresh}>Refresh</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={[s.bannerText, s.bannerTextOk]} numberOfLines={2}>
+                {`Within ${radius}km of ${locationLabel}${hasSearchFilters ? " · filtered" : ""}`}
+              </Text>
             )}
           </Animated.View>
         )}
 
         {/* Loading */}
-        {trailsLoading && liveTrails.length === 0 && (
+        {trailsLoading && (
           <View style={s.loadingWrap}>
             <ActivityIndicator size="large" color={T.green} />
             <Text style={s.loadingText}>Finding trails near {locationLabel ?? locationQuery ?? "you"}…</Text>
@@ -759,7 +665,7 @@ export default function TrailListScreen() {
         )}
 
         {/* Result count */}
-        {(!trailsLoading || liveTrails.length > 0) && (
+        {!trailsLoading && (
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
             <Text style={s.resultCount}>
               {filtered.length} trail{filtered.length !== 1 ? "s" : ""}{" "}
@@ -769,7 +675,7 @@ export default function TrailListScreen() {
         )}
 
         {/* Trail list */}
-        {(!trailsLoading || liveTrails.length > 0) && (
+        {!trailsLoading && (
           <View style={s.list}>
             {filtered.length === 0 ? (
               <View style={s.empty}>
