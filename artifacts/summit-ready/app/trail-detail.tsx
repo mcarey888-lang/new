@@ -4,7 +4,10 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
+  Flag,
+  Info,
   MapPin,
+  Map,
   PenLine,
   Navigation,
   Trash2,
@@ -37,6 +40,7 @@ import { SAMPLE_TRAILS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
+import { openMapPin, openMapDirections } from "@/utils/openMaps";
 
 const DIFF_COLOR: Record<string, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange,
@@ -102,6 +106,14 @@ const KIT_CHECKLIST = [
   "Trekking poles (optional but helpful on descents)",
 ];
 
+interface TrailStartPoint {
+  name: string;
+  lat: number;
+  lng: number;
+  directions: string;
+  parkingNotes: string;
+}
+
 export default function TrailDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
@@ -114,6 +126,9 @@ export default function TrailDetailScreen() {
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [mapImageError, setMapImageError] = useState(false);
+  const [startPoint, setStartPoint] = useState<TrailStartPoint | null>(null);
+  const [startPointLoading, setStartPointLoading] = useState(false);
+  const [startPointError, setStartPointError] = useState(false);
 
   React.useEffect(() => {
     readLiveTrailsFromCache().then((trails) => {
@@ -128,7 +143,27 @@ export default function TrailDetailScreen() {
   }, [params.id, customRoutes, liveTrails]);
 
   // Reset error states when trail changes
-  React.useEffect(() => { setImageError(false); setMapImageError(false); }, [trail?.id]);
+  React.useEffect(() => {
+    setImageError(false);
+    setMapImageError(false);
+    setStartPoint(null);
+    setStartPointError(false);
+  }, [trail?.id]);
+
+  // Fetch start point + parking info
+  React.useEffect(() => {
+    if (!trail) return;
+    setStartPointLoading(true);
+    fetch(`${API_BASE}/trail-start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trailName: trail.name, location: trail.location }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { startPoint: TrailStartPoint }) => setStartPoint(data.startPoint))
+      .catch(() => setStartPointError(true))
+      .finally(() => setStartPointLoading(false));
+  }, [trail?.id]);
 
   const currentWeek = useMemo(() => trainingPlan.find((w) => w.isCurrentWeek) ?? null, [trainingPlan]);
 
@@ -330,6 +365,75 @@ export default function TrailDetailScreen() {
         <Animated.View entering={FadeInDown.delay(110).duration(400)} style={s.section}>
           <Text style={s.sectionTitle}>About this route</Text>
           <Text style={s.description}>{trail.description}</Text>
+        </Animated.View>
+
+        {/* Start point & parking */}
+        <Animated.View entering={FadeInDown.delay(125).duration(400)} style={s.section}>
+          <View style={s.sectionHeader}>
+            <Flag size={14} color={T.green} />
+            <Text style={s.sectionTitle}>Start point & parking</Text>
+          </View>
+
+          {startPointLoading && (
+            <View style={s.startLoadingCard}>
+              <ActivityIndicator color={T.green} size="small" />
+              <Text style={s.startLoadingText}>Looking up access info…</Text>
+            </View>
+          )}
+
+          {startPointError && !startPointLoading && (
+            <View style={s.startErrorCard}>
+              <Info size={14} color={T.textMuted} />
+              <Text style={s.startErrorText}>Couldn't load access info for this trail.</Text>
+            </View>
+          )}
+
+          {startPoint && (
+            <View style={s.startCard}>
+              <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={s.startNameRow}>
+                <View style={s.startIconBox}>
+                  <Flag size={16} color={T.green} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.startName}>{startPoint.name}</Text>
+                  <Text style={s.startCoords}>
+                    {startPoint.lat.toFixed(5)}, {startPoint.lng.toFixed(5)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={s.startDivider} />
+
+              <Text style={s.startDirections}>{startPoint.directions}</Text>
+
+              {!!startPoint.parkingNotes && (
+                <View style={s.parkingRow}>
+                  <Info size={12} color={T.textMuted} />
+                  <Text style={s.parkingText}>{startPoint.parkingNotes}</Text>
+                </View>
+              )}
+
+              <View style={s.startActionsRow}>
+                <TouchableOpacity
+                  style={s.startMapBtn}
+                  onPress={() => openMapPin(startPoint.lat, startPoint.lng, startPoint.name)}
+                  activeOpacity={0.8}
+                >
+                  <Map size={13} color={T.green} />
+                  <Text style={s.startMapBtnText}>View on map</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.startMapBtn, { borderColor: T.blue + "50" }]}
+                  onPress={() => openMapDirections(startPoint.lat, startPoint.lng, startPoint.name)}
+                  activeOpacity={0.8}
+                >
+                  <Navigation size={13} color={T.blue} />
+                  <Text style={[s.startMapBtnText, { color: T.blue }]}>Drive there</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </Animated.View>
 
         {/* Training benefits */}
@@ -537,6 +641,40 @@ const s = StyleSheet.create({
   kitText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1, lineHeight: 20 },
   notesCard: { backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, padding: 14 },
   notesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20, fontStyle: "italic" },
+  startLoadingCard: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16,
+  },
+  startLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  startErrorCard: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 14,
+  },
+  startErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  startCard: {
+    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.green + "30",
+    padding: 16, gap: 10, overflow: "hidden",
+  },
+  startNameRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  startIconBox: {
+    width: 40, height: 40, borderRadius: 12, backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center",
+  },
+  startName: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  startCoords: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  startDivider: { height: 1, backgroundColor: T.border },
+  startDirections: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 },
+  parkingRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 7,
+    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+  },
+  parkingText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  startActionsRow: { flexDirection: "row", gap: 8 },
+  startMapBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: T.green + "50", backgroundColor: T.surface,
+  },
+  startMapBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
   weekBanner: {
     backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "50",
     paddingHorizontal: 14, paddingVertical: 10,

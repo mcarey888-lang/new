@@ -326,6 +326,90 @@ router.post("/hill-detail", async (req, res) => {
   }
 });
 
+const TRAIL_START_SYSTEM_PROMPT = `You are an expert hiking guide. Given a trail name and region, provide practical access and parking information for walkers. Return ONLY valid JSON — no markdown, no explanation:
+
+{
+  "startPoint": {
+    "name": string,
+    "lat": number,
+    "lng": number,
+    "directions": string,
+    "parkingNotes": string
+  }
+}
+
+Rules:
+- startPoint.name: name of the car park, village, layby or trailhead
+- startPoint.lat/lng: accurate GPS coordinates of the start point (decimal degrees, 4 decimal places)
+- startPoint.directions: 2-3 sentences on how to drive or get there by public transport
+- startPoint.parkingNotes: parking info — free/paid, spaces, nearest postcode or what3words / OS grid ref
+- Use real place names, postcodes, and accurate coordinates`;
+
+const TrailStartSchema = z.object({
+  startPoint: z.object({
+    name: z.string(),
+    lat: z.number(),
+    lng: z.number(),
+    directions: z.string(),
+    parkingNotes: z.string(),
+  }),
+});
+
+router.post("/trail-start", async (req, res) => {
+  const { trailName, location } = req.body as { trailName?: string; location?: string };
+
+  if (!trailName || typeof trailName !== "string" || trailName.trim().length < 2) {
+    res.status(400).json({ error: "Trail name required" });
+    return;
+  }
+
+  const loc = location?.trim() || "unknown location";
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 400,
+      messages: [
+        { role: "system", content: TRAIL_START_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Provide start point and parking info for: "${trailName.trim()}" near ${loc}`,
+        },
+      ],
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) {
+      res.status(500).json({ error: "No response from AI" });
+      return;
+    }
+
+    const cleaned = content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) {
+        res.status(500).json({ error: "Could not parse trail start data" });
+        return;
+      }
+      parsed = JSON.parse(match[0]);
+    }
+
+    const validated = TrailStartSchema.parse(parsed);
+    res.json(validated);
+  } catch (err) {
+    req.log.error({ err }, "Trail start lookup failed");
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: `Trail start lookup failed: ${msg}` });
+  }
+});
+
 const TrailSchema = z.object({
   name: z.string(),
   location: z.string(),
