@@ -86,8 +86,10 @@ async function geocodeLocation(location: string): Promise<Coord> {
 function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
   const dLat = radiusKm / 111.32;
   const dLng = radiusKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
-  const angles = [90, 162, 234, 306, 18];
-  const radii  = [1.0, 0.85, 1.1, 0.9, 1.05];
+  // Three waypoints (triangle) — fewer route segments avoids the spider-web
+  // pattern that appears in dense path networks with five pentagon points.
+  const angles = [0, 120, 240];
+  const radii  = [1.0, 0.95, 1.05];
   const pts: Array<[number, number]> = [[center.lng, center.lat]];
   for (let i = 0; i < angles.length; i++) {
     const rad = (angles[i] * Math.PI) / 180;

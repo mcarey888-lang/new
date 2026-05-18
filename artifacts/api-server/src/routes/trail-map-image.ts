@@ -137,13 +137,14 @@ async function geocodeLocation(location: string): Promise<Coord> {
 // the waypoints themselves are synthetic.
 
 function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
-  // Degree offsets for 1 km.
   const dLat = radiusKm / 111.32;
   const dLng = radiusKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
 
-  // Irregular pentagon — slightly uneven radii so the route looks natural.
-  const angles  = [90, 162, 234, 306, 18]; // degrees, starting north
-  const radii   = [1.0, 0.85, 1.1, 0.9, 1.05]; // multipliers
+  // Three waypoints (triangle) instead of five (pentagon).
+  // Fewer consecutive route segments means far fewer crossing paths in dense
+  // footpath networks like national parks — produces a clean circular loop.
+  const angles = [0, 120, 240];
+  const radii  = [1.0, 0.95, 1.05];
 
   const pts: Array<[number, number]> = [[center.lng, center.lat]];
   for (let i = 0; i < angles.length; i++) {
@@ -153,7 +154,7 @@ function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]>
       center.lat + dLat * Math.cos(rad) * radii[i],
     ]);
   }
-  pts.push([center.lng, center.lat]); // close the loop
+  pts.push([center.lng, center.lat]);
   return pts;
 }
 
