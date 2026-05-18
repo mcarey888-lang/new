@@ -136,7 +136,26 @@ export default function HikeTrackingScreen() {
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const statusRef      = useRef<TrackStatus>("idle");
-  const webViewRef     = useRef<WebView>(null);
+  const webViewRef        = useRef<WebView>(null);
+  const webMapContainerRef = useRef<View>(null);
+  const iframeRef          = useRef<any>(null);
+
+  // ── Web-only: mount the hike-map iframe ──────────────────────────────────
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const container = webMapContainerRef.current as unknown as HTMLElement;
+    if (!container) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = `${API_BASE}/hike-map`;
+    iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
+    iframe.allow = "geolocation";
+    iframeRef.current = iframe;
+    container.appendChild(iframe);
+    return () => {
+      try { container.removeChild(iframe); } catch { /* already gone */ }
+      iframeRef.current = null;
+    };
+  }, []);
 
   // ── Pulsing dot while tracking ───────────────────────────────────────────
   const pulse = useSharedValue(1);
@@ -176,12 +195,14 @@ export default function HikeTrackingScreen() {
     };
   }, []);
 
-  // ── Send a point to the live map WebView ─────────────────────────────────
+  // ── Send a GPS point to the live map ─────────────────────────────────────
   const sendPointToMap = useCallback((lat: number, lng: number) => {
-    if (!webViewRef.current) return;
-    webViewRef.current.injectJavaScript(
-      `(function(){try{addPoint(${lat},${lng});}catch(e){}})();true;`
-    );
+    const msg = JSON.stringify({ type: "point", lat, lng });
+    if (Platform.OS === "web") {
+      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
+    } else {
+      webViewRef.current?.postMessage(msg);
+    }
   }, []);
 
   // ── Core tracking logic ──────────────────────────────────────────────────
@@ -573,8 +594,8 @@ export default function HikeTrackingScreen() {
         </Animated.View>
 
         {/* ── Live route map ───────────────────────────────────────────── */}
-        {Platform.OS !== "web" && (
-          <Animated.View entering={FadeIn.delay(250).duration(400)} style={s.mapWrap}>
+        <Animated.View entering={FadeIn.delay(250).duration(400)} style={s.mapWrap}>
+          {Platform.OS !== "web" ? (
             <WebView
               ref={webViewRef}
               source={{ uri: `${API_BASE}/hike-map` }}
@@ -584,8 +605,10 @@ export default function HikeTrackingScreen() {
               domStorageEnabled
               originWhitelist={["*"]}
             />
-          </Animated.View>
-        )}
+          ) : (
+            <View ref={webMapContainerRef} style={s.mapWebView} />
+          )}
+        </Animated.View>
 
         {/* ── Controls ─────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInUp.delay(300).duration(400)} style={s.controls}>
