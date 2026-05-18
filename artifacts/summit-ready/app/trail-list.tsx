@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, List, LocateFixed, Map, MapPin, Minus, Plus,
+  ArrowLeft, Footprints, List, LocateFixed, Map, MapPin, Minus, Plus,
   RefreshCw, Search, SlidersHorizontal, X,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -514,6 +514,33 @@ export default function TrailListScreen() {
       >
         {renderHeader()}
 
+        {/* Start Hiking banner */}
+        <Animated.View entering={FadeInDown.delay(30).duration(400)}>
+          <TouchableOpacity
+            style={s.startHikingBtn}
+            onPress={() => router.push("/hike-tracking")}
+            activeOpacity={0.82}
+          >
+            <LinearGradient
+              colors={["#1A3D2B", "#163322"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.startHikingGrad}
+            >
+              <View style={s.startHikingIcon}>
+                <Footprints size={20} color={T.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.startHikingTitle}>Start Hiking</Text>
+                <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
+              </View>
+              <View style={s.startHikingArrow}>
+                <Text style={s.startHikingArrowText}>›</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Name search */}
         <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.searchWrap}>
           <Search size={15} color={T.textMuted} />
@@ -708,6 +735,28 @@ export default function TrailListScreen() {
 
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 12 },
+
+  // Start Hiking banner
+  startHikingBtn: { borderRadius: 18, overflow: "hidden" },
+  startHikingGrad: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    paddingHorizontal: 16, paddingVertical: 16,
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.25)", borderRadius: 18,
+  },
+  startHikingIcon: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: "rgba(62,207,117,0.15)",
+    alignItems: "center", justifyContent: "center",
+  },
+  startHikingTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#3ECF75" },
+  startHikingSub:   { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.45)", marginTop: 2 },
+  startHikingArrow: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: "rgba(62,207,117,0.15)",
+    alignItems: "center", justifyContent: "center",
+  },
+  startHikingArrowText: { fontSize: 22, color: "#3ECF75", lineHeight: 28, marginLeft: 2 },
+
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
   backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },

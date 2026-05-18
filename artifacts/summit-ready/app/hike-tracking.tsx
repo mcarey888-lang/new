@@ -22,9 +22,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { WebView } from "react-native-webview";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -35,11 +37,16 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
+import type { TrailBenefit } from "@/constants/trailData";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -60,12 +67,34 @@ function formatTime(secs: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function formatTimeHM(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function fmtKm(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`;
 }
 
 function fmtM(m: number): string {
   return `${Math.round(m)} m`;
+}
+
+function computeDifficulty(distKm: number, elevM: number): "Easy" | "Moderate" | "Hard" {
+  const score = distKm + elevM / 80;
+  if (score < 12) return "Easy";
+  if (score < 24) return "Moderate";
+  return "Hard";
+}
+
+function inferBenefits(distKm: number, elevM: number): TrailBenefit[] {
+  const b: TrailBenefit[] = ["cardio"];
+  if (elevM > 200) b.push("elevation");
+  if (distKm > 15) b.push("endurance");
+  return b;
 }
 
 type TrackStatus = "idle" | "tracking" | "paused" | "finished";
@@ -77,17 +106,20 @@ interface TrackPoint {
   ts: number;
 }
 
-const ALTITUDE_NOISE_THRESHOLD = 2; // metres — ignore changes smaller than this
+const ALTITUDE_NOISE_THRESHOLD = 2;
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ name: string; location: string }>();
-  const { appMode, addSession, logExploreHike, trainingPlan } = useApp();
+  const { appMode, addSession, logExploreHike, trainingPlan, addCustomRoute } = useApp();
 
-  const trailName = params.name ?? "Hike";
+  // ── Route name (mandatory, locked once tracking starts) ──────────────────
+  const [routeName, setRouteName]       = useState("");
+  const [nameLocked, setNameLocked]     = useState(false);
+  const [nameError, setNameError]       = useState(false);
 
+  // ── Tracker state ────────────────────────────────────────────────────────
   const [status, setStatus]               = useState<TrackStatus>("idle");
   const [elapsedSecs, setElapsedSecs]     = useState(0);
   const [distanceKm, setDistanceKm]       = useState(0);
@@ -104,8 +136,9 @@ export default function HikeTrackingScreen() {
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const statusRef      = useRef<TrackStatus>("idle");
+  const webViewRef     = useRef<WebView>(null);
 
-  // Pulsing dot animation while tracking
+  // ── Pulsing dot while tracking ───────────────────────────────────────────
   const pulse = useSharedValue(1);
   useEffect(() => {
     if (status === "tracking") {
@@ -113,32 +146,29 @@ export default function HikeTrackingScreen() {
     } else {
       pulse.value = withTiming(1, { duration: 200 });
     }
-  }, [status]);
+  }, [status, pulse]);
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   // ── Permission + GPS warmup ──────────────────────────────────────────────
-
   useEffect(() => {
     let cancelled = false;
     async function warmup() {
       const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
       if (cancelled) return;
       if (permStatus !== "granted") { setPermDenied(true); return; }
-      // Pre-warm GPS so first fix is faster
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (!cancelled) {
           setCurrentAltM(pos.coords.altitude);
           setGpsReady(true);
         }
-      } catch { /* GPS unavailable on simulator etc */ }
+      } catch { /* GPS unavailable on simulator */ }
     }
     warmup();
     return () => { cancelled = true; };
   }, []);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────
-
   useEffect(() => {
     return () => {
       timerRef.current && clearInterval(timerRef.current);
@@ -146,41 +176,35 @@ export default function HikeTrackingScreen() {
     };
   }, []);
 
-  // ── Core tracking logic ──────────────────────────────────────────────────
+  // ── Send a point to the live map WebView ─────────────────────────────────
+  const sendPointToMap = useCallback((lat: number, lng: number) => {
+    if (!webViewRef.current) return;
+    webViewRef.current.injectJavaScript(
+      `(function(){try{addPoint(${lat},${lng});}catch(e){}})();true;`
+    );
+  }, []);
 
+  // ── Core tracking logic ──────────────────────────────────────────────────
   const startTracking = useCallback(async () => {
+    if (!routeName.trim()) { setNameError(true); return; }
+    setNameLocked(true);
+    setNameError(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     statusRef.current = "tracking";
     setStatus("tracking");
 
-    // Start timer
-    timerRef.current = setInterval(() => {
-      setElapsedSecs(s => s + 1);
-    }, 1000);
+    timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
 
-    // Start location subscription
     const sub = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        distanceInterval: 5,      // update every 5 m moved
-        timeInterval: 3000,        // or every 3 s
-      },
+      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
       (loc) => {
         if (statusRef.current !== "tracking") return;
-
         const { latitude, longitude, altitude, speed } = loc.coords;
-        const ts = loc.timestamp;
 
-        // Speed (m/s → km/h)
-        if (speed != null && speed >= 0) {
-          setCurrentSpeedKmh(speed * 3.6);
-        }
+        if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
 
-        // Altitude
         if (altitude != null) {
           setCurrentAltM(altitude);
-
-          // Elevation gain/loss with noise filter
           if (lastAltRef.current !== null) {
             const delta = altitude - lastAltRef.current;
             if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
@@ -193,22 +217,19 @@ export default function HikeTrackingScreen() {
           }
         }
 
-        // Distance
         const pts = trackPoints.current;
         if (pts.length > 0) {
           const prev = pts[pts.length - 1];
           const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
-          if (d > 0.003) { // ignore jitter < 3 m
-            setDistanceKm(km => km + d);
-          }
+          if (d > 0.003) setDistanceKm(km => km + d);
         }
 
-        trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts });
+        trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+        sendPointToMap(latitude, longitude);
       },
     );
-
     locationSubRef.current = sub;
-  }, []);
+  }, [routeName, sendPointToMap]);
 
   const pauseTracking = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -224,7 +245,6 @@ export default function HikeTrackingScreen() {
     statusRef.current = "tracking";
     setStatus("tracking");
     timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
-    // Re-subscribe to location
     Location.watchPositionAsync(
       { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
       (loc) => {
@@ -251,9 +271,10 @@ export default function HikeTrackingScreen() {
           if (d > 0.003) setDistanceKm(km => km + d);
         }
         trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+        sendPointToMap(latitude, longitude);
       },
     ).then(sub => { locationSubRef.current = sub; });
-  }, []);
+  }, [sendPointToMap]);
 
   const finishHike = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -266,7 +287,6 @@ export default function HikeTrackingScreen() {
 
   const handleStopPress = useCallback(() => {
     if (elapsedSecs < 30) {
-      // Very short hike — just confirm discard
       Alert.alert("Stop Tracking", "Discard this hike?", [
         { text: "Cancel", style: "cancel" },
         { text: "Discard", style: "destructive", onPress: () => router.back() },
@@ -280,35 +300,59 @@ export default function HikeTrackingScreen() {
   }, [elapsedSecs, finishHike]);
 
   // ── Save completed hike ──────────────────────────────────────────────────
-
   const handleSave = useCallback(async () => {
     setSaving(true);
+    const name = routeName.trim() || "Tracked Hike";
+    const distKm  = parseFloat(distanceKm.toFixed(2));
+    const elevGain = Math.round(elevGainM);
+    const firstPt  = trackPoints.current[0];
+
     try {
+      // Always save as a custom route (visible in the trails list)
+      await addCustomRoute({
+        name,
+        location: "GPS Tracked Route",
+        distance: distKm,
+        elevationGain: elevGain,
+        estimatedTime: formatTimeHM(elapsedSecs),
+        difficulty: computeDifficulty(distKm, elevGain),
+        terrain: "mixed",
+        routeType: "out-and-back",
+        bestFor: ["training"],
+        description: `GPS tracked hike: ${formatTime(elapsedSecs)} duration, ${fmtKm(distKm)} distance, ${fmtM(elevGain)} elevation gain.`,
+        trainingBenefits: inferBenefits(distKm, elevGain),
+        emoji: "🥾",
+        lat: firstPt?.lat,
+        lng: firstPt?.lon,
+        notes: `Elevation loss: ${Math.round(elevLossM)} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
+      });
+
+      // Also log to session / explore log as before
       if (appMode === "explore") {
         await logExploreHike({
-          name: trailName,
+          name,
           date: new Date().toISOString(),
-          distance: parseFloat(distanceKm.toFixed(2)),
-          elevationGain: Math.round(elevGainM),
+          distance: distKm,
+          elevationGain: elevGain,
           timeTaken: elapsedSecs,
           notes: `GPS tracked hike. Elevation loss: ${Math.round(elevLossM)} m.`,
         });
       } else {
-        // Summit mode — save as a training session
         const currentWeek = trainingPlan?.findIndex(w => !w.sessions?.every((s: any) => s.completed)) ?? 0;
         await addSession({
           date: new Date().toISOString(),
           type: "cardio",
-          distance: parseFloat(distanceKm.toFixed(2)),
-          elevationGain: Math.round(elevGainM),
+          distance: distKm,
+          elevationGain: elevGain,
           duration: Math.round(elapsedSecs / 60),
           effort: 3,
-          notes: `GPS tracked: ${trailName}. Elev loss: ${Math.round(elevLossM)} m.`,
+          notes: `GPS tracked: ${name}. Elev loss: ${Math.round(elevLossM)} m.`,
           completed: true,
           weekNumber: Math.max(0, currentWeek),
-          hillName: trailName,
+          hillName: name,
         });
       }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch {
@@ -316,10 +360,9 @@ export default function HikeTrackingScreen() {
     } finally {
       setSaving(false);
     }
-  }, [appMode, distanceKm, elevGainM, elevLossM, elapsedSecs, trailName, trainingPlan, addSession, logExploreHike]);
+  }, [appMode, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike, addCustomRoute]);
 
   // ── Render: permission denied ────────────────────────────────────────────
-
   if (permDenied) {
     return (
       <View style={[s.root, { paddingTop: insets.top }]}>
@@ -329,96 +372,89 @@ export default function HikeTrackingScreen() {
         <View style={s.centeredMsg}>
           <WifiOff size={48} color={T.textMuted} />
           <Text style={s.msgTitle}>Location Access Needed</Text>
-          <Text style={s.msgBody}>
-            Enable location permissions in your device settings to track your hike.
-          </Text>
+          <Text style={s.msgBody}>Enable location permissions in your device settings to track your hike.</Text>
         </View>
       </View>
     );
   }
 
   // ── Render: finished summary ─────────────────────────────────────────────
-
   if (status === "finished") {
     return (
       <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
-        <Animated.View entering={FadeInDown.duration(400)} style={s.summaryContainer}>
-          <View style={s.summaryIconRow}>
-            <LinearGradient
-              colors={["#3ECF75", "#2AB860"]}
-              style={s.summaryIcon}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
+          <Animated.View entering={FadeInDown.duration(400)} style={s.summaryContainer}>
+            <View style={s.summaryIconRow}>
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.summaryIcon}>
+                <CheckCircle size={32} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={s.summaryTitle}>Hike Complete</Text>
+            <Text style={s.summaryTrail} numberOfLines={2}>{routeName || "Tracked Hike"}</Text>
+
+            <View style={s.summaryGrid}>
+              <View style={s.summaryCell}>
+                <Text style={s.summaryCellValue}>{formatTime(elapsedSecs)}</Text>
+                <Text style={s.summaryCellLabel}>Duration</Text>
+              </View>
+              <View style={[s.summaryCell, s.summaryCellMid]}>
+                <Text style={s.summaryCellValue}>{fmtKm(distanceKm)}</Text>
+                <Text style={s.summaryCellLabel}>Distance</Text>
+              </View>
+              <View style={s.summaryCell}>
+                <Text style={[s.summaryCellValue, { color: T.green }]}>{fmtM(elevGainM)}</Text>
+                <Text style={s.summaryCellLabel}>Gained</Text>
+              </View>
+            </View>
+
+            <View style={s.summaryGrid}>
+              <View style={s.summaryCell}>
+                <Text style={[s.summaryCellValue, { color: T.orange }]}>{fmtM(elevLossM)}</Text>
+                <Text style={s.summaryCellLabel}>Descended</Text>
+              </View>
+              <View style={[s.summaryCell, s.summaryCellMid]}>
+                <Text style={s.summaryCellValue}>
+                  {elapsedSecs > 0 && distanceKm > 0
+                    ? `${(distanceKm / (elapsedSecs / 3600)).toFixed(1)} km/h`
+                    : "—"}
+                </Text>
+                <Text style={s.summaryCellLabel}>Avg Speed</Text>
+              </View>
+              <View style={s.summaryCell}>
+                <Text style={s.summaryCellValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
+                <Text style={s.summaryCellLabel}>Final Alt</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[s.saveBtn, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.85}
             >
-              <CheckCircle size={32} color="#fff" />
-            </LinearGradient>
-          </View>
-          <Text style={s.summaryTitle}>Hike Complete</Text>
-          <Text style={s.summaryTrail} numberOfLines={2}>{trailName}</Text>
+              <LinearGradient
+                colors={["#3ECF75", "#2AB860"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.saveBtnGrad}
+              >
+                <Text style={s.saveBtnText}>{saving ? "Saving…" : "Save Route"}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <View style={s.summaryGrid}>
-            <View style={s.summaryCell}>
-              <Text style={s.summaryCellValue}>{formatTime(elapsedSecs)}</Text>
-              <Text style={s.summaryCellLabel}>Duration</Text>
-            </View>
-            <View style={[s.summaryCell, s.summaryCellMid]}>
-              <Text style={s.summaryCellValue}>{fmtKm(distanceKm)}</Text>
-              <Text style={s.summaryCellLabel}>Distance</Text>
-            </View>
-            <View style={s.summaryCell}>
-              <Text style={[s.summaryCellValue, { color: T.green }]}>{fmtM(elevGainM)}</Text>
-              <Text style={s.summaryCellLabel}>Gained</Text>
-            </View>
-          </View>
-
-          <View style={s.summaryGrid}>
-            <View style={s.summaryCell}>
-              <Text style={[s.summaryCellValue, { color: T.orange }]}>{fmtM(elevLossM)}</Text>
-              <Text style={s.summaryCellLabel}>Descended</Text>
-            </View>
-            <View style={[s.summaryCell, s.summaryCellMid]}>
-              <Text style={s.summaryCellValue}>
-                {elapsedSecs > 0 && distanceKm > 0
-                  ? `${(distanceKm / (elapsedSecs / 3600)).toFixed(1)}`
-                  : "—"} km/h
-              </Text>
-              <Text style={s.summaryCellLabel}>Avg Speed</Text>
-            </View>
-            <View style={s.summaryCell}>
-              <Text style={s.summaryCellValue}>
-                {currentAltM != null ? fmtM(currentAltM) : "—"}
-              </Text>
-              <Text style={s.summaryCellLabel}>Final Alt</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[s.saveBtn, saving && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={["#3ECF75", "#2AB860"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={s.saveBtnGrad}
-            >
-              <Text style={s.saveBtnText}>{saving ? "Saving…" : "Save to Log"}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.discardBtn} onPress={() => router.back()} activeOpacity={0.7}>
-            <Text style={s.discardBtnText}>Discard</Text>
-          </TouchableOpacity>
-        </Animated.View>
+            <TouchableOpacity style={s.discardBtn} onPress={() => router.back()} activeOpacity={0.7}>
+              <Text style={s.discardBtnText}>Discard</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
       </View>
     );
   }
 
   // ── Render: tracking / idle ──────────────────────────────────────────────
-
   const isTracking = status === "tracking";
   const isPaused   = status === "paused";
   const isIdle     = status === "idle";
+  const canStart   = gpsReady && routeName.trim().length > 0;
 
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
@@ -438,9 +474,10 @@ export default function HikeTrackingScreen() {
           <ArrowLeft size={22} color={T.text} />
         </TouchableOpacity>
 
-        <Text style={s.headerTitle} numberOfLines={1}>{trailName}</Text>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          {nameLocked && routeName ? routeName : "Start Hiking"}
+        </Text>
 
-        {/* GPS status */}
         <View style={[s.gpsPill, gpsReady && s.gpsPillReady]}>
           <Animated.View style={[s.gpsDot, isTracking && pulseStyle]} />
           <Text style={[s.gpsText, gpsReady && s.gpsTextReady]}>
@@ -453,9 +490,30 @@ export default function HikeTrackingScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled
       >
-        {/* Status label */}
+
+        {/* ── Route name input ─────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.nameCard}>
+          <Text style={s.nameLabel}>Route name <Text style={s.nameRequired}>*</Text></Text>
+          <TextInput
+            style={[s.nameInput, nameError && s.nameInputError, nameLocked && s.nameInputLocked]}
+            value={routeName}
+            onChangeText={(t) => { setRouteName(t); if (t.trim()) setNameError(false); }}
+            placeholder="e.g. Morning Ridge Loop"
+            placeholderTextColor={T.textDim}
+            editable={!nameLocked}
+            autoCorrect={false}
+            returnKeyType="done"
+            maxLength={60}
+          />
+          {nameError && (
+            <Text style={s.nameErrorText}>Please name your route before starting</Text>
+          )}
+        </Animated.View>
+
+        {/* ── Status + timer ───────────────────────────────────────────── */}
         <View style={s.statusRow}>
           <View style={[s.statusPill,
             isTracking && s.statusPillTracking,
@@ -473,13 +531,12 @@ export default function HikeTrackingScreen() {
           </View>
         </View>
 
-        {/* Big timer */}
         <View style={s.timerBlock}>
           <Text style={s.timerText}>{formatTime(elapsedSecs)}</Text>
           <Text style={s.timerLabel}>elapsed</Text>
         </View>
 
-        {/* Main stats */}
+        {/* ── Main stats ───────────────────────────────────────────────── */}
         <Animated.View entering={FadeIn.delay(100).duration(400)} style={s.statsRow}>
           <View style={s.statCell}>
             <Text style={s.statValue}>{fmtKm(distanceKm)}</Text>
@@ -493,14 +550,12 @@ export default function HikeTrackingScreen() {
             <Text style={s.statLabel}>Gained</Text>
           </View>
           <View style={s.statCell}>
-            <Text style={s.statValue}>
-              {currentAltM != null ? fmtM(currentAltM) : "—"}
-            </Text>
+            <Text style={s.statValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
             <Text style={s.statLabel}>Altitude</Text>
           </View>
         </Animated.View>
 
-        {/* Secondary stats */}
+        {/* ── Secondary stats ──────────────────────────────────────────── */}
         <Animated.View entering={FadeIn.delay(200).duration(400)} style={s.statsRow2}>
           <View style={s.statCell2}>
             <Text style={s.statValue2}>
@@ -517,49 +572,61 @@ export default function HikeTrackingScreen() {
           </View>
         </Animated.View>
 
-        {/* Controls */}
+        {/* ── Live route map ───────────────────────────────────────────── */}
+        {Platform.OS !== "web" && (
+          <Animated.View entering={FadeIn.delay(250).duration(400)} style={s.mapWrap}>
+            <WebView
+              ref={webViewRef}
+              source={{ uri: `${API_BASE}/hike-map` }}
+              style={s.mapWebView}
+              scrollEnabled={false}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={["*"]}
+            />
+          </Animated.View>
+        )}
+
+        {/* ── Controls ─────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInUp.delay(300).duration(400)} style={s.controls}>
 
-          {/* Start (idle) */}
           {isIdle && (
             <TouchableOpacity
-              style={[s.startBtn, !gpsReady && { opacity: 0.55 }]}
+              style={[s.startBtn, !canStart && { opacity: 0.45 }]}
               onPress={startTracking}
-              disabled={!gpsReady}
+              disabled={!canStart}
               activeOpacity={0.85}
             >
               <LinearGradient
                 colors={["#3ECF75", "#2AB860"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.startBtnGrad}
               >
                 <Play size={20} color="#fff" fill="#fff" />
                 <Text style={s.startBtnText}>
-                  {gpsReady ? "Start Tracking" : "Acquiring GPS…"}
+                  {!gpsReady
+                    ? "Acquiring GPS…"
+                    : !routeName.trim()
+                      ? "Name your route first"
+                      : "Start Tracking"}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
 
-          {/* Pause / Resume */}
           {(isTracking || isPaused) && (
             <TouchableOpacity
               style={isPaused ? s.resumeBtn : s.pauseBtn}
               onPress={isPaused ? resumeTracking : pauseTracking}
               activeOpacity={0.85}
             >
-              {isPaused
-                ? <Play size={20} color={T.green} />
-                : <Pause size={20} color={T.blue} />
-              }
+              {isPaused ? <Play size={20} color={T.green} /> : <Pause size={20} color={T.blue} />}
               <Text style={[s.pauseBtnText, isPaused && { color: T.green }]}>
                 {isPaused ? "Resume" : "Pause"}
               </Text>
             </TouchableOpacity>
           )}
 
-          {/* Stop / Finish */}
           {(isTracking || isPaused) && (
             <TouchableOpacity style={s.stopBtn} onPress={handleStopPress} activeOpacity={0.8}>
               <Square size={16} color={T.red} fill={T.red} />
@@ -568,20 +635,18 @@ export default function HikeTrackingScreen() {
           )}
         </Animated.View>
 
-        {/* GPS note */}
+        {/* ── GPS notes ────────────────────────────────────────────────── */}
         {isIdle && !gpsReady && (
           <Animated.View entering={FadeIn.duration(600)} style={s.gpsNote}>
             <WifiOff size={14} color={T.textMuted} />
-            <Text style={s.gpsNoteText}>
-              Waiting for GPS signal. Go outdoors for best accuracy.
-            </Text>
+            <Text style={s.gpsNoteText}>Waiting for GPS signal. Go outdoors for best accuracy.</Text>
           </Animated.View>
         )}
         {isIdle && gpsReady && (
           <Animated.View entering={FadeIn.duration(400)} style={s.gpsNote}>
             <Wifi size={14} color={T.green} />
             <Text style={[s.gpsNoteText, { color: "rgba(62,207,117,0.75)" }]}>
-              GPS ready. Distance &amp; elevation tracked via phone sensors.
+              GPS ready — name your route and tap Start Tracking.
             </Text>
           </Animated.View>
         )}
@@ -596,79 +661,168 @@ const s = StyleSheet.create({
   root:               { flex: 1, backgroundColor: "#050D1A" },
 
   // Header
-  header:             { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
-  headerTitle:        { flex: 1, fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },
-  gpsPill:            { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.06)", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.09)" },
-  gpsPillReady:       { borderColor: "rgba(62,207,117,0.3)", backgroundColor: "rgba(62,207,117,0.07)" },
-  gpsDot:             { width: 7, height: 7, borderRadius: 4, backgroundColor: T.textMuted },
-  gpsText:            { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  gpsTextReady:       { color: T.green },
-  backBtn:            { padding: 4 },
+  header: {
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)", gap: 12,
+  },
+  headerTitle: {
+    flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold",
+    color: T.text, textAlign: "center",
+  },
+  backBtn: { padding: 4 },
+
+  // GPS pill
+  gpsPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  gpsPillReady: { borderColor: "rgba(62,207,117,0.35)", backgroundColor: "rgba(62,207,117,0.08)" },
+  gpsDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: T.textMuted },
+  gpsText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  gpsTextReady: { color: T.green },
 
   // Content
-  content:            { paddingHorizontal: 24, alignItems: "center" },
+  content: { paddingHorizontal: 20, gap: 16, paddingTop: 16 },
+
+  // Route name card
+  nameCard: {
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    padding: 16, gap: 8,
+  },
+  nameLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.6 },
+  nameRequired: { color: T.green },
+  nameInput: {
+    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 12,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text,
+  },
+  nameInputError: { borderColor: T.red + "80" },
+  nameInputLocked: { opacity: 0.6 },
+  nameErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
 
   // Status
-  statusRow:          { marginTop: 8, marginBottom: 4 },
-  statusPill:         { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.06)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
-  statusPillTracking: { backgroundColor: "rgba(62,207,117,0.08)", borderColor: "rgba(62,207,117,0.25)" },
-  statusPillPaused:   { backgroundColor: "rgba(255,152,0,0.08)",  borderColor: "rgba(255,152,0,0.25)" },
-  statusText:         { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 1.5 },
+  statusRow:     { alignItems: "center" },
+  statusPill: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  statusPillTracking: { backgroundColor: "rgba(62,207,117,0.1)", borderColor: "rgba(62,207,117,0.3)" },
+  statusPillPaused:   { backgroundColor: "rgba(251,146,60,0.1)", borderColor: "rgba(251,146,60,0.3)" },
+  statusText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 1 },
 
   // Timer
-  timerBlock:         { alignItems: "center", marginTop: 20, marginBottom: 28 },
-  timerText:          { fontSize: 64, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -2, lineHeight: 72 },
-  timerLabel:         { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 4, letterSpacing: 1 },
+  timerBlock: { alignItems: "center", gap: 2 },
+  timerText:  { fontSize: 52, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -1 },
+  timerLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 1 },
 
-  // Stats row 1
-  statsRow:           { flexDirection: "row", width: "100%", backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, marginBottom: 10, overflow: "hidden" },
-  statCell:           { flex: 1, alignItems: "center", paddingVertical: 18 },
-  statCellMid:        { borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
-  statValueRow:       { flexDirection: "row", alignItems: "center" },
-  statValue:          { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
-  statLabel:          { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 },
+  // Stats row (main)
+  statsRow: {
+    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 18,
+  },
+  statCell: { flex: 1, alignItems: "center", gap: 6 },
+  statCellMid: {
+    borderLeftWidth: 1, borderRightWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+  },
+  statValueRow: { flexDirection: "row", alignItems: "center" },
+  statValue:    { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
+  statLabel:    { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 
   // Stats row 2
-  statsRow2:          { flexDirection: "row", width: "100%", backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, marginBottom: 32, overflow: "hidden" },
-  statCell2:          { flex: 1, alignItems: "center", paddingVertical: 14 },
-  statValue2:         { fontSize: 17, fontFamily: "Inter_600SemiBold", color: T.text },
+  statsRow2: {
+    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    paddingVertical: 14,
+  },
+  statCell2:  { flex: 1, alignItems: "center", gap: 4 },
+  statValue2: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+
+  // Live map
+  mapWrap: {
+    borderRadius: 18, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    height: 230,
+  },
+  mapWebView: { flex: 1, backgroundColor: "#050D1A" },
 
   // Controls
-  controls:           { width: "100%", gap: 12 },
-  startBtn:           { width: "100%", borderRadius: 16, overflow: "hidden" },
-  startBtnGrad:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18 },
-  startBtnText:       { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-
-  pauseBtn:           { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderColor: T.blue, backgroundColor: "rgba(74,159,245,0.08)" },
-  resumeBtn:          { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderColor: T.green, backgroundColor: "rgba(62,207,117,0.08)" },
-  pauseBtnText:       { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.blue },
-
-  stopBtn:            { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,68,68,0.35)", backgroundColor: "rgba(255,68,68,0.07)" },
-  stopBtnText:        { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.red },
+  controls: { gap: 12 },
+  startBtn: { borderRadius: 18, overflow: "hidden" },
+  startBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 18,
+  },
+  startBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  pauseBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    paddingVertical: 16, borderRadius: 16,
+    backgroundColor: "rgba(96,165,250,0.1)", borderWidth: 1, borderColor: "rgba(96,165,250,0.3)",
+  },
+  resumeBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    paddingVertical: 16, borderRadius: 16,
+    backgroundColor: "rgba(62,207,117,0.1)", borderWidth: 1, borderColor: "rgba(62,207,117,0.3)",
+  },
+  pauseBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.blue },
+  stopBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 14, borderRadius: 16,
+    backgroundColor: "rgba(239,68,68,0.08)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)",
+  },
+  stopBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.red },
 
   // GPS note
-  gpsNote:            { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 16, paddingHorizontal: 4 },
-  gpsNoteText:        { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1, lineHeight: 17 },
+  gpsNote: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 16,
+  },
+  gpsNoteText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", flex: 1 },
+
+  // Finished summary
+  summaryContainer: { alignItems: "center", gap: 20, paddingTop: 32 },
+  summaryIconRow:   { marginBottom: 4 },
+  summaryIcon: {
+    width: 80, height: 80, borderRadius: 40,
+    alignItems: "center", justifyContent: "center",
+  },
+  summaryTitle: { fontSize: 28, fontFamily: "Inter_700Bold", color: T.text },
+  summaryTrail: {
+    fontSize: 16, fontFamily: "Inter_400Regular", color: T.textMuted,
+    textAlign: "center", paddingHorizontal: 20,
+  },
+  summaryGrid: {
+    flexDirection: "row", width: "100%",
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 20,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    paddingVertical: 20,
+  },
+  summaryCell: { flex: 1, alignItems: "center", gap: 6 },
+  summaryCellMid: {
+    borderLeftWidth: 1, borderRightWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+  },
+  summaryCellValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
+  summaryCellLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+
+  saveBtn: { width: "100%", borderRadius: 18, overflow: "hidden", marginTop: 8 },
+  saveBtnGrad: {
+    paddingVertical: 18, alignItems: "center", justifyContent: "center",
+  },
+  saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  discardBtn:  { paddingVertical: 14, alignItems: "center" },
+  discardBtnText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   // Permission denied
-  centeredMsg:        { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, gap: 16 },
-  msgTitle:           { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
-  msgBody:            { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 22 },
-
-  // Summary
-  summaryContainer:   { flex: 1, paddingHorizontal: 24, paddingTop: 40, alignItems: "center" },
-  summaryIconRow:     { marginBottom: 16 },
-  summaryIcon:        { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
-  summaryTitle:       { fontSize: 28, fontFamily: "Inter_700Bold", color: T.text, marginBottom: 6 },
-  summaryTrail:       { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 28, textAlign: "center" },
-  summaryGrid:        { flexDirection: "row", width: "100%", backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder, marginBottom: 10, overflow: "hidden" },
-  summaryCell:        { flex: 1, alignItems: "center", paddingVertical: 18 },
-  summaryCellMid:     { borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
-  summaryCellValue:   { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
-  summaryCellLabel:   { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 },
-  saveBtn:            { width: "100%", borderRadius: 16, overflow: "hidden", marginTop: 20 },
-  saveBtnGrad:        { alignItems: "center", justifyContent: "center", paddingVertical: 18 },
-  saveBtnText:        { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-  discardBtn:         { marginTop: 12, paddingVertical: 14, alignItems: "center", width: "100%" },
-  discardBtnText:     { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
+  centeredMsg: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 40 },
+  msgTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
+  msgBody:  { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 22 },
 });
