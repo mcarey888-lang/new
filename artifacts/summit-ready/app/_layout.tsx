@@ -43,6 +43,7 @@ function RootLayoutNav() {
       <Stack.Screen name="trails-completed" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="trails-create" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hills-finder" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="hike-tracking" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }

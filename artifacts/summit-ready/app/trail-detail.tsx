@@ -423,10 +423,16 @@ export default function TrailDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={s.actionStart} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={s.actionStart}
+            activeOpacity={0.85}
+            onPress={() => router.push({
+              pathname: "/hike-tracking",
+              params: { name: trail.name, location: trail.location },
+            })}
+          >
             <Navigation size={16} color={T.text} />
             <Text style={s.actionStartText}>Start route</Text>
-            <View style={s.comingSoon}><Text style={s.comingSoonText}>Coming soon</Text></View>
           </TouchableOpacity>
 
           {trail.isCustom && (
