@@ -90,6 +90,7 @@ function pickZoom(distanceKm: number | undefined): number {
 
 function buildHtml(opts: {
   osKey: string | undefined;
+  apiOrigin: string;
   trailName: string;
   trailLocation: string;
   color: string;
@@ -98,7 +99,7 @@ function buildHtml(opts: {
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { osKey, trailName, trailLocation, color, center, zoom, userLat, userLng } = opts;
+  const { osKey, apiOrigin, trailName, trailLocation, color, center, zoom, userLat, userLng } = opts;
 
   const safeTitle  = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const jsName     = JSON.stringify(trailName);
@@ -164,7 +165,8 @@ var centerPin=L.circleMarker(mapCenter,{
 }).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
 
 // ── Fetch route geometry from the trail-route endpoint ───────────────────────
-fetch("/api/trail-route",{
+var routeUrl=${JSON.stringify(apiOrigin + "/api/trail-route")};
+fetch(routeUrl,{
   method:"POST",
   headers:{"Content-Type":"application/json"},
   body:JSON.stringify({
@@ -174,10 +176,18 @@ fetch("/api/trail-route",{
     lng:mapCenter[1]
   })
 })
-.then(function(r){return r.json();})
+.then(function(r){
+  if(!r.ok){throw new Error("HTTP "+r.status);}
+  return r.json();
+})
 .then(function(data){
-  document.getElementById("loading").style.display="none";
-  if(!data.found||!data.coords||data.coords.length<2){return;}
+  var el=document.getElementById("loading");
+  if(!data.found||!data.coords||data.coords.length<2){
+    el.textContent="Route not found";
+    setTimeout(function(){el.style.display="none";},2500);
+    return;
+  }
+  el.style.display="none";
 
   var latlngs=data.coords.map(function(c){return[c.lat,c.lng];});
 
@@ -211,8 +221,10 @@ fetch("/api/trail-route",{
   map.removeLayer(centerPin);
   map.fitBounds(L.latLngBounds(latlngs),{padding:[32,32],maxZoom:15});
 })
-.catch(function(){
-  document.getElementById("loading").style.display="none";
+.catch(function(err){
+  var el=document.getElementById("loading");
+  el.textContent="Route error: "+(err&&err.message?err.message:"network");
+  setTimeout(function(){el.style.display="none";},4000);
 });
 
 // ── User location dot (updated from native via postMessage) ──────────────────
@@ -276,8 +288,20 @@ router.get("/trail-map-web", async (req, res) => {
 
   const zoom = pickZoom(isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
 
+  // Build absolute origin so the in-page fetch always resolves correctly,
+  // regardless of WebView/iframe base-URL behaviour.
+  // Replit's reverse proxy absorbs x-forwarded-* headers before they reach
+  // the API process, so we derive the public domain from the env instead.
+  const publicDomain =
+    process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ||
+    process.env.REPLIT_DEV_DOMAIN ||
+    req.get("host") ||
+    "localhost";
+  const apiOrigin = `https://${publicDomain}`;
+
   const html = buildHtml({
     osKey,
+    apiOrigin,
     trailName: name.trim(),
     trailLocation: (location ?? "").trim(),
     color: safeColor,
