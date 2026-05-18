@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -496,15 +496,23 @@ export default function DashboardScreen() {
 
   if (!summitGoal) {
     return (
-      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 18 }}>
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 18, paddingHorizontal: 32 }}>
         <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" }}>
           <Compass size={28} color={T.green} />
         </View>
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
-        <TouchableOpacity onPress={() => router.push("/setup")} style={styles.createPlanBtn}>
+        <TouchableOpacity onPress={() => router.push("/setup")} style={[styles.createPlanBtn, { width: "100%" }]}>
           <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.createPlanGrad}>
             <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" }}>Create my plan</Text>
           </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/hike-tracking")}
+          activeOpacity={0.8}
+          style={styles.startHikingSecondary}
+        >
+          <Footprints size={16} color={T.green} />
+          <Text style={styles.startHikingSecondaryText}>Start Hiking without a plan</Text>
         </TouchableOpacity>
       </View>
     );
@@ -666,6 +674,29 @@ export default function DashboardScreen() {
               </View>
             </View>
           </View>
+        </Animated.View>
+
+        {/* Start Hiking quick-action */}
+        <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+          <TouchableOpacity
+            onPress={() => router.push("/hike-tracking")}
+            activeOpacity={0.85}
+            style={styles.startHikingBanner}
+          >
+            <LinearGradient
+              colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.startHikingIconWrap}>
+              <Footprints size={18} color={T.green} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.startHikingBannerTitle}>Start Hiking</Text>
+              <Text style={styles.startHikingBannerSub}>Track a live hike with GPS</Text>
+            </View>
+            <ChevronRight size={18} color={T.green} />
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Stats Grid */}
@@ -916,6 +947,26 @@ const styles = StyleSheet.create({
   upgradeBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   createPlanBtn: { borderRadius: 16, overflow: "hidden" },
   createPlanGrad: { paddingHorizontal: 28, paddingVertical: 14 },
+  startHikingSecondary: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 12, paddingHorizontal: 20,
+    borderRadius: 14, borderWidth: 1, borderColor: T.green + "35",
+    backgroundColor: T.greenDim, width: "100%", justifyContent: "center",
+  },
+  startHikingSecondaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+  startHikingBanner: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderRadius: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: T.green + "30",
+    paddingVertical: 14, paddingHorizontal: 16,
+  },
+  startHikingIconWrap: {
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: T.greenDim,
+    alignItems: "center", justifyContent: "center",
+  },
+  startHikingBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  startHikingBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
