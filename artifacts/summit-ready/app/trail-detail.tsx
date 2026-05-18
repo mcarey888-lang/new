@@ -40,7 +40,7 @@ import { SAMPLE_TRAILS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
-import { openMapPin, openMapDirections } from "@/utils/openMaps";
+import { openMapPin, openMapSearch } from "@/utils/openMaps";
 
 const DIFF_COLOR: Record<string, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange,
@@ -110,6 +110,7 @@ interface TrailStartPoint {
   name: string;
   lat: number;
   lng: number;
+  postcode: string;
   directions: string;
   parkingNotes: string;
 }
@@ -397,9 +398,9 @@ export default function TrailDetailScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.startName}>{startPoint.name}</Text>
-                  <Text style={s.startCoords}>
-                    {startPoint.lat.toFixed(5)}, {startPoint.lng.toFixed(5)}
-                  </Text>
+                  {!!startPoint.postcode && (
+                    <Text style={s.startCoords}>{startPoint.postcode}</Text>
+                  )}
                 </View>
               </View>
 
@@ -425,7 +426,10 @@ export default function TrailDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.startMapBtn, { borderColor: T.blue + "50" }]}
-                  onPress={() => openMapDirections(startPoint.lat, startPoint.lng, startPoint.name)}
+                  onPress={() => {
+                    const dest = startPoint.postcode || `${startPoint.lat},${startPoint.lng}`;
+                    openMapSearch(dest);
+                  }}
                   activeOpacity={0.8}
                 >
                   <Navigation size={13} color={T.blue} />

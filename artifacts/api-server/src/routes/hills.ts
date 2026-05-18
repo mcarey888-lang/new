@@ -333,6 +333,7 @@ const TRAIL_START_SYSTEM_PROMPT = `You are an expert hiking guide. Given a trail
     "name": string,
     "lat": number,
     "lng": number,
+    "postcode": string,
     "directions": string,
     "parkingNotes": string
   }
@@ -341,8 +342,9 @@ const TRAIL_START_SYSTEM_PROMPT = `You are an expert hiking guide. Given a trail
 Rules:
 - startPoint.name: name of the car park, village, layby or trailhead
 - startPoint.lat/lng: accurate GPS coordinates of the start point (decimal degrees, 4 decimal places)
+- startPoint.postcode: the nearest UK postcode to the car park or trailhead (e.g. "S33 7ZN"). If not in the UK, use the nearest ZIP code or equivalent postal code. Always provide this — it is used as the navigation destination.
 - startPoint.directions: 2-3 sentences on how to drive or get there by public transport
-- startPoint.parkingNotes: parking info — free/paid, spaces, nearest postcode or what3words / OS grid ref
+- startPoint.parkingNotes: parking info — free/paid, spaces, any additional access notes
 - Use real place names, postcodes, and accurate coordinates`;
 
 const TrailStartSchema = z.object({
@@ -350,6 +352,7 @@ const TrailStartSchema = z.object({
     name: z.string(),
     lat: z.number(),
     lng: z.number(),
+    postcode: z.string().default(""),
     directions: z.string(),
     parkingNotes: z.string(),
   }),
