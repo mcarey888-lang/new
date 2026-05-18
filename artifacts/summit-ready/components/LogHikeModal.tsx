@@ -1,7 +1,7 @@
 import { Check, X } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -39,7 +39,7 @@ interface Props {
 }
 
 export function LogHikeModal({ visible, prefillName, prefillDistance, prefillElevation, onClose }: Props) {
-  const { logExploreHike } = useApp();
+  const { logExploreHike, addSession, summitGoal, trainingPlan } = useApp();
   const today = new Date().toISOString().split("T")[0];
   const [name, setName] = useState(prefillName ?? "");
   const [date, setDate] = useState(today);
@@ -48,13 +48,21 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
   const [timeTaken, setTimeTaken] = useState(90);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addToSummit, setAddToSummit] = useState(true);
+
+  const hasSummitGoal = !!summitGoal;
+
+  const currentWeekNumber = useMemo(() => {
+    return trainingPlan.find((w) => w.isCurrentWeek)?.weekNumber ?? 1;
+  }, [trainingPlan]);
 
   useEffect(() => {
     if (visible) {
       setName(prefillName ?? "");
       setDate(today);
-      if (prefillDistance !== undefined) setDistance(prefillDistance);
-      if (prefillElevation !== undefined) setElevationGain(prefillElevation);
+      setDistance(prefillDistance ?? 5);
+      setElevationGain(prefillElevation ?? 200);
+      setAddToSummit(true);
     }
   }, [visible, prefillName, prefillDistance, prefillElevation]);
 
@@ -63,6 +71,20 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
     setSaving(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await logExploreHike({ name: name.trim(), date, distance, elevationGain, timeTaken, notes });
+    if (hasSummitGoal && addToSummit) {
+      await addSession({
+        type: "bigDay",
+        date,
+        distance,
+        elevationGain,
+        duration: timeTaken,
+        effort: 3,
+        notes: notes.trim() ? notes.trim() : `Trail session: ${name.trim()}`,
+        completed: true,
+        weekNumber: currentWeekNumber,
+        hillName: name.trim(),
+      });
+    }
     setSaving(false);
     setNotes("");
     onClose();
@@ -107,6 +129,26 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
               <Text style={s.label}>Notes (optional)</Text>
               <TextInput style={[s.input, s.textArea]} value={notes} onChangeText={setNotes} placeholder="How did it feel?" placeholderTextColor={T.textDim} multiline numberOfLines={3} />
             </View>
+
+            {hasSummitGoal && (
+              <TouchableOpacity
+                style={[s.summitToggle, addToSummit && s.summitToggleActive]}
+                onPress={() => setAddToSummit((v) => !v)}
+                activeOpacity={0.8}
+              >
+                <View style={[s.summitCheckbox, addToSummit && s.summitCheckboxActive]}>
+                  {addToSummit && <Check size={12} color="#fff" />}
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[s.summitToggleTitle, addToSummit && s.summitToggleTitleActive]}>
+                    Count toward Summit training
+                  </Text>
+                  <Text style={s.summitToggleBody}>
+                    This session will also update your readiness score
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           <View style={s.footer}>
@@ -148,4 +190,17 @@ const s = StyleSheet.create({
   stepBtn: { width: 36, height: 36, backgroundColor: T.surface, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   stepBtnText: { fontSize: 20, color: T.text, lineHeight: 24 },
   stepVal: { width: 50, textAlign: "center", fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+  summitToggle: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14,
+  },
+  summitToggleActive: { backgroundColor: T.greenDim, borderColor: T.green + "50" },
+  summitCheckbox: {
+    width: 22, height: 22, borderRadius: 7, borderWidth: 2, borderColor: T.border,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  summitCheckboxActive: { backgroundColor: T.green, borderColor: T.green },
+  summitToggleTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  summitToggleTitleActive: { color: T.text },
+  summitToggleBody: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
 });

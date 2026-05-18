@@ -146,7 +146,19 @@ function StepperRow({
 export default function TrailListScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ q?: string }>();
-  const { savedTrailIds, completedTrailIds, customRoutes } = useApp();
+  const { savedTrailIds, completedTrailIds, customRoutes, summitGoal, trainingPlan } = useApp();
+
+  const currentWeek = useMemo(
+    () => trainingPlan.find((w) => w.isCurrentWeek) ?? null,
+    [trainingPlan]
+  );
+
+  function isGoodForWeek(trail: Trail): boolean {
+    if (!currentWeek) return false;
+    const target = currentWeek.targetElevation;
+    if (target <= 0) return false;
+    return trail.elevationGain >= target * 0.5 && trail.elevationGain <= target * 2.5;
+  }
 
   const [query, setQuery] = useState(params.q ?? "");
   const [locationQuery, setLocationQuery] = useState("");
@@ -576,7 +588,10 @@ export default function TrailListScreen() {
                     trail={trail}
                     isSaved={savedTrailIds.includes(trail.id)}
                     isCompleted={completedTrailIds.includes(trail.id)}
-                    onPress={() => router.push({ pathname: "/trail-detail", params: { id: trail.id } })}
+                    isGoodForWeek={isGoodForWeek(trail)}
+                    onPress={() =>
+                      router.push({ pathname: "/trail-detail", params: { id: trail.id } })
+                    }
                   />
                 </Animated.View>
               ))

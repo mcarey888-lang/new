@@ -33,11 +33,12 @@ interface Props {
   trail: Trail;
   isSaved?: boolean;
   isCompleted?: boolean;
+  isGoodForWeek?: boolean;
   onPress: () => void;
   compact?: boolean;
 }
 
-export function TrailCard({ trail, isSaved, isCompleted, onPress, compact }: Props) {
+export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress, compact }: Props) {
   const dc = DIFF_COLOR[trail.difficulty];
   const [mapError, setMapError] = useState(false);
 
@@ -48,6 +49,11 @@ export function TrailCard({ trail, isSaved, isCompleted, onPress, compact }: Pro
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={[s.card, compact && s.cardCompact]}>
       {isCompleted && <View style={s.completedBadge}><CheckCircle size={14} color={T.green} /></View>}
+      {isGoodForWeek && !isCompleted && (
+        <View style={s.weekBadge}>
+          <Text style={s.weekBadgeText}>⭐ Good for this week</Text>
+        </View>
+      )}
 
       {/* Static map thumbnail */}
       {!compact && (
@@ -161,4 +167,10 @@ const s = StyleSheet.create({
   stats: { flexDirection: "row", gap: 14, paddingHorizontal: 14, paddingBottom: 14, paddingTop: 2 },
   stat: { flexDirection: "row", alignItems: "center", gap: 4 },
   statVal: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.text },
+  weekBadge: {
+    position: "absolute", bottom: 12, right: 12,
+    backgroundColor: T.greenDim, borderRadius: 8, borderWidth: 1, borderColor: T.green + "50",
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  weekBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
 });

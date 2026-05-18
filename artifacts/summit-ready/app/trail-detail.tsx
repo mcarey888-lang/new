@@ -105,7 +105,7 @@ const KIT_CHECKLIST = [
 export default function TrailDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
-  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes, deleteCustomRoute } = useApp();
+  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, customRoutes, deleteCustomRoute, trainingPlan } = useApp();
   const scrollRef = useRef<ScrollView>(null);
 
   const [logVisible, setLogVisible] = useState(false);
@@ -129,6 +129,15 @@ export default function TrailDetailScreen() {
 
   // Reset error states when trail changes
   React.useEffect(() => { setImageError(false); setMapImageError(false); }, [trail?.id]);
+
+  const currentWeek = useMemo(() => trainingPlan.find((w) => w.isCurrentWeek) ?? null, [trainingPlan]);
+
+  const isGoodForWeek = useMemo(() => {
+    if (!currentWeek || !trail) return false;
+    const target = currentWeek.targetElevation;
+    if (target <= 0) return false;
+    return trail.elevationGain >= target * 0.5 && trail.elevationGain <= target * 2.5;
+  }, [currentWeek, trail]);
 
   if (!cacheLoaded) {
     return (
@@ -287,6 +296,13 @@ export default function TrailDetailScreen() {
             <Text style={s.statLbl}>Est. time</Text>
           </View>
         </Animated.View>
+
+        {/* Good for this week banner */}
+        {isGoodForWeek && currentWeek && (
+          <Animated.View entering={FadeInDown.delay(70).duration(400)} style={s.weekBanner}>
+            <Text style={s.weekBannerText}>⭐ Good for Week {currentWeek.weekNumber} — matches your {currentWeek.targetElevation}m elevation target</Text>
+          </Animated.View>
+        )}
 
         {/* Tags */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={s.tagsRow}>
@@ -521,6 +537,11 @@ const s = StyleSheet.create({
   kitText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1, lineHeight: 20 },
   notesCard: { backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, padding: 14 },
   notesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20, fontStyle: "italic" },
+  weekBanner: {
+    backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "50",
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  weekBannerText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
   actions: { gap: 10 },
   actionPrimary: { borderRadius: 16, overflow: "hidden" },
   actionGrad: { height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
