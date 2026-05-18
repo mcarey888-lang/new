@@ -45,15 +45,14 @@ function midpoint(coords: Coord[]): Coord {
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 //
-// Only the LOCATION string is geocoded via Nominatim (e.g. "Lake District, Cumbria").
-// Geocoding well-known administrative / natural areas is extremely reliable.
-// The result is cached per location string so repeated calls for the same area
-// never hit the network again.
+// Geocode the LOCATION string only (e.g. "Bacup, Lancashire").
+// Cached by location so concurrent trail-card requests share one Nominatim hit
+// per region instead of firing one per trail (which triggers rate-limiting).
+//
+// Per-trail uniqueness is handled separately by trailCenter() below.
 
 const locationCache = new Map<string, Coord>();
 
-// Hard-coded fallbacks for the most common UK hiking regions so we can skip
-// a Nominatim round-trip and avoid any risk of rate-limiting for these.
 const UK_REGIONS: Record<string, Coord> = {
   "lake district":   { lat: 54.461, lng: -3.073 },
   "peak district":   { lat: 53.363, lng: -1.822 },
@@ -72,11 +71,25 @@ const UK_REGIONS: Record<string, Coord> = {
   "cotswolds":       { lat: 51.853, lng: -1.809 },
 };
 
-function extractPlaceName(trailName: string): string {
-  return trailName
-    .replace(/\b(circular|loop|route|walk|trail|path|way|hike|horseshoe|round|ridge|traverse|tour|circuit|summit|ascent|descent|via|through|across)\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+/** djb2 hash of s → float in [0, 1). Deterministic across restarts. */
+function nameHash(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return (h >>> 0) / 0x100000000;
+}
+
+/**
+ * Offset the region centre by a deterministic amount derived from the trail
+ * name (up to ±1.5 km per axis).  Guarantees a unique map position for every
+ * trail even when multiple trails share the same geocoded town/region centre.
+ */
+function trailCenter(base: Coord, trailName: string): Coord {
+  const h1 = nameHash(trailName);
+  const h2 = nameHash(trailName + "\x01");
+  const maxKm = 1.5;
+  const dLat = (h1 * 2 - 1) * maxKm / 111.32;
+  const dLng = (h2 * 2 - 1) * maxKm / (111.32 * Math.cos(base.lat * Math.PI / 180));
+  return { lat: base.lat + dLat, lng: base.lng + dLng };
 }
 
 async function nominatimSearch(query: string): Promise<Coord | null> {
@@ -95,34 +108,21 @@ async function nominatimSearch(query: string): Promise<Coord | null> {
   return null;
 }
 
-async function geocodeLocation(location: string, trailName?: string): Promise<Coord> {
-  const cacheKey = `${trailName ?? ""}::${location}`;
-  const cached = locationCache.get(cacheKey);
+async function geocodeLocation(location: string): Promise<Coord> {
+  const key = location.toLowerCase().trim();
+  const cached = locationCache.get(key);
   if (cached) return cached;
 
-  const locLower = location.toLowerCase();
-  for (const [key, coord] of Object.entries(UK_REGIONS)) {
-    if (locLower.includes(key)) {
-      locationCache.set(cacheKey, coord);
+  for (const [region, coord] of Object.entries(UK_REGIONS)) {
+    if (key.includes(region)) {
+      locationCache.set(key, coord);
       return coord;
-    }
-  }
-
-  // Try specific place name first (e.g. "Dovestones Reservoir, Greenfield, Greater Manchester")
-  if (trailName) {
-    const placeName = extractPlaceName(trailName);
-    if (placeName.length > 2 && placeName.toLowerCase() !== location.toLowerCase()) {
-      const specific = await nominatimSearch(`${placeName}, ${location}`);
-      if (specific) {
-        locationCache.set(cacheKey, specific);
-        return specific;
-      }
     }
   }
 
   const coord = await nominatimSearch(location);
   const result = coord ?? { lat: 54.0, lng: -2.0 };
-  locationCache.set(cacheKey, result);
+  locationCache.set(key, result);
   return result;
 }
 
@@ -223,8 +223,10 @@ router.get("/trail-map-image", async (req, res) => {
   const distanceKm = distance ? parseFloat(distance) : undefined;
 
   try {
-    // Geocode the specific location then build a correctly-scaled walking loop.
-    const center = await geocodeLocation(location || "United Kingdom", name.trim());
+    // Geocode the region centre (cached per location string), then apply a
+    // deterministic per-trail offset so every trail gets a unique map position.
+    const base = await geocodeLocation(location || "United Kingdom");
+    const center = trailCenter(base, name.trim());
     const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
     const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
     const hasRoute = routeCoords !== null && routeCoords.length > 1;
