@@ -108,6 +108,11 @@ interface TrackPoint {
 
 const ALTITUDE_NOISE_THRESHOLD = 2;
 
+function safeRemoveSub(sub: Location.LocationSubscription | null) {
+  if (!sub) return;
+  try { sub.remove(); } catch { /* expo-location web: LocationEventEmitter.removeSubscription missing */ }
+}
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HikeTrackingScreen() {
@@ -191,7 +196,7 @@ export default function HikeTrackingScreen() {
   useEffect(() => {
     return () => {
       timerRef.current && clearInterval(timerRef.current);
-      locationSubRef.current?.remove();
+      safeRemoveSub(locationSubRef.current);
     };
   }, []);
 
@@ -257,7 +262,7 @@ export default function HikeTrackingScreen() {
     statusRef.current = "paused";
     setStatus("paused");
     timerRef.current && clearInterval(timerRef.current);
-    locationSubRef.current?.remove();
+    safeRemoveSub(locationSubRef.current);
     locationSubRef.current = null;
   }, []);
 
@@ -302,7 +307,7 @@ export default function HikeTrackingScreen() {
     statusRef.current = "finished";
     setStatus("finished");
     timerRef.current && clearInterval(timerRef.current);
-    locationSubRef.current?.remove();
+    safeRemoveSub(locationSubRef.current);
     locationSubRef.current = null;
   }, []);
 
