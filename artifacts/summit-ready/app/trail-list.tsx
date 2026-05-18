@@ -29,12 +29,25 @@ import {
   makeTrailId,
   loadLiveTrailsCache,
   saveLiveTrailsCache,
+  clearLiveTrailsCache,
+  getLiveTrailsCacheTimestamp,
 } from "@/utils/liveTrailsCache";
 
 export { LIVE_TRAILS_CACHE_KEY };
 export type { LiveTrailsCache } from "@/utils/liveTrailsCache";
 
 const LAST_TRAIL_LOCATION_KEY = "summitready_last_trail_location";
+
+function formatTimeAgo(ts: number): string {
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? "" : "s"} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
+}
 
 type Difficulty = TrailDifficulty | "All";
 type Terrain = TrailTerrain | "All";
@@ -180,8 +193,10 @@ export default function TrailListScreen() {
   const [trailsError, setTrailsError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const liveTrailsRef = useRef<Trail[]>([]);
   const firstMountRef = useRef(true);
+  const prevGoalLocationRef = useRef<string | null>(null);
 
   const loadTrails = useCallback(async (
     loc: string,
@@ -199,23 +214,28 @@ export default function TrailListScreen() {
         setLocationLabel(loc);
         setUsingFallback(false);
         setTrailsLoading(false);
+        const ts = await getLiveTrailsCacheTimestamp(loc, filters.radius);
+        setCacheTimestamp(ts);
         return;
       }
     }
 
     try {
       const trails = await fetchLiveTrails(loc, filters);
+      const now = Date.now();
       await saveLiveTrailsCache(trails, loc, filters.radius);
       setLiveTrails(trails);
       liveTrailsRef.current = trails;
       setLocationLabel(loc);
       setUsingFallback(false);
+      setCacheTimestamp(now);
     } catch {
       setTrailsError("Could not load trails — showing sample data.");
       if (liveTrailsRef.current.length === 0) {
         setLiveTrails(SAMPLE_TRAILS);
         liveTrailsRef.current = SAMPLE_TRAILS;
         setUsingFallback(true);
+        setCacheTimestamp(null);
       }
     } finally {
       setTrailsLoading(false);
@@ -289,6 +309,17 @@ export default function TrailListScreen() {
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-invalidate the trail cache when the user's goal location changes
+  useEffect(() => {
+    const goalLoc = summitGoal?.location ?? null;
+    if (goalLoc && prevGoalLocationRef.current !== null && prevGoalLocationRef.current !== goalLoc) {
+      clearLiveTrailsCache().then(() => {
+        setCacheTimestamp(null);
+      });
+    }
+    prevGoalLocationRef.current = goalLoc;
+  }, [summitGoal?.location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const searchByLocation = useCallback(async () => {
     const trimmed = locationQuery.trim();
@@ -393,7 +424,13 @@ export default function TrailListScreen() {
             <Text style={s.title}>All Trails</Text>
           </View>
           <TouchableOpacity
-            onPress={() => locationQuery.trim() && loadTrails(locationQuery.trim(), { radius, minElevation, maxDuration, maxDistance }, true)}
+            onPress={async () => {
+              const loc = locationQuery.trim();
+              if (!loc) return;
+              await clearLiveTrailsCache();
+              setCacheTimestamp(null);
+              loadTrails(loc, { radius, minElevation, maxDuration, maxDistance }, true);
+            }}
             style={s.refreshBtn}
             activeOpacity={0.7}
             disabled={trailsLoading}
@@ -526,13 +563,29 @@ export default function TrailListScreen() {
             s.banner,
             trailsError ? s.bannerError : (usingFallback ? s.bannerWarn : s.bannerOk),
           ]}>
-            <Text style={[s.bannerText, trailsError ? s.bannerTextError : (usingFallback ? s.bannerTextWarn : s.bannerTextOk)]}>
-              {trailsError
-                ? trailsError
-                : usingFallback
-                  ? "Enable location or enter a place to find nearby trails"
-                  : `Showing trails within ${radius}km of ${locationLabel}${hasSearchFilters ? " · filtered" : ""}`}
-            </Text>
+            {trailsError || usingFallback ? (
+              <Text style={[s.bannerText, trailsError ? s.bannerTextError : s.bannerTextWarn]}>
+                {trailsError ?? "Enable location or enter a place to find nearby trails"}
+              </Text>
+            ) : (
+              <View style={s.bannerRow}>
+                <Text style={[s.bannerText, s.bannerTextOk]} numberOfLines={2}>
+                  {`Within ${radius}km of ${locationLabel}${hasSearchFilters ? " · filtered" : ""}${cacheTimestamp ? ` · Updated ${formatTimeAgo(cacheTimestamp)}` : ""}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!locationLabel) return;
+                    await clearLiveTrailsCache();
+                    setCacheTimestamp(null);
+                    loadTrails(locationLabel, { radius, minElevation, maxDuration, maxDistance }, true);
+                  }}
+                  disabled={trailsLoading}
+                  hitSlop={8}
+                >
+                  <Text style={s.bannerRefresh}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -664,10 +717,12 @@ const s = StyleSheet.create({
   bannerOk: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
   bannerWarn: { backgroundColor: T.surface, borderColor: T.border },
   bannerError: { backgroundColor: "#2a1a1a", borderColor: "#c0392b40" },
-  bannerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  bannerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  bannerText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   bannerTextOk: { color: T.green },
   bannerTextWarn: { color: T.textMuted },
   bannerTextError: { color: "#e74c3c" },
+  bannerRefresh: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green, textDecorationLine: "underline", flexShrink: 0 },
   loadingWrap: { alignItems: "center", paddingVertical: 48, gap: 12 },
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
   filtersCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 16, gap: 14 },

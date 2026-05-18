@@ -36,6 +36,24 @@ export async function saveLiveTrailsCache(trails: Trail[], location: string, rad
   } catch {}
 }
 
+export async function clearLiveTrailsCache(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(LIVE_TRAILS_CACHE_KEY);
+  } catch {}
+}
+
+export async function getLiveTrailsCacheTimestamp(location: string, radius: number): Promise<number | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LIVE_TRAILS_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw) as LiveTrailsCache;
+    if (cache.location !== location || cache.radius !== radius) return null;
+    return cache.cachedAt;
+  } catch {
+    return null;
+  }
+}
+
 export async function readLiveTrailsFromCache(): Promise<Trail[]> {
   try {
     const raw = await AsyncStorage.getItem(LIVE_TRAILS_CACHE_KEY);
