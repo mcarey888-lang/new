@@ -91,19 +91,21 @@ function pickZoom(distanceKm: number | undefined): number {
 function buildHtml(opts: {
   osKey: string | undefined;
   trailName: string;
+  trailLocation: string;
   color: string;
   center: Coord;
   zoom: number;
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { osKey, trailName, color, center, zoom, userLat, userLng } = opts;
+  const { osKey, trailName, trailLocation, color, center, zoom, userLat, userLng } = opts;
 
-  const safeTitle = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const jsName    = JSON.stringify(trailName);
-  const initLat   = userLat !== null ? userLat.toFixed(6) : "null";
-  const initLng   = userLng !== null ? userLng.toFixed(6) : "null";
-  const safeColor = "#" + color;
+  const safeTitle  = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const jsName     = JSON.stringify(trailName);
+  const jsLocation = JSON.stringify(trailLocation);
+  const initLat    = userLat !== null ? userLat.toFixed(6) : "null";
+  const initLng    = userLng !== null ? userLng.toFixed(6) : "null";
+  const safeColor  = "#" + color;
 
   const tileUrl = osKey
     ? `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`
@@ -124,6 +126,12 @@ function buildHtml(opts: {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:#1a1a1a;overflow:hidden}
 #map{position:absolute;inset:0}
+#loading{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.65);color:rgba(255,255,255,0.8);
+  font-family:system-ui,sans-serif;font-size:12px;padding:6px 14px;
+  border-radius:20px;z-index:1000;pointer-events:none;
+}
 .leaflet-control-zoom a{background:rgba(20,20,20,0.88)!important;color:#fff!important;border-color:rgba(255,255,255,0.15)!important}
 .leaflet-control-zoom a:hover{background:rgba(40,40,40,0.95)!important}
 .leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.5)!important}
@@ -133,9 +141,11 @@ html,body{height:100%;background:#1a1a1a;overflow:hidden}
 </head>
 <body>
 <div id="map"></div>
+<div id="loading">Loading route…</div>
 <script>
 var color=${JSON.stringify(safeColor)};
 var trailName=${jsName};
+var trailLocation=${jsLocation};
 var mapCenter=[${center.lat.toFixed(6)},${center.lng.toFixed(6)}];
 var initZoom=${zoom};
 var initUserLat=${initLat};
@@ -148,17 +158,59 @@ L.tileLayer(${JSON.stringify(tileUrl)},{
   attribution:${JSON.stringify(attribution)}
 }).addTo(map);
 
-// Trail location pin
-L.circleMarker(mapCenter,{
-  radius:9,
-  fillColor:color,
-  color:"#fff",
-  weight:2.5,
-  opacity:1,
-  fillOpacity:1
+// Fallback centre pin (replaced by route start once polyline loads)
+var centerPin=L.circleMarker(mapCenter,{
+  radius:8,fillColor:color,color:"#fff",weight:2.5,opacity:1,fillOpacity:1
 }).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
 
-// User location dot (updated from native via postMessage)
+// ── Fetch route geometry from the trail-route endpoint ───────────────────────
+fetch("/api/trail-route",{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({name:trailName,location:trailLocation})
+})
+.then(function(r){return r.json();})
+.then(function(data){
+  document.getElementById("loading").style.display="none";
+  if(!data.found||!data.coords||data.coords.length<2){return;}
+
+  var latlngs=data.coords.map(function(c){return[c.lat,c.lng];});
+
+  // Glow shadow beneath the route line
+  L.polyline(latlngs,{
+    color:"rgba(0,0,0,0.35)",weight:8,lineCap:"round",lineJoin:"round",
+    interactive:false
+  }).addTo(map);
+
+  // Main coloured route line
+  L.polyline(latlngs,{
+    color:color,weight:4,opacity:0.92,lineCap:"round",lineJoin:"round",
+    interactive:false
+  }).addTo(map);
+
+  // Start marker
+  L.circleMarker(latlngs[0],{
+    radius:7,fillColor:"#fff",color:color,weight:3,opacity:1,fillOpacity:1
+  }).bindTooltip("Start",{permanent:false,direction:"top"}).addTo(map);
+
+  // End marker (only if not a loop — i.e. start and end differ by >50 m)
+  var s=latlngs[0],e=latlngs[latlngs.length-1];
+  var dlat=s[0]-e[0],dlng=s[1]-e[1];
+  if(Math.sqrt(dlat*dlat+dlng*dlng)>0.0005){
+    L.circleMarker(e,{
+      radius:7,fillColor:color,color:"#fff",weight:3,opacity:1,fillOpacity:1
+    }).bindTooltip("End",{permanent:false,direction:"top"}).addTo(map);
+  }
+
+  // Remove fallback pin and fit to route
+  map.removeLayer(centerPin);
+  map.fitBounds(L.latLngBounds(latlngs),{padding:[32,32],maxZoom:15});
+})
+.catch(function(){
+  document.getElementById("loading").style.display="none";
+});
+
+// ── User location dot (updated from native via postMessage) ──────────────────
 var userMarker=null;
 
 window.updateUserLocation=function(lat,lng){
@@ -222,6 +274,7 @@ router.get("/trail-map-web", async (req, res) => {
   const html = buildHtml({
     osKey,
     trailName: name.trim(),
+    trailLocation: (location ?? "").trim(),
     color: safeColor,
     center,
     zoom,
