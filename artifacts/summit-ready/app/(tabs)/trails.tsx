@@ -25,6 +25,8 @@ import {
   X,
   Zap,
 } from "lucide-react-native";
+import { TrailCard } from "@/components/TrailCard";
+import { CURATED_HILLS, type TrailDifficulty } from "@/constants/trailData";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -73,7 +75,6 @@ const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
 const ELEV_STEPS   = [0, 50, 100, 150, 200, 300, 400, 500, 600, 800];
 
 type SortKey = "distance" | "elevation" | "popularity";
-type FilterChip = "all" | "hikes" | "hills";
 
 function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
   const sorted = [...hills];
@@ -205,9 +206,25 @@ export default function TrailsScreen() {
 
   const isSummit = appMode === "summit";
 
-  // Default chip: summit users land on hills, explore users land on all
-  const [activeChip, setActiveChip] = useState<FilterChip>(isSummit ? "hills" : "all");
   const [logVisible, setLogVisible] = useState(false);
+
+  // Explore mode: inline browse state
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseDiff, setBrowseDiff] = useState<TrailDifficulty | "All">("All");
+
+  const filteredHills = useMemo(() => {
+    let hills = CURATED_HILLS;
+    if (browseSearch.trim()) {
+      const q = browseSearch.toLowerCase();
+      hills = hills.filter(h =>
+        h.name.toLowerCase().includes(q) ||
+        (h.region?.toLowerCase().includes(q) ?? false) ||
+        h.location.toLowerCase().includes(q)
+      );
+    }
+    if (browseDiff !== "All") hills = hills.filter(h => h.difficulty === browseDiff);
+    return hills;
+  }, [browseSearch, browseDiff]);
 
   // Hills state
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
@@ -236,10 +253,6 @@ export default function TrailsScreen() {
     if (!userChangedRadius && summitGoal?.maxRadius) setLocalRadius(summitGoal.maxRadius);
   }, [summitGoal?.maxRadius, userChangedRadius]);
 
-  // Update chip default when mode changes
-  useEffect(() => {
-    setActiveChip(isSummit ? "hills" : "all");
-  }, [isSummit]);
 
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
   const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
@@ -329,62 +342,6 @@ export default function TrailsScreen() {
     setSearchAdded(true);
   }
 
-  // ── Hikes section ────────────────────────────────────────────────────────
-
-  function HikesSection() {
-    return (
-      <View style={{ gap: 10 }}>
-        <CategoryCard
-          emoji="🗺️" title="Browse Trails" subtitle="Explore routes near you"
-          color={T.blue} onPress={() => router.push("/trail-list")}
-        />
-        <CategoryCard
-          emoji="🔖" title="Saved Routes" subtitle="Trails you've bookmarked"
-          color={T.blue} badge={savedTrailIds.length}
-          onPress={() => router.push("/trails-saved")}
-        />
-        <CategoryCard
-          emoji="✅" title="Completed Trails" subtitle="Trails you've finished"
-          color={T.green} badge={completedTrailIds.length}
-          onPress={() => router.push("/trails-completed")}
-        />
-        <TouchableOpacity style={s.createCard} onPress={() => router.push("/trails-create")} activeOpacity={0.82}>
-          <LinearGradient
-            colors={[T.purple + "14", "transparent"]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          />
-          <View style={[s.createIcon, { backgroundColor: T.purple + "22" }]}>
-            <Pencil size={18} color={T.purple} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={s.createTitle}>Create My Own Route</Text>
-            <Text style={s.createSubtitle}>
-              {customRoutes.length > 0
-                ? `${customRoutes.length} custom route${customRoutes.length !== 1 ? "s" : ""} saved`
-                : "Add a personalised trail to your library"}
-            </Text>
-          </View>
-          <ChevronRight size={16} color={T.textDim} />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
-          <LinearGradient
-            colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={s.startHikingIconWrap}>
-            <Footprints size={20} color={T.green} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={s.startHikingTitle}>Start Hiking</Text>
-            <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
-          </View>
-          <ChevronRight size={16} color={T.green} />
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   // ── Hills section ────────────────────────────────────────────────────────
 
@@ -793,76 +750,130 @@ export default function TrailsScreen() {
           </View>
         </Animated.View>
 
-        {/* Filter chips */}
-        <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.chipRow}>
-          {([
-            { key: "all",   label: "All Routes" },
-            { key: "hikes", label: "Hikes" },
-            { key: "hills", label: "Training Hills" },
-          ] as { key: FilterChip; label: string }[]).map(({ key, label }) => (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setActiveChip(key)}
-              style={[s.chip, activeChip === key && s.chipActive]}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.chipText, activeChip === key && s.chipTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </Animated.View>
+        {/* Explore mode: curated hills browse inline */}
+        {!isSummit && (
+          <Animated.View entering={FadeInDown.delay(80).duration(600)} style={{ gap: 10 }}>
 
-        {/* Content by chip */}
-        <Animated.View entering={FadeInDown.delay(100).duration(600)}>
-          {activeChip === "all" && (
-            <View style={{ gap: 10 }}>
-              <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={s.startHikingIconWrap}>
-                  <Footprints size={20} color={T.green} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={s.startHikingTitle}>Start Hiking</Text>
-                  <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
-                </View>
-                <ChevronRight size={16} color={T.green} />
+            {/* Start hiking banner */}
+            <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
+              <LinearGradient
+                colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={s.startHikingIconWrap}>
+                <Footprints size={20} color={T.green} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={s.startHikingTitle}>Start Hiking</Text>
+                <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
+              </View>
+              <ChevronRight size={16} color={T.green} />
+            </TouchableOpacity>
+
+            {/* Quick links: Saved · Completed · Create */}
+            <View style={s.quickRow}>
+              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-saved")} activeOpacity={0.82}>
+                <Text style={s.quickEmoji}>🔖</Text>
+                <Text style={s.quickLabel}>Saved</Text>
+                {savedTrailIds.length > 0 && (
+                  <View style={[s.quickBadge, { backgroundColor: T.blueDim }]}>
+                    <Text style={[s.quickBadgeText, { color: T.blue }]}>{savedTrailIds.length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
-              <CategoryCard
-                emoji="🗺️" title="Browse Trails" subtitle="Explore routes near you"
-                color={T.blue} onPress={() => router.push("/trail-list")}
-              />
-              <CategoryCard
-                emoji="🔖" title="Saved Routes" subtitle="Trails you've bookmarked"
-                color={T.blue} badge={savedTrailIds.length}
-                onPress={() => router.push("/trails-saved")}
-              />
-              <CategoryCard
-                emoji="✅" title="Completed Trails" subtitle="Trails you've finished"
-                color={T.green} badge={completedTrailIds.length}
-                onPress={() => router.push("/trails-completed")}
-              />
-              <TouchableOpacity style={s.createCard} onPress={() => router.push("/trails-create")} activeOpacity={0.82}>
-                <LinearGradient colors={[T.purple + "14", "transparent"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                <View style={[s.createIcon, { backgroundColor: T.purple + "22" }]}>
-                  <Pencil size={18} color={T.purple} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={s.createTitle}>Create My Own Route</Text>
-                  <Text style={s.createSubtitle}>
-                    {customRoutes.length > 0 ? `${customRoutes.length} custom route${customRoutes.length !== 1 ? "s" : ""} saved` : "Add a personalised trail to your library"}
-                  </Text>
-                </View>
-                <ChevronRight size={16} color={T.textDim} />
+              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-completed")} activeOpacity={0.82}>
+                <Text style={s.quickEmoji}>✅</Text>
+                <Text style={s.quickLabel}>Completed</Text>
+                {completedTrailIds.length > 0 && (
+                  <View style={[s.quickBadge, { backgroundColor: T.greenDim }]}>
+                    <Text style={[s.quickBadgeText, { color: T.green }]}>{completedTrailIds.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-create")} activeOpacity={0.82}>
+                <Text style={s.quickEmoji}>✏️</Text>
+                <Text style={s.quickLabel}>Create</Text>
+                {customRoutes.length > 0 && (
+                  <View style={[s.quickBadge, { backgroundColor: T.purpleDim }]}>
+                    <Text style={[s.quickBadgeText, { color: T.purple }]}>{customRoutes.length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
-          )}
 
-          {activeChip === "hikes" && <HikesSection />}
-          {activeChip === "hills" && <HillsSection />}
-        </Animated.View>
+            {/* Browse hills header */}
+            <View style={s.browseHeader}>
+              <Mountain size={14} color={T.textDim} />
+              <Text style={s.browseHeading}>BROWSE HILLS</Text>
+            </View>
+
+            {/* Search */}
+            <View style={s.browseSearchRow}>
+              <Search size={15} color={T.textMuted} style={{ marginLeft: 12 }} />
+              <TextInput
+                style={s.browseSearchInput}
+                value={browseSearch}
+                onChangeText={setBrowseSearch}
+                placeholder="Search hills, regions…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                autoCorrect={false}
+              />
+              {browseSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setBrowseSearch("")} hitSlop={8} style={{ marginRight: 10 }}>
+                  <X size={14} color={T.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Difficulty filters */}
+            <View style={s.browseDiffRow}>
+              {(["All", "Easy", "Moderate", "Hard"] as const).map(d => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setBrowseDiff(d)}
+                  style={[s.browseDiffChip, browseDiff === d && s.browseDiffChipActive]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.browseDiffText, browseDiff === d && s.browseDiffTextActive]}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Result count */}
+            <Text style={s.browseCount}>
+              {filteredHills.length} hill{filteredHills.length !== 1 ? "s" : ""}
+              {browseDiff !== "All" || browseSearch ? " found" : " — pick your next challenge"}
+            </Text>
+
+            {/* Hill cards */}
+            {filteredHills.length === 0 ? (
+              <View style={s.browseEmpty}>
+                <Text style={s.browseEmptyTitle}>No hills found</Text>
+                <Text style={s.browseEmptyBody}>Try adjusting your search or filters.</Text>
+              </View>
+            ) : (
+              filteredHills.map(trail => (
+                <View key={trail.id}>
+                  <TrailCard
+                    trail={trail}
+                    isSaved={savedTrailIds.includes(trail.id)}
+                    isCompleted={completedTrailIds.includes(trail.id)}
+                    onPress={() => router.push({ pathname: "/trail-detail", params: { id: trail.id } })}
+                  />
+                </View>
+              ))
+            )}
+          </Animated.View>
+        )}
+
+        {/* Summit mode: Training Hills section */}
+        {isSummit && (
+          <Animated.View entering={FadeInDown.delay(80).duration(600)}>
+            <HillsSection />
+          </Animated.View>
+        )}
 
         {/* Recent activity — always shown */}
         <Animated.View entering={FadeInDown.delay(120).duration(600)} style={s.sectionHeader}>
@@ -923,14 +934,38 @@ const s = StyleSheet.create({
   statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
   statDivider: { width: 1, backgroundColor: T.border },
 
-  chipRow: { flexDirection: "row", gap: 8 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+  quickRow: { flexDirection: "row", gap: 8 },
+  quickCard: {
+    flex: 1, backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    padding: 12, alignItems: "center", gap: 4, position: "relative",
+  },
+  quickEmoji: { fontSize: 20 },
+  quickLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  quickBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  quickBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+
+  browseHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  browseHeading: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1, textTransform: "uppercase" },
+  browseSearchRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+  },
+  browseSearchInput: {
+    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  browseDiffRow: { flexDirection: "row", gap: 6 },
+  browseDiffChip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 12,
     borderWidth: 1, borderColor: T.border, backgroundColor: T.surface,
   },
-  chipActive: { borderColor: T.green + "60", backgroundColor: T.greenDim },
-  chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  chipTextActive: { color: T.green },
+  browseDiffChipActive: { borderColor: T.green + "60", backgroundColor: T.greenDim },
+  browseDiffText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  browseDiffTextActive: { color: T.green },
+  browseCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  browseEmpty: { paddingVertical: 32, alignItems: "center", gap: 6 },
+  browseEmptyTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  browseEmptyBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
 
   startHikingCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
