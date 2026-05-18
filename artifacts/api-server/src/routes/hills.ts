@@ -351,6 +351,8 @@ const TrailSchema = z.object({
       )
     ),
   emoji: z.string(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 });
 
 const TrailsResponseSchema = z.object({
@@ -373,7 +375,9 @@ const TRAILS_SYSTEM_PROMPT = `You are an expert hiking guide with precise geogra
       "bestFor": array of "training" | "family walk" | "summit prep" | "scenic walk",
       "description": string,
       "trainingBenefits": array of "cardio" | "elevation" | "endurance" | "pack weight",
-      "emoji": string
+      "emoji": string,
+      "lat": number,
+      "lng": number
     }
   ]
 }
@@ -398,7 +402,8 @@ Other rules:
 - description: 2-3 sentences describing the route character, highlights and why it stands out. Be specific to the actual local geography.
 - trainingBenefits: tags for the PHYSICAL training value — ONLY use: "cardio" (always include), "elevation" (significant climb), "endurance" (long route), "pack weight" (demanding mountain route). These are separate from bestFor.
 - emoji: single emoji representing the trail character
-- Include a range: some short easy walks, some long hard routes, some medium day hikes`;
+- Include a range: some short easy walks, some long hard routes, some medium day hikes
+- lat/lng: accurate GPS coordinates (decimal degrees, 4 decimal places) of the main trailhead or car park. ALWAYS include these — they are required for map display.`;
 
 router.post("/trails-lookup", async (req, res) => {
   const { location, radius, minElevation, maxDuration, maxDistance } = req.body as {

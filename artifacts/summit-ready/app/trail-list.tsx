@@ -1,11 +1,12 @@
 import {
-  ArrowLeft, LocateFixed, MapPin, Minus, Plus,
+  ArrowLeft, List, LocateFixed, Map, MapPin, Minus, Plus,
   RefreshCw, Search, SlidersHorizontal, X,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TrailMapView, type MappedTrail } from "@/components/TrailMapView";
 import {
   ActivityIndicator,
   Platform,
@@ -75,6 +76,11 @@ interface TrailFilters {
   maxDistance: number | null;
 }
 
+interface LatLng {
+  latitude: number;
+  longitude: number;
+}
+
 async function fetchLiveTrails(location: string, filters: TrailFilters): Promise<Trail[]> {
   const res = await fetch(`${API_BASE}/trails-lookup`, {
     method: "POST",
@@ -93,6 +99,29 @@ async function fetchLiveTrails(location: string, filters: TrailFilters): Promise
     ...t,
     id: makeTrailId(t.name, t.location),
   }));
+}
+
+async function geocodeLocationString(place: string): Promise<LatLng | null> {
+  if (Platform.OS === "web") {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}&limit=1`,
+        { headers: { "User-Agent": "SummitReady/1.0" } },
+      );
+      const data = await r.json() as Array<{ lat: string; lon: string }>;
+      if (data.length > 0) {
+        return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+  try {
+    const results = await Location.geocodeAsync(place);
+    if (results.length > 0) {
+      return { latitude: results[0].latitude, longitude: results[0].longitude };
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
 function parseDurationHours(time: string): number {
@@ -197,6 +226,17 @@ export default function TrailListScreen() {
   const liveTrailsRef = useRef<Trail[]>([]);
   const firstMountRef = useRef(true);
   const prevGoalLocationRef = useRef<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
+
+  useEffect(() => {
+    const placeToGeocode = locationLabel ?? summitGoal?.location ?? null;
+    if (!placeToGeocode) return;
+    geocodeLocationString(placeToGeocode).then((coords) => {
+      if (coords) setMapCenter(coords);
+    });
+  }, [locationLabel, summitGoal?.location]);
 
   const loadTrails = useCallback(async (
     loc: string,
@@ -394,6 +434,41 @@ export default function TrailListScreen() {
     });
   }, [allTrails, query, difficulty, terrain, bestFor, routeType, minElevation, maxDuration, maxDistance]);
 
+  function hasCoordsTrail(t: Trail): t is MappedTrail {
+    return typeof t.lat === "number" && typeof t.lng === "number";
+  }
+
+  const mappableTrails = useMemo(
+    () => filtered.filter(hasCoordsTrail),
+    [filtered],
+  );
+
+  const mapRegion = useMemo(() => {
+    if (mapCenter) {
+      return {
+        latitude: mapCenter.latitude,
+        longitude: mapCenter.longitude,
+        latitudeDelta: 0.5,
+        longitudeDelta: 0.5,
+      };
+    }
+    if (mappableTrails.length > 0) {
+      const lats = mappableTrails.map((t) => t.lat);
+      const lngs = mappableTrails.map((t) => t.lng);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      return {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+        latitudeDelta: Math.max(maxLat - minLat, 0.1) * 1.3,
+        longitudeDelta: Math.max(maxLng - minLng, 0.1) * 1.3,
+      };
+    }
+    return null;
+  }, [mapCenter, mappableTrails]);
+
   const hasActiveChipFilters = difficulty !== "All" || terrain !== "All" || bestFor !== "All" || routeType !== "All";
   const hasSearchFilters = minElevation != null || maxDuration != null || maxDistance != null;
 
@@ -404,50 +479,106 @@ export default function TrailListScreen() {
     setRouteType("All");
   }
 
+  const headerPaddingTop = Platform.OS === "web" ? 60 : insets.top + 16;
+
+  const renderHeader = () => (
+    <Animated.View entering={FadeInDown.duration(400)} style={s.header}>
+      <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <ArrowLeft size={20} color={T.text} />
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <Text style={s.eyebrow}>EXPLORE TRAILS</Text>
+        <Text style={s.title}>All Trails</Text>
+      </View>
+      <TouchableOpacity
+        onPress={async () => {
+          const loc = locationQuery.trim();
+          if (!loc) return;
+          await clearLiveTrailsCache();
+          setCacheTimestamp(null);
+          loadTrails(loc, { radius, minElevation, maxDuration, maxDistance }, true);
+        }}
+        style={s.refreshBtn}
+        activeOpacity={0.7}
+        disabled={trailsLoading}
+      >
+        {trailsLoading
+          ? <ActivityIndicator size="small" color={T.green} />
+          : <RefreshCw size={17} color={T.textMuted} />
+        }
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => {
+          setViewMode((v) => v === "list" ? "map" : "list");
+        }}
+        style={[s.filterBtn, viewMode === "map" && s.filterBtnActive]}
+      >
+        {viewMode === "map"
+          ? <List size={17} color={T.green} />
+          : <Map size={17} color={T.textMuted} />
+        }
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => setShowFilters((v) => !v)}
+        style={[s.filterBtn, showFilters && s.filterBtnActive]}
+      >
+        <SlidersHorizontal size={17} color={showFilters ? T.green : T.textMuted} />
+        {hasActiveChipFilters && <View style={s.filterDot} />}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+
+  if (viewMode === "map") {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <View style={[s.mapModeContainer, { paddingTop: headerPaddingTop }]}>
+          <View style={s.mapTopControls}>
+            {renderHeader()}
+
+            {/* Compact location row */}
+            <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.mapLocationRow}>
+              <MapPin size={13} color={locationLabel ? T.green : T.textMuted} />
+              <Text style={s.mapLocationText} numberOfLines={1}>
+                {locationLabel
+                  ? `${mappableTrails.length} of ${filtered.length} trails mapped near ${locationLabel}`
+                  : "Enter a location to find nearby trails"}
+              </Text>
+            </Animated.View>
+          </View>
+
+          {/* Map — show explicit empty state when no region and no mapped trails */}
+          {mapRegion === null && locationLabel && mappableTrails.length === 0 ? (
+            <View style={s.mapEmptyState}>
+              <Text style={s.mapEmptyStateTitle}>No trail coordinates available</Text>
+              <Text style={s.mapEmptyStateSubtitle}>
+                Try searching again or switch to list view to see results.
+              </Text>
+            </View>
+          ) : (
+            <TrailMapView
+              trails={mappableTrails}
+              region={mapRegion}
+              onPressTrail={(trail) =>
+                router.push({ pathname: "/trail-detail", params: { id: trail.id } })
+              }
+            />
+          )}
+        </View>
+      </LinearGradient>
+    );
+  }
+
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 40 },
+          { paddingTop: headerPaddingTop, paddingBottom: 40 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.duration(400)} style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <ArrowLeft size={20} color={T.text} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={s.eyebrow}>EXPLORE TRAILS</Text>
-            <Text style={s.title}>All Trails</Text>
-          </View>
-          <TouchableOpacity
-            onPress={async () => {
-              const loc = locationQuery.trim();
-              if (!loc) return;
-              await clearLiveTrailsCache();
-              setCacheTimestamp(null);
-              loadTrails(loc, { radius, minElevation, maxDuration, maxDistance }, true);
-            }}
-            style={s.refreshBtn}
-            activeOpacity={0.7}
-            disabled={trailsLoading}
-          >
-            {trailsLoading
-              ? <ActivityIndicator size="small" color={T.green} />
-              : <RefreshCw size={17} color={T.textMuted} />
-            }
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowFilters((v) => !v)}
-            style={[s.filterBtn, showFilters && s.filterBtnActive]}
-          >
-            <SlidersHorizontal size={17} color={showFilters ? T.green : T.textMuted} />
-            {hasActiveChipFilters && <View style={s.filterDot} />}
-          </TouchableOpacity>
-        </Animated.View>
+        {renderHeader()}
 
         {/* Name search */}
         <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.searchWrap}>
@@ -656,6 +787,7 @@ export default function TrailListScreen() {
   );
 }
 
+
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 12 },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -741,4 +873,19 @@ const s = StyleSheet.create({
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
   emptyBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+
+  mapModeContainer: { flex: 1 },
+  mapTopControls: { paddingHorizontal: 20, paddingBottom: 8, gap: 10 },
+  mapLocationRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  mapLocationText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  mapEmptyState: {
+    flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 32, gap: 8,
+  },
+  mapEmptyStateTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text, textAlign: "center" },
+  mapEmptyStateSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
 });

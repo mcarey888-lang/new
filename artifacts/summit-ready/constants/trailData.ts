@@ -18,6 +18,8 @@ export interface Trail {
   description: string;
   trainingBenefits: TrailBenefit[];
   emoji: string;
+  lat?: number;
+  lng?: number;
   isCustom?: boolean;
   notes?: string;
   createdAt?: string;
