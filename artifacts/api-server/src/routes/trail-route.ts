@@ -14,50 +14,89 @@ function simplifyCoords(coords: Coord[], maxPoints: number): Coord[] {
   return out;
 }
 
-// Greedily chain way segments end-to-end so the polyline forms a
-// recognisable trail rather than a chaotic zigzag of unordered segments.
-// MAX_JUMP_DEG: ~600 m — if the nearest next segment is further away than
-// this, stop stitching (it's a separate disconnected trail section).
-const MAX_JUMP_DEG = 0.006;
+const dist2 = (a: Coord, b: Coord) =>
+  (a.lat - b.lat) ** 2 + (a.lng - b.lng) ** 2;
+
+// Append a way to an in-progress polyline, reversing the way if that gives
+// a closer join to the current tail point.
+function appendWay(out: Coord[], way: Coord[]): void {
+  if (way.length === 0) return;
+  const tail = out[out.length - 1];
+  const seg = dist2(tail, way[way.length - 1]) < dist2(tail, way[0])
+    ? [...way].reverse()
+    : way;
+  const exact = dist2(out[out.length - 1], seg[0]) < 1e-12;
+  out.push(...(exact ? seg.slice(1) : seg));
+}
+
+// Chain OSM relation members in their given order — just reversing individual
+// ways as needed to maintain end-to-end continuity.
+// Splits into new segments when the gap between consecutive ways exceeds
+// MAX_GAP_DEG (~220 m) and returns only the longest continuous segment.
+// This handles long-distance trails that have ferry links, road crossings,
+// or other discontinuities recorded in the OSM relation.
+const MAX_GAP_DEG = 0.002;
+
+function chainRelationMembers(ways: Coord[][]): Coord[] {
+  if (ways.length === 0) return [];
+
+  const segments: Coord[][] = [];
+  let current: Coord[] = [...ways[0]];
+
+  for (let i = 1; i < ways.length; i++) {
+    const tail = current[current.length - 1];
+    const w = ways[i];
+    const gapF = Math.sqrt(dist2(tail, w[0]));
+    const gapR = Math.sqrt(dist2(tail, w[w.length - 1]));
+    if (Math.min(gapF, gapR) <= MAX_GAP_DEG) {
+      appendWay(current, w);
+    } else {
+      segments.push(current);
+      current = [...w];
+    }
+  }
+  segments.push(current);
+
+  // Return the longest continuous segment (handles gaps mid-relation)
+  return segments.reduce(
+    (best, s) => s.length > best.length ? s : best,
+    [] as Coord[]
+  );
+}
+
+// Greedy fallback for standalone named ways (no relation available).
+// MAX_JUMP_DEG: ~220 m — stops stitching if the nearest remaining segment
+// is further away (it's a disconnected section with the same name).
+const MAX_JUMP_DEG = 0.002;
 
 function stitchWays(ways: Coord[][]): Coord[] {
   if (ways.length === 0) return [];
   if (ways.length === 1) return ways[0];
 
-  const dist2 = (a: Coord, b: Coord) =>
-    (a.lat - b.lat) ** 2 + (a.lng - b.lng) ** 2;
-
   const remaining = ways.map(w => [...w]);
-  // Start with the longest segment for best anchoring
+  // Start with the longest segment — better anchor for the greedy chain
   remaining.sort((a, b) => b.length - a.length);
-  const stitched: Coord[] = [...remaining.shift()!];
+  const out: Coord[] = [...remaining.shift()!];
 
   while (remaining.length > 0) {
-    const tail = stitched[stitched.length - 1];
+    const tail = out[out.length - 1];
     let bestIdx = -1;
     let bestDist = Infinity;
-    let reversed = false;
 
     for (let i = 0; i < remaining.length; i++) {
       const w = remaining[i];
       const ds = dist2(tail, w[0]);
       const de = dist2(tail, w[w.length - 1]);
-      if (ds < bestDist) { bestDist = ds; bestIdx = i; reversed = false; }
-      if (de < bestDist) { bestDist = de; bestIdx = i; reversed = true; }
+      const d = Math.min(ds, de);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
     }
 
-    // Stop if the nearest unconnected segment is too far away — it is a
-    // separate trail that happens to share the same OSM name.
     if (Math.sqrt(bestDist) > MAX_JUMP_DEG) break;
 
-    const w = remaining.splice(bestIdx, 1)[0];
-    const seg = reversed ? [...w].reverse() : w;
-    // Skip duplicate start point when segments connect exactly
-    const skip = dist2(stitched[stitched.length - 1], seg[0]) < 1e-12;
-    stitched.push(...(skip ? seg.slice(1) : seg));
+    appendWay(out, remaining.splice(bestIdx, 1)[0]);
   }
 
-  return stitched;
+  return out;
 }
 
 router.post("/trail-route", async (req, res) => {
@@ -140,23 +179,39 @@ out geom;`;
     };
     const data = await overpassRes.json() as { elements: OSMElement[] };
 
-    const allWays: Coord[][] = [];
+    // Separate relation member ways (OSM-ordered) from standalone named ways.
+    // Relations are preferred — their members are already in route order, so
+    // we only need to reverse individual ways to maintain end-to-end continuity.
+    // Standalone ways are the greedy-stitch fallback when no relation is found.
+    let bestRelationCoords: Coord[] = [];
+    const standaloneWays: Coord[][] = [];
 
     for (const el of data.elements) {
-      if (el.type === "way" && el.geometry && el.geometry.length > 1) {
-        allWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
-      } else if (el.type === "relation" && el.members) {
+      if (el.type === "relation" && el.members) {
+        const memberWays: Coord[][] = [];
         for (const m of el.members) {
           if (m.type === "way" && m.geometry && m.geometry.length > 1) {
-            allWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+            memberWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
           }
         }
+        if (memberWays.length > 0) {
+          const chained = chainRelationMembers(memberWays);
+          // Keep the relation with the most points (likely the full route)
+          if (chained.length > bestRelationCoords.length) {
+            bestRelationCoords = chained;
+          }
+        }
+      } else if (el.type === "way" && el.geometry && el.geometry.length > 1) {
+        standaloneWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
       }
     }
 
-    if (allWays.length > 0) {
-      // Stitch segments into a connected polyline before simplifying
-      const stitched = stitchWays(allWays);
+    // Use relation if available; greedy-stitch standalone ways as fallback
+    const stitched = bestRelationCoords.length >= 4
+      ? bestRelationCoords
+      : stitchWays(standaloneWays);
+
+    if (stitched.length > 0) {
       const simplified = simplifyCoords(stitched, 350);
       const avgLat = stitched.reduce((s, c) => s + c.lat, 0) / stitched.length;
       const avgLng = stitched.reduce((s, c) => s + c.lng, 0) / stitched.length;
