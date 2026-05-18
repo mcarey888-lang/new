@@ -79,6 +79,58 @@ const BEST_FOR_LABEL: Record<string, string> = {
   "scenic walk": "📸 Scenic",
 };
 
+const TERRAIN_EXPECT: Record<string, string> = {
+  woodland:
+    "Sheltered paths through trees with generally good ground cover. Trails are usually well-waymarked but can be muddy after rain — waterproof boots are recommended. A calm environment that's ideal for building consistent mileage.",
+  hill:
+    "Open moorland and hillside with sweeping views. Paths can become less distinct on higher ground — a map and compass bearing helps in low visibility. Wind exposure increases with altitude, so bring an extra layer even on warm days.",
+  mountain:
+    "Serious mountain terrain with rocky ridges and open summits. Navigation skills are important and a map and compass are essential. Weather can change very quickly at altitude — always carry an emergency layer and more food than you think you'll need.",
+  coastal:
+    "Cliff paths and beaches with dramatic sea views. Some sections may be exposed and eroded near cliff edges — keep to the marked path. Wind can be strong and persistent; expect the descent to take longer than you'd expect from the distance alone.",
+  road:
+    "Mostly on tarmac, lanes and hard-packed paths — reliable underfoot in all weathers. Lower technical difficulty makes this ideal for building base fitness or maintaining pace. Good option when the hills are in cloud or conditions are poor.",
+  mixed:
+    "A mix of paths, tracks and open ground — conditions vary throughout the route. Expect some rougher sections alongside easier stretches. Be prepared for a full range of underfoot conditions and adjust your pace accordingly.",
+};
+
+const ROUTE_TYPE_NOTE: Record<string, { icon: string; label: string; body: string }> = {
+  loop: {
+    icon: "🔄",
+    label: "Loop route",
+    body: "Returns to your start point — no logistics or shuttle required. Park once and head straight out.",
+  },
+  "out-and-back": {
+    icon: "↔️",
+    label: "Out & back",
+    body: "You retrace your steps on the return leg. The same path both ways, which often reveals views you missed on the way out.",
+  },
+  "point-to-point": {
+    icon: "→",
+    label: "Point-to-point",
+    body: "Starts and finishes at different locations. You'll need a second car at the end, or a return bus or taxi arranged in advance.",
+  },
+};
+
+function routeEffort(distance: number, elevationGain: number): { label: string; color: string } {
+  const score = distance + elevationGain / 80;
+  if (score < 12) return { label: "Low", color: T.green };
+  if (score < 24) return { label: "Moderate", color: T.orange };
+  return { label: "High", color: "#ef4444" };
+}
+
+function routeGradient(distance: number, elevationGain: number): string {
+  const mPerKm = elevationGain / Math.max(distance, 1);
+  if (mPerKm < 15) return "Gentle";
+  if (mPerKm < 30) return "Rolling";
+  if (mPerKm < 50) return "Hilly";
+  return "Steep";
+}
+
+function estimatedCalories(distance: number, elevationGain: number): number {
+  return Math.round((distance * 58 + elevationGain * 1.5) / 10) * 10;
+}
+
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
@@ -371,10 +423,52 @@ export default function TrailDetailScreen() {
           ))}
         </Animated.View>
 
-        {/* Description */}
+        {/* About this route */}
         <Animated.View entering={FadeInDown.delay(110).duration(400)} style={s.section}>
           <Text style={s.sectionTitle}>About this route</Text>
           <Text style={s.description}>{trail.description}</Text>
+
+          {/* Route detail chips */}
+          {(() => {
+            const effort = routeEffort(trail.distance, trail.elevationGain);
+            const gradient = routeGradient(trail.distance, trail.elevationGain);
+            const kcal = estimatedCalories(trail.distance, trail.elevationGain);
+            return (
+              <View style={s.routeDetailsRow}>
+                <View style={s.routeDetailCell}>
+                  <Text style={[s.routeDetailVal, { color: effort.color }]}>{effort.label}</Text>
+                  <Text style={s.routeDetailKey}>Effort</Text>
+                </View>
+                <View style={s.routeDetailDivider} />
+                <View style={s.routeDetailCell}>
+                  <Text style={s.routeDetailVal}>{gradient}</Text>
+                  <Text style={s.routeDetailKey}>Gradient</Text>
+                </View>
+                <View style={s.routeDetailDivider} />
+                <View style={s.routeDetailCell}>
+                  <Text style={s.routeDetailVal}>~{kcal}</Text>
+                  <Text style={s.routeDetailKey}>kcal est.</Text>
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* What to expect */}
+          <View style={s.expectCard}>
+            <Text style={s.expectTitle}>{TERRAIN_EMOJI[trail.terrain]} What to expect</Text>
+            <Text style={s.expectBody}>{TERRAIN_EXPECT[trail.terrain]}</Text>
+          </View>
+
+          {/* Route type note */}
+          {(() => {
+            const note = ROUTE_TYPE_NOTE[trail.routeType];
+            return note ? (
+              <View style={s.routeTypeNote}>
+                <Text style={s.routeTypeNoteIcon}>{note.icon} {note.label}</Text>
+                <Text style={s.routeTypeNoteBody}>{note.body}</Text>
+              </View>
+            ) : null;
+          })()}
         </Animated.View>
 
         {/* Start point & parking */}
@@ -631,6 +725,28 @@ const s = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
   description: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 22 },
+  routeDetailsRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    paddingVertical: 14,
+  },
+  routeDetailCell: { flex: 1, alignItems: "center", gap: 4 },
+  routeDetailVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
+  routeDetailKey: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  routeDetailDivider: { width: 1, height: 30, backgroundColor: T.border },
+  expectCard: {
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    padding: 14, gap: 6,
+  },
+  expectTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  expectBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 },
+  routeTypeNote: {
+    flexDirection: "row", flexWrap: "wrap", gap: 4,
+    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  routeTypeNoteIcon: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.text, marginRight: 2 },
+  routeTypeNoteBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18, flexShrink: 1 },
   benefitsGrid: { gap: 8 },
   benefitBadge: {
     flexDirection: "row", alignItems: "center", gap: 10,
