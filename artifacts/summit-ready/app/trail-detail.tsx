@@ -127,6 +127,7 @@ export default function TrailDetailScreen() {
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
   const [seededTrails, setSeededTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [seededLoaded, setSeededLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [mapImageError, setMapImageError] = useState(false);
   const [startPoint, setStartPoint] = useState<TrailStartPoint | null>(null);
@@ -138,7 +139,10 @@ export default function TrailDetailScreen() {
       setLiveTrails(trails);
       setCacheLoaded(true);
     });
-    loadSeededTrails().then(setSeededTrails).catch(() => {});
+    loadSeededTrails()
+      .then(setSeededTrails)
+      .catch(() => {})
+      .finally(() => setSeededLoaded(true));
   }, []);
 
   const trail: Trail | null = useMemo(() => {
@@ -178,7 +182,9 @@ export default function TrailDetailScreen() {
     return trail.elevationGain >= target * 0.5 && trail.elevationGain <= target * 2.5;
   }, [currentWeek, trail]);
 
-  if (!cacheLoaded) {
+  // Keep the spinner until: local cache has loaded AND (trail found OR seeded trails
+  // have also finished loading). Prevents "Trail not found" flash for osm_* trails.
+  if (!cacheLoaded || (trail === null && !seededLoaded)) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
