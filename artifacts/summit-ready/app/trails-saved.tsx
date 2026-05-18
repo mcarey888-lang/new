@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
-import { SAMPLE_TRAILS } from "@/constants/trailData";
+import { CURATED_HILLS } from "@/constants/trailData";
 import type { Trail } from "@/constants/trailData";
 import { TrailCard } from "@/components/TrailCard";
 import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
@@ -22,7 +22,7 @@ export default function TrailsSavedScreen() {
   }, []);
 
   const saved = useMemo(() => {
-    const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
+    const all = [...customRoutes, ...liveTrails, ...CURATED_HILLS];
     return all.filter((t) => savedTrailIds.includes(t.id));
   }, [savedTrailIds, customRoutes, liveTrails]);
 

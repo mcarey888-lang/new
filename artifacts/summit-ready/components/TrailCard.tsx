@@ -44,7 +44,7 @@ export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress,
 
   const mapUri = mapError
     ? null
-    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=600&height=200&distance=${trail.distance}${trail.lat != null ? `&trailLat=${trail.lat}&trailLng=${trail.lng}` : ""}`;
+    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=600&height=200&distance=${trail.distance}&trailLat=${trail.lat}&trailLng=${trail.lng}`;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={[s.card, compact && s.cardCompact]}>
@@ -55,7 +55,7 @@ export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress,
         </View>
       )}
 
-      {/* Static map thumbnail */}
+      {/* Mapbox map thumbnail */}
       {!compact && (
         <View style={s.mapContainer}>
           {mapUri ? (
@@ -88,13 +88,8 @@ export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress,
           </View>
         )}
         <View style={{ flex: 1, gap: 2 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text style={s.name} numberOfLines={1}>{trail.name}</Text>
-            {trail.isCustom && (
-              <View style={s.customBadge}><Text style={s.customBadgeText}>Custom</Text></View>
-            )}
-          </View>
-          <Text style={s.location} numberOfLines={1}>{trail.location}</Text>
+          <Text style={s.name} numberOfLines={1}>{trail.name}</Text>
+          <Text style={s.location} numberOfLines={1}>{trail.region} · {trail.location.split(",")[0]}</Text>
         </View>
         {compact && (
           <View style={{ alignItems: "flex-end", gap: 4 }}>
@@ -159,8 +154,6 @@ const s = StyleSheet.create({
   location: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   diffBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, flexShrink: 0 },
   diffText: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  customBadge: { backgroundColor: T.purpleDim, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  customBadgeText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: T.purple },
   meta: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14 },
   metaTag: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "capitalize" },
   metaDot: { fontSize: 11, color: T.textDim },
