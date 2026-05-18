@@ -116,9 +116,16 @@ async function geocodeLocation(location: string): Promise<Coord> {
 }
 
 // ── OS Maps tile stitching ────────────────────────────────────────────────────
-// Fetches a grid of OS Maps Outdoor raster tiles and composites them into a
-// single PNG image centred on the trail location. No synthetic route overlay —
-// OS Outdoor tiles show every footpath, contour and stile directly.
+// Fetches a 3×1 horizontal strip of OS Maps Outdoor tiles and composites them
+// into a single PNG cropped to the target thumbnail dimensions.
+//
+// Design decisions:
+//  - 3 tiles wide × 1 tile tall  → only 3 HTTP fetches per thumbnail (vs 6 for
+//    a 3×2 grid). At 600×200 the thumbnail only needs ~200 px of height anyway;
+//    a single tile row (256 px) covers that comfortably.
+//  - In-memory PNG cache keyed by tile coordinates + zoom + color. When 8+
+//    trails load simultaneously the first request stitches; all later requests
+//    for the same trail return from cache with zero tile fetches.
 
 function latLngToTileXY(lat: number, lng: number, z: number): { x: number; y: number } {
   const x = Math.floor((lng + 180) / 360 * Math.pow(2, z));
@@ -133,7 +140,7 @@ async function fetchTile(url: string): Promise<Buffer | null> {
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "SummitReady/1.0" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
     return Buffer.from(await res.arrayBuffer());
@@ -148,6 +155,15 @@ function pickZoom(distanceKm: number | undefined): number {
   return 13;
 }
 
+// PNG cache: max 200 entries (each ~50–150 KB → up to ~30 MB). Evict oldest
+// when full so the server doesn't grow unbounded.
+const thumbnailCache = new Map<string, Buffer>();
+const CACHE_MAX = 200;
+
+// In-flight dedup: if two requests for the same key arrive simultaneously,
+// the second one awaits the same Promise instead of issuing duplicate tile fetches.
+const inFlight = new Map<string, Promise<Buffer | null>>();
+
 async function buildOSMapsThumbnail(opts: {
   center: Coord;
   width: number;
@@ -161,75 +177,96 @@ async function buildOSMapsThumbnail(opts: {
   const centerTile = latLngToTileXY(center.lat, center.lng, zoom);
   const TILE = 256;
 
-  // 3 tiles wide × 2 tiles tall gives enough coverage at all target zoom levels
+  // 3 tiles wide × 1 tile tall (768 × 256 stitched image)
   const COLS = 3;
-  const ROWS = 2;
-  const startX = centerTile.x - Math.floor(COLS / 2);
-  const startY = centerTile.y - Math.floor(ROWS / 2);
+  const startX = centerTile.x - 1; // center tile in the middle column
+  const tileY  = centerTile.y;
 
-  // Fetch all tiles in parallel
-  const tileUrls: string[][] = [];
-  for (let row = 0; row < ROWS; row++) {
-    const rowUrls: string[] = [];
-    for (let col = 0; col < COLS; col++) {
-      rowUrls.push(
-        `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/${zoom}/${startX + col}/${startY + row}.png?key=${osKey}`,
+  const cacheKey = `${zoom}:${startX}:${tileY}:${width}x${height}:${color}`;
+
+  // Return from cache immediately if available
+  const cached = thumbnailCache.get(cacheKey);
+  if (cached) return cached;
+
+  // Coalesce duplicate simultaneous requests
+  const existing = inFlight.get(cacheKey);
+  if (existing) return existing;
+
+  const work = (async (): Promise<Buffer | null> => {
+    try {
+      // Fetch 3 horizontal tiles in parallel
+      const tileBuffers = await Promise.all(
+        Array.from({ length: COLS }, (_, col) =>
+          fetchTile(
+            `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/${zoom}/${startX + col}/${tileY}.png?key=${osKey}`,
+          ),
+        ),
       );
-    }
-    tileUrls.push(rowUrls);
-  }
 
-  const tileBuffers = await Promise.all(
-    tileUrls.map(row => Promise.all(row.map(fetchTile))),
-  );
+      if (tileBuffers.some(t => t === null)) return null;
 
-  // If any tile failed to load, fall through to Mapbox fallback
-  if (tileBuffers.some(row => row.some(t => t === null))) return null;
+      const totalW = COLS * TILE; // 768
+      const CH = 4;               // RGBA channels
 
-  const totalW = COLS * TILE;
-  const totalH = ROWS * TILE;
+      // Decode each 256×256 tile to raw RGBA pixels
+      const rawTiles = await Promise.all(
+        (tileBuffers as Buffer[]).map(buf => sharp(buf).ensureAlpha().raw().toBuffer()),
+      );
 
-  // Build sharp composite list
-  const composites: sharp.OverlayOptions[] = [];
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      composites.push({
-        input: tileBuffers[row][col] as Buffer,
-        left: col * TILE,
-        top:  row * TILE,
-      });
-    }
-  }
+      // Row-interleave the three tiles into one 768×256 RGBA buffer.
+      // sharp's composite() has dimension constraints that break when using
+      // create+composite in v0.34; raw pixel stitching avoids them entirely.
+      const stitchedRaw = Buffer.alloc(totalW * TILE * CH);
+      for (let row = 0; row < TILE; row++) {
+        for (let col = 0; col < COLS; col++) {
+          rawTiles[col].copy(
+            stitchedRaw,
+            (row * totalW + col * TILE) * CH,
+            row * TILE * CH,
+            (row + 1) * TILE * CH,
+          );
+        }
+      }
 
-  // Coloured pin dot at the trail centre (SVG circle)
-  const pinX = Math.round(totalW / 2) - 9;
-  const pinY = Math.round(totalH / 2) - 9;
-  const pinColor = color.startsWith("#") ? color : `#${color}`;
-  const pinSvg = Buffer.from(
-    `<svg width="18" height="18" xmlns="http://www.w3.org/2000/svg">` +
-    `<circle cx="9" cy="9" r="7" fill="${pinColor}" stroke="white" stroke-width="2.5"/>` +
-    `</svg>`,
-  );
-  composites.push({ input: pinSvg, left: pinX, top: pinY });
+      // Crop a centred 600×200 strip, add a coloured pin dot, encode to PNG
+      const cropLeft = Math.max(0, Math.round((totalW - width)  / 2));
+      const cropTop  = Math.max(0, Math.round((TILE  - height) / 2));
+      const cropW    = Math.min(width,  totalW - cropLeft);
+      const cropH    = Math.min(height, TILE   - cropTop);
 
-  try {
-    // Stitch tiles + pin, then crop a centred strip to the target dimensions
-    const cropLeft = Math.max(0, Math.round((totalW - width)  / 2));
-    const cropTop  = Math.max(0, Math.round((totalH - height) / 2));
-    const cropW    = Math.min(width,  totalW - cropLeft);
-    const cropH    = Math.min(height, totalH - cropTop);
+      const pinColor = color.startsWith("#") ? color : `#${color}`;
+      const pinSvg = Buffer.from(
+        `<svg width="18" height="18" xmlns="http://www.w3.org/2000/svg">` +
+        `<circle cx="9" cy="9" r="7" fill="${pinColor}" stroke="white" stroke-width="2.5"/>` +
+        `</svg>`,
+      );
+      // Pin centred on crop area (trail centre = centre of stitched image)
+      const pinLeft = Math.round(cropW / 2) - 9;
+      const pinTop  = Math.round(cropH / 2) - 9;
 
-    const stitched = await sharp({
-      create: { width: totalW, height: totalH, channels: 4, background: { r: 220, g: 220, b: 210, alpha: 1 } },
-    })
-      .composite(composites)
-      .extract({ left: cropLeft, top: cropTop, width: cropW, height: cropH })
-      .resize(width, height, { fit: "cover" })
-      .png()
-      .toBuffer();
+      const png = await sharp(stitchedRaw, {
+        raw: { width: totalW, height: TILE, channels: CH },
+      })
+        .extract({ left: cropLeft, top: cropTop, width: cropW, height: cropH })
+        .composite([{ input: pinSvg, left: pinLeft, top: pinTop }])
+        .resize(width, height, { fit: "cover" })
+        .png()
+        .toBuffer();
 
-    return stitched;
-  } catch { return null; }
+      // Store in cache, evict oldest entry if over limit
+      if (thumbnailCache.size >= CACHE_MAX) {
+        thumbnailCache.delete(thumbnailCache.keys().next().value as string);
+      }
+      thumbnailCache.set(cacheKey, png);
+
+      return png;
+    } catch { return null; }
+  })();
+
+  inFlight.set(cacheKey, work);
+  const result = await work;
+  inFlight.delete(cacheKey);
+  return result;
 }
 
 // ── Mapbox Directions route (fallback) ────────────────────────────────────────
