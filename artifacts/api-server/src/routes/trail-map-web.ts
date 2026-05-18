@@ -5,7 +5,6 @@ const router: IRouter = Router();
 interface Coord { lat: number; lng: number }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
-// Used only when the AI did not return lat/lng for the trail.
 
 const locationCache = new Map<string, Coord>();
 
@@ -76,93 +75,36 @@ async function geocodeLocation(location: string): Promise<Coord> {
   return result;
 }
 
-// ── Mapbox walking route ──────────────────────────────────────────────────────
-// Generates a realistic loop walk by routing between triangle waypoints using
-// the Mapbox walking-directions engine, which follows actual OSM footpaths.
-// No Overpass needed — Mapbox routing snaps waypoints to real paths.
+// ── Pick zoom level based on trail distance ───────────────────────────────────
 
-function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
-  const dLat = radiusKm / 111.32;
-  const dLng = radiusKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
-  const angles = [0, 120, 240];
-  const radii  = [1.0, 0.95, 1.05];
-  const pts: Array<[number, number]> = [[center.lng, center.lat]];
-  for (let i = 0; i < angles.length; i++) {
-    const rad = (angles[i] * Math.PI) / 180;
-    pts.push([
-      center.lng + dLng * Math.sin(rad) * radii[i],
-      center.lat + dLat * Math.cos(rad) * radii[i],
-    ]);
-  }
-  pts.push([center.lng, center.lat]);
-  return pts;
+function pickZoom(distanceKm: number | undefined): number {
+  if (!distanceKm || distanceKm <= 0) return 13;
+  if (distanceKm > 20) return 12;
+  if (distanceKm < 3)  return 14;
+  return 13;
 }
 
-async function fetchMapboxRoute(
-  center: Coord,
-  radiusKm: number,
-  token: string,
-): Promise<Array<[number, number]> | null> {
-  const waypoints = loopWaypoints(center, radiusKm);
-  const coordStr = waypoints.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join(";");
-  const url =
-    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordStr}` +
-    `?geometries=geojson&overview=full&access_token=${token}`;
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "SummitReady/1.0" },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as {
-      routes?: Array<{ geometry?: { coordinates?: Array<[number, number]> } }>;
-    };
-    const coords = data.routes?.[0]?.geometry?.coordinates;
-    if (!coords || coords.length < 2) return null;
-    return coords;
-  } catch { return null; }
-}
-
-function estimateRadiusKm(name: string, distanceKm?: number): number {
-  if (distanceKm && distanceKm > 0) {
-    return Math.min(3.5, Math.max(0.5, distanceKm / 8.48));
-  }
-  const n = name.toLowerCase();
-  if (n.includes("horseshoe") || n.includes("ridge") || n.includes("traverse")) return 2.2;
-  if (n.includes("great") || n.includes("long") || n.includes("fell")) return 2.0;
-  if (n.includes("summit") || n.includes("mountain") || n.includes("munro")) return 1.8;
-  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.2;
-  if (n.includes("easy") || n.includes("short") || n.includes("gentle")) return 0.8;
-  return 1.2;
-}
-
-// ── HTML template (Leaflet + OS Maps raster tiles) ───────────────────────────
-// Using Leaflet instead of Mapbox GL JS — Leaflet is purpose-built for raster
-// tile layers, needs no token validation, and renders OS Maps tiles reliably.
-// The Mapbox Directions route is generated server-side and passed as coordinates.
+// ── HTML template — Leaflet + OS Maps Outdoor tiles only ─────────────────────
+// No synthetic route overlay. OS Outdoor already draws every footpath,
+// bridleway, summit, contour and stile — the user can read the actual terrain.
 
 function buildHtml(opts: {
-  token: string;
   osKey: string | undefined;
   trailName: string;
   color: string;
-  routeCoords: Array<[number, number]>;
   center: Coord;
+  zoom: number;
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { osKey, trailName, color, routeCoords, center, userLat, userLng } = opts;
+  const { osKey, trailName, color, center, zoom, userLat, userLng } = opts;
 
-  // Leaflet expects [lat, lng]; our coords are [lng, lat] from Mapbox Directions.
-  const leafletCoords = routeCoords.map(([lng, lat]) => [lat, lng]);
-  const coordsJson = JSON.stringify(leafletCoords);
   const safeTitle = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const jsName = JSON.stringify(trailName);
-  const initLat = userLat !== null ? userLat.toFixed(6) : "null";
-  const initLng = userLng !== null ? userLng.toFixed(6) : "null";
+  const jsName    = JSON.stringify(trailName);
+  const initLat   = userLat !== null ? userLat.toFixed(6) : "null";
+  const initLng   = userLng !== null ? userLng.toFixed(6) : "null";
   const safeColor = "#" + color;
 
-  // Tile source — OS Maps Outdoor when key is present, OSM fallback otherwise.
   const tileUrl = osKey
     ? `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`
     : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -192,20 +134,31 @@ html,body{height:100%;background:#1a1a1a;overflow:hidden}
 <body>
 <div id="map"></div>
 <script>
-var routeCoords=${coordsJson};
 var color=${JSON.stringify(safeColor)};
 var trailName=${jsName};
-var mapCenter=[${center.lat},${center.lng}];
+var mapCenter=[${center.lat.toFixed(6)},${center.lng.toFixed(6)}];
+var initZoom=${zoom};
 var initUserLat=${initLat};
 var initUserLng=${initLng};
 
-var map=L.map("map",{zoomControl:true,attributionControl:true}).setView(mapCenter,13);
+var map=L.map("map",{zoomControl:true,attributionControl:true}).setView(mapCenter,initZoom);
 
 L.tileLayer(${JSON.stringify(tileUrl)},{
   maxZoom:20,
   attribution:${JSON.stringify(attribution)}
 }).addTo(map);
 
+// Trail location pin
+L.circleMarker(mapCenter,{
+  radius:9,
+  fillColor:color,
+  color:"#fff",
+  weight:2.5,
+  opacity:1,
+  fillOpacity:1
+}).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
+
+// User location dot (updated from native via postMessage)
 var userMarker=null;
 
 window.updateUserLocation=function(lat,lng){
@@ -219,22 +172,6 @@ window.updateUserLocation=function(lat,lng){
     }).addTo(map);
   }
 };
-
-if(routeCoords&&routeCoords.length>1){
-  // White outline for contrast against light OS map background
-  L.polyline(routeCoords,{color:"#fff",weight:7,opacity:0.5,smoothFactor:1}).addTo(map);
-  // Coloured route line
-  var routeLine=L.polyline(routeCoords,{color:color,weight:5,opacity:0.95,smoothFactor:1}).addTo(map);
-
-  // Start marker
-  var startLatLng=routeCoords[0];
-  L.circleMarker(startLatLng,{
-    radius:7,fillColor:color,color:"#fff",weight:2,opacity:1,fillOpacity:1
-  }).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
-
-  // Fit map to route with padding
-  map.fitBounds(routeLine.getBounds(),{padding:[60,60],maxZoom:14});
-}
 
 if(initUserLat!==null&&initUserLng!==null){
   window.updateUserLocation(initUserLat,initUserLng);
@@ -254,8 +191,6 @@ router.get("/trail-map-web", async (req, res) => {
     trailLat, trailLng,
   } = req.query as Record<string, string>;
 
-  const token = process.env.MAPBOX_TOKEN;
-  if (!token) { res.status(503).send("Mapbox token not configured"); return; }
   if (!name || name.trim().length < 2) { res.status(400).send("name required"); return; }
 
   const osKey = process.env.OS_MAPS_KEY || undefined;
@@ -270,10 +205,8 @@ router.get("/trail-map-web", async (req, res) => {
     parsedUserLng >= -180 && parsedUserLng <= 180;
 
   const distanceKm = distance ? parseFloat(distance) : undefined;
-  const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
 
-  // Use AI-provided trail coordinates as the routing centre when available —
-  // this is far more accurate than geocoding the location string.
+  // Resolve trail centre: prefer AI-provided coords over geocoding
   let center: Coord;
   const parsedTrailLat = trailLat ? parseFloat(trailLat) : NaN;
   const parsedTrailLng = trailLng ? parseFloat(trailLng) : NaN;
@@ -284,16 +217,14 @@ router.get("/trail-map-web", async (req, res) => {
     center = trailCenter(base, name.trim());
   }
 
-  // Mapbox walking directions follow real OSM footpaths — reliable and fast.
-  const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
+  const zoom = pickZoom(isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
 
   const html = buildHtml({
-    token,
     osKey,
     trailName: name.trim(),
     color: safeColor,
-    routeCoords: routeCoords ?? [],
     center,
+    zoom,
     userLat: validUserCoords ? parsedUserLat : null,
     userLng: validUserCoords ? parsedUserLng : null,
   });
