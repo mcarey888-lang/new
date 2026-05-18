@@ -132,8 +132,21 @@ html,body{height:100%;background:#1a1a1a;overflow:hidden}
   position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
   background:rgba(0,0,0,0.65);color:rgba(255,255,255,0.8);
   font-family:system-ui,sans-serif;font-size:12px;padding:6px 14px;
-  border-radius:20px;z-index:1000;pointer-events:none;
+  border-radius:20px;z-index:1000;pointer-events:none;white-space:nowrap;
 }
+#no-route{
+  display:none;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(15,15,15,0.88);border:1px solid rgba(255,255,255,0.12);
+  font-family:system-ui,sans-serif;padding:12px 16px;border-radius:14px;
+  z-index:1000;text-align:center;min-width:220px;
+}
+#no-route p{color:rgba(255,255,255,0.55);font-size:11px;margin-bottom:10px}
+.ext-btn{
+  display:inline-block;padding:7px 14px;border-radius:20px;font-size:12px;
+  font-weight:600;text-decoration:none;color:#fff;margin:0 4px;
+}
+.btn-at{background:#3ddc84;color:#000}
+.btn-km{background:#6ea8fe;color:#000}
 .leaflet-control-zoom a{background:rgba(20,20,20,0.88)!important;color:#fff!important;border-color:rgba(255,255,255,0.15)!important}
 .leaflet-control-zoom a:hover{background:rgba(40,40,40,0.95)!important}
 .leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.5)!important}
@@ -144,6 +157,11 @@ html,body{height:100%;background:#1a1a1a;overflow:hidden}
 <body>
 <div id="map"></div>
 <div id="loading">Loading route…</div>
+<div id="no-route">
+  <p>No route data — find it on:</p>
+  <a id="btn-at" class="ext-btn btn-at" target="_blank" rel="noopener">AllTrails</a>
+  <a id="btn-km" class="ext-btn btn-km" target="_blank" rel="noopener">Komoot</a>
+</div>
 <script>
 var color=${JSON.stringify(safeColor)};
 var trailName=${jsName};
@@ -166,69 +184,49 @@ var centerPin=L.circleMarker(mapCenter,{
   radius:8,fillColor:color,color:"#fff",weight:2.5,opacity:1,fillOpacity:1
 }).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
 
-// ── Fetch route geometry from the trail-route endpoint ───────────────────────
-var routeUrl=${JSON.stringify(apiOrigin + "/api/trail-route")};
-fetch(routeUrl,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-    name:trailName,
-    location:trailLocation,
-    lat:mapCenter[0],
-    lng:mapCenter[1],
-    trailId:trailId
+// ── Route display: OSM-backed trails get a polyline; others get external links ─
+if(trailId&&trailId.startsWith("osm_")){
+  // We have a seeded OSM trail — fetch and draw the route geometry
+  document.getElementById("loading").style.display="block";
+  var routeUrl=${JSON.stringify(apiOrigin + "/api/trail-route")};
+  fetch(routeUrl,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:trailName,location:trailLocation,lat:mapCenter[0],lng:mapCenter[1],trailId:trailId})
   })
-})
-.then(function(r){
-  if(!r.ok){throw new Error("HTTP "+r.status);}
-  return r.json();
-})
-.then(function(data){
-  var el=document.getElementById("loading");
-  if(!data.found||!data.coords||data.coords.length<2){
-    el.textContent="Route not found";
-    setTimeout(function(){el.style.display="none";},2500);
-    return;
-  }
-  el.style.display="none";
-
-  var latlngs=data.coords.map(function(c){return[c.lat,c.lng];});
-
-  // Glow shadow beneath the route line
-  L.polyline(latlngs,{
-    color:"rgba(0,0,0,0.35)",weight:8,lineCap:"round",lineJoin:"round",
-    interactive:false
-  }).addTo(map);
-
-  // Main coloured route line
-  L.polyline(latlngs,{
-    color:color,weight:4,opacity:0.92,lineCap:"round",lineJoin:"round",
-    interactive:false
-  }).addTo(map);
-
-  // Start marker
-  L.circleMarker(latlngs[0],{
-    radius:7,fillColor:"#fff",color:color,weight:3,opacity:1,fillOpacity:1
-  }).bindTooltip("Start",{permanent:false,direction:"top"}).addTo(map);
-
-  // End marker (only if not a loop — i.e. start and end differ by >50 m)
-  var s=latlngs[0],e=latlngs[latlngs.length-1];
-  var dlat=s[0]-e[0],dlng=s[1]-e[1];
-  if(Math.sqrt(dlat*dlat+dlng*dlng)>0.0005){
-    L.circleMarker(e,{
-      radius:7,fillColor:color,color:"#fff",weight:3,opacity:1,fillOpacity:1
-    }).bindTooltip("End",{permanent:false,direction:"top"}).addTo(map);
-  }
-
-  // Remove fallback pin and fit to route
-  map.removeLayer(centerPin);
-  map.fitBounds(L.latLngBounds(latlngs),{padding:[32,32],maxZoom:15});
-})
-.catch(function(err){
-  var el=document.getElementById("loading");
-  el.textContent="Route error: "+(err&&err.message?err.message:"network");
-  setTimeout(function(){el.style.display="none";},4000);
-});
+  .then(function(r){if(!r.ok){throw new Error("HTTP "+r.status);}return r.json();})
+  .then(function(data){
+    document.getElementById("loading").style.display="none";
+    if(!data.found||!data.coords||data.coords.length<2){
+      document.getElementById("loading").textContent="Route not found";
+      document.getElementById("loading").style.display="block";
+      setTimeout(function(){document.getElementById("loading").style.display="none";},2500);
+      return;
+    }
+    var latlngs=data.coords.map(function(c){return[c.lat,c.lng];});
+    L.polyline(latlngs,{color:"rgba(0,0,0,0.35)",weight:8,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
+    L.polyline(latlngs,{color:color,weight:4,opacity:0.92,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
+    L.circleMarker(latlngs[0],{radius:7,fillColor:"#fff",color:color,weight:3,opacity:1,fillOpacity:1}).bindTooltip("Start",{permanent:false,direction:"top"}).addTo(map);
+    var s=latlngs[0],e=latlngs[latlngs.length-1];
+    if(Math.sqrt((s[0]-e[0])*(s[0]-e[0])+(s[1]-e[1])*(s[1]-e[1]))>0.0005){
+      L.circleMarker(e,{radius:7,fillColor:color,color:"#fff",weight:3,opacity:1,fillOpacity:1}).bindTooltip("End",{permanent:false,direction:"top"}).addTo(map);
+    }
+    map.removeLayer(centerPin);
+    map.fitBounds(L.latLngBounds(latlngs),{padding:[32,32],maxZoom:15});
+  })
+  .catch(function(err){
+    var el=document.getElementById("loading");
+    el.textContent="Route error: "+(err&&err.message?err.message:"network");
+    setTimeout(function(){el.style.display="none";},4000);
+  });
+} else {
+  // No OSM route data — show the terrain map and external link buttons
+  document.getElementById("loading").style.display="none";
+  var q=encodeURIComponent(trailName);
+  document.getElementById("btn-at").href="https://www.alltrails.com/search?q="+q;
+  document.getElementById("btn-km").href="https://www.komoot.com/discover/walks-and-hikes?sport=hike&keywords="+q;
+  document.getElementById("no-route").style.display="block";
+}
 
 // ── User location dot (updated from native via postMessage) ──────────────────
 var userMarker=null;
