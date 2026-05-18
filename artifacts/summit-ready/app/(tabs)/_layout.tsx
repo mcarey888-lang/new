@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Home, Calendar, PenLine, Triangle, User, Map, MapPin } from "lucide-react-native";
+import { Home, Calendar, PenLine, Compass, User, Map } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -85,20 +85,19 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* ── Shared tabs ── */}
       <Tabs.Screen
-        name="hikes"
+        name="trails"
         options={{
-          title: "Hikes",
-          href: isSummit ? null : undefined,
+          title: "Trails",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <MapPin size={20} color={color} />
+              <Compass size={20} color={color} />
             </View>
           ),
         }}
       />
-
-      {/* ── Shared tabs ── */}
       <Tabs.Screen
         name="log"
         options={{
@@ -111,16 +110,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="hikes"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="hills"
-        options={{
-          title: "Hills",
-          href: isExplore ? null : undefined,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Triangle size={20} color={color} />
-            </View>
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="account"

@@ -109,19 +109,19 @@ function SuggestedChallenge({ hikes }: { hikes: ExploreHike[] }) {
     desc = "Head out on any local trail and log it — every adventure counts.";
     btnLabel = "Browse hikes";
     btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/hikes");
+    onPress = () => router.push("/(tabs)/trails");
   } else if (count < 3) {
     title = `Complete ${3 - count} more hike${3 - count > 1 ? "s" : ""}`;
     desc = "Build your foundation with a few more local outings before taking on bigger terrain.";
-    btnLabel = "View hikes";
+    btnLabel = "View trails";
     btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/hikes");
+    onPress = () => router.push("/(tabs)/trails");
   } else if (totalElev < 1000) {
     title = `${1000 - totalElev}m to the 1000m badge`;
     desc = `You've climbed ${totalElev}m so far. Find a hillier route to keep gaining altitude.`;
     btnLabel = "Find a bigger hill";
     btnColor = ["#FF9030", "#E07820"];
-    onPress = () => router.push("/(tabs)/hikes");
+    onPress = () => router.push("/(tabs)/trails");
   } else if (count >= 5) {
     title = "Ready for a summit goal?";
     desc = `${count} hikes and ${totalElev}m climbed — you have the base to train for a real summit.`;
@@ -131,9 +131,9 @@ function SuggestedChallenge({ hikes }: { hikes: ExploreHike[] }) {
   } else {
     title = "Try a bigger hill challenge";
     desc = "You've built solid base fitness. Look for a route with 400m+ elevation gain.";
-    btnLabel = "Browse hikes";
+    btnLabel = "Browse trails";
     btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/hikes");
+    onPress = () => router.push("/(tabs)/trails");
   }
 
   return (
@@ -259,7 +259,7 @@ export default function ExploreScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(300).duration(600)}>
-          <TouchableOpacity style={s.logBtn} onPress={() => router.push("/(tabs)/hikes")} activeOpacity={0.85}>
+          <TouchableOpacity style={s.logBtn} onPress={() => router.push("/(tabs)/trails")} activeOpacity={0.85}>
             <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.logBtnGrad}>
               <TrendingUp size={19} color="#fff" />
               <Text style={s.logBtnText}>Log a hike</Text>
