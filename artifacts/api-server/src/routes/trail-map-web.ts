@@ -4,7 +4,8 @@ const router: IRouter = Router();
 
 interface Coord { lat: number; lng: number }
 
-// ── Geocoding (same region-only strategy as trail-map-image) ─────────────────
+// ── Geocoding ─────────────────────────────────────────────────────────────────
+// Used only when the AI did not return lat/lng for the trail.
 
 const locationCache = new Map<string, Coord>();
 
@@ -26,18 +27,12 @@ const UK_REGIONS: Record<string, Coord> = {
   "cotswolds":        { lat: 51.853, lng: -1.809 },
 };
 
-/** djb2 hash of s → float in [0, 1). Deterministic across restarts. */
 function nameHash(s: string): number {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
   return (h >>> 0) / 0x100000000;
 }
 
-/**
- * Offset the region centre by a deterministic amount derived from the trail
- * name (up to ±1.5 km per axis).  Guarantees a unique map position for every
- * trail even when multiple trails share the same geocoded town/region centre.
- */
 function trailCenter(base: Coord, trailName: string): Coord {
   const h1 = nameHash(trailName);
   const h2 = nameHash(trailName + "\x01");
@@ -81,160 +76,14 @@ async function geocodeLocation(location: string): Promise<Coord> {
   return result;
 }
 
-// ── Overpass API (real OSM hiking route data) ─────────────────────────────────
-//
-// Query for hiking route relations near the geocoded location centre.
-// Uses proximity only — no name-matching — so well-known routes in the area
-// are found reliably regardless of how the AI named the trail.
-//
-// Only used by the interactive map (trail-map-web).  Card thumbnails use the
-// synthetic Mapbox loop for speed since 8+ load in parallel on the trail list.
-
-/** Geographic midpoint of a GeoJSON [lng, lat] array. */
-function midpointWeb(coords: Array<[number, number]>): [number, number] {
-  const n = coords.length;
-  return [
-    coords.reduce((s, c) => s + c[0], 0) / n,
-    coords.reduce((s, c) => s + c[1], 0) / n,
-  ];
-}
-
-/** Thin an array to at most maxPts entries, keeping first and last. */
-function thinCoords(coords: Array<[number, number]>, maxPts: number): Array<[number, number]> {
-  if (coords.length <= maxPts) return coords;
-  const step = Math.ceil(coords.length / maxPts);
-  const out: Array<[number, number]> = [];
-  for (let i = 0; i < coords.length; i += step) out.push(coords[i]);
-  const last = coords[coords.length - 1];
-  if (out[out.length - 1] !== last) out.push(last);
-  return out;
-}
-
-/**
- * Greedy chain-sort: arrange OSM way segments so the end of each segment
- * connects to the start of the next (reversing individual ways as needed).
- * This eliminates the crossing lines you get from naively concatenating
- * unordered/mixed-direction way geometries.
- */
-function chainSegments(
-  segments: Array<Array<[number, number]>>,
-): Array<[number, number]> {
-  if (!segments.length) return [];
-  const pool = segments.map(s => s.slice() as Array<[number, number]>);
-  const chain: Array<[number, number]> = pool.shift()!.slice();
-
-  while (pool.length) {
-    const tail = chain[chain.length - 1];
-    let bestIdx = 0, bestReverse = false, bestDist = Infinity;
-    for (let i = 0; i < pool.length; i++) {
-      const s = pool[i];
-      const dFwd = Math.hypot(s[0][0] - tail[0], s[0][1] - tail[1]);
-      const dRev = Math.hypot(s[s.length - 1][0] - tail[0], s[s.length - 1][1] - tail[1]);
-      if (dFwd < bestDist) { bestDist = dFwd; bestIdx = i; bestReverse = false; }
-      if (dRev < bestDist) { bestDist = dRev; bestIdx = i; bestReverse = true; }
-    }
-    const [seg] = pool.splice(bestIdx, 1);
-    if (bestReverse) seg.reverse();
-    chain.push(...seg);
-  }
-  return chain;
-}
-
-/** Approximate length in km of a GeoJSON [lng, lat] polyline. */
-function coordsLengthKm(coords: Array<[number, number]>): number {
-  let len = 0;
-  for (let i = 1; i < coords.length; i++) {
-    const dLng = (coords[i][0] - coords[i - 1][0]) * 111.32
-      * Math.cos(coords[i - 1][1] * Math.PI / 180);
-    const dLat = (coords[i][1] - coords[i - 1][1]) * 111.32;
-    len += Math.sqrt(dLng * dLng + dLat * dLat);
-  }
-  return len;
-}
-
-async function fetchOverpassRoute(
-  center: Coord,
-  radiusKm: number,
-  distanceKm?: number,
-): Promise<Array<[number, number]> | null> {
-  try {
-    const radiusM = Math.min(6000, Math.round(radiusKm * 4000));
-    const query =
-      `[out:json][timeout:10];` +
-      `relation["type"="route"]["route"="hiking"](around:${radiusM},${center.lat},${center.lng});` +
-      `out body geom;`;
-
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "SummitReady/1.0 (hiking training app)",
-      },
-      body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) return null;
-
-    const data = await res.json() as {
-      elements: Array<{
-        type: string;
-        members?: Array<{
-          type: string;
-          geometry?: Array<{ lat: number; lon: number }>;
-        }>;
-      }>;
-    };
-
-    const relations = data.elements.filter(e => e.type === "relation");
-    if (!relations.length) return null;
-
-    // Score each relation by centroid proximity + length similarity.
-    // This prefers shorter day-walks over long-distance trails that merely
-    // pass through the same area (e.g. Dark Peak Boundary Walk vs Mam Tor loop).
-    let bestCoords: Array<[number, number]> = [];
-    let bestScore = Infinity;
-
-    for (const rel of relations) {
-      const segments: Array<Array<[number, number]>> = [];
-      for (const m of rel.members ?? []) {
-        if (m.type === "way" && m.geometry && m.geometry.length >= 2) {
-          segments.push(m.geometry.map(g => [g.lon, g.lat] as [number, number]));
-        }
-      }
-      if (!segments.length) continue;
-
-      // Chain segments end-to-end so the route is a continuous polyline.
-      const coords = chainSegments(segments);
-      if (coords.length < 4) continue;
-
-      const [midLng, midLat] = midpointWeb(coords);
-      const proximityScore = Math.hypot(midLat - center.lat, midLng - center.lng);
-
-      // Length penalty: if we know the trail distance, heavily penalise routes
-      // that are far longer (long-distance trails inflate their centroid scores).
-      let lengthPenalty = 0;
-      if (distanceKm && distanceKm > 0) {
-        const routeLen = coordsLengthKm(coords);
-        const ratio = routeLen / distanceKm;
-        // Ideal ratio ≈ 1.  Add a penalty that grows once a route is >2× longer.
-        if (ratio > 2) lengthPenalty = (ratio - 2) * 0.02;
-      }
-
-      const score = proximityScore + lengthPenalty;
-      if (score < bestScore) { bestScore = score; bestCoords = coords; }
-    }
-
-    return bestCoords.length >= 4 ? thinCoords(bestCoords, 400) : null;
-  } catch { return null; }
-}
-
-// ── Synthetic Mapbox walking loop ─────────────────────────────────────────────
+// ── Mapbox walking route ──────────────────────────────────────────────────────
+// Generates a realistic loop walk by routing between triangle waypoints using
+// the Mapbox walking-directions engine, which follows actual OSM footpaths.
+// No Overpass needed — Mapbox routing snaps waypoints to real paths.
 
 function loopWaypoints(center: Coord, radiusKm: number): Array<[number, number]> {
   const dLat = radiusKm / 111.32;
   const dLng = radiusKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
-  // Three waypoints (triangle) — fewer route segments avoids the spider-web
-  // pattern that appears in dense path networks with five pentagon points.
   const angles = [0, 120, 240];
   const radii  = [1.0, 0.95, 1.05];
   const pts: Array<[number, number]> = [[center.lng, center.lat]];
@@ -274,22 +123,10 @@ async function fetchMapboxRoute(
   } catch { return null; }
 }
 
-/**
- * Calculate the loop radius from the actual trail distance when available.
- *
- * For a circular walking route Mapbox follows real paths, so the actual path
- * length is longer than the geometric perimeter (2πr). A path factor of ~1.35
- * accounts for road detours and terrain undulations:
- *
- *   actualDistance ≈ 2π × r × 1.35  →  r = distance / (2π × 1.35) ≈ distance / 8.48
- *
- * Clamped to [0.5, 3.5] km so the map zoom level stays sensible.
- */
 function estimateRadiusKm(name: string, distanceKm?: number): number {
   if (distanceKm && distanceKm > 0) {
     return Math.min(3.5, Math.max(0.5, distanceKm / 8.48));
   }
-  // Fallback: keyword estimate
   const n = name.toLowerCase();
   if (n.includes("horseshoe") || n.includes("ridge") || n.includes("traverse")) return 2.2;
   if (n.includes("great") || n.includes("long") || n.includes("fell")) return 2.0;
@@ -299,10 +136,40 @@ function estimateRadiusKm(name: string, distanceKm?: number): number {
   return 1.2;
 }
 
+// ── Map style ─────────────────────────────────────────────────────────────────
+// OS Maps Outdoor raster tiles when OS_MAPS_KEY is configured — these bake in
+// every footpath, contour, gate and stile directly into the tile images.
+// Falls back to Mapbox outdoors-v12 when no OS key is present.
+
+function buildMapStyleJs(osKey: string | undefined): string {
+  if (osKey) {
+    const style = {
+      version: 8,
+      sources: {
+        "os-raster": {
+          type: "raster",
+          tiles: [
+            `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`,
+          ],
+          tileSize: 256,
+          attribution:
+            "Contains OS data &copy; Crown copyright and database rights 2024",
+        },
+      },
+      layers: [
+        { id: "os-raster", type: "raster", source: "os-raster" },
+      ],
+    };
+    return JSON.stringify(style);
+  }
+  return JSON.stringify("mapbox://styles/mapbox/outdoors-v12");
+}
+
 // ── HTML template ─────────────────────────────────────────────────────────────
 
 function buildHtml(opts: {
   token: string;
+  osKey: string | undefined;
   trailName: string;
   color: string;
   routeCoords: Array<[number, number]>;
@@ -310,13 +177,14 @@ function buildHtml(opts: {
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { token, trailName, color, routeCoords, center, userLat, userLng } = opts;
+  const { token, osKey, trailName, color, routeCoords, center, userLat, userLng } = opts;
   const pinCenter = routeCoords.length > 0 ? routeCoords[0] : [center.lng, center.lat];
   const coordsJson = JSON.stringify(routeCoords);
   const safeTitle = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const jsName = JSON.stringify(trailName);
   const initLat = userLat !== null ? userLat.toFixed(6) : "null";
   const initLng = userLng !== null ? userLng.toFixed(6) : "null";
+  const mapStyleJs = buildMapStyleJs(osKey);
 
   return `<!DOCTYPE html>
 <html>
@@ -334,7 +202,6 @@ html,body{height:100%;background:#111;overflow:hidden}
 .mapboxgl-ctrl-group button{filter:invert(1) brightness(0.9)}
 .mapboxgl-ctrl-attrib{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.6)!important}
 .mapboxgl-ctrl-attrib a{color:rgba(255,255,255,0.5)!important}
-.trail-label{background:rgba(20,20,20,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-family:-apple-system,sans-serif;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .user-dot{width:18px;height:18px;border-radius:50%;background:#007AFF;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,122,255,0.35),0 2px 6px rgba(0,0,0,0.4)}
 </style>
 </head>
@@ -348,14 +215,12 @@ var trailName=${jsName};
 var pinLng=${pinCenter[0]};
 var pinLat=${pinCenter[1]};
 var mapCenter=[${center.lng},${center.lat}];
-
-// Injected from native GPS via URL param or injectJavaScript
 var initUserLat=${initLat};
 var initUserLng=${initLng};
 
 var map=new mapboxgl.Map({
   container:"map",
-  style:"mapbox://styles/mapbox/outdoors-v12",
+  style:${mapStyleJs},
   center:mapCenter,
   zoom:12,
   attributionControl:true,
@@ -364,7 +229,6 @@ var map=new mapboxgl.Map({
 
 map.addControl(new mapboxgl.NavigationControl({showCompass:true,showZoom:true}),"top-right");
 
-// GeolocateControl — for live tracking after initial position shown
 var geolocate=new mapboxgl.GeolocateControl({
   positionOptions:{enableHighAccuracy:true},
   trackUserLocation:true,
@@ -372,7 +236,6 @@ var geolocate=new mapboxgl.GeolocateControl({
 });
 map.addControl(geolocate,"top-right");
 
-// Native-injected user location dot
 var userMarker=null;
 
 function placeUserDot(lat,lng){
@@ -387,7 +250,6 @@ function placeUserDot(lat,lng){
   }
 }
 
-// Called by TrailMapModal.injectJavaScript when coords arrive after page load
 window.updateUserLocation=function(lat,lng){
   placeUserDot(lat,lng);
 };
@@ -400,7 +262,7 @@ map.on("load",function(){
     });
     map.addLayer({
       id:"route-outline",type:"line",source:"route",
-      paint:{"line-color":"#fff","line-width":7,"line-opacity":0.45}
+      paint:{"line-color":"#fff","line-width":7,"line-opacity":0.55}
     });
     map.addLayer({
       id:"route-line",type:"line",source:"route",
@@ -417,13 +279,10 @@ map.on("load",function(){
     map.fitBounds(bounds,{padding:{top:100,bottom:80,left:50,right:50},maxZoom:14,duration:800});
   }
 
-  // Show native-provided GPS position immediately (no permission prompt needed)
   if(initUserLat!==null&&initUserLng!==null){
     placeUserDot(initUserLat,initUserLng);
   }
 
-  // Also trigger the Mapbox GeolocateControl for live tracking
-  // Wrapped in try/catch — silently skipped if WebView geolocation is unavailable
   setTimeout(function(){try{geolocate.trigger()}catch(e){}},1000);
 });
 </script>
@@ -434,12 +293,18 @@ map.on("load",function(){
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 router.get("/trail-map-web", async (req, res) => {
-  const { name, location, color = "3ECF75", userLat, userLng, distance } = req.query as Record<string, string>;
+  const {
+    name, location, color = "3ECF75",
+    userLat, userLng,
+    distance,
+    trailLat, trailLng,
+  } = req.query as Record<string, string>;
 
   const token = process.env.MAPBOX_TOKEN;
   if (!token) { res.status(503).send("Mapbox token not configured"); return; }
   if (!name || name.trim().length < 2) { res.status(400).send("name required"); return; }
 
+  const osKey = process.env.OS_MAPS_KEY || undefined;
   const safeColor = color.replace(/[^0-9a-fA-F]/g, "").slice(0, 6) || "3ECF75";
 
   const parsedUserLat = userLat ? parseFloat(userLat) : null;
@@ -451,28 +316,26 @@ router.get("/trail-map-web", async (req, res) => {
     parsedUserLng >= -180 && parsedUserLng <= 180;
 
   const distanceKm = distance ? parseFloat(distance) : undefined;
-
-  const base = await geocodeLocation(location || "United Kingdom");
   const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
 
-  // Try Overpass first — returns the real OSM hiking route closest to the
-  // geocoded location, using proximity + length rather than name-matching.
-  const distKm = isFinite(distanceKm ?? NaN) ? distanceKm : undefined;
-  let routeCoords: Array<[number, number]> | null = await fetchOverpassRoute(base, radiusKm, distKm);
-
-  // Fall back to a synthetic Mapbox walking loop with a per-trail unique offset
-  // so the route stays in the right area even without an Overpass match.
+  // Use AI-provided trail coordinates as the routing centre when available —
+  // this is far more accurate than geocoding the location string.
   let center: Coord;
-  if (routeCoords) {
-    const [lng, lat] = midpointWeb(routeCoords);
-    center = { lat, lng };
+  const parsedTrailLat = trailLat ? parseFloat(trailLat) : NaN;
+  const parsedTrailLng = trailLng ? parseFloat(trailLng) : NaN;
+  if (isFinite(parsedTrailLat) && isFinite(parsedTrailLng)) {
+    center = { lat: parsedTrailLat, lng: parsedTrailLng };
   } else {
+    const base = await geocodeLocation(location || "United Kingdom");
     center = trailCenter(base, name.trim());
-    routeCoords = await fetchMapboxRoute(center, radiusKm, token);
   }
+
+  // Mapbox walking directions follow real OSM footpaths — reliable and fast.
+  const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
 
   const html = buildHtml({
     token,
+    osKey,
     trailName: name.trim(),
     color: safeColor,
     routeCoords: routeCoords ?? [],

@@ -472,7 +472,7 @@ export default function TrailDetailScreen() {
 
       <TrailMapModal
         visible={mapModalOpen}
-        url={`${API_BASE}/trail-map-web?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&distance=${trail.distance}`}
+        url={`${API_BASE}/trail-map-web?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&distance=${trail.distance}${trail.lat != null ? `&trailLat=${trail.lat}&trailLng=${trail.lng}` : ""}`}
         onClose={() => setMapModalOpen(false)}
       />
     </View>
