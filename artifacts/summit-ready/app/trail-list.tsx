@@ -33,6 +33,7 @@ import {
   clearLiveTrailsCache,
   getLiveTrailsCacheTimestamp,
 } from "@/utils/liveTrailsCache";
+import { loadSeededTrails } from "@/utils/seededTrailsCache";
 
 export { LIVE_TRAILS_CACHE_KEY };
 export type { LiveTrailsCache } from "@/utils/liveTrailsCache";
@@ -218,6 +219,7 @@ export default function TrailListScreen() {
   const [maxDistance, setMaxDistance] = useState<number | null>(null);
 
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+  const [seededTrails, setSeededTrails] = useState<Trail[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(false);
   const [trailsError, setTrailsError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
@@ -350,6 +352,11 @@ export default function TrailListScreen() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load seeded trails from DB-backed API (cached 7 days)
+  useEffect(() => {
+    loadSeededTrails().then(setSeededTrails).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-invalidate the trail cache when the user's goal location changes
   useEffect(() => {
     const goalLoc = summitGoal?.location ?? null;
@@ -410,7 +417,12 @@ export default function TrailListScreen() {
   }
 
   const baseTrails = liveTrails.length > 0 ? liveTrails : SAMPLE_TRAILS;
-  const allTrails = useMemo(() => [...customRoutes, ...baseTrails], [customRoutes, baseTrails]);
+  const allTrails = useMemo(() => {
+    const primary = [...customRoutes, ...baseTrails];
+    const primaryIds = new Set(primary.map((t) => t.id));
+    const extra = seededTrails.filter((t) => !primaryIds.has(t.id));
+    return [...primary, ...extra];
+  }, [customRoutes, baseTrails, seededTrails]);
 
   const filtered = useMemo(() => {
     return allTrails.filter((t) => {

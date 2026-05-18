@@ -9,6 +9,7 @@ import alpineRouter from "./alpine";
 import trailRouteRouter from "./trail-route";
 import trailMapImageRouter from "./trail-map-image";
 import trailMapWebRouter from "./trail-map-web";
+import seededTrailsRouter from "./seeded-trails";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(alpineRouter);
 router.use(trailRouteRouter);
 router.use(trailMapImageRouter);
 router.use(trailMapWebRouter);
+router.use(seededTrailsRouter);
 
 export default router;

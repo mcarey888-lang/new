@@ -40,6 +40,7 @@ import { SAMPLE_TRAILS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { readLiveTrailsFromCache } from "@/utils/liveTrailsCache";
+import { loadSeededTrails } from "@/utils/seededTrailsCache";
 import { openMapPin, openMapSearch } from "@/utils/openMaps";
 
 const DIFF_COLOR: Record<string, string> = {
@@ -124,6 +125,7 @@ export default function TrailDetailScreen() {
   const [logVisible, setLogVisible] = useState(false);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [liveTrails, setLiveTrails] = useState<Trail[]>([]);
+  const [seededTrails, setSeededTrails] = useState<Trail[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [mapImageError, setMapImageError] = useState(false);
@@ -136,12 +138,13 @@ export default function TrailDetailScreen() {
       setLiveTrails(trails);
       setCacheLoaded(true);
     });
+    loadSeededTrails().then(setSeededTrails).catch(() => {});
   }, []);
 
   const trail: Trail | null = useMemo(() => {
-    const all = [...customRoutes, ...liveTrails, ...SAMPLE_TRAILS];
+    const all = [...customRoutes, ...liveTrails, ...seededTrails, ...SAMPLE_TRAILS];
     return all.find((t) => t.id === params.id) ?? null;
-  }, [params.id, customRoutes, liveTrails]);
+  }, [params.id, customRoutes, liveTrails, seededTrails]);
 
   // Reset error states when trail changes
   React.useEffect(() => {
