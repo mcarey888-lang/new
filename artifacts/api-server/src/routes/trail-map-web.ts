@@ -136,36 +136,10 @@ function estimateRadiusKm(name: string, distanceKm?: number): number {
   return 1.2;
 }
 
-// ── Map style ─────────────────────────────────────────────────────────────────
-// OS Maps Outdoor raster tiles when OS_MAPS_KEY is configured — these bake in
-// every footpath, contour, gate and stile directly into the tile images.
-// Falls back to Mapbox outdoors-v12 when no OS key is present.
-
-function buildMapStyleJs(osKey: string | undefined): string {
-  if (osKey) {
-    const style = {
-      version: 8,
-      sources: {
-        "os-raster": {
-          type: "raster",
-          tiles: [
-            `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`,
-          ],
-          tileSize: 256,
-          attribution:
-            "Contains OS data &copy; Crown copyright and database rights 2024",
-        },
-      },
-      layers: [
-        { id: "os-raster", type: "raster", source: "os-raster" },
-      ],
-    };
-    return JSON.stringify(style);
-  }
-  return JSON.stringify("mapbox://styles/mapbox/outdoors-v12");
-}
-
-// ── HTML template ─────────────────────────────────────────────────────────────
+// ── HTML template (Leaflet + OS Maps raster tiles) ───────────────────────────
+// Using Leaflet instead of Mapbox GL JS — Leaflet is purpose-built for raster
+// tile layers, needs no token validation, and renders OS Maps tiles reliably.
+// The Mapbox Directions route is generated server-side and passed as coordinates.
 
 function buildHtml(opts: {
   token: string;
@@ -177,14 +151,24 @@ function buildHtml(opts: {
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { token, osKey, trailName, color, routeCoords, center, userLat, userLng } = opts;
-  const pinCenter = routeCoords.length > 0 ? routeCoords[0] : [center.lng, center.lat];
-  const coordsJson = JSON.stringify(routeCoords);
+  const { osKey, trailName, color, routeCoords, center, userLat, userLng } = opts;
+
+  // Leaflet expects [lat, lng]; our coords are [lng, lat] from Mapbox Directions.
+  const leafletCoords = routeCoords.map(([lng, lat]) => [lat, lng]);
+  const coordsJson = JSON.stringify(leafletCoords);
   const safeTitle = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const jsName = JSON.stringify(trailName);
   const initLat = userLat !== null ? userLat.toFixed(6) : "null";
   const initLng = userLng !== null ? userLng.toFixed(6) : "null";
-  const mapStyleJs = buildMapStyleJs(osKey);
+  const safeColor = "#" + color;
+
+  // Tile source — OS Maps Outdoor when key is present, OSM fallback otherwise.
+  const tileUrl = osKey
+    ? `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`
+    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const attribution = osKey
+    ? "&copy; Crown copyright and database rights 2024 OS"
+    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
   return `<!DOCTYPE html>
 <html>
@@ -192,99 +176,69 @@ function buildHtml(opts: {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>${safeTitle}</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet"/>
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:#111;overflow:hidden}
+html,body{height:100%;background:#1a1a1a;overflow:hidden}
 #map{position:absolute;inset:0}
-.mapboxgl-ctrl-group{background:rgba(20,20,20,0.88)!important;border:1px solid rgba(255,255,255,0.1)!important;box-shadow:0 2px 8px rgba(0,0,0,0.4)!important}
-.mapboxgl-ctrl-group button{filter:invert(1) brightness(0.9)}
-.mapboxgl-ctrl-attrib{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.6)!important}
-.mapboxgl-ctrl-attrib a{color:rgba(255,255,255,0.5)!important}
-.user-dot{width:18px;height:18px;border-radius:50%;background:#007AFF;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,122,255,0.35),0 2px 6px rgba(0,0,0,0.4)}
+.leaflet-control-zoom a{background:rgba(20,20,20,0.88)!important;color:#fff!important;border-color:rgba(255,255,255,0.15)!important}
+.leaflet-control-zoom a:hover{background:rgba(40,40,40,0.95)!important}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,0.55)!important;color:rgba(255,255,255,0.5)!important}
+.leaflet-control-attribution a{color:rgba(255,255,255,0.4)!important}
+.user-dot{width:18px;height:18px;border-radius:50%;background:#007AFF;border:3px solid #fff;box-shadow:0 0 0 3px rgba(0,122,255,0.3),0 2px 6px rgba(0,0,0,0.5)}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
-mapboxgl.accessToken=${JSON.stringify(token)};
 var routeCoords=${coordsJson};
-var color=${JSON.stringify("#" + color)};
+var color=${JSON.stringify(safeColor)};
 var trailName=${jsName};
-var pinLng=${pinCenter[0]};
-var pinLat=${pinCenter[1]};
-var mapCenter=[${center.lng},${center.lat}];
+var mapCenter=[${center.lat},${center.lng}];
 var initUserLat=${initLat};
 var initUserLng=${initLng};
 
-var map=new mapboxgl.Map({
-  container:"map",
-  style:${mapStyleJs},
-  center:mapCenter,
-  zoom:12,
-  attributionControl:true,
-  logoPosition:"bottom-left"
-});
+var map=L.map("map",{zoomControl:true,attributionControl:true}).setView(mapCenter,13);
 
-map.addControl(new mapboxgl.NavigationControl({showCompass:true,showZoom:true}),"top-right");
-
-var geolocate=new mapboxgl.GeolocateControl({
-  positionOptions:{enableHighAccuracy:true},
-  trackUserLocation:true,
-  showUserHeading:true
-});
-map.addControl(geolocate,"top-right");
+L.tileLayer(${JSON.stringify(tileUrl)},{
+  maxZoom:20,
+  attribution:${JSON.stringify(attribution)}
+}).addTo(map);
 
 var userMarker=null;
 
-function placeUserDot(lat,lng){
-  var el=document.createElement("div");
-  el.className="user-dot";
-  if(userMarker){
-    userMarker.setLngLat([lng,lat]);
-  } else {
-    userMarker=new mapboxgl.Marker({element:el,anchor:"center"})
-      .setLngLat([lng,lat])
-      .addTo(map);
-  }
-}
-
 window.updateUserLocation=function(lat,lng){
-  placeUserDot(lat,lng);
+  if(userMarker){
+    userMarker.setLatLng([lat,lng]);
+  } else {
+    var el=document.createElement("div");
+    el.className="user-dot";
+    userMarker=L.marker([lat,lng],{
+      icon:L.divIcon({className:"",html:el,iconSize:[18,18],iconAnchor:[9,9]})
+    }).addTo(map);
+  }
 };
 
-map.on("load",function(){
-  if(routeCoords&&routeCoords.length>1){
-    map.addSource("route",{
-      type:"geojson",
-      data:{type:"Feature",properties:{},geometry:{type:"LineString",coordinates:routeCoords}}
-    });
-    map.addLayer({
-      id:"route-outline",type:"line",source:"route",
-      paint:{"line-color":"#fff","line-width":7,"line-opacity":0.55}
-    });
-    map.addLayer({
-      id:"route-line",type:"line",source:"route",
-      layout:{"line-cap":"round","line-join":"round"},
-      paint:{"line-color":color,"line-width":5}
-    });
+if(routeCoords&&routeCoords.length>1){
+  // White outline for contrast against light OS map background
+  L.polyline(routeCoords,{color:"#fff",weight:7,opacity:0.5,smoothFactor:1}).addTo(map);
+  // Coloured route line
+  var routeLine=L.polyline(routeCoords,{color:color,weight:5,opacity:0.95,smoothFactor:1}).addTo(map);
 
-    new mapboxgl.Marker({color:color,scale:1.1})
-      .setLngLat([pinLng,pinLat])
-      .setPopup(new mapboxgl.Popup({offset:28,closeButton:false}).setHTML("<b style='font-family:-apple-system,sans-serif'>"+trailName+"</b>"))
-      .addTo(map);
+  // Start marker
+  var startLatLng=routeCoords[0];
+  L.circleMarker(startLatLng,{
+    radius:7,fillColor:color,color:"#fff",weight:2,opacity:1,fillOpacity:1
+  }).bindTooltip(trailName,{permanent:false,direction:"top"}).addTo(map);
 
-    var bounds=routeCoords.reduce(function(b,c){return b.extend(c)},new mapboxgl.LngLatBounds(routeCoords[0],routeCoords[0]));
-    map.fitBounds(bounds,{padding:{top:100,bottom:80,left:50,right:50},maxZoom:14,duration:800});
-  }
+  // Fit map to route with padding
+  map.fitBounds(routeLine.getBounds(),{padding:[60,60],maxZoom:14});
+}
 
-  if(initUserLat!==null&&initUserLng!==null){
-    placeUserDot(initUserLat,initUserLng);
-  }
-
-  setTimeout(function(){try{geolocate.trigger()}catch(e){}},1000);
-});
+if(initUserLat!==null&&initUserLng!==null){
+  window.updateUserLocation(initUserLat,initUserLng);
+}
 </script>
 </body>
 </html>`;
