@@ -26,39 +26,65 @@ const UK_REGIONS: Record<string, Coord> = {
   "cotswolds":        { lat: 51.853, lng: -1.809 },
 };
 
-async function geocodeLocation(location: string): Promise<Coord> {
-  const cached = locationCache.get(location);
+/**
+ * Strip generic trail-type words to extract the specific place name.
+ * "Dovestones Reservoir Circular" → "Dovestones Reservoir"
+ * "Scafell Pike Circular Walk"    → "Scafell Pike"
+ */
+function extractPlaceName(trailName: string): string {
+  return trailName
+    .replace(/\b(circular|loop|route|walk|trail|path|way|hike|horseshoe|round|ridge|traverse|tour|circuit|summit|ascent|descent|via|through|across)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function nominatimSearch(query: string): Promise<Coord | null> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search` +
+      `?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=0`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as Array<{ lat: string; lon: string }>;
+    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch { /* fall through */ }
+  return null;
+}
+
+async function geocodeLocation(location: string, trailName?: string): Promise<Coord> {
+  const cacheKey = `${trailName ?? ""}::${location}`;
+  const cached = locationCache.get(cacheKey);
   if (cached) return cached;
 
   const locLower = location.toLowerCase();
   for (const [key, coord] of Object.entries(UK_REGIONS)) {
     if (locLower.includes(key)) {
-      locationCache.set(location, coord);
+      locationCache.set(cacheKey, coord);
       return coord;
     }
   }
 
-  try {
-    const url =
-      `https://nominatim.openstreetmap.org/search` +
-      `?q=${encodeURIComponent(location)}&format=json&limit=1&addressdetails=0`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "SummitReady/1.0 (hiking training app)" },
-      signal: AbortSignal.timeout(7000),
-    });
-    if (res.ok) {
-      const data = await res.json() as Array<{ lat: string; lon: string }>;
-      if (data.length > 0) {
-        const coord: Coord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        locationCache.set(location, coord);
-        return coord;
+  // Try the specific place name first (e.g. "Dovestones Reservoir, Greenfield, Greater Manchester")
+  // This is much more accurate than geocoding just the town/region.
+  if (trailName) {
+    const placeName = extractPlaceName(trailName);
+    if (placeName.length > 2 && placeName.toLowerCase() !== location.toLowerCase()) {
+      const specific = await nominatimSearch(`${placeName}, ${location}`);
+      if (specific) {
+        locationCache.set(cacheKey, specific);
+        return specific;
       }
     }
-  } catch { /* fall through */ }
+  }
 
-  const fallback: Coord = { lat: 54.0, lng: -2.0 };
-  locationCache.set(location, fallback);
-  return fallback;
+  // Fall back to location-only (town/region name)
+  const coord = await nominatimSearch(location);
+  const result = coord ?? { lat: 54.0, lng: -2.0 };
+  locationCache.set(cacheKey, result);
+  return result;
 }
 
 // ── Mapbox Directions route ───────────────────────────────────────────────────
@@ -105,14 +131,29 @@ async function fetchMapboxRoute(
   } catch { return null; }
 }
 
-function estimateRadiusKm(name: string): number {
+/**
+ * Calculate the loop radius from the actual trail distance when available.
+ *
+ * For a circular walking route Mapbox follows real paths, so the actual path
+ * length is longer than the geometric perimeter (2πr). A path factor of ~1.35
+ * accounts for road detours and terrain undulations:
+ *
+ *   actualDistance ≈ 2π × r × 1.35  →  r = distance / (2π × 1.35) ≈ distance / 8.48
+ *
+ * Clamped to [0.5, 3.5] km so the map zoom level stays sensible.
+ */
+function estimateRadiusKm(name: string, distanceKm?: number): number {
+  if (distanceKm && distanceKm > 0) {
+    return Math.min(3.5, Math.max(0.5, distanceKm / 8.48));
+  }
+  // Fallback: keyword estimate
   const n = name.toLowerCase();
   if (n.includes("horseshoe") || n.includes("ridge") || n.includes("traverse")) return 2.2;
   if (n.includes("great") || n.includes("long") || n.includes("fell")) return 2.0;
   if (n.includes("summit") || n.includes("mountain") || n.includes("munro")) return 1.8;
-  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.5;
+  if (n.includes("circular") || n.includes("loop") || n.includes("circuit")) return 1.2;
   if (n.includes("easy") || n.includes("short") || n.includes("gentle")) return 0.8;
-  return 1.5;
+  return 1.2;
 }
 
 // ── HTML template ─────────────────────────────────────────────────────────────
@@ -250,7 +291,7 @@ map.on("load",function(){
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 router.get("/trail-map-web", async (req, res) => {
-  const { name, location, color = "3ECF75", userLat, userLng } = req.query as Record<string, string>;
+  const { name, location, color = "3ECF75", userLat, userLng, distance } = req.query as Record<string, string>;
 
   const token = process.env.MAPBOX_TOKEN;
   if (!token) { res.status(503).send("Mapbox token not configured"); return; }
@@ -266,8 +307,12 @@ router.get("/trail-map-web", async (req, res) => {
     parsedUserLat >= -90 && parsedUserLat <= 90 &&
     parsedUserLng >= -180 && parsedUserLng <= 180;
 
-  const center = await geocodeLocation(location || "United Kingdom");
-  const radiusKm = estimateRadiusKm(name);
+  const distanceKm = distance ? parseFloat(distance) : undefined;
+
+  // Use the trail name to get a more specific geocode (e.g. the reservoir itself,
+  // not just the town), then fall back to the location field.
+  const center = await geocodeLocation(location || "United Kingdom", name.trim());
+  const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
   const routeCoords = await fetchMapboxRoute(center, radiusKm, token);
 
   const html = buildHtml({
