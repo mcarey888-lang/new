@@ -400,10 +400,17 @@ export default function TrailDetailScreen() {
 
         {/* Action buttons */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={s.actions}>
-          <TouchableOpacity style={s.actionPrimary} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={s.actionPrimary}
+            activeOpacity={0.85}
+            onPress={() => router.push({
+              pathname: "/hike-tracking",
+              params: { name: trail.name, location: trail.location },
+            })}
+          >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.actionGrad}>
-              <PenLine size={18} color="#fff" />
-              <Text style={s.actionPrimaryText}>Log a session</Text>
+              <Navigation size={18} color="#fff" />
+              <Text style={s.actionPrimaryText}>Start route</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -423,16 +430,9 @@ export default function TrailDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={s.actionStart}
-            activeOpacity={0.85}
-            onPress={() => router.push({
-              pathname: "/hike-tracking",
-              params: { name: trail.name, location: trail.location },
-            })}
-          >
-            <Navigation size={16} color={T.text} />
-            <Text style={s.actionStartText}>Start route</Text>
+          <TouchableOpacity style={s.actionStart} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
+            <PenLine size={16} color={T.textMuted} />
+            <Text style={s.actionStartText}>Log a session</Text>
           </TouchableOpacity>
 
           {trail.isCustom && (
@@ -536,7 +536,6 @@ const s = StyleSheet.create({
   actionStart: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 13,
-    opacity: 0.6,
   },
   actionStartText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
   comingSoon: { backgroundColor: T.orangeDim, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
