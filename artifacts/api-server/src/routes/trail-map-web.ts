@@ -160,6 +160,26 @@ function namesOverlap(query: string, result: string): boolean {
   return qTokens.some(t => rLower.includes(t));
 }
 
+/** Haversine distance in km between two lat/lng points. */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Geographic midpoint of a GeoJSON coordinate array ([lng, lat] pairs). */
+function coordsMidpointWeb(coords: Array<[number, number]>): [number, number] {
+  const n = coords.length;
+  return [
+    coords.reduce((s, c) => s + c[0], 0) / n,
+    coords.reduce((s, c) => s + c[1], 0) / n,
+  ];
+}
+
 async function fetchWaymarkedTrail(
   trailName: string,
 ): Promise<Array<[number, number]> | null> {
@@ -399,6 +419,13 @@ router.get("/trail-map-web", async (req, res) => {
   ]);
 
   let routeCoords: Array<[number, number]> | null = waymarkedCoords;
+  if (routeCoords) {
+    // A name match alone isn't sufficient — an OSM route can share words with
+    // an AI-generated trail name but be in a completely different area. Reject
+    // any Waymarked result whose midpoint is > 20 km from the geocoded location.
+    const [midLng, midLat] = coordsMidpointWeb(routeCoords);
+    if (haversineKm(center.lat, center.lng, midLat, midLng) > 20) routeCoords = null;
+  }
   if (!routeCoords) {
     const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
     routeCoords = await fetchMapboxRoute(center, radiusKm, token);

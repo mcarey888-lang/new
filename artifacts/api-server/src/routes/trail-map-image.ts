@@ -143,6 +143,16 @@ function namesOverlap(query: string, result: string): boolean {
   return qTokens.some(t => rLower.includes(t));
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 async function fetchWaymarkedTrail(trailName: string): Promise<Coord[] | null> {
   try {
     const searchUrl =
@@ -294,6 +304,13 @@ router.get("/trail-map-image", async (req, res) => {
     ]);
 
     let routeCoords: Coord[] | null = waymarkedCoords;
+    if (routeCoords) {
+      // Reject Waymarked results whose midpoint is > 20 km from the geocoded
+      // trail location — name matches alone can be misleading for AI-generated
+      // trail names that share words with unrelated OSM routes in the same region.
+      const mid = midpoint(routeCoords);
+      if (haversineKm(center.lat, center.lng, mid.lat, mid.lng) > 20) routeCoords = null;
+    }
     if (!routeCoords) {
       const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
       routeCoords = await fetchMapboxRoute(center, radiusKm, token);
