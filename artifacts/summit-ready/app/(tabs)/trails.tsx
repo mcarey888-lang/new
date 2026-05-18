@@ -804,10 +804,6 @@ export default function TrailsScreen() {
                 color={T.blue} onPress={() => router.push("/trail-list")}
               />
               <CategoryCard
-                emoji="⛰️" title="Training Hills" subtitle="Find hills to build elevation"
-                color={T.orange} onPress={() => setActiveChip("hills")}
-              />
-              <CategoryCard
                 emoji="🔖" title="Saved Routes" subtitle="Trails you've bookmarked"
                 color={T.blue} badge={savedTrailIds.length}
                 onPress={() => router.push("/trails-saved")}
