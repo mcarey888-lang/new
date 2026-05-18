@@ -139,6 +139,27 @@ async function fetchMapboxRoute(
 
 interface WaymarkedResult { id: number; name: string }
 
+/**
+ * Check that a Waymarked Trails result name is actually related to the
+ * searched trail name.  Without this, fuzzy search returns the same popular
+ * local OSM route for every trail in a region, making all cards look identical.
+ *
+ * Strategy: strip stop-words and very short tokens, then require at least one
+ * meaningful word from the query to appear in the result name.
+ */
+const TRAIL_STOP_WORDS = new Set([
+  "the","and","for","via","with","from","around","across","over","along",
+  "loop","walk","circular","route","trail","path","way","hike","ridge",
+  "circuit","round","tour","ascent","descent","traverse","horseshoe",
+]);
+function namesOverlap(query: string, result: string): boolean {
+  const tokens = (s: string) =>
+    s.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !TRAIL_STOP_WORDS.has(w));
+  const qTokens = tokens(query);
+  const rLower = result.toLowerCase();
+  return qTokens.some(t => rLower.includes(t));
+}
+
 async function fetchWaymarkedTrail(
   trailName: string,
 ): Promise<Array<[number, number]> | null> {
@@ -152,8 +173,11 @@ async function fetchWaymarkedTrail(
     });
     if (!searchRes.ok) return null;
     const searchData = await searchRes.json() as { results?: WaymarkedResult[] };
-    const routeId = searchData.results?.[0]?.id;
-    if (!routeId) return null;
+    const best = searchData.results?.[0];
+    // Reject results whose name shares no meaningful words with the query —
+    // this prevents a popular regional route from being shown for every trail.
+    if (!best || !namesOverlap(trailName, best.name)) return null;
+    const routeId = best.id;
 
     const geoUrl =
       `https://hiking.waymarkedtrails.org/api/v1/details/relation/${routeId}/geometry`;
