@@ -110,13 +110,54 @@ function thinCoords(coords: Array<[number, number]>, maxPts: number): Array<[num
   return out;
 }
 
+/**
+ * Greedy chain-sort: arrange OSM way segments so the end of each segment
+ * connects to the start of the next (reversing individual ways as needed).
+ * This eliminates the crossing lines you get from naively concatenating
+ * unordered/mixed-direction way geometries.
+ */
+function chainSegments(
+  segments: Array<Array<[number, number]>>,
+): Array<[number, number]> {
+  if (!segments.length) return [];
+  const pool = segments.map(s => s.slice() as Array<[number, number]>);
+  const chain: Array<[number, number]> = pool.shift()!.slice();
+
+  while (pool.length) {
+    const tail = chain[chain.length - 1];
+    let bestIdx = 0, bestReverse = false, bestDist = Infinity;
+    for (let i = 0; i < pool.length; i++) {
+      const s = pool[i];
+      const dFwd = Math.hypot(s[0][0] - tail[0], s[0][1] - tail[1]);
+      const dRev = Math.hypot(s[s.length - 1][0] - tail[0], s[s.length - 1][1] - tail[1]);
+      if (dFwd < bestDist) { bestDist = dFwd; bestIdx = i; bestReverse = false; }
+      if (dRev < bestDist) { bestDist = dRev; bestIdx = i; bestReverse = true; }
+    }
+    const [seg] = pool.splice(bestIdx, 1);
+    if (bestReverse) seg.reverse();
+    chain.push(...seg);
+  }
+  return chain;
+}
+
+/** Approximate length in km of a GeoJSON [lng, lat] polyline. */
+function coordsLengthKm(coords: Array<[number, number]>): number {
+  let len = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const dLng = (coords[i][0] - coords[i - 1][0]) * 111.32
+      * Math.cos(coords[i - 1][1] * Math.PI / 180);
+    const dLat = (coords[i][1] - coords[i - 1][1]) * 111.32;
+    len += Math.sqrt(dLng * dLng + dLat * dLat);
+  }
+  return len;
+}
+
 async function fetchOverpassRoute(
   center: Coord,
   radiusKm: number,
+  distanceKm?: number,
 ): Promise<Array<[number, number]> | null> {
   try {
-    // Search radius: 4× the loop radius so we catch routes in the wider area,
-    // capped at 6 km to keep Overpass response times short.
     const radiusM = Math.min(6000, Math.round(radiusKm * 4000));
     const query =
       `[out:json][timeout:10];` +
@@ -147,22 +188,40 @@ async function fetchOverpassRoute(
     const relations = data.elements.filter(e => e.type === "relation");
     if (!relations.length) return null;
 
-    // Pick the relation whose centroid is closest to the search centre.
+    // Score each relation by centroid proximity + length similarity.
+    // This prefers shorter day-walks over long-distance trails that merely
+    // pass through the same area (e.g. Dark Peak Boundary Walk vs Mam Tor loop).
     let bestCoords: Array<[number, number]> = [];
-    let bestDist = Infinity;
+    let bestScore = Infinity;
 
     for (const rel of relations) {
-      const coords: Array<[number, number]> = [];
+      const segments: Array<Array<[number, number]>> = [];
       for (const m of rel.members ?? []) {
-        if (m.type === "way" && m.geometry) {
-          for (const g of m.geometry) coords.push([g.lon, g.lat]);
+        if (m.type === "way" && m.geometry && m.geometry.length >= 2) {
+          segments.push(m.geometry.map(g => [g.lon, g.lat] as [number, number]));
         }
       }
+      if (!segments.length) continue;
+
+      // Chain segments end-to-end so the route is a continuous polyline.
+      const coords = chainSegments(segments);
       if (coords.length < 4) continue;
 
       const [midLng, midLat] = midpointWeb(coords);
-      const dist = Math.hypot(midLat - center.lat, midLng - center.lng);
-      if (dist < bestDist) { bestDist = dist; bestCoords = coords; }
+      const proximityScore = Math.hypot(midLat - center.lat, midLng - center.lng);
+
+      // Length penalty: if we know the trail distance, heavily penalise routes
+      // that are far longer (long-distance trails inflate their centroid scores).
+      let lengthPenalty = 0;
+      if (distanceKm && distanceKm > 0) {
+        const routeLen = coordsLengthKm(coords);
+        const ratio = routeLen / distanceKm;
+        // Ideal ratio ≈ 1.  Add a penalty that grows once a route is >2× longer.
+        if (ratio > 2) lengthPenalty = (ratio - 2) * 0.02;
+      }
+
+      const score = proximityScore + lengthPenalty;
+      if (score < bestScore) { bestScore = score; bestCoords = coords; }
     }
 
     return bestCoords.length >= 4 ? thinCoords(bestCoords, 400) : null;
@@ -397,8 +456,9 @@ router.get("/trail-map-web", async (req, res) => {
   const radiusKm = estimateRadiusKm(name, isFinite(distanceKm ?? NaN) ? distanceKm : undefined);
 
   // Try Overpass first — returns the real OSM hiking route closest to the
-  // geocoded location, using proximity rather than name-matching.
-  let routeCoords: Array<[number, number]> | null = await fetchOverpassRoute(base, radiusKm);
+  // geocoded location, using proximity + length rather than name-matching.
+  const distKm = isFinite(distanceKm ?? NaN) ? distanceKm : undefined;
+  let routeCoords: Array<[number, number]> | null = await fetchOverpassRoute(base, radiusKm, distKm);
 
   // Fall back to a synthetic Mapbox walking loop with a per-trail unique offset
   // so the route stays in the right area even without an Overpass match.
