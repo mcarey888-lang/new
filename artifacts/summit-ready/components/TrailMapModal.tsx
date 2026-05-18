@@ -61,8 +61,8 @@ export function TrailMapModal({ visible, url, onClose }: Props) {
   // Append initial coords to URL if already known (fast path — coordinates pre-fetched
   // from a previous session or if location was already granted)
   const mapUrl = userCoords
-    ? `${url}&userLat=${userCoords.lat.toFixed(6)}&userLng=${userCoords.lng.toFixed(6)}`
-    : url;
+    ? `${url}&userLat=${userCoords.lat.toFixed(6)}&userLng=${userCoords.lng.toFixed(6)}&_t=${Date.now()}`
+    : `${url}&_t=${Date.now()}`;
 
   return (
     <Modal
@@ -82,6 +82,7 @@ export function TrailMapModal({ visible, url, onClose }: Props) {
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           originWhitelist={["*"]}
+          cacheEnabled={false}
           allowsBackForwardNavigationGestures={false}
         />
         <TouchableOpacity
