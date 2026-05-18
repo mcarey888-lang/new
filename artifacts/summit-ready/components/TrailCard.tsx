@@ -44,7 +44,7 @@ export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress,
 
   const mapUri = mapError
     ? null
-    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=600&height=200&distance=${trail.distance}`;
+    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=600&height=200&distance=${trail.distance}${trail.lat != null ? `&trailLat=${trail.lat}&trailLng=${trail.lng}` : ""}`;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={[s.card, compact && s.cardCompact]}>
