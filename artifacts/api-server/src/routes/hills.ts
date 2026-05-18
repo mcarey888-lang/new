@@ -519,7 +519,7 @@ router.post("/trails-lookup", async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_completion_tokens: 1400,
+      max_completion_tokens: 3000,
       messages: [
         { role: "system", content: TRAILS_SYSTEM_PROMPT },
         {

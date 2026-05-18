@@ -99,12 +99,28 @@ function stitchWays(ways: Coord[][]): Coord[] {
   return out;
 }
 
+// Run an Overpass query and return raw JSON (throws on network/HTTP errors)
+async function runOverpass(query: string): Promise<{ elements: unknown[] }> {
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "SummitReady/1.0",
+    },
+    body: `data=${encodeURIComponent(query)}`,
+    signal: AbortSignal.timeout(28000),
+  });
+  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+  return res.json() as Promise<{ elements: unknown[] }>;
+}
+
 router.post("/trail-route", async (req, res) => {
-  const { name, location, lat, lng } = req.body as {
+  const { name, location, lat, lng, trailId } = req.body as {
     name?: string;
     location?: string;
     lat?: number | string;
     lng?: number | string;
+    trailId?: string;
   };
 
   if (!name || typeof name !== "string" || name.trim().length < 2) {
@@ -115,12 +131,65 @@ router.post("/trail-route", async (req, res) => {
   const safeName = name.trim().replace(/[^a-zA-Z0-9\s&''-]/g, "");
 
   try {
+    // ── Strategy 1: direct OSM relation/way lookup by seeded ID ──────────────
+    // Seeded trails carry an "osm_XXXXXXX" ID — skip name search entirely and
+    // query Overpass by the exact relation (or way) ID. This is fast, precise,
+    // and doesn't depend on name-matching or geocoding.
+    if (trailId && /^osm_\d+$/.test(trailId)) {
+      const osmId = trailId.slice(4); // strip "osm_"
+
+      // Try as a route relation first (most seeded trails are relations)
+      const relQuery = `[out:json][timeout:25]; relation(${osmId}); out geom;`;
+      const relData = await runOverpass(relQuery);
+
+      type OSMNode = { lat: number; lon: number };
+      type OSMElement = {
+        type: "way" | "relation" | "node";
+        geometry?: OSMNode[];
+        members?: Array<{ type: string; role?: string; geometry?: OSMNode[] }>;
+      };
+      const elements = relData.elements as OSMElement[];
+
+      let bestRelationCoords: Coord[] = [];
+      const standaloneWays: Coord[][] = [];
+
+      for (const el of elements) {
+        if (el.type === "relation" && el.members) {
+          const memberWays: Coord[][] = [];
+          for (const m of el.members) {
+            if (m.type === "way" && m.geometry && m.geometry.length > 1) {
+              memberWays.push(m.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+            }
+          }
+          if (memberWays.length > 0) {
+            const chained = chainRelationMembers(memberWays);
+            if (chained.length > bestRelationCoords.length) bestRelationCoords = chained;
+          }
+        } else if (el.type === "way" && el.geometry && el.geometry.length > 1) {
+          standaloneWays.push(el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon })));
+        }
+      }
+
+      const stitched = bestRelationCoords.length >= 4
+        ? bestRelationCoords
+        : stitchWays(standaloneWays);
+
+      if (stitched.length > 0) {
+        const simplified = simplifyCoords(stitched, 350);
+        const avgLat = stitched.reduce((s, c) => s + c.lat, 0) / stitched.length;
+        const avgLng = stitched.reduce((s, c) => s + c.lng, 0) / stitched.length;
+        res.json({ coords: simplified, center: { lat: avgLat, lng: avgLng }, found: true });
+        return;
+      }
+      // Fall through to name-based search if OSM ID lookup returned nothing
+    }
+
+    // ── Strategy 2: name + bounding-box search ────────────────────────────────
     let centerLat = 54.0;
     let centerLng = -2.0;
     const pad = 0.6;
 
-    // Prefer caller-supplied coords (e.g. OSM centre from seeded trails) to
-    // avoid a Nominatim geocode call that may be rate-limited or inaccurate.
+    // Prefer caller-supplied coords to avoid Nominatim rate-limiting issues.
     const parsedLat = typeof lat === "string" ? parseFloat(lat) : (lat ?? NaN);
     const parsedLng = typeof lng === "string" ? parseFloat(lng) : (lng ?? NaN);
 
@@ -156,28 +225,14 @@ router.post("/trail-route", async (req, res) => {
 );
 out geom;`;
 
-    const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "SummitReady/1.0",
-      },
-      body: `data=${encodeURIComponent(q)}`,
-      signal: AbortSignal.timeout(28000),
-    });
-
-    if (!overpassRes.ok) {
-      res.json({ coords: [], center: { lat: centerLat, lng: centerLng }, found: false });
-      return;
-    }
-
     type OSMNode = { lat: number; lon: number };
     type OSMElement = {
       type: "way" | "relation" | "node";
       geometry?: OSMNode[];
       members?: Array<{ type: string; role?: string; geometry?: OSMNode[] }>;
     };
-    const data = await overpassRes.json() as { elements: OSMElement[] };
+    const rawData = await runOverpass(q);
+    const data = rawData as { elements: OSMElement[] };
 
     // Separate relation member ways (OSM-ordered) from standalone named ways.
     // Relations are preferred — their members are already in route order, so

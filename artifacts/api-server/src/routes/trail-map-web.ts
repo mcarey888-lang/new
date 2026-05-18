@@ -93,13 +93,14 @@ function buildHtml(opts: {
   apiOrigin: string;
   trailName: string;
   trailLocation: string;
+  trailId: string;
   color: string;
   center: Coord;
   zoom: number;
   userLat: number | null;
   userLng: number | null;
 }): string {
-  const { osKey, apiOrigin, trailName, trailLocation, color, center, zoom, userLat, userLng } = opts;
+  const { osKey, apiOrigin, trailName, trailLocation, trailId, color, center, zoom, userLat, userLng } = opts;
 
   const safeTitle  = trailName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const jsName     = JSON.stringify(trailName);
@@ -147,6 +148,7 @@ html,body{height:100%;background:#1a1a1a;overflow:hidden}
 var color=${JSON.stringify(safeColor)};
 var trailName=${jsName};
 var trailLocation=${jsLocation};
+var trailId=${JSON.stringify(trailId)};
 var mapCenter=[${center.lat.toFixed(6)},${center.lng.toFixed(6)}];
 var initZoom=${zoom};
 var initUserLat=${initLat};
@@ -173,7 +175,8 @@ fetch(routeUrl,{
     name:trailName,
     location:trailLocation,
     lat:mapCenter[0],
-    lng:mapCenter[1]
+    lng:mapCenter[1],
+    trailId:trailId
   })
 })
 .then(function(r){
@@ -258,6 +261,7 @@ router.get("/trail-map-web", async (req, res) => {
     userLat, userLng,
     distance,
     trailLat, trailLng,
+    trailId,
   } = req.query as Record<string, string>;
 
   if (!name || name.trim().length < 2) { res.status(400).send("name required"); return; }
@@ -304,6 +308,7 @@ router.get("/trail-map-web", async (req, res) => {
     apiOrigin,
     trailName: name.trim(),
     trailLocation: (location ?? "").trim(),
+    trailId: (trailId ?? "").trim(),
     color: safeColor,
     center,
     zoom,
