@@ -44,9 +44,9 @@ export function SiteNav() {
               <span className="text-white/15 select-none">|</span>
             </>
           )}
-          <Link to="/training-guides" className={`hover:text-primary transition-colors min-h-[44px] inline-flex items-center ${pathname.startsWith("/training-guides") ? "text-primary" : ""}`}>Training Guides</Link>
-          <Link to="/can-i-climb" className={`hover:text-primary transition-colors min-h-[44px] inline-flex items-center ${pathname.startsWith("/can-i-climb") ? "text-primary" : ""}`}>Can I Climb?</Link>
-          <Link to="/mountains" className={`hover:text-primary transition-colors min-h-[44px] inline-flex items-center ${pathname.startsWith("/mountains") ? "text-primary" : ""}`}>Mountains</Link>
+          <Link to="/training-guides" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/training-guides") ? "border-primary/50 text-primary bg-primary/10" : "border-white/15 text-white hover:border-primary/40 hover:text-primary hover:bg-white/5"}`}>Training Guides</Link>
+          <Link to="/can-i-climb" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/can-i-climb") ? "border-primary/50 text-primary bg-primary/10" : "border-white/15 text-white hover:border-primary/40 hover:text-primary hover:bg-white/5"}`}>Can I Climb?</Link>
+          <Link to="/mountains" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/mountains") ? "border-primary/50 text-primary bg-primary/10" : "border-white/15 text-white hover:border-primary/40 hover:text-primary hover:bg-white/5"}`}>Mountains</Link>
         </div>
 
         <div className="flex items-center gap-3">

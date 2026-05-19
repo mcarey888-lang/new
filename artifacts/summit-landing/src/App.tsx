@@ -36,13 +36,31 @@ function Hero() {
           Tell us your target summit. SummitReady finds the hills near you and builds a week-by-week plan that uses your local terrain to simulate exactly what your mountain demands. Train where you live. Summit anywhere.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-12">
           <a href="#get-started" className="w-full sm:w-auto">
             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-10 h-16 text-lg w-full transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(62,207,117,0.4)]">
               Start Your Plan
               <ChevronRight className="ml-2 w-5 h-5" />
             </Button>
           </a>
+        </div>
+
+        <div className="w-full max-w-2xl">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-semibold">Free summit guides</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link to="/training-guides" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+              Training Guides
+            </Link>
+            <Link to="/can-i-climb" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
+              <HelpCircle className="w-3.5 h-3.5 text-primary" />
+              Can I Climb?
+            </Link>
+            <Link to="/mountains" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
+              <Mountain className="w-3.5 h-3.5 text-primary" />
+              Mountain Profiles
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -408,11 +426,11 @@ export default function App() {
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 scroll-smooth">
       <SiteNav />
       <Hero />
+      <ContentSection />
       <ProblemStatement />
       <Features />
       <HowItWorks />
       <Readiness />
-      <ContentSection />
       <CTA />
       <GetStarted />
       <SiteFooter />
