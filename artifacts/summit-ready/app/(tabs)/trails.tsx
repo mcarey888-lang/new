@@ -956,7 +956,7 @@ export default function TrailsScreen() {
         {/* Summit mode: Training Hills section */}
         {isSummit && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)}>
-            <HillsSection />
+            {HillsSection()}
           </Animated.View>
         )}
 
