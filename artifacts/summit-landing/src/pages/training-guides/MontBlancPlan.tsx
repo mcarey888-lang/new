@@ -84,13 +84,13 @@ export default function MontBlancPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">Mont Blanc is achievable — but most people underestimate what it takes</h2>
               <p className="text-muted-foreground leading-relaxed mb-4 text-lg">
-                At 4,808m, Mont Blanc is the highest peak in the Alps and Western Europe. The standard Goûter route involves no technical rock climbing — but don't let that fool you. Summit day is 10–13 hours of continuous effort at serious altitude, in conditions that change without warning, on terrain that will destroy under-prepared legs on the descent.
+                At 4,808m, Mont Blanc is the highest peak in the Alps. The standard Goûter route involves no technical rock climbing — but summit day is 10–13 hours of continuous effort at serious altitude, in conditions that can turn hostile in minutes, on terrain that will destroy under-prepared legs on the 1,500m descent. People underestimate this every single season.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Thousands of people summit Mont Blanc every season. Many more don't. The ones who turn back are rarely unfit — they're undertrained for the specific demands: the altitude above 4,000m, the 1,500m descent on tired legs, the 3am alarm after a poor night's sleep at the Goûter hut. These things are trainable. This plan addresses all of them.
+                Thousands summit every summer. Many more don't make it. The failures are rarely people who weren't fit — they're people who weren't prepared for the <em>specific</em> demands: the physiological stress above 4,000m, the accumulated fatigue from the Goûter hut approach day, the 3am start on minimal sleep, the quads giving out two hours into the descent. None of these are mysteries. All of them are trainable.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                If you can hike 5–6 hours comfortably and you have 12–16 weeks, you're in a realistic position to be ready. Follow this plan honestly and you'll arrive at the Goûter hut with something in reserve.
+                If you can hike 5–6 hours with 800m of elevation gain and you have 12 weeks or more, you're in a realistic position. Follow this plan with honesty — do the sessions you find uncomfortable, not just the ones you enjoy — and you'll arrive at the Goûter hut with something in reserve.
               </p>
 
               <div className="mt-7 p-5 bg-white/3 border border-white/8 rounded-xl">
@@ -105,8 +105,8 @@ export default function MontBlancPlan() {
                 Where most people struggle is the gap between general fitness and mountain-specific fitness. You might run 5km three times a week and feel fit — but that won't prepare you for carrying 13kg up a steep snow slope at 4,400m after five hours already on your feet. The baseline below is the honest minimum before starting this plan. If you're below it, spend 4–6 weeks building that base first.
               </p>
 
-              <h3 className="text-lg font-bold text-white mb-3">Minimum baseline before starting this plan</h3>
-              <ul className="space-y-3 mb-7">
+              <h3 className="text-lg font-bold text-white mb-3">Self-test: can you start this plan now?</h3>
+              <ul className="space-y-3 mb-5">
                 {[
                   "Able to hike for 5–6 hours with 800m+ elevation gain without feeling wrecked",
                   "Comfortable carrying a 10kg pack on a full-day mountain walk",
@@ -121,7 +121,11 @@ export default function MontBlancPlan() {
                 ))}
               </ul>
 
-              <h3 className="text-lg font-bold text-white mb-3">What you need to achieve by summit day</h3>
+              <div className="mb-7 p-4 bg-orange-400/5 border border-orange-400/20 rounded-xl">
+                <p className="text-sm text-muted-foreground"><span className="text-orange-400 font-semibold">If you can't tick at least 4 of these:</span> don't jump straight into this plan. Spend 4–6 weeks building general fitness first — your tendons and cardiovascular system need time to adapt that simply can't be compressed.</p>
+              </div>
+
+              <h3 className="text-lg font-bold text-white mb-3">Where you need to be by summit day</h3>
               <ul className="space-y-3">
                 {[
                   "Hike 20km+ with 1,500m elevation gain in a single day comfortably",
@@ -154,7 +158,7 @@ export default function MontBlancPlan() {
                     label: "Foundation",
                     color: "border-primary/30 bg-primary/5",
                     labelColor: "text-primary",
-                    content: "Build your aerobic base. This is the most important phase. Run, cycle, or hike 4–5 days per week. Start adding one hill session per week. Focus on time on feet rather than intensity. If you're not already doing regular long walks, this is when you start.",
+                    content: "Build your aerobic base. This phase is the one people skip to save time — and it's the reason they hit a wall at week 10. Run, cycle, or hike 4–5 days per week. One hill session per week minimum. Focus on time on feet rather than intensity. Cardiovascular adaptation is slow; there's no shortcut and no way to make it up later.",
                   },
                   {
                     phase: "12–16 weeks",
@@ -168,7 +172,7 @@ export default function MontBlancPlan() {
                     label: "Peak",
                     color: "border-orange-400/30 bg-orange-400/5",
                     labelColor: "text-orange-400",
-                    content: "This is where you push hardest. Weekly elevation gain in training should reach 2,000–3,000m. Pack weight increases to 12–15kg on long days. Plan one or two multi-day mountain routes — ideally alpine or sub-alpine terrain if accessible. Descents become as important as ascents: train your quads eccentrically.",
+                    content: "This is where you push hardest — and where most people either overtrain and get injured, or undertrain and arrive underprepared. Weekly elevation gain should reach 2,000–3,000m. Pack weight increases to 12–15kg on all long days. Plan at least one multi-day mountain route if accessible. If you find yourself dreading every session, cut volume by 15% for a week: sustained training at 85% beats burning out completely.",
                   },
                   {
                     phase: "4–8 weeks",
@@ -202,7 +206,8 @@ export default function MontBlancPlan() {
             {/* Section 4: Weekly example */}
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2">Example training week (peak phase)</h2>
-              <p className="text-muted-foreground mb-6 text-sm">This is what a typical week looks like at weeks 8–12 of training.</p>
+              <p className="text-muted-foreground mb-2 text-sm">This is what a typical week looks like at weeks 8–12 of training.</p>
+              <p className="text-muted-foreground mb-6 text-sm">At this stage the week should feel demanding but not crushing. If you're consistently exhausted by Thursday, your Saturday volume is too high or your recovery is off. Most people go out too hard in week 8 — pace yourself across the full block, not just individual sessions.</p>
 
               <div className="overflow-hidden border border-white/8 rounded-xl">
                 {[
@@ -211,7 +216,7 @@ export default function MontBlancPlan() {
                   { day: "Wednesday", type: "Recovery", color: "text-muted-foreground", desc: "Active recovery — yoga, mobility work, or a flat 30-minute walk. Do not train hard. Sleep and nutrition on Wednesday are as important as Monday's session." },
                   { day: "Thursday", type: "Hill reps", color: "text-orange-400", desc: "Weighted hill session — find a hill with 100–200m of elevation and repeat it 4–6 times with a 12kg pack. Walk the ascents hard, walk the descents controlled. This is the most direct Mont Blanc simulation in your plan." },
                   { day: "Friday", type: "Rest", color: "text-muted-foreground", desc: "Complete rest. Prepare your kit for the weekend. Eat and sleep well. Rest is where adaptation happens — don't skip it." },
-                  { day: "Saturday", type: "Long mountain day", color: "text-primary", desc: "Full mountain day — aim for 1,200–1,800m elevation gain with a 12–15kg pack. Move continuously. Focus on pacing: a pace you can sustain for 10 hours, not 3. Descend carefully and train your legs on the way down." },
+                  { day: "Saturday", type: "Long mountain day", color: "text-primary", desc: "Full mountain day — 1,200–1,800m elevation gain with a 12–15kg pack. The target pace is whatever you could sustain for 10 hours straight — most people misjudge this badly and blow up at hour 4. Eat 60–80g of carbohydrate per hour from the start, not when you're already hungry. Descend deliberately: this is training, not a recovery walk." },
                   { day: "Sunday", type: "Back-to-back", color: "text-primary/60", desc: "60–90 minute easy hike on tired legs. Not optional — this is one of the most specific things you can do for Mont Blanc. The Goûter hut approach day and summit day are back-to-back. Sunday tells you exactly how prepared you are." },
                 ].map((item, i) => (
                   <div key={item.day} className={`p-5 flex gap-4 ${i > 0 ? "border-t border-white/5" : ""}`}>
@@ -233,7 +238,7 @@ export default function MontBlancPlan() {
                 {[
                   {
                     title: "Underestimating altitude",
-                    body: "4,808m is serious altitude. Above 4,000m your body is under real physiological stress regardless of your fitness. You cannot train your way out of altitude entirely — acclimatisation in Chamonix before your summit attempt is non-negotiable. Spend at least 2–3 days hiking to 3,000m+ before summit day.",
+                    body: "4,808m is serious altitude. Above 4,000m, your body is under genuine physiological stress regardless of fitness — AMS doesn't just mean a headache, it means nausea, poor decision-making, inability to regulate temperature, and a rapidly deteriorating ability to keep moving. You cannot train your way out of altitude entirely. Acclimatise in Chamonix: spend at least 2–3 days hiking to 3,000m+ before your summit attempt. People who fly in Friday and attempt the summit Saturday have a dramatically higher failure rate.",
                   },
                   {
                     title: "Never training with a pack",
@@ -241,7 +246,7 @@ export default function MontBlancPlan() {
                   },
                   {
                     title: "Ignoring descents",
-                    body: "Most people train for going up. Coming down from Mont Blanc is where tired legs give out, ankles roll, and accidents happen. Include specific downhill training — controlled descent on steep terrain — every week. Eccentric leg exercises (slow, loaded squats and step-downs) directly address this.",
+                    body: "Most people train going up and treat the descent as recovery. On Mont Blanc, the 1,500m descent from the summit ridge is taken on legs that have already been working for 7–8 hours, on steep snow, often in deteriorating afternoon conditions. This is where falls, twisted ankles, and blown quads happen. Build controlled downhill sessions into every training week from month two. Slow, loaded step-downs and eccentric split squats are the most targeted exercises — boring, but they directly replicate the stress of descent.",
                   },
                   {
                     title: "Too much gym, not enough hills",
@@ -249,7 +254,7 @@ export default function MontBlancPlan() {
                   },
                   {
                     title: "Starting too late",
-                    body: "12 weeks is the realistic minimum. Most failed summit attempts we see in training programmes started 6–8 weeks out. Book your trip, set your summit date, and count backwards. If you have less than 10 weeks, consider delaying your booking.",
+                    body: "12 weeks is the realistic minimum — and only if you're already at the fitness baseline. The most common pattern we see: someone books Mont Blanc 8 weeks out, panics, trains too hard too fast, picks up a knee injury at week 5, arrives at the Goûter hut underprepared and over-fatigued. Book your trip first, then count backwards. If you have less than 10 weeks, seriously consider shifting your booking date.",
                   },
                 ].map((item) => (
                   <div key={item.title} className="flex gap-4 bg-white/3 border border-white/8 rounded-xl p-6">
@@ -268,8 +273,11 @@ export default function MontBlancPlan() {
             {/* Section 6: How Summit Ready helps */}
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready turns this into your actual training plan</h2>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                Most people who train without a structured plan make the same mistakes: they do too much in weeks 2–4, train the things they're good at (usually cardio), avoid the things they find hard (usually loaded descents and back-to-back days), and arrive peaking at week 8 instead of week 16. A generic plan doesn't know your summit date, your local hills, or where you're actually starting from.
+              </p>
               <p className="text-muted-foreground leading-relaxed mb-5">
-                The structure above is the blueprint. The problem with blueprints is they don't know when you're climbing, where you live, or what shape you're actually in. Summit Ready closes that gap:
+                Summit Ready closes that gap:
               </p>
               <ul className="space-y-4 mb-7">
                 {[
@@ -316,7 +324,7 @@ export default function MontBlancPlan() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Get your personalised Mont Blanc training plan</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Tell Summit Ready your summit date, your current fitness, and where you're based. It builds a week-by-week training schedule around the hills near you — and adjusts automatically as you progress.
+                Generic training plans are written for an average person with average hills and a perfectly consistent schedule. Your summit date, your local terrain, and your fitness level are specific — your plan should be too. Summit Ready takes 2 minutes to set up and builds a week-by-week schedule that fits your actual situation, not a hypothetical one.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">
