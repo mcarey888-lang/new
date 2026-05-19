@@ -580,10 +580,9 @@ export default function LogScreen() {
             activeOpacity={0.85}
             style={styles.startHikeBtn}
           >
-            <LinearGradient colors={[T.greenDim, T.blueDim]} style={StyleSheet.absoluteFill} />
             <View style={styles.startHikeLeft}>
               <View style={styles.startHikeIconBox}>
-                <Footprints size={22} color={T.green} />
+                <Footprints size={22} color={T.white} />
               </View>
               <View>
                 <Text style={styles.startHikeTitle}>Start Hiking</Text>
@@ -591,7 +590,7 @@ export default function LogScreen() {
               </View>
             </View>
             <View style={styles.startHikeArrow}>
-              <Text style={{ color: T.green, fontSize: 18 }}>›</Text>
+              <Text style={{ color: T.white, fontSize: 18 }}>›</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -659,25 +658,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.green + "40",
-    paddingVertical: 14,
+    backgroundColor: T.green,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     marginBottom: 16,
-    overflow: "hidden",
   },
   startHikeLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
   startHikeIconBox: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: T.green + "20",
+    backgroundColor: "rgba(0,0,0,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
   startHikeTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
-  startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: T.green + "20", alignItems: "center", justifyContent: "center" },
+  startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
+  startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
   sessionCard: {
     backgroundColor: T.card,
     borderRadius: 18,

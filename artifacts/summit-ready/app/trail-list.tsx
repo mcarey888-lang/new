@@ -123,13 +123,13 @@ export default function TrailListScreen() {
             activeOpacity={0.82}
           >
             <LinearGradient
-              colors={["#1A3D2B", "#163322"]}
+              colors={[T.green, T.green]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={s.hikeGrad}
             >
               <View style={s.hikeIcon}>
-                <Footprints size={20} color={T.green} />
+                <Footprints size={20} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.hikeTitle}>Start Hiking</Text>
@@ -238,16 +238,16 @@ const s = StyleSheet.create({
   iconBtnActive: { backgroundColor: T.greenDim },
   filterDot: { position: "absolute", top: 7, right: 7, width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
 
-  hikeBtn: { borderRadius: 18, overflow: "hidden" },
+  hikeBtn: { borderRadius: 16, overflow: "hidden" },
   hikeGrad: {
     flexDirection: "row", alignItems: "center", gap: 14,
     paddingHorizontal: 16, paddingVertical: 16,
-    borderWidth: 1, borderColor: "rgba(62,207,117,0.25)", borderRadius: 18,
+    borderRadius: 16,
   },
-  hikeIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(62,207,117,0.15)", alignItems: "center", justifyContent: "center" },
-  hikeTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.green },
-  hikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.45)", marginTop: 2 },
-  hikeArrow: { fontSize: 26, color: T.green, lineHeight: 30, marginLeft: 4 },
+  hikeIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
+  hikeTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  hikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  hikeArrow: { fontSize: 26, color: "#fff", lineHeight: 30, marginLeft: 4 },
 
   searchWrap: {
     flexDirection: "row", alignItems: "center", gap: 10,

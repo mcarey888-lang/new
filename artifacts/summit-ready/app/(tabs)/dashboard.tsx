@@ -683,19 +683,14 @@ export default function DashboardScreen() {
             activeOpacity={0.85}
             style={styles.startHikingBanner}
           >
-            <LinearGradient
-              colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
             <View style={styles.startHikingIconWrap}>
-              <Footprints size={18} color={T.green} />
+              <Footprints size={18} color={T.white} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.startHikingBannerTitle}>Start Hiking</Text>
               <Text style={styles.startHikingBannerSub}>Track your route — help others discover great hikes</Text>
             </View>
-            <ChevronRight size={18} color={T.green} />
+            <ChevronRight size={18} color={T.white} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -957,16 +952,16 @@ const styles = StyleSheet.create({
   startHikingBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
     borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: T.green + "30",
-    paddingVertical: 14, paddingHorizontal: 16,
+    backgroundColor: T.green,
+    paddingVertical: 16, paddingHorizontal: 16,
   },
   startHikingIconWrap: {
     width: 38, height: 38, borderRadius: 11,
-    backgroundColor: T.greenDim,
+    backgroundColor: "rgba(0,0,0,0.15)",
     alignItems: "center", justifyContent: "center",
   },
-  startHikingBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  startHikingBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  startHikingBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  startHikingBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

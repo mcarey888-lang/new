@@ -856,19 +856,14 @@ export default function TrailsScreen() {
 
             {/* Start hiking banner */}
             <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
-              <LinearGradient
-                colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
               <View style={s.startHikingIconWrap}>
-                <Footprints size={20} color={T.green} />
+                <Footprints size={20} color="#fff" />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={s.startHikingTitle}>Start Hiking</Text>
                 <Text style={s.startHikingSub}>Track your route — help others discover great hikes</Text>
               </View>
-              <ChevronRight size={16} color={T.green} />
+              <ChevronRight size={16} color="#fff" />
             </TouchableOpacity>
 
             {/* Quick links: Saved · Completed · Create */}
@@ -1069,17 +1064,17 @@ const s = StyleSheet.create({
 
   startHikingCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: T.green + "35",
-    paddingVertical: 14, paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: T.green,
+    paddingVertical: 16, paddingHorizontal: 16,
   },
   startHikingIconWrap: {
     width: 40, height: 40, borderRadius: 12,
-    backgroundColor: T.greenDim,
+    backgroundColor: "rgba(0,0,0,0.15)",
     alignItems: "center", justifyContent: "center",
   },
-  startHikingTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.green },
-  startHikingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  startHikingTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  startHikingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
 
   createCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
