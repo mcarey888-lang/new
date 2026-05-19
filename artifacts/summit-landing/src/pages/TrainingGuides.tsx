@@ -100,7 +100,7 @@ export default function TrainingGuides() {
         {/* Hero */}
         <section className="py-20 md:py-28 border-b border-white/5 relative overflow-hidden">
           <div className="absolute inset-0">
-            <img src={climberBg} alt="" aria-hidden="true" className="w-full h-full object-cover object-top opacity-60" />
+            <img src={climberBg} alt="" aria-hidden="true" className="w-full h-[133%] object-cover object-top opacity-60" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(62,207,117,0.07),transparent_60%)]" />
           </div>
