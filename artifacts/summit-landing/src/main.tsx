@@ -7,9 +7,15 @@ import TrainingGuides from "./pages/TrainingGuides";
 import MontBlancPlan from "./pages/training-guides/MontBlancPlan";
 import KilimanjaroPlan from "./pages/training-guides/KilimanjaroPlan";
 import MatterhornGuide from "./pages/training-guides/MatterhornGuide";
+import EBCPlan from "./pages/training-guides/EBCPlan";
+import GranParadisoPlan from "./pages/training-guides/GranParadisoPlan";
+import SixWeekHikingPlan from "./pages/training-guides/SixWeekHikingPlan";
 import CanIClimb from "./pages/CanIClimb";
 import MontBlancCIC from "./pages/can-i-climb/MontBlancCIC";
 import KilimanjaroCIC from "./pages/can-i-climb/KilimanjaroCIC";
+import MatterhornCIC from "./pages/can-i-climb/MatterhornCIC";
+import GranParadisoCIC from "./pages/can-i-climb/GranParadisoCIC";
+import EBCCIC from "./pages/can-i-climb/EBCCIC";
 import Mountains from "./pages/Mountains";
 import MontBlancMtn from "./pages/mountains/MontBlancMtn";
 import KilimanjaroMtn from "./pages/mountains/KilimanjaroMtn";
@@ -29,11 +35,17 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/training-guides/mont-blanc-training-plan" element={<MontBlancPlan />} />
       <Route path="/training-guides/kilimanjaro-training-plan" element={<KilimanjaroPlan />} />
       <Route path="/training-guides/matterhorn-preparation-guide" element={<MatterhornGuide />} />
+      <Route path="/training-guides/everest-base-camp-training-plan" element={<EBCPlan />} />
+      <Route path="/training-guides/gran-paradiso-training-plan" element={<GranParadisoPlan />} />
+      <Route path="/training-guides/6-week-hiking-training-plan" element={<SixWeekHikingPlan />} />
 
       {/* Can I Climb */}
       <Route path="/can-i-climb" element={<CanIClimb />} />
       <Route path="/can-i-climb/mont-blanc" element={<MontBlancCIC />} />
       <Route path="/can-i-climb/kilimanjaro" element={<KilimanjaroCIC />} />
+      <Route path="/can-i-climb/matterhorn" element={<MatterhornCIC />} />
+      <Route path="/can-i-climb/gran-paradiso" element={<GranParadisoCIC />} />
+      <Route path="/can-i-climb/everest-base-camp" element={<EBCCIC />} />
 
       {/* Mountains */}
       <Route path="/mountains" element={<Mountains />} />
