@@ -86,6 +86,9 @@ export default function MontBlancPlan() {
               <p className="text-muted-foreground leading-relaxed mb-4 text-lg">
                 At 4,808m, Mont Blanc is the highest peak in the Alps. The standard Goûter route involves no technical rock climbing — but summit day is 10–13 hours of continuous effort at serious altitude, in conditions that can turn hostile in minutes, on terrain that will destroy under-prepared legs on the 1,500m descent. People underestimate this every single season.
               </p>
+              <p className="text-xl font-semibold text-white mb-4 leading-snug">
+                Most people don't fail on Mont Blanc because they're unfit — they fail because they train for the wrong thing.
+              </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 Thousands summit every summer. Many more don't make it. The failures are rarely people who weren't fit — they're people who weren't prepared for the <em>specific</em> demands: the physiological stress above 4,000m, the accumulated fatigue from the Goûter hut approach day, the 3am start on minimal sleep, the quads giving out two hours into the descent. None of these are mysteries. All of them are trainable.
               </p>
@@ -122,7 +125,7 @@ export default function MontBlancPlan() {
               </ul>
 
               <div className="mb-7 p-4 bg-orange-400/5 border border-orange-400/20 rounded-xl">
-                <p className="text-sm text-muted-foreground"><span className="text-orange-400 font-semibold">If you can't tick at least 4 of these:</span> don't jump straight into this plan. Spend 4–6 weeks building general fitness first — your tendons and cardiovascular system need time to adapt that simply can't be compressed.</p>
+                <p className="text-sm text-muted-foreground"><span className="text-orange-400 font-semibold">If you can't meet most of these yet, you're not ready — but you can get there.</span> Spend 4–6 weeks on general fitness first. Your tendons and cardiovascular system need time to adapt that simply can't be compressed. Rushing this is the most common cause of injury.</p>
               </div>
 
               <h3 className="text-lg font-bold text-white mb-3">Where you need to be by summit day</h3>
@@ -158,35 +161,35 @@ export default function MontBlancPlan() {
                     label: "Foundation",
                     color: "border-primary/30 bg-primary/5",
                     labelColor: "text-primary",
-                    content: "Build your aerobic base. This phase is the one people skip to save time — and it's the reason they hit a wall at week 10. Run, cycle, or hike 4–5 days per week. One hill session per week minimum. Focus on time on feet rather than intensity. Cardiovascular adaptation is slow; there's no shortcut and no way to make it up later.",
+                    content: "This phase feels deceptively easy at first — that's the point. Most people skip it to save time and then struggle in week 9 wondering why. Build your aerobic base: run, cycle, or hike 4–5 days per week, one hill session per week minimum. Focus on time on feet, not intensity. Cardiovascular adaptation is slow and cannot be compressed — there is no way to make it up later.",
                   },
                   {
                     phase: "12–16 weeks",
                     label: "Build",
                     color: "border-blue-400/30 bg-blue-400/5",
                     labelColor: "text-blue-400",
-                    content: "Increase weekly long hike elevation gain to 1,000m+. Add a second hill session mid-week. Begin weighted hill reps — carrying a 10kg pack up your local hill 4–5 times in a single session. Introduce back-to-back weekend days: 5–6 hours Saturday, 2–3 hours Sunday. This is the combination most people skip and the one that matters most.",
+                    content: "This is where training starts to feel like real work. Increase weekly long hike elevation gain to 1,000m+. Add a second hill session mid-week. Begin weighted hill reps — 10kg pack up your local hill 4–5 times per session. Introduce back-to-back weekend days: 5–6 hours Saturday, 2–3 hours Sunday. The back-to-back combination is what most people skip and what matters most — the mountain doesn't give you a rest day between approach and summit.",
                   },
                   {
                     phase: "8–12 weeks",
                     label: "Peak",
                     color: "border-orange-400/30 bg-orange-400/5",
                     labelColor: "text-orange-400",
-                    content: "This is where you push hardest — and where most people either overtrain and get injured, or undertrain and arrive underprepared. Weekly elevation gain should reach 2,000–3,000m. Pack weight increases to 12–15kg on all long days. Plan at least one multi-day mountain route if accessible. If you find yourself dreading every session, cut volume by 15% for a week: sustained training at 85% beats burning out completely.",
+                    content: "This is the closest your training will get to how the mountain actually feels. Push hardest here — but most people either overtrain and get injured, or back off and arrive underprepared. Weekly elevation gain should reach 2,000–3,000m. Pack weight increases to 12–15kg on all long days. Plan at least one multi-day mountain route if accessible. If you find yourself dreading every session, cut volume by 15% for a week: sustained training at 85% beats burning out completely.",
                   },
                   {
                     phase: "4–8 weeks",
                     label: "Sharpen",
                     color: "border-purple-400/30 bg-purple-400/5",
                     labelColor: "text-purple-400",
-                    content: "Maintain volume but sharpen intensity. If your long days still feel gruelling at this stage, that's information — you may need to extend into another week of peak before tapering. Use this phase to close any technical gaps: crampon practice, moving in mountain boots on steep ground, navigation in wind and low visibility. Every item of kit should be decided and tested by the end of week 6.",
+                    content: "This phase is about closing gaps, not adding fitness. Maintain volume, sharpen intensity. If your long days still feel gruelling here, that's useful information — you may need another week of peak before you taper. Use this phase for technical work: crampon practice, moving in mountain boots on steep ground, navigation in poor conditions. Every item of kit should be decided and tested before the final two weeks.",
                   },
                   {
                     phase: "Final 2 weeks",
                     label: "Taper",
                     color: "border-white/20 bg-white/3",
                     labelColor: "text-white",
-                    content: "Reduce volume significantly but keep intensity. Two short, sharp hill sessions in the final week. Rest, sleep, eat well. Arriving fresh matters more than any last-minute fitness gains. Travel out to Chamonix at least 2–3 days before your summit attempt to begin acclimatising.",
+                    content: "The urge to cram in extra training here is strong — ignore it. The fitness is already built. Reduce volume significantly but keep a little intensity: two short, sharp hill sessions in the final week. Rest, sleep, and eat well. Arriving in Chamonix fresh matters far more than any last-minute gains. Get out at least 2–3 days before your summit attempt to begin acclimatising.",
                   },
                 ].map((phase) => (
                   <div key={phase.phase} className={`border rounded-xl p-6 ${phase.color}`}>
@@ -207,7 +210,8 @@ export default function MontBlancPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2">Example training week (peak phase)</h2>
               <p className="text-muted-foreground mb-2 text-sm">This is what a typical week looks like at weeks 8–12 of training.</p>
-              <p className="text-muted-foreground mb-6 text-sm">At this stage the week should feel demanding but not crushing. If you're consistently exhausted by Thursday, your Saturday volume is too high or your recovery is off. Most people go out too hard in week 8 — pace yourself across the full block, not just individual sessions.</p>
+              <p className="text-muted-foreground mb-1 text-sm">By the end of this week, you should feel tired but not broken. If you're drained by Thursday, your Saturday volume is too high or your recovery is off — both are fixable. Most people go out too hard in week 8 and accumulate fatigue they can't shed before the taper.</p>
+              <p className="text-muted-foreground mb-6 text-sm">Pace yourself across the full training block, not just individual sessions. Consistency over 12 weeks beats heroics in week 3.</p>
 
               <div className="overflow-hidden border border-white/8 rounded-xl">
                 {[
@@ -242,7 +246,7 @@ export default function MontBlancPlan() {
                   },
                   {
                     title: "Never training with a pack",
-                    body: "You'll carry 12–15kg on summit day. If you've trained entirely without a pack, your hips, back, and shoulders won't be ready. Introduce pack weight at week four and increase it gradually. By week 12, all long days should be done at full summit weight.",
+                    body: "People turn up with a 12kg pack on summit day having never trained with weight — and it completely changes how everything feels. Your pace drops, your hip flexors fatigue in unfamiliar ways, and shoulder discomfort starts dominating your attention before you've even reached the Goûter hut. Introduce pack weight from week four and increase it gradually. By week 12, every long day should be done at full summit weight.",
                   },
                   {
                     title: "Ignoring descents",
@@ -250,7 +254,7 @@ export default function MontBlancPlan() {
                   },
                   {
                     title: "Too much gym, not enough hills",
-                    body: "Gym strength is useful for building resilience. But treadmill inclines and leg press don't replicate moving over uneven mountain terrain for 12 hours. Prioritise outdoor hill time — even if your nearest hill is 200m of ascent, repeating it builds the specific muscles and movement patterns that matter.",
+                    body: "Most people think if they can squat well and run a decent pace they'll handle the mountain fine. They won't — not on day 2 of back-to-back alpine terrain. Gym strength builds resilience, but it doesn't replicate 12 hours of uneven ground, loaded descents, and the proprioceptive demands of mountain terrain. Prioritise outdoor hill time above everything else. A 200m local hill, repeated, trains the specific movement patterns and mental endurance that no gym session touches.",
                   },
                   {
                     title: "Starting too late",
@@ -299,7 +303,8 @@ export default function MontBlancPlan() {
 
             {/* Internal links */}
             <section className="mb-14 p-6 bg-white/3 border border-white/8 rounded-2xl">
-              <h3 className="font-bold text-white mb-4">Related guides</h3>
+              <h3 className="font-bold text-white mb-1">Not sure if Mont Blanc is the right next step?</h3>
+              <p className="text-sm text-muted-foreground mb-4">These guides will help you figure out where you stand and what to target next.</p>
               <div className="space-y-3">
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
@@ -323,8 +328,11 @@ export default function MontBlancPlan() {
             {/* Final CTA */}
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Get your personalised Mont Blanc training plan</h2>
+              <p className="text-muted-foreground mb-3 leading-relaxed">
+                You could piece this together yourself — but most people either under-train the things that actually matter or burn out before they peak.
+              </p>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Generic training plans are written for an average person with average hills and a perfectly consistent schedule. Your summit date, your local terrain, and your fitness level are specific — your plan should be too. Summit Ready takes 2 minutes to set up and builds a week-by-week schedule that fits your actual situation, not a hypothetical one.
+                Summit Ready removes the guesswork. Tell it your summit date, your current fitness, and where you're based — it builds a week-by-week plan around the hills near you, starting from where you actually are. No generic schedules. No chasing a plan designed for someone else.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">
