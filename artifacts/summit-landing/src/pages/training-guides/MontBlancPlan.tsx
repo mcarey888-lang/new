@@ -82,15 +82,15 @@ export default function MontBlancPlan() {
 
             {/* Section 1: Introduction */}
             <section className="mb-14">
-              <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">Mont Blanc is achievable — if you prepare properly</h2>
+              <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">Mont Blanc is achievable — but most people underestimate what it takes</h2>
               <p className="text-muted-foreground leading-relaxed mb-4 text-lg">
-                At 4,808m, Mont Blanc is the highest peak in the Alps and Western Europe. The standard Goûter route doesn't require technical rock climbing, but don't mistake that for easy. Summit day involves 10–13 hours of effort, serious altitude, unpredictable weather, and terrain that will punish under-prepared legs on the descent.
+                At 4,808m, Mont Blanc is the highest peak in the Alps and Western Europe. The standard Goûter route involves no technical rock climbing — but don't let that fool you. Summit day is 10–13 hours of continuous effort at serious altitude, in conditions that change without warning, on terrain that will destroy under-prepared legs on the descent.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                The good news: this is an entirely realistic goal for a fit person who commits to proper preparation. Thousands of people summit Mont Blanc every season. The ones who fail — and many do — usually went underprepared, underestimating the altitude or the length of the day.
+                Thousands of people summit Mont Blanc every season. Many more don't. The ones who turn back are rarely unfit — they're undertrained for the specific demands: the altitude above 4,000m, the 1,500m descent on tired legs, the 3am alarm after a poor night's sleep at the Goûter hut. These things are trainable. This plan addresses all of them.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                This training plan is built around the real demands of the mountain. Follow it honestly and you'll arrive at the Goûter hut with the fitness to push for the summit.
+                If you can hike 5–6 hours comfortably and you have 12–16 weeks, you're in a realistic position to be ready. Follow this plan honestly and you'll arrive at the Goûter hut with something in reserve.
               </p>
 
               <div className="mt-7 p-5 bg-white/3 border border-white/8 rounded-xl">
@@ -102,7 +102,7 @@ export default function MontBlancPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How fit do you need to be?</h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                Before starting a Mont Blanc-specific training plan, you should already be at a baseline level of fitness. If you're starting from scratch, build a general base first, then transition to this programme.
+                Where most people struggle is the gap between general fitness and mountain-specific fitness. You might run 5km three times a week and feel fit — but that won't prepare you for carrying 13kg up a steep snow slope at 4,400m after five hours already on your feet. The baseline below is the honest minimum before starting this plan. If you're below it, spend 4–6 weeks building that base first.
               </p>
 
               <h3 className="text-lg font-bold text-white mb-3">Minimum baseline before starting this plan</h3>
@@ -161,7 +161,7 @@ export default function MontBlancPlan() {
                     label: "Build",
                     color: "border-blue-400/30 bg-blue-400/5",
                     labelColor: "text-blue-400",
-                    content: "Increase elevation gain in your weekly long hike to 1,000m+. Add a second hill session per week. Begin weighted hill reps — carrying a pack up your local hill repeatedly. Start introducing back-to-back weekend days: a long hike Saturday, another on Sunday.",
+                    content: "Increase weekly long hike elevation gain to 1,000m+. Add a second hill session mid-week. Begin weighted hill reps — carrying a 10kg pack up your local hill 4–5 times in a single session. Introduce back-to-back weekend days: 5–6 hours Saturday, 2–3 hours Sunday. This is the combination most people skip and the one that matters most.",
                   },
                   {
                     phase: "8–12 weeks",
@@ -175,7 +175,7 @@ export default function MontBlancPlan() {
                     label: "Sharpen",
                     color: "border-purple-400/30 bg-purple-400/5",
                     labelColor: "text-purple-400",
-                    content: "Maintain volume but sharpen intensity. Long days should now feel manageable rather than gruelling — a sign your body has adapted. Work on any technical gaps: crampon practice, moving in mountain boots, navigation in poor weather. Sort your kit and know exactly what you'll carry.",
+                    content: "Maintain volume but sharpen intensity. If your long days still feel gruelling at this stage, that's information — you may need to extend into another week of peak before tapering. Use this phase to close any technical gaps: crampon practice, moving in mountain boots on steep ground, navigation in wind and low visibility. Every item of kit should be decided and tested by the end of week 6.",
                   },
                   {
                     phase: "Final 2 weeks",
@@ -212,7 +212,7 @@ export default function MontBlancPlan() {
                   { day: "Thursday", type: "Hill reps", color: "text-orange-400", desc: "Weighted hill session — find a hill with 100–200m of elevation and repeat it 4–6 times with a 12kg pack. Walk the ascents hard, walk the descents controlled. This is the most direct Mont Blanc simulation in your plan." },
                   { day: "Friday", type: "Rest", color: "text-muted-foreground", desc: "Complete rest. Prepare your kit for the weekend. Eat and sleep well. Rest is where adaptation happens — don't skip it." },
                   { day: "Saturday", type: "Long mountain day", color: "text-primary", desc: "Full mountain day — aim for 1,200–1,800m elevation gain with a 12–15kg pack. Move continuously. Focus on pacing: a pace you can sustain for 10 hours, not 3. Descend carefully and train your legs on the way down." },
-                  { day: "Sunday", type: "Short hike", color: "text-primary/60", desc: "30–60 minute easy hike or walk on tired legs. This mimics what day two of a mountain trip feels like. Nutritional recovery focus — protein and carbohydrates immediately after Saturday's effort." },
+                  { day: "Sunday", type: "Back-to-back", color: "text-primary/60", desc: "60–90 minute easy hike on tired legs. Not optional — this is one of the most specific things you can do for Mont Blanc. The Goûter hut approach day and summit day are back-to-back. Sunday tells you exactly how prepared you are." },
                 ].map((item, i) => (
                   <div key={item.day} className={`p-5 flex gap-4 ${i > 0 ? "border-t border-white/5" : ""}`}>
                     <div className="w-20 shrink-0">
@@ -267,16 +267,16 @@ export default function MontBlancPlan() {
 
             {/* Section 6: How Summit Ready helps */}
             <section className="mb-14">
-              <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready builds your Mont Blanc plan</h2>
+              <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready turns this into your actual training plan</h2>
               <p className="text-muted-foreground leading-relaxed mb-5">
-                The plan outlined above is a framework. What Summit Ready does is take that framework and personalise it around your specific situation:
+                The structure above is the blueprint. The problem with blueprints is they don't know when you're climbing, where you live, or what shape you're actually in. Summit Ready closes that gap:
               </p>
               <ul className="space-y-4 mb-7">
                 {[
-                  { title: "Your summit date", body: "We work backwards from your planned climb date and build a week-by-week schedule that peaks you at exactly the right time." },
-                  { title: "Your current fitness", body: "A 2-minute onboarding questionnaire establishes where you're starting from. Your plan adjusts to where you actually are — not where you'd like to be." },
-                  { title: "Your local hills", body: "We find the hills within reach of where you live and map them into your weekly sessions. No mountains nearby? We find what's closest and optimise around it." },
-                  { title: "Adaptive scheduling", body: "Missed a session? Struggled with a hill day? The plan adjusts automatically. You're never chasing an impossible target after a bad week." },
+                  { title: "Works backwards from your summit date", body: "Enter your climb date and Summit Ready builds a week-by-week plan that peaks your fitness at exactly the right moment. Not 3 weeks too early, not still ramping up when you land in Chamonix." },
+                  { title: "Starts from where you actually are", body: "A short onboarding assessment (takes about 2 minutes) establishes your real fitness baseline. If you're already doing regular mountain days, it skips the foundation phase. If you're starting from scratch, it builds you up properly from week one." },
+                  { title: "Uses the hills near you", body: "Most people aren't based next to the Alps. Summit Ready finds the hills within reach of where you live and builds them into your weekly schedule — specific sessions on specific terrain, not generic instructions." },
+                  { title: "Adjusts when life gets in the way", body: "Missed a week? Had a bad hill session? The plan recalculates. You're never left chasing a training block that's already impossible to complete." },
                 ].map((item) => (
                   <li key={item.title} className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -295,7 +295,11 @@ export default function MontBlancPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Fitness assessment and honest expectations
+                  Can I Climb Mont Blanc? — Honest fitness assessment before you book
+                </Link>
+                <Link to="/training-guides/gran-paradiso-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Gran Paradiso Training Plan — The ideal first 4,000m peak before Mont Blanc
                 </Link>
                 <Link to="/training-guides/kilimanjaro-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
@@ -303,16 +307,16 @@ export default function MontBlancPlan() {
                 </Link>
                 <Link to="/training-guides/matterhorn-preparation-guide" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Matterhorn Preparation Guide — The Alps' most iconic technical peak
+                  Matterhorn Preparation Guide — The next level after Mont Blanc
                 </Link>
               </div>
             </section>
 
             {/* Final CTA */}
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
-              <h2 className="text-2xl font-display font-bold text-white mb-3">Build My Mont Blanc Plan</h2>
+              <h2 className="text-2xl font-display font-bold text-white mb-3">Get your personalised Mont Blanc training plan</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Get a personalised week-by-week training schedule built around your summit date, your fitness level, and the hills near you. Free to download.
+                Tell Summit Ready your summit date, your current fitness, and where you're based. It builds a week-by-week training schedule around the hills near you — and adjusts automatically as you progress.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

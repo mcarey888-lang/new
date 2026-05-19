@@ -1,0 +1,106 @@
+I want you to improve the existing pages on my Summit Ready website.
+
+IMPORTANT:
+- Do NOT rewrite pages from scratch
+- Keep the existing structure and layout
+- Keep all SEO elements (titles, headings, URLs)
+- Focus on improving quality, realism, and clarity
+
+-------------------------------------
+GOALS
+-------------------------------------
+
+Make the content feel:
+- more human
+- more experience-based
+- more specific
+- more practical
+
+Avoid generic AI tone.
+
+-------------------------------------
+IMPROVEMENTS TO APPLY
+-------------------------------------
+
+1. ADD REALISTIC DETAIL
+
+Where content is vague, improve it with:
+- specific numbers (e.g. 6–8 hour hikes, 1000–1500m elevation gain)
+- realistic timeframes (e.g. 8–16 weeks training)
+- practical examples
+
+-------------------------------------
+
+2. IMPROVE TONE
+
+Replace generic phrases like:
+- “it is important to”
+- “in conclusion”
+- “this can help”
+
+With more natural language:
+- “most people underestimate…”
+- “where people usually struggle is…”
+- “if you can do X, you’re in a good position”
+
+-------------------------------------
+
+3. ADD REAL-WORLD INSIGHT
+
+Add lines that sound like lived experience:
+
+Examples:
+- common mistakes beginners make
+- where people typically fail
+- what actually feels hard in reality
+
+-------------------------------------
+
+4. STRENGTHEN THE INTRO
+
+Each page intro should:
+- directly answer the question
+- acknowledge difficulty honestly
+- hook the reader emotionally
+
+-------------------------------------
+
+5. IMPROVE CTA SECTIONS
+
+Make CTAs clearer and stronger:
+
+Explain:
+- what Summit Ready actually does
+- how it adapts to the user
+- why it’s better than guessing
+
+Make it feel like a logical next step.
+
+-------------------------------------
+
+6. ADD INTERNAL LINKS
+
+Where natural, add links to:
+- related training pages
+- related “can I climb” pages
+
+-------------------------------------
+
+7. REMOVE FLUFF
+
+Shorten or rewrite:
+- repetitive sentences
+- overly long paragraphs
+- generic filler text
+
+-------------------------------------
+
+FINAL RESULT
+-------------------------------------
+
+The content should feel like:
+- written by someone who understands mountain training
+- practical and honest
+- useful enough that someone would trust it
+
+NOT like a generic AI blog.
