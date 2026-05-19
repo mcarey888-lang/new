@@ -246,7 +246,6 @@ export default function TrailsScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<NearbyHill | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchAdded, setSearchAdded] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -345,7 +344,6 @@ export default function TrailsScreen() {
     setSearchLoading(true);
     setSearchResult(null);
     setSearchError(null);
-    setSearchAdded(false);
     try {
       const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
         ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -365,11 +363,6 @@ export default function TrailsScreen() {
     }
   }
 
-  async function handleAddSearchResult() {
-    if (!searchResult) return;
-    await addToNearbyHills(searchResult);
-    setSearchAdded(true);
-  }
 
 
   // ── Hills section ────────────────────────────────────────────────────────
@@ -577,7 +570,7 @@ export default function TrailsScreen() {
               ref={searchInputRef}
               style={s.searchInput}
               value={searchText}
-              onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+              onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); }}
               placeholder="e.g. Pendle Hill, Ben Nevis…"
               placeholderTextColor={T.textDim}
               returnKeyType="search"
@@ -620,16 +613,38 @@ export default function TrailsScreen() {
                 <View style={s.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={s.searchStatVal}>{searchResult.repeats}×</Text><Text style={s.searchStatLbl}>recs</Text></View>
                 <View style={s.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={s.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={s.searchStatLbl}>total</Text></View>
               </View>
-              <TouchableOpacity
-                onPress={handleAddSearchResult} disabled={searchAdded}
-                style={[s.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                activeOpacity={0.75}
-              >
-                {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
-                <Text style={[s.searchAddText, searchAdded && { color: T.green }]}>
-                  {searchAdded ? "Added to your hills!" : "Add to my hills"}
-                </Text>
-              </TouchableOpacity>
+              <View style={s.actionRow}>
+                <TouchableOpacity
+                  style={[
+                    s.addPlanBtn,
+                    hillsInPlan.includes(searchResult.name) && { backgroundColor: T.greenDim, borderColor: T.green + "50" },
+                    justAdded === searchResult.name && { backgroundColor: T.green + "25" },
+                  ]}
+                  activeOpacity={hillsInPlan.includes(searchResult.name) ? 1 : 0.7}
+                  onPress={() => !hillsInPlan.includes(searchResult.name) && handleAddToPlan(searchResult)}
+                  disabled={hillsInPlan.includes(searchResult.name)}
+                >
+                  {justAdded === searchResult.name
+                    ? <CheckCircle size={14} color={T.green} />
+                    : hillsInPlan.includes(searchResult.name)
+                      ? <Check size={14} color={T.green} />
+                      : <PlusCircle size={14} color={T.blue} />}
+                  <Text style={[s.addPlanText, hillsInPlan.includes(searchResult.name) && { color: T.green }]}>
+                    {justAdded === searchResult.name ? "Added!" : hillsInPlan.includes(searchResult.name) ? "In your plan" : "Add to plan"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(searchResult.lat, searchResult.lng, searchResult.name)}>
+                  <Map size={14} color={T.green} />
+                  <Text style={s.mapBtnText}>Map</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.detailsBtn} activeOpacity={0.7}
+                  onPress={() => router.push({ pathname: "/hill-detail", params: { name: searchResult.name, location: summitGoal?.location ?? "", lat: searchResult.lat?.toString() ?? "", lng: searchResult.lng?.toString() ?? "", elevation: searchResult.elevation.toString(), distance: searchResult.distance.toString(), grade: searchResult.grade, surface: searchResult.surface, emoji: searchResult.emoji } })}
+                >
+                  <Info size={14} color={T.purple} />
+                  <Text style={s.detailsBtnText}>Details</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -1183,13 +1198,6 @@ const s = StyleSheet.create({
   searchStat: { flexDirection: "row", alignItems: "center", gap: 4 },
   searchStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
   searchStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
-  searchAddBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    paddingVertical: 10, borderRadius: 12, borderWidth: 1,
-    borderColor: T.purple + "50", backgroundColor: T.purpleDim,
-  },
-  searchAddText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
-
   fetchBtn: { borderRadius: 14, overflow: "hidden", marginBottom: 10 },
   fetchBtnInner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
