@@ -283,11 +283,16 @@ interface WikiCoord { lat: number; lon: number }
 interface WikiPage { coordinates?: WikiCoord[] }
 interface WikiResponse { query?: { pages?: Record<string, WikiPage> } }
 
+interface NominatimResult { lat: string; lon: string; class: string; type: string }
+interface PostcodeIoResult { status: number; result?: { latitude: number; longitude: number } }
+
+const GEO_UA = "SummitReady/1.0 (hill training app)";
+
 async function lookupWikipediaSummit(hillName: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const q = encodeURIComponent(hillName);
     const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${q}&prop=coordinates&format=json&redirects=1`;
-    const res = await fetch(url, { headers: { "User-Agent": "SummitReady/1.0 (hill training app)" } });
+    const res = await fetch(url, { headers: { "User-Agent": GEO_UA } });
     const data = await res.json() as WikiResponse;
     const pages = data.query?.pages;
     if (!pages) return null;
@@ -296,6 +301,45 @@ async function lookupWikipediaSummit(hillName: string): Promise<{ lat: number; l
         const { lat, lon } = page.coordinates[0];
         return { lat, lng: lon };
       }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+/**
+ * Nominatim (OpenStreetMap) — free, no API key, OSM data.
+ * Returns the hill/place location based purely on its name.
+ */
+async function nominatimLookup(query: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const q = encodeURIComponent(query);
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&countrycodes=gb&limit=5`;
+    const res = await fetch(url, { headers: { "User-Agent": GEO_UA } });
+    if (!res.ok) return null;
+    const data = await res.json() as NominatimResult[];
+    if (!data?.length) return null;
+    // Prefer natural features (peaks, hills, moors) over admin boundaries
+    const best = data.find(d => d.class === "natural") ?? data[0];
+    return { lat: parseFloat(best.lat), lng: parseFloat(best.lon) };
+  } catch { /* fall through */ }
+  return null;
+}
+
+/**
+ * postcodes.io — free, no API key, exact centroid for any UK postcode.
+ * The most precise source for trailhead / car park locations.
+ */
+async function postcodeIoLookup(postcode: string): Promise<{ lat: number; lng: number } | null> {
+  if (!postcode?.trim()) return null;
+  try {
+    const q = encodeURIComponent(postcode.trim().toUpperCase());
+    const res = await fetch(`https://api.postcodes.io/postcodes/${q}`, {
+      headers: { "User-Agent": GEO_UA },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as PostcodeIoResult;
+    if (data.result?.latitude) {
+      return { lat: data.result.latitude, lng: data.result.longitude };
     }
   } catch { /* fall through */ }
   return null;
@@ -312,41 +356,54 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Maximum distance a geocoded start point is allowed to be from the AI-supplied
-// coordinates before we reject it and fall back to the AI value.
-const MAX_GEOCODE_DRIFT_KM = 60;
+// Start point must be within this distance of the confirmed hill location.
+const MAX_START_DRIFT_KM = 15;
 
+/**
+ * Resolve reliable GPS coords for a hill's start point / car park.
+ *
+ * Strategy (most → least authoritative):
+ *  1. Establish a trustworthy anchor using Nominatim (OSM) — independent of the AI.
+ *  2. Try postcodes.io for an exact UK postcode centroid.
+ *  3. Try Mapbox POI search anchored to the Nominatim position.
+ *  4. Fall back to the Nominatim hill position itself.
+ *  5. Last resort: whatever the AI generated.
+ */
 async function geocodeStartPoint(
   startName: string,
   hillName: string,
   postcode: string,
   aiLat: number,
-  aiLng: number
+  aiLng: number,
+  location?: string,
 ): Promise<{ lat: number; lng: number }> {
-  const token = process.env.MAPBOX_TOKEN;
+  // Step 1 — Establish a reliable anchor from OSM (not the AI).
+  // Run both queries in parallel: "{hillName} {location}" and just "{hillName}".
+  const [nominatimFull, nominatimShort] = await Promise.all([
+    nominatimLookup(location ? `${hillName} ${location}` : hillName),
+    location ? nominatimLookup(hillName) : Promise.resolve(null),
+  ]);
+  const nominatimAnchor = nominatimFull ?? nominatimShort;
+
+  // Use the OSM anchor when available; only fall back to AI coords if OSM returns nothing.
+  const anchorLat = nominatimAnchor?.lat ?? aiLat;
+  const anchorLng = nominatimAnchor?.lng ?? aiLng;
 
   function withinRange(lat: number, lng: number): boolean {
-    return haversineKm(aiLat, aiLng, lat, lng) <= MAX_GEOCODE_DRIFT_KM;
+    return haversineKm(anchorLat, anchorLng, lat, lng) <= MAX_START_DRIFT_KM;
   }
 
+  // Step 2 — postcodes.io: exact UK postcode centroid.
+  if (postcode) {
+    const pc = await postcodeIoLookup(postcode);
+    if (pc && withinRange(pc.lat, pc.lng)) return pc;
+  }
+
+  // Step 3 — Mapbox POI / address search near the OSM anchor.
+  const token = process.env.MAPBOX_TOKEN;
   if (token) {
-    const proximity = `${aiLng},${aiLat}`;
-
-    // Attempt 1: postcode geocoding — most precise for UK trailheads
-    if (postcode) {
-      try {
-        const q = encodeURIComponent(postcode);
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&types=postcode&limit=1`;
-        const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
-        if (data.features?.length) {
-          const [lng, lat] = data.features[0].center;
-          if (withinRange(lat, lng)) return { lat, lng };
-        }
-      } catch { /* fall through */ }
-    }
-
-    // Attempt 2: POI / address search near the AI coords
     try {
+      const proximity = `${anchorLng},${anchorLat}`;
       const q = encodeURIComponent(`${startName} ${hillName}`);
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&proximity=${proximity}&types=poi,address&limit=3`;
       const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
@@ -357,7 +414,10 @@ async function geocodeStartPoint(
     } catch { /* fall through */ }
   }
 
-  // Fallback: trust the AI's own coordinates — they are at least in the right area
+  // Step 4 — Return the OSM hill position as the best known location for this hill.
+  if (nominatimAnchor) return nominatimAnchor;
+
+  // Step 5 — Last resort: trust the AI's coordinates.
   return { lat: aiLat, lng: aiLng };
 }
 
@@ -409,7 +469,8 @@ router.post("/hill-detail", async (req, res) => {
 
     const validated = HillDetailSchema.parse(parsed);
 
-    // Run Wikipedia summit lookup + Mapbox start-point geocoding in parallel
+    // Run Wikipedia summit lookup + start-point geocoding in parallel.
+    // geocodeStartPoint uses Nominatim + postcodes.io as authoritative anchors.
     const [summit, geocoded] = await Promise.all([
       lookupWikipediaSummit(hillName.trim()),
       geocodeStartPoint(
@@ -417,7 +478,8 @@ router.post("/hill-detail", async (req, res) => {
         hillName.trim(),
         validated.startPoint.postcode,
         validated.startPoint.lat,
-        validated.startPoint.lng
+        validated.startPoint.lng,
+        loc,
       ),
     ]);
 

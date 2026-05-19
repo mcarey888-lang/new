@@ -184,9 +184,8 @@ export default function HillDetailScreen() {
                 onPress={() => {
                   if (detail?.summitLat && detail?.summitLng) {
                     openMapPin(detail.summitLat, detail.summitLng, name ?? "");
-                  } else if (hillLat && hillLng) {
-                    openMapPin(hillLat, hillLng, name ?? "");
                   } else {
+                    // Name search is more reliable than AI-generated coordinates
                     openMapSearch(name ?? "");
                   }
                 }}
@@ -202,9 +201,8 @@ export default function HillDetailScreen() {
                   if (detail?.startPoint.postcode) {
                     openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
                   } else if (detail) {
+                    // Use geocoded (postcodes.io-validated) start point coords
                     openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
-                  } else if (hillLat && hillLng) {
-                    openMapDirections(hillLat, hillLng, name ?? "");
                   } else {
                     openMapSearch((name ?? "") + " car park");
                   }
@@ -374,9 +372,11 @@ export default function HillDetailScreen() {
                         <TouchableOpacity
                           style={styles.routeMapBtn}
                           onPress={() => {
-                            const lat = detail.startPoint.lat;
-                            const lng = detail.startPoint.lng;
-                            openMapDirections(lat, lng, detail.startPoint.name);
+                            if (detail.startPoint.postcode) {
+                              openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
+                            } else {
+                              openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                            }
                           }}
                           activeOpacity={0.8}
                         >
