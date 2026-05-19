@@ -8,6 +8,7 @@ import {
   Footprints,
   Info,
   Lock,
+  LocateFixed,
   Map,
   MapPin,
   Minus,
@@ -25,6 +26,7 @@ import {
   X,
   Zap,
 } from "lucide-react-native";
+import * as Location from "expo-location";
 import { TrailCard } from "@/components/TrailCard";
 import { CURATED_HILLS, type TrailDifficulty } from "@/constants/trailData";
 import { LinearGradient } from "expo-linear-gradient";
@@ -238,6 +240,8 @@ export default function TrailsScreen() {
   const locInputRef = useRef<TextInput>(null);
 
   // Hill search state
+  const [gpsLoading, setGpsLoading] = useState(false);
+
   const [searchText, setSearchText] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<NearbyHill | null>(null);
@@ -284,6 +288,31 @@ export default function TrailsScreen() {
     } else {
       const next = idx + dir;
       if (next >= 0 && next < ELEV_STEPS.length) setMinElevation(ELEV_STEPS[next]);
+    }
+  }
+
+  async function handleGpsLocation() {
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Location access needed", "Enable location access in Settings to use this feature.");
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const [result] = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+      const parts: string[] = [];
+      if (result?.city) parts.push(result.city);
+      else if (result?.district) parts.push(result.district);
+      if (result?.country) parts.push(result.country);
+      const label = parts.length > 0 ? parts.join(", ") : `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
+      setLocText(label);
+      await updateGoalLocation(label);
+      await fetchNearbyHills(localRadius);
+    } catch {
+      Alert.alert("Couldn't get location", "Check your connection and try again.");
+    } finally {
+      setGpsLoading(false);
     }
   }
 
@@ -409,6 +438,62 @@ export default function TrailsScreen() {
 
         {/* Controls */}
         <View style={s.controlCard}>
+          {/* Location row */}
+          <View style={s.controlRow}>
+            <View style={s.controlLabelRow}>
+              <MapPin size={13} color={T.green} />
+              <Text style={s.controlLabel}>Location</Text>
+            </View>
+            <View style={s.locControlRight}>
+              {editingLoc ? (
+                <>
+                  <TextInput
+                    ref={locInputRef}
+                    style={s.locControlInput}
+                    value={locText}
+                    onChangeText={setLocText}
+                    placeholderTextColor={T.textMuted}
+                    placeholder="City, Country"
+                    returnKeyType="done"
+                    onSubmitEditing={confirmLoc}
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={confirmLoc} style={s.locControlBtn} hitSlop={8}>
+                    <Check size={14} color={T.green} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={cancelLoc} style={s.locControlBtn} hitSlop={8}>
+                    <X size={14} color={T.textMuted} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    onPress={() => { setLocText(summitGoal?.location ?? ""); setEditingLoc(true); setTimeout(() => locInputRef.current?.focus(), 80); }}
+                    style={s.locControlDisplay} activeOpacity={0.7}
+                  >
+                    <Text style={s.locControlText} numberOfLines={1}>
+                      {summitGoal?.location ?? "Set location"}
+                    </Text>
+                    <Pencil size={11} color={T.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleGpsLocation}
+                    disabled={gpsLoading}
+                    style={[s.locGpsBtn, gpsLoading && { opacity: 0.5 }]}
+                    hitSlop={8} activeOpacity={0.75}
+                  >
+                    {gpsLoading
+                      ? <ActivityIndicator size="small" color={T.green} />
+                      : <LocateFixed size={15} color={T.green} />
+                    }
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+
+          <View style={s.controlDivider} />
+
           <View style={s.controlRow}>
             <View style={s.controlLabelRow}>
               <Radio size={13} color={T.green} />
@@ -1016,6 +1101,24 @@ const s = StyleSheet.create({
   locActionBtn: {
     width: 30, height: 30, alignItems: "center", justifyContent: "center",
     borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
+  },
+
+  // Location control row (inside controlCard)
+  locControlRight: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, maxWidth: "60%" },
+  locControlDisplay: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
+  locControlText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted, flexShrink: 1 },
+  locControlInput: {
+    fontSize: 13, fontFamily: "Inter_400Regular", color: T.white,
+    backgroundColor: T.surface, borderRadius: 9, borderWidth: 1, borderColor: T.green + "50",
+    paddingHorizontal: 9, paddingVertical: 5, minWidth: 100, flexShrink: 1,
+  },
+  locControlBtn: {
+    width: 28, height: 28, alignItems: "center", justifyContent: "center",
+    borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, flexShrink: 0,
+  },
+  locGpsBtn: {
+    width: 34, height: 34, alignItems: "center", justifyContent: "center",
+    borderRadius: 10, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "50", flexShrink: 0,
   },
 
   ctxCard: {
