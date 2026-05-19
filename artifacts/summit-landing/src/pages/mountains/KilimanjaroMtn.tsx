@@ -63,7 +63,7 @@ export default function KilimanjaroMtn() {
                 Kilimanjaro is a dormant stratovolcano in northeastern Tanzania, close to the border with Kenya. It stands completely alone on the savannah, rising dramatically from 800m at its base to 5,895m at Uhuru Peak — a height gain with no other peaks nearby to help with acclimatisation.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                This isolation is part of what makes Kilimanjaro both accessible and challenging. As a standalone peak, it's logistically simpler than peaks in major mountain ranges — there are no other peaks to acclimatise on, no complex glacier systems, and no technical approach. But its altitude is higher than anything in Europe, the Rockies, or the Andes above 5,500m.
+                This isolation is part of what makes Kilimanjaro both accessible and deceptively hard. As a standalone peak, it's logistically simple — no complex glacier systems, no technical climbing, well-maintained trails with clear signage. But that accessibility misleads people. There are no lower neighbouring peaks to pre-acclimatise on, the altitude gain from the park gate to the summit is nearly 5,000m in five to seven days, and at 5,895m you're operating on roughly half the oxygen available at sea level. Most people are genuinely surprised by how hard it is.
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 Around 50,000 people attempt Kilimanjaro each year. Overall summit success rates sit around 65–85%, depending heavily on route and operator choice.
@@ -121,7 +121,7 @@ export default function KilimanjaroMtn() {
 
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Train for Kilimanjaro with Summit Ready</h2>
-              <p className="text-muted-foreground mb-6">Get a personalised plan built for your route choice, fitness level, and local hills.</p>
+              <p className="text-muted-foreground mb-6">You could plan this yourself — but route choice, back-to-back training, and altitude preparation have to work together from the start. Get a personalised plan built for your route choice, fitness level, and local hills.</p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">
                   Build My Kilimanjaro Plan <ArrowRight className="ml-2 w-5 h-5" />

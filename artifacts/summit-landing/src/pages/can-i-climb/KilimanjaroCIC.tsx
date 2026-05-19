@@ -139,7 +139,7 @@ export default function KilimanjaroCIC() {
                 Kilimanjaro's summit is at 5,895m — higher than every peak in the Alps and the Rockies. At that altitude, you're operating on roughly half the available oxygen compared to sea level. No amount of cardiovascular fitness fully compensates for this. Acclimatisation — sleeping at progressively higher altitudes over multiple days — is what determines success.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                Summit night is the hardest part of the climb. Parties typically leave base camp (Barafu, 4,673m) at midnight, hike through bitter cold for 5–7 hours, and reach Uhuru Peak at dawn. Many climbers experience nausea, headaches, or disorientation. Moving slowly and steadily — "pole pole" in Swahili — is the correct approach.
+                Summit night is the hardest part of the climb, and most people underestimate it. You leave Barafu camp (4,673m) at midnight having slept poorly at altitude, hike through temperatures of –15°C or colder for 5–7 hours, and reach Uhuru Peak at dawn — if you make it. Nausea, severe headaches, and tunnel-vision fatigue are completely normal at this altitude. The pace is genuinely slow — slower than feels right — but going faster is how people get turned around 200 metres from the summit.
               </p>
 
               <div className="p-5 bg-blue-400/5 border border-blue-400/20 rounded-xl">
@@ -188,7 +188,7 @@ export default function KilimanjaroCIC() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Build My Kilimanjaro Training Plan</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Summit Ready builds your personalised plan based on your route choice, departure date, and current fitness — then adapts week by week as you progress.
+                You could figure this out yourself — but the specific combination of back-to-back training, progressive pack weight, and cardiovascular base that Kilimanjaro demands is easy to get wrong. Summit Ready builds your personalised plan based on your route choice, departure date, and current fitness — then adapts week by week as you progress.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

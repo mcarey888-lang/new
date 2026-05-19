@@ -148,7 +148,7 @@ export default function EBCPlan() {
                     label: "Foundation",
                     color: "border-primary/30 bg-primary/5",
                     labelColor: "text-primary",
-                    content: "Get consistent. Three to four aerobic sessions per week, one longer walk at the weekend. The goal here is building the habit and the base aerobic capacity. If you haven't been exercising regularly, this phase matters most — don't skip it by starting late.",
+                    content: "The most important thing in this phase is not missing sessions. Three to four aerobic sessions per week — runs, cycles, swims — and one longer weekend walk to build time on your feet. At this stage, nothing should feel like serious training. You're building the habit and the cardiovascular base that everything else depends on. The biggest mistake is skipping this phase to save time, jumping straight into back-to-back days, and then burning out at week 12 wondering why your body won't recover properly.",
                   },
                   {
                     phase: "16–20 weeks",
@@ -260,7 +260,7 @@ export default function EBCPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready builds your EBC plan</h2>
               <p className="text-muted-foreground leading-relaxed mb-5">
-                EBC training isn't just about ticking off long days. Summit Ready builds a week-by-week schedule personalised around your specific situation:
+                You could piece this together yourself — but the most common pattern we see is people completing the long Saturday walks while skipping the Sunday back-to-backs because they feel optional. They're not. Summit Ready builds a week-by-week schedule personalised around your specific situation, with the back-to-backs built in as fixed:
               </p>
               <ul className="space-y-4 mb-7">
                 {[

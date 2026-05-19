@@ -149,7 +149,7 @@ export default function KilimanjaroPlan() {
                     label: "Foundation",
                     color: "border-primary/30 bg-primary/5",
                     labelColor: "text-primary",
-                    content: "Build aerobic base. 4–5 days of cardio per week. Walk or hike as much as possible. Start adding at least one longer hike per week. At this stage, consistency matters more than intensity.",
+                    content: "Most people underestimate how much this phase matters. Four to five aerobic sessions per week — runs, cycles, or walks — with at least 400–600m of elevation gain on your weekend long day. Your long weekend hike should reach 3–4 hours by the end of this phase. At altitude above 4,000m, your aerobic engine determines how much you have left on summit night, not your willpower. Skipping this phase to save time and jumping straight into harder training is the most common reason people struggle in the final two days.",
                   },
                   {
                     phase: "12–16 weeks",
@@ -226,9 +226,9 @@ export default function KilimanjaroPlan() {
               <div className="space-y-4">
                 {[
                   { title: "Training for one big day, not many consecutive days", body: "Kilimanjaro is a multi-day endurance event. Training for a single long hike — however impressive — won't prepare you for days five and six when you're exhausted and approaching 5,000m. Back-to-back training days are non-negotiable." },
-                  { title: "Choosing too short a route", body: "The 5-day routes (Marangu, Rongai) have significantly lower success rates than 7-day routes. The extra days are for acclimatisation. Save money on gear, not on route length." },
-                  { title: "Ignoring the descent", body: "The 2,800m descent from Uhuru Peak destroys knees and legs. Your quads will be empty. Build downhill-specific strength into your training from week one." },
-                  { title: "Undertrained cardiovascular system", body: "Fitness for Kilimanjaro is 80% cardiovascular. If your aerobic base isn't strong, no amount of hill work will compensate. Build the engine first." },
+                  { title: "Choosing too short a route", body: "The 5-day Marangu route has a summit success rate around 65% compared to 85%+ on the 7-day Machame. The extra days aren't padding — they're the acclimatisation time your body needs and cannot shortcut. People book shorter routes to save a few hundred pounds and then spend it on a second trip, or they summit feeling genuinely awful and spend the entire descent regretting the decision. Choose seven days minimum." },
+                  { title: "Ignoring the descent", body: "The 2,800m descent from Uhuru Peak back to base camp comes after summit night — five to seven hours of cold, dark hiking on near-zero sleep. Many trekkers who reach the summit confidently are limping or stopping on the way down. Eccentric step-downs and loaded downhill training from week 6 are the best protection against this, not ibuprofen taken in advance." },
+                  { title: "Undertrained cardiovascular system", body: "Fitness for Kilimanjaro is 80% cardiovascular. Above 4,000m, your aerobic capacity is limited by oxygen availability — and a well-developed aerobic engine is what gives you reserves when that happens. People who arrive strong from the gym but without a proper running or hiking base typically manage the lower days fine and then fall apart on summit night at 5,000m. Build the engine first, with real time on your feet." },
                 ].map((item) => (
                   <div key={item.title} className="flex gap-4 bg-white/3 border border-white/8 rounded-xl p-6">
                     <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />

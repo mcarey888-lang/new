@@ -76,7 +76,7 @@ export default function EBCCIC() {
                 Yes — if you prepare properly. Everest Base Camp is not a summit attempt. There's no technical climbing, no glacier travel, and no ropes. But at 5,364m over 12–16 consecutive days of hiking, it's one of the most demanding multi-day treks in the world. Altitude will affect everyone. Back-to-back days will wear down the underprepared.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                The difference between people who love EBC and people who suffer through it usually comes down to one thing: back-to-back training. A long Saturday walk doesn't prepare you for day 10 on the trail. Consecutive days of hiking in training does.
+                The difference between people who love EBC and people who suffer through it usually comes down to one thing: back-to-back training. A long Saturday walk doesn't prepare you for day 10 on the trail. By day 8 or 9, above 4,500m, your appetite disappears, your sleep is disrupted by altitude, and every uphill section takes more out of you than it should. The people who manage this well are the ones who've trained their body to perform on tired legs — not just to perform once a week at full capacity.
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 With 16–20 weeks of honest preparation and a sensible pacing strategy on the trek itself, EBC is achievable for most fit adults.
@@ -195,7 +195,7 @@ export default function EBCCIC() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Ready to prepare for EBC?</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Summit Ready builds a personalised training plan based on your current fitness, your trek date, and the hills near you.
+                You could piece this together yourself — but the back-to-back commitment is the part most people drop first when life gets in the way. Summit Ready builds a personalised training plan based on your current fitness, your trek date, and the hills near you — and makes the hard sessions non-negotiable.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

@@ -215,7 +215,7 @@ export default function MatterhornCIC() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Start the journey toward bigger summits</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Summit Ready builds a personalised training plan that works toward your goal — wherever you're starting from.
+                You could plot this progression yourself — but knowing when you're genuinely ready for each step, rather than just feeling optimistic, is where most people get into trouble. Summit Ready builds a personalised training plan that works toward your goal — wherever you're starting from.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

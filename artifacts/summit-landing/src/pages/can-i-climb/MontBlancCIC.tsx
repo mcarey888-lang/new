@@ -139,7 +139,7 @@ export default function MontBlancCIC() {
             <section className="mb-12">
               <h2 className="text-2xl font-display font-bold text-white mb-5">What summit day actually looks like</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Most parties stay at the Goûter hut (3,835m) the night before, leaving at 1–2am for the summit. From the hut to the summit and back is 10–13 hours total for most climbers. You'll be at altitude from the moment you leave the hut.
+                Most parties stay at the Goûter hut (3,835m) the night before, leaving at 1–2am for the summit. From the hut to the summit and back is 10–13 hours total for most climbers — on legs that have already been working since the previous morning's hut approach. By the time you reach the Vallot emergency shelter (4,362m), roughly three hours in, you understand what altitude actually feels like: breathing is audible on inclines that would be trivial at lower elevation, each step takes deliberate effort, and the cold is deeper than your layers suggest it should be. This is when under-prepared climbers start making poor decisions.
               </p>
               <div className="space-y-3">
                 {[
@@ -199,7 +199,7 @@ export default function MontBlancCIC() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Ready to build your plan?</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Summit Ready builds a personalised training plan based on your current fitness, your summit date, and the hills near you.
+                You could research and plan this yourself — but the most common failures come from people who trained hard without direction: too much gym work, not enough hills, no back-to-back days. Summit Ready builds a personalised training plan based on your current fitness, your summit date, and the hills near you.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

@@ -77,7 +77,7 @@ export default function MatterhornMtn() {
                 First summited in 1865 by Edward Whymper's party — and infamous for the deaths of four of his companions on the descent — the Matterhorn has a long and sobering history. Approximately 500 people have died attempting it. Despite this, around 3,000 people summit each year, guided by experienced local guides who know the mountain intimately.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                The key point: those who summit safely have earned it through years of alpine progression, not weeks of preparation.
+                The key point: those who summit safely have earned it through years of progressive alpine experience — not weeks of preparation. The summit view from 4,478m is extraordinary, but what most climbers describe more vividly is the technical descent on tired arms and legs, the exposure on the upper ridge, and the moment they fully understood what "expert only" actually means on a real mountain.
               </p>
             </section>
 
@@ -140,7 +140,7 @@ export default function MatterhornMtn() {
 
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Start Your Journey to the Matterhorn</h2>
-              <p className="text-muted-foreground mb-6">Build the fitness foundation first. Summit Ready creates your progressive training plan from where you are now.</p>
+              <p className="text-muted-foreground mb-6">The journey to the Matterhorn is long — but every objective along the way is worth doing in its own right. Summit Ready creates your progressive training plan from where you are now, building the foundation that makes each step achievable.</p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">
                   Build My Training Plan <ArrowRight className="ml-2 w-5 h-5" />

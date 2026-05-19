@@ -248,7 +248,7 @@ export default function SixWeekHikingPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready adapts this for your goal</h2>
               <p className="text-muted-foreground leading-relaxed mb-5">
-                A generic 6-week plan is a starting point. Summit Ready builds the sessions around what's actually near you:
+                You could piece this together yourself — but with only 6 weeks, the timing and progression have to be right from week one. Most people go too hard in weeks one and two, pick up a niggle, and lose 10 days they can't afford to lose. Summit Ready builds the sessions around what's actually near you, at the right intensity for where you actually are:
               </p>
               <ul className="space-y-4 mb-7">
                 {[

@@ -162,7 +162,7 @@ export default function GranParadisoPlan() {
                     label: "Peak",
                     color: "border-orange-400/30 bg-orange-400/5",
                     labelColor: "text-orange-400",
-                    content: "Your hardest training phase. Weekly elevation gain reaches 1,500–2,000m. Pack weight increases to 12kg on long days. Weekend back-to-back days are now standard: long day Saturday (5–6 hours), shorter day Sunday (3 hours). If possible, do one multi-day mountain route with hut accommodation.",
+                    content: "Your hardest training phase. By week 8, you should be tired — that's correct, not a problem. Weekly elevation gain reaches 1,500–2,000m. Pack weight increases to 12kg on long days. Weekend back-to-back days are now standard: long day Saturday (5–6 hours), shorter day Sunday (3 hours). By the end of Sunday, you should feel exactly how you'll feel on Gran Paradiso's hut approach day — functional but depleted. If Sunday feels impossible, your Saturday pace was too aggressive. If possible, plan one multi-day mountain route with hut accommodation before this phase ends.",
                   },
                   {
                     phase: "4–6 weeks",
@@ -260,7 +260,7 @@ export default function GranParadisoPlan() {
             <section className="mb-14">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-5">How Summit Ready builds your Gran Paradiso plan</h2>
               <p className="text-muted-foreground leading-relaxed mb-5">
-                Gran Paradiso prep is highly specific to where you are in the world and what hills you have access to. Summit Ready builds around your real situation:
+                You could build this plan yourself — but Gran Paradiso's specific demands (back-to-back days, crampon practice timing, peaking at altitude) are easy to miss without a structured programme. Gran Paradiso prep is highly specific to where you are in the world and what hills you have access to. Summit Ready builds around your real situation:
               </p>
               <ul className="space-y-4 mb-7">
                 {[

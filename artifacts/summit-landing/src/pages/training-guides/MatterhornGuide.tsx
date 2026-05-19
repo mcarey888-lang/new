@@ -10,7 +10,7 @@ function InternalCTA() {
     <div className="my-10 bg-primary/8 border border-primary/20 rounded-2xl p-7 flex flex-col sm:flex-row gap-5 items-start sm:items-center">
       <div className="flex-1">
         <p className="font-bold text-white text-lg mb-1">Building toward the Matterhorn?</p>
-        <p className="text-muted-foreground text-sm leading-relaxed">Start with a strong alpine fitness base. Summit Ready builds your training plan around your current level and the hills near you.</p>
+        <p className="text-muted-foreground text-sm leading-relaxed">You could research this path yourself — but most people either underestimate how long the progression takes, or try to skip steps and arrive at the Hörnli hut technically underprepared. Summit Ready builds your training plan around your current level and the hills near you, working toward the Matterhorn progressively.</p>
       </div>
       <a href="/#get-started" className="shrink-0">
         <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-7 h-12 shadow-[0_0_20px_rgba(62,207,117,0.3)] transition-all hover:scale-105 whitespace-nowrap">

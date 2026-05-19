@@ -67,7 +67,7 @@ export default function MontBlancMtn() {
                 First summited in 1786 by Jacques Balmat and Michel-Gabriel Paccard, Mont Blanc became the founding objective of alpinism and continues to attract around 20,000 summit attempts each year. It has a significant fatality record — roughly 100 deaths annually — making it one of the deadliest mountains on Earth by absolute numbers despite being non-technical.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                The mountain's relative accessibility combined with its serious nature creates a challenging situation: it attracts large numbers of under-prepared climbers alongside experienced alpinists. Proper preparation transforms it from a dangerous objective into a memorable, achievable achievement.
+                The mountain's relative accessibility combined with its serious nature creates a paradox: it attracts large numbers of under-prepared climbers alongside experienced alpinists. Mont Blanc sees roughly 100 deaths a year — higher than Everest in absolute numbers — not because it is technically extreme, but because thousands attempt it without adequate preparation. With the right training, a good guide, and a genuine weather window, it is one of the most rewarding mountain days in Europe.
               </p>
             </section>
 
@@ -130,7 +130,7 @@ export default function MontBlancMtn() {
 
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Train for Mont Blanc with Summit Ready</h2>
-              <p className="text-muted-foreground mb-6">Get a personalised training plan built around your summit date and the hills near you.</p>
+              <p className="text-muted-foreground mb-6">You could piece this together yourself — but most people either undertrain the back-to-back days or miss the crampon practice window entirely. Get a personalised training plan built around your summit date and the hills near you.</p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">
                   Build My Mont Blanc Plan <ArrowRight className="ml-2 w-5 h-5" />

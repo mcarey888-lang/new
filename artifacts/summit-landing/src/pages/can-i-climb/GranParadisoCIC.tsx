@@ -76,7 +76,7 @@ export default function GranParadisoCIC() {
                 Yes — with genuine preparation. Gran Paradiso is rated PD (peu difficile) in alpine climbing grades, which means "not very difficult" by alpine standards. The standard route from the Vittorio Emanuele II hut involves glacier travel but no technical rock climbing. It's one of the best first 4,000m peaks in the Alps, and an excellent stepping stone toward Mont Blanc.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                The important caveat: "not very difficult" in alpine terms still means a long, demanding day at real altitude with crampons on a glacier. People who underestimate the preparation required don't fail dramatically — they just have a miserable, exhausting day and frequently don't reach the summit.
+                The important caveat: "not very difficult" in alpine terms still means a long, demanding day at real altitude with crampons on a glacier. People who underestimate the preparation required don't fail dramatically — they just have a miserable, exhausting day and frequently don't reach the summit. More specifically: the final section involves a steep snow couloir that demands something in reserve. An under-prepared climber often turns back here — 45 minutes from the top — not because of technical difficulty, but because their legs are empty.
               </p>
             </section>
 
@@ -191,7 +191,7 @@ export default function GranParadisoCIC() {
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Ready to build your plan?</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Summit Ready builds a personalised training plan based on your current fitness, your summit date, and the hills near you.
+                You could plan this yourself — but Gran Paradiso's specific combination of back-to-back endurance, crampon practice, and altitude timing is easy to get wrong without a structured programme. Summit Ready builds a personalised training plan based on your current fitness, your summit date, and the hills near you.
               </p>
               <a href="/#get-started">
                 <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-10 h-14 text-base shadow-[0_0_30px_rgba(62,207,117,0.35)] transition-all hover:scale-105 active:scale-95">

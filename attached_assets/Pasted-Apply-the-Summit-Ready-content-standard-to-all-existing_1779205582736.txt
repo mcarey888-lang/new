@@ -1,0 +1,166 @@
+Apply the Summit Ready content standard to all existing pages and any new pages created in the future.
+
+IMPORTANT:
+- Do NOT rewrite pages from scratch
+- Do NOT change layout, structure, URLs, or headings
+- Keep all SEO elements intact
+- This is a quality upgrade and consistency system, not a redesign
+
+-------------------------------------
+CORE RULE
+-------------------------------------
+
+All pages must match the quality, tone, and realism of the Mont Blanc Training Plan page.
+
+That page is the benchmark.
+
+Every page should feel like:
+- written by someone who understands mountain training
+- practical and experience-based
+- slightly opinionated
+- clear, honest, and useful
+
+NOT like a generic AI article.
+
+-------------------------------------
+CONTENT PRINCIPLES (APPLY TO ALL PAGES)
+-------------------------------------
+
+1. NATURAL, HUMAN TONE
+
+- Write in a direct, slightly conversational style
+- Avoid generic AI phrasing
+
+Replace:
+- “it is important to”
+- “this can help”
+- “in conclusion”
+
+With:
+- natural, confident language
+- shorter, clearer sentences
+
+-------------------------------------
+
+2. ADD MICRO-OPINIONS (AUTHORITY)
+
+Each page should include 5–8 subtle opinion-based insights such as:
+
+- “Most people underestimate…”
+- “The mistake most people make is…”
+- “It sounds manageable… until…”
+- “People focus on X, but the real challenge is Y”
+
+These should feel natural and not overused.
+
+-------------------------------------
+
+3. INCREASE SPECIFICITY
+
+Where content is vague, improve with:
+
+- numbers (e.g. 6–8 hour hikes, 1000–1500m elevation gain)
+- timelines (e.g. 8–16 weeks training)
+- real-world examples
+
+Content should feel like guidance, not general advice.
+
+-------------------------------------
+
+4. ADD REAL-WORLD INSIGHT
+
+Each page should include:
+
+- what actually feels hard
+- where people struggle
+- common failure points
+
+Focus on realism and honesty over perfection.
+
+-------------------------------------
+
+5. INCLUDE “HOW IT FEELS” MOMENTS
+
+In training sections, timelines, or examples, add 1–2 lines describing:
+
+- fatigue
+- pacing difficulty
+- recovery challenges
+
+This should feel like coaching, not just information.
+
+-------------------------------------
+
+6. STRENGTHEN “COMMON MISTAKES”
+
+For each page:
+
+- upgrade at least 2–3 mistakes
+- make them specific and realistic
+- explain consequences clearly
+
+Avoid generic or surface-level advice.
+
+-------------------------------------
+
+7. USE CONTRAST (EXPERT SIGNAL)
+
+Naturally include contrast statements:
+
+- “Most people think X, but actually Y”
+- “It seems manageable, until…”
+- “The real challenge isn’t X, it’s Y”
+
+Use sparingly but effectively.
+
+-------------------------------------
+
+8. INTERNAL LINKING SYSTEM
+
+Each page must include 3–5 natural internal links to:
+
+- other training guides
+- “can I climb” pages
+- related mountains
+
+Links should feel helpful and contextual.
+
+-------------------------------------
+
+9. CTA CONSISTENCY
+
+Every page must clearly explain:
+
+- what Summit Ready does
+- how it personalises training
+- why guessing training doesn’t work
+
+Before CTA, include a transition like:
+
+“You could piece this together yourself — but most people either under-train or burn out.”
+
+Make the app feel like the logical next step.
+
+-------------------------------------
+
+10. CONSISTENCY ACROSS ALL PAGES
+
+All pages must feel like part of one system:
+
+- same tone
+- same level of detail
+- same structure
+- same quality
+
+No page should feel weaker or more generic than others.
+
+-------------------------------------
+
+FINAL STANDARD
+-------------------------------------
+
+Every page should feel like:
+
+A high-quality, experience-driven mountain preparation guide that builds trust and naturally leads users to use Summit Ready.
+
+NOT like a generic blog or AI-generated content.
