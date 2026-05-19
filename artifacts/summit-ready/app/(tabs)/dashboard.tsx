@@ -954,6 +954,7 @@ const styles = StyleSheet.create({
     borderRadius: 16, overflow: "hidden",
     backgroundColor: T.green,
     paddingVertical: 16, paddingHorizontal: 16,
+    marginBottom: 12,
   },
   startHikingIconWrap: {
     width: 38, height: 38, borderRadius: 11,
