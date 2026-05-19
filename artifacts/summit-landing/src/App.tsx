@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import heroBgPath from "./assets/hero-bg.png";
+import heroBgPath from "./assets/hero-bg.jpeg";
 import featureMapPath from "./assets/feature-map.png";
 import featureClimbPath from "./assets/feature-climb.png";
 import {
