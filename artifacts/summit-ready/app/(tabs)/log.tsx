@@ -587,7 +587,7 @@ export default function LogScreen() {
               </View>
               <View>
                 <Text style={styles.startHikeTitle}>Start Hiking</Text>
-                <Text style={styles.startHikeSub}>Track a hike in real time</Text>
+                <Text style={styles.startHikeSub}>Track your route — help others discover great hikes</Text>
               </View>
             </View>
             <View style={styles.startHikeArrow}>
