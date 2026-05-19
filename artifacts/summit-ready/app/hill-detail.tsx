@@ -1,4 +1,4 @@
-import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock } from "lucide-react-native";
+import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -6,16 +6,20 @@ import {
   ActivityIndicator,
   Image,
   ImageBackground,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -76,6 +80,13 @@ export default function HillDetailScreen() {
 
   const [imageError, setImageError] = useState(false);
 
+  const [override, setOverride] = useState<StartPointOverride | null>(null);
+  const [editingStart, setEditingStart] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftPostcode, setDraftPostcode] = useState("");
+  const [draftDirections, setDraftDirections] = useState("");
+  const [draftParking, setDraftParking] = useState("");
+
   const hillLat = lat ? parseFloat(lat) : null;
   const hillLng = lng ? parseFloat(lng) : null;
 
@@ -106,6 +117,47 @@ export default function HillDetailScreen() {
 
     fetchDetail();
   }, [name, location]);
+
+  // Load any saved user correction for this hill's start point
+  useEffect(() => {
+    if (!name) return;
+    loadOverride(name).then(setOverride);
+  }, [name]);
+
+  // Merged start point: server data + any user correction on top
+  const startPoint = detail
+    ? { ...detail.startPoint, ...(override ?? {}) }
+    : null;
+
+  function openEditSheet() {
+    if (!detail) return;
+    const sp = { ...detail.startPoint, ...(override ?? {}) };
+    setDraftName(sp.name);
+    setDraftPostcode(sp.postcode ?? "");
+    setDraftDirections(sp.directions);
+    setDraftParking(sp.parkingNotes ?? "");
+    setEditingStart(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!name || !detail) return;
+    const next: StartPointOverride = {
+      name: draftName.trim() || detail.startPoint.name,
+      postcode: draftPostcode.trim(),
+      directions: draftDirections.trim() || detail.startPoint.directions,
+      parkingNotes: draftParking.trim(),
+    };
+    await saveOverride(name, next);
+    setOverride(next);
+    setEditingStart(false);
+  }
+
+  async function handleResetToOriginal() {
+    if (!name) return;
+    await clearOverride(name);
+    setOverride(null);
+    setEditingStart(false);
+  }
 
   const gradeColor = DIFF_COLOR[grade ?? ""] ?? T.blue;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
@@ -256,37 +308,54 @@ export default function HillDetailScreen() {
                       style={StyleSheet.absoluteFill}
                     />
 
+                    {/* Name row + edit button */}
                     <View style={styles.startNameRow}>
                       <View style={styles.startIconBox}>
                         <Flag size={16} color={T.green} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.startName}>{detail.startPoint.name}</Text>
-                        {detail.startPoint.postcode ? (
-                          <Text style={styles.startCoords}>{detail.startPoint.postcode}</Text>
+                        <Text style={styles.startName}>{startPoint!.name}</Text>
+                        {startPoint!.postcode ? (
+                          <Text style={styles.startCoords}>{startPoint!.postcode}</Text>
                         ) : (
                           <Text style={styles.startCoords}>
-                            {detail.startPoint.lat.toFixed(5)}, {detail.startPoint.lng.toFixed(5)}
+                            {startPoint!.lat.toFixed(5)}, {startPoint!.lng.toFixed(5)}
                           </Text>
                         )}
                       </View>
+                      <TouchableOpacity
+                        style={styles.editStartBtn}
+                        onPress={openEditSheet}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Pencil size={13} color={T.textMuted} />
+                      </TouchableOpacity>
                     </View>
+
+                    {/* "Corrected by you" badge */}
+                    {override && (
+                      <View style={styles.correctedBadge}>
+                        <CheckCircle size={11} color={T.green} />
+                        <Text style={styles.correctedBadgeText}>Corrected by you</Text>
+                      </View>
+                    )}
 
                     <View style={styles.startDivider} />
 
-                    <Text style={styles.startDetail}>{detail.startPoint.directions}</Text>
+                    <Text style={styles.startDetail}>{startPoint!.directions}</Text>
 
-                    {detail.startPoint.parkingNotes ? (
+                    {startPoint!.parkingNotes ? (
                       <View style={styles.parkingRow}>
                         <Info size={12} color={T.textMuted} />
-                        <Text style={styles.parkingText}>{detail.startPoint.parkingNotes}</Text>
+                        <Text style={styles.parkingText}>{startPoint!.parkingNotes}</Text>
                       </View>
                     ) : null}
 
                     <View style={styles.startActionsRow}>
                       <TouchableOpacity
                         style={styles.startMapBtn}
-                        onPress={() => openMapPin(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
+                        onPress={() => openMapPin(startPoint!.lat, startPoint!.lng, startPoint!.name)}
                         activeOpacity={0.8}
                       >
                         <MapPin size={13} color={T.green} />
@@ -295,10 +364,10 @@ export default function HillDetailScreen() {
                       <TouchableOpacity
                         style={[styles.startMapBtn, { borderColor: T.blue + "50" }]}
                         onPress={() => {
-                          if (detail.startPoint.postcode) {
-                            openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
+                          if (startPoint!.postcode) {
+                            openDirectionsToPostcode(startPoint!.postcode, startPoint!.name);
                           } else {
-                            openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                            openMapDirections(startPoint!.lat, startPoint!.lng, startPoint!.name);
                           }
                         }}
                         activeOpacity={0.8}
@@ -372,10 +441,10 @@ export default function HillDetailScreen() {
                         <TouchableOpacity
                           style={styles.routeMapBtn}
                           onPress={() => {
-                            if (detail.startPoint.postcode) {
-                              openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
-                            } else {
-                              openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                            if (startPoint?.postcode) {
+                              openDirectionsToPostcode(startPoint.postcode, startPoint.name);
+                            } else if (startPoint) {
+                              openMapDirections(startPoint.lat, startPoint.lng, startPoint.name);
                             }
                           }}
                           activeOpacity={0.8}
@@ -392,6 +461,114 @@ export default function HillDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Edit start point sheet ── */}
+      <Modal
+        visible={editingStart}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingStart(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.sheetBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setEditingStart(false)}
+          />
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>Correct start point</Text>
+                <Text style={styles.sheetSubtitle}>Your changes are saved on this device only</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEditingStart(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.sheetCancelX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.sheetScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.fieldLabel}>Car park / trailhead name</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={draftName}
+                onChangeText={setDraftName}
+                placeholder="e.g. Musbury Rocks Car Park"
+                placeholderTextColor={T.textMuted}
+                returnKeyType="next"
+              />
+
+              <Text style={styles.fieldLabel}>Postcode</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={draftPostcode}
+                onChangeText={setDraftPostcode}
+                placeholder="e.g. BB4 7LZ"
+                placeholderTextColor={T.textMuted}
+                autoCapitalize="characters"
+                returnKeyType="next"
+              />
+
+              <Text style={styles.fieldLabel}>Directions</Text>
+              <TextInput
+                style={[styles.fieldInput, styles.fieldInputMulti]}
+                value={draftDirections}
+                onChangeText={setDraftDirections}
+                placeholder="How to get there by road or public transport…"
+                placeholderTextColor={T.textMuted}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              <Text style={styles.fieldLabel}>Parking notes (optional)</Text>
+              <TextInput
+                style={[styles.fieldInput, styles.fieldInputMulti]}
+                value={draftParking}
+                onChangeText={setDraftParking}
+                placeholder="Free / paid, spaces, any access notes…"
+                placeholderTextColor={T.textMuted}
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.sheetActions}>
+                <TouchableOpacity
+                  style={styles.sheetSaveBtn}
+                  onPress={handleSaveEdit}
+                  activeOpacity={0.8}
+                >
+                  <CheckCircle size={15} color="#fff" />
+                  <Text style={styles.sheetSaveBtnText}>Save correction</Text>
+                </TouchableOpacity>
+
+                {override && (
+                  <TouchableOpacity
+                    style={styles.sheetResetBtn}
+                    onPress={handleResetToOriginal}
+                    activeOpacity={0.8}
+                  >
+                    <RotateCcw size={14} color={T.textMuted} />
+                    <Text style={styles.sheetResetBtnText}>Reset to original</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -637,5 +814,132 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     color: T.blue,
+  },
+
+  editStartBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  correctedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: T.greenDim,
+  },
+  correctedBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: T.green,
+  },
+
+  sheetBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sheetContainer: {
+    backgroundColor: T.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    maxHeight: "85%",
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.border,
+    alignSelf: "center",
+    marginVertical: 12,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    marginTop: 2,
+  },
+  sheetCancelX: {
+    fontSize: 16,
+    color: T.textMuted,
+    paddingTop: 2,
+  },
+  sheetScroll: { flexGrow: 0 },
+
+  fieldLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+  fieldInput: {
+    backgroundColor: T.card,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: T.text,
+  },
+  fieldInputMulti: {
+    minHeight: 72,
+    paddingTop: 11,
+  },
+
+  sheetActions: { gap: 10, marginTop: 22 },
+  sheetSaveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: T.green,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  sheetSaveBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  sheetResetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  sheetResetBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
   },
 });
