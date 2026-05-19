@@ -44,13 +44,14 @@ interface HillDetail {
     name: string;
     lat: number;
     lng: number;
+    postcode?: string;
     directions: string;
     parkingNotes: string;
   };
   routes: HillRoute[];
 }
 
-import { openMapPin, openMapDirections } from "@/utils/openMaps";
+import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch } from "@/utils/openMaps";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -173,31 +174,47 @@ export default function HillDetailScreen() {
         </View>
 
         <View style={styles.body}>
-          {/* Quick map actions — from passed-in coords */}
-          {hillLat && hillLng && (
-            <Animated.View entering={FadeInDown.delay(60).duration(400)}>
-              <View style={styles.mapActionsRow}>
-                <TouchableOpacity
-                  style={styles.mapActionBtn}
-                  onPress={() => openMapPin(hillLat, hillLng, name ?? "")}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  <Map size={15} color={T.green} />
-                  <Text style={styles.mapActionText}>View on map</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.mapActionBtn}
-                  onPress={() => openMapDirections(hillLat, hillLng, name ?? "")}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  <Navigation size={15} color={T.blue} />
-                  <Text style={[styles.mapActionText, { color: T.blue }]}>Get directions</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          )}
+          {/* Quick map actions */}
+          <Animated.View entering={FadeInDown.delay(60).duration(400)}>
+            <View style={styles.mapActionsRow}>
+              <TouchableOpacity
+                style={styles.mapActionBtn}
+                onPress={() => {
+                  if (detail) {
+                    openMapPin(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                  } else if (hillLat && hillLng) {
+                    openMapPin(hillLat, hillLng, name ?? "");
+                  } else {
+                    openMapSearch(name ?? "");
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <Map size={15} color={T.green} />
+                <Text style={styles.mapActionText}>View on map</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.mapActionBtn}
+                onPress={() => {
+                  if (detail?.startPoint.postcode) {
+                    openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
+                  } else if (detail) {
+                    openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                  } else if (hillLat && hillLng) {
+                    openMapDirections(hillLat, hillLng, name ?? "");
+                  } else {
+                    openMapSearch((name ?? "") + " car park");
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <Navigation size={15} color={T.blue} />
+                <Text style={[styles.mapActionText, { color: T.blue }]}>Get directions</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
 
           {detailLoading && (
             <View style={styles.loadingCard}>
@@ -245,9 +262,13 @@ export default function HillDetailScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.startName}>{detail.startPoint.name}</Text>
-                        <Text style={styles.startCoords}>
-                          {detail.startPoint.lat.toFixed(5)}, {detail.startPoint.lng.toFixed(5)}
-                        </Text>
+                        {detail.startPoint.postcode ? (
+                          <Text style={styles.startCoords}>{detail.startPoint.postcode}</Text>
+                        ) : (
+                          <Text style={styles.startCoords}>
+                            {detail.startPoint.lat.toFixed(5)}, {detail.startPoint.lng.toFixed(5)}
+                          </Text>
+                        )}
                       </View>
                     </View>
 
@@ -273,7 +294,13 @@ export default function HillDetailScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.startMapBtn, { borderColor: T.blue + "50" }]}
-                        onPress={() => openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name)}
+                        onPress={() => {
+                          if (detail.startPoint.postcode) {
+                            openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
+                          } else {
+                            openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                          }
+                        }}
                         activeOpacity={0.8}
                       >
                         <Navigation size={13} color={T.blue} />

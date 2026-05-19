@@ -99,6 +99,7 @@ const HILL_DETAIL_SYSTEM_PROMPT = `You are an expert mountain and hiking guide. 
     "name": string,
     "lat": number,
     "lng": number,
+    "postcode": string,
     "directions": string,
     "parkingNotes": string
   },
@@ -119,8 +120,9 @@ Rules:
 - description: 2-3 sentences about the hill's character, terrain and why it is good for training
 - startPoint.name: name of the car park, village, layby or trailhead
 - startPoint.lat/lng: accurate GPS coordinates of the start point (decimal degrees, 4 decimal places)
+- startPoint.postcode: the nearest UK postcode to the car park or trailhead (e.g. "BB7 3AJ"). If outside the UK, use the nearest ZIP/postal code. Always provide this — it is the primary navigation destination used by the app
 - startPoint.directions: 2-3 sentences on how to drive or get there by public transport
-- startPoint.parkingNotes: parking info — free/paid, spaces, nearest postcode or OS grid ref
+- startPoint.parkingNotes: parking info — free/paid, spaces, any additional access notes
 - routes: provide 2-4 distinct route options (different approaches, loops, or distances)
 - routes[].name: short descriptive name e.g. "Standard Ascent", "Ridge Loop", "North Approach"
 - routes[].distance: round-trip distance in km
@@ -147,6 +149,7 @@ const HillDetailSchema = z.object({
     name: z.string(),
     lat: z.number(),
     lng: z.number(),
+    postcode: z.string().default(""),
     directions: z.string(),
     parkingNotes: z.string(),
   }),

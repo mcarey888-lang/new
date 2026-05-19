@@ -30,6 +30,19 @@ export function openMapDirections(lat: number, lng: number, label: string) {
   }
 }
 
+export function openDirectionsToPostcode(postcode: string, label: string) {
+  const dest = encodeURIComponent(`${postcode} ${label}`);
+  if (Platform.OS === "ios") {
+    Linking.openURL(`maps://?daddr=${encodeURIComponent(postcode)}&q=${encodeURIComponent(label)}`);
+  } else if (Platform.OS === "android") {
+    Linking.openURL(`geo:0,0?q=${dest}`);
+  } else {
+    Linking.openURL(
+      `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`
+    );
+  }
+}
+
 export function openMapSearch(name: string) {
   if (Platform.OS === "ios") {
     Linking.openURL(`maps://?q=${encodeURIComponent(name)}`);
