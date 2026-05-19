@@ -1,8 +1,9 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle } from "lucide-react-native";
+import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useState, useMemo } from "react";
+import { router } from "expo-router";
 import {
   Dimensions,
   KeyboardAvoidingView,
@@ -572,6 +573,29 @@ export default function LogScreen() {
           </View>
         </Animated.View>
 
+        {/* Start Hiking */}
+        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+          <TouchableOpacity
+            onPress={() => router.push("/hike-tracking")}
+            activeOpacity={0.85}
+            style={styles.startHikeBtn}
+          >
+            <LinearGradient colors={[T.greenDim, T.blueDim]} style={StyleSheet.absoluteFill} />
+            <View style={styles.startHikeLeft}>
+              <View style={styles.startHikeIconBox}>
+                <Footprints size={22} color={T.green} />
+              </View>
+              <View>
+                <Text style={styles.startHikeTitle}>Start Hiking</Text>
+                <Text style={styles.startHikeSub}>Track a hike in real time</Text>
+              </View>
+            </View>
+            <View style={styles.startHikeArrow}>
+              <Text style={{ color: T.green, fontSize: 18 }}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {allItems.length === 0 ? (
           <View style={styles.empty}>
             <View style={[styles.emptyIcon, { backgroundColor: T.blueDim }]}>
@@ -630,6 +654,30 @@ const styles = StyleSheet.create({
   summaryVal: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
   summaryLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   summaryDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  startHikeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.green + "40",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  startHikeLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  startHikeIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: T.green + "20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  startHikeTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: T.green + "20", alignItems: "center", justifyContent: "center" },
   sessionCard: {
     backgroundColor: T.card,
     borderRadius: 18,
