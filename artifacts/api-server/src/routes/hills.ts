@@ -301,43 +301,64 @@ async function lookupWikipediaSummit(hillName: string): Promise<{ lat: number; l
   return null;
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Maximum distance a geocoded start point is allowed to be from the AI-supplied
+// coordinates before we reject it and fall back to the AI value.
+const MAX_GEOCODE_DRIFT_KM = 60;
+
 async function geocodeStartPoint(
   startName: string,
   hillName: string,
   postcode: string,
   aiLat: number,
   aiLng: number
-): Promise<{ lat: number; lng: number } | null> {
+): Promise<{ lat: number; lng: number }> {
   const token = process.env.MAPBOX_TOKEN;
-  if (!token) return null;
 
-  const proximity = `${aiLng},${aiLat}`;
+  function withinRange(lat: number, lng: number): boolean {
+    return haversineKm(aiLat, aiLng, lat, lng) <= MAX_GEOCODE_DRIFT_KM;
+  }
 
-  // Attempt 1: search for the car park / trailhead name near the AI coords
-  try {
-    const q = encodeURIComponent(`${startName} ${hillName}`);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&proximity=${proximity}&types=poi,address&limit=1`;
-    const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
-    if (data.features?.length) {
-      const [lng, lat] = data.features[0].center;
-      return { lat, lng };
+  if (token) {
+    const proximity = `${aiLng},${aiLat}`;
+
+    // Attempt 1: postcode geocoding — most precise for UK trailheads
+    if (postcode) {
+      try {
+        const q = encodeURIComponent(postcode);
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&types=postcode&limit=1`;
+        const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
+        if (data.features?.length) {
+          const [lng, lat] = data.features[0].center;
+          if (withinRange(lat, lng)) return { lat, lng };
+        }
+      } catch { /* fall through */ }
     }
-  } catch { /* fall through */ }
 
-  // Attempt 2: geocode just the postcode (precise centroid in the UK)
-  if (postcode) {
+    // Attempt 2: POI / address search near the AI coords
     try {
-      const q = encodeURIComponent(postcode);
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&types=postcode&limit=1`;
+      const q = encodeURIComponent(`${startName} ${hillName}`);
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&proximity=${proximity}&types=poi,address&limit=3`;
       const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
-      if (data.features?.length) {
-        const [lng, lat] = data.features[0].center;
-        return { lat, lng };
+      for (const feature of data.features ?? []) {
+        const [lng, lat] = feature.center;
+        if (withinRange(lat, lng)) return { lat, lng };
       }
     } catch { /* fall through */ }
   }
 
-  return null;
+  // Fallback: trust the AI's own coordinates — they are at least in the right area
+  return { lat: aiLat, lng: aiLng };
 }
 
 router.post("/hill-detail", async (req, res) => {
@@ -404,10 +425,8 @@ router.post("/hill-detail", async (req, res) => {
       validated.summitLat = summit.lat;
       validated.summitLng = summit.lng;
     }
-    if (geocoded) {
-      validated.startPoint.lat = geocoded.lat;
-      validated.startPoint.lng = geocoded.lng;
-    }
+    validated.startPoint.lat = geocoded.lat;
+    validated.startPoint.lng = geocoded.lng;
 
     res.json(validated);
   } catch (err) {
