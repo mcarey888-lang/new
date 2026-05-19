@@ -16,8 +16,8 @@ function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-20 pb-32 overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img src={heroBgPath} alt="Alpine Peak at Dawn" className="w-full h-full object-cover opacity-50 object-top" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <img src={heroBgPath} alt="Alpine Peak at Dawn" className="w-full h-full object-cover opacity-70 object-top" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/50" />
       </div>
 
