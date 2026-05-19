@@ -819,7 +819,7 @@ export default function TrailsScreen() {
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={s.eyebrow}>{isSummit ? "SUMMIT MODE" : "EXPLORE MODE"}</Text>
-            <Text style={s.title}>Trails</Text>
+            <Text style={s.title}>Hills</Text>
           </View>
           <TouchableOpacity style={s.logFab} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
             <Plus size={15} color={T.green} />

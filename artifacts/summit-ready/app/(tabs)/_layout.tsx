@@ -90,7 +90,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trails"
         options={{
-          title: "Trails",
+          title: "Hills",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Compass size={20} color={color} />
