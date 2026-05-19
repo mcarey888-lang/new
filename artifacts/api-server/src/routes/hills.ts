@@ -274,6 +274,48 @@ router.post("/hills-lookup", async (req, res) => {
   }
 });
 
+interface MapboxFeature { center: [number, number] }
+interface MapboxGeoResponse { features?: MapboxFeature[] }
+
+async function geocodeStartPoint(
+  startName: string,
+  hillName: string,
+  postcode: string,
+  aiLat: number,
+  aiLng: number
+): Promise<{ lat: number; lng: number } | null> {
+  const token = process.env.MAPBOX_TOKEN;
+  if (!token) return null;
+
+  const proximity = `${aiLng},${aiLat}`;
+
+  // Attempt 1: search for the car park / trailhead name near the AI coords
+  try {
+    const q = encodeURIComponent(`${startName} ${hillName}`);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&proximity=${proximity}&types=poi,address&limit=1`;
+    const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
+    if (data.features?.length) {
+      const [lng, lat] = data.features[0].center;
+      return { lat, lng };
+    }
+  } catch { /* fall through */ }
+
+  // Attempt 2: geocode just the postcode (precise centroid in the UK)
+  if (postcode) {
+    try {
+      const q = encodeURIComponent(postcode);
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&types=postcode&limit=1`;
+      const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
+      if (data.features?.length) {
+        const [lng, lat] = data.features[0].center;
+        return { lat, lng };
+      }
+    } catch { /* fall through */ }
+  }
+
+  return null;
+}
+
 router.post("/hill-detail", async (req, res) => {
   const { hillName, location } = req.body as { hillName?: string; location?: string };
 
@@ -321,6 +363,20 @@ router.post("/hill-detail", async (req, res) => {
     }
 
     const validated = HillDetailSchema.parse(parsed);
+
+    // Replace AI-hallucinated coordinates with real Mapbox geocoded ones
+    const geocoded = await geocodeStartPoint(
+      validated.startPoint.name,
+      hillName.trim(),
+      validated.startPoint.postcode,
+      validated.startPoint.lat,
+      validated.startPoint.lng
+    );
+    if (geocoded) {
+      validated.startPoint.lat = geocoded.lat;
+      validated.startPoint.lng = geocoded.lng;
+    }
+
     res.json(validated);
   } catch (err) {
     req.log.error({ err }, "Hill detail failed");
