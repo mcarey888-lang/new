@@ -49,6 +49,8 @@ interface HillDetail {
     parkingNotes: string;
   };
   routes: HillRoute[];
+  summitLat?: number;
+  summitLng?: number;
 }
 
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch } from "@/utils/openMaps";
@@ -180,8 +182,8 @@ export default function HillDetailScreen() {
               <TouchableOpacity
                 style={styles.mapActionBtn}
                 onPress={() => {
-                  if (detail) {
-                    openMapPin(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
+                  if (detail?.summitLat && detail?.summitLng) {
+                    openMapPin(detail.summitLat, detail.summitLng, name ?? "");
                   } else if (hillLat && hillLng) {
                     openMapPin(hillLat, hillLng, name ?? "");
                   } else {

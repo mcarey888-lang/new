@@ -154,6 +154,8 @@ const HillDetailSchema = z.object({
     parkingNotes: z.string(),
   }),
   routes: z.array(HillDetailRouteSchema),
+  summitLat: z.number().optional(),
+  summitLng: z.number().optional(),
 });
 
 router.post("/hills-search", async (req, res) => {
@@ -277,6 +279,28 @@ router.post("/hills-lookup", async (req, res) => {
 interface MapboxFeature { center: [number, number] }
 interface MapboxGeoResponse { features?: MapboxFeature[] }
 
+interface WikiCoord { lat: number; lon: number }
+interface WikiPage { coordinates?: WikiCoord[] }
+interface WikiResponse { query?: { pages?: Record<string, WikiPage> } }
+
+async function lookupWikipediaSummit(hillName: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const q = encodeURIComponent(hillName);
+    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${q}&prop=coordinates&format=json&redirects=1`;
+    const res = await fetch(url, { headers: { "User-Agent": "SummitReady/1.0 (hill training app)" } });
+    const data = await res.json() as WikiResponse;
+    const pages = data.query?.pages;
+    if (!pages) return null;
+    for (const page of Object.values(pages)) {
+      if (page.coordinates?.length) {
+        const { lat, lon } = page.coordinates[0];
+        return { lat, lng: lon };
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 async function geocodeStartPoint(
   startName: string,
   hillName: string,
@@ -364,14 +388,22 @@ router.post("/hill-detail", async (req, res) => {
 
     const validated = HillDetailSchema.parse(parsed);
 
-    // Replace AI-hallucinated coordinates with real Mapbox geocoded ones
-    const geocoded = await geocodeStartPoint(
-      validated.startPoint.name,
-      hillName.trim(),
-      validated.startPoint.postcode,
-      validated.startPoint.lat,
-      validated.startPoint.lng
-    );
+    // Run Wikipedia summit lookup + Mapbox start-point geocoding in parallel
+    const [summit, geocoded] = await Promise.all([
+      lookupWikipediaSummit(hillName.trim()),
+      geocodeStartPoint(
+        validated.startPoint.name,
+        hillName.trim(),
+        validated.startPoint.postcode,
+        validated.startPoint.lat,
+        validated.startPoint.lng
+      ),
+    ]);
+
+    if (summit) {
+      validated.summitLat = summit.lat;
+      validated.summitLng = summit.lng;
+    }
     if (geocoded) {
       validated.startPoint.lat = geocoded.lat;
       validated.startPoint.lng = geocoded.lng;
