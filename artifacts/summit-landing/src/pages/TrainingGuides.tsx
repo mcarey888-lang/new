@@ -98,10 +98,10 @@ export default function TrainingGuides() {
     <SiteLayout>
       <div className="bg-background min-h-screen">
         {/* Hero */}
-        <section className="py-12 md:py-16 border-b border-white/5 relative overflow-hidden">
+        <section className="min-h-[420px] md:min-h-[480px] pb-10 pt-20 border-b border-white/5 relative overflow-hidden flex flex-col justify-end">
           <div className="absolute inset-0">
             <img src={climberBg} alt="" aria-hidden="true" className="w-full h-full object-cover object-top opacity-60" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(62,207,117,0.07),transparent_60%)]" />
           </div>
           <div className="container mx-auto px-6 max-w-4xl relative z-10">
