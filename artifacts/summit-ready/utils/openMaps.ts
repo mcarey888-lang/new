@@ -1,61 +1,61 @@
 import { ActionSheetIOS, Alert, Linking, Platform } from "react-native";
 
+/** Safe wrapper — falls back to a web URL if the native scheme can't be opened. */
+function openUrl(nativeUrl: string, webFallback: string) {
+  Linking.openURL(nativeUrl).catch(() => {
+    Linking.openURL(webFallback).catch(() => {});
+  });
+}
+
 /** Open a verified GPS pin (use only when coords come from a trusted source e.g. postcodes.io). */
 export function openMapPin(lat: number, lng: number, label: string) {
+  const web = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   if (Platform.OS === "ios") {
-    Linking.openURL(
-      `maps://?ll=${lat},${lng}&q=${encodeURIComponent(label)}`
-    );
+    openUrl(`maps://?ll=${lat},${lng}&q=${encodeURIComponent(label)}`, web);
   } else if (Platform.OS === "android") {
-    Linking.openURL(
-      `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(label)})`
-    );
+    openUrl(`geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(label)})`, web);
   } else {
-    Linking.openURL(
-      `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-    );
+    Linking.openURL(web).catch(() => {});
   }
 }
 
 /** Navigate to verified GPS coordinates (use only when coords are from a trusted source). */
 export function openMapDirections(lat: number, lng: number, label: string) {
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
   if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?daddr=${lat},${lng}&q=${encodeURIComponent(label)}`);
+    openUrl(`maps://?daddr=${lat},${lng}&q=${encodeURIComponent(label)}`, web);
   } else if (Platform.OS === "android") {
-    Linking.openURL(
-      `geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`
-    );
+    openUrl(`geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`, web);
   } else {
-    Linking.openURL(
-      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
-    );
+    Linking.openURL(web).catch(() => {});
   }
 }
 
 /** Navigate to a UK postcode (postcodes.io-validated coords on server; postcode string on client). */
 export function openDirectionsToPostcode(postcode: string, label: string) {
   const dest = encodeURIComponent(`${postcode} ${label}`);
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
   if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?daddr=${encodeURIComponent(postcode)}&q=${encodeURIComponent(label)}`);
-  } else if (Platform.OS === "android") {
-    Linking.openURL(`geo:0,0?q=${dest}`);
-  } else {
-    Linking.openURL(
-      `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`
+    openUrl(
+      `maps://?daddr=${encodeURIComponent(postcode)}&q=${encodeURIComponent(label)}`,
+      web
     );
+  } else if (Platform.OS === "android") {
+    openUrl(`geo:0,0?q=${dest}`, web);
+  } else {
+    Linking.openURL(web).catch(() => {});
   }
 }
 
 /** Search for a place by name — reliable for any named hill, route or location. */
 export function openMapSearch(name: string) {
+  const web = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
   if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?q=${encodeURIComponent(name)}`);
+    openUrl(`maps://?q=${encodeURIComponent(name)}`, web);
   } else if (Platform.OS === "android") {
-    Linking.openURL(`geo:0,0?q=${encodeURIComponent(name)}`);
+    openUrl(`geo:0,0?q=${encodeURIComponent(name)}`, web);
   } else {
-    Linking.openURL(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
-    );
+    Linking.openURL(web).catch(() => {});
   }
 }
 
@@ -76,27 +76,30 @@ export function openMapsForHill(
   directions = false
 ) {
   const searchName = directions ? `${name} car park` : name;
+  const encoded = encodeURIComponent(searchName);
 
   if (Platform.OS === "ios") {
-    Linking.openURL(`maps://?q=${encodeURIComponent(searchName)}`);
+    openUrl(
+      `maps://?q=${encoded}`,
+      `https://www.google.com/maps/search/?api=1&query=${encoded}`
+    );
   } else if (Platform.OS === "android") {
     if (directions) {
-      Linking.openURL(
-        `google.navigation:q=${encodeURIComponent(searchName)}`
+      openUrl(
+        `google.navigation:q=${encoded}`,
+        `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`
       );
     } else {
-      Linking.openURL(`geo:0,0?q=${encodeURIComponent(searchName)}`);
+      openUrl(
+        `geo:0,0?q=${encoded}`,
+        `https://www.google.com/maps/search/?api=1&query=${encoded}`
+      );
     }
   } else {
-    if (directions) {
-      Linking.openURL(
-        `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(searchName)}&travelmode=driving`
-      );
-    } else {
-      Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchName)}`
-      );
-    }
+    const web = directions
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`
+      : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    Linking.openURL(web).catch(() => {});
   }
 }
 
@@ -130,9 +133,9 @@ export function openTrailMapChooser(trailName: string, location: string) {
       "Open trail map",
       "Choose a maps app",
       [
-        { text: "AllTrails",            onPress: () => open(allTrailsUrl) },
-        { text: "OS Maps",              onPress: () => open(osMapsUrl) },
-        { text: "Google Maps (terrain)",onPress: () => open(googleUrl) },
+        { text: "AllTrails",             onPress: () => open(allTrailsUrl) },
+        { text: "OS Maps",               onPress: () => open(osMapsUrl) },
+        { text: "Google Maps (terrain)", onPress: () => open(googleUrl) },
         { text: "Cancel", style: "cancel" },
       ]
     );
