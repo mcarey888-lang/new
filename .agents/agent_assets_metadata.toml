@@ -47,3 +47,57 @@ id = "YG8OYEtfzTAHuGOtnSmXH"
 uri = "file://screenshots/screen-paywall.jpg"
 type = "image"
 title = "5. Paywall — Pricing"
+
+[[outputs]]
+id = "hgCDaIHp-R-Ho1pWiYK8V"
+uri = "file://artifacts/summit-landing/src/assets/candidates/mb_b.jpg"
+type = "image"
+title = "Mont Blanc A — panoramic massif & summit"
+
+[[outputs]]
+id = "3tgNp_-qF1lZWuHlR98se"
+uri = "file://artifacts/summit-landing/src/assets/candidates/mb_c.jpg"
+type = "image"
+title = "Mont Blanc B — Chamonix aerial glacier"
+
+[[outputs]]
+id = "dnLJdmSx57obS_s7DiOlQ"
+uri = "file://artifacts/summit-landing/src/assets/candidates/mb_d.jpg"
+type = "image"
+title = "Mont Blanc C — snowy peak ridge"
+
+[[outputs]]
+id = "SiZ6MUV3C2LunP8rgy-6E"
+uri = "file://artifacts/summit-landing/src/assets/candidates/kili_b.jpg"
+type = "image"
+title = "Kilimanjaro A — Amboseli acacia & snow cap"
+
+[[outputs]]
+id = "-w6GHWJSJW37zy5ggnQ6C"
+uri = "file://artifacts/summit-landing/src/assets/candidates/kili_d.jpg"
+type = "image"
+title = "Kilimanjaro B — Machame route summit view"
+
+[[outputs]]
+id = "hyjmgoVbPDZPHhxSxqnLO"
+uri = "file://artifacts/summit-landing/src/assets/candidates/kili_e.jpg"
+type = "image"
+title = "Kilimanjaro C — savannah & snow cap sky"
+
+[[outputs]]
+id = "CgCa90soMPqZL0l9BnaeF"
+uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_a.jpg"
+type = "image"
+title = "EBC A — Himalaya valley & peaks"
+
+[[outputs]]
+id = "exBFZhnchYz-P44qBIWVx"
+uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_b.jpg"
+type = "image"
+title = "EBC B — Everest Base Camp tents & Khumbu"
+
+[[outputs]]
+id = "w5Dj7QiW_3OH4KAqtC9eH"
+uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_c.jpg"
+type = "image"
+title = "EBC C — Nepal mountain ridge trek"
