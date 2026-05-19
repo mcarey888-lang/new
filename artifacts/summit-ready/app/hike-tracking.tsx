@@ -17,7 +17,6 @@ import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -135,6 +134,8 @@ export default function HikeTrackingScreen() {
   const [gpsReady, setGpsReady]           = useState(false);
   const [permDenied, setPermDenied]       = useState(false);
   const [saving, setSaving]               = useState(false);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmLeave, setConfirmLeave]   = useState(false);
 
   const trackPoints    = useRef<TrackPoint[]>([]);
   const lastAltRef     = useRef<number | null>(null);
@@ -312,29 +313,21 @@ export default function HikeTrackingScreen() {
   }, []);
 
   const handleStopPress = useCallback(() => {
-    if (elapsedSecs < 30) {
-      Alert.alert("Stop Tracking", "Discard this hike?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Discard", style: "destructive", onPress: () => router.back() },
-      ]);
-      return;
-    }
-    Alert.alert("Finish Hike", "Stop tracking and see your summary?", [
-      { text: "Keep Going", style: "cancel" },
-      { text: "Finish", onPress: finishHike },
-    ]);
-  }, [elapsedSecs, finishHike]);
+    setConfirmFinish(true);
+  }, []);
 
   // ── Save completed hike ──────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     setSaving(true);
-    const name = routeName.trim() || "Tracked Hike";
-    const distKm  = parseFloat(distanceKm.toFixed(2));
+    const name     = routeName.trim() || "Tracked Hike";
+    const distKm   = parseFloat(distanceKm.toFixed(2));
     const elevGain = Math.round(elevGainM);
+    const elevLoss = Math.round(elevLossM);
     const firstPt  = trackPoints.current[0];
+    const routeId  = "tracked_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
 
     try {
-      // Always save as a custom route (visible in the trails list)
+      // 1 ── Save locally as a custom route (visible in the trails list)
       await addCustomRoute({
         name,
         location: "GPS Tracked Route",
@@ -350,10 +343,10 @@ export default function HikeTrackingScreen() {
         emoji: "🥾",
         lat: firstPt?.lat,
         lng: firstPt?.lon,
-        notes: `Elevation loss: ${Math.round(elevLossM)} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
+        notes: `Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
       });
 
-      // Also log to session / explore log as before
+      // 2 ── Log to session / explore log
       if (appMode === "explore") {
         await logExploreHike({
           name,
@@ -361,7 +354,7 @@ export default function HikeTrackingScreen() {
           distance: distKm,
           elevationGain: elevGain,
           timeTaken: elapsedSecs,
-          notes: `GPS tracked hike. Elevation loss: ${Math.round(elevLossM)} m.`,
+          notes: `GPS tracked hike. Elevation loss: ${elevLoss} m.`,
         });
       } else {
         const currentWeek = trainingPlan?.findIndex(w => !w.sessions?.every((s: any) => s.completed)) ?? 0;
@@ -372,18 +365,38 @@ export default function HikeTrackingScreen() {
           elevationGain: elevGain,
           duration: Math.round(elapsedSecs / 60),
           effort: 3,
-          notes: `GPS tracked: ${name}. Elev loss: ${Math.round(elevLossM)} m.`,
+          notes: `GPS tracked: ${name}. Elev loss: ${elevLoss} m.`,
           completed: true,
           weekNumber: Math.max(0, currentWeek),
           hillName: name,
         });
       }
 
+      // 3 ── Submit to backend so other users can discover this route
+      try {
+        await fetch(`${API_BASE}/tracked-routes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id:            routeId,
+            name,
+            location:      "GPS Tracked Route",
+            distanceKm:    distKm,
+            elevationGain: elevGain,
+            elevationLoss: elevLoss,
+            durationSecs:  elapsedSecs,
+            difficulty:    computeDifficulty(distKm, elevGain),
+            startLat:      firstPt?.lat ?? null,
+            startLng:      firstPt?.lon ?? null,
+            trackPoints:   trackPoints.current,
+            notes:         `Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "0"} km/h.`,
+          }),
+        });
+      } catch { /* backend submit is best-effort — local save already succeeded */ }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch {
-      Alert.alert("Save Failed", "Unable to save your hike. Please try again.");
-    } finally {
       setSaving(false);
     }
   }, [appMode, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike, addCustomRoute]);
@@ -489,10 +502,7 @@ export default function HikeTrackingScreen() {
       <View style={s.header}>
         <TouchableOpacity onPress={() => {
           if (isTracking || isPaused) {
-            Alert.alert("Leave Tracking", "Your hike progress will be lost.", [
-              { text: "Stay", style: "cancel" },
-              { text: "Leave", style: "destructive", onPress: () => router.back() },
-            ]);
+            setConfirmLeave(true);
           } else {
             router.back();
           }
@@ -679,6 +689,48 @@ export default function HikeTrackingScreen() {
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* ── Finish hike confirm sheet ──────────────────────────────────── */}
+      {confirmFinish && (
+        <Animated.View entering={FadeInUp.duration(250)} style={[s.confirmSheet, { paddingBottom: insets.bottom + 20 }]}>
+          <View style={s.confirmHandle} />
+          {elapsedSecs < 30 ? (
+            <>
+              <Text style={s.confirmTitle}>Discard this hike?</Text>
+              <Text style={s.confirmSub}>You haven't been tracking long — your route won't be saved.</Text>
+              <TouchableOpacity style={s.confirmDestructive} onPress={() => { setConfirmFinish(false); router.back(); }} activeOpacity={0.85}>
+                <Text style={s.confirmDestructiveText}>Discard</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={s.confirmTitle}>Finish this hike?</Text>
+              <Text style={s.confirmSub}>Stop tracking and save your route summary.</Text>
+              <TouchableOpacity style={s.confirmPrimary} onPress={() => { setConfirmFinish(false); finishHike(); }} activeOpacity={0.85}>
+                <Text style={s.confirmPrimaryText}>Finish & Save</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity style={s.confirmCancel} onPress={() => setConfirmFinish(false)} activeOpacity={0.7}>
+            <Text style={s.confirmCancelText}>Keep Going</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* ── Leave-while-tracking confirm sheet ────────────────────────── */}
+      {confirmLeave && (
+        <Animated.View entering={FadeInUp.duration(250)} style={[s.confirmSheet, { paddingBottom: insets.bottom + 20 }]}>
+          <View style={s.confirmHandle} />
+          <Text style={s.confirmTitle}>Leave tracking?</Text>
+          <Text style={s.confirmSub}>Your hike progress will be lost and nothing will be saved.</Text>
+          <TouchableOpacity style={s.confirmDestructive} onPress={() => { setConfirmLeave(false); router.back(); }} activeOpacity={0.85}>
+            <Text style={s.confirmDestructiveText}>Leave & Discard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.confirmCancel} onPress={() => setConfirmLeave(false)} activeOpacity={0.7}>
+            <Text style={s.confirmCancelText}>Stay</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -853,4 +905,33 @@ const s = StyleSheet.create({
   centeredMsg: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 40 },
   msgTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   msgBody:  { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 22 },
+
+  // In-app confirm sheet (replaces Alert.alert)
+  confirmSheet: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: "#0F1E30",
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 24, paddingTop: 12,
+    gap: 12,
+  },
+  confirmHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignSelf: "center", marginBottom: 8,
+  },
+  confirmTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
+  confirmSub:   { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+  confirmPrimary: {
+    backgroundColor: T.green, borderRadius: 14,
+    paddingVertical: 15, alignItems: "center",
+  },
+  confirmPrimaryText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  confirmDestructive: {
+    backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 14, borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)", paddingVertical: 15, alignItems: "center",
+  },
+  confirmDestructiveText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.red },
+  confirmCancel: { paddingVertical: 12, alignItems: "center" },
+  confirmCancelText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
 });

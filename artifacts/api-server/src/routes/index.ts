@@ -11,6 +11,7 @@ import trailMapImageRouter from "./trail-map-image";
 import trailMapWebRouter from "./trail-map-web";
 import hikeMapWebRouter from "./hike-map-web";
 import seededTrailsRouter from "./seeded-trails";
+import trackedRoutesRouter from "./tracked-routes";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(trailMapImageRouter);
 router.use(trailMapWebRouter);
 router.use(hikeMapWebRouter);
 router.use(seededTrailsRouter);
+router.use(trackedRoutesRouter);
 
 export default router;
