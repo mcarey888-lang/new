@@ -133,7 +133,7 @@ export default function TrailListScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.hikeTitle}>Start Hiking</Text>
-                <Text style={s.hikeSub}>Live GPS tracking — draw your route as you walk</Text>
+                <Text style={s.hikeSub}>Track your route — help others discover great hikes</Text>
               </View>
               <Text style={s.hikeArrow}>›</Text>
             </LinearGradient>

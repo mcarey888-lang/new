@@ -866,7 +866,7 @@ export default function TrailsScreen() {
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={s.startHikingTitle}>Start Hiking</Text>
-                <Text style={s.startHikingSub}>Live GPS tracking — draw your route as you walk</Text>
+                <Text style={s.startHikingSub}>Track your route — help others discover great hikes</Text>
               </View>
               <ChevronRight size={16} color={T.green} />
             </TouchableOpacity>

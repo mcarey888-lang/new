@@ -693,7 +693,7 @@ export default function DashboardScreen() {
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.startHikingBannerTitle}>Start Hiking</Text>
-              <Text style={styles.startHikingBannerSub}>Track a live hike with GPS</Text>
+              <Text style={styles.startHikingBannerSub}>Track your route — help others discover great hikes</Text>
             </View>
             <ChevronRight size={18} color={T.green} />
           </TouchableOpacity>
