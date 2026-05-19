@@ -4,12 +4,11 @@ const router: IRouter = Router();
 
 // ── Image source strategy ─────────────────────────────────────────────────────
 //
-//  1. Wikimedia Commons search  — searches the actual image database, not just
-//     an article's lead image. Much larger catalogue, better landscape coverage.
-//     Filters by orientation (landscape only) and filename keywords.
+//  1. Wikipedia pageimages       — the lead article image chosen by Wikipedia
+//     editors for that hill/mountain. Consistent and always relevant.
 //
-//  2. Wikipedia pageimages       — falls back to article lead image when Commons
-//     returns nothing for a niche trail name.
+//  2. Wikimedia Commons search   — broader search if no Wikipedia article image
+//     is found. Filters by orientation (landscape only) and filename keywords.
 //
 //  3. Mapbox satellite           — always correct, always landscape. Used when
 //     neither Wiki source finds a suitable photo.
@@ -223,8 +222,8 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
   ]);
 
   const thumbUrl =
-    (commonsUrl.status === "fulfilled" ? commonsUrl.value : null) ??
-    (wikiData.status   === "fulfilled" ? wikiData.value.thumbUrl : null);
+    (wikiData.status   === "fulfilled" ? wikiData.value.thumbUrl : null) ??
+    (commonsUrl.status === "fulfilled" ? commonsUrl.value : null);
 
   const coord =
     wikiData.status === "fulfilled" ? wikiData.value.coord : null;
