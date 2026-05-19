@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, AlertTriangle, Clock, TrendingUp, ChevronRigh
 import { SiteLayout } from "@/components/SiteLayout";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { Button } from "@/components/ui/button";
+import heroBg from "../../assets/hero-ebc.jpg";
 
 function InternalCTA() {
   return (
@@ -43,8 +44,12 @@ export default function EBCPlan() {
     <SiteLayout>
       <div className="bg-background">
         <section className="py-16 md:py-24 border-b border-white/5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(62,207,117,0.06),transparent_60%)]" />
-          <div className="container mx-auto px-6 max-w-4xl relative">
+          <div className="absolute inset-0">
+            <img src={heroBg} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-25" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/30" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(62,207,117,0.07),transparent_60%)]" />
+          </div>
+          <div className="container mx-auto px-6 max-w-4xl relative z-10">
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
