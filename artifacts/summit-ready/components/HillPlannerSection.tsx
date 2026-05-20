@@ -156,6 +156,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState<NearbyHill | null>(null);
+  const [results, setResults]   = useState<NearbyHill[]>([]);
   const [error, setError]       = useState<string | null>(null);
   const [planned, setPlanned]   = useState<PlannedHillEntry[]>([]);
   const [logging, setLogging]   = useState(false);
@@ -171,23 +172,46 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
   const totalPlannedHikes = planned.reduce((s, p) => s + p.reps, 0);
   const plannedValue = metric === "elevation" ? totalPlannedElev : totalPlannedHikes;
 
-  async function doSearch() {
-    const q = search.trim();
-    if (q.length < 2) return;
-    setLoading(true);
+  const canSearch = (search.trim().length >= 2 || location.trim().length >= 3) && !loading;
+  const isLocationSearch = search.trim().length < 2 && location.trim().length >= 3;
+
+  function clearResults() {
     setResult(null);
+    setResults([]);
     setError(null);
+  }
+
+  async function doSearch() {
+    if (!canSearch) return;
+    setLoading(true);
+    clearResults();
     try {
-      const res = await fetch(`${API_BASE}/hills-search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hillName: q, location: location.trim() }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json() as { hill: NearbyHill };
-      setResult(data.hill);
+      if (isLocationSearch) {
+        // Location-only: find nearby hills
+        const res = await fetch(`${API_BASE}/hills-lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ location: location.trim(), radius: 30 }),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json() as { hills: NearbyHill[] };
+        if (!data.hills?.length) throw new Error();
+        setResults(data.hills.slice(0, 6));
+      } else {
+        // Name search
+        const res = await fetch(`${API_BASE}/hills-search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hillName: search.trim(), location: location.trim() }),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json() as { hill: NearbyHill };
+        setResult(data.hill);
+      }
     } catch {
-      setError("Hill not found — try a different name or spelling.");
+      setError(isLocationSearch
+        ? "No hills found near that location — try a nearby town or postcode."
+        : "Hill not found — try a different name or spelling.");
     } finally {
       setLoading(false);
     }
@@ -202,6 +226,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
       return [...prev, { hill, reps: 1 }];
     });
     setResult(null);
+    setResults([]);
     setSearch("");
   }
 
@@ -366,22 +391,22 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
               style={s.searchInput}
               value={search}
               onChangeText={setSearch}
-              placeholder="Search a hill name…"
+              placeholder="Hill name (or leave blank for nearby)"
               placeholderTextColor={T.textDim}
               returnKeyType="search"
               onSubmitEditing={doSearch}
               autoCorrect={false}
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearch(""); setResult(null); setError(null); }} hitSlop={8}>
+              <TouchableOpacity onPress={() => { setSearch(""); clearResults(); }} hitSlop={8}>
                 <X size={11} color={T.textDim} />
               </TouchableOpacity>
             )}
           </View>
           <TouchableOpacity
-            style={[s.searchBtn, { backgroundColor: color }, (search.trim().length < 2 || loading) && { opacity: 0.4 }]}
+            style={[s.searchBtn, { backgroundColor: color }, !canSearch && { opacity: 0.4 }]}
             onPress={doSearch}
-            disabled={search.trim().length < 2 || loading}
+            disabled={!canSearch}
             activeOpacity={0.85}
           >
             {loading
@@ -399,7 +424,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
           </Animated.View>
         )}
 
-        {/* Search result */}
+        {/* Single name-search result */}
         {result && (
           <Animated.View entering={FadeInDown.duration(300)} style={s.resultCard}>
             <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
@@ -424,6 +449,43 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
               <Plus size={14} color={T.bg} />
               <Text style={s.addBtnText}>Add</Text>
             </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Location-search results list */}
+        {results.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(300)} style={s.resultsList}>
+            <Text style={s.resultsHeader}>Hills near {location.trim()}</Text>
+            {results.map((h, i) => (
+              <Animated.View key={h.name} entering={FadeInDown.delay(i * 40).duration(250)} style={s.resultCard}>
+                <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
+                  <Text style={s.emojiText}>{h.emoji || "⛰️"}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={s.resultName}>{h.name}</Text>
+                  <View style={s.resultMeta}>
+                    <TrendingUp size={11} color={T.orange} />
+                    <Text style={s.resultMetaText}>{h.elevation}m</Text>
+                    <Text style={s.resultMetaDot}>·</Text>
+                    <Text style={s.resultMetaText}>{h.surface}</Text>
+                    {h.distance != null && (
+                      <>
+                        <Text style={s.resultMetaDot}>·</Text>
+                        <Text style={s.resultMetaText}>{h.distance}km away</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[s.addBtn, { backgroundColor: color }]}
+                  onPress={() => addHill(h)}
+                  activeOpacity={0.85}
+                >
+                  <Plus size={14} color={T.bg} />
+                  <Text style={s.addBtnText}>Add</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
           </Animated.View>
         )}
       </View>
@@ -544,6 +606,9 @@ const s = StyleSheet.create({
   addBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.bg },
 
   hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", paddingVertical: 4 },
+
+  resultsList: { gap: 8 },
+  resultsHeader: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 2 },
 
   logBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
