@@ -67,12 +67,12 @@ export default function ModeSelectScreen() {
               <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>I want to explore</Text>
                 <Text style={styles.cardDesc}>
-                  Discover local hikes, log your hills, build fitness, and choose a summit goal when you feel ready.
+                  Find hills near you, log your sessions, build fitness, and choose a summit goal when you feel ready.
                 </Text>
                 <View style={styles.pills}>
-                  <View style={styles.pill}><Text style={styles.pillText}>🥾  Log hikes</Text></View>
+                  <View style={styles.pill}><Text style={styles.pillText}>⛰️  Find hills</Text></View>
                   <View style={styles.pill}><Text style={styles.pillText}>🏅  Earn badges</Text></View>
-                  <View style={styles.pill}><Text style={styles.pillText}>📍  Nearby trails</Text></View>
+                  <View style={styles.pill}><Text style={styles.pillText}>📍  Log sessions</Text></View>
                 </View>
               </View>
               <ChevronRight size={20} color={T.green} style={{ alignSelf: "center", flexShrink: 0 }} />
