@@ -10,6 +10,7 @@ import {
   Navigation,
   Package,
   PenLine,
+  Trash2,
   TrendingUp,
   Wind,
 } from "lucide-react-native";
@@ -144,7 +145,7 @@ const HERO_H = 290;
 export default function TrailDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
-  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, trainingPlan } = useApp();
+  const { savedTrailIds, completedTrailIds, saveTrail, unsaveTrail, completeTrail, uncompleteTrail, trainingPlan, customRoutes, deleteCustomRoute } = useApp();
   const scrollRef = useRef<ScrollView>(null);
 
   const [logVisible, setLogVisible] = useState(false);
@@ -153,8 +154,12 @@ export default function TrailDetailScreen() {
   const [mapImageError, setMapImageError] = useState(false);
 
   const trail: Trail | null = useMemo(() => {
-    return CURATED_HILLS.find((t) => t.id === params.id) ?? null;
-  }, [params.id]);
+    return (
+      CURATED_HILLS.find((t) => t.id === params.id) ??
+      customRoutes.find((t) => t.id === params.id) ??
+      null
+    );
+  }, [params.id, customRoutes]);
 
   React.useEffect(() => {
     setImageError(false);
@@ -191,6 +196,25 @@ export default function TrailDetailScreen() {
   const mapImageUri = mapImageError
     ? null
     : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400&distance=${trail.distance}&trailLat=${trail.lat}&trailLng=${trail.lng}`;
+
+  async function handleDelete() {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      "Delete route?",
+      "This will permanently remove your custom route. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteCustomRoute(trail!.id);
+            router.back();
+          },
+        },
+      ]
+    );
+  }
 
   async function handleSaveToggle() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -488,6 +512,13 @@ export default function TrailDetailScreen() {
               <PenLine size={16} color={T.textMuted} />
               <Text style={s.actionLogText}>Log a session</Text>
             </TouchableOpacity>
+
+            {trail.isCustom && (
+              <TouchableOpacity style={s.actionDelete} onPress={handleDelete} activeOpacity={0.8}>
+                <Trash2 size={16} color="#ef4444" />
+                <Text style={s.actionDeleteText}>Delete route</Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
 
         </View>
@@ -619,4 +650,9 @@ const s = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 13,
   },
   actionLogText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  actionDelete: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "#ef444415", borderRadius: 14, borderWidth: 1, borderColor: "#ef444430", paddingVertical: 13,
+  },
+  actionDeleteText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#ef4444" },
 });
