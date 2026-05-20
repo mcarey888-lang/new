@@ -24,7 +24,7 @@ const HillsResponseSchema = z.object({
   hills: z.array(HillSchema),
 });
 
-const SYSTEM_PROMPT = `You are an expert on local hiking and trail running areas. Given a location and radius, return a mix of nearby hills (good for repeats) AND circular/out-and-back hiking routes (like AllTrails). Return ONLY valid JSON — no markdown, no explanation:
+const SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
 
 {
   "hills": [
@@ -47,7 +47,7 @@ const SYSTEM_PROMPT = `You are an expert on local hiking and trail running areas
 }
 
 Rules:
-- Return 8-10 results total: roughly half hills, half circular or out-and-back hiking routes
+- Return 8-10 results total: at least 7 should be named hills or fells good for training repeats; include at most 1-2 circular/out-and-back routes only if no more distinct hills exist within the radius
 - elevation = total elevation gain in metres for the outing (for hills: gain per climb; for routes: total ascent of the full circuit)
 - distance = distance from the given location to the trailhead in km (must be within the radius)
 - repeats = 1 for routes; recommended repeats (1-5) for hills

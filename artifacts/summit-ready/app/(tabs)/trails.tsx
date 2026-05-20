@@ -27,8 +27,6 @@ import {
   Zap,
 } from "lucide-react-native";
 import * as Location from "expo-location";
-import { TrailCard } from "@/components/TrailCard";
-import { CURATED_HILLS, type TrailDifficulty } from "@/constants/trailData";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -210,24 +208,6 @@ export default function TrailsScreen() {
 
   const [logVisible, setLogVisible] = useState(false);
 
-  // Explore mode: inline browse state
-  const [browseSearch, setBrowseSearch] = useState("");
-  const [browseDiff, setBrowseDiff] = useState<TrailDifficulty | "All">("All");
-
-  const filteredHills = useMemo(() => {
-    let hills = CURATED_HILLS;
-    if (browseSearch.trim()) {
-      const q = browseSearch.toLowerCase();
-      hills = hills.filter(h =>
-        h.name.toLowerCase().includes(q) ||
-        (h.region?.toLowerCase().includes(q) ?? false) ||
-        h.location.toLowerCase().includes(q)
-      );
-    }
-    if (browseDiff !== "All") hills = hills.filter(h => h.difficulty === browseDiff);
-    return hills;
-  }, [browseSearch, browseDiff]);
-
   // Hills state
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
   const [userChangedRadius, setUserChangedRadius] = useState(false);
@@ -408,26 +388,28 @@ export default function TrailsScreen() {
           </View>
         </View>
 
-        {/* Stats context */}
-        <View style={s.ctxCard}>
-          <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={s.ctxRow}>
-            <View style={s.ctxItem}>
-              <Text style={s.ctxVal}>{weekTarget}m</Text>
-              <Text style={s.ctxLbl}>This week target</Text>
-            </View>
-            <View style={s.ctxDivider} />
-            <View style={s.ctxItem}>
-              <Text style={s.ctxVal}>{targetElev}m</Text>
-              <Text style={s.ctxLbl}>Summit goal</Text>
-            </View>
-            <View style={s.ctxDivider} />
-            <View style={s.ctxItem}>
-              <Text style={s.ctxVal}>{nearbyHills.length}</Text>
-              <Text style={s.ctxLbl}>Hills found</Text>
+        {/* Stats context — only meaningful in summit mode */}
+        {isSummit && (
+          <View style={s.ctxCard}>
+            <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={s.ctxRow}>
+              <View style={s.ctxItem}>
+                <Text style={s.ctxVal}>{weekTarget}m</Text>
+                <Text style={s.ctxLbl}>This week target</Text>
+              </View>
+              <View style={s.ctxDivider} />
+              <View style={s.ctxItem}>
+                <Text style={s.ctxVal}>{targetElev}m</Text>
+                <Text style={s.ctxLbl}>Summit goal</Text>
+              </View>
+              <View style={s.ctxDivider} />
+              <View style={s.ctxItem}>
+                <Text style={s.ctxVal}>{nearbyHills.length}</Text>
+                <Text style={s.ctxLbl}>Hills found</Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Controls */}
         <View style={s.controlCard}>
@@ -897,75 +879,6 @@ export default function TrailsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Browse hills header */}
-            <View style={s.browseHeader}>
-              <Mountain size={14} color={T.textDim} />
-              <Text style={s.browseHeading}>BROWSE HILLS</Text>
-            </View>
-
-            {/* Search */}
-            <View style={s.browseSearchRow}>
-              <Search size={15} color={T.textMuted} style={{ marginLeft: 12 }} />
-              <TextInput
-                style={s.browseSearchInput}
-                value={browseSearch}
-                onChangeText={setBrowseSearch}
-                placeholder="Search hills, regions…"
-                placeholderTextColor={T.textDim}
-                returnKeyType="search"
-                autoCorrect={false}
-              />
-              {browseSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setBrowseSearch("")} hitSlop={8} style={{ marginRight: 10 }}>
-                  <X size={14} color={T.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Difficulty filters */}
-            <View style={s.browseDiffRow}>
-              {(["All", "Easy", "Moderate", "Hard"] as const).map(d => (
-                <TouchableOpacity
-                  key={d}
-                  onPress={() => setBrowseDiff(d)}
-                  style={[s.browseDiffChip, browseDiff === d && s.browseDiffChipActive]}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[s.browseDiffText, browseDiff === d && s.browseDiffTextActive]}>{d}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Result count */}
-            <Text style={s.browseCount}>
-              {filteredHills.length} hill{filteredHills.length !== 1 ? "s" : ""}
-              {browseDiff !== "All" || browseSearch ? " found" : " — pick your next challenge"}
-            </Text>
-
-            {/* Hill cards */}
-            {filteredHills.length === 0 ? (
-              <View style={s.browseEmpty}>
-                <Text style={s.browseEmptyTitle}>No hills found</Text>
-                <Text style={s.browseEmptyBody}>Try adjusting your search or filters.</Text>
-              </View>
-            ) : (
-              filteredHills.map(trail => (
-                <View key={trail.id}>
-                  <TrailCard
-                    trail={trail}
-                    isSaved={savedTrailIds.includes(trail.id)}
-                    isCompleted={completedTrailIds.includes(trail.id)}
-                    onPress={() => router.push({ pathname: "/trail-detail", params: { id: trail.id } })}
-                  />
-                </View>
-              ))
-            )}
-          </Animated.View>
-        )}
-
-        {/* Summit mode: Training Hills section */}
-        {isSummit && (
-          <Animated.View entering={FadeInDown.delay(80).duration(600)}>
             {HillsSection()}
           </Animated.View>
         )}
