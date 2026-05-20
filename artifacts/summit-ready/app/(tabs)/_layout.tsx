@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Home, Calendar, PenLine, Compass, User, Map } from "lucide-react-native";
+import { Home, Calendar, PenLine, Compass, User, Map, Trophy } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -87,6 +87,18 @@ export default function TabLayout() {
       />
 
       {/* ── Shared tabs ── */}
+      <Tabs.Screen
+        name="challenges"
+        options={{
+          title: "Challenges",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.orangeDim ?? "rgba(245,158,11,0.15)" }] : styles.iconWrap}>
+              <Trophy size={20} color={color} />
+            </View>
+          ),
+          tabBarActiveTintColor: T.orange,
+        }}
+      />
       <Tabs.Screen
         name="trails"
         options={{

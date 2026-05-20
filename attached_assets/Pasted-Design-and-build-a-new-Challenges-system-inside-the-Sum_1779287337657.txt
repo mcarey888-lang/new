@@ -1,0 +1,404 @@
+Design and build a new “Challenges” system inside the Summit Ready app.
+
+IMPORTANT:
+- Keep the current app design, styling, branding, and navigation consistent.
+- Do not redesign the whole app.
+- Build this as a new feature/module.
+- Keep the first version simple enough to work reliably.
+- Focus on motivation, progression, and repeat app usage.
+- The system should feel like mountain preparation, not a gimmicky fitness game.
+
+FEATURE NAME:
+Summit Ready Challenges
+
+CORE IDEA:
+Users complete virtual mountain challenges by logging elevation gain, distance, hikes, or training sessions in their local area.
+
+The purpose is to help users train for big mountains using local hills and everyday terrain.
+
+MAIN CHALLENGE TYPES:
+
+1. Elevation Challenges
+Users complete a total elevation target over a chosen time period.
+
+Examples:
+- Everest Elevation Challenge: gain 8,848m
+- Mont Blanc Challenge: gain 4,809m
+- Kilimanjaro Challenge: gain 5,895m
+- Ben Nevis 5x Challenge: gain 6,725m total
+- Base Camp to Summit Challenge: gain 3,500m
+
+2. Weekly Push Challenges
+Shorter challenges designed to build consistency.
+
+Examples:
+- 1,000m elevation in 7 days
+- 2,500m elevation in 14 days
+- 5 hikes in 30 days
+- 10,000 steps uphill equivalent challenge
+
+3. Mountain Prep Challenges
+Challenges linked to real summit goals.
+
+Examples:
+- Mont Blanc Prep Month
+- Kilimanjaro Base Builder
+- Everest Base Camp Endurance Block
+- Alpine Legs Challenge
+
+USER FLOW:
+
+Add a new navigation item:
+Challenges
+
+Challenges page should show:
+- featured challenge
+- active challenge
+- available challenges
+- completed challenges
+- progress stats
+
+Each challenge card should show:
+- challenge name
+- mountain/goal
+- target elevation or activity goal
+- difficulty level
+- estimated completion time
+- progress bar
+- CTA button: Start Challenge / Continue Challenge / View Results
+
+CHALLENGE DETAIL PAGE:
+
+Each challenge should have its own detail screen with:
+
+- title
+- short description
+- target metric
+- difficulty
+- recommended user type
+- progress bar
+- total completed
+- remaining amount
+- percentage complete
+- milestone markers
+- recent activity/logs
+- motivational message
+- CTA to log activity
+
+MILESTONE SYSTEM:
+
+Add milestones at:
+- 25%
+- 50%
+- 75%
+- 100%
+
+For Everest Challenge:
+- 25%: Base Camp reached
+- 50%: Into the high mountains
+- 75%: Death Zone effort
+- 100%: Summit achieved
+
+For Mont Blanc:
+- 25%: Valley start
+- 50%: High hut ready
+- 75%: Summit ridge
+- 100%: Mont Blanc complete
+
+For Kilimanjaro:
+- 25%: Rainforest zone
+- 50%: Moorland zone
+- 75%: Alpine desert
+- 100%: Uhuru Peak
+
+ACTIVITY LOGGING:
+
+Users should be able to log progress manually for MVP.
+
+Log fields:
+- activity name
+- date
+- elevation gained
+- distance
+- duration
+- notes
+
+Example:
+Activity name: Local hill repeats
+Elevation: 450m
+Distance: 6km
+Duration: 1h 30m
+
+After logging, update:
+- challenge progress
+- weekly totals
+- completed milestones
+- stats dashboard
+
+Future-proof the system so GPS/Strava/Apple Health/Google Fit integration can be added later, but do not require it for MVP.
+
+PROGRESS SYSTEM:
+
+Show:
+- total elevation gained
+- target elevation
+- remaining elevation
+- percentage complete
+- number of activities logged
+- average elevation per activity
+- best elevation day
+- current streak if applicable
+
+BADGES / REWARDS:
+
+Add simple badges for:
+- First activity logged
+- 25% complete
+- 50% complete
+- 75% complete
+- Challenge completed
+- 3 activities in a week
+- 7-day streak
+- Biggest elevation day
+
+Badges should be visible on the challenge result screen and user profile/stats area.
+
+COMPLETION SCREEN:
+
+When a user completes a challenge, show a completion screen with:
+
+- “Summit achieved”
+- challenge name
+- total elevation logged
+- number of activities
+- total distance
+- total time
+- completion date
+- earned badges
+- option to start another challenge
+- option to share result
+
+SHARE FEATURE:
+
+Add a simple share card for completed challenges.
+
+Share card should include:
+- Summit Ready branding
+- challenge name
+- total elevation
+- completion time
+- “Summit achieved”
+- optional caption:
+“I completed the [Challenge Name] with Summit Ready.”
+
+This should be designed so users can screenshot it or share later.
+
+CHALLENGE DIFFICULTY LEVELS:
+
+Use:
+- Beginner
+- Intermediate
+- Advanced
+- Expedition
+
+Example difficulty mapping:
+- 1,000m in 7 days: Beginner
+- Mont Blanc elevation: Intermediate
+- Kilimanjaro elevation: Intermediate/Advanced
+- Everest elevation: Advanced
+- Aconcagua prep: Expedition
+
+RECOMMENDED CHALLENGES:
+
+Add logic or placeholder logic to recommend challenges based on:
+- user goal mountain
+- current fitness level
+- available weekly training time
+- local hill access
+
+Example:
+If user selects Mont Blanc as goal:
+Recommend:
+- Mont Blanc Challenge
+- Alpine Legs Challenge
+- 2,500m in 14 Days
+
+If user selects Kilimanjaro:
+Recommend:
+- Kilimanjaro Challenge
+- Base Builder Challenge
+- 5 Hikes in 30 Days
+
+MONETISATION / PREMIUM STRUCTURE:
+
+For now, keep a few challenges free and mark advanced ones as premium-ready.
+
+Free challenges:
+- Everest Elevation Challenge
+- 1,000m in 7 Days
+- 5 Hikes in 30 Days
+
+Premium-ready challenges:
+- Mont Blanc Prep Month
+- Kilimanjaro Base Builder
+- Aconcagua Expedition Prep
+- Alpine Legs Challenge
+- Custom Challenge Builder
+
+Do not fully implement payment unless already supported.
+Just structure the data/UI so some challenges can later be marked premium.
+
+CUSTOM CHALLENGE BUILDER:
+
+Add placeholder support for future custom challenges.
+
+Future users should be able to:
+- choose elevation target
+- choose deadline
+- name the challenge
+- track progress
+
+For now, show as “Coming soon” if not implemented.
+
+DATA STRUCTURE:
+
+Create a clean challenge data model with fields like:
+
+challengeId
+title
+slug
+description
+type
+targetMetric
+targetValue
+unit
+difficulty
+durationDays
+mountain
+isPremium
+milestones
+recommendedFor
+activities
+progress
+completed
+createdAt
+completedAt
+
+Activity log model:
+
+activityId
+challengeId
+title
+date
+elevationGain
+distance
+duration
+notes
+createdAt
+
+DESIGN REQUIREMENTS:
+
+The Challenges area should feel:
+- clean
+- motivating
+- mountain-focused
+- consistent with Summit Ready
+- not childish
+- not over-gamified
+
+Use:
+- progress bars
+- cards
+- badges
+- mountain language
+- clear CTAs
+
+Avoid:
+- cartoonish game feel
+- too many animations
+- cluttered dashboards
+
+COPY STYLE:
+
+Use language like:
+- “Train for big mountains using your local hills.”
+- “Turn every local climb into summit preparation.”
+- “Small hills. Big goals.”
+- “Progress toward your summit one climb at a time.”
+- “Stop guessing. Build mountain-specific fitness.”
+
+INITIAL CHALLENGE LIST TO INCLUDE:
+
+1. Everest Elevation Challenge
+Target: 8,848m elevation gain
+Difficulty: Advanced
+Duration: Flexible
+Free
+
+2. Mont Blanc Elevation Challenge
+Target: 4,809m elevation gain
+Difficulty: Intermediate
+Duration: 30 days
+Premium-ready
+
+3. Kilimanjaro Elevation Challenge
+Target: 5,895m elevation gain
+Difficulty: Intermediate/Advanced
+Duration: 30 days
+Premium-ready
+
+4. 1,000m in 7 Days
+Target: 1,000m elevation gain
+Difficulty: Beginner
+Duration: 7 days
+Free
+
+5. 2,500m in 14 Days
+Target: 2,500m elevation gain
+Difficulty: Intermediate
+Duration: 14 days
+Free or premium-ready
+
+6. 5 Hikes in 30 Days
+Target: 5 logged hikes
+Difficulty: Beginner
+Duration: 30 days
+Free
+
+7. Alpine Legs Challenge
+Target: 6,000m elevation gain
+Difficulty: Advanced
+Duration: 30 days
+Premium-ready
+
+8. Aconcagua Expedition Prep
+Target: 10,000m elevation gain
+Difficulty: Expedition
+Duration: 60 days
+Premium-ready
+
+MVP PRIORITY:
+
+Build the MVP in this order:
+
+1. Challenges page
+2. Challenge cards
+3. Challenge detail page
+4. Manual activity logging
+5. Progress calculation
+6. Milestones
+7. Completion screen
+8. Badges
+9. Share card
+10. Premium-ready flags
+
+FINAL GOAL:
+
+Create a challenge system that gives Summit Ready users a reason to return regularly.
+
+The system should help users:
+- stay motivated
+- train consistently
+- use local hills
+- feel progress toward real mountain goals
+- eventually convert into paid users

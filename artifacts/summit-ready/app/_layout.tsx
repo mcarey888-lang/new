@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
+import { ChallengesProvider } from "@/context/ChallengesContext";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +45,8 @@ function RootLayoutNav() {
       <Stack.Screen name="trails-create" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hills-finder" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hike-tracking" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="challenge-detail" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="challenge-complete" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }
@@ -72,7 +75,9 @@ export default function RootLayout() {
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
                 <AppProvider>
-                  <RootLayoutNav />
+                  <ChallengesProvider>
+                    <RootLayoutNav />
+                  </ChallengesProvider>
                 </AppProvider>
               </KeyboardProvider>
             </GestureHandlerRootView>
