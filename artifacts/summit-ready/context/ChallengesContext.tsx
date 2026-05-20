@@ -45,7 +45,7 @@ const CHALLENGES_KEY = "summitready_challenges";
 
 export function ChallengesProvider({ children }: { children: React.ReactNode }) {
   const [activeChallenges, setActiveChallenges] = useState<ActiveChallenge[]>([]);
-  const { addSession, appMode } = useApp();
+  const { addSession, logExploreHike, appMode } = useApp();
 
   useEffect(() => {
     AsyncStorage.getItem(CHALLENGES_KEY).then(raw => {
@@ -107,6 +107,8 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
 
     await persist(updated);
 
+    const challengeNote = `[Challenge: ${template?.title ?? activityData.challengeId}] ${activityData.notes}`.trim();
+
     if (activityData.elevationGain > 0 || activityData.distance > 0) {
       await addSession({
         date: activityData.date,
@@ -115,12 +117,21 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
         elevationGain: activityData.elevationGain,
         duration: activityData.duration,
         effort: 3,
-        notes: `[Challenge: ${template?.title ?? activityData.challengeId}] ${activityData.notes}`.trim(),
+        notes: challengeNote,
         completed: true,
         weekNumber: 0,
       });
     }
-  }, [activeChallenges, addSession]);
+
+    await logExploreHike({
+      name: activityData.title || "Challenge session",
+      date: activityData.date,
+      distance: activityData.distance,
+      elevationGain: activityData.elevationGain,
+      timeTaken: activityData.duration,
+      notes: challengeNote,
+    });
+  }, [activeChallenges, addSession, logExploreHike]);
 
   const getProgress = useCallback((challengeId: string): number => {
     const ac = activeChallenges.find(c => c.challengeId === challengeId);
