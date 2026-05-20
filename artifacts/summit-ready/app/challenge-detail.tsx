@@ -23,6 +23,7 @@ import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges, type ChallengeActivity } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
+import { HillPlannerSection } from "@/components/HillPlannerSection";
 
 function ProgressBar({ pct, color, height = 6 }: { pct: number; color: string; height?: number }) {
   return (
@@ -354,6 +355,18 @@ export default function ChallengeDetailScreen() {
                 </Text>
               </View>
             )}
+          </Animated.View>
+        )}
+
+        {/* Hill planner */}
+        {!isCompleted && (
+          <Animated.View entering={FadeInDown.delay(95).duration(600)}>
+            <HillPlannerSection
+              targetValue={c.targetValue}
+              metric={c.metric}
+              color={color}
+              currentProgress={progress}
+            />
           </Animated.View>
         )}
 
