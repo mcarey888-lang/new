@@ -23,7 +23,7 @@ import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges, type ChallengeActivity } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
-import { HillPlannerSection } from "@/components/HillPlannerSection";
+import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlannerSection";
 
 function ProgressBar({ pct, color, height = 6 }: { pct: number; color: string; height?: number }) {
   return (
@@ -240,6 +240,29 @@ export default function ChallengeDetailScreen() {
     }
   }
 
+  async function handlePlannerLog(hills: PlannedHillEntry[]) {
+    if (locked) { router.push("/paywall"); return; }
+    if (!ac) await startChallenge(c!.id);
+    const today = new Date().toISOString().split("T")[0];
+    let runningProgress = progress;
+    for (const { hill, reps } of hills) {
+      const elevGain = hill.elevation * reps;
+      await logActivity({
+        challengeId: c!.id,
+        title: reps > 1 ? `${hill.name} ×${reps}` : hill.name,
+        date: today,
+        elevationGain: elevGain,
+        distance: hill.distance ? hill.distance * reps : 0,
+        duration: 0,
+        notes: `${reps} rep${reps !== 1 ? "s" : ""} of ${hill.name} (${hill.elevation}m per rep)`,
+      });
+      runningProgress += c!.metric === "hikes" ? 1 : elevGain;
+    }
+    if (runningProgress >= c!.targetValue && !isCompleted) {
+      router.replace({ pathname: "/challenge-complete", params: { id: c!.id } });
+    }
+  }
+
   async function handleAbandon() {
     if (Platform.OS === "web") {
       abandonChallenge(c!.id);
@@ -366,6 +389,7 @@ export default function ChallengeDetailScreen() {
               metric={c.metric}
               color={color}
               currentProgress={progress}
+              onLog={handlePlannerLog}
             />
           </Animated.View>
         )}

@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   AlertCircle,
   BarChart2,
+  CheckCircle,
   Map,
   Minus,
   Mountain,
@@ -36,7 +37,7 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 const LOC_KEY = "summitready_hikes_location";
 
-interface PlannedHill {
+export interface PlannedHillEntry {
   hill: NearbyHill;
   reps: number;
 }
@@ -46,6 +47,7 @@ interface Props {
   metric: ChallengeMetric;
   color: string;
   currentProgress?: number;
+  onLog?: (hills: PlannedHillEntry[]) => Promise<void>;
 }
 
 // ─── Animated fill bar ─────────────────────────────────────────────────────
@@ -149,13 +151,15 @@ const fb = StyleSheet.create({
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0 }: Props) {
+export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0, onLog }: Props) {
   const [location, setLocation] = useState("");
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState<NearbyHill | null>(null);
   const [error, setError]       = useState<string | null>(null);
-  const [planned, setPlanned]   = useState<PlannedHill[]>([]);
+  const [planned, setPlanned]   = useState<PlannedHillEntry[]>([]);
+  const [logging, setLogging]   = useState(false);
+  const [logSuccess, setLogSuccess] = useState(false);
   const searchRef = useRef<TextInput>(null);
 
   // Pre-fill location from Hills cache
@@ -206,6 +210,19 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
       setPlanned(prev => prev.filter(p => p.hill.name !== name));
     } else {
       setPlanned(prev => prev.map(p => p.hill.name === name ? { ...p, reps } : p));
+    }
+  }
+
+  async function doLog() {
+    if (!onLog || planned.length === 0 || logging) return;
+    setLogging(true);
+    try {
+      await onLog(planned);
+      setPlanned([]);
+      setLogSuccess(true);
+      setTimeout(() => setLogSuccess(false), 3000);
+    } finally {
+      setLogging(false);
     }
   }
 
@@ -412,10 +429,38 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
       </View>
 
       {/* Empty state hint */}
-      {planned.length === 0 && !result && (
+      {planned.length === 0 && !result && !logSuccess && (
         <Text style={s.hint}>
           Search a hill above to start planning your route to the target.
         </Text>
+      )}
+
+      {/* Success flash */}
+      {logSuccess && (
+        <Animated.View entering={FadeInDown.duration(300)} style={s.successRow}>
+          <CheckCircle size={15} color={T.green} />
+          <Text style={s.successText}>Logged! Activities added to your challenge and training.</Text>
+        </Animated.View>
+      )}
+
+      {/* Log session button */}
+      {onLog && planned.length > 0 && (
+        <Animated.View entering={FadeInDown.duration(300)}>
+          <TouchableOpacity
+            style={[s.logBtn, { backgroundColor: color }, logging && { opacity: 0.55 }]}
+            onPress={doLog}
+            disabled={logging}
+            activeOpacity={0.85}
+          >
+            {logging
+              ? <ActivityIndicator size="small" color={T.bg} />
+              : <CheckCircle size={16} color={T.bg} />
+            }
+            <Text style={s.logBtnText}>
+              {logging ? "Logging…" : `Log ${planned.length} hill${planned.length !== 1 ? "s" : ""} as completed`}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
       )}
     </View>
   );
@@ -499,4 +544,17 @@ const s = StyleSheet.create({
   addBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.bg },
 
   hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", paddingVertical: 4 },
+
+  logBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    borderRadius: 13, paddingVertical: 14,
+  },
+  logBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
+
+  successRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.green + "18", borderRadius: 10, borderWidth: 1, borderColor: T.green + "40",
+    padding: 12,
+  },
+  successText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green, flex: 1 },
 });
