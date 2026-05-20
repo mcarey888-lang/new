@@ -225,9 +225,10 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
       }
       return [...prev, { hill, reps: 1 }];
     });
-    setResult(null);
-    setResults([]);
-    setSearch("");
+  }
+
+  function getPlannedEntry(hillName: string): PlannedHillEntry | undefined {
+    return planned.find(p => p.hill.name === hillName);
   }
 
   function setReps(name: string, reps: number) {
@@ -425,67 +426,92 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
         )}
 
         {/* Single name-search result */}
-        {result && (
-          <Animated.View entering={FadeInDown.duration(300)} style={s.resultCard}>
-            <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
-              <Text style={s.emojiText}>{result.emoji || "⛰️"}</Text>
-            </View>
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={s.resultName}>{result.name}</Text>
-              <View style={s.resultMeta}>
-                <TrendingUp size={11} color={T.orange} />
-                <Text style={s.resultMetaText}>{result.elevation}m gain</Text>
-                <Text style={s.resultMetaDot}>·</Text>
-                <Text style={s.resultMetaText}>{result.surface}</Text>
-                <Text style={s.resultMetaDot}>·</Text>
-                <Text style={s.resultMetaText}>{result.grade}</Text>
+        {result && (() => {
+          const entry = getPlannedEntry(result.name);
+          return (
+            <Animated.View entering={FadeInDown.duration(300)} style={[s.resultCard, entry && { borderColor: color + "50" }]}>
+              <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
+                <Text style={s.emojiText}>{result.emoji || "⛰️"}</Text>
               </View>
-            </View>
-            <TouchableOpacity
-              style={[s.addBtn, { backgroundColor: color }]}
-              onPress={() => addHill(result)}
-              activeOpacity={0.85}
-            >
-              <Plus size={14} color={T.bg} />
-              <Text style={s.addBtnText}>Add</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={s.resultName}>{result.name}</Text>
+                <View style={s.resultMeta}>
+                  <TrendingUp size={11} color={T.orange} />
+                  <Text style={s.resultMetaText}>{result.elevation}m gain</Text>
+                  <Text style={s.resultMetaDot}>·</Text>
+                  <Text style={s.resultMetaText}>{result.surface}</Text>
+                </View>
+              </View>
+              {entry ? (
+                <View style={s.inlineReps}>
+                  <TouchableOpacity onPress={() => setReps(result.name, entry.reps - 1)} style={s.inlineRepBtn} hitSlop={6}>
+                    <Minus size={11} color={T.text} />
+                  </TouchableOpacity>
+                  <Text style={[s.inlineRepVal, { color }]}>{entry.reps}</Text>
+                  <TouchableOpacity onPress={() => setReps(result.name, entry.reps + 1)} style={s.inlineRepBtn} hitSlop={6}>
+                    <Plus size={11} color={T.text} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={[s.addBtn, { backgroundColor: color }]} onPress={() => addHill(result)} activeOpacity={0.85}>
+                  <Plus size={14} color={T.bg} />
+                  <Text style={s.addBtnText}>Add</Text>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          );
+        })()}
 
         {/* Location-search results list */}
         {results.length > 0 && (
           <Animated.View entering={FadeInDown.duration(300)} style={s.resultsList}>
-            <Text style={s.resultsHeader}>Hills near {location.trim()}</Text>
-            {results.map((h, i) => (
-              <Animated.View key={h.name} entering={FadeInDown.delay(i * 40).duration(250)} style={s.resultCard}>
-                <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
-                  <Text style={s.emojiText}>{h.emoji || "⛰️"}</Text>
-                </View>
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Text style={s.resultName}>{h.name}</Text>
-                  <View style={s.resultMeta}>
-                    <TrendingUp size={11} color={T.orange} />
-                    <Text style={s.resultMetaText}>{h.elevation}m</Text>
-                    <Text style={s.resultMetaDot}>·</Text>
-                    <Text style={s.resultMetaText}>{h.surface}</Text>
-                    {h.distance != null && (
-                      <>
-                        <Text style={s.resultMetaDot}>·</Text>
-                        <Text style={s.resultMetaText}>{h.distance}km away</Text>
-                      </>
-                    )}
+            <View style={s.resultsHeaderRow}>
+              <Text style={s.resultsHeader}>Hills near {location.trim()}</Text>
+              <TouchableOpacity onPress={clearResults} hitSlop={10}>
+                <X size={13} color={T.textDim} />
+              </TouchableOpacity>
+            </View>
+            {results.map((h, i) => {
+              const entry = getPlannedEntry(h.name);
+              return (
+                <Animated.View key={h.name} entering={FadeInDown.delay(i * 40).duration(250)} style={[s.resultCard, entry && { borderColor: color + "50" }]}>
+                  <View style={[s.resultEmoji, { backgroundColor: color + "18" }]}>
+                    <Text style={s.emojiText}>{h.emoji || "⛰️"}</Text>
                   </View>
-                </View>
-                <TouchableOpacity
-                  style={[s.addBtn, { backgroundColor: color }]}
-                  onPress={() => addHill(h)}
-                  activeOpacity={0.85}
-                >
-                  <Plus size={14} color={T.bg} />
-                  <Text style={s.addBtnText}>Add</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={s.resultName}>{h.name}</Text>
+                    <View style={s.resultMeta}>
+                      <TrendingUp size={11} color={T.orange} />
+                      <Text style={s.resultMetaText}>{h.elevation}m</Text>
+                      <Text style={s.resultMetaDot}>·</Text>
+                      <Text style={s.resultMetaText}>{h.surface}</Text>
+                      {h.distance != null && (
+                        <>
+                          <Text style={s.resultMetaDot}>·</Text>
+                          <Text style={s.resultMetaText}>{h.distance}km</Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                  {entry ? (
+                    <View style={s.inlineReps}>
+                      <TouchableOpacity onPress={() => setReps(h.name, entry.reps - 1)} style={s.inlineRepBtn} hitSlop={6}>
+                        <Minus size={11} color={T.text} />
+                      </TouchableOpacity>
+                      <Text style={[s.inlineRepVal, { color }]}>{entry.reps}</Text>
+                      <TouchableOpacity onPress={() => setReps(h.name, entry.reps + 1)} style={s.inlineRepBtn} hitSlop={6}>
+                        <Plus size={11} color={T.text} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={[s.addBtn, { backgroundColor: color }]} onPress={() => addHill(h)} activeOpacity={0.85}>
+                      <Plus size={14} color={T.bg} />
+                      <Text style={s.addBtnText}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              );
+            })}
           </Animated.View>
         )}
       </View>
@@ -608,7 +634,15 @@ const s = StyleSheet.create({
   hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", paddingVertical: 4 },
 
   resultsList: { gap: 8 },
-  resultsHeader: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 2 },
+  resultsHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
+  resultsHeader: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+
+  inlineReps: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 },
+  inlineRepBtn: {
+    width: 26, height: 26, borderRadius: 7, backgroundColor: T.card,
+    borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center",
+  },
+  inlineRepVal: { fontSize: 15, fontFamily: "Inter_700Bold", minWidth: 20, textAlign: "center" },
 
   logBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
