@@ -211,7 +211,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
 
   return (
     <View style={s.container}>
-      <LinearGradient colors={[color + "0A", "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[color + "0A", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       {/* Section header */}
       <View style={s.header}>
@@ -256,7 +256,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
             const contrib = p.hill.elevation * p.reps;
             return (
               <Animated.View key={p.hill.name} entering={FadeInDown.delay(i * 40).duration(300)} style={s.selectedCard}>
-                <LinearGradient colors={[color + "0C", "transparent"]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[color + "0C", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
                 <View style={s.selectedTop}>
                   <View style={[s.selectedEmoji, { backgroundColor: color + "18" }]}>
