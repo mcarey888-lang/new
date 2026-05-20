@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import heroBgPath from "./assets/hero-bg.jpeg";
-import featureMapPath from "./assets/feature-map.png";
-import featureClimbPath from "./assets/feature-climb.png";
+import featureMapPath from "./assets/feature-map.jpg";
+import featureClimbPath from "./assets/feature-climb.jpg";
 import {
   ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2,
   TrendingUp, Compass, Calendar, ShieldCheck, Smartphone, MapPin,
@@ -110,7 +110,7 @@ function Features() {
         <div className="grid lg:grid-cols-2 gap-20 items-center">
           <div className="order-2 lg:order-1 relative">
             <div className="absolute -inset-10 bg-gradient-to-tr from-primary/20 to-transparent blur-3xl rounded-full z-0" />
-            <img src={featureMapPath} alt="Trail map" className="relative z-10 w-full rounded-2xl border border-white/10 shadow-2xl" />
+            <img src={featureMapPath} alt="Trail map" loading="lazy" className="relative z-10 w-full rounded-2xl border border-white/10 shadow-2xl" />
 
             <div className="absolute -right-8 -bottom-8 bg-background/90 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl z-20 hidden md:block">
               <div className="flex items-center gap-4 mb-4">
@@ -203,7 +203,7 @@ function Readiness() {
 
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-bl from-primary/10 to-transparent blur-3xl rounded-full z-0" />
-            <img src={featureClimbPath} alt="Climber silhouette" className="relative z-10 w-full rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+            <img src={featureClimbPath} alt="Climber silhouette" loading="lazy" className="relative z-10 w-full rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
 
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center z-20 min-w-[280px]">
               <div className="relative w-40 h-40 mb-6">
