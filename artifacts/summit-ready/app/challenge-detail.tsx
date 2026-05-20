@@ -282,6 +282,7 @@ export default function ChallengeDetailScreen() {
           { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 120 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Back */}
         <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={12} activeOpacity={0.7}>
