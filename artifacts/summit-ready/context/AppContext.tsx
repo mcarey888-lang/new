@@ -689,7 +689,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const radius = radiusOverride ?? summitGoal.maxRadius;
       const body: Record<string, unknown> = { location: summitGoal.location, radius };
       if (minElevation && minElevation > 0) body.minElevation = minElevation;
-      const res = await fetch(`${API_BASE}/hills-lookup`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed-revenuecat": "tsx ./src/seedRevenueCat.ts",
     "seed-trails": "tsx ./src/seed-trails-overpass.ts",
+    "seed-popular-hills": "tsx ./src/seed-popular-hills.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

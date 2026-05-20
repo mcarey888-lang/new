@@ -200,7 +200,7 @@ function HillPickerModal({
       const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
         ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
         : "/api";
-      const res = await fetch(`${API_BASE}/hills-search`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hillName: q, location }),

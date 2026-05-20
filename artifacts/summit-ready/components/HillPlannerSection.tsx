@@ -188,7 +188,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
     try {
       if (isLocationSearch) {
         // Location-only: find nearby hills
-        const res = await fetch(`${API_BASE}/hills-lookup`, {
+        const res = await fetch(`${API_BASE}/hills-unified`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ location: location.trim(), radius: 30 }),
@@ -199,7 +199,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
         setResults(data.hills.slice(0, 6));
       } else {
         // Name search
-        const res = await fetch(`${API_BASE}/hills-search`, {
+        const res = await fetch(`${API_BASE}/hills-unified`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ hillName: search.trim(), location: location.trim() }),

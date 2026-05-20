@@ -304,7 +304,7 @@ export default function SetupScreen() {
     setSpecificSearching(true);
     setSpecificSearchErr(null);
     try {
-      const res = await fetch(`${API_BASE}/hills-search`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hillName: query, location: loc.trim() }),
@@ -337,7 +337,7 @@ export default function SetupScreen() {
     if (location.length < 2) return;
     setHillSearchState("loading");
     try {
-      const res = await fetch(`${API_BASE}/hills-lookup`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ location, radius: +radius || 25 }),

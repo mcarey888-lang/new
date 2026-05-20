@@ -233,7 +233,7 @@ export default function HillsFinderScreen() {
     try {
       const body: Record<string, unknown> = { location: useLoc, radius: useRad };
       if (useMinElev > 0) body.minElevation = useMinElev;
-      const res = await fetch(`${API_BASE}/hills-lookup`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -258,7 +258,7 @@ export default function HillsFinderScreen() {
     setSearchError(null);
     setSearchAdded(false);
     try {
-      const res = await fetch(`${API_BASE}/hills-search`, {
+      const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hillName: query, location: location.trim() }),
