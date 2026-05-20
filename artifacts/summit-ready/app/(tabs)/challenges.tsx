@@ -17,7 +17,7 @@ import { CHALLENGES, DIFF_COLOR, type ChallengeTemplate } from "@/constants/chal
 import { useChallenges } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
 
-const FREE_IDS = ["everest-elevation", "1000m-7days", "5-hikes-30days", "2500m-14days"];
+const FREE_IDS = ["1000m-7days", "5-hikes-30days", "2500m-14days"];
 
 function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
