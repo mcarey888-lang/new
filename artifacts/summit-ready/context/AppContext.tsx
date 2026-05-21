@@ -158,7 +158,7 @@ interface AppState {
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
-  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
+  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
   newlyUnlocked: string[];
@@ -428,7 +428,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const looksLikeStepper = gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster");
                 const treadmillNeedsUpdate = looksLikeTreadmill && (s.gymExercise !== "treadmill" || !s.targetDistanceKm || s.targetDistanceKm <= 0);
                 const stepperNeedsUpdate = looksLikeStepper && (s.gymExercise !== "stepper" || !s.targetFloors || s.targetFloors <= 0);
-                if (s.type === "cardio" && (treadmillNeedsUpdate || stepperNeedsUpdate)) {
+                // Broaden the type check: accept "cardio" sessions AND sessions whose
+                // type was accidentally omitted or set to something unexpected by the AI.
+                // Hill/bigDay sessions will never match looksLikeTreadmill/Stepper, so
+                // widening here is safe.
+                const isCardioCompatible = s.type === "cardio" || (s.type !== "hill" && s.type !== "bigDay");
+                if (isCardioCompatible && (treadmillNeedsUpdate || stepperNeedsUpdate)) {
                   if (treadmillNeedsUpdate) {
                     const midDur = parseDurationMidpoint(s.duration ?? "30–40 min");
                     const targetDistanceKm = Math.max(0.5, Math.round((midDur / 60) * 4.5 * 10) / 10);
@@ -436,6 +441,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     planWasMigrated = true;
                     return {
                       ...s,
+                      type: "cardio" as const,
                       gymExercise: "treadmill" as const,
                       targetDistanceKm,
                       targetElevation: Math.round(targetDistanceKm * 100),
@@ -449,6 +455,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     planWasMigrated = true;
                     return {
                       ...s,
+                      type: "cardio" as const,
                       gymExercise: "stepper" as const,
                       targetFloors,
                       targetElevation: targetFloors * 3,
@@ -954,7 +961,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
-    updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>
+    updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>
   ) => {
     const updatedPlan = trainingPlan.map(week => {
       if (week.weekNumber !== weekNum) return week;

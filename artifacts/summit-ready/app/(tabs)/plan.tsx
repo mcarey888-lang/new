@@ -813,7 +813,7 @@ function WeekCard({
                             {assignedHill ? "Change hill" : "Pick hill"}
                           </Text>
                         </TouchableOpacity>
-                      ) : !isGymCardio ? (
+                      ) : s.type === "cardio" ? (
                         <TouchableOpacity
                           onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
                           style={styles.swapBtn}
@@ -1047,20 +1047,24 @@ export default function PlanScreen() {
 
     if (l.includes("treadmill")) {
       const targetDistanceKm = Math.max(0.5, Math.round((midDur / 60) * 4.5 * 10) / 10);
+      updates.type = "cardio";
       updates.gymExercise = "treadmill";
       updates.targetDistanceKm = targetDistanceKm;
       updates.targetElevation = Math.round(targetDistanceKm * 100);
       updates.inclinePct = 10;
     } else if (l.includes("stepper") || l.includes("step machine") || l.includes("stairmaster")) {
       const targetFloors = Math.max(10, Math.round(midDur * 3));
+      updates.type = "cardio";
       updates.gymExercise = "stepper";
       updates.targetFloors = targetFloors;
       updates.targetElevation = targetFloors * 3;
     } else {
+      updates.type = "cardio";
       updates.gymExercise = undefined;
       updates.targetDistanceKm = undefined;
       updates.targetFloors = undefined;
       updates.inclinePct = undefined;
+      updates.targetElevation = 0;
     }
 
     await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, updates);
