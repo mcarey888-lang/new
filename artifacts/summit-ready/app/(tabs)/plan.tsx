@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
-import { getCurrentWeek } from "@/utils/planGenerator";
+import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 
 // ── Rep Tracker ───────────────────────────────────────────────────────────────
@@ -696,7 +696,31 @@ function WeekCard({
               const isSubmitted = !!submittedPlanSessions[sessionKey];
               const assignedHill = assignedHills[sessionKey];
               const canPickHill = s.type === "hill" || s.type === "bigDay";
-              const isGymCardio = s.type === "cardio" && (s.gymExercise === "treadmill" || s.gymExercise === "stepper");
+              // Infer gym exercise from label/description as a fallback for sessions
+              // where the stored gymExercise field is missing (e.g. AI-adjusted sessions).
+              const gymText = `${s.label ?? ""} ${s.description ?? ""}`.toLowerCase();
+              const inferredGymExercise: "treadmill" | "stepper" | undefined =
+                s.gymExercise === "treadmill" || s.gymExercise === "stepper"
+                  ? s.gymExercise
+                  : gymText.includes("treadmill")
+                  ? "treadmill"
+                  : gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster")
+                  ? "stepper"
+                  : undefined;
+              const sessionMidDur = parseDurationMidpoint(s.duration ?? "30–40 min");
+              const effectiveTargetKm =
+                s.targetDistanceKm && s.targetDistanceKm > 0
+                  ? s.targetDistanceKm
+                  : inferredGymExercise === "treadmill"
+                  ? Math.max(0.5, Math.round((sessionMidDur / 60) * 4.5 * 10) / 10)
+                  : undefined;
+              const effectiveTargetFloors =
+                s.targetFloors && s.targetFloors > 0
+                  ? s.targetFloors
+                  : inferredGymExercise === "stepper"
+                  ? Math.max(10, Math.round(sessionMidDur * 3))
+                  : undefined;
+              const isGymCardio = s.type === "cardio" && (inferredGymExercise === "treadmill" || inferredGymExercise === "stepper");
 
               return (
                 <View
@@ -771,9 +795,9 @@ function WeekCard({
                     <View style={styles.sessionFooter}>
                       {isGymCardio ? (
                         <Text style={[styles.sessionElev, { color: T.blue }]}>
-                          {s.gymExercise === "treadmill"
-                            ? `${(s.targetDistanceKm ?? 0).toFixed(1)}km @ ${s.inclinePct ?? 10}% incline`
-                            : `${s.targetFloors ?? 0} floors target`}
+                          {inferredGymExercise === "treadmill"
+                            ? `${(effectiveTargetKm ?? 0).toFixed(1)}km @ ${s.inclinePct ?? 10}% incline`
+                            : `${effectiveTargetFloors ?? 0} floors target`}
                         </Text>
                       ) : (
                         <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
@@ -804,9 +828,9 @@ function WeekCard({
                     {isGymCardio && s.gymExercise !== "outdoor" && (
                       <GymTracker
                         sessionKey={sessionKey}
-                        gymExercise={s.gymExercise as "treadmill" | "stepper"}
-                        targetKm={s.targetDistanceKm}
-                        targetFloors={s.targetFloors}
+                        gymExercise={inferredGymExercise as "treadmill" | "stepper"}
+                        targetKm={effectiveTargetKm}
+                        targetFloors={effectiveTargetFloors}
                         inclinePct={s.inclinePct}
                         sessionReps={sessionReps}
                         isDone={isSubmitted}
@@ -1010,7 +1034,36 @@ export default function PlanScreen() {
 
   async function handleSwapSelect(newLabel: string, newDescription: string) {
     if (!swapTarget) return;
-    await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, { label: newLabel, description: newDescription });
+    const week = trainingPlan.find(w => w.weekNumber === swapTarget.weekNum);
+    const session = week?.sessions[swapTarget.sessionIdx];
+    const duration = session?.duration ?? "30–40 min";
+    const midDur = parseDurationMidpoint(duration);
+    const l = newLabel.toLowerCase();
+
+    const updates: Parameters<typeof updatePlanSession>[2] = {
+      label: newLabel,
+      description: newDescription,
+    };
+
+    if (l.includes("treadmill")) {
+      const targetDistanceKm = Math.max(0.5, Math.round((midDur / 60) * 4.5 * 10) / 10);
+      updates.gymExercise = "treadmill";
+      updates.targetDistanceKm = targetDistanceKm;
+      updates.targetElevation = Math.round(targetDistanceKm * 100);
+      updates.inclinePct = 10;
+    } else if (l.includes("stepper") || l.includes("step machine") || l.includes("stairmaster")) {
+      const targetFloors = Math.max(10, Math.round(midDur * 3));
+      updates.gymExercise = "stepper";
+      updates.targetFloors = targetFloors;
+      updates.targetElevation = targetFloors * 3;
+    } else {
+      updates.gymExercise = undefined;
+      updates.targetDistanceKm = undefined;
+      updates.targetFloors = undefined;
+      updates.inclinePct = undefined;
+    }
+
+    await updatePlanSession(swapTarget.weekNum, swapTarget.sessionIdx, updates);
     setSwapModalOpen(false);
     setSwapTarget(null);
   }

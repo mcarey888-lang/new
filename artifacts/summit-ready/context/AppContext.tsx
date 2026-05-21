@@ -158,7 +158,7 @@ interface AppState {
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
-  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation">>) => Promise<void>;
+  updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
   newlyUnlocked: string[];
@@ -419,14 +419,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   planWasMigrated = true;
                   return { ...s, targetElevation: fixedReps * hill.elevation };
                 }
-                // Fix 2: gym cardio sessions saved before gymExercise/target fields existed.
-                // Infer the type from the session label and reconstruct targets using
-                // real-world pacing (same formula as the plan generator):
-                //   Treadmill: 4.5 km/h at 10% incline (zone 2); 1 km @10% = 100 m elevation
-                //   Stepper:   3 floors/min (150–180 floors/hr without leaning on rails)
-                if (s.type === "cardio" && !s.gymExercise) {
-                  const label = (s.label ?? "").toLowerCase();
-                  if (label.includes("treadmill")) {
+                // Fix 2: gym cardio sessions missing gymExercise/target fields, or with
+                // targets that are zero (e.g. from AI-adjusted sessions that lost the fields).
+                // Match by label OR description so AI-rewritten text is also caught.
+                // Pacing: treadmill 4.5 km/h @10% (1 km = 100 m elev); stepper 3 floors/min.
+                const gymText = `${s.label ?? ""} ${s.description ?? ""}`.toLowerCase();
+                const looksLikeTreadmill = gymText.includes("treadmill");
+                const looksLikeStepper = gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster");
+                const treadmillNeedsUpdate = looksLikeTreadmill && (s.gymExercise !== "treadmill" || !s.targetDistanceKm || s.targetDistanceKm <= 0);
+                const stepperNeedsUpdate = looksLikeStepper && (s.gymExercise !== "stepper" || !s.targetFloors || s.targetFloors <= 0);
+                if (s.type === "cardio" && (treadmillNeedsUpdate || stepperNeedsUpdate)) {
+                  if (treadmillNeedsUpdate) {
                     const midDur = parseDurationMidpoint(s.duration ?? "30–40 min");
                     const targetDistanceKm = Math.max(0.5, Math.round((midDur / 60) * 4.5 * 10) / 10);
                     weekChanged = true;
@@ -436,10 +439,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                       gymExercise: "treadmill" as const,
                       targetDistanceKm,
                       targetElevation: Math.round(targetDistanceKm * 100),
-                      inclinePct: 10,
+                      inclinePct: s.inclinePct ?? 10,
                     };
                   }
-                  if (label.includes("stepper")) {
+                  if (stepperNeedsUpdate) {
                     const midDur = parseDurationMidpoint(s.duration ?? "30–40 min");
                     const targetFloors = Math.max(10, Math.round(midDur * 3));
                     weekChanged = true;
@@ -951,7 +954,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
-    updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation">>
+    updates: Partial<Pick<PlanSession, "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>
   ) => {
     const updatedPlan = trainingPlan.map(week => {
       if (week.weekNumber !== weekNum) return week;
