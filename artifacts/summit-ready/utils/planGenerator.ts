@@ -98,45 +98,60 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   }
 
   if (hasWeights(goal)) {
+    // Use duration-based minimum targets so early weeks are never underloaded.
+    // "Uphill Walk / Run + Resistance": only ~25 min is cardio (the rest is strength work).
+    //   Mixed walk/jog pace: ~300 m/hr vertical gain → 25 min × 300/60 = 125 m minimum.
+    // "Uphill Walk + Core": the full session is the walk.
+    //   Sustained uphill walking pace: ~250 m/hr vertical gain.
+    const midDur = parseDurationMidpoint(dur);
+    // max() preserves progressive overload in later high-elevation weeks
+    const walkRunElev = Math.max(elevTarget, Math.round((25 / 60) * 300));   // 25 min cardio × 300 m/hr
+    const walkCoreElev = Math.max(elevTarget, Math.round((midDur / 60) * 250)); // full session × 250 m/hr
     const opts = [
       {
         label: "Uphill Walk / Run + Resistance",
-        description: `20–30 min brisk walk or jog on any incline you can find — a hill, road with gradient, or stairs. Then: resistance band squats 3×15, weighted step-ups onto a chair or box 3×12 each leg, calf raises 3×20. These movements directly target the muscles that take the most strain on summit day.`,
+        description: `20–30 min brisk walk or jog on any incline you can find — a hill, road with gradient, or stairs. Target ${walkRunElev}m elevation gain for the cardio portion (~300 m/hr on uphill). Then: resistance band squats 3×15, weighted step-ups onto a chair or box 3×12 each leg, calf raises 3×20. These movements directly target the muscles that take the most strain on summit day.`,
+        targetElevation: walkRunElev,
       },
       {
         label: "Uphill Walk + Core",
-        description: `Walk briskly for the full session on any incline — a hill, ramp, or stairs. Aim to keep your breathing elevated throughout. Finish with: plank hold 3×45s, glute bridges 3×15, and side-lying leg raises 3×12 each. A strong core stabilises every step on uneven terrain.`,
+        description: `Walk briskly for the full session on any incline — a hill, ramp, or stairs. Target ${walkCoreElev}m elevation gain (~250 m/hr at a sustained uphill walking pace). Aim to keep your breathing elevated throughout. Finish with: plank hold 3×45s, glute bridges 3×15, and side-lying leg raises 3×12 each. A strong core stabilises every step on uneven terrain.`,
+        targetElevation: walkCoreElev,
       },
     ];
     const o = opts[variant % opts.length];
-    return { type: "cardio", label: o.label, description: o.description, targetElevation: elevTarget, duration: dur };
+    return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, duration: dur };
   }
 
   // No equipment — walks, runs, stairs.
   // Stair repeats: ~3 min per round trip on a 5-floor staircase (15 m per climb).
-  // Uphill walk/run: outdoor terrain varies, so a duration-based elevation estimate is used.
+  //   At 3 min/rep: 35-min session → 12 reps × 15 m = 180 m.
+  // Outdoor uphill walk/run: ~300 m/hr vertical gain (mixed walk/jog on incline).
+  // Sustained Brisk Walk: ~200 m/hr (less elevation-focused, time-on-feet session).
   const midDur = parseDurationMidpoint(dur);
   const metresPerRep = 15; // 5 floors × 3 m
   const floorsPerRep = Math.round(metresPerRep / 3); // 5 floors
   const minPerRep = 3; // ~1.5 min up + 1 min down
   const stairReps = Math.max(3, Math.round(midDur / minPerRep));
   const totalElev = stairReps * metresPerRep;
-  // Uphill walk pace: roughly 200 m/hr on moderate incline outdoors
-  const walkElev = Math.max(elevTarget, Math.round((midDur / 60) * 200));
+  // max() preserves progressive overload — duration-based floor only applies when
+  // the elevation-ratio target would be unrealistically small (early weeks).
+  const uphillElev = Math.max(elevTarget, Math.round((midDur / 60) * 300)); // walk/run mixed
+  const walkElev = Math.max(elevTarget, Math.round((midDur / 60) * 200));   // steadier flat walk
   const opts = [
     {
       label: "Stair Repeats",
-      description: `Find a staircase with at least ${floorsPerRep} floors — a car park, block of flats, or office building works well. Walk up at a controlled pace, descend for recovery, and repeat ${stairReps} times to accumulate ${totalElev}m of elevation gain. Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
+      description: `Find a staircase with at least ${floorsPerRep} floors — a car park, block of flats, or office building works well. Walk up at a controlled pace, descend for recovery, and repeat ${stairReps} times to accumulate ${totalElev}m of elevation gain (~3 min per round trip). Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
       targetElevation: totalElev,
     },
     {
       label: "Uphill Walk / Run",
-      description: `Walk or jog any route that gains height — roads with gradient, park paths, or embankments all count. Aim to accumulate ${walkElev}m of uphill over the session. Time on incline matters more than pace; stay aerobic and breathe steadily throughout.`,
-      targetElevation: walkElev,
+      description: `Walk or jog any route that gains height — roads with gradient, park paths, or embankments all count. Target ${uphillElev}m of elevation gain (~300 m/hr mixed walk/jog pace on uphill). Time on incline matters more than pace; stay aerobic and breathe steadily throughout.`,
+      targetElevation: uphillElev,
     },
     {
       label: "Sustained Brisk Walk",
-      description: `A longer steady walk at a pace where you're breathing noticeably but can still speak in short sentences. Include as much uphill as you can find. Aim for ${walkElev}m of elevation gain over the session. Focus on keeping a consistent pace for the full duration — building time on feet is key at this stage of training.`,
+      description: `A longer steady walk at a pace where you're breathing noticeably but can still speak in short sentences. Include as much uphill as you can find. Aim for ${walkElev}m of elevation gain over the session (~200 m/hr on mixed terrain). Focus on keeping a consistent pace for the full duration — building time on feet is key at this stage of training.`,
       targetElevation: walkElev,
     },
   ];
