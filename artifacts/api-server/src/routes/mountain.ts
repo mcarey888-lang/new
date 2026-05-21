@@ -4,6 +4,10 @@ import { z } from "zod";
 
 const router: IRouter = Router();
 
+const RequestSchema = z.object({
+  name: z.string().min(2).max(200).trim(),
+});
+
 const RouteSchema = z.object({
   name: z.string(),
   distance: z.number(),
@@ -50,12 +54,12 @@ Rules:
 - Use real accurate data for well-known peaks (Alps, UK peaks, etc.)`;
 
 router.post("/mountain-lookup", async (req, res) => {
-  const { name } = req.body as { name?: string };
-
-  if (!name || typeof name !== "string" || name.trim().length < 2) {
-    res.status(400).json({ error: "Mountain name required (min 2 characters)" });
+  const parsed = RequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Mountain name required (2–200 characters)" });
     return;
   }
+  const { name } = parsed.data;
 
   try {
     const response = await openai.chat.completions.create({

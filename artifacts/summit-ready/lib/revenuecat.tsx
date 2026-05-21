@@ -41,7 +41,7 @@ export function initializeRevenueCat() {
   Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey });
 
-  console.log("Configured RevenueCat");
+
 }
 
 function useSubscriptionContext() {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logoPath from "../../../summit-ready/assets/images/logo.gif";
+import logoPath from "../assets/logo.gif";
 
 export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);

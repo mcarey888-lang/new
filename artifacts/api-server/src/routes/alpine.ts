@@ -4,6 +4,10 @@ import { z } from "zod";
 
 const router: IRouter = Router();
 
+const RequestSchema = z.object({
+  mountainName: z.string().min(2).max(200).trim(),
+});
+
 const AlpineRequirementSchema = z.object({
   id: z.string(),
   category: z.enum(["endurance", "altitude", "technical", "strength", "recovery"]),
@@ -58,16 +62,16 @@ Rules:
 - Be highly specific to the mountain — Mont Blanc requirements differ significantly from Denali or Everest`;
 
 router.post("/alpine-assessment", async (req, res) => {
-  const { mountainName, highestAltitude, difficulty } = req.body as {
-    mountainName?: string;
+  const parsed = RequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "mountainName required (2–200 characters)" });
+    return;
+  }
+  const { mountainName } = parsed.data;
+  const { highestAltitude, difficulty } = req.body as {
     highestAltitude?: number;
     difficulty?: string;
   };
-
-  if (!mountainName || typeof mountainName !== "string" || mountainName.trim().length < 2) {
-    res.status(400).json({ error: "mountainName required" });
-    return;
-  }
 
   try {
     const response = await openai.chat.completions.create({

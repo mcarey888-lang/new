@@ -165,8 +165,12 @@ router.post("/hills-search", async (req, res) => {
     res.status(400).json({ error: "Hill name required" });
     return;
   }
+  if (hillName.length > 200) {
+    res.status(400).json({ error: "Hill name too long (max 200 characters)" });
+    return;
+  }
 
-  const loc = location?.trim() || "unknown location";
+  const loc = (location?.trim() ?? "").slice(0, 200) || "unknown location";
 
   try {
     const response = await openai.chat.completions.create({
@@ -537,8 +541,12 @@ router.post("/trail-start", async (req, res) => {
     res.status(400).json({ error: "Trail name required" });
     return;
   }
+  if (trailName.length > 200) {
+    res.status(400).json({ error: "Trail name too long (max 200 characters)" });
+    return;
+  }
 
-  const loc = location?.trim() || "unknown location";
+  const loc = (location?.trim() ?? "").slice(0, 200) || "unknown location";
 
   try {
     const response = await openai.chat.completions.create({

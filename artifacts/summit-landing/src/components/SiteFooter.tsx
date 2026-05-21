@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import logoPath from "../../../summit-ready/assets/images/logo.gif";
+import logoPath from "../assets/logo.gif";
 
 export function SiteFooter() {
   return (

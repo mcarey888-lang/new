@@ -359,35 +359,41 @@ function GetStarted() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
-          <a
-            href="https://apps.apple.com/app/summitready"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-white text-black font-semibold rounded-2xl px-6 py-4 hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[200px] justify-center"
-          >
-            <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-            </svg>
-            <div className="text-left">
-              <div className="text-xs leading-none mb-0.5 opacity-70">Download on the</div>
-              <div className="text-base leading-none">App Store</div>
+          <div className="relative">
+            <div
+              aria-disabled="true"
+              className="flex items-center gap-3 bg-white/40 text-black/50 font-semibold rounded-2xl px-6 py-4 shadow-lg min-w-[200px] justify-center cursor-not-allowed select-none"
+            >
+              <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <div className="text-left">
+                <div className="text-xs leading-none mb-0.5 opacity-70">Download on the</div>
+                <div className="text-base leading-none">App Store</div>
+              </div>
             </div>
-          </a>
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
+              Coming soon
+            </span>
+          </div>
 
-          <a
-            href="https://play.google.com/store/apps/details?id=uk.summitready.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-white text-black font-semibold rounded-2xl px-6 py-4 hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[200px] justify-center"
-          >
-            <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
-            </svg>
-            <div className="text-left">
-              <div className="text-xs leading-none mb-0.5 opacity-70">Get it on</div>
-              <div className="text-base leading-none">Google Play</div>
+          <div className="relative">
+            <div
+              aria-disabled="true"
+              className="flex items-center gap-3 bg-white/40 text-black/50 font-semibold rounded-2xl px-6 py-4 shadow-lg min-w-[200px] justify-center cursor-not-allowed select-none"
+            >
+              <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
+              </svg>
+              <div className="text-left">
+                <div className="text-xs leading-none mb-0.5 opacity-70">Get it on</div>
+                <div className="text-base leading-none">Google Play</div>
+              </div>
             </div>
-          </a>
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
+              Coming soon
+            </span>
+          </div>
         </div>
 
         <p className="text-sm text-muted-foreground">Free to download · Premium plan available</p>

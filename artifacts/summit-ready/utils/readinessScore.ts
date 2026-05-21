@@ -140,8 +140,8 @@ export function calculateReadiness(
   // ── 5. Effort trend (8 pts) ───────────────────────────────────────────────
   let effortScore = 4;
   if (completed.length >= 3) {
-    const recent = completed.slice(0, 3).map(s => s.effort);
-    const older  = completed.slice(3, 6).map(s => s.effort);
+    const recent = completed.slice(-3).map(s => s.effort);
+    const older  = completed.slice(-6, -3).map(s => s.effort);
     const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
     const avgOlder  = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : avgRecent;
     effortScore = avgRecent <= avgOlder ? 8 : 5;
