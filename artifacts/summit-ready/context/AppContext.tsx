@@ -403,21 +403,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const goal: SummitGoal = JSON.parse(goalStr);
           const rawPlan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
 
-          // Migration: fix hill sessions whose targetElevation exceeds the week target
-          // (caused by the old hill.repeats floor in createHillSession).
+          // Migrate stored plans that are missing fields added in later versions.
           let planWasMigrated = false;
           let plan: TrainingWeek[];
           try {
             plan = rawPlan.map(week => {
               const hill = week.hills?.[0];
-              if (!hill || !week.sessions) return week;
+              if (!week.sessions) return week;
               let weekChanged = false;
               const sessions = week.sessions.map(s => {
-                if (s.type !== "hill" || s.targetElevation <= week.targetElevation) return s;
-                const fixedReps = Math.max(1, Math.ceil((week.targetElevation * 0.5) / hill.elevation));
-                weekChanged = true;
-                planWasMigrated = true;
-                return { ...s, targetElevation: fixedReps * hill.elevation };
+                // Fix 1: hill targetElevation exceeds week target (old hill.repeats floor bug)
+                if (s.type === "hill" && hill && s.targetElevation > week.targetElevation) {
+                  const fixedReps = Math.max(1, Math.ceil((week.targetElevation * 0.5) / hill.elevation));
+                  weekChanged = true;
+                  planWasMigrated = true;
+                  return { ...s, targetElevation: fixedReps * hill.elevation };
+                }
+                // Fix 2: gym cardio sessions saved before gymExercise/target fields existed.
+                // Infer the type from the session label and reconstruct targets from targetElevation.
+                if (s.type === "cardio" && !s.gymExercise) {
+                  const label = (s.label ?? "").toLowerCase();
+                  if (label.includes("treadmill")) {
+                    weekChanged = true;
+                    planWasMigrated = true;
+                    return {
+                      ...s,
+                      gymExercise: "treadmill" as const,
+                      // 1 km at 10% incline = 100 m elevation gain
+                      targetDistanceKm: Math.max(0.5, Math.round(s.targetElevation / 10) / 10),
+                      inclinePct: 10,
+                    };
+                  }
+                  if (label.includes("stepper")) {
+                    weekChanged = true;
+                    planWasMigrated = true;
+                    return {
+                      ...s,
+                      gymExercise: "stepper" as const,
+                      // 1 floor ≈ 3 m elevation gain
+                      targetFloors: Math.max(10, Math.round(s.targetElevation / 3)),
+                    };
+                  }
+                }
+                return s;
               });
               return weekChanged ? { ...week, sessions } : week;
             });

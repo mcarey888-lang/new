@@ -112,6 +112,81 @@ function RepStepper({
   );
 }
 
+// ── Elevation Logger ──────────────────────────────────────────────────────────
+// For non-gym cardio sessions (stair repeats, uphill walks, taper walks).
+// Logs actual elevation gain in metres against the session's target.
+function ElevationLogger({
+  sessionKey,
+  targetElevation,
+  sessionReps,
+  isDone,
+  onSet,
+}: {
+  sessionKey: string;
+  targetElevation: number;
+  sessionReps: Record<string, number>;
+  isDone: boolean;
+  onSet: (key: string, value: number) => void;
+}) {
+  const step = targetElevation >= 500 ? 100 : targetElevation >= 200 ? 50 : 25;
+  const logged = sessionReps[sessionKey];
+  const hasLogged = logged !== undefined;
+  const displayVal = hasLogged ? logged : 0;
+  const hitTarget = hasLogged && displayVal >= targetElevation;
+
+  function handleDecrement() {
+    onSet(sessionKey, Math.max(0, displayVal - step));
+  }
+  function handleIncrement() {
+    onSet(sessionKey, displayVal + step);
+  }
+
+  return (
+    <View style={[rsStyles.container, isDone && rsStyles.containerDone]}>
+      <View style={rsStyles.targetRow}>
+        <Flag size={11} color={T.orange} />
+        <Text style={rsStyles.targetLabel}>
+          Target:{" "}
+          <Text style={rsStyles.targetNum}>{targetElevation}m elevation gain</Text>
+        </Text>
+      </View>
+      <View style={rsStyles.logRow}>
+        <Text style={rsStyles.logLabel}>I did:</Text>
+        <TouchableOpacity
+          onPress={handleDecrement}
+          style={[rsStyles.btn, (displayVal <= 0 || isDone) && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={displayVal <= 0 || isDone}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Minus size={12} color={(displayVal <= 0 || isDone) ? T.textDim : T.white} />
+        </TouchableOpacity>
+        <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
+          {hasLogged ? `${displayVal}m` : "–"}
+        </Text>
+        <TouchableOpacity
+          onPress={handleIncrement}
+          style={[rsStyles.btn, isDone && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={isDone}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Plus size={12} color={isDone ? T.textDim : T.white} />
+        </TouchableOpacity>
+        {hitTarget && (
+          <View style={rsStyles.hitBadge}>
+            <Check size={10} color={T.green} />
+            <Text style={rsStyles.hitText}>Target hit!</Text>
+          </View>
+        )}
+        {hasLogged && !hitTarget && displayVal > 0 && (
+          <Text style={rsStyles.progressText}>{displayVal}/{targetElevation}m</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function GymTracker({
   sessionKey,
   gymExercise,
@@ -733,6 +808,16 @@ function WeekCard({
                         targetKm={s.targetDistanceKm}
                         targetFloors={s.targetFloors}
                         inclinePct={s.inclinePct}
+                        sessionReps={sessionReps}
+                        isDone={isSubmitted}
+                        onSet={onSetReps}
+                      />
+                    )}
+
+                    {s.type === "cardio" && !isGymCardio && s.targetElevation > 0 && (
+                      <ElevationLogger
+                        sessionKey={sessionKey}
+                        targetElevation={s.targetElevation}
                         sessionReps={sessionReps}
                         isDone={isSubmitted}
                         onSet={onSetReps}
