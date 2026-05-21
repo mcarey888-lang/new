@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -10,20 +11,109 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CheckCircle, Share2, Trophy, Zap } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
+import { ConfettiCelebration } from "@/components/ConfettiCelebration";
+
+const CELEBRATION_KEY_PREFIX = "summitready_celebration_seen_";
+
+function PulsingTrophy({ emoji, color, isCelebrating }: { emoji: string; color: string; isCelebrating: boolean }) {
+  const scale = useSharedValue(1);
+  const glow = useSharedValue(1);
+
+  useEffect(() => {
+    if (isCelebrating) {
+      scale.value = withSequence(
+        withTiming(1.25, { duration: 180 }),
+        withTiming(0.92, { duration: 120 }),
+        withTiming(1.12, { duration: 100 }),
+        withTiming(1.0, { duration: 80 }),
+        withDelay(400,
+          withRepeat(
+            withSequence(
+              withTiming(1.06, { duration: 700 }),
+              withTiming(1.0, { duration: 700 })
+            ),
+            4,
+            true
+          )
+        )
+      );
+      glow.value = withSequence(
+        withTiming(1.5, { duration: 300 }),
+        withDelay(200,
+          withRepeat(
+            withSequence(
+              withTiming(1.3, { duration: 800 }),
+              withTiming(1.0, { duration: 800 })
+            ),
+            4,
+            true
+          )
+        )
+      );
+    }
+  }, [isCelebrating]);
+
+  const trophyStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glow.value }],
+    opacity: isCelebrating ? 0.35 : 0,
+  }));
+
+  return (
+    <View style={s.trophyOuter}>
+      <Animated.View
+        style={[
+          s.trophyGlow,
+          { backgroundColor: color },
+          glowStyle,
+        ]}
+      />
+      <Animated.View style={[s.trophyWrap, { backgroundColor: color + "20", borderColor: color + "40" }, trophyStyle]}>
+        <Text style={s.trophyEmoji}>{emoji}</Text>
+      </Animated.View>
+    </View>
+  );
+}
 
 export default function ChallengeCompleteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { getActiveChallenge } = useChallenges();
+  const [isCelebrating, setIsCelebrating] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const c = getChallenge(id ?? "");
   const ac = getActiveChallenge(id ?? "");
+
+  useEffect(() => {
+    if (!id) return;
+    const key = CELEBRATION_KEY_PREFIX + id;
+    AsyncStorage.getItem(key).then((val) => {
+      if (!val) {
+        setIsCelebrating(true);
+        setShowConfetti(true);
+        AsyncStorage.setItem(key, "1");
+      }
+    });
+  }, [id]);
 
   if (!c || !ac) {
     return (
@@ -86,6 +176,10 @@ export default function ChallengeCompleteScreen() {
     Share.share({ message: text });
   }
 
+  function handleNextChallenge() {
+    router.replace("/(tabs)/challenges");
+  }
+
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
@@ -97,9 +191,7 @@ export default function ChallengeCompleteScreen() {
       >
         {/* Trophy */}
         <Animated.View entering={FadeInUp.delay(0).duration(700)} style={s.trophySection}>
-          <View style={[s.trophyWrap, { backgroundColor: color + "20", borderColor: color + "40" }]}>
-            <Text style={s.trophyEmoji}>{c.emoji}</Text>
-          </View>
+          <PulsingTrophy emoji={c.emoji} color={color} isCelebrating={isCelebrating} />
           <View style={[s.completedBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
             <CheckCircle size={13} color={T.green} />
             <Text style={s.completedBadgeText}>Summit achieved</Text>
@@ -188,7 +280,7 @@ export default function ChallengeCompleteScreen() {
         {/* CTAs */}
         <Animated.View entering={FadeInDown.delay(200).duration(600)} style={s.ctaArea}>
           <TouchableOpacity
-            onPress={() => router.replace("/(tabs)/challenges")}
+            onPress={handleNextChallenge}
             style={s.primaryBtn}
             activeOpacity={0.85}
           >
@@ -206,6 +298,10 @@ export default function ChallengeCompleteScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {showConfetti && (
+        <ConfettiCelebration onComplete={() => setShowConfetti(false)} />
+      )}
     </LinearGradient>
   );
 }
@@ -214,6 +310,8 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 18 },
 
   trophySection: { alignItems: "center", gap: 12, paddingVertical: 8 },
+  trophyOuter: { alignItems: "center", justifyContent: "center" },
+  trophyGlow: { position: "absolute", width: 110, height: 110, borderRadius: 55 },
   trophyWrap: { width: 90, height: 90, borderRadius: 28, alignItems: "center", justifyContent: "center", borderWidth: 2 },
   trophyEmoji: { fontSize: 44 },
   completedBadge: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
