@@ -71,6 +71,10 @@ export default defineConfig({
         target: "http://localhost:20885",
         changeOrigin: false,
       },
+      "/assets": {
+        target: "http://localhost:20885",
+        changeOrigin: false,
+      },
     },
   },
   preview: {
