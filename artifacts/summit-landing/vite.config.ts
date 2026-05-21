@@ -66,6 +66,22 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    proxy: {
+      // Forward Expo Metro bundle requests to the Metro dev server.
+      // Metro serves its JS bundle at /node_modules/…/entry.bundle?platform=web
+      // but the path proxy routes that to this Vite server (not Metro), so we
+      // proxy it onwards to Metro so the Expo web preview loads correctly.
+      // Expo bundle JS
+      "/node_modules": {
+        target: "http://localhost:20885",
+        changeOrigin: true,
+      },
+      // Expo font / image assets served by Metro
+      "/assets": {
+        target: "http://localhost:20885",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,
