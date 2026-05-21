@@ -29,8 +29,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/icon.png",
-      "baseUrl": "/mobile"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       [
