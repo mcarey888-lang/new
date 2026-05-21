@@ -1,16 +1,15 @@
 kind = "mobile"
-previewPath = "/mobile/"
+previewPath = "/mobile-preview.html"
 title = "SummitReady"
 version = "1.0.0"
 id = "artifacts/summit-ready"
-router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/mobile/status"
+ensurePreviewReachable = "/mobile-preview.html"
 name = "expo"
 paths = [ "/mobile/" ]
 localPort = 20885
