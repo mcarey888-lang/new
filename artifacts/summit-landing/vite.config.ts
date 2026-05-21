@@ -66,12 +66,6 @@ export default defineConfig({
     fs: {
       strict: true,
     },
-    proxy: {
-      "/node_modules": {
-        target: "http://localhost:20885",
-        changeOrigin: false,
-      },
-    },
   },
   preview: {
     port,
