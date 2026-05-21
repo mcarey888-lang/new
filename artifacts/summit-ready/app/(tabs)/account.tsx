@@ -1,4 +1,4 @@
-import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info } from "lucide-react-native";
+import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info, Trophy } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -22,6 +22,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import Purchases from "react-native-purchases";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type CompletedGoal } from "@/context/AppContext";
+import { useChallenges } from "@/context/ChallengesContext";
+import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
@@ -64,9 +66,30 @@ function maskId(id: string) {
   return id;
 }
 
+function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }) {
+  const b: { emoji: string; label: string }[] = [];
+  if (ac.activities.length >= 1) b.push({ emoji: "🌱", label: "First activity logged" });
+  b.push({ emoji: "✅", label: "Challenge completed" });
+  if (ac.activities.length >= 3) b.push({ emoji: "🔥", label: "3 activities logged" });
+  const maxElev = ac.activities.length > 0 ? Math.max(...ac.activities.map(a => a.elevationGain)) : 0;
+  if (maxElev >= 500) b.push({ emoji: "🏔️", label: "500m+ in one session" });
+  return b;
+}
+
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
+  const { activeChallenges } = useChallenges();
+
+  const completedChallenges = activeChallenges.filter(ac => ac.completed);
+  const totalChallengeElevation = completedChallenges.reduce(
+    (s, ac) => s + ac.activities.reduce((as, a) => as + a.elevationGain, 0),
+    0,
+  );
+  const totalChallengeActivities = completedChallenges.reduce(
+    (s, ac) => s + ac.activities.length,
+    0,
+  );
 
   // Lifetime stats
   const lifetimeSessions = sessions.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
@@ -453,6 +476,90 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        {/* Completed Challenges */}
+        {completedChallenges.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(129).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              COMPLETED CHALLENGES · {completedChallenges.length}
+            </Text>
+
+            {/* Summary totals */}
+            <View style={styles.challengeSummaryRow}>
+              <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={styles.challengeSummaryItem}>
+                <Text style={styles.challengeSummaryVal}>{totalChallengeElevation.toLocaleString()}m</Text>
+                <Text style={styles.challengeSummaryLbl}>elevation gained</Text>
+              </View>
+              <View style={styles.challengeSummaryDivider} />
+              <View style={styles.challengeSummaryItem}>
+                <Text style={styles.challengeSummaryVal}>{totalChallengeActivities}</Text>
+                <Text style={styles.challengeSummaryLbl}>activities logged</Text>
+              </View>
+              <View style={styles.challengeSummaryDivider} />
+              <View style={styles.challengeSummaryItem}>
+                <Text style={styles.challengeSummaryVal}>{completedChallenges.length}</Text>
+                <Text style={styles.challengeSummaryLbl}>challenges done</Text>
+              </View>
+            </View>
+
+            {/* Individual challenge cards */}
+            {[...completedChallenges].reverse().map((ac, i) => {
+              const template = getChallenge(ac.challengeId);
+              if (!template) return null;
+              const elev = ac.activities.reduce((s, a) => s + a.elevationGain, 0);
+              const dc = CHALLENGE_DIFF_COLOR[template.difficulty];
+              const dateStr = ac.completedAt
+                ? new Date(ac.completedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                : "—";
+              const badges = computeChallengeBadges(ac);
+              return (
+                <View key={ac.challengeId + i} style={[styles.challengeCard, { borderColor: dc + "30" }]}>
+                  <LinearGradient colors={[dc + "0D", "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.challengeCardTop}>
+                    <Text style={styles.challengeEmoji}>{template.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.challengeTitle} numberOfLines={1}>{template.title}</Text>
+                      <Text style={styles.challengeDate}>Completed {dateStr}</Text>
+                    </View>
+                    <View style={[styles.challengeDiffBadge, { backgroundColor: dc + "22", borderColor: dc + "40" }]}>
+                      <Text style={[styles.challengeDiffText, { color: dc }]}>{template.difficulty}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.challengeStatsRow}>
+                    <View style={styles.challengeStatItem}>
+                      <Text style={styles.challengeStatVal}>{elev.toLocaleString()}m</Text>
+                      <Text style={styles.challengeStatLbl}>elevation</Text>
+                    </View>
+                    <View style={styles.challengeStatDivider} />
+                    <View style={styles.challengeStatItem}>
+                      <Text style={styles.challengeStatVal}>{ac.activities.length}</Text>
+                      <Text style={styles.challengeStatLbl}>activities</Text>
+                    </View>
+                    <View style={styles.challengeStatDivider} />
+                    <View style={styles.challengeStatItem}>
+                      <Text style={styles.challengeStatVal}>{template.targetValue.toLocaleString()}{template.metric === "hikes" ? "" : "m"}</Text>
+                      <Text style={styles.challengeStatLbl}>target</Text>
+                    </View>
+                  </View>
+                  {badges.length > 0 && (
+                    <View style={styles.challengeBadgeRow}>
+                      <Trophy size={11} color={T.orange} />
+                      <View style={styles.challengeBadgeList}>
+                        {badges.map(b => (
+                          <View key={b.label} style={styles.challengeBadgeChip}>
+                            <Text style={styles.challengeBadgeEmoji}>{b.emoji}</Text>
+                            <Text style={styles.challengeBadgeLabel}>{b.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </Animated.View>
+        )}
+
         {/* Achievements */}
         <Animated.View entering={FadeInDown.delay(130).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>
@@ -811,6 +918,53 @@ const styles = StyleSheet.create({
   readyChipSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   readyDiffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   readyDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+
+  challengeSummaryRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.green + "30",
+    padding: 14, overflow: "hidden",
+  },
+  challengeSummaryItem: { flex: 1, alignItems: "center", gap: 3 },
+  challengeSummaryVal: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
+  challengeSummaryLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+  challengeSummaryDivider: { width: 1, height: 32, backgroundColor: T.border },
+
+  challengeCard: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 14, gap: 10, overflow: "hidden",
+  },
+  challengeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  challengeEmoji: { fontSize: 24 },
+  challengeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  challengeDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  challengeDiffBadge: {
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1,
+  },
+  challengeDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  challengeStatsRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+  },
+  challengeStatItem: { flex: 1, alignItems: "center", gap: 2 },
+  challengeStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  challengeStatLbl: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+  challengeStatDivider: { width: 1, height: 28, backgroundColor: T.border },
+  challengeBadgeRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 7,
+    paddingTop: 2,
+  },
+  challengeBadgeList: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  challengeBadgeChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: T.surface, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 4,
+    borderWidth: 1, borderColor: T.border,
+  },
+  challengeBadgeEmoji: { fontSize: 13 },
+  challengeBadgeLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   appInfo: { alignItems: "center", gap: 4, paddingTop: 8, paddingBottom: 4 },
   appInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
