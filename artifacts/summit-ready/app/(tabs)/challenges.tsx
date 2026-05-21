@@ -179,10 +179,14 @@ export default function ChallengesScreen() {
             <Text style={s.statLbl}>Active</Text>
           </View>
           <View style={s.statDivider} />
-          <View style={s.statItem}>
+          <TouchableOpacity
+            style={s.statItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/completed-challenges")}
+          >
             <Text style={[s.statVal, { color: T.blue }]}>{completed.length}</Text>
             <Text style={s.statLbl}>Completed</Text>
-          </View>
+          </TouchableOpacity>
           <View style={s.statDivider} />
           <View style={s.statItem}>
             <Text style={[s.statVal, { color: T.orange }]}>{totalElev.toLocaleString()}</Text>
