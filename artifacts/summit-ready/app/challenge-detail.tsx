@@ -382,6 +382,16 @@ export default function ChallengeDetailScreen() {
           </Animated.View>
         )}
 
+        {/* Not-started banner */}
+        {!ac && (
+          <Animated.View entering={FadeInDown.delay(75).duration(600)} style={s.notStartedBanner}>
+            <AlertCircle size={15} color={T.orange} />
+            <Text style={s.notStartedText}>
+              Tap <Text style={s.notStartedBold}>Start Challenge</Text> below before logging any progress — your activities won't be saved until the challenge is active.
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Hill planner */}
         {!isCompleted && (
           <Animated.View entering={FadeInDown.delay(95).duration(600)}>
@@ -561,4 +571,26 @@ const s = StyleSheet.create({
   ctaBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
   abandonBtn: { alignItems: "center", paddingVertical: 10 },
   abandonText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim },
+
+  notStartedBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "rgba(255,144,48,0.10)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,144,48,0.25)",
+    padding: 14,
+  },
+  notStartedText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    lineHeight: 19,
+  },
+  notStartedBold: {
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+  },
 });

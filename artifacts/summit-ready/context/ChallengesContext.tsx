@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { getChallenge } from "@/constants/challenges";
 
@@ -47,19 +47,29 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
   const [activeChallenges, setActiveChallenges] = useState<ActiveChallenge[]>([]);
   const { addSession, logExploreHike, appMode } = useApp();
 
+  // Always-current ref — callbacks read this to avoid stale closures
+  const latestRef = useRef<ActiveChallenge[]>([]);
+  useEffect(() => { latestRef.current = activeChallenges; }, [activeChallenges]);
+
   useEffect(() => {
     AsyncStorage.getItem(CHALLENGES_KEY).then(raw => {
-      if (raw) setActiveChallenges(JSON.parse(raw) as ActiveChallenge[]);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ActiveChallenge[];
+        setActiveChallenges(parsed);
+        latestRef.current = parsed;
+      }
     });
   }, []);
 
   async function persist(updated: ActiveChallenge[]) {
+    latestRef.current = updated;
     setActiveChallenges(updated);
     await AsyncStorage.setItem(CHALLENGES_KEY, JSON.stringify(updated));
   }
 
   const startChallenge = useCallback(async (challengeId: string) => {
-    const already = activeChallenges.find(c => c.challengeId === challengeId && !c.completed);
+    const current = latestRef.current;
+    const already = current.find(c => c.challengeId === challengeId && !c.completed);
     if (already) return;
     const newChallenge: ActiveChallenge = {
       challengeId,
@@ -68,12 +78,12 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       completed: false,
       completedAt: null,
     };
-    await persist([...activeChallenges, newChallenge]);
-  }, [activeChallenges]);
+    await persist([...current, newChallenge]);
+  }, []);
 
   const abandonChallenge = useCallback(async (challengeId: string) => {
-    await persist(activeChallenges.filter(c => c.challengeId !== challengeId || c.completed));
-  }, [activeChallenges]);
+    await persist(latestRef.current.filter(c => c.challengeId !== challengeId || c.completed));
+  }, []);
 
   const logActivity = useCallback(async (
     activityData: Omit<ChallengeActivity, "id" | "createdAt">
@@ -86,16 +96,17 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
     };
 
     const template = getChallenge(activityData.challengeId);
-    const updated = activeChallenges.map(ac => {
+    const current = latestRef.current;
+    const updated = current.map(ac => {
       if (ac.challengeId !== activityData.challengeId || ac.completed) return ac;
       const updatedActivities = [activity, ...ac.activities];
 
-      const current = updatedActivities.reduce((sum, a) => {
+      const total = updatedActivities.reduce((sum, a) => {
         if (template?.metric === "hikes") return sum + 1;
         return sum + a.elevationGain;
       }, 0);
 
-      const isNowComplete = template ? current >= template.targetValue : false;
+      const isNowComplete = template ? total >= template.targetValue : false;
 
       return {
         ...ac,
@@ -131,10 +142,10 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       timeTaken: activityData.duration,
       notes: challengeNote,
     });
-  }, [activeChallenges, addSession, logExploreHike]);
+  }, [addSession, logExploreHike]);
 
   const getProgress = useCallback((challengeId: string): number => {
-    const ac = activeChallenges.find(c => c.challengeId === challengeId);
+    const ac = latestRef.current.find(c => c.challengeId === challengeId);
     if (!ac) return 0;
     const template = getChallenge(challengeId);
     if (!template) return 0;
@@ -143,11 +154,11 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       return sum + a.elevationGain;
     }, 0);
     return Math.min(current, template.targetValue);
-  }, [activeChallenges]);
+  }, []);
 
   const getActiveChallenge = useCallback((challengeId: string) => {
-    return activeChallenges.find(c => c.challengeId === challengeId);
-  }, [activeChallenges]);
+    return latestRef.current.find(c => c.challengeId === challengeId);
+  }, []);
 
   return (
     <ChallengesContext.Provider value={{

@@ -247,10 +247,15 @@ export default function ExploreScreen() {
 
         <Animated.View entering={FadeInDown.delay(140).duration(600)} style={s.statsGrid}>
           {stats.map((st, i) => (
-            <View key={i} style={s.statCard}>
+            <TouchableOpacity
+              key={i}
+              style={s.statCard}
+              onPress={() => router.push("/(tabs)/account")}
+              activeOpacity={0.75}
+            >
               <Text style={[s.statValue, { color: st.color }]}>{st.value}</Text>
               <Text style={s.statLabel}>{st.label}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </Animated.View>
 
