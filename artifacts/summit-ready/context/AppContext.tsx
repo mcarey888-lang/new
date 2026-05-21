@@ -59,6 +59,10 @@ export interface PlanSession {
   description: string;
   targetElevation: number;
   duration: string;
+  gymExercise?: "treadmill" | "stepper" | "outdoor";
+  targetDistanceKm?: number;
+  targetFloors?: number;
+  inclinePct?: number;
 }
 
 export interface TrainingWeek {
@@ -105,6 +109,10 @@ export interface Session {
   weekNumber: number;
   hillName?: string;
   reps?: number;
+  gymSubtype?: "treadmill" | "stepper" | "outdoor";
+  treadmillKm?: number;
+  treadmillInclinePct?: number;
+  stepperFloors?: number;
 }
 
 export interface ExploreHike {

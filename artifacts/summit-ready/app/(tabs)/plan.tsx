@@ -366,7 +366,6 @@ function getExerciseAlternatives(label: string): { name: string; icon: LucideIco
 
   const stairAlts = [
     { name: "Incline Treadmill", icon: TrendingUp, desc: "10–15% incline, brisk hike pace" },
-    { name: "StairMaster", icon: Layers, desc: "Continuous stair climbing machine" },
     { name: "Stepper Machine", icon: Activity, desc: "Step machine for leg drive and cardio" },
     { name: "Box Step-Ups", icon: Square, desc: "Weighted step-ups onto a box or bench" },
     { name: "Weighted Stairs", icon: Package, desc: "Stairs with a loaded pack or weight vest" },
@@ -377,7 +376,7 @@ function getExerciseAlternatives(label: string): { name: string; icon: LucideIco
     { name: "Indoor Cycling", icon: Wind, desc: "High cadence cycling for aerobic base" },
     { name: "Rowing Machine", icon: Anchor, desc: "Full body cardio with strong leg drive" },
     { name: "Elliptical", icon: RefreshCw, desc: "Sustained aerobic effort, moderate resistance" },
-    { name: "StairMaster", icon: Layers, desc: "Continuous stair climbing machine" },
+    { name: "Stepper Machine", icon: Activity, desc: "Step machine for leg drive and cardio" },
     { name: "Swimming", icon: Droplet, desc: "Low impact aerobic conditioning" },
   ];
   if (isStairs) return stairAlts;

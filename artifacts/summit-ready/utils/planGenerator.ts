@@ -44,22 +44,42 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
 
   if (hasGym(goal)) {
     const stepperFloors = Math.round(elevTarget / 3);
+    const treadmillKm = Math.round(elevTarget / 10) / 10;
+    const treadmillKmStr = treadmillKm.toFixed(1);
     const opts = [
       {
         label: "Incline Treadmill",
-        description: `Set the treadmill to 8–12% incline and walk or jog at a pace where you can hold a conversation. Keep your heart rate in zone 2–3 for the full duration. Focus on steady foot strike and upright posture — the same mechanics you'll use on the mountain.`,
+        description: `Set treadmill to 10% incline. Target: ${treadmillKmStr}km — that gives you ${elevTarget}m of simulated elevation gain (1km at 10% = 100m). Walk or jog at a conversational zone 2–3 pace. Upright posture, heel-drive on every step — the same mechanics you'll need on the mountain.`,
+        gymExercise: "treadmill" as const,
+        targetDistanceKm: treadmillKm,
+        inclinePct: 10,
       },
       {
         label: "Stepper Machine",
-        description: `Today's elevation target is ${elevTarget}m — that's approximately ${stepperFloors} floors on the stepper (most machines count ~3m per floor). Set a moderate resistance and aim to hit ${stepperFloors} floors before you finish. Maintain a steady rhythm throughout; do not lean on the handrails — keep your weight through your legs and core, exactly as you would on a real ascent. Zone 2–3 effort: you should be able to speak in short sentences.`,
+        description: `Target: ${stepperFloors} floors (each floor ≈ 3m = ${elevTarget}m total elevation). Set moderate resistance and maintain a steady rhythm without leaning on the handrails — keep your weight through legs and core, as you would on a real ascent. Zone 2–3 effort: able to speak in short sentences.`,
+        gymExercise: "stepper" as const,
+        targetFloors: stepperFloors,
       },
       {
         label: "Incline Treadmill + Leg Strength",
-        description: `25 min on the incline treadmill (10–12%), then move straight to: goblet squats 3×12, reverse lunges 3×10 each leg, single-leg calf raises 3×15. Rest 60s between sets. Builds the leg drive and endurance needed on steep terrain.`,
+        description: `Treadmill: ${treadmillKmStr}km at 10% incline (≈${elevTarget}m elevation). Then: goblet squats 3×12, reverse lunges 3×10 each leg, single-leg calf raises 3×15. Rest 60s between sets. Builds the leg drive and endurance needed on steep terrain.`,
+        gymExercise: "treadmill" as const,
+        targetDistanceKm: treadmillKm,
+        inclinePct: 10,
       },
     ];
     const o = opts[variant % opts.length];
-    return { type: "cardio", label: o.label, description: o.description, targetElevation: elevTarget, duration: dur };
+    return {
+      type: "cardio" as const,
+      label: o.label,
+      description: o.description,
+      targetElevation: elevTarget,
+      duration: dur,
+      gymExercise: o.gymExercise,
+      ...(o.targetDistanceKm !== undefined ? { targetDistanceKm: o.targetDistanceKm } : {}),
+      ...("targetFloors" in o && o.targetFloors !== undefined ? { targetFloors: o.targetFloors } : {}),
+      ...(o.inclinePct !== undefined ? { inclinePct: o.inclinePct } : {}),
+    };
   }
 
   if (hasWeights(goal)) {

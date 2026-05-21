@@ -212,6 +212,8 @@ function SessionCard({ session, onDelete, onToggle, index }: {
                 weekday: "short", day: "numeric", month: "short",
               })}
               {session.reps ? ` · ${session.reps} rep${session.reps !== 1 ? "s" : ""}` : ""}
+              {session.gymSubtype === "stepper" && session.stepperFloors ? ` · ${session.stepperFloors} floors` : ""}
+              {session.gymSubtype === "treadmill" && session.treadmillKm ? ` · ${session.treadmillKm}km @ ${session.treadmillInclinePct ?? 10}%` : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -319,6 +321,12 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   const [selectedHill, setSelectedHill] = useState<NearbyHill | null>(null);
   const [reps, setReps] = useState(3);
 
+  // Gym cardio sub-type
+  const [cardioSubtype, setCardioSubtype] = useState<"treadmill" | "stepper" | "outdoor">("outdoor");
+  const [treadmillKm, setTreadmillKm] = useState("");
+  const [treadmillIncline, setTreadmillIncline] = useState("10");
+  const [stepperFloors, setStepperFloors] = useState("");
+
   function handleSelectHill(h: NearbyHill | null) {
     setSelectedHill(h);
     if (h) {
@@ -341,6 +349,10 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
       setSelectedHill(null);
       setReps(3);
     }
+    if (t !== "cardio") {
+      setCardioSubtype("outdoor");
+      setTreadmillKm(""); setTreadmillIncline("10"); setStepperFloors("");
+    }
   }
 
   function reset() {
@@ -348,20 +360,47 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
     setDate(new Date().toISOString().split("T")[0]);
     setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
     setSelectedHill(null); setReps(3);
+    setCardioSubtype("outdoor"); setTreadmillKm(""); setTreadmillIncline("10"); setStepperFloors("");
   }
 
   async function save() {
-    if (!elev || !dur) return;
     setSaving(true);
     const d = new Date(date);
     const weekNum = trainingPlan.find(w => {
       return new Date(w.startDate) <= d && new Date(w.endDate) >= d;
     })?.weekNumber ?? 1;
 
+    let effectiveElev: number;
+    let effectiveDist: number;
+    let gymSubtype: "treadmill" | "stepper" | "outdoor" | undefined;
+    let savedTreadmillKm: number | undefined;
+    let savedTreadmillInclinePct: number | undefined;
+    let savedStepperFloors: number | undefined;
+
+    if (type === "cardio" && cardioSubtype === "treadmill") {
+      const km = parseFloat(treadmillKm) || 0;
+      const inc = parseFloat(treadmillIncline) || 10;
+      effectiveElev = Math.round(km * 1000 * (inc / 100));
+      effectiveDist = km;
+      gymSubtype = "treadmill";
+      savedTreadmillKm = km;
+      savedTreadmillInclinePct = inc;
+    } else if (type === "cardio" && cardioSubtype === "stepper") {
+      const floors = parseInt(stepperFloors) || 0;
+      effectiveElev = floors * 3;
+      effectiveDist = 0;
+      gymSubtype = "stepper";
+      savedStepperFloors = floors;
+    } else {
+      effectiveElev = Number(elev);
+      effectiveDist = Number(dist) || 0;
+      if (type === "cardio") gymSubtype = "outdoor";
+    }
+
     await addSession({
       date, type,
-      distance: Number(dist) || 0,
-      elevationGain: Number(elev),
+      distance: effectiveDist,
+      elevationGain: effectiveElev,
       duration: Number(dur),
       effort: effort as 1 | 2 | 3 | 4 | 5,
       notes: notes.trim(),
@@ -369,6 +408,10 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
       weekNumber: weekNum,
       hillName: selectedHill?.name,
       reps: selectedHill ? reps : undefined,
+      gymSubtype,
+      treadmillKm: savedTreadmillKm,
+      treadmillInclinePct: savedTreadmillInclinePct,
+      stepperFloors: savedStepperFloors,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaving(false);
@@ -376,10 +419,14 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
     reset();
   }
 
-  // Validation: hill sessions only need elev + dur; others need dist too
+  // Validation
   const isValid = type === "hill"
     ? !!elev && !!dur
-    : !!dist && !!elev && !!dur;
+    : type === "cardio" && cardioSubtype === "treadmill"
+      ? !!treadmillKm && !!dur
+      : type === "cardio" && cardioSubtype === "stepper"
+        ? !!stepperFloors && !!dur
+        : !!dist && !!elev && !!dur;
 
   const inp = [styles.input];
 
@@ -443,26 +490,104 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
               />
             )}
 
-            {/* Stats row — auto-filled from hill selection but always editable */}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {type !== "hill" && (
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fLabel}>Distance (km)</Text>
-                  <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+            {/* Cardio: gym sub-type picker + conditional metric inputs */}
+            {type === "cardio" && (
+              <>
+                <Text style={styles.fLabel}>Exercise type</Text>
+                <View style={styles.typeRow}>
+                  {(["treadmill", "stepper", "outdoor"] as const).map(sub => {
+                    const labels = { treadmill: "Treadmill", stepper: "Stepper", outdoor: "Outdoor / Walk" };
+                    const colors = { treadmill: T.green, stepper: T.blue, outdoor: T.orange };
+                    const SubIcon = sub === "treadmill" ? TrendingUp : sub === "stepper" ? Activity : Map;
+                    const active = cardioSubtype === sub;
+                    return (
+                      <TouchableOpacity
+                        key={sub}
+                        onPress={() => { setCardioSubtype(sub); setTreadmillKm(""); setStepperFloors(""); }}
+                        style={[styles.typeBtn, { borderColor: active ? colors[sub] : T.border }, active && { backgroundColor: colors[sub] + "18" }]}
+                      >
+                        <SubIcon size={15} color={active ? colors[sub] : T.textMuted} />
+                        <Text style={[styles.typeBtnText, { color: active ? colors[sub] : T.textMuted }]}>{labels[sub]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fLabel}>Elev. Gain (m)</Text>
-                <TextInput
-                  style={[inp, selectedHill && styles.inputAutoFilled]}
-                  value={elev}
-                  onChangeText={setElev}
-                  placeholder="450"
-                  placeholderTextColor={T.textDim}
-                  keyboardType="number-pad"
-                />
+
+                {cardioSubtype === "treadmill" && (
+                  <>
+                    <View style={{ flexDirection: "row", gap: 12 }}>
+                      <View style={{ flex: 2 }}>
+                        <Text style={styles.fLabel}>Distance (km)</Text>
+                        <TextInput style={inp} value={treadmillKm} onChangeText={setTreadmillKm} placeholder="3.0" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.fLabel}>Incline (%)</Text>
+                        <TextInput style={inp} value={treadmillIncline} onChangeText={setTreadmillIncline} placeholder="10" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+                      </View>
+                    </View>
+                    {!!treadmillKm && (
+                      <View style={styles.autoCalcRow}>
+                        <TrendingUp size={13} color={T.orange} />
+                        <Text style={styles.autoCalcText}>
+                          ≈ {Math.round((parseFloat(treadmillKm) || 0) * 1000 * ((parseFloat(treadmillIncline) || 10) / 100))}m elevation gain
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {cardioSubtype === "stepper" && (
+                  <>
+                    <Text style={styles.fLabel}>Floors completed</Text>
+                    <TextInput style={inp} value={stepperFloors} onChangeText={setStepperFloors} placeholder="120" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+                    {!!stepperFloors && (
+                      <View style={styles.autoCalcRow}>
+                        <TrendingUp size={13} color={T.orange} />
+                        <Text style={styles.autoCalcText}>
+                          ≈ {(parseInt(stepperFloors) || 0) * 3}m elevation gain
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {cardioSubtype === "outdoor" && (
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fLabel}>Distance (km)</Text>
+                      <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fLabel}>Elev. Gain (m)</Text>
+                      <TextInput style={inp} value={elev} onChangeText={setElev} placeholder="450" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Hill / Big Day stats row */}
+            {type !== "cardio" && (
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                {type !== "hill" && (
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fLabel}>Distance (km)</Text>
+                    <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fLabel}>Elev. Gain (m)</Text>
+                  <TextInput
+                    style={[inp, selectedHill && styles.inputAutoFilled]}
+                    value={elev}
+                    onChangeText={setElev}
+                    placeholder="450"
+                    placeholderTextColor={T.textDim}
+                    keyboardType="number-pad"
+                  />
+                </View>
               </View>
-            </View>
+            )}
 
             <Text style={styles.fLabel}>Duration (min)</Text>
             <TextInput style={inp} value={dur} onChangeText={setDur} placeholder="90" placeholderTextColor={T.textDim} keyboardType="number-pad" />
@@ -697,6 +822,8 @@ const styles = StyleSheet.create({
   effortDots: { flexDirection: "row", gap: 3, marginLeft: "auto" as any },
   effortPip: { width: 9, height: 9, borderRadius: 3 },
   scNotes: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  autoCalcRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, paddingHorizontal: 2 },
+  autoCalcText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyIcon: { width: 72, height: 72, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
