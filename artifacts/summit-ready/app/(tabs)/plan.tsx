@@ -36,7 +36,7 @@ function RepStepper({
   onSet,
 }: {
   sessionKey: string;
-  targetReps: number;          // auto-calculated summit-equivalent
+  targetReps: number;
   elevPerRep: number;
   sessionReps: Record<string, number>;
   isDone: boolean;
@@ -50,8 +50,7 @@ function RepStepper({
   const loggedElev = hasLogged && elevPerRep > 0 ? logged * elevPerRep : null;
 
   return (
-    <View style={rsStyles.container}>
-      {/* Target badge */}
+    <View style={[rsStyles.container, isDone && rsStyles.containerDone]}>
       <View style={rsStyles.targetRow}>
         <Flag size={11} color={T.orange} />
         <Text style={rsStyles.targetLabel}>
@@ -63,18 +62,17 @@ function RepStepper({
         )}
       </View>
 
-      {/* Log actuals row */}
       <View style={rsStyles.logRow}>
         <Text style={rsStyles.logLabel}>Today I did:</Text>
 
         <TouchableOpacity
-          onPress={() => onSet(sessionKey, Math.max(0, displayReps - 1))}
-          style={[rsStyles.btn, displayReps <= 0 && rsStyles.btnDisabled]}
+          onPress={() => onSet(sessionKey, displayReps - 1)}
+          style={[rsStyles.btn, (displayReps <= 0 || isDone) && rsStyles.btnDisabled]}
           activeOpacity={0.7}
-          disabled={displayReps <= 0}
+          disabled={displayReps <= 0 || isDone}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Minus size={12} color={displayReps <= 0 ? T.textDim : T.white} />
+          <Minus size={12} color={(displayReps <= 0 || isDone) ? T.textDim : T.white} />
         </TouchableOpacity>
 
         <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
@@ -83,11 +81,12 @@ function RepStepper({
 
         <TouchableOpacity
           onPress={() => onSet(sessionKey, displayReps + 1)}
-          style={rsStyles.btn}
+          style={[rsStyles.btn, isDone && rsStyles.btnDisabled]}
           activeOpacity={0.7}
+          disabled={isDone}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Plus size={12} color={T.white} />
+          <Plus size={12} color={isDone ? T.textDim : T.white} />
         </TouchableOpacity>
 
         {loggedElev !== null && (
@@ -145,30 +144,41 @@ function GymTracker({
     ? (isTreadmill ? Math.round(displayVal * incline * 10) : Math.round(displayVal * 3))
     : null;
 
+  function handleDecrement() {
+    const next = parseFloat((displayVal - step).toFixed(1));
+    // Passing 0 (or below) clears the entry so it returns to "–"
+    onSet(sessionKey, Math.max(0, next));
+  }
+
+  function handleIncrement() {
+    const next = parseFloat((displayVal + step).toFixed(1));
+    onSet(sessionKey, next);
+  }
+
   return (
-    <View style={rsStyles.container}>
+    <View style={[rsStyles.container, isDone && rsStyles.containerDone]}>
       <View style={rsStyles.targetRow}>
         <Flag size={11} color={T.orange} />
         <Text style={rsStyles.targetLabel}>
-          Today's target:{" "}
+          Target:{" "}
           <Text style={rsStyles.targetNum}>
-            {isTreadmill ? `${target.toFixed(1)}km @ ${incline}%` : `${target} floors`}
+            {isTreadmill ? `${target.toFixed(1)}km @ ${incline}% incline` : `${target} floors`}
           </Text>
         </Text>
-        <Text style={rsStyles.targetElev}>= {targetElev}m gain</Text>
+        <Text style={rsStyles.targetElev}>≈ {targetElev}m gain</Text>
       </View>
 
       <View style={rsStyles.logRow}>
-        <Text style={rsStyles.logLabel}>Today I did:</Text>
+        <Text style={rsStyles.logLabel}>I did:</Text>
 
         <TouchableOpacity
-          onPress={() => onSet(sessionKey, Math.max(0, parseFloat((displayVal - step).toFixed(1))))}
-          style={[rsStyles.btn, displayVal <= 0 && rsStyles.btnDisabled]}
+          onPress={handleDecrement}
+          style={[rsStyles.btn, (displayVal <= 0 || isDone) && rsStyles.btnDisabled]}
           activeOpacity={0.7}
-          disabled={displayVal <= 0}
+          disabled={displayVal <= 0 || isDone}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Minus size={12} color={displayVal <= 0 ? T.textDim : T.white} />
+          <Minus size={12} color={(displayVal <= 0 || isDone) ? T.textDim : T.white} />
         </TouchableOpacity>
 
         <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
@@ -178,17 +188,18 @@ function GymTracker({
         </Text>
 
         <TouchableOpacity
-          onPress={() => onSet(sessionKey, parseFloat((displayVal + step).toFixed(1)))}
-          style={rsStyles.btn}
+          onPress={handleIncrement}
+          style={[rsStyles.btn, isDone && rsStyles.btnDisabled]}
           activeOpacity={0.7}
+          disabled={isDone}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Plus size={12} color={T.white} />
+          <Plus size={12} color={isDone ? T.textDim : T.white} />
         </TouchableOpacity>
 
         {loggedElev !== null && (
           <Text style={[rsStyles.logElev, hitTarget && { color: T.green }]}>
-            = {loggedElev}m
+            ≈ {loggedElev}m
           </Text>
         )}
 
@@ -202,8 +213,8 @@ function GymTracker({
         {hasLogged && !hitTarget && displayVal > 0 && (
           <Text style={rsStyles.progressText}>
             {isTreadmill
-              ? `${displayVal.toFixed(1)}/${target.toFixed(1)}km`
-              : `${displayVal}/${target} fl`}
+              ? `${displayVal.toFixed(1)} / ${target.toFixed(1)}km`
+              : `${displayVal} / ${target} fl`}
           </Text>
         )}
       </View>
@@ -219,6 +230,7 @@ const rsStyles = StyleSheet.create({
     borderTopColor: T.border,
     gap: 8,
   },
+  containerDone: { opacity: 0.55 },
   targetRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -606,6 +618,7 @@ function WeekCard({
             {week.sessions.map((s, i) => {
               const sessionKey = `${week.weekNumber}-${i}`;
               const isDone = !!completedPlanSessions[sessionKey];
+              const isSubmitted = !!submittedPlanSessions[sessionKey];
               const assignedHill = assignedHills[sessionKey];
               const canPickHill = s.type === "hill" || s.type === "bigDay";
               const isGymCardio = s.type === "cardio" && (s.gymExercise === "treadmill" || s.gymExercise === "stepper");
@@ -721,16 +734,14 @@ function WeekCard({
                         targetFloors={s.targetFloors}
                         inclinePct={s.inclinePct}
                         sessionReps={sessionReps}
-                        isDone={isDone}
+                        isDone={isSubmitted}
                         onSet={onSetReps}
                       />
                     )}
 
                     {canPickHill && (() => {
                       const hill = assignedHill ?? week.hills[0] ?? null;
-                      // elevPerRep: height gained per single rep on this hill
                       const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
-                      // targetReps: how many reps of this hill to hit this session's elevation target
                       const targetReps = Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <RepStepper
@@ -738,7 +749,7 @@ function WeekCard({
                           targetReps={targetReps}
                           elevPerRep={elevPerRep}
                           sessionReps={sessionReps}
-                          isDone={isDone}
+                          isDone={isSubmitted}
                           onSet={onSetReps}
                         />
                       );

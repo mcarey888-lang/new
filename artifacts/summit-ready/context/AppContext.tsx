@@ -883,10 +883,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [summitGoal]);
 
   const setSessionReps = useCallback(async (key: string, reps: number) => {
-    const updated = { ...sessionReps, [key]: Math.max(1, reps) };
+    // Allow zero to clear an entry (shows "–" again); negative values treated as zero.
+    let updated: Record<string, number>;
+    if (reps <= 0) {
+      const { [key]: _removed, ...rest } = sessionReps;
+      updated = rest;
+    } else {
+      updated = { ...sessionReps, [key]: reps };
+    }
     setSessionRepsState(updated);
+    // Recalculate readiness immediately so the score updates as exercise is logged.
+    if (summitGoal) {
+      const virtualCount = Object.keys(completedPlanSessions)
+        .filter(k => completedPlanSessions[k] && !submittedPlanSessions[k]).length;
+      setReadinessScore(
+        calculateReadiness(summitGoal, trainingPlan, sessions, {
+          virtualSessionCount: virtualCount,
+          sessionReps: updated,
+          assignedHills,
+        }),
+      );
+    }
     await AsyncStorage.setItem(REPS_KEY, JSON.stringify(updated));
-  }, [sessionReps]);
+  }, [sessionReps, summitGoal, trainingPlan, sessions, completedPlanSessions, submittedPlanSessions, assignedHills]);
 
   const setSessionEffort = useCallback(async (key: string, effort: 1 | 2 | 3 | 4 | 5) => {
     const updated = { ...sessionEfforts, [key]: effort };
