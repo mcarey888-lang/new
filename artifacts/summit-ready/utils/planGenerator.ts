@@ -28,6 +28,12 @@ function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+// Parse the midpoint of a duration string like "30–40 min" → 35
+export function parseDurationMidpoint(dur: string): number {
+  const m = dur.match(/(\d+)[–\-](\d+)/);
+  return m ? (parseInt(m[1]) + parseInt(m[2])) / 2 : 40;
+}
+
 function hasGym(goal: SummitGoal) { return (goal.equipment ?? []).includes("gym"); }
 function hasWeights(goal: SummitGoal) { return (goal.equipment ?? []).includes("weights") || (goal.equipment ?? []).includes("bands"); }
 function noEquipment(goal: SummitGoal) {
@@ -43,28 +49,37 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     : (weekNum < 4 ? "30–40 min" : "40–55 min");
 
   if (hasGym(goal)) {
-    const stepperFloors = Math.round(elevTarget / 3);
-    const treadmillKm = Math.round(elevTarget / 10) / 10;
+    // Base targets on session duration × real-world pacing, not on an elevation ratio.
+    // Stepper: 3 floors/min (150–180 floors/hr) at a steady rhythm without leaning on rails.
+    // Treadmill: 4.5 km/h at 10% incline (zone 2 walking pace); 1 km @10% = 100 m elevation.
+    const midDur = parseDurationMidpoint(dur);
+    const stepperFloors = Math.round(midDur * 3);
+    const stepperElev = stepperFloors * 3; // 1 floor ≈ 3 m
+    const treadmillKm = Math.round((midDur / 60) * 4.5 * 10) / 10;
+    const treadmillElev = Math.round(treadmillKm * 100); // 1 km @10% = 100 m
     const treadmillKmStr = treadmillKm.toFixed(1);
     const opts = [
       {
         label: "Incline Treadmill",
-        description: `Set treadmill to 10% incline. Target: ${treadmillKmStr}km — that gives you ${elevTarget}m of simulated elevation gain (1km at 10% = 100m). Walk or jog at a conversational zone 2–3 pace. Upright posture, heel-drive on every step — the same mechanics you'll need on the mountain.`,
+        description: `Set treadmill to 10% incline. Target: ${treadmillKmStr}km at a steady zone 2 walking pace (~4.5 km/h) — that's ${treadmillElev}m of simulated elevation gain for the session (1 km at 10% = 100 m). Walk or jog at a conversational pace. Upright posture, heel-drive on every step — the same mechanics you'll need on the mountain.`,
         gymExercise: "treadmill" as const,
         targetDistanceKm: treadmillKm,
+        targetElevation: treadmillElev,
         inclinePct: 10,
       },
       {
         label: "Stepper Machine",
-        description: `Target: ${stepperFloors} floors (each floor ≈ 3m = ${elevTarget}m total elevation). Set moderate resistance and maintain a steady rhythm without leaning on the handrails — keep your weight through legs and core, as you would on a real ascent. Zone 2–3 effort: able to speak in short sentences.`,
+        description: `Target: ${stepperFloors} floors at a steady 3 floors per minute — do not lean on the handrails; keep your weight through your legs and core, just as you would on a real ascent. Each floor is approximately 3 m of elevation gain (${stepperElev} m total). Zone 2–3 effort: able to speak in short sentences. At 150–180 floors per hour, this fills the session with purposeful climbing.`,
         gymExercise: "stepper" as const,
         targetFloors: stepperFloors,
+        targetElevation: stepperElev,
       },
       {
         label: "Incline Treadmill + Leg Strength",
-        description: `Treadmill: ${treadmillKmStr}km at 10% incline (≈${elevTarget}m elevation). Then: goblet squats 3×12, reverse lunges 3×10 each leg, single-leg calf raises 3×15. Rest 60s between sets. Builds the leg drive and endurance needed on steep terrain.`,
+        description: `Treadmill: ${treadmillKmStr}km at 10% incline (~4.5 km/h zone 2 pace = ${treadmillElev}m elevation gain). Then: goblet squats 3×12, reverse lunges 3×10 each leg, single-leg calf raises 3×15. Rest 60s between sets. Builds the leg drive and endurance needed on steep terrain.`,
         gymExercise: "treadmill" as const,
         targetDistanceKm: treadmillKm,
+        targetElevation: treadmillElev,
         inclinePct: 10,
       },
     ];
@@ -73,7 +88,7 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
       type: "cardio" as const,
       label: o.label,
       description: o.description,
-      targetElevation: elevTarget,
+      targetElevation: o.targetElevation,
       duration: dur,
       gymExercise: o.gymExercise,
       ...(o.targetDistanceKm !== undefined ? { targetDistanceKm: o.targetDistanceKm } : {}),
@@ -97,27 +112,36 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     return { type: "cardio", label: o.label, description: o.description, targetElevation: elevTarget, duration: dur };
   }
 
-  // No equipment — walks, runs, stairs
-  const metresPerRep = 15;
-  const stairReps = Math.max(5, Math.round(elevTarget / metresPerRep));
-  const floorsPerRep = Math.round(metresPerRep / 3);
+  // No equipment — walks, runs, stairs.
+  // Stair repeats: ~3 min per round trip on a 5-floor staircase (15 m per climb).
+  // Uphill walk/run: outdoor terrain varies, so a duration-based elevation estimate is used.
+  const midDur = parseDurationMidpoint(dur);
+  const metresPerRep = 15; // 5 floors × 3 m
+  const floorsPerRep = Math.round(metresPerRep / 3); // 5 floors
+  const minPerRep = 3; // ~1.5 min up + 1 min down
+  const stairReps = Math.max(3, Math.round(midDur / minPerRep));
   const totalElev = stairReps * metresPerRep;
+  // Uphill walk pace: roughly 200 m/hr on moderate incline outdoors
+  const walkElev = Math.max(elevTarget, Math.round((midDur / 60) * 200));
   const opts = [
     {
       label: "Stair Repeats",
       description: `Find a staircase with at least ${floorsPerRep} floors — a car park, block of flats, or office building works well. Walk up at a controlled pace, descend for recovery, and repeat ${stairReps} times to accumulate ${totalElev}m of elevation gain. Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
+      targetElevation: totalElev,
     },
     {
       label: "Uphill Walk / Run",
-      description: `Walk or jog any route that gains height — roads with gradient, park paths, or embankments all count. Aim to accumulate ${elevTarget}m of uphill over the session. Time on incline matters more than pace; stay aerobic and breathe steadily throughout.`,
+      description: `Walk or jog any route that gains height — roads with gradient, park paths, or embankments all count. Aim to accumulate ${walkElev}m of uphill over the session. Time on incline matters more than pace; stay aerobic and breathe steadily throughout.`,
+      targetElevation: walkElev,
     },
     {
       label: "Sustained Brisk Walk",
-      description: `A longer steady walk at a pace where you're breathing noticeably but can still speak in short sentences. Include as much uphill as you can find. Focus on keeping a consistent pace for the full duration — building time on feet is key at this stage of training.`,
+      description: `A longer steady walk at a pace where you're breathing noticeably but can still speak in short sentences. Include as much uphill as you can find. Aim for ${walkElev}m of elevation gain over the session. Focus on keeping a consistent pace for the full duration — building time on feet is key at this stage of training.`,
+      targetElevation: walkElev,
     },
   ];
   const o = opts[variant % opts.length];
-  return { type: "cardio", label: o.label, description: o.description, targetElevation: elevTarget, duration: dur };
+  return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, duration: dur };
 }
 
 function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { generatePlan } from "@/utils/planGenerator";
+import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { calculateReadiness } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
 import type { Trail } from "@/constants/trailData";
@@ -420,28 +420,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   return { ...s, targetElevation: fixedReps * hill.elevation };
                 }
                 // Fix 2: gym cardio sessions saved before gymExercise/target fields existed.
-                // Infer the type from the session label and reconstruct targets from targetElevation.
+                // Infer the type from the session label and reconstruct targets using
+                // real-world pacing (same formula as the plan generator):
+                //   Treadmill: 4.5 km/h at 10% incline (zone 2); 1 km @10% = 100 m elevation
+                //   Stepper:   3 floors/min (150–180 floors/hr without leaning on rails)
                 if (s.type === "cardio" && !s.gymExercise) {
                   const label = (s.label ?? "").toLowerCase();
                   if (label.includes("treadmill")) {
+                    const midDur = parseDurationMidpoint(s.duration ?? "30–40 min");
+                    const targetDistanceKm = Math.max(0.5, Math.round((midDur / 60) * 4.5 * 10) / 10);
                     weekChanged = true;
                     planWasMigrated = true;
                     return {
                       ...s,
                       gymExercise: "treadmill" as const,
-                      // 1 km at 10% incline = 100 m elevation gain
-                      targetDistanceKm: Math.max(0.5, Math.round(s.targetElevation / 10) / 10),
+                      targetDistanceKm,
+                      targetElevation: Math.round(targetDistanceKm * 100),
                       inclinePct: 10,
                     };
                   }
                   if (label.includes("stepper")) {
+                    const midDur = parseDurationMidpoint(s.duration ?? "30–40 min");
+                    const targetFloors = Math.max(10, Math.round(midDur * 3));
                     weekChanged = true;
                     planWasMigrated = true;
                     return {
                       ...s,
                       gymExercise: "stepper" as const,
-                      // 1 floor ≈ 3 m elevation gain
-                      targetFloors: Math.max(10, Math.round(s.targetElevation / 3)),
+                      targetFloors,
+                      targetElevation: targetFloors * 3,
                     };
                   }
                 }
