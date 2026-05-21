@@ -113,11 +113,19 @@ export function calculateReadiness(
       const week = plan.find(w => w.weekNumber === wNum);
       if (!week) continue;
       const session = week.sessions[sIdx];
-      if (!session || (session.type !== "hill" && session.type !== "bigDay")) continue;
-      const assignedHill = opts.assignedHills?.[key];
-      const elevPerRep = assignedHill?.elevation ?? week.hills[0]?.elevation ?? Math.max(50, Math.round(session.targetElevation / 4));
-      const target = calcTargetReps(goal.elevationGain, elevPerRep);
-      repEntries.push(Math.min(1, loggedReps / target));
+      if (!session) continue;
+      if (session.type === "hill" || session.type === "bigDay") {
+        const assignedHill = opts.assignedHills?.[key];
+        const elevPerRep = assignedHill?.elevation ?? week.hills[0]?.elevation ?? Math.max(50, Math.round(session.targetElevation / 4));
+        const target = calcTargetReps(goal.elevationGain, elevPerRep);
+        repEntries.push(Math.min(1, loggedReps / target));
+      } else if (session.type === "cardio" && session.gymExercise === "treadmill") {
+        const targetKm = session.targetDistanceKm ?? 0;
+        if (targetKm > 0) repEntries.push(Math.min(1, loggedReps / targetKm));
+      } else if (session.type === "cardio" && session.gymExercise === "stepper") {
+        const targetFloors = session.targetFloors ?? 0;
+        if (targetFloors > 0) repEntries.push(Math.min(1, loggedReps / targetFloors));
+      }
     }
     if (repEntries.length > 0) {
       const avgRatio = repEntries.reduce((a, b) => a + b, 0) / repEntries.length;

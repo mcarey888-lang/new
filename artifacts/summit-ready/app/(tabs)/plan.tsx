@@ -113,6 +113,104 @@ function RepStepper({
   );
 }
 
+function GymTracker({
+  sessionKey,
+  gymExercise,
+  targetKm,
+  targetFloors,
+  inclinePct,
+  sessionReps,
+  isDone,
+  onSet,
+}: {
+  sessionKey: string;
+  gymExercise: "treadmill" | "stepper";
+  targetKm?: number;
+  targetFloors?: number;
+  inclinePct?: number;
+  sessionReps: Record<string, number>;
+  isDone: boolean;
+  onSet: (key: string, value: number) => void;
+}) {
+  const isTreadmill = gymExercise === "treadmill";
+  const incline = inclinePct ?? 10;
+  const target = isTreadmill ? (targetKm ?? 0) : (targetFloors ?? 0);
+  const step = isTreadmill ? 0.5 : 5;
+  const logged = sessionReps[sessionKey];
+  const hasLogged = logged !== undefined;
+  const displayVal = hasLogged ? logged : 0;
+  const hitTarget = hasLogged && displayVal >= target;
+  const targetElev = isTreadmill ? Math.round(target * incline * 10) : Math.round(target * 3);
+  const loggedElev = hasLogged && displayVal > 0
+    ? (isTreadmill ? Math.round(displayVal * incline * 10) : Math.round(displayVal * 3))
+    : null;
+
+  return (
+    <View style={rsStyles.container}>
+      <View style={rsStyles.targetRow}>
+        <Flag size={11} color={T.orange} />
+        <Text style={rsStyles.targetLabel}>
+          Today's target:{" "}
+          <Text style={rsStyles.targetNum}>
+            {isTreadmill ? `${target.toFixed(1)}km @ ${incline}%` : `${target} floors`}
+          </Text>
+        </Text>
+        <Text style={rsStyles.targetElev}>= {targetElev}m gain</Text>
+      </View>
+
+      <View style={rsStyles.logRow}>
+        <Text style={rsStyles.logLabel}>Today I did:</Text>
+
+        <TouchableOpacity
+          onPress={() => onSet(sessionKey, Math.max(0, parseFloat((displayVal - step).toFixed(1))))}
+          style={[rsStyles.btn, displayVal <= 0 && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={displayVal <= 0}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Minus size={12} color={displayVal <= 0 ? T.textDim : T.white} />
+        </TouchableOpacity>
+
+        <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
+          {hasLogged
+            ? (isTreadmill ? `${displayVal.toFixed(1)}km` : `${displayVal} fl`)
+            : "–"}
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => onSet(sessionKey, parseFloat((displayVal + step).toFixed(1)))}
+          style={rsStyles.btn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Plus size={12} color={T.white} />
+        </TouchableOpacity>
+
+        {loggedElev !== null && (
+          <Text style={[rsStyles.logElev, hitTarget && { color: T.green }]}>
+            = {loggedElev}m
+          </Text>
+        )}
+
+        {hitTarget && (
+          <View style={rsStyles.hitBadge}>
+            <Check size={10} color={T.green} />
+            <Text style={rsStyles.hitText}>Target hit!</Text>
+          </View>
+        )}
+
+        {hasLogged && !hitTarget && displayVal > 0 && (
+          <Text style={rsStyles.progressText}>
+            {isTreadmill
+              ? `${displayVal.toFixed(1)}/${target.toFixed(1)}km`
+              : `${displayVal}/${target} fl`}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const rsStyles = StyleSheet.create({
   container: {
     marginTop: 10,
@@ -510,6 +608,7 @@ function WeekCard({
               const isDone = !!completedPlanSessions[sessionKey];
               const assignedHill = assignedHills[sessionKey];
               const canPickHill = s.type === "hill" || s.type === "bigDay";
+              const isGymCardio = s.type === "cardio" && (s.gymExercise === "treadmill" || s.gymExercise === "stepper");
 
               return (
                 <View
@@ -582,7 +681,15 @@ function WeekCard({
                     })()}
 
                     <View style={styles.sessionFooter}>
-                      <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
+                      {isGymCardio ? (
+                        <Text style={[styles.sessionElev, { color: T.blue }]}>
+                          {s.gymExercise === "treadmill"
+                            ? `${(s.targetDistanceKm ?? 0).toFixed(1)}km @ ${s.inclinePct ?? 10}% incline`
+                            : `${s.targetFloors ?? 0} floors target`}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
+                      )}
                       {canPickHill ? (
                         <TouchableOpacity
                           onPress={() => onAssignHill(week.weekNumber, i)}
@@ -594,7 +701,7 @@ function WeekCard({
                             {assignedHill ? "Change hill" : "Pick hill"}
                           </Text>
                         </TouchableOpacity>
-                      ) : (
+                      ) : !isGymCardio ? (
                         <TouchableOpacity
                           onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
                           style={styles.swapBtn}
@@ -603,8 +710,21 @@ function WeekCard({
                           <RefreshCw size={11} color={T.blue} />
                           <Text style={styles.swapBtnText}>Swap exercise</Text>
                         </TouchableOpacity>
-                      )}
+                      ) : null}
                     </View>
+
+                    {isGymCardio && s.gymExercise !== "outdoor" && (
+                      <GymTracker
+                        sessionKey={sessionKey}
+                        gymExercise={s.gymExercise as "treadmill" | "stepper"}
+                        targetKm={s.targetDistanceKm}
+                        targetFloors={s.targetFloors}
+                        inclinePct={s.inclinePct}
+                        sessionReps={sessionReps}
+                        isDone={isDone}
+                        onSet={onSetReps}
+                      />
+                    )}
 
                     {canPickHill && (() => {
                       const hill = assignedHill ?? week.hills[0] ?? null;

@@ -754,26 +754,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // For hill/bigDay sessions use logged reps × elevation per rep if available,
         // otherwise fall back to the plan's target elevation.
+        // For gym cardio sessions use logged km/floors to derive elevation.
         let elevationGain = s.targetElevation;
         const loggedReps = sessionReps[key];
         if (loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")) {
           const hill = assignedHills[key] ?? week.hills[0] ?? null;
           const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
           elevationGain = loggedReps * elevPerRep;
+        } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "treadmill") {
+          const incline = s.inclinePct ?? 10;
+          elevationGain = Math.round(loggedReps * (incline / 100) * 1000);
+        } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "stepper") {
+          elevationGain = Math.round(loggedReps * 3);
         }
 
         const storedEffort = sessionEfforts[key];
+        const distanceKm = s.type === "cardio" && s.gymExercise === "treadmill" && loggedReps !== undefined
+          ? loggedReps
+          : s.type === "cardio" ? 5 : s.type === "hill" ? 6 : 10;
+
+        let notes = `Submitted from plan: ${s.label}`;
+        if (loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")) {
+          notes = `Submitted from plan: ${s.label} (${loggedReps} rep${loggedReps !== 1 ? "s" : ""} logged)`;
+        } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "treadmill") {
+          notes = `Submitted from plan: ${s.label} (${loggedReps.toFixed(1)}km done)`;
+        } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "stepper") {
+          notes = `Submitted from plan: ${s.label} (${loggedReps} floors done)`;
+        }
+
         toSubmit.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 6) + i,
           type: s.type,
           date: d.toISOString().split("T")[0],
-          distance: s.type === "cardio" ? 5 : s.type === "hill" ? 6 : 10,
+          distance: distanceKm,
           elevationGain,
           duration: parseDuration(s.duration),
           effort: (storedEffort ?? 3) as 1 | 2 | 3 | 4 | 5,
-          notes: loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")
-            ? `Submitted from plan: ${s.label} (${loggedReps} rep${loggedReps !== 1 ? "s" : ""} logged)`
-            : `Submitted from plan: ${s.label}`,
+          notes,
           completed: true,
           weekNumber: weekNum,
         });
