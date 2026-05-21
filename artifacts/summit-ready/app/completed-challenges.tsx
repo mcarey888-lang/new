@@ -85,46 +85,51 @@ export default function CompletedChallengesScreen() {
             <Animated.View
               key={`${ac.challengeId}-${ac.startedAt}`}
               entering={FadeInDown.delay(80 + i * 60).duration(500)}
-              style={s.card}
             >
-              <LinearGradient
-                colors={[c.color + "12", "transparent"]}
-                style={StyleSheet.absoluteFill}
-              />
-              {/* Top row */}
-              <View style={s.cardTop}>
-                <View style={[s.emojiWrap, { backgroundColor: c.color + "22" }]}>
-                  <Text style={s.emoji}>{c.emoji}</Text>
-                </View>
-                <View style={s.completeBadge}>
-                  <CheckCircle size={11} color={T.green} />
-                  <Text style={s.completeBadgeText}>Complete</Text>
-                </View>
-              </View>
-
-              {/* Title & tagline */}
-              <Text style={s.cardTitle}>{c.title}</Text>
-              <Text style={s.cardTagline}>{c.tagline}</Text>
-
-              {/* Stats row */}
-              <View style={s.statsRow}>
-                {completedDate && (
-                  <View style={s.statItem}>
-                    <Text style={[s.statVal, { color: T.blue }]}>{completedDate}</Text>
-                    <Text style={s.statLbl}>Completed</Text>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => router.push(`/challenge-detail?id=${ac.challengeId}`)}
+                style={s.card}
+              >
+                <LinearGradient
+                  colors={[c.color + "12", "transparent"]}
+                  style={StyleSheet.absoluteFill}
+                />
+                {/* Top row */}
+                <View style={s.cardTop}>
+                  <View style={[s.emojiWrap, { backgroundColor: c.color + "22" }]}>
+                    <Text style={s.emoji}>{c.emoji}</Text>
                   </View>
-                )}
-                <View style={s.statDivider} />
-                <View style={s.statItem}>
-                  <Text style={[s.statVal, { color: c.color }]}>{totalElev.toLocaleString()}m</Text>
-                  <Text style={s.statLbl}>Elevation gained</Text>
+                  <View style={s.completeBadge}>
+                    <CheckCircle size={11} color={T.green} />
+                    <Text style={s.completeBadgeText}>Complete</Text>
+                  </View>
                 </View>
-                <View style={s.statDivider} />
-                <View style={s.statItem}>
-                  <Text style={[s.statVal, { color: T.orange }]}>{sessionCount}</Text>
-                  <Text style={s.statLbl}>Activities</Text>
+
+                {/* Title & tagline */}
+                <Text style={s.cardTitle}>{c.title}</Text>
+                <Text style={s.cardTagline}>{c.tagline}</Text>
+
+                {/* Stats row */}
+                <View style={s.statsRow}>
+                  {completedDate && (
+                    <View style={s.statItem}>
+                      <Text style={[s.statVal, { color: T.blue }]}>{completedDate}</Text>
+                      <Text style={s.statLbl}>Completed</Text>
+                    </View>
+                  )}
+                  <View style={s.statDivider} />
+                  <View style={s.statItem}>
+                    <Text style={[s.statVal, { color: c.color }]}>{totalElev.toLocaleString()}m</Text>
+                    <Text style={s.statLbl}>Elevation gained</Text>
+                  </View>
+                  <View style={s.statDivider} />
+                  <View style={s.statItem}>
+                    <Text style={[s.statVal, { color: T.orange }]}>{sessionCount}</Text>
+                    <Text style={s.statLbl}>Activities</Text>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             </Animated.View>
           );
         })}
