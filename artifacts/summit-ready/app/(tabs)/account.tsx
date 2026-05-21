@@ -79,9 +79,10 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
-  const { activeChallenges } = useChallenges();
+  const { activeChallenges, getProgress } = useChallenges();
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
+  const inProgressChallenges = activeChallenges.filter(ac => !ac.completed);
   const totalChallengeElevation = completedChallenges.reduce(
     (s, ac) => s + ac.activities.reduce((as, a) => as + a.elevationGain, 0),
     0,
@@ -473,6 +474,50 @@ export default function AccountScreen() {
                 );
               })}
             </View>
+          </Animated.View>
+        )}
+
+        {/* Active Challenges */}
+        {inProgressChallenges.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              ACTIVE CHALLENGES · {inProgressChallenges.length}
+            </Text>
+            {inProgressChallenges.map((ac, i) => {
+              const template = getChallenge(ac.challengeId);
+              if (!template) return null;
+              const dc = CHALLENGE_DIFF_COLOR[template.difficulty];
+              const progress = getProgress(ac.challengeId);
+              const pct = Math.min(progress / template.targetValue, 1);
+              const progressLabel = template.metric === "hikes"
+                ? `${progress} / ${template.targetValue} hikes`
+                : `${progress.toLocaleString()}m / ${template.targetValue.toLocaleString()}m`;
+              return (
+                <TouchableOpacity
+                  key={ac.challengeId + i}
+                  style={[styles.activeChallengeCard, { borderColor: dc + "40" }]}
+                  onPress={() => router.push({ pathname: "/challenge-detail", params: { id: ac.challengeId } })}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient colors={[dc + "12", "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.activeChallengeTop}>
+                    <Text style={styles.activeChallengeEmoji}>{template.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.activeChallengeTitle} numberOfLines={1}>{template.title}</Text>
+                      <Text style={styles.activeChallengeProgress}>{progressLabel}</Text>
+                    </View>
+                    <View style={[styles.challengeDiffBadge, { backgroundColor: dc + "22", borderColor: dc + "40" }]}>
+                      <Text style={[styles.challengeDiffText, { color: dc }]}>{template.difficulty}</Text>
+                    </View>
+                    <ChevronRight size={15} color={T.textDim} />
+                  </View>
+                  <View style={styles.activeProgressBarTrack}>
+                    <View style={[styles.activeProgressBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: dc }]} />
+                  </View>
+                  <Text style={[styles.activeProgressPct, { color: dc }]}>{Math.round(pct * 100)}% complete</Text>
+                </TouchableOpacity>
+              );
+            })}
           </Animated.View>
         )}
 
@@ -929,6 +974,25 @@ const styles = StyleSheet.create({
   challengeSummaryVal: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
   challengeSummaryLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
   challengeSummaryDivider: { width: 1, height: 32, backgroundColor: T.border },
+
+  activeChallengeCard: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    padding: 14, gap: 8, overflow: "hidden",
+  },
+  activeChallengeTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  activeChallengeEmoji: { fontSize: 24 },
+  activeChallengeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  activeChallengeProgress: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  activeProgressBarTrack: {
+    height: 6, borderRadius: 3,
+    backgroundColor: T.surface,
+    overflow: "hidden",
+  },
+  activeProgressBarFill: {
+    height: 6, borderRadius: 3,
+  },
+  activeProgressPct: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   challengeCard: {
     backgroundColor: T.card, borderRadius: 16,
