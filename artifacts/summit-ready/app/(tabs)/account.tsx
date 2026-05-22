@@ -79,7 +79,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
-  const { activeChallenges, getProgress } = useChallenges();
+  const { activeChallenges, getProgress, clearChallenges } = useChallenges();
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
   const inProgressChallenges = activeChallenges.filter(ac => !ac.completed);
@@ -207,6 +207,7 @@ export default function AccountScreen() {
     } catch {}
     await AsyncStorage.removeItem(ACCOUNT_EMAIL_KEY);
     setAccountEmail(null);
+    await clearChallenges();
     await clearPlan();
     router.replace("/");
   }

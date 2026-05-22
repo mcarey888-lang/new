@@ -23,6 +23,8 @@ const ALL_KEYS = [
   "summitready_custom_routes",
   "summitready_last_trail_location",
   "summitready_live_trails_cache",
+  "summitready_challenges",
+  "summitready_questionnaire_data",
 ];
 
 function daysFromNow(n: number): string {

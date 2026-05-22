@@ -30,6 +30,7 @@ interface ChallengesState {
   logActivity: (activity: Omit<ChallengeActivity, "id" | "createdAt">) => Promise<void>;
   getProgress: (challengeId: string) => number;
   getActiveChallenge: (challengeId: string) => ActiveChallenge | undefined;
+  clearChallenges: () => Promise<void>;
 }
 
 const ChallengesContext = createContext<ChallengesState>({
@@ -39,6 +40,7 @@ const ChallengesContext = createContext<ChallengesState>({
   logActivity: async () => {},
   getProgress: () => 0,
   getActiveChallenge: () => undefined,
+  clearChallenges: async () => {},
 });
 
 const CHALLENGES_KEY = "summitready_challenges";
@@ -160,6 +162,10 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
     return latestRef.current.find(c => c.challengeId === challengeId);
   }, []);
 
+  const clearChallenges = useCallback(async () => {
+    await persist([]);
+  }, []);
+
   return (
     <ChallengesContext.Provider value={{
       activeChallenges,
@@ -168,6 +174,7 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       logActivity,
       getProgress,
       getActiveChallenge,
+      clearChallenges,
     }}>
       {children}
     </ChallengesContext.Provider>
