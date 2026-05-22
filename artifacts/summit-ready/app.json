@@ -48,6 +48,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "433cf0ca-b8a7-4472-a5bf-7adadc9c38ef"
+      }
+    },
+    "owner": "summitready"
   }
 }
