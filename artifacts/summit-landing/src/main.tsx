@@ -17,6 +17,7 @@ import KilimanjaroCIC from "./pages/can-i-climb/KilimanjaroCIC";
 import MatterhornCIC from "./pages/can-i-climb/MatterhornCIC";
 import GranParadisoCIC from "./pages/can-i-climb/GranParadisoCIC";
 import EBCCIC from "./pages/can-i-climb/EBCCIC";
+import ScreenshotHelper from "./pages/ScreenshotHelper";
 import Mountains from "./pages/Mountains";
 import MontBlancMtn from "./pages/mountains/MontBlancMtn";
 import KilimanjaroMtn from "./pages/mountains/KilimanjaroMtn";
@@ -55,6 +56,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/mountains/kilimanjaro" element={<KilimanjaroMtn />} />
       <Route path="/mountains/matterhorn" element={<MatterhornMtn />} />
 
+      <Route path="/screenshot-helper" element={<ScreenshotHelper />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

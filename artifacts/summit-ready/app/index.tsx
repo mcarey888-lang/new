@@ -15,11 +15,23 @@ const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, isLoading, appMode } = useApp();
+  const { summitGoal, isLoading, appMode, reloadApp } = useApp();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const params = new URLSearchParams(window.location.search);
+    const demoId = params.get("demo");
+    if (!demoId) return;
+    const profile = DEV_PROFILES.find((p) => p.id === demoId);
+    if (!profile) return;
+    setDemoLoading(true);
+    loadDevProfile(profile).then(() => reloadApp()).catch(() => setDemoLoading(false));
+  }, []);
 
   function handleLogoPress() {
     tapCount.current += 1;
@@ -47,7 +59,7 @@ export default function LandingScreen() {
     }
   }, [isLoading, appMode, summitGoal]);
 
-  if (isLoading) {
+  if (isLoading || demoLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center" }}>
         <Loader size={28} color={T.green} />

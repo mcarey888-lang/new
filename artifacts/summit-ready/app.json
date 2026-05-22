@@ -30,7 +30,8 @@
     },
     "web": {
       "favicon": "./assets/images/icon.png",
-      "output": "single"
+      "output": "single",
+      "baseUrl": "/mobile"
     },
     "plugins": [
       [

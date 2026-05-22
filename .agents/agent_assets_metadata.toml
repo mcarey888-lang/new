@@ -107,3 +107,21 @@ id = "2Iaza0I7shf9Y5oTN8VAw"
 uri = "file://attached_assets/icon-512.png"
 type = "image"
 title = "SummitReady App Icon (512×512)"
+
+[[outputs]]
+id = "1nUJWUa-sF68Z0YJeMVqi"
+uri = "file://screenshots/screen-dashboard-kili.jpg"
+type = "image"
+title = "Dashboard — Kilimanjaro + mountain photo"
+
+[[outputs]]
+id = "F9cNI1eLpAYt-k-ntLvQx"
+uri = "file://screenshots/screen-plan-kili.jpg"
+type = "image"
+title = "Training Plan — 12-week progression"
+
+[[outputs]]
+id = "xGAAu9g6rXw_DZuf3NSbk"
+uri = "file://screenshots/screen-log-kili.jpg"
+type = "image"
+title = "Session Log — 12 sessions, real hill data"
