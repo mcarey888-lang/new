@@ -101,3 +101,9 @@ id = "w5Dj7QiW_3OH4KAqtC9eH"
 uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_c.jpg"
 type = "image"
 title = "EBC C — Nepal mountain ridge trek"
+
+[[outputs]]
+id = "2Iaza0I7shf9Y5oTN8VAw"
+uri = "file://attached_assets/icon-512.png"
+type = "image"
+title = "SummitReady App Icon (512×512)"
