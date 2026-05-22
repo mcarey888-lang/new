@@ -45,8 +45,8 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
           </View>
           <Text style={confirmStyles.title}>Confirm Purchase</Text>
           <Text style={confirmStyles.body}>
-            You're about to purchase <Text style={{ color: T.white, fontFamily: "Inter_700Bold" }}>{packageName}</Text>{" "}
-            for <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>{priceString}</Text> using the test store.
+            You're about to subscribe to <Text style={{ color: T.white, fontFamily: "Inter_700Bold" }}>{packageName}</Text>{" "}
+            for <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>{priceString}</Text> through Google Play.
           </Text>
           <View style={confirmStyles.btnRow}>
             <TouchableOpacity onPress={onCancel} style={confirmStyles.cancelBtn} activeOpacity={0.7}>
