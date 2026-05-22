@@ -182,6 +182,8 @@ export default function SetupScreen() {
         if (data.mountainName) {
           skipLookupRef.current = true;
           setName(data.mountainName);
+          // Auto-trigger route search so the user doesn't have to press Search manually
+          lookupMountain(data.mountainName);
         }
         if (data.trainingDays) setTrainingDays(data.trainingDays);
         if (data.hillDays) setHillDays(data.hillDays);
@@ -541,9 +543,9 @@ export default function SetupScreen() {
             </View>
           </Section>
 
-          <Section label="Mountain / Hike" icon={MapPin}>
+          <Section label="Choose your route" icon={MapPin}>
             <View style={styles.fieldWrap}>
-              <Text style={styles.fLabel}>Mountain or Hike Name</Text>
+              <Text style={styles.fLabel}>Mountain or hike name</Text>
               <View style={styles.mountainInputRow}>
                 <TextInput
                   style={[styles.input, { flex: 1 }, errors.name ? { borderColor: T.red + "80" } : null]}
