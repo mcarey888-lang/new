@@ -1,39 +1,15 @@
 import {
-  AlertCircle,
-  BarChart2,
-  Check,
-  CheckCircle,
-  ChevronRight,
-  Compass,
-  Footprints,
-  Info,
-  Lock,
-  LocateFixed,
-  Map,
-  MapPin,
-  Minus,
-  Mountain,
-  Pencil,
-  Plus,
-  PlusCircle,
-  Radio,
-  RefreshCw,
-  Repeat,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-  TrendingUp,
-  X,
-  Zap,
+  Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search,
+  AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
+  PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
+  Footprints, ChevronRight, Clock, Navigation, Filter, ChevronDown,
 } from "lucide-react-native";
-import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -44,16 +20,13 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp, type ExploreHike, type NearbyHill } from "@/context/AppContext";
+
+import { useApp, NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
-import { LogHikeModal } from "@/components/LogHikeModal";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
 
 const FREE_HILLS_LIMIT = 3;
+const SUGGESTED_COUNT = 3;
 
 const GRADE_COLOR: Record<string, string> = {
   "Easy": T.green,
@@ -72,8 +45,7 @@ const GRADE_SCORE: Record<string, number> = {
 };
 
 const RADIUS_STEPS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
-const ELEV_STEPS   = [0, 50, 100, 150, 200, 300, 400, 500, 600, 800];
-
+const ELEV_STEPS = [0, 50, 100, 150, 200, 300, 400, 500, 600, 800];
 type SortKey = "distance" | "elevation" | "popularity";
 
 function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
@@ -91,141 +63,45 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
   return sorted;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CategoryCard({
-  emoji, title, subtitle, color, onPress, badge,
-}: {
-  emoji: string; title: string; subtitle: string;
-  color: string; onPress: () => void; badge?: number;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} style={cc.card} activeOpacity={0.82}>
-      <LinearGradient
-        colors={[color + "14", "transparent"]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      />
-      <View style={[cc.iconBox, { backgroundColor: color + "22" }]}>
-        <Text style={cc.emoji}>{emoji}</Text>
-      </View>
-      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-        <Text style={cc.title} numberOfLines={1}>{title}</Text>
-        <Text style={cc.subtitle} numberOfLines={1}>
-          {badge != null && badge > 0 ? `${badge} ${subtitle}` : subtitle}
-        </Text>
-      </View>
-      {badge != null && badge > 0 && (
-        <View style={[cc.badge, { backgroundColor: color + "22" }]}>
-          <Text style={[cc.badgeText, { color }]}>{badge}</Text>
-        </View>
-      )}
-      <ChevronRight size={15} color={T.textDim} />
-    </TouchableOpacity>
-  );
+function formatDuration(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-const cc = StyleSheet.create({
-  card: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 14, flexDirection: "row", alignItems: "center", gap: 10,
-    overflow: "hidden", minHeight: 72,
-  },
-  iconBox: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  emoji: { fontSize: 18 },
-  title: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
-  subtitle: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
-  badgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-});
-
-function LoggedHikeRow({ hike, onDelete }: { hike: ExploreHike; onDelete: (id: string) => void }) {
-  const dateStr = new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  return (
-    <View style={lh.row}>
-      <View style={lh.iconWrap}><Map size={14} color={T.green} /></View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={lh.name}>{hike.name}</Text>
-        <View style={lh.meta}>
-          <Text style={lh.dim}>{dateStr}</Text>
-          <Text style={lh.dot}>·</Text>
-          <Text style={lh.dim}>{hike.distance}km</Text>
-          <Text style={lh.dot}>·</Text>
-          <Text style={lh.dim}>{hike.elevationGain}m gain</Text>
-          <Text style={lh.dot}>·</Text>
-          <Text style={lh.dim}>{hike.timeTaken}min</Text>
-        </View>
-        {!!hike.notes && <Text style={lh.notes}>{hike.notes}</Text>}
-      </View>
-      <TouchableOpacity
-        onPress={() => {
-          if (Platform.OS === "web") { onDelete(hike.id); return; }
-          Alert.alert("Delete session?", "This cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: () => onDelete(hike.id) },
-          ]);
-        }}
-        style={lh.delBtn} hitSlop={8}
-      >
-        <Trash2 size={14} color={T.red} />
-      </TouchableOpacity>
-    </View>
-  );
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-const lh = StyleSheet.create({
-  row: {
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 12,
-  },
-  iconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  name: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  meta: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
-  dim: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  dot: { fontSize: 12, color: T.textDim },
-  notes: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, fontStyle: "italic" },
-  delBtn: { padding: 4, flexShrink: 0 },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main screen
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function TrailsScreen() {
+export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
-    appMode,
-    exploreHikes, deleteExploreHike,
-    savedTrailIds, completedTrailIds, customRoutes,
     summitGoal, trainingPlan, nearbyHills, hillsLoading,
-    fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation,
+    fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
+    updateGoalLocation, exploreHikes, customRoutes,
   } = useApp();
   const { isSubscribed } = useSubscription();
 
-  const isSummit = appMode === "summit";
-
-  const [logVisible, setLogVisible] = useState(false);
-
-  // Hills state
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
   const [userChangedRadius, setUserChangedRadius] = useState(false);
   const [minElevation, setMinElevation] = useState(0);
   const [userChangedMinElev, setUserChangedMinElev] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("distance");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [allHillsOpen, setAllHillsOpen] = useState(false);
+
   const [editingLoc, setEditingLoc] = useState(false);
   const [locText, setLocText] = useState(summitGoal?.location ?? "");
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const locInputRef = useRef<TextInput>(null);
 
-  // Hill search state
-  const [gpsLoading, setGpsLoading] = useState(false);
-
   const [searchText, setSearchText] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<NearbyHill | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchAdded, setSearchAdded] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -236,23 +112,54 @@ export default function TrailsScreen() {
     if (!userChangedRadius && summitGoal?.maxRadius) setLocalRadius(summitGoal.maxRadius);
   }, [summitGoal?.maxRadius, userChangedRadius]);
 
-
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
   const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
 
-  const targetElev = summitGoal?.elevationGain ?? 1000;
   const currentWeek = trainingPlan.find(w => {
     const now = new Date();
     return new Date(w.startDate) <= now && new Date(w.endDate) >= now;
   });
-  const weekTarget = currentWeek?.targetElevation ?? Math.round(targetElev * 0.5);
-  const displayedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
+  const weekTarget = currentWeek?.targetElevation ?? Math.round((summitGoal?.elevationGain ?? 1000) * 0.5);
+
+  const suggestedHills = useMemo(
+    () => sortHills(nearbyHills, "distance").slice(0, SUGGESTED_COUNT),
+    [nearbyHills]
+  );
+  const allSortedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
+
+  const recentHikes = useMemo(() => {
+    const fromExplore = exploreHikes.map(h => ({
+      id: h.id,
+      name: h.name,
+      date: h.date,
+      distance: h.distance,
+      elevationGain: h.elevationGain,
+      timeTaken: h.timeTaken,
+      source: "explore" as const,
+    }));
+    const fromRoutes = customRoutes.map(r => ({
+      id: r.id ?? r.name,
+      name: r.name,
+      date: r.createdAt ?? "",
+      distance: r.distance ?? 0,
+      elevationGain: r.elevationGain ?? 0,
+      timeTaken: 0,
+      source: "tracked" as const,
+    }));
+    return [...fromExplore, ...fromRoutes]
+      .filter(h => h.date)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+  }, [exploreHikes, customRoutes]);
 
   function stepRadius(dir: 1 | -1) {
     setUserChangedRadius(true);
     const idx = RADIUS_STEPS.indexOf(localRadius);
     if (idx === -1) {
-      setLocalRadius(RADIUS_STEPS.reduce((p, c) => Math.abs(c - localRadius) < Math.abs(p - localRadius) ? c : p));
+      const nearest = RADIUS_STEPS.reduce((p, c) =>
+        Math.abs(c - localRadius) < Math.abs(p - localRadius) ? c : p
+      );
+      setLocalRadius(nearest);
     } else {
       const next = idx + dir;
       if (next >= 0 && next < RADIUS_STEPS.length) setLocalRadius(RADIUS_STEPS[next]);
@@ -270,29 +177,10 @@ export default function TrailsScreen() {
     }
   }
 
-  async function handleGpsLocation() {
-    setGpsLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Location access needed", "Enable location access in Settings to use this feature.");
-        return;
-      }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const [result] = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      const parts: string[] = [];
-      if (result?.city) parts.push(result.city);
-      else if (result?.district) parts.push(result.district);
-      if (result?.country) parts.push(result.country);
-      const label = parts.length > 0 ? parts.join(", ") : `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
-      setLocText(label);
-      await updateGoalLocation(label);
-      await fetchNearbyHills(localRadius);
-    } catch {
-      Alert.alert("Couldn't get location", "Check your connection and try again.");
-    } finally {
-      setGpsLoading(false);
-    }
+  function startEditLoc() {
+    setLocText(summitGoal?.location ?? "");
+    setEditingLoc(true);
+    setTimeout(() => locInputRef.current?.focus(), 80);
   }
 
   async function confirmLoc() {
@@ -324,6 +212,7 @@ export default function TrailsScreen() {
     setSearchLoading(true);
     setSearchResult(null);
     setSearchError(null);
+    setSearchAdded(false);
     try {
       const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
         ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -343,21 +232,34 @@ export default function TrailsScreen() {
     }
   }
 
+  async function handleAddSearchResult() {
+    if (!searchResult) return;
+    await addToNearbyHills(searchResult);
+    setSearchAdded(true);
+  }
 
-
-  // ── Hills section ────────────────────────────────────────────────────────
-
-  function HillsSection() {
-    return (
-      <View style={{ gap: 0 }}>
-        {/* Location header */}
-        <View style={s.hillsHeader}>
+  return (
+    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
+            paddingBottom: Platform.OS === "web" ? 110 : insets.bottom + 130,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
           <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Track</Text>
             {editingLoc ? (
-              <View style={s.locEditRow}>
+              <View style={styles.locEditRow}>
                 <TextInput
                   ref={locInputRef}
-                  style={s.locInput}
+                  style={styles.locInput}
                   value={locText}
                   onChangeText={setLocText}
                   placeholderTextColor={T.textMuted}
@@ -366,337 +268,275 @@ export default function TrailsScreen() {
                   onSubmitEditing={confirmLoc}
                   autoCorrect={false}
                 />
-                <TouchableOpacity onPress={confirmLoc} style={s.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity onPress={confirmLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Check size={16} color={T.green} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={cancelLoc} style={s.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity onPress={cancelLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <X size={16} color={T.textMuted} />
                 </TouchableOpacity>
               </View>
             ) : (
-              <TouchableOpacity
-                onPress={() => { setLocText(summitGoal?.location ?? ""); setEditingLoc(true); setTimeout(() => locInputRef.current?.focus(), 80); }}
-                style={s.locRow} activeOpacity={0.7}
-              >
-                <MapPin size={12} color={T.textMuted} />
-                <Text style={s.locText}>
+              <TouchableOpacity onPress={startEditLoc} style={styles.locRow} activeOpacity={0.7}>
+                <MapPin size={11} color={T.textMuted} />
+                <Text style={styles.subtitle}>
                   {summitGoal ? summitGoal.location : "Tap to set location"}
                 </Text>
-                <Pencil size={11} color={T.textMuted} style={{ marginTop: 1 }} />
+                <Pencil size={11} color={T.textMuted} />
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Stats context — only meaningful in summit mode */}
-        {isSummit && (
-          <View style={s.ctxCard}>
-            <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-            <View style={s.ctxRow}>
-              <View style={s.ctxItem}>
-                <Text style={s.ctxVal}>{weekTarget}m</Text>
-                <Text style={s.ctxLbl}>This week target</Text>
-              </View>
-              <View style={s.ctxDivider} />
-              <View style={s.ctxItem}>
-                <Text style={s.ctxVal}>{targetElev}m</Text>
-                <Text style={s.ctxLbl}>Summit goal</Text>
-              </View>
-              <View style={s.ctxDivider} />
-              <View style={s.ctxItem}>
-                <Text style={s.ctxVal}>{nearbyHills.length}</Text>
-                <Text style={s.ctxLbl}>Hills found</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Controls */}
-        <View style={s.controlCard}>
-          {/* Location row */}
-          <View style={s.controlRow}>
-            <View style={s.controlLabelRow}>
-              <MapPin size={13} color={T.green} />
-              <Text style={s.controlLabel}>Location</Text>
-            </View>
-            <View style={s.locControlRight}>
-              {editingLoc ? (
-                <>
-                  <TextInput
-                    ref={locInputRef}
-                    style={s.locControlInput}
-                    value={locText}
-                    onChangeText={setLocText}
-                    placeholderTextColor={T.textMuted}
-                    placeholder="City, Country"
-                    returnKeyType="done"
-                    onSubmitEditing={confirmLoc}
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity onPress={confirmLoc} style={s.locControlBtn} hitSlop={8}>
-                    <Check size={14} color={T.green} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={cancelLoc} style={s.locControlBtn} hitSlop={8}>
-                    <X size={14} color={T.textMuted} />
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    onPress={() => { setLocText(summitGoal?.location ?? ""); setEditingLoc(true); setTimeout(() => locInputRef.current?.focus(), 80); }}
-                    style={s.locControlDisplay} activeOpacity={0.7}
-                  >
-                    <Text style={s.locControlText} numberOfLines={1}>
-                      {summitGoal?.location ?? "Set location"}
-                    </Text>
-                    <Pencil size={11} color={T.textMuted} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleGpsLocation}
-                    disabled={gpsLoading}
-                    style={[s.locGpsBtn, gpsLoading && { opacity: 0.5 }]}
-                    hitSlop={8} activeOpacity={0.75}
-                  >
-                    {gpsLoading
-                      ? <ActivityIndicator size="small" color={T.green} />
-                      : <LocateFixed size={15} color={T.green} />
-                    }
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-
-          <View style={s.controlDivider} />
-
-          <View style={s.controlRow}>
-            <View style={s.controlLabelRow}>
-              <Radio size={13} color={T.green} />
-              <Text style={s.controlLabel}>Search radius</Text>
-            </View>
-            <View style={s.stepper}>
-              <TouchableOpacity onPress={() => stepRadius(-1)} disabled={localRadius <= RADIUS_STEPS[0]}
-                style={[s.stepBtn, localRadius <= RADIUS_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Minus size={14} color={T.white} />
-              </TouchableOpacity>
-              <View style={s.stepValBox}>
-                <Text style={[s.stepVal, radiusChanged && { color: T.orange }]}>
-                  {localRadius}<Text style={s.stepUnit}> km</Text>
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => stepRadius(1)} disabled={localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]}
-                style={[s.stepBtn, localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Plus size={14} color={T.white} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={s.controlDivider} />
-
-          <View style={s.controlRow}>
-            <View style={s.controlLabelRow}>
-              <Mountain size={13} color={T.orange} />
-              <Text style={s.controlLabel}>Min elevation</Text>
-            </View>
-            <View style={s.stepper}>
-              <TouchableOpacity onPress={() => stepMinElev(-1)} disabled={minElevation <= ELEV_STEPS[0]}
-                style={[s.stepBtn, minElevation <= ELEV_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Minus size={14} color={T.white} />
-              </TouchableOpacity>
-              <View style={s.stepValBox}>
-                {minElevation === 0
-                  ? <Text style={s.stepVal}>Any</Text>
-                  : <Text style={[s.stepVal, { color: T.orange }]}>{minElevation}<Text style={s.stepUnit}>m+</Text></Text>
-                }
-              </View>
-              <TouchableOpacity onPress={() => stepMinElev(1)} disabled={minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1]}
-                style={[s.stepBtn, minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Plus size={14} color={T.white} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={s.controlDivider} />
-
-          <View style={s.controlRow}>
-            <View style={s.controlLabelRow}>
-              <SlidersHorizontal size={13} color={T.blue} />
-              <Text style={s.controlLabel}>Sort by</Text>
-            </View>
-            <View style={s.sortChips}>
-              {(["distance", "elevation", "popularity"] as SortKey[]).map(key => (
-                <TouchableOpacity key={key} onPress={() => setSortBy(key)}
-                  style={[s.sortChip, sortBy === key && s.sortChipActive]} activeOpacity={0.7}>
-                  <Text style={[s.sortChipText, sortBy === key && s.sortChipTextActive]}>
-                    {key === "distance" ? "Distance" : key === "elevation" ? "Elevation" : "Popularity"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* Hill search */}
-        <View style={s.searchCard}>
-          <View style={s.searchLabelRow}>
-            <Search size={13} color={T.purple} />
-            <Text style={s.searchLabel}>Search for a specific hill</Text>
-          </View>
-          <Text style={s.searchHint}>Know a hill you want to train on? Search for it by name.</Text>
-          <View style={s.searchRow}>
-            <TextInput
-              ref={searchInputRef}
-              style={s.searchInput}
-              value={searchText}
-              onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); }}
-              placeholder="e.g. Pendle Hill, Ben Nevis…"
-              placeholderTextColor={T.textDim}
-              returnKeyType="search"
-              onSubmitEditing={handleHillSearch}
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              onPress={handleHillSearch}
-              disabled={searchLoading || searchText.trim().length < 2}
-              style={[s.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
-              activeOpacity={0.75}
-            >
-              {searchLoading ? <ActivityIndicator size="small" color={T.white} /> : <Search size={16} color={T.white} />}
-            </TouchableOpacity>
-          </View>
-
-          {searchError && (
-            <View style={s.searchErrRow}>
-              <AlertCircle size={13} color={T.red} />
-              <Text style={s.searchErrText}>{searchError}</Text>
-            </View>
-          )}
-
-          {searchResult && (
-            <View style={s.searchResult}>
-              <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <View style={s.searchResultTop}>
-                <Text style={s.searchResultEmoji}>{searchResult.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.searchResultName}>{searchResult.name}</Text>
-                  <Text style={s.searchResultSub}>{searchResult.surface}</Text>
-                </View>
-                <View style={[s.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
-                  <Text style={[s.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
-                </View>
-              </View>
-              <View style={s.searchResultStats}>
-                <View style={s.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={s.searchStatVal}>{searchResult.elevation}m</Text><Text style={s.searchStatLbl}>per rep</Text></View>
-                <View style={s.searchStat}><MapPin size={11} color={T.green} /><Text style={s.searchStatVal}>{searchResult.distance}km</Text><Text style={s.searchStatLbl}>away</Text></View>
-                <View style={s.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={s.searchStatVal}>{searchResult.repeats}×</Text><Text style={s.searchStatLbl}>recs</Text></View>
-                <View style={s.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={s.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={s.searchStatLbl}>total</Text></View>
-              </View>
-              <View style={s.actionRow}>
-                <TouchableOpacity
-                  style={[
-                    s.addPlanBtn,
-                    hillsInPlan.includes(searchResult.name) && { backgroundColor: T.greenDim, borderColor: T.green + "50" },
-                    justAdded === searchResult.name && { backgroundColor: T.green + "25" },
-                  ]}
-                  activeOpacity={hillsInPlan.includes(searchResult.name) ? 1 : 0.7}
-                  onPress={() => !hillsInPlan.includes(searchResult.name) && handleAddToPlan(searchResult)}
-                  disabled={hillsInPlan.includes(searchResult.name)}
-                >
-                  {justAdded === searchResult.name
-                    ? <CheckCircle size={14} color={T.green} />
-                    : hillsInPlan.includes(searchResult.name)
-                      ? <Check size={14} color={T.green} />
-                      : <PlusCircle size={14} color={T.blue} />}
-                  <Text style={[s.addPlanText, hillsInPlan.includes(searchResult.name) && { color: T.green }]}>
-                    {justAdded === searchResult.name ? "Added!" : hillsInPlan.includes(searchResult.name) ? "In your plan" : "Add to plan"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(searchResult.lat, searchResult.lng, searchResult.name)}>
-                  <Map size={14} color={T.green} />
-                  <Text style={s.mapBtnText}>Map</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.detailsBtn} activeOpacity={0.7}
-                  onPress={() => router.push({ pathname: "/hill-detail", params: { name: searchResult.name, location: summitGoal?.location ?? "", lat: searchResult.lat?.toString() ?? "", lng: searchResult.lng?.toString() ?? "", elevation: searchResult.elevation.toString(), distance: searchResult.distance.toString(), grade: searchResult.grade, surface: searchResult.surface, emoji: searchResult.emoji } })}
-                >
-                  <Info size={14} color={T.purple} />
-                  <Text style={s.detailsBtnText}>Details</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Fetch button */}
-        <TouchableOpacity
-          onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined)}
-          disabled={hillsLoading}
-          style={[s.fetchBtn, hillsLoading && { opacity: 0.7 }]}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={settingsChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
-            style={s.fetchBtnInner}
+        {/* START HIKING Hero */}
+        <Animated.View entering={FadeInDown.delay(40).duration(500)}>
+          <TouchableOpacity
+            onPress={() => router.push("/hike-tracking")}
+            activeOpacity={0.88}
+            style={styles.startHero}
           >
-            {hillsLoading ? (
-              <><ActivityIndicator size="small" color={T.green} /><Text style={s.fetchBtnText}>Finding hills…</Text></>
-            ) : settingsChanged ? (
-              <><Search size={15} color={T.orange} /><Text style={[s.fetchBtnText, { color: T.orange }]}>Search {localRadius}km{minElevation > 0 ? ` · min ${minElevation}m` : ""}</Text></>
-            ) : (
-              <>{nearbyHills.length > 0 ? <RefreshCw size={15} color={T.green} /> : <Zap size={15} color={T.green} />}
-                <Text style={s.fetchBtnText}>{nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}</Text></>
+            <LinearGradient
+              colors={["#1E8C4E", "#14703D"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.startHeroLeft}>
+              <View style={styles.startHeroIconWrap}>
+                <Footprints size={26} color="#fff" />
+              </View>
+              <View style={{ gap: 4 }}>
+                <Text style={styles.startHeroTitle}>Start Hiking</Text>
+                <Text style={styles.startHeroSub}>Track your route in real time</Text>
+              </View>
+            </View>
+            <View style={styles.startHeroArrow}>
+              <ChevronRight size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* YOUR HIKES */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+          <View style={styles.sectionHeader}>
+            <Footprints size={14} color={T.green} />
+            <Text style={styles.sectionTitle}>Your Hikes</Text>
+          </View>
+        </Animated.View>
+
+        {recentHikes.length === 0 ? (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyEmoji}>🥾</Text>
+              <Text style={styles.emptyTitle}>No hikes recorded yet</Text>
+              <Text style={styles.emptyText}>
+                Tap "Start Hiking" above to record your first hike. Your routes will appear here.
+              </Text>
+            </View>
+          </Animated.View>
+        ) : (
+          recentHikes.map((hike, i) => (
+            <Animated.View key={hike.id} entering={FadeInDown.delay(100 + i * 50).duration(400)}>
+              <View style={styles.hikeCard}>
+                <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.hikeCardTop}>
+                  <View style={styles.hikeIconWrap}>
+                    <Footprints size={16} color={T.green} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hikeName}>{hike.name}</Text>
+                    <Text style={styles.hikeDate}>{formatDate(hike.date)}</Text>
+                  </View>
+                  {hike.source === "tracked" && (
+                    <View style={styles.trackedBadge}>
+                      <Navigation size={10} color={T.blue} />
+                      <Text style={styles.trackedBadgeText}>GPS</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.hikeStats}>
+                  {hike.distance > 0 && (
+                    <View style={styles.hikeStat}>
+                      <MapPin size={11} color={T.textMuted} />
+                      <Text style={styles.hikeStatVal}>{hike.distance.toFixed(1)}km</Text>
+                    </View>
+                  )}
+                  {hike.elevationGain > 0 && (
+                    <View style={styles.hikeStat}>
+                      <TrendingUp size={11} color={T.orange} />
+                      <Text style={styles.hikeStatVal}>{hike.elevationGain}m</Text>
+                    </View>
+                  )}
+                  {hike.timeTaken > 0 && (
+                    <View style={styles.hikeStat}>
+                      <Clock size={11} color={T.textMuted} />
+                      <Text style={styles.hikeStatVal}>{formatDuration(hike.timeTaken)}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </Animated.View>
+          ))
+        )}
+
+        {/* SUGGESTED HILLS */}
+        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+          <View style={styles.sectionHeader}>
+            <Mountain size={14} color={T.orange} />
+            <Text style={styles.sectionTitle}>Suggested Hills</Text>
+            {nearbyHills.length > 0 && (
+              <Text style={styles.sectionSub}>{summitGoal?.location ?? ""}</Text>
             )}
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Outside-radius notice */}
-        {minElevation > 0 && nearbyHills.length > 0 && nearbyHills.some(h => h.distance > localRadius) && (
-          <View style={s.outsideRadiusNote}>
-            <Info size={13} color={T.orange} />
-            <Text style={s.outsideRadiusText}>
-              Some results are beyond {localRadius}km — no {minElevation}m+ hills were found closer.
-            </Text>
           </View>
-        )}
+        </Animated.View>
 
-        {/* Empty state */}
         {nearbyHills.length === 0 && !hillsLoading && (
-          <View style={s.emptyCard}>
-            <Text style={s.emptyEmoji}>🏔️</Text>
-            <Text style={s.emptyTitle}>No hills loaded yet</Text>
-            <Text style={s.emptyText}>
-              Tap "Find hills with AI" above to find real training hills near {summitGoal?.location ?? "your location"}.
-            </Text>
-          </View>
+          <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+            <View style={styles.noHillsCard}>
+              <Text style={styles.noHillsText}>
+                No hills loaded yet. Use "Find hills" below to discover training hills near you.
+              </Text>
+            </View>
+          </Animated.View>
         )}
 
-        {/* Hill cards */}
-        {displayedHills.map((hill, i) => {
+        {hillsLoading && (
+          <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={T.green} />
+              <Text style={styles.loadingText}>Finding hills near {summitGoal?.location ?? "you"}…</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {suggestedHills.map((hill, i) => {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
           const inPlan = hillsInPlan.includes(hill.name);
           const wasJustAdded = justAdded === hill.name;
           const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
+          if (isLocked) return null;
 
+          return (
+            <Animated.View key={hill.name + i} entering={FadeInDown.delay(140 + i * 50).duration(400)}>
+              <View style={styles.hillCard}>
+                <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.hillTop}>
+                  <View style={[styles.hillIconBox, { backgroundColor: gc + "18" }]}>
+                    <Text style={styles.hillEmoji}>{hill.emoji}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hillName}>{hill.name}</Text>
+                    <Text style={styles.hillSurface}>{hill.surface}</Text>
+                  </View>
+                  <View style={[styles.gradeBadge, { backgroundColor: gc + "20" }]}>
+                    <Text style={[styles.gradeText, { color: gc }]}>{hill.grade}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.hillStats}>
+                  <View style={styles.hillStat}>
+                    <MapPin size={12} color={T.green} />
+                    <Text style={styles.hillStatVal}>{hill.distance}km</Text>
+                    <Text style={styles.hillStatLbl}>away</Text>
+                  </View>
+                  <View style={styles.hillStat}>
+                    <TrendingUp size={12} color={T.orange} />
+                    <Text style={styles.hillStatVal}>{hill.elevation}m</Text>
+                    <Text style={styles.hillStatLbl}>per climb</Text>
+                  </View>
+                  <View style={styles.hillStat}>
+                    <Repeat size={12} color={T.textMuted} />
+                    <Text style={styles.hillStatVal}>{hill.repeats}×</Text>
+                    <Text style={styles.hillStatLbl}>repeats</Text>
+                  </View>
+                </View>
+
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
+                </View>
+                <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                    activeOpacity={inPlan ? 1 : 0.7}
+                    onPress={() => !inPlan && handleAddToPlan(hill)}
+                    disabled={inPlan}
+                  >
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.mapBtn}
+                    activeOpacity={0.7}
+                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
+                  >
+                    <Map size={14} color={T.green} />
+                    <Text style={styles.mapBtnText}>Map</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailsBtn}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/hill-detail",
+                        params: {
+                          name: hill.name,
+                          location: summitGoal?.location ?? "",
+                          lat: hill.lat?.toString() ?? "",
+                          lng: hill.lng?.toString() ?? "",
+                          elevation: hill.elevation.toString(),
+                          distance: hill.distance.toString(),
+                          grade: hill.grade,
+                          surface: hill.surface,
+                          emoji: hill.emoji,
+                        },
+                      })
+                    }
+                  >
+                    <Info size={14} color={T.purple} />
+                    <Text style={styles.detailsBtnText}>Details</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+          );
+        })}
+
+        {/* View all hills toggle */}
+        {nearbyHills.length > SUGGESTED_COUNT && (
+          <Animated.View entering={FadeInDown.delay(260).duration(400)}>
+            <TouchableOpacity
+              style={styles.viewAllBtn}
+              activeOpacity={0.75}
+              onPress={() => setAllHillsOpen(v => !v)}
+            >
+              <Text style={styles.viewAllText}>
+                {allHillsOpen ? "Show less" : `View all ${nearbyHills.length} hills`}
+              </Text>
+              <ChevronDown size={14} color={T.blue} style={allHillsOpen ? { transform: [{ rotate: "180deg" }] } : {}} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {allHillsOpen && allSortedHills.slice(SUGGESTED_COUNT).map((hill, idx) => {
+          const i = idx + SUGGESTED_COUNT;
+          const total = hill.elevation * hill.repeats;
+          const pct = Math.min(100, Math.round((total / weekTarget) * 100));
+          const gc = GRADE_COLOR[hill.grade] ?? T.blue;
+          const inPlan = hillsInPlan.includes(hill.name);
+          const wasJustAdded = justAdded === hill.name;
+          const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
           if (isLocked && i === FREE_HILLS_LIMIT) {
             return (
-              <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
-                <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={s.lockedCard}>
+              <Animated.View key={i} entering={FadeInDown.delay(60).duration(400)}>
+                <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.85} style={styles.lockedCard}>
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                  <View style={s.lockedIconWrap}><Lock size={22} color={T.green} /></View>
-                  <Text style={s.lockedTitle}>{nearbyHills.length - FREE_HILLS_LIMIT} more hills found nearby</Text>
-                  <Text style={s.lockedSub}>
-                    Upgrade to Summit Ready Pro to see all {nearbyHills.length} results, sort by elevation, and add any hill to your plan.
-                  </Text>
-                  <View style={s.lockedBtn}>
-                    <Zap size={13} color={T.bg} />
-                    <Text style={s.lockedBtnText}>Unlock all hills</Text>
-                  </View>
+                  <View style={styles.lockedIconWrap}><Lock size={22} color={T.green} /></View>
+                  <Text style={styles.lockedTitle}>{nearbyHills.length - FREE_HILLS_LIMIT} more hills found nearby</Text>
+                  <Text style={styles.lockedSub}>Upgrade to Summit Ready Pro to see all {nearbyHills.length} results.</Text>
+                  <View style={styles.lockedBtn}><Zap size={13} color={T.bg} /><Text style={styles.lockedBtnText}>Unlock all hills</Text></View>
                 </TouchableOpacity>
               </Animated.View>
             );
@@ -704,448 +544,291 @@ export default function TrailsScreen() {
           if (isLocked) return null;
 
           return (
-            <Animated.View key={i} entering={FadeInDown.delay(120 + i * 60).duration(400)}>
-              <View style={s.hillCard}>
+            <Animated.View key={hill.name + i} entering={FadeInDown.delay(60 + idx * 40).duration(400)}>
+              <View style={styles.hillCard}>
                 <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
-                {sortBy === "distance" && (
-                  <View style={s.rankBadge}><Text style={s.rankText}>#{i + 1} closest</Text></View>
-                )}
-                {sortBy === "elevation" && (
-                  <View style={[s.rankBadge, { backgroundColor: T.orangeDim }]}>
-                    <Text style={[s.rankText, { color: T.orange }]}>#{i + 1} highest</Text>
-                  </View>
-                )}
-                {sortBy === "popularity" && i === 0 && (
-                  <View style={[s.rankBadge, { backgroundColor: T.purpleDim }]}>
-                    <Text style={[s.rankText, { color: T.purple }]}>Most popular</Text>
-                  </View>
-                )}
-                <View style={s.hillTop}>
-                  <View style={[s.hillIconBox, { backgroundColor: gc + "18" }]}>
-                    <Text style={s.hillEmoji}>{hill.emoji}</Text>
+                <View style={styles.hillTop}>
+                  <View style={[styles.hillIconBox, { backgroundColor: gc + "18" }]}>
+                    <Text style={styles.hillEmoji}>{hill.emoji}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.hillName}>{hill.name}</Text>
-                    <Text style={s.hillSurface}>{hill.surface}</Text>
+                    <Text style={styles.hillName}>{hill.name}</Text>
+                    <Text style={styles.hillSurface}>{hill.surface}</Text>
                   </View>
-                  <View style={[s.gradeBadge, { backgroundColor: gc + "20" }]}>
-                    <Text style={[s.gradeText, { color: gc }]}>{hill.grade}</Text>
+                  <View style={[styles.gradeBadge, { backgroundColor: gc + "20" }]}>
+                    <Text style={[styles.gradeText, { color: gc }]}>{hill.grade}</Text>
                   </View>
                 </View>
-                <View style={s.hillStats}>
-                  <View style={s.hillStat}><MapPin size={12} color={T.green} /><Text style={s.hillStatVal}>{hill.distance}km</Text><Text style={s.hillStatLbl}>away</Text></View>
-                  <View style={s.hillStat}><TrendingUp size={12} color={T.orange} /><Text style={s.hillStatVal}>{hill.elevation}m</Text><Text style={s.hillStatLbl}>per climb</Text></View>
-                  <View style={s.hillStat}><Repeat size={12} color={T.textMuted} /><Text style={s.hillStatVal}>{hill.repeats}×</Text><Text style={s.hillStatLbl}>repeats</Text></View>
+                <View style={styles.hillStats}>
+                  <View style={styles.hillStat}><MapPin size={12} color={T.green} /><Text style={styles.hillStatVal}>{hill.distance}km</Text><Text style={styles.hillStatLbl}>away</Text></View>
+                  <View style={styles.hillStat}><TrendingUp size={12} color={T.orange} /><Text style={styles.hillStatVal}>{hill.elevation}m</Text><Text style={styles.hillStatLbl}>per climb</Text></View>
+                  <View style={styles.hillStat}><Repeat size={12} color={T.textMuted} /><Text style={styles.hillStatVal}>{hill.repeats}×</Text><Text style={styles.hillStatLbl}>repeats</Text></View>
                 </View>
-                <View style={s.repeatBox}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                    <Text style={s.repeatTitle}>{hill.repeats}× repeats = {total}m total elevation</Text>
-                    <Text style={[s.pctText, { color: pct >= 80 ? T.green : T.orange }]}>{pct}%</Text>
-                  </View>
-                  <View style={s.progressTrack}>
-                    <View style={[s.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
-                  </View>
-                  <Text style={s.progressCaption}>of this week's elevation target</Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
                 </View>
-                <View style={s.actionRow}>
+                <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
+                <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={[s.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }, wasJustAdded && { backgroundColor: T.green + "25" }]}
+                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
                     activeOpacity={inPlan ? 1 : 0.7}
                     onPress={() => !inPlan && handleAddToPlan(hill)}
                     disabled={inPlan}
                   >
                     {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                    <Text style={[s.addPlanText, inPlan && { color: T.green }]}>
+                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
                       {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}>
-                    <Map size={14} color={T.green} />
-                    <Text style={s.mapBtnText}>Map</Text>
+                  <TouchableOpacity style={styles.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}>
+                    <Map size={14} color={T.green} /><Text style={styles.mapBtnText}>Map</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={s.detailsBtn} activeOpacity={0.7}
+                    style={styles.detailsBtn}
+                    activeOpacity={0.7}
                     onPress={() => router.push({ pathname: "/hill-detail", params: { name: hill.name, location: summitGoal?.location ?? "", lat: hill.lat?.toString() ?? "", lng: hill.lng?.toString() ?? "", elevation: hill.elevation.toString(), distance: hill.distance.toString(), grade: hill.grade, surface: hill.surface, emoji: hill.emoji } })}
                   >
-                    <Info size={14} color={T.purple} />
-                    <Text style={s.detailsBtnText}>Details</Text>
+                    <Info size={14} color={T.purple} /><Text style={styles.detailsBtnText}>Details</Text>
                   </TouchableOpacity>
                 </View>
-                {wasJustAdded && (
-                  <View style={s.impactNote}>
-                    <Zap size={12} color={T.green} />
-                    <Text style={s.impactText}>Plan updated — hill sessions recalculated for {hill.name}</Text>
-                  </View>
-                )}
               </View>
             </Animated.View>
           );
         })}
-      </View>
-    );
-  }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={[
-          s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 20, paddingBottom: 120 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={s.eyebrow}>{isSummit ? "SUMMIT MODE" : "EXPLORE MODE"}</Text>
-            <Text style={s.title}>Hills</Text>
-          </View>
-          <TouchableOpacity style={s.logFab} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
-            <Plus size={15} color={T.green} />
-            <Text style={s.logFabText}>Log session</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Stats strip */}
-        <Animated.View entering={FadeInDown.delay(60).duration(600)} style={s.statsStrip}>
-          <View style={s.statItem}>
-            <Text style={[s.statVal, { color: T.blue }]}>{savedTrailIds.length}</Text>
-            <Text style={s.statLbl}>Saved</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statVal, { color: T.green }]}>{completedTrailIds.length}</Text>
-            <Text style={s.statLbl}>Completed</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statVal, { color: T.purple }]}>{customRoutes.length}</Text>
-            <Text style={s.statLbl}>Custom</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statVal, { color: T.orange }]}>{exploreHikes.length}</Text>
-            <Text style={s.statLbl}>Sessions</Text>
+        {/* SEARCH HILLS */}
+        <Animated.View entering={FadeInDown.delay(160).duration(400)}>
+          <View style={styles.sectionHeader}>
+            <Search size={14} color={T.purple} />
+            <Text style={styles.sectionTitle}>Search Hills</Text>
           </View>
         </Animated.View>
 
-        {/* Explore mode: curated hills browse inline */}
-        {!isSummit && (
-          <Animated.View entering={FadeInDown.delay(80).duration(600)} style={{ gap: 10 }}>
-
-            {/* Start hiking banner */}
-            <TouchableOpacity style={s.startHikingCard} onPress={() => router.push("/hike-tracking")} activeOpacity={0.85}>
-              <View style={s.startHikingIconWrap}>
-                <Footprints size={20} color="#fff" />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={s.startHikingTitle}>Start Hiking</Text>
-                <Text style={s.startHikingSub}>Track your route — help others discover great hikes</Text>
-              </View>
-              <ChevronRight size={16} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Quick links: Saved · Completed · Create */}
-            <View style={s.quickRow}>
-              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-saved")} activeOpacity={0.82}>
-                <Text style={s.quickEmoji}>🔖</Text>
-                <Text style={s.quickLabel}>Saved</Text>
-                {savedTrailIds.length > 0 && (
-                  <View style={[s.quickBadge, { backgroundColor: T.blueDim }]}>
-                    <Text style={[s.quickBadgeText, { color: T.blue }]}>{savedTrailIds.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-completed")} activeOpacity={0.82}>
-                <Text style={s.quickEmoji}>✅</Text>
-                <Text style={s.quickLabel}>Completed</Text>
-                {completedTrailIds.length > 0 && (
-                  <View style={[s.quickBadge, { backgroundColor: T.greenDim }]}>
-                    <Text style={[s.quickBadgeText, { color: T.green }]}>{completedTrailIds.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity style={s.quickCard} onPress={() => router.push("/trails-create")} activeOpacity={0.82}>
-                <Text style={s.quickEmoji}>✏️</Text>
-                <Text style={s.quickLabel}>Create</Text>
-                {customRoutes.length > 0 && (
-                  <View style={[s.quickBadge, { backgroundColor: T.purpleDim }]}>
-                    <Text style={[s.quickBadgeText, { color: T.purple }]}>{customRoutes.length}</Text>
-                  </View>
-                )}
+        <Animated.View entering={FadeInDown.delay(180).duration(400)}>
+          <View style={styles.searchCard}>
+            <Text style={styles.searchHint}>Know a hill you want to train on? Search by name.</Text>
+            <View style={styles.searchRow}>
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+                placeholder="e.g. Pendle Hill, Ben Nevis…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={handleHillSearch}
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={handleHillSearch}
+                disabled={searchLoading || searchText.trim().length < 2}
+                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                activeOpacity={0.75}
+              >
+                {searchLoading
+                  ? <ActivityIndicator size="small" color={T.white} />
+                  : <Search size={16} color={T.white} />}
               </TouchableOpacity>
             </View>
 
-            {HillsSection()}
-          </Animated.View>
-        )}
+            {searchError && (
+              <View style={styles.searchErrRow}>
+                <AlertCircle size={13} color={T.red} />
+                <Text style={styles.searchErrText}>{searchError}</Text>
+              </View>
+            )}
 
-        {/* Recent activity — always shown */}
-        <Animated.View entering={FadeInDown.delay(120).duration(600)} style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Recent activity</Text>
-          {exploreHikes.length > 0 && (
-            <TouchableOpacity onPress={() => setLogVisible(true)} style={s.addBtn}>
-              <Plus size={13} color={T.green} />
-              <Text style={s.addBtnText}>Log</Text>
-            </TouchableOpacity>
-          )}
+            {searchResult && (
+              <View style={styles.searchResult}>
+                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.searchResultTop}>
+                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
+                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
+                  </View>
+                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
+                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
+                  </View>
+                </View>
+                <View style={styles.searchResultStats}>
+                  <View style={styles.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.searchStatVal}>{searchResult.elevation}m</Text><Text style={styles.searchStatLbl}>per rep</Text></View>
+                  <View style={styles.searchStat}><MapPin size={11} color={T.green} /><Text style={styles.searchStatVal}>{searchResult.distance}km</Text><Text style={styles.searchStatLbl}>away</Text></View>
+                  <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
+                  <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddSearchResult}
+                  disabled={searchAdded}
+                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.75}
+                >
+                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
+                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
+                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </Animated.View>
 
-        {exploreHikes.length === 0 ? (
-          <Animated.View entering={FadeInDown.delay(140).duration(600)} style={s.emptyActivity}>
-            <Compass size={28} color={T.textDim} />
-            <Text style={s.emptyActivityTitle}>No sessions logged yet</Text>
-            <Text style={s.emptyActivityBody}>Tap "Log session" above after a hike to record your sessions.</Text>
-          </Animated.View>
-        ) : (
-          <View style={s.activityList}>
-            {exploreHikes.map((hike, i) => (
-              <Animated.View key={hike.id} entering={FadeInDown.delay(140 + i * 40).duration(500)}>
-                <LoggedHikeRow hike={hike} onDelete={deleteExploreHike} />
-              </Animated.View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+        {/* FIND HILLS (collapsible) */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+          <TouchableOpacity
+            style={styles.findHillsToggle}
+            activeOpacity={0.75}
+            onPress={() => setFiltersOpen(v => !v)}
+          >
+            <View style={styles.findHillsToggleLeft}>
+              <Filter size={14} color={T.green} />
+              <Text style={styles.findHillsToggleText}>Find hills with AI</Text>
+              {nearbyHills.length > 0 && (
+                <View style={styles.hillCountBadge}>
+                  <Text style={styles.hillCountText}>{nearbyHills.length}</Text>
+                </View>
+              )}
+            </View>
+            <ChevronDown size={14} color={T.textMuted} style={filtersOpen ? { transform: [{ rotate: "180deg" }] } : {}} />
+          </TouchableOpacity>
+        </Animated.View>
 
-      <LogHikeModal visible={logVisible} onClose={() => setLogVisible(false)} />
+        {filtersOpen && (
+          <Animated.View entering={FadeInDown.duration(300)}>
+            <View style={styles.controlCard}>
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <Radio size={13} color={T.green} />
+                  <Text style={styles.controlLabel}>Search radius</Text>
+                </View>
+                <View style={styles.radiusStepper}>
+                  <TouchableOpacity onPress={() => stepRadius(-1)} disabled={localRadius <= RADIUS_STEPS[0]} style={[styles.stepBtn, localRadius <= RADIUS_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Minus size={14} color={T.white} />
+                  </TouchableOpacity>
+                  <View style={styles.radiusValueBox}>
+                    <Text style={[styles.radiusValue, radiusChanged && { color: T.orange }]}>{localRadius}<Text style={styles.radiusUnit}> km</Text></Text>
+                  </View>
+                  <TouchableOpacity onPress={() => stepRadius(1)} disabled={localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]} style={[styles.stepBtn, localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Plus size={14} color={T.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <Mountain size={13} color={T.orange} />
+                  <Text style={styles.controlLabel}>Min elevation</Text>
+                </View>
+                <View style={styles.radiusStepper}>
+                  <TouchableOpacity onPress={() => stepMinElev(-1)} disabled={minElevation <= ELEV_STEPS[0]} style={[styles.stepBtn, minElevation <= ELEV_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Minus size={14} color={T.white} />
+                  </TouchableOpacity>
+                  <View style={styles.radiusValueBox}>
+                    {minElevation === 0 ? <Text style={styles.radiusValue}>Any</Text> : <Text style={[styles.radiusValue, { color: T.orange }]}>{minElevation}<Text style={styles.radiusUnit}>m+</Text></Text>}
+                  </View>
+                  <TouchableOpacity onPress={() => stepMinElev(1)} disabled={minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1]} style={[styles.stepBtn, minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Plus size={14} color={T.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <SlidersHorizontal size={13} color={T.blue} />
+                  <Text style={styles.controlLabel}>Sort by</Text>
+                </View>
+                <View style={styles.sortChips}>
+                  {(["distance", "elevation", "popularity"] as SortKey[]).map(key => (
+                    <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={[styles.sortChip, sortBy === key && styles.sortChipActive]} activeOpacity={0.7}>
+                      <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>
+                        {key === "distance" ? "Nearest" : key === "elevation" ? "Highest" : "Popular"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined)}
+              disabled={hillsLoading}
+              style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={settingsChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+                style={styles.fetchBtnInner}
+              >
+                {hillsLoading ? (
+                  <><ActivityIndicator size="small" color={T.green} /><Text style={styles.fetchBtnText}>Finding hills…</Text></>
+                ) : settingsChanged ? (
+                  <><Search size={15} color={T.orange} /><Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km{minElevation > 0 ? ` · min ${minElevation}m` : ""}</Text></>
+                ) : (
+                  <>{nearbyHills.length > 0 ? <RefreshCw size={15} color={T.green} /> : <Zap size={15} color={T.green} />}<Text style={styles.fetchBtnText}>{nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}</Text></>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+      </ScrollView>
     </LinearGradient>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: 18 },
 
-const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, gap: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
+  locRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  locEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  locInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.white, backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.green + "50", paddingHorizontal: 10, paddingVertical: 6 },
+  locActionBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border },
 
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
-  logFab: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40",
-    paddingHorizontal: 14, paddingVertical: 9,
+  startHero: {
+    borderRadius: 20, overflow: "hidden", marginBottom: 20,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingVertical: 18,
   },
-  logFabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
+  startHeroLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  startHeroIconWrap: { width: 48, height: 48, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
+  startHeroTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
+  startHeroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  startHeroArrow: { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
 
-  statsStrip: {
-    flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
-    borderWidth: 1, borderColor: T.border, padding: 14, justifyContent: "space-around",
-  },
-  statItem: { alignItems: "center", gap: 3 },
-  statVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.blue },
-  statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
-  statDivider: { width: 1, backgroundColor: T.border },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10, marginTop: 4 },
+  sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: 0.5, flex: 1 },
+  sectionSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
 
-  quickRow: { flexDirection: "row", gap: 8 },
-  quickCard: {
-    flex: 1, backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    padding: 12, alignItems: "center", gap: 4, position: "relative",
-  },
-  quickEmoji: { fontSize: 20 },
-  quickLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  quickBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  quickBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  emptyCard: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.cardBorder, padding: 28, alignItems: "center", gap: 10, marginBottom: 16 },
+  emptyEmoji: { fontSize: 36 },
+  emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
 
-  browseHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  browseHeading: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1, textTransform: "uppercase" },
-  browseSearchRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-  },
-  browseSearchInput: {
-    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  browseDiffRow: { flexDirection: "row", gap: 6 },
-  browseDiffChip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 12,
-    borderWidth: 1, borderColor: T.border, backgroundColor: T.surface,
-  },
-  browseDiffChipActive: { borderColor: T.green + "60", backgroundColor: T.greenDim },
-  browseDiffText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  browseDiffTextActive: { color: T.green },
-  browseCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
-  browseEmpty: { paddingVertical: 32, alignItems: "center", gap: 6 },
-  browseEmptyTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
-  browseEmptyBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+  noHillsCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12 },
+  noHillsText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
 
-  startHikingCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 16,
-    backgroundColor: T.green,
-    paddingVertical: 16, paddingHorizontal: 16,
-  },
-  startHikingIconWrap: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.15)",
-    alignItems: "center", justifyContent: "center",
-  },
-  startHikingTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
-  startHikingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, marginBottom: 8 },
+  loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 
-  createCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 14, overflow: "hidden",
-  },
-  createIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  createTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  createSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  hikeCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.green + "30", padding: 14, marginBottom: 10, overflow: "hidden", gap: 10 },
+  hikeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  hikeIconWrap: { width: 36, height: 36, borderRadius: 11, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
+  hikeName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  hikeDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  trackedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: T.blueDim, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 },
+  trackedBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.blue },
+  hikeStats: { flexDirection: "row", gap: 14 },
+  hikeStat: { flexDirection: "row", alignItems: "center", gap: 5 },
+  hikeStatVal: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
 
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
-  addBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: T.greenDim, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: T.green + "30",
-  },
-  addBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
-  emptyActivity: { alignItems: "center", paddingVertical: 32, gap: 8 },
-  emptyActivityTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
-  emptyActivityBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
-  activityList: { gap: 8 },
-
-  // Hills
-  hillsHeader: { marginBottom: 10 },
-  locRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  locText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
-  locEditRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  locInput: {
-    flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.white,
-    backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.green + "50",
-    paddingHorizontal: 10, paddingVertical: 6,
-  },
-  locActionBtn: {
-    width: 30, height: 30, alignItems: "center", justifyContent: "center",
-    borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
-  },
-
-  // Location control row (inside controlCard)
-  locControlRight: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, maxWidth: "60%" },
-  locControlDisplay: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
-  locControlText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted, flexShrink: 1 },
-  locControlInput: {
-    fontSize: 13, fontFamily: "Inter_400Regular", color: T.white,
-    backgroundColor: T.surface, borderRadius: 9, borderWidth: 1, borderColor: T.green + "50",
-    paddingHorizontal: 9, paddingVertical: 5, minWidth: 100, flexShrink: 1,
-  },
-  locControlBtn: {
-    width: 28, height: 28, alignItems: "center", justifyContent: "center",
-    borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, flexShrink: 0,
-  },
-  locGpsBtn: {
-    width: 34, height: 34, alignItems: "center", justifyContent: "center",
-    borderRadius: 10, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "50", flexShrink: 0,
-  },
-
-  ctxCard: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.green + "30",
-    overflow: "hidden", marginBottom: 10,
-  },
-  ctxRow: { flexDirection: "row", paddingVertical: 14 },
-  ctxItem: { flex: 1, alignItems: "center", gap: 3 },
-  ctxVal: { fontSize: 19, fontFamily: "Inter_700Bold", color: T.white },
-  ctxLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
-  ctxDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
-
-  controlCard: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border,
-    overflow: "hidden", marginBottom: 10, paddingHorizontal: 16, paddingVertical: 14,
-  },
-  controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 40 },
-  controlDivider: { height: 1, backgroundColor: T.border, marginVertical: 12 },
-  controlLabelRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  controlLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepBtn: {
-    width: 32, height: 32, borderRadius: 10, backgroundColor: T.surface,
-    borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center",
-  },
-  stepValBox: { minWidth: 64, alignItems: "center" },
-  stepVal: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
-  stepUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  sortChips: { flexDirection: "row", gap: 6 },
-  sortChip: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-    borderWidth: 1, borderColor: T.border, backgroundColor: T.surface,
-  },
-  sortChipActive: { borderColor: T.blue + "60", backgroundColor: T.blueDim },
-  sortChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  sortChipTextActive: { color: T.blue },
-
-  searchCard: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.purple + "35",
-    overflow: "hidden", marginBottom: 10, paddingHorizontal: 16, paddingVertical: 14, gap: 10,
-  },
-  searchLabelRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  searchLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
-  searchHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17, marginTop: -4 },
-  searchRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  searchInput: {
-    flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.white,
-    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.purple + "40",
-    paddingHorizontal: 12, paddingVertical: 10,
-  },
-  searchBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: T.purple, alignItems: "center", justifyContent: "center" },
-  searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  searchErrText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, flex: 1 },
-  searchResult: { borderRadius: 14, borderWidth: 1, borderColor: T.purple + "40", overflow: "hidden", padding: 12, gap: 10 },
-  searchResultTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  searchResultEmoji: { fontSize: 24 },
-  searchResultName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  searchResultSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  searchGradeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
-  searchGradeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  searchResultStats: { flexDirection: "row", gap: 12 },
-  searchStat: { flexDirection: "row", alignItems: "center", gap: 4 },
-  searchStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
-  searchStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
-  fetchBtn: { borderRadius: 14, overflow: "hidden", marginBottom: 10 },
-  fetchBtnInner: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 13, borderWidth: 1, borderColor: T.green + "40", borderRadius: 14,
-  },
-  fetchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
-  outsideRadiusNote: {
-    flexDirection: "row", alignItems: "flex-start", gap: 8,
-    backgroundColor: T.orangeDim, borderRadius: 12, borderWidth: 1,
-    borderColor: T.orange + "40", padding: 12, marginBottom: 10,
-  },
-  outsideRadiusText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.orange, lineHeight: 17 },
-  emptyCard: {
-    backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border,
-    padding: 32, alignItems: "center", gap: 10, marginBottom: 10,
-  },
-  emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
-  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 20 },
-  lockedCard: {
-    borderRadius: 18, borderWidth: 1, borderColor: T.green + "40",
-    backgroundColor: T.card, overflow: "hidden", alignItems: "center", padding: 24, gap: 10, marginBottom: 8,
-  },
-  lockedIconWrap: {
-    width: 52, height: 52, borderRadius: 16, backgroundColor: T.greenDim,
-    borderWidth: 1, borderColor: T.green + "50", alignItems: "center", justifyContent: "center",
-  },
-  lockedTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
-  lockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
-  lockedBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4,
-  },
-  lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
-  hillCard: {
-    backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border,
-    padding: 16, marginBottom: 10, overflow: "hidden", gap: 12,
-  },
-  rankBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, backgroundColor: T.greenDim, marginBottom: -4 },
-  rankText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
+  hillCard: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12, overflow: "hidden", gap: 12 },
   hillTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   hillIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   hillEmoji: { fontSize: 22 },
@@ -1157,32 +840,71 @@ const s = StyleSheet.create({
   hillStat: { flexDirection: "row", alignItems: "center", gap: 5 },
   hillStatVal: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
   hillStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  repeatBox: { backgroundColor: T.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: T.border },
-  repeatTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
-  pctText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  progressTrack: { height: 6, backgroundColor: T.border, borderRadius: 3, overflow: "hidden", marginBottom: 5 },
-  progressFill: { height: 6, borderRadius: 3 },
-  progressCaption: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  progressTrack: { height: 5, backgroundColor: T.border, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: 5, borderRadius: 3 },
+  progressCaption: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: -4 },
+
+  viewAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginBottom: 4 },
+  viewAllText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.blue },
+
   actionRow: { flexDirection: "row", gap: 8 },
-  addPlanBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: T.blue + "40", backgroundColor: T.blueDim,
-  },
+  addPlanBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: T.blue + "40", backgroundColor: T.blueDim },
   addPlanText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.blue },
-  mapBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40",
-  },
+  mapBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40" },
   mapBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
-  detailsBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1,
-    borderColor: T.purple + "40", backgroundColor: T.purpleDim,
-  },
+  detailsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: T.purple + "40", backgroundColor: T.purpleDim },
   detailsBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
-  impactNote: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 10, paddingVertical: 8, backgroundColor: T.greenDim, borderRadius: 10, marginTop: -4,
-  },
-  impactText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.green, flex: 1 },
+
+  searchCard: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.purple + "35", overflow: "hidden", marginBottom: 12, paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  searchHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  searchRow: { flexDirection: "row", gap: 8 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.white, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14, paddingVertical: 10 },
+  searchBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: T.purple, alignItems: "center", justifyContent: "center" },
+  searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  searchErrText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, flex: 1 },
+  searchResult: { borderRadius: 14, borderWidth: 1, borderColor: T.purple + "35", overflow: "hidden", padding: 12, gap: 10 },
+  searchResultTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  searchResultEmoji: { fontSize: 22 },
+  searchResultName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  searchResultSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  searchGradeBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
+  searchGradeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  searchResultStats: { flexDirection: "row", gap: 16 },
+  searchStat: { flexDirection: "row", alignItems: "center", gap: 4 },
+  searchStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  searchStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  searchAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: T.purple + "50", backgroundColor: T.purpleDim },
+  searchAddText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
+
+  findHillsToggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.green + "35", paddingHorizontal: 16, paddingVertical: 13, marginBottom: 10 },
+  findHillsToggleLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  findHillsToggleText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  hillCountBadge: { backgroundColor: T.greenDim, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  hillCountText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.green },
+
+  controlCard: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.cardBorder, overflow: "hidden", marginBottom: 10, paddingHorizontal: 16, paddingVertical: 14 },
+  controlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 40 },
+  controlDivider: { height: 1, backgroundColor: T.border, marginVertical: 10 },
+  controlLabelRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  controlLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  radiusStepper: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center" },
+  radiusValueBox: { minWidth: 64, alignItems: "center" },
+  radiusValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
+  radiusUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  sortChips: { flexDirection: "row", gap: 6 },
+  sortChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface },
+  sortChipActive: { borderColor: T.blue + "60", backgroundColor: T.blueDim },
+  sortChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  sortChipTextActive: { color: T.blue },
+  fetchBtn: { borderRadius: 14, overflow: "hidden", marginBottom: 14 },
+  fetchBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderWidth: 1, borderColor: T.green + "40", borderRadius: 14 },
+  fetchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+
+  lockedCard: { borderRadius: 18, borderWidth: 1, borderColor: T.green + "40", backgroundColor: T.card, overflow: "hidden", alignItems: "center", padding: 24, gap: 10, marginBottom: 8 },
+  lockedIconWrap: { width: 52, height: 52, borderRadius: 16, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "50", alignItems: "center", justifyContent: "center" },
+  lockedTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
+  lockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+  lockedBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
+  lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 });
