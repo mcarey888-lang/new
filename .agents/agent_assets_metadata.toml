@@ -125,3 +125,9 @@ id = "xGAAu9g6rXw_DZuf3NSbk"
 uri = "file://screenshots/screen-log-kili.jpg"
 type = "image"
 title = "Session Log — 12 sessions, real hill data"
+
+[[outputs]]
+id = "2ZEXpgo61wbiyMu2neH6e"
+uri = "file://summit-ready-build.tar.gz"
+type = "unspecified"
+title = "SummitReady — app source (ready to build)"
