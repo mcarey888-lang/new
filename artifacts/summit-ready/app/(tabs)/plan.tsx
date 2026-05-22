@@ -706,6 +706,8 @@ function WeekCard({
                   ? "treadmill"
                   : gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster")
                   ? "stepper"
+                  : s.type === "cardio"
+                  ? "treadmill"
                   : undefined;
               const sessionMidDur = parseDurationMidpoint(s.duration ?? "30–40 min");
               const effectiveTargetKm =
