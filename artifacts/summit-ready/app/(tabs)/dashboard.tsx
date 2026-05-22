@@ -507,12 +507,12 @@ export default function DashboardScreen() {
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.push("/hike-tracking")}
+          onPress={() => router.push("/(tabs)/hills")}
           activeOpacity={0.8}
           style={styles.startHikingSecondary}
         >
           <Footprints size={16} color={T.green} />
-          <Text style={styles.startHikingSecondaryText}>Start Hiking without a plan</Text>
+          <Text style={styles.startHikingSecondaryText}>Track a hike</Text>
         </TouchableOpacity>
       </View>
     );
@@ -674,24 +674,6 @@ export default function DashboardScreen() {
               </View>
             </View>
           </View>
-        </Animated.View>
-
-        {/* Start Hiking quick-action */}
-        <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-          <TouchableOpacity
-            onPress={() => router.push("/hike-tracking")}
-            activeOpacity={0.85}
-            style={styles.startHikingBanner}
-          >
-            <View style={styles.startHikingIconWrap}>
-              <Footprints size={18} color={T.white} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.startHikingBannerTitle}>Start Hiking</Text>
-              <Text style={styles.startHikingBannerSub}>Track your route — help others discover great hikes</Text>
-            </View>
-            <ChevronRight size={18} color={T.white} />
-          </TouchableOpacity>
         </Animated.View>
 
         {/* Stats Grid */}

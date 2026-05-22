@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Home, Calendar, PenLine, Compass, User, Map, Trophy } from "lucide-react-native";
+import { Home, Calendar, PenLine, Footprints, User, Map, Trophy } from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -102,10 +102,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trails"
         options={{
-          title: "Hills",
+          title: "Track",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Compass size={20} color={color} />
+              <Footprints size={20} color={color} />
             </View>
           ),
         }}
