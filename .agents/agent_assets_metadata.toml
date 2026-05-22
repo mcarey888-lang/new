@@ -22,7 +22,7 @@ title = "Climber silhouette ascending ridge"
 id = "neVNzkxcGmWjQ3nBJ2x_h"
 uri = "file://screenshots/screen-home.jpg"
 type = "image"
-title = "1. Home — Hero screen"
+title = "Screenshot 1 — Home Screen"
 
 [[outputs]]
 id = "3A8JTcZACexvUHRbcSnSv"
@@ -34,19 +34,19 @@ title = "2. Questionnaire — Summit goal"
 id = "MBbTb2A3i58fnMCnyRu_e"
 uri = "file://screenshots/screen-setup.jpg"
 type = "image"
-title = "3. Setup — Fitness assessment"
+title = "Screenshot 2 — Fitness Setup"
 
 [[outputs]]
 id = "Unk3IC8_wgRPCP8Jenll4"
 uri = "file://screenshots/screen-hills.jpg"
 type = "image"
-title = "4. Nearby Hills finder"
+title = "Screenshot 3 — Nearby Hills"
 
 [[outputs]]
 id = "YG8OYEtfzTAHuGOtnSmXH"
 uri = "file://screenshots/screen-paywall.jpg"
 type = "image"
-title = "5. Paywall — Pricing"
+title = "Screenshot 4 — Premium Plan"
 
 [[outputs]]
 id = "hgCDaIHp-R-Ho1pWiYK8V"
