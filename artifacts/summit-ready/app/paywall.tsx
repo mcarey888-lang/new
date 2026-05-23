@@ -115,7 +115,11 @@ export default function PaywallScreen() {
       setRestoreSuccess(true);
       setTimeout(() => {
         setRestoreSuccess(false);
-        router.back();
+        if (fromQuestionnaire) {
+          router.replace("/setup");
+        } else {
+          router.back();
+        }
       }, 1500);
     } catch {
       setError("Restore failed. Please try again.");
