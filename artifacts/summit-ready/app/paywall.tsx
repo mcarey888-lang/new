@@ -272,7 +272,7 @@ export default function PaywallScreen() {
                 {isPurchasing
                   ? "Processing…"
                   : fromQuestionnaire
-                    ? "Get my personalised training schedule"
+                    ? "Start My Training Plan"
                     : "Start 7-Day Free Trial"}
               </Text>
             </LinearGradient>
