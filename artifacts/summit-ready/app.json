@@ -25,7 +25,10 @@
       "package": "uk.summitready.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "web": {
@@ -42,7 +45,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan."
+          "locationWhenInUsePermission": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan.",
+          "locationAlwaysAndWhenInUsePermission": "SummitReady tracks your location in the background so your hike continues recording when your screen is locked.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],

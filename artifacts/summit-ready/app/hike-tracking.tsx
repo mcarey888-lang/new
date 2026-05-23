@@ -14,9 +14,13 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
+import * as TaskManager from "expo-task-manager";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppState,
+  AppStateStatus,
   Platform,
   ScrollView,
   StyleSheet,
@@ -103,14 +107,39 @@ interface TrackPoint {
   lon: number;
   alt: number | null;
   ts: number;
+  speed?: number | null;
 }
 
 const ALTITUDE_NOISE_THRESHOLD = 2;
+const HIKE_LOCATION_TASK = "hike-location-task";
+const BG_POINTS_KEY = "hike_bg_points";
 
 function safeRemoveSub(sub: Location.LocationSubscription | null) {
   if (!sub) return;
   try { sub.remove(); } catch { /* expo-location web: LocationEventEmitter.removeSubscription missing */ }
 }
+
+// ── Background location task (runs even when phone is locked) ────────────────
+// Must be defined at module scope, before any component renders.
+TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
+  if (error) return;
+  const { locations } = data as { locations: Location.LocationObject[] };
+  if (!locations?.length) return;
+  try {
+    const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
+    const existing: TrackPoint[] = raw ? JSON.parse(raw) : [];
+    for (const loc of locations) {
+      existing.push({
+        lat: loc.coords.latitude,
+        lon: loc.coords.longitude,
+        alt: loc.coords.altitude,
+        ts: loc.timestamp,
+        speed: loc.coords.speed,
+      });
+    }
+    await AsyncStorage.setItem(BG_POINTS_KEY, JSON.stringify(existing));
+  } catch { /* ignore */ }
+});
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -145,6 +174,13 @@ export default function HikeTrackingScreen() {
   const webViewRef        = useRef<WebView>(null);
   const webMapContainerRef = useRef<View>(null);
   const iframeRef          = useRef<any>(null);
+
+  // ── Timestamp refs for background-safe timer ─────────────────────────────
+  // Timer computed as Date.now() - trackStartMsRef - totalPausedMsRef
+  // so it continues correctly even if the JS interval was paused by the OS.
+  const trackStartMsRef  = useRef<number>(0);
+  const totalPausedMsRef = useRef<number>(0);
+  const pauseStartMsRef  = useRef<number>(0);
 
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
@@ -198,6 +234,11 @@ export default function HikeTrackingScreen() {
     return () => {
       timerRef.current && clearInterval(timerRef.current);
       safeRemoveSub(locationSubRef.current);
+      if (Platform.OS !== "web") {
+        Location.hasStartedLocationUpdatesAsync(HIKE_LOCATION_TASK)
+          .then(started => { if (started) Location.stopLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => {}); })
+          .catch(() => {});
+      }
     };
   }, []);
 
@@ -211,96 +252,219 @@ export default function HikeTrackingScreen() {
     }
   }, []);
 
+  // ── Sync background-collected GPS points into foreground state ────────────
+  const syncBgPoints = useCallback(async () => {
+    if (statusRef.current !== "tracking") return;
+    try {
+      const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
+      if (!raw) return;
+      await AsyncStorage.removeItem(BG_POINTS_KEY);
+      const newPts: TrackPoint[] = JSON.parse(raw);
+      if (newPts.length === 0) return;
+      const pts = trackPoints.current;
+      const lastTs = pts.length > 0 ? pts[pts.length - 1].ts : 0;
+      const fresh = newPts.filter(p => p.ts > lastTs);
+      for (const p of fresh) {
+        if (p.speed != null && p.speed >= 0) setCurrentSpeedKmh(p.speed * 3.6);
+        if (p.alt != null) {
+          setCurrentAltM(p.alt);
+          if (lastAltRef.current !== null) {
+            const delta = p.alt - lastAltRef.current;
+            if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
+              if (delta > 0) setElevGainM(g => g + delta);
+              else           setElevLossM(l => l + Math.abs(delta));
+              lastAltRef.current = p.alt;
+            }
+          } else {
+            lastAltRef.current = p.alt;
+          }
+        }
+        if (pts.length > 0) {
+          const prev = pts[pts.length - 1];
+          const d = haversineKm(prev.lat, prev.lon, p.lat, p.lon);
+          if (d > 0.003) setDistanceKm(km => km + d);
+        }
+        pts.push({ lat: p.lat, lon: p.lon, alt: p.alt, ts: p.ts });
+        sendPointToMap(p.lat, p.lon);
+      }
+    } catch { /* ignore */ }
+  }, [sendPointToMap]);
+
+  // ── Sync when app returns to foreground (e.g. from lock screen) ──────────
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") syncBgPoints();
+    });
+    return () => sub.remove();
+  }, [syncBgPoints]);
+
+  // ── Periodic sync while actively tracking (fills in real-time UI) ─────────
+  useEffect(() => {
+    if (status !== "tracking") return;
+    const id = setInterval(syncBgPoints, 4000);
+    return () => clearInterval(id);
+  }, [status, syncBgPoints]);
+
   // ── Core tracking logic ──────────────────────────────────────────────────
+
   const startTracking = useCallback(async () => {
     if (!routeName.trim()) { setNameError(true); return; }
     setNameLocked(true);
     setNameError(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Request background location permission (needed for lock-screen tracking)
+    if (Platform.OS !== "web") {
+      await Location.requestBackgroundPermissionsAsync().catch(() => {});
+    }
+
     statusRef.current = "tracking";
     setStatus("tracking");
 
-    timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
+    // Timestamp-based timer — survives OS throttling of JS intervals
+    trackStartMsRef.current  = Date.now();
+    totalPausedMsRef.current = 0;
+    await AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
 
-    const sub = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
-      (loc) => {
-        if (statusRef.current !== "tracking") return;
-        const { latitude, longitude, altitude, speed } = loc.coords;
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor(
+        (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
+      );
+      setElapsedSecs(Math.max(0, elapsed));
+    }, 1000);
 
-        if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
+    if (Platform.OS === "web") return;
 
-        if (altitude != null) {
-          setCurrentAltM(altitude);
-          if (lastAltRef.current !== null) {
-            const delta = altitude - lastAltRef.current;
-            if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-              if (delta > 0) setElevGainM(g => g + delta);
-              else           setElevLossM(l => l + Math.abs(delta));
+    // Start background-capable location task (keeps running when screen is locked)
+    try {
+      const isRunning = await Location.hasStartedLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => false);
+      if (isRunning) await Location.stopLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => {});
+      await Location.startLocationUpdatesAsync(HIKE_LOCATION_TASK, {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 3000,
+        distanceInterval: 5,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: "SummitReady — Recording Hike",
+          notificationBody: "Your hike is being tracked. Tap to return to the app.",
+          notificationColor: "#3ECF75",
+        },
+        pausesUpdatesAutomatically: false,
+      });
+    } catch {
+      // Fallback: foreground-only watchPositionAsync (stops when locked)
+      const sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
+        (loc) => {
+          if (statusRef.current !== "tracking") return;
+          const { latitude, longitude, altitude, speed } = loc.coords;
+          if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
+          if (altitude != null) {
+            setCurrentAltM(altitude);
+            if (lastAltRef.current !== null) {
+              const delta = altitude - lastAltRef.current;
+              if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
+                if (delta > 0) setElevGainM(g => g + delta);
+                else           setElevLossM(l => l + Math.abs(delta));
+                lastAltRef.current = altitude;
+              }
+            } else {
               lastAltRef.current = altitude;
             }
-          } else {
-            lastAltRef.current = altitude;
           }
-        }
-
-        const pts = trackPoints.current;
-        if (pts.length > 0) {
-          const prev = pts[pts.length - 1];
-          const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
-          if (d > 0.003) setDistanceKm(km => km + d);
-        }
-
-        trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
-        sendPointToMap(latitude, longitude);
-      },
-    );
-    locationSubRef.current = sub;
+          const pts = trackPoints.current;
+          if (pts.length > 0) {
+            const prev = pts[pts.length - 1];
+            const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
+            if (d > 0.003) setDistanceKm(km => km + d);
+          }
+          trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          sendPointToMap(latitude, longitude);
+        },
+      );
+      locationSubRef.current = sub;
+    }
   }, [routeName, sendPointToMap]);
 
   const pauseTracking = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     statusRef.current = "paused";
     setStatus("paused");
+    pauseStartMsRef.current = Date.now();
     timerRef.current && clearInterval(timerRef.current);
+    if (Platform.OS !== "web") {
+      Location.hasStartedLocationUpdatesAsync(HIKE_LOCATION_TASK)
+        .then(started => { if (started) Location.stopLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => {}); })
+        .catch(() => {});
+    }
     safeRemoveSub(locationSubRef.current);
     locationSubRef.current = null;
   }, []);
 
-  const resumeTracking = useCallback(() => {
+  const resumeTracking = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Accumulate pause duration so elapsed stays accurate
+    if (pauseStartMsRef.current > 0) {
+      totalPausedMsRef.current += Date.now() - pauseStartMsRef.current;
+      pauseStartMsRef.current = 0;
+    }
     statusRef.current = "tracking";
     setStatus("tracking");
-    timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
-    Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
-      (loc) => {
-        if (statusRef.current !== "tracking") return;
-        const { latitude, longitude, altitude, speed } = loc.coords;
-        if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
-        if (altitude != null) {
-          setCurrentAltM(altitude);
-          if (lastAltRef.current !== null) {
-            const delta = altitude - lastAltRef.current;
-            if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
-              if (delta > 0) setElevGainM(g => g + delta);
-              else           setElevLossM(l => l + Math.abs(delta));
+    await AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
+
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor(
+        (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
+      );
+      setElapsedSecs(Math.max(0, elapsed));
+    }, 1000);
+
+    if (Platform.OS === "web") return;
+
+    try {
+      await Location.startLocationUpdatesAsync(HIKE_LOCATION_TASK, {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 3000,
+        distanceInterval: 5,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: "SummitReady — Recording Hike",
+          notificationBody: "Your hike is being tracked. Tap to return to the app.",
+          notificationColor: "#3ECF75",
+        },
+        pausesUpdatesAutomatically: false,
+      });
+    } catch {
+      Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
+        (loc) => {
+          if (statusRef.current !== "tracking") return;
+          const { latitude, longitude, altitude, speed } = loc.coords;
+          if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
+          if (altitude != null) {
+            setCurrentAltM(altitude);
+            if (lastAltRef.current !== null) {
+              const delta = altitude - lastAltRef.current;
+              if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
+                if (delta > 0) setElevGainM(g => g + delta);
+                else           setElevLossM(l => l + Math.abs(delta));
+                lastAltRef.current = altitude;
+              }
+            } else {
               lastAltRef.current = altitude;
             }
-          } else {
-            lastAltRef.current = altitude;
           }
-        }
-        const pts = trackPoints.current;
-        if (pts.length > 0) {
-          const prev = pts[pts.length - 1];
-          const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
-          if (d > 0.003) setDistanceKm(km => km + d);
-        }
-        trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
-        sendPointToMap(latitude, longitude);
-      },
-    ).then(sub => { locationSubRef.current = sub; });
+          const pts = trackPoints.current;
+          if (pts.length > 0) {
+            const prev = pts[pts.length - 1];
+            const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
+            if (d > 0.003) setDistanceKm(km => km + d);
+          }
+          trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          sendPointToMap(latitude, longitude);
+        },
+      ).then(sub => { locationSubRef.current = sub; });
+    }
   }, [sendPointToMap]);
 
   const finishHike = useCallback(() => {
@@ -310,6 +474,12 @@ export default function HikeTrackingScreen() {
     timerRef.current && clearInterval(timerRef.current);
     safeRemoveSub(locationSubRef.current);
     locationSubRef.current = null;
+    if (Platform.OS !== "web") {
+      Location.hasStartedLocationUpdatesAsync(HIKE_LOCATION_TASK)
+        .then(started => { if (started) Location.stopLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => {}); })
+        .catch(() => {});
+    }
+    AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
   }, []);
 
   const handleStopPress = useCallback(() => {
