@@ -19,18 +19,6 @@ function getRevenueCatApiKey() {
     throw new Error("RevenueCat Entitlement Identifier not provided");
   }
 
-  if (__DEV__ || Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
-    return REVENUECAT_TEST_API_KEY;
-  }
-
-  if (Platform.OS === "ios") {
-    return REVENUECAT_IOS_API_KEY;
-  }
-
-  if (Platform.OS === "android") {
-    return REVENUECAT_ANDROID_API_KEY;
-  }
-
   return REVENUECAT_TEST_API_KEY;
 }
 
