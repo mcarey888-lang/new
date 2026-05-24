@@ -13,7 +13,7 @@ export function openMapPin(lat: number, lng: number, label: string) {
   if (Platform.OS === "ios") {
     openUrl(`maps://?ll=${lat},${lng}&q=${encodeURIComponent(label)}`, web);
   } else if (Platform.OS === "android") {
-    openUrl(`geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(label)})`, web);
+    openUrl(`geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`, web);
   } else {
     Linking.openURL(web).catch(() => {});
   }
