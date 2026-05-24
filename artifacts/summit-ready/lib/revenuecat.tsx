@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from "react";
 import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
@@ -35,6 +35,8 @@ export function initializeRevenueCat() {
 }
 
 function useSubscriptionContext() {
+  const queryClient = useQueryClient();
+
   const customerInfoQuery = useQuery({
     queryKey: ["revenuecat", "customer-info"],
     queryFn: async () => {
@@ -58,14 +60,18 @@ function useSubscriptionContext() {
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
       return customerInfo;
     },
-    onSuccess: () => customerInfoQuery.refetch(),
+    onSuccess: (customerInfo) => {
+      queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
+    },
   });
 
   const restoreMutation = useMutation({
     mutationFn: async () => {
       return Purchases.restorePurchases();
     },
-    onSuccess: () => customerInfoQuery.refetch(),
+    onSuccess: (customerInfo) => {
+      queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
+    },
   });
 
   const isSubscribed =
