@@ -348,7 +348,7 @@ export default function HillsFinderScreen() {
                   style={p.locInput}
                   value={location}
                   onChangeText={handleLocationChange}
-                  placeholder="e.g. Manchester, Sheffield…"
+                  placeholder="Town, city or postcode…"
                   placeholderTextColor={T.textDim}
                   returnKeyType="search"
                   onSubmitEditing={() => fetchHills()}
