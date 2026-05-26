@@ -133,6 +133,7 @@ interface AppState {
   isLoading: boolean;
   nearbyHills: NearbyHill[];
   hillsLoading: boolean;
+  hillsError: string | null;
   alpineProfileLoading: boolean;
   completedPlanSessions: Record<string, boolean>;
   assignedHills: Record<string, NearbyHill>;
@@ -189,6 +190,7 @@ const AppContext = createContext<AppState>({
   isLoading: true,
   nearbyHills: [],
   hillsLoading: false,
+  hillsError: null,
   alpineProfileLoading: false,
   completedPlanSessions: {},
   assignedHills: {},
@@ -345,6 +347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [nearbyHills, setNearbyHills] = useState<NearbyHill[]>([]);
   const [hillsLoading, setHillsLoading] = useState(false);
+  const [hillsError, setHillsError] = useState<string | null>(null);
   const [alpineProfileLoading, setAlpineProfileLoading] = useState(false);
   const [completedPlanSessions, setCompletedPlanSessions] = useState<Record<string, boolean>>({});
   const [assignedHills, setAssignedHills] = useState<Record<string, NearbyHill>>({});
@@ -736,8 +739,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [hasViewedPlan]);
 
   const fetchNearbyHills = useCallback(async (radiusOverride?: number, minElevation?: number) => {
-    if (!summitGoal) return;
+    if (!summitGoal) {
+      setHillsError("Set your summit location first — tap the location field at the top of this screen.");
+      return;
+    }
     setHillsLoading(true);
+    setHillsError(null);
     try {
       const radius = radiusOverride ?? summitGoal.maxRadius;
       const body: Record<string, unknown> = { location: summitGoal.location, radius };
@@ -747,11 +754,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Hills lookup failed");
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data: { hills: NearbyHill[] } = await res.json();
-      setNearbyHills(data.hills);
-      await AsyncStorage.setItem(HILLS_KEY, JSON.stringify(data.hills));
-    } catch {}
+      if (!data.hills?.length) {
+        setHillsError("No hills found in that area. Try increasing the search radius.");
+        setNearbyHills([]);
+      } else {
+        setNearbyHills(data.hills);
+        await AsyncStorage.setItem(HILLS_KEY, JSON.stringify(data.hills));
+      }
+    } catch (err) {
+      setHillsError("Couldn't connect — check your internet and try again.");
+    }
     setHillsLoading(false);
   }, [summitGoal]);
 
@@ -1043,7 +1057,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       summitGoal, trainingPlan, sessions, readinessScore, isLoading,
-      nearbyHills, hillsLoading, alpineProfileLoading, completedPlanSessions, assignedHills,
+      nearbyHills, hillsLoading, hillsError, alpineProfileLoading, completedPlanSessions, assignedHills,
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       hasViewedPlan, markPlanViewed,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,

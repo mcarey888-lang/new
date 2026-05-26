@@ -78,7 +78,7 @@ function formatDate(iso: string): string {
 export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
-    summitGoal, trainingPlan, nearbyHills, hillsLoading,
+    summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
     updateGoalLocation, exploreHikes, customRoutes,
   } = useApp();
@@ -772,6 +772,12 @@ export default function TrackScreen() {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {hillsError && !hillsLoading && (
+              <View style={styles.hillsErrorRow}>
+                <Text style={styles.hillsErrorText}>{hillsError}</Text>
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -813,6 +819,8 @@ const styles = StyleSheet.create({
 
   noHillsCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12 },
   noHillsText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
+  hillsErrorRow: { backgroundColor: "#FF444420", borderRadius: 10, borderWidth: 1, borderColor: "#FF444440", padding: 12, marginTop: 8 },
+  hillsErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#FF6B6B", lineHeight: 18, textAlign: "center" },
 
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, marginBottom: 8 },
   loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
