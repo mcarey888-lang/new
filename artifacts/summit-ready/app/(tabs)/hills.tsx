@@ -698,6 +698,25 @@ export default function TrackScreen() {
             <View style={styles.controlCard}>
               <View style={styles.controlRow}>
                 <View style={styles.controlLabelRow}>
+                  <MapPin size={13} color={T.green} />
+                  <Text style={styles.controlLabel}>Location</Text>
+                </View>
+                <TextInput
+                  style={styles.inlineLocInput}
+                  value={locText}
+                  onChangeText={setLocText}
+                  placeholder="Town, city or postcode…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
                   <Radio size={13} color={T.green} />
                   <Text style={styles.controlLabel}>Search radius</Text>
                 </View>
@@ -754,7 +773,7 @@ export default function TrackScreen() {
             </View>
 
             <TouchableOpacity
-              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, summitGoal ? undefined : locText.trim() || undefined)}
+              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
               disabled={hillsLoading}
               style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
               activeOpacity={0.8}
@@ -816,6 +835,8 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+
+  inlineLocInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, textAlign: "right", paddingVertical: 2 },
 
   noHillsCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12 },
   noHillsText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
