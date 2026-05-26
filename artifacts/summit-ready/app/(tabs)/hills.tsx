@@ -186,9 +186,9 @@ export default function TrackScreen() {
   async function confirmLoc() {
     const trimmed = locText.trim();
     if (trimmed.length >= 2) {
-      await updateGoalLocation(trimmed);
+      if (summitGoal) await updateGoalLocation(trimmed);
       setEditingLoc(false);
-      await fetchNearbyHills(localRadius);
+      await fetchNearbyHills(localRadius, undefined, summitGoal ? undefined : trimmed);
     } else {
       setEditingLoc(false);
       setLocText(summitGoal?.location ?? "");
@@ -279,7 +279,7 @@ export default function TrackScreen() {
               <TouchableOpacity onPress={startEditLoc} style={styles.locRow} activeOpacity={0.7}>
                 <MapPin size={11} color={T.textMuted} />
                 <Text style={styles.subtitle}>
-                  {summitGoal ? summitGoal.location : "Tap to set location"}
+                  {summitGoal ? summitGoal.location : locText.trim() || "Tap to set location for hill search"}
                 </Text>
                 <Pencil size={11} color={T.textMuted} />
               </TouchableOpacity>
@@ -754,7 +754,7 @@ export default function TrackScreen() {
             </View>
 
             <TouchableOpacity
-              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined)}
+              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, summitGoal ? undefined : locText.trim() || undefined)}
               disabled={hillsLoading}
               style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
               activeOpacity={0.8}

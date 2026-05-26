@@ -148,7 +148,7 @@ interface AppState {
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearPlan: () => Promise<void>;
-  fetchNearbyHills: (radiusOverride?: number, minElevation?: number) => Promise<void>;
+  fetchNearbyHills: (radiusOverride?: number, minElevation?: number, locationOverride?: string) => Promise<void>;
   togglePlanSession: (weekNum: number, sessionIdx: number) => Promise<void>;
   assignHillToSession: (weekNum: number, sessionIdx: number, hill: NearbyHill) => Promise<void>;
   adjustPlanWithAI: () => Promise<void>;
@@ -738,16 +738,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(HAS_VIEWED_PLAN_KEY, "true");
   }, [hasViewedPlan]);
 
-  const fetchNearbyHills = useCallback(async (radiusOverride?: number, minElevation?: number) => {
-    if (!summitGoal) {
-      setHillsError("Set your summit location first — tap the location field at the top of this screen.");
+  const fetchNearbyHills = useCallback(async (radiusOverride?: number, minElevation?: number, locationOverride?: string) => {
+    const location = locationOverride ?? summitGoal?.location;
+    if (!location?.trim()) {
+      setHillsError("Enter a location above to find hills nearby.");
       return;
     }
     setHillsLoading(true);
     setHillsError(null);
     try {
-      const radius = radiusOverride ?? summitGoal.maxRadius;
-      const body: Record<string, unknown> = { location: summitGoal.location, radius };
+      const radius = radiusOverride ?? summitGoal?.maxRadius ?? 25;
+      const body: Record<string, unknown> = { location: location.trim(), radius };
       if (minElevation && minElevation > 0) body.minElevation = minElevation;
       const res = await fetch(`${API_BASE}/hills-unified`, {
         method: "POST",
