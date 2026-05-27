@@ -112,6 +112,18 @@ router.post("/alpine-assessment", async (req, res) => {
     }
 
     const validated = AlpineAssessmentSchema.parse(parsed);
+
+    // Safety floor: prevent AI hallucinating unrealistically short timelines
+    const minWeeksFloor: Record<string, number> = {
+      "extreme":   36, // 7 000 m+ (Everest, K2, Denali, etc.)
+      "very-high": 20, // 5 000–7 000 m
+      "high":       8, // 3 500–5 000 m
+    };
+    const floor = minWeeksFloor[validated.altitudeBand] ?? 4;
+    if (validated.minimumWeeks < floor) {
+      validated.minimumWeeks = floor;
+    }
+
     res.json(validated);
   } catch (err) {
     req.log.error({ err }, "Alpine assessment failed");

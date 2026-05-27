@@ -893,6 +893,9 @@ export default function DashboardScreen() {
                     </View>
                   ))}
                 </View>
+                <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
+                  AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
+                </Text>
               </>
             ) : null}
           </View>

@@ -1,0 +1,193 @@
+You are acting as a senior QA engineer, launch-readiness tester, security reviewer, and product auditor for my Summit Ready app.
+
+Your job is to thoroughly test the full app before launch and identify anything broken, inconsistent, risky, confusing, or incomplete.
+
+Do NOT make major design changes unless clearly needed. Focus on testing, debugging, verification, and producing a launch-readiness report.
+
+APP CONTEXT:
+Summit Ready is a mountain/summit training app. It may include AI-generated plans, summit goals, local hike/explore features, challenges, progress tracking, training guides, route/trail features, user profiles, onboarding, and dashboard functionality.
+
+MAIN GOALS:
+1. Test every user-facing feature.
+2. Check that all navigation works.
+3. Check that all buttons, forms, tabs, links, menus, modals, cards, filters, and dashboards work.
+4. Check there is no dead code, broken imports, unused components, console errors, or obvious performance problems.
+5. Check that AI-generated in-app data is logical, safe, consistent, and free from anomalies.
+6. Check the app is ready for Play Store / App Store launch.
+
+AI DATA VALIDATION:
+For every AI-generated or AI-assisted feature, test the output using your own reasoning.
+
+Check for:
+- Impossible or unsafe training advice.
+- Unrealistic weekly progression.
+- Sudden unexplained jumps in volume, elevation, intensity, or difficulty.
+- Contradictory advice.
+- Plans that ignore the user’s stated fitness level, goal date, injury limitations, age, available days, or experience.
+- Dangerous altitude, mountain, weather, or endurance guidance.
+- Incorrect mountain facts, summit heights, distances, route difficulty, or timings.
+- Repeated, generic, or low-quality AI responses.
+- Empty, malformed, or incomplete AI outputs.
+- Outputs that could expose legal/medical liability.
+- AI hallucinations presented as facts.
+- Inconsistent units: miles/km, metres/feet, kg/lb.
+- Challenge calculations that do not add up correctly.
+- Progress tracking values that are mathematically wrong.
+
+Where AI output is questionable, add guardrails, warnings, validation rules, or fallback responses.
+
+FUNCTIONAL TESTING:
+Go through the app like a real user and test:
+- New user onboarding.
+- Login/sign-up/logout if present.
+- Profile creation and editing.
+- Goal selection.
+- Summit/mountain selection.
+- Training plan creation.
+- AI plan generation.
+- Dashboard loading.
+- Progress tracking.
+- Hike logging.
+- Elevation/distance calculations.
+- Challenges.
+- Explore/local hikes section.
+- Saved goals/routes/plans.
+- Notifications/reminders if present.
+- Settings.
+- Subscription/paywall/free trial logic if present.
+- Error states and empty states.
+- Offline/poor connection behaviour if relevant.
+- Mobile layout and responsive behaviour.
+- Android and iOS-specific issues where applicable.
+
+EDGE CASE TESTING:
+Test with:
+- Empty inputs.
+- Very short and very long inputs.
+- Invalid numbers.
+- Unrealistic goals, e.g. Everest in 2 weeks as a beginner.
+- Beginner, intermediate, and experienced users.
+- Users with no summit goal.
+- Users with multiple goals.
+- Past dates.
+- Very near future dates.
+- Missing profile data.
+- Duplicate entries.
+- Slow API responses.
+- Failed API responses.
+- No internet.
+- Large amounts of logged data.
+- Different screen sizes.
+- Dark mode/light mode if present.
+
+CODE QUALITY CHECK:
+Inspect the project for:
+- Dead code.
+- Unused files.
+- Unused imports.
+- Duplicate components.
+- Broken routes.
+- Broken environment variables.
+- Placeholder text.
+- Test/mock/demo data visible to users.
+- Hardcoded API keys.
+- Hardcoded user IDs.
+- Console.log spam.
+- TODO/FIXME comments.
+- TypeScript errors.
+- Linting issues.
+- Build errors.
+- Dependency warnings.
+- Security vulnerabilities.
+- Slow or unnecessary re-renders.
+- Large files/components that should be split.
+
+DATA + CALCULATION CHECK:
+Verify:
+- Training load calculations.
+- Weekly progression logic.
+- Elevation gain calculations.
+- Distance calculations.
+- Challenge progress percentages.
+- Summit readiness scores.
+- Fitness/readiness scoring.
+- Calendar dates and week numbering.
+- Unit conversions.
+- Stored data persists correctly after refresh/restart.
+- User data is not lost when navigating away.
+- Deleted data is properly removed.
+- Duplicate data is not created accidentally.
+
+SAFETY + LIABILITY:
+Add or improve sensible disclaimers where needed:
+- This is not medical advice.
+- Users should consult a doctor before intense training if unsure.
+- Mountain conditions change.
+- Users should check weather, route conditions, local guidance, and use proper equipment.
+- AI-generated plans should be treated as guidance, not guaranteed safety advice.
+- The app should not encourage unsafe attempts.
+
+PERFORMANCE TEST:
+Check:
+- Initial load speed.
+- Dashboard load time.
+- AI response loading states.
+- Large list performance.
+- Image/map loading.
+- Memory leaks.
+- Repeated API calls.
+- Unnecessary network requests.
+- Poor mobile performance.
+
+UX REVIEW:
+Check:
+- Is the app clear for a first-time user?
+- Does every screen explain what the user should do next?
+- Are loading states clear?
+- Are errors helpful?
+- Are empty states helpful?
+- Are CTAs obvious?
+- Is the app too cluttered?
+- Is the value of Summit Ready obvious within the first 30 seconds?
+- Are beginners guided properly?
+- Are experienced users not forced through unnecessary steps?
+
+LAUNCH READINESS REPORT:
+After testing, produce a clear report with these sections:
+
+1. Critical launch blockers
+Issues that must be fixed before launch.
+
+2. High-priority issues
+Important issues that could hurt users, reviews, payments, trust, or functionality.
+
+3. Medium-priority issues
+Bugs or UX problems worth fixing soon.
+
+4. Low-priority polish
+Small improvements.
+
+5. AI data anomalies found
+List every questionable AI-generated result, why it is a problem, and how it was fixed or should be fixed.
+
+6. Safety and liability concerns
+Anything that could create risk.
+
+7. Dead code / cleanup
+Files, imports, routes, components, or dependencies that can be removed.
+
+8. Store launch checklist
+A checklist for Play Store and App Store readiness.
+
+9. Final verdict
+Use one of:
+- Ready for launch
+- Almost ready, minor fixes needed
+- Not ready, critical issues found
+
+IMPORTANT:
+Where possible, fix bugs directly. For anything you cannot safely fix, clearly explain why and list the exact file/component/function involved.
+
+Before making changes, first run the app, inspect the structure, and understand how the project works.
+
+Then carry out the testing step by step.

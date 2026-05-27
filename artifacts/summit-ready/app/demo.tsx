@@ -11,6 +11,11 @@ export default function DemoLoader() {
   const [status, setStatus] = useState("Loading demo data…");
 
   useEffect(() => {
+    if (!__DEV__) {
+      router.replace("/(tabs)/dashboard");
+      return;
+    }
+
     const profile = DEV_PROFILES.find((x) => x.id === p);
     if (!profile) {
       setStatus(`Unknown profile: ${p}`);

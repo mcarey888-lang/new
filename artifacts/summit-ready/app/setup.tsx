@@ -1059,6 +1059,10 @@ export default function SetupScreen() {
             )}
           </Section>
 
+          <Text style={{ color: T.textDim, fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 12, lineHeight: 16, paddingHorizontal: 8 }}>
+            SummitReady generates AI training guidance only. It is not a substitute for medical advice. Consult a doctor before starting any new exercise programme, especially if you have any health conditions.
+          </Text>
+
           <TouchableOpacity onPress={submit} disabled={saving}
             style={[styles.submitBtn, { opacity: saving ? 0.7 : 1 }]} activeOpacity={0.85}
           >
