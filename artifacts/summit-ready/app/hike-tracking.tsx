@@ -171,6 +171,7 @@ export default function HikeTrackingScreen() {
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const statusRef      = useRef<TrackStatus>("idle");
+  const initialPosRef  = useRef<{ lat: number; lon: number } | null>(null);
   const webViewRef        = useRef<WebView>(null);
   const webMapContainerRef = useRef<View>(null);
   const iframeRef          = useRef<any>(null);
@@ -220,6 +221,7 @@ export default function HikeTrackingScreen() {
       try {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         if (!cancelled) {
+          initialPosRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
           setCurrentAltM(pos.coords.altitude);
           setGpsReady(true);
         }
@@ -301,7 +303,7 @@ export default function HikeTrackingScreen() {
   // ── Periodic sync while actively tracking (fills in real-time UI) ─────────
   useEffect(() => {
     if (status !== "tracking") return;
-    const id = setInterval(syncBgPoints, 4000);
+    const id = setInterval(syncBgPoints, 1000);
     return () => clearInterval(id);
   }, [status, syncBgPoints]);
 
@@ -333,6 +335,11 @@ export default function HikeTrackingScreen() {
       setElapsedSecs(Math.max(0, elapsed));
     }, 1000);
 
+    // Send warmup position to map immediately so "Waiting for GPS…" clears at once
+    if (initialPosRef.current) {
+      sendPointToMap(initialPosRef.current.lat, initialPosRef.current.lon);
+    }
+
     if (Platform.OS === "web") return;
 
     // Start background-capable location task (keeps running when screen is locked)
@@ -351,10 +358,13 @@ export default function HikeTrackingScreen() {
         },
         pausesUpdatesAutomatically: false,
       });
-    } catch {
-      // Fallback: foreground-only watchPositionAsync (stops when locked)
-      const sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
+    } catch { /* background task not available — foreground watch handles it */ }
+
+    // Always run a foreground watch for real-time UI updates while app is active.
+    // Background task handles lock-screen recording; this keeps map and stats live.
+    try {
+      const fgSub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000 },
         (loc) => {
           if (statusRef.current !== "tracking") return;
           const { latitude, longitude, altitude, speed } = loc.coords;
@@ -378,12 +388,12 @@ export default function HikeTrackingScreen() {
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
             if (d > 0.003) setDistanceKm(km => km + d);
           }
-          trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
           sendPointToMap(latitude, longitude);
         },
       );
-      locationSubRef.current = sub;
-    }
+      locationSubRef.current = fgSub;
+    } catch { /* foreground watch unavailable */ }
   }, [routeName, sendPointToMap]);
 
   const pauseTracking = useCallback(() => {
@@ -434,9 +444,12 @@ export default function HikeTrackingScreen() {
         },
         pausesUpdatesAutomatically: false,
       });
-    } catch {
-      Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 3000 },
+    } catch { /* background task not available — foreground watch handles it */ }
+
+    // Always run foreground watch for real-time updates
+    try {
+      const fgSub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000 },
         (loc) => {
           if (statusRef.current !== "tracking") return;
           const { latitude, longitude, altitude, speed } = loc.coords;
@@ -460,11 +473,12 @@ export default function HikeTrackingScreen() {
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
             if (d > 0.003) setDistanceKm(km => km + d);
           }
-          trackPoints.current.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+          pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
           sendPointToMap(latitude, longitude);
         },
-      ).then(sub => { locationSubRef.current = sub; });
-    }
+      );
+      locationSubRef.current = fgSub;
+    } catch { /* foreground watch unavailable */ }
   }, [sendPointToMap]);
 
   const finishHike = useCallback(() => {
