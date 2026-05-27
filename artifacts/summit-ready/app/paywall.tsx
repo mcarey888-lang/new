@@ -282,6 +282,12 @@ export default function PaywallScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          {!activePkg && !isPurchasing && (
+            <Text style={styles.offeringsErrorNote}>
+              Billing unavailable — make sure you're signed into Google Play and connected to the internet.
+            </Text>
+          )}
+
           <Text style={styles.cancelNote}>Cancel anytime · No commitment</Text>
 
           <TouchableOpacity
@@ -416,6 +422,7 @@ const styles = StyleSheet.create({
   },
   ctaText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
   cancelNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  offeringsErrorNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#FF9030", textAlign: "center", marginTop: 6, lineHeight: 17 },
   restoreBtn: { paddingVertical: 6 },
   restoreText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textDecorationLine: "underline" },
 
