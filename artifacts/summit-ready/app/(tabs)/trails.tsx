@@ -88,7 +88,7 @@ export default function TrackScreen() {
   const [userChangedRadius, setUserChangedRadius] = useState(false);
   const [minElevation, setMinElevation] = useState(0);
   const [userChangedMinElev, setUserChangedMinElev] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>("distance");
+  const [sortBy, setSortBy] = useState<SortKey>("elevation");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [allHillsOpen, setAllHillsOpen] = useState(false);
 
@@ -122,7 +122,7 @@ export default function TrackScreen() {
   const weekTarget = currentWeek?.targetElevation ?? Math.round((summitGoal?.elevationGain ?? 1000) * 0.5);
 
   const suggestedHills = useMemo(
-    () => sortHills(nearbyHills, "distance").slice(0, SUGGESTED_COUNT),
+    () => sortHills(nearbyHills, "elevation").slice(0, SUGGESTED_COUNT),
     [nearbyHills]
   );
   const allSortedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
