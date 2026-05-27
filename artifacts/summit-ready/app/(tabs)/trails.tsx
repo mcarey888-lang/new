@@ -78,7 +78,7 @@ function formatDate(iso: string): string {
 export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
-    summitGoal, trainingPlan, nearbyHills, hillsLoading,
+    summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
     updateGoalLocation, exploreHikes, customRoutes,
   } = useApp();
@@ -186,9 +186,9 @@ export default function TrackScreen() {
   async function confirmLoc() {
     const trimmed = locText.trim();
     if (trimmed.length >= 2) {
-      await updateGoalLocation(trimmed);
+      if (summitGoal) await updateGoalLocation(trimmed);
       setEditingLoc(false);
-      await fetchNearbyHills(localRadius);
+      await fetchNearbyHills(localRadius, undefined, summitGoal ? undefined : trimmed);
     } else {
       setEditingLoc(false);
       setLocText(summitGoal?.location ?? "");
@@ -698,6 +698,25 @@ export default function TrackScreen() {
             <View style={styles.controlCard}>
               <View style={styles.controlRow}>
                 <View style={styles.controlLabelRow}>
+                  <MapPin size={13} color={T.green} />
+                  <Text style={styles.controlLabel}>Location</Text>
+                </View>
+                <TextInput
+                  style={styles.inlineLocInput}
+                  value={locText}
+                  onChangeText={setLocText}
+                  placeholder="Town, city or postcode…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
                   <Radio size={13} color={T.green} />
                   <Text style={styles.controlLabel}>Search radius</Text>
                 </View>
@@ -754,7 +773,7 @@ export default function TrackScreen() {
             </View>
 
             <TouchableOpacity
-              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined)}
+              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
               disabled={hillsLoading}
               style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
               activeOpacity={0.8}
@@ -772,6 +791,12 @@ export default function TrackScreen() {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {hillsError && !hillsLoading && (
+              <View style={styles.hillsErrorRow}>
+                <Text style={styles.hillsErrorText}>{hillsError}</Text>
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -810,6 +835,10 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+
+  inlineLocInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, textAlign: "right", paddingVertical: 2 },
+  hillsErrorRow: { backgroundColor: "#FF444420", borderRadius: 10, borderWidth: 1, borderColor: "#FF444440", padding: 12, marginTop: 8 },
+  hillsErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#FF6B6B", lineHeight: 18, textAlign: "center" },
 
   noHillsCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12 },
   noHillsText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
