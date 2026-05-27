@@ -354,15 +354,7 @@ export default function HillDetailScreen() {
 
                     <View style={styles.startActionsRow}>
                       <TouchableOpacity
-                        style={styles.startMapBtn}
-                        onPress={() => openMapPin(startPoint!.lat, startPoint!.lng, startPoint!.name)}
-                        activeOpacity={0.8}
-                      >
-                        <MapPin size={13} color={T.green} />
-                        <Text style={styles.startMapBtnText}>View start on map</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.startMapBtn, { borderColor: T.blue + "50" }]}
+                        style={[styles.startMapBtn, { borderColor: T.blue + "50", flex: 1 }]}
                         onPress={() => {
                           if (startPoint!.postcode) {
                             openDirectionsToPostcode(startPoint!.postcode, startPoint!.name);
