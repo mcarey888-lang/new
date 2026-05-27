@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, trackedRoutes } from "@workspace/db";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -84,6 +84,22 @@ router.get("/tracked-routes", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch tracked routes");
     res.status(500).json({ error: "Failed to fetch routes" });
+  }
+});
+
+router.delete("/tracked-routes/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: "Missing route id" });
+    return;
+  }
+  try {
+    await db.delete(trackedRoutes).where(eq(trackedRoutes.id, id));
+    req.log.info({ id }, "Tracked route deleted");
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete tracked route");
+    res.status(500).json({ error: "Failed to delete route" });
   }
 });
 

@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { DevToolsModal } from "@/components/DevToolsModal";
+import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
 
 const DEV_TAPS_REQUIRED = 5;
 const DEV_TAP_WINDOW_MS = 2000;
@@ -23,6 +24,7 @@ export default function LandingScreen() {
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!__DEV__) return;
     if (Platform.OS !== "web") return;
     const params = new URLSearchParams(window.location.search);
     const demoId = params.get("demo");
@@ -34,6 +36,7 @@ export default function LandingScreen() {
   }, []);
 
   function handleLogoPress() {
+    if (!__DEV__) return;
     tapCount.current += 1;
     if (tapTimer.current) clearTimeout(tapTimer.current);
 
@@ -135,10 +138,12 @@ export default function LandingScreen() {
         </Animated.View>
       </View>
 
-      <DevToolsModal
-        visible={devModalVisible}
-        onClose={() => setDevModalVisible(false)}
-      />
+      {__DEV__ && (
+        <DevToolsModal
+          visible={devModalVisible}
+          onClose={() => setDevModalVisible(false)}
+        />
+      )}
     </LinearGradient>
   );
 }

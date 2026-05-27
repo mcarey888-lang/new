@@ -120,6 +120,7 @@ export default function AccountScreen() {
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState("");
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(ACCOUNT_EMAIL_KEY).then(val => setAccountEmail(val));
@@ -209,6 +210,36 @@ export default function AccountScreen() {
     setAccountEmail(null);
     await clearChallenges();
     await clearPlan();
+    router.replace("/");
+  }
+
+  async function handleDeleteAccount() {
+    Alert.alert(
+      "Delete account",
+      "This will permanently delete your account and all associated data, including any routes you've submitted. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete account", style: "destructive", onPress: doDeleteAccount },
+      ]
+    );
+  }
+
+  async function doDeleteAccount() {
+    setDeletingAccount(true);
+    try {
+      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
+      await Promise.allSettled(
+        exploreHikes.map(h =>
+          fetch(`https://${domain}/api/tracked-routes/${h.id}`, { method: "DELETE" })
+        )
+      );
+    } catch {}
+    try {
+      await Purchases.logOut();
+    } catch {}
+    await AsyncStorage.clear();
+    setAccountEmail(null);
+    setDeletingAccount(false);
     router.replace("/");
   }
 
@@ -718,7 +749,17 @@ export default function AccountScreen() {
               <Trash2 size={16} color="#FF4444" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionText, { color: "#FF4444" }]}>Reset all data</Text>
-                <Text style={styles.actionSub}>Deletes your goal, plan and session history</Text>
+                <Text style={styles.actionSub}>Deletes your local goal, plan and session history</Text>
+              </View>
+              <ChevronRight size={16} color={T.textDim} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleDeleteAccount} disabled={deletingAccount} activeOpacity={0.7}>
+              {deletingAccount
+                ? <ActivityIndicator size="small" color="#FF4444" />
+                : <Trash2 size={16} color="#FF4444" />}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.actionText, { color: "#FF4444" }]}>Delete account</Text>
+                <Text style={styles.actionSub}>Permanently removes your account and all data</Text>
               </View>
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
@@ -728,7 +769,15 @@ export default function AccountScreen() {
         {/* App info */}
         <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.appInfo}>
           <Text style={styles.appInfoText}>SummitReady · v1.0</Text>
-          <Text style={styles.appInfoText}>Free to start · No account needed</Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/privacy")} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalDot}>·</Text>
+            <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/terms")} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Terms of Service</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </ScrollView>
 
@@ -1031,8 +1080,11 @@ const styles = StyleSheet.create({
   challengeBadgeEmoji: { fontSize: 13 },
   challengeBadgeLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
 
-  appInfo: { alignItems: "center", gap: 4, paddingTop: 8, paddingBottom: 4 },
+  appInfo: { alignItems: "center", gap: 6, paddingTop: 8, paddingBottom: 4 },
   appInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
+  legalLink: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, textDecorationLine: "underline" },
+  legalDot: { fontSize: 11, color: T.textMuted },
 
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
   modalSheet: {

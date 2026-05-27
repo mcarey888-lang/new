@@ -46,7 +46,7 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
           <Text style={confirmStyles.title}>Confirm Purchase</Text>
           <Text style={confirmStyles.body}>
             You're about to subscribe to <Text style={{ color: T.white, fontFamily: "Inter_700Bold" }}>{packageName}</Text>{" "}
-            for <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>{priceString}</Text> through Google Play.
+            for <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>{priceString}</Text> through {Platform.select({ ios: "the App Store", android: "Google Play", default: "the store" })}.
           </Text>
           <View style={confirmStyles.btnRow}>
             <TouchableOpacity onPress={onCancel} style={confirmStyles.cancelBtn} activeOpacity={0.7}>
@@ -284,7 +284,7 @@ export default function PaywallScreen() {
 
           {!activePkg && !isPurchasing && (
             <Text style={styles.offeringsErrorNote}>
-              Billing unavailable — make sure you're signed into Google Play and connected to the internet.
+              Billing unavailable — make sure you're signed into {Platform.select({ ios: "the App Store", android: "Google Play", default: "your store account" })} and connected to the internet.
             </Text>
           )}
 
