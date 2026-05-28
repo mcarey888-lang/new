@@ -1,0 +1,74 @@
+I want to explore a monetisation strategy for the Summit Ready app, but I do NOT want any pricing or code changes made yet.
+
+Please review the current app structure and tell me:
+
+1. Whether the following pricing model is technically and strategically possible within the current architecture.
+
+Potential model:
+
+* Free tier with useful core functionality
+* Optional Pro subscription (£6.99/month or annual equivalent)
+* Optional one-time “Summit Packs” for specific mountains/goals
+* Future affiliate integrations for guides, trips, and equipment
+
+2. What would need to be added or changed to support this properly.
+
+Please explain:
+
+* subscription requirements
+* in-app purchase requirements
+* Play Store/App Store payment handling
+* database/user entitlement structure
+* feature gating/paywalls
+* restoring purchases
+* free trial support
+* account linking requirements
+* analytics needed to measure conversion and retention
+* security considerations
+* scalability considerations
+
+3. Which features should realistically remain free vs premium based on the current app structure.
+
+Examples:
+
+* hike logging
+* AI-generated training plans
+* summit readiness scoring
+* local trail discovery
+* challenges
+* offline features
+* advanced analytics
+* adaptive AI coaching
+
+4. Whether the current app structure is suitable for:
+
+* freemium
+* subscriptions
+* one-time purchases
+* hybrid monetisation
+
+5. What the best technical implementation approach would be for:
+
+* Android first
+* eventual iOS support
+* Expo/Replit compatibility
+* Stripe vs Google Play Billing vs RevenueCat
+
+6. What the recommended rollout strategy would be.
+
+For example:
+
+* free beta first
+* delayed monetisation
+* when to introduce subscriptions
+* when to introduce summit packs
+* how to avoid hurting early user growth
+
+IMPORTANT:
+
+* Do NOT make any code changes yet
+* Do NOT redesign the app
+* Do NOT implement payments
+* Do NOT add paywalls yet
+
+I only want a full technical and strategic assessment of what is possible, what is recommended, and what steps would be required to implement it properly later.
