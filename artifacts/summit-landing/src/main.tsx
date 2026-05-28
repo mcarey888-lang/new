@@ -25,7 +25,10 @@ import MatterhornMtn from "./pages/mountains/MatterhornMtn";
 import NotFound from "./pages/not-found";
 import "./index.css";
 
+import { ThemeProvider } from "./lib/ThemeContext";
+
 createRoot(document.getElementById("root")!).render(
+  <ThemeProvider>
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<App />} />
@@ -60,4 +63,5 @@ createRoot(document.getElementById("root")!).render(
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>
+  </ThemeProvider>
 );

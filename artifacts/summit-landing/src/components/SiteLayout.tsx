@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { SiteNav } from "./SiteNav";
 import { SiteFooter } from "./SiteFooter";
 
@@ -7,10 +7,6 @@ interface Props {
 }
 
 export function SiteLayout({ children }: Props) {
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
       <SiteNav />

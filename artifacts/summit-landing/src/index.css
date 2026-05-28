@@ -40,6 +40,8 @@
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-destructive-border: var(--destructive-border);
 
+  --color-section-alt: hsl(var(--section-alt));
+
   --font-sans: var(--app-font-sans);
   --font-display: var(--app-font-display);
 
@@ -49,6 +51,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Dark theme (default) ── */
 :root, .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
@@ -56,12 +59,10 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Background: #060D1B */
   --background: 220 64% 6%;
   --foreground: 210 40% 98%;
-
   --border: 217 32% 17%;
-  
+
   --card: 220 64% 8%;
   --card-foreground: 210 40% 98%;
   --card-border: 217 32% 17%;
@@ -70,7 +71,6 @@
   --popover-foreground: 210 40% 98%;
   --popover-border: 217 32% 17%;
 
-  /* Primary (Accent Green): #3ECF75 */
   --primary: 143 62% 53%;
   --primary-foreground: 220 64% 6%;
 
@@ -89,6 +89,8 @@
   --input: 217 32% 17%;
   --ring: 143 62% 53%;
 
+  --section-alt: 220 60% 5%;
+
   --app-font-sans: 'Inter', sans-serif;
   --app-font-display: 'Space Grotesk', sans-serif;
   --radius: 0.5rem;
@@ -104,6 +106,79 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 }
+
+/* ── Light theme ── */
+html.light {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .06);
+
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --border: 214 32% 88%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 214 32% 88%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 214 32% 88%;
+
+  --primary: 143 55% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 214 32% 94%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 214 32% 94%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 143 55% 40%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --input: 214 32% 88%;
+  --ring: 143 55% 40%;
+
+  --section-alt: 214 40% 96%;
+
+  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.06);
+  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.06);
+  --shadow-sm: 0px 2px 0px 0px rgba(0,0,0,0.06), 0px 1px 2px -1px rgba(0,0,0,0.06);
+  --shadow: 0px 2px 0px 0px rgba(0,0,0,0.06), 0px 1px 2px -1px rgba(0,0,0,0.06);
+  --shadow-md: 0px 2px 0px 0px rgba(0,0,0,0.08), 0px 2px 4px -1px rgba(0,0,0,0.08);
+  --shadow-lg: 0px 2px 0px 0px rgba(0,0,0,0.08), 0px 4px 6px -1px rgba(0,0,0,0.08);
+  --shadow-xl: 0px 2px 0px 0px rgba(0,0,0,0.08), 0px 8px 10px -1px rgba(0,0,0,0.08);
+  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.08);
+}
+
+/* ── Light mode glass/transparency overrides ── */
+html.light .bg-white\/5  { background-color: rgba(0,0,0,.04) !important; }
+html.light .bg-white\/3  { background-color: rgba(0,0,0,.02) !important; }
+html.light .bg-white\/10 { background-color: rgba(0,0,0,.06) !important; }
+html.light .bg-white\/40 { background-color: rgba(0,0,0,.07) !important; }
+
+html.light .border-white\/5  { border-color: rgba(0,0,0,.05) !important; }
+html.light .border-white\/8  { border-color: rgba(0,0,0,.06) !important; }
+html.light .border-white\/10 { border-color: rgba(0,0,0,.08) !important; }
+html.light .border-white\/15 { border-color: rgba(0,0,0,.10) !important; }
+html.light .border-white\/20 { border-color: rgba(0,0,0,.12) !important; }
+
+html.light .text-white          { color: hsl(222 47% 11%) !important; }
+html.light .text-black\/50      { color: hsl(222 47% 35%) !important; }
+
+html.light .shadow-\[0_0_15px_rgba\(62\,207\,117\,0\.15\)\]  { box-shadow: 0 0 15px rgba(62,207,117,0.25); }
+html.light .shadow-\[0_0_30px_rgba\(62\,207\,117\,0\.4\)\]   { box-shadow: 0 0 30px rgba(62,207,117,0.30); }
+html.light .shadow-\[0_0_20px_rgba\(62\,207\,117\,0\.3\)\]   { box-shadow: 0 0 20px rgba(62,207,117,0.25); }
+html.light .shadow-\[0_0_40px_rgba\(62\,207\,117\,0\.4\)\]   { box-shadow: 0 0 40px rgba(62,207,117,0.30); }
+
+/* Hero overlay adapts in light mode */
+html.light .hero-overlay-v { background: linear-gradient(to top, hsl(0 0% 100% / 0.75), hsl(0 0% 100% / 0.15), transparent) !important; }
+html.light .hero-overlay-h { background: linear-gradient(to right, hsl(0 0% 100% / 0.55), transparent, hsl(0 0% 100% / 0.25)) !important; }
 
 @layer base {
   * {

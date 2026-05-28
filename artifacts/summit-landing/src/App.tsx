@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SiteNav } from "@/components/SiteNav";
@@ -17,8 +17,8 @@ function Hero() {
     <section className="relative min-h-screen flex items-center justify-center pt-20 pb-32 overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img src={heroBgPath} alt="Alpine Peak at Dawn" className="w-full h-full object-cover opacity-70 object-top" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/50" />
+        <div className="hero-overlay-v absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="hero-overlay-h absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/50" />
       </div>
 
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center max-w-5xl mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -105,7 +105,7 @@ function ProblemStatement() {
 
 function Features() {
   return (
-    <section id="features" className="py-32 bg-[#081021] relative z-10 border-y border-white/5">
+    <section id="features" className="py-32 bg-section-alt relative z-10 border-y border-border">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-20 items-center">
           <div className="order-2 lg:order-1 relative">
@@ -230,7 +230,7 @@ function Readiness() {
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-32 bg-[#081021] relative border-y border-white/5">
+    <section id="how-it-works" className="py-32 bg-section-alt relative border-y border-border">
       <div className="container mx-auto px-4 text-center max-w-5xl">
         <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">From your front door to the summit.</h2>
         <p className="text-xl text-muted-foreground mb-20 max-w-2xl mx-auto">
@@ -345,7 +345,7 @@ function ContentSection() {
 
 function GetStarted() {
   return (
-    <section id="get-started" className="py-32 bg-[#081021] relative border-t border-white/5">
+    <section id="get-started" className="py-32 bg-section-alt relative border-t border-border">
       <div className="container mx-auto px-4 text-center max-w-3xl">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-bold text-primary mb-6 uppercase tracking-widest">
           <Smartphone className="w-4 h-4" />
@@ -424,10 +424,6 @@ function CTA() {
 }
 
 export default function App() {
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 scroll-smooth">
       <SiteNav />
