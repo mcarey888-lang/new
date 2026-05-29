@@ -55,9 +55,9 @@ export function SiteNav() {
           <button
             onClick={toggle}
             aria-label="Toggle light/dark mode"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-all"
+            className="p-2 rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all border border-foreground/15 hover:border-foreground/30"
           >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <a href={ctaHref} className="hidden sm:block">
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(62,207,117,0.3)]">
