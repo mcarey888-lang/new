@@ -49,8 +49,8 @@
     "production": {
       "ios": {
         "appleId": "mcarey888@googlemail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "ascAppId": "6774733078",
+        "appleTeamId": "NTARBBDHKC"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
