@@ -948,8 +948,6 @@ export default function PlanScreen() {
     sessionEfforts,
     togglePlanSession,
     assignHillToSession,
-    adjustPlanWithAI,
-    planAdjusting,
     planAdjustNote,
     submitWeekSessions,
     setSessionReps,
@@ -1073,8 +1071,6 @@ export default function PlanScreen() {
     setSwapModalOpen(false);
     setSwapTarget(null);
   }
-
-  const completedCount = Object.values(completedPlanSessions).filter(Boolean).length;
 
   if (!summitGoal || trainingPlan.length === 0) {
     return (
@@ -1201,32 +1197,6 @@ export default function PlanScreen() {
         })}
       </ScrollView>
 
-      {completedCount > 0 && isSubscribed && (
-        <View style={[styles.adjustBar, { paddingBottom: Platform.OS === "web" ? 16 : insets.bottom + 90 }]}>
-          <TouchableOpacity
-            onPress={adjustPlanWithAI}
-            disabled={planAdjusting}
-            style={[styles.adjustBtn, planAdjusting && { opacity: 0.7 }]}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.adjustBtnGrad}>
-              {planAdjusting ? (
-                <>
-                  <ActivityIndicator size="small" color="#fff" />
-                  <Text style={styles.adjustBtnText}>Adjusting plan…</Text>
-                </>
-              ) : (
-                <>
-                  <Cpu size={16} color="#fff" />
-                  <Text style={styles.adjustBtnText}>
-                    Adjust plan with AI · {completedCount} done
-                  </Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <HillPickerModal
         visible={hillPickerOpen}
@@ -1739,23 +1709,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   hillRowText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 17 },
-  adjustBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-  },
-  adjustBtn: { borderRadius: 16, overflow: "hidden" },
-  adjustBtnGrad: {
-    height: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  adjustBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   submitWeekBtn: {
     marginTop: 14,
     borderRadius: 14,
