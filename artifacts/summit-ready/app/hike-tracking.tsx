@@ -108,15 +108,34 @@ interface TrackPoint {
   alt: number | null;
   ts: number;
   speed?: number | null;
+  acc?: number | null;
 }
 
 const ALTITUDE_NOISE_THRESHOLD = 2;
+const GPS_MAX_ACCURACY_M = 25;   // reject fixes noisier than 25 m horizontal accuracy
+const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountainside
 const HIKE_LOCATION_TASK = "hike-location-task";
 const BG_POINTS_KEY = "hike_bg_points";
 
 function safeRemoveSub(sub: Location.LocationSubscription | null) {
   if (!sub) return;
   try { sub.remove(); } catch { /* expo-location web: LocationEventEmitter.removeSubscription missing */ }
+}
+
+function isPlausiblePoint(
+  lat: number, lon: number, ts: number, accuracy: number | null,
+  prevPts: TrackPoint[],
+): boolean {
+  if (accuracy != null && accuracy > GPS_MAX_ACCURACY_M) return false;
+  if (prevPts.length === 0) return true;
+  const prev = prevPts[prevPts.length - 1];
+  const distKm = haversineKm(prev.lat, prev.lon, lat, lon);
+  const dtSecs = Math.max(0, (ts - prev.ts) / 1000);
+  if (dtSecs > 0 && distKm > 0) {
+    const speedKmh = (distKm / dtSecs) * 3600;
+    if (speedKmh > GPS_MAX_SPEED_KMH) return false;
+  }
+  return true;
 }
 
 // ── Background location task (runs even when phone is locked) ────────────────
@@ -129,12 +148,14 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
     const raw = await AsyncStorage.getItem(BG_POINTS_KEY);
     const existing: TrackPoint[] = raw ? JSON.parse(raw) : [];
     for (const loc of locations) {
+      if (loc.coords.accuracy != null && loc.coords.accuracy > GPS_MAX_ACCURACY_M) continue;
       existing.push({
         lat: loc.coords.latitude,
         lon: loc.coords.longitude,
         alt: loc.coords.altitude,
         ts: loc.timestamp,
         speed: loc.coords.speed,
+        acc: loc.coords.accuracy,
       });
     }
     await AsyncStorage.setItem(BG_POINTS_KEY, JSON.stringify(existing));
@@ -267,6 +288,7 @@ export default function HikeTrackingScreen() {
       const lastTs = pts.length > 0 ? pts[pts.length - 1].ts : 0;
       const fresh = newPts.filter(p => p.ts > lastTs);
       for (const p of fresh) {
+        if (!isPlausiblePoint(p.lat, p.lon, p.ts, p.acc ?? null, pts)) continue;
         if (p.speed != null && p.speed >= 0) setCurrentSpeedKmh(p.speed * 3.6);
         if (p.alt != null) {
           setCurrentAltM(p.alt);
@@ -367,7 +389,9 @@ export default function HikeTrackingScreen() {
         { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000 },
         (loc) => {
           if (statusRef.current !== "tracking") return;
-          const { latitude, longitude, altitude, speed } = loc.coords;
+          const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
+          const pts = trackPoints.current;
+          if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
           if (altitude != null) {
             setCurrentAltM(altitude);
@@ -382,7 +406,6 @@ export default function HikeTrackingScreen() {
               lastAltRef.current = altitude;
             }
           }
-          const pts = trackPoints.current;
           if (pts.length > 0) {
             const prev = pts[pts.length - 1];
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
@@ -452,7 +475,9 @@ export default function HikeTrackingScreen() {
         { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000 },
         (loc) => {
           if (statusRef.current !== "tracking") return;
-          const { latitude, longitude, altitude, speed } = loc.coords;
+          const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
+          const pts = trackPoints.current;
+          if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
           if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
           if (altitude != null) {
             setCurrentAltM(altitude);
@@ -467,7 +492,6 @@ export default function HikeTrackingScreen() {
               lastAltRef.current = altitude;
             }
           }
-          const pts = trackPoints.current;
           if (pts.length > 0) {
             const prev = pts[pts.length - 1];
             const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
@@ -481,7 +505,10 @@ export default function HikeTrackingScreen() {
     } catch { /* foreground watch unavailable */ }
   }, [sendPointToMap]);
 
-  const finishHike = useCallback(() => {
+  const finishHike = useCallback(async () => {
+    // Flush any remaining background points BEFORE changing status.
+    // Without this, points buffered while the screen was off are deleted unread.
+    await syncBgPoints();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     statusRef.current = "finished";
     setStatus("finished");
@@ -494,7 +521,7 @@ export default function HikeTrackingScreen() {
         .catch(() => {});
     }
     AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
-  }, []);
+  }, [syncBgPoints]);
 
   const handleStopPress = useCallback(() => {
     setConfirmFinish(true);
