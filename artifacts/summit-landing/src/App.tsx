@@ -403,8 +403,7 @@ function GetStarted() {
   );
 }
 
-// Update BETA_TEST_URL once your betatesting.com test is live
-const BETA_TEST_URL = "https://betatesting.com";
+const BETA_TEST_URL = "https://testflight.apple.com/join/PbT6NbZn";
 
 function BetaTesters() {
   return (
@@ -459,7 +458,7 @@ function BetaTesters() {
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </a>
-          <p className="text-sm text-muted-foreground">Managed by betatesting.com · Free to join</p>
+          <p className="text-sm text-muted-foreground">iOS via TestFlight · Android via Google Play · Free to join</p>
         </div>
       </div>
     </section>
