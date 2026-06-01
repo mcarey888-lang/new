@@ -10,6 +10,7 @@ import {
   ChevronRight, Target, Activity, Map, ArrowRight, Mountain, CheckCircle2,
   TrendingUp, Compass, Calendar, ShieldCheck, Smartphone, MapPin,
   ArrowRight as ArrowRightIcon, Footprints, BookOpen, HelpCircle,
+  Bug, Users, Zap,
 } from "lucide-react";
 
 function Hero() {
@@ -402,6 +403,69 @@ function GetStarted() {
   );
 }
 
+// Update BETA_TEST_URL once your betatesting.com test is live
+const BETA_TEST_URL = "https://betatesting.com";
+
+function BetaTesters() {
+  return (
+    <section id="beta" className="py-28 bg-background relative border-t border-white/5 overflow-hidden">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="container mx-auto px-4 max-w-5xl relative z-10">
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary mb-6 uppercase tracking-widest">
+            <Bug className="w-3.5 h-3.5" />
+            Early Access · Beta Testing
+          </div>
+          <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-5 tracking-tight">
+            Help shape SummitReady.
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            SummitReady is in active beta on iOS and Android. We're looking for hikers and mountain enthusiasts to test the app and report bugs — your feedback directly shapes the product.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-white/3 border border-white/8 rounded-2xl p-7 flex flex-col gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Smartphone className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="font-bold text-white text-lg">iOS &amp; Android</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">Install directly from TestFlight (iOS) or Google Play closed testing (Android). No sideloading needed.</p>
+          </div>
+          <div className="bg-white/3 border border-white/8 rounded-2xl p-7 flex flex-col gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="font-bold text-white text-lg">Quick to get started</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">Takes 5–60 minutes. Explore the app, try out hill finding and GPS tracking, and submit any bugs you find.</p>
+          </div>
+          <div className="bg-white/3 border border-white/8 rounded-2xl p-7 flex flex-col gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="font-bold text-white text-lg">Shape the product</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">Beta testers get early access to premium features and their feedback directly influences what we build next.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href={BETA_TEST_URL} target="_blank" rel="noopener noreferrer">
+            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-10 h-14 text-base transition-all hover:scale-105 active:scale-95 shadow-[0_0_25px_rgba(62,207,117,0.3)]">
+              Apply to Beta Test
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </a>
+          <p className="text-sm text-muted-foreground">Managed by betatesting.com · Free to join</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CTA() {
   return (
     <section className="py-32 bg-background relative overflow-hidden">
@@ -433,6 +497,7 @@ export default function App() {
       <Features />
       <HowItWorks />
       <Readiness />
+      <BetaTesters />
       <CTA />
       <GetStarted />
       <SiteFooter />
