@@ -166,7 +166,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
-  const { appMode, addSession, logExploreHike, trainingPlan, addCustomRoute } = useApp();
+  const { appMode, addSession, logExploreHike, trainingPlan } = useApp();
 
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
   const [routeName, setRouteName]       = useState("");
@@ -538,36 +538,18 @@ export default function HikeTrackingScreen() {
     const routeId  = "tracked_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
 
     try {
-      // 1 ── Save locally as a custom route (visible in the trails list)
-      await addCustomRoute({
+      // 1 ── Always log the completed hike to the hike history
+      await logExploreHike({
         name,
-        location: "GPS Tracked Route",
+        date: new Date().toISOString(),
         distance: distKm,
         elevationGain: elevGain,
-        estimatedTime: formatTimeHM(elapsedSecs),
-        difficulty: computeDifficulty(distKm, elevGain),
-        terrain: "mixed",
-        routeType: "out-and-back",
-        bestFor: ["training"],
-        description: `GPS tracked hike: ${formatTime(elapsedSecs)} duration, ${fmtKm(distKm)} distance, ${fmtM(elevGain)} elevation gain.`,
-        trainingBenefits: inferBenefits(distKm, elevGain),
-        emoji: "🥾",
-        lat: firstPt?.lat,
-        lng: firstPt?.lon,
-        notes: `Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
+        timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
+        notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
       });
 
-      // 2 ── Log to session / explore log
-      if (appMode === "explore") {
-        await logExploreHike({
-          name,
-          date: new Date().toISOString(),
-          distance: distKm,
-          elevationGain: elevGain,
-          timeTaken: elapsedSecs,
-          notes: `GPS tracked hike. Elevation loss: ${elevLoss} m.`,
-        });
-      } else {
+      // 2 ── In training mode, also log to the plan session log
+      if (appMode !== "explore") {
         const currentWeek = trainingPlan?.findIndex(w => !w.sessions?.every((s: any) => s.completed)) ?? 0;
         await addSession({
           date: new Date().toISOString(),
@@ -610,7 +592,7 @@ export default function HikeTrackingScreen() {
     } catch {
       setSaving(false);
     }
-  }, [appMode, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike, addCustomRoute]);
+  }, [appMode, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {

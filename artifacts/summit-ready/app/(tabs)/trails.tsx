@@ -10,7 +10,9 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -128,29 +130,14 @@ export default function TrackScreen() {
   const allSortedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
 
   const recentHikes = useMemo(() => {
-    const fromExplore = exploreHikes.map(h => ({
-      id: h.id,
-      name: h.name,
-      date: h.date,
-      distance: h.distance,
-      elevationGain: h.elevationGain,
-      timeTaken: h.timeTaken,
-      source: "explore" as const,
-    }));
-    const fromRoutes = customRoutes.map(r => ({
-      id: r.id ?? r.name,
-      name: r.name,
-      date: r.createdAt ?? "",
-      distance: r.distance ?? 0,
-      elevationGain: r.elevationGain ?? 0,
-      timeTaken: 0,
-      source: "tracked" as const,
-    }));
-    return [...fromExplore, ...fromRoutes]
+    return exploreHikes
       .filter(h => h.date)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
-  }, [exploreHikes, customRoutes]);
+  }, [exploreHikes]);
+
+  type HikeDetail = typeof recentHikes[number];
+  const [selectedHike, setSelectedHike] = useState<HikeDetail | null>(null);
 
   function stepRadius(dir: 1 | -1) {
     setUserChangedRadius(true);
@@ -537,7 +524,7 @@ export default function TrackScreen() {
         ) : (
           recentHikes.map((hike, i) => (
             <Animated.View key={hike.id} entering={FadeInDown.delay(100 + i * 50).duration(400)}>
-              <View style={styles.hikeCard}>
+              <TouchableOpacity style={styles.hikeCard} onPress={() => setSelectedHike(hike)} activeOpacity={0.75}>
                 <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
                 <View style={styles.hikeCardTop}>
                   <View style={styles.hikeIconWrap}>
@@ -547,12 +534,7 @@ export default function TrackScreen() {
                     <Text style={styles.hikeName}>{hike.name}</Text>
                     <Text style={styles.hikeDate}>{formatDate(hike.date)}</Text>
                   </View>
-                  {hike.source === "tracked" && (
-                    <View style={styles.trackedBadge}>
-                      <Navigation size={10} color={T.blue} />
-                      <Text style={styles.trackedBadgeText}>GPS</Text>
-                    </View>
-                  )}
+                  <ChevronRight size={16} color={T.textMuted} />
                 </View>
                 <View style={styles.hikeStats}>
                   {hike.distance > 0 && (
@@ -574,7 +556,7 @@ export default function TrackScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             </Animated.View>
           ))
         )}
@@ -801,6 +783,65 @@ export default function TrackScreen() {
 
 
       </ScrollView>
+
+      {/* HIKE DETAIL MODAL */}
+      <Modal
+        visible={selectedHike !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedHike(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setSelectedHike(null)}>
+          <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+
+            <View style={styles.modalHeader}>
+              <View style={styles.hikeIconWrap}>
+                <Footprints size={18} color={T.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>{selectedHike?.name}</Text>
+                <Text style={styles.modalDate}>{selectedHike ? formatDate(selectedHike.date) : ""}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedHike(null)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalStats}>
+              <View style={styles.modalStat}>
+                <MapPin size={20} color={T.green} />
+                <Text style={styles.modalStatVal}>
+                  {selectedHike && selectedHike.distance > 0 ? `${selectedHike.distance.toFixed(2)} km` : "—"}
+                </Text>
+                <Text style={styles.modalStatLbl}>Distance</Text>
+              </View>
+              <View style={styles.modalStatDivider} />
+              <View style={styles.modalStat}>
+                <TrendingUp size={20} color={T.orange} />
+                <Text style={styles.modalStatVal}>
+                  {selectedHike && selectedHike.elevationGain > 0 ? `${selectedHike.elevationGain} m` : "—"}
+                </Text>
+                <Text style={styles.modalStatLbl}>Elevation gain</Text>
+              </View>
+              <View style={styles.modalStatDivider} />
+              <View style={styles.modalStat}>
+                <Clock size={20} color={T.blue} />
+                <Text style={styles.modalStatVal}>
+                  {selectedHike && selectedHike.timeTaken > 0 ? formatDuration(selectedHike.timeTaken) : "—"}
+                </Text>
+                <Text style={styles.modalStatLbl}>Duration</Text>
+              </View>
+            </View>
+
+            {selectedHike?.notes ? (
+              <View style={styles.modalNotes}>
+                <Text style={styles.modalNotesText}>{selectedHike.notes}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -936,4 +977,20 @@ const styles = StyleSheet.create({
   lockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
   lockedBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: T.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingHorizontal: 20, borderWidth: 1, borderColor: T.green + "25" },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: "center", marginBottom: 20 },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },
+  modalTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  modalDate: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  modalClose: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  modalCloseText: { fontSize: 14, color: T.textMuted },
+  modalStats: { flexDirection: "row", backgroundColor: T.surface, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 20, marginBottom: 16 },
+  modalStat: { flex: 1, alignItems: "center", gap: 8 },
+  modalStatVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
+  modalStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
+  modalStatDivider: { width: 1, backgroundColor: T.border, marginHorizontal: 4 },
+  modalNotes: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14 },
+  modalNotesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
 });
