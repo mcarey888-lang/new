@@ -528,6 +528,7 @@ export default function HikeTrackingScreen() {
   }, [syncBgPoints]);
 
   const handleStopPress = useCallback(() => {
+    setDrawerOpen(false);
     setConfirmFinish(true);
   }, []);
 
@@ -923,7 +924,7 @@ export default function HikeTrackingScreen() {
               </TouchableOpacity>
             </>
           )}
-          <TouchableOpacity style={s.confirmCancel} onPress={() => setConfirmFinish(false)} activeOpacity={0.7}>
+          <TouchableOpacity style={s.confirmCancel} onPress={() => { setConfirmFinish(false); setDrawerOpen(true); }} activeOpacity={0.7}>
             <Text style={s.confirmCancelText}>Keep Going</Text>
           </TouchableOpacity>
         </Animated.View>
