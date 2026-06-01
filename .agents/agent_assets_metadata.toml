@@ -131,3 +131,9 @@ id = "2ZEXpgo61wbiyMu2neH6e"
 uri = "file://summit-ready-build.tar.gz"
 type = "unspecified"
 title = "SummitReady — app source (ready to build)"
+
+[[outputs]]
+id = "MpnirXqOtyzvHiqV5BrLk"
+uri = "file://summitready-tester-links.txt"
+type = "text"
+title = "SummitReady — Tester Links & Instructions"

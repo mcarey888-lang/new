@@ -1,0 +1,64 @@
+SummitReady — QA Tester Access
+================================
+
+App Name:       SummitReady
+Bundle ID:      uk.summitready.app
+Website:        https://summitready.uk
+
+iOS (TestFlight)
+-----------------
+Install link:   https://testflight.apple.com/join/PbT6NbZn
+Note: Requires an iPhone. Install the free TestFlight app from the App Store first,
+then tap the link above to join the beta.
+
+Android (Google Play)
+----------------------
+Closed testing opt-in link: [to be confirmed — check back shortly]
+Note: Tap the link on your Android device and follow the instructions to join
+the closed testing programme, then install SummitReady from Google Play.
+
+--------------------------------
+WHAT TO TEST
+--------------------------------
+
+1. GPS Hike Tracking (highest priority)
+   - Trails tab → "Start Hiking"
+   - Walk outdoors for at least 5–10 minutes, then tap Finish
+   - Check: map route accuracy, distance, elevation, background tracking
+
+2. Hill Finder AI
+   - Trails tab → "Find Hills with AI"
+   - Allow location access
+   - Check: hills load near your location, map displays correctly
+
+3. Onboarding & Login
+   - Delete and reinstall the app
+   - Go through the full sign-up flow
+   - Report any crashes, errors, or confusing steps
+
+4. Training Plan & Calendar
+   - Open the training plan tab
+   - Tap a scheduled session to view details
+   - Check for layout issues, overlapping text, missing content
+
+5. Navigation & Crashes
+   - Rapidly switch between all tabs
+   - Navigate back and forward through screens
+   - Report any blank tabs, stuck navigation, or full app crashes
+
+6. Subscription / Premium Screen
+   - Settings → Subscription, or tap any premium feature
+   - Check the paywall loads correctly with monthly/annual options
+   - No real purchase needed — just verify the screen works
+
+7. Visual / Layout Issues
+   - Note any cut-off text, off-screen buttons, or broken screens
+   - Test on both portrait and landscape if possible
+
+--------------------------------
+WHEN REPORTING A BUG, PLEASE INCLUDE:
+--------------------------------
+- What you were doing when it happened
+- What you expected vs. what actually happened
+- Your device model and OS version (e.g. iPhone 14, iOS 17.4)
+- A screenshot or screen recording if possible
