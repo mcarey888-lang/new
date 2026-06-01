@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints } from "lucide-react-native";
+import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useState, useMemo } from "react";
@@ -19,7 +19,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Session, ExploreHike, NearbyHill, useApp } from "@/context/AppContext";
+import { Session, ExploreHike, NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
 const SESSION_TYPES: { value: "cardio" | "hill" | "bigDay"; label: string; icon: LucideIcon; color: string }[] = [
@@ -368,6 +368,97 @@ function HikeDetailSheet({ hike, onClose }: { hike: ExploreHike; onClose: () => 
   );
 }
 
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAY_LABELS = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+
+function MiniCalendar({ sessions, exploreHikes, trainingPlan }: {
+  sessions: Session[];
+  exploreHikes: ExploreHike[];
+  trainingPlan: TrainingWeek[];
+}) {
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const loggedDates = useMemo(() => {
+    const s = new Set<string>();
+    sessions.forEach(sess => { if (sess.completed) s.add(sess.date.slice(0, 10)); });
+    exploreHikes.forEach(h => s.add(h.date.slice(0, 10)));
+    return s;
+  }, [sessions, exploreHikes]);
+
+  const plannedDates = useMemo(() => {
+    const s = new Set<string>();
+    trainingPlan.forEach(week => {
+      if (!week.startDate || !week.endDate) return;
+      const cur = new Date(week.startDate);
+      const end = new Date(week.endDate);
+      while (cur <= end) {
+        s.add(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return s;
+  }, [trainingPlan]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const offset = (firstDay + 6) % 7;
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < offset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  return (
+    <View style={calSt.wrap}>
+      <View style={calSt.header}>
+        <TouchableOpacity onPress={() => setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} style={calSt.navBtn}>
+          <ChevronLeft size={16} color={T.textMuted} />
+        </TouchableOpacity>
+        <Text style={calSt.monthLabel}>{MONTH_NAMES[month]} {year}</Text>
+        <TouchableOpacity onPress={() => setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} style={calSt.navBtn}>
+          <ChevronRight size={16} color={T.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={calSt.dayLabelsRow}>
+        {DAY_LABELS.map(l => <Text key={l} style={calSt.dayLabel}>{l}</Text>)}
+      </View>
+
+      {rows.map((row, ri) => (
+        <View key={ri} style={calSt.row}>
+          {row.map((day, ci) => {
+            if (day === null) return <View key={ci} style={calSt.cell} />;
+            const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const isToday = iso === today;
+            const hasLog = loggedDates.has(iso);
+            const hasPlan = plannedDates.has(iso);
+            return (
+              <View key={ci} style={calSt.cell}>
+                {hasPlan && <View style={calSt.planBg} />}
+                <View style={[calSt.dayCircle, isToday && calSt.todayCircle]}>
+                  <Text style={[calSt.dayNum, isToday && calSt.dayNumToday]}>{day}</Text>
+                </View>
+                {hasLog && <View style={calSt.dotGreen} />}
+                {hasPlan && !hasLog && <View style={calSt.dotBlue} />}
+              </View>
+            );
+          })}
+        </View>
+      ))}
+
+      <View style={calSt.legend}>
+        <View style={calSt.legendItem}><View style={calSt.dotGreen} /><Text style={calSt.legendText}>Logged</Text></View>
+        <View style={calSt.legendItem}><View style={[calSt.planBg, { position: "relative", width: 12, height: 12, borderRadius: 4 }]} /><Text style={calSt.legendText}>Training week</Text></View>
+      </View>
+    </View>
+  );
+}
+
 function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { addSession, trainingPlan, nearbyHills } = useApp();
@@ -693,7 +784,7 @@ type LogItem =
 
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
-  const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike } = useApp();
+  const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike, trainingPlan } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
 
@@ -760,6 +851,11 @@ export default function LogScreen() {
               <Text style={styles.summaryLbl}>Sessions</Text>
             </View>
           </View>
+        </Animated.View>
+
+        {/* Calendar */}
+        <Animated.View entering={FadeInDown.delay(90).duration(400)}>
+          <MiniCalendar sessions={sessions} exploreHikes={exploreHikes} trainingPlan={trainingPlan} />
         </Animated.View>
 
         {/* Start Hiking */}
@@ -1063,4 +1159,25 @@ const styles = StyleSheet.create({
   hdStatDivider: { width: 1, backgroundColor: T.border, marginHorizontal: 4 },
   hdNotesBox: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14 },
   hdNotesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
+});
+
+const calSt = StyleSheet.create({
+  wrap: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.cardBorder, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 10, marginBottom: 14 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  navBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  monthLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  dayLabelsRow: { flexDirection: "row", marginBottom: 4 },
+  dayLabel: { flex: 1, textAlign: "center", fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  row: { flexDirection: "row", marginBottom: 2 },
+  cell: { flex: 1, alignItems: "center", paddingVertical: 2, minHeight: 38, position: "relative" },
+  planBg: { position: "absolute", top: 0, left: 1, right: 1, bottom: 0, backgroundColor: T.blue + "18", borderRadius: 8 },
+  dayCircle: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  todayCircle: { backgroundColor: T.green },
+  dayNum: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.text },
+  dayNumToday: { fontFamily: "Inter_700Bold", color: T.bg },
+  dotGreen: { width: 5, height: 5, borderRadius: 3, backgroundColor: T.green, marginTop: 1 },
+  dotBlue: { width: 5, height: 5, borderRadius: 3, backgroundColor: T.blue, marginTop: 1 },
+  legend: { flexDirection: "row", gap: 14, justifyContent: "flex-end", marginTop: 6, paddingRight: 4 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendText: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
 });
