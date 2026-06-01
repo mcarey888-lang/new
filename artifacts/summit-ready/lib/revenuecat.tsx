@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,8 +30,6 @@ export function initializeRevenueCat() {
 
   Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey });
-
-
 }
 
 function useSubscriptionContext() {
@@ -45,6 +43,19 @@ function useSubscriptionContext() {
     },
     staleTime: 60 * 1000,
   });
+
+  // Keep subscription state in sync with RevenueCat SDK events.
+  // This fires immediately on purchase, restore, or background sync —
+  // without it, isSubscribed stays stale until the next manual refetch.
+  useEffect(() => {
+    const handler = (info: import("react-native-purchases").CustomerInfo) => {
+      queryClient.setQueryData(["revenuecat", "customer-info"], info);
+    };
+    Purchases.addCustomerInfoUpdateListener(handler);
+    return () => {
+      Purchases.removeCustomerInfoUpdateListener(handler);
+    };
+  }, [queryClient]);
 
   const offeringsQuery = useQuery({
     queryKey: ["revenuecat", "offerings"],
@@ -70,7 +81,10 @@ function useSubscriptionContext() {
       return Purchases.restorePurchases();
     },
     onSuccess: (customerInfo) => {
+      // Set immediately for instant UI update, then force a fresh server fetch
+      // to guarantee we have the latest entitlement state.
       queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
+      queryClient.invalidateQueries({ queryKey: ["revenuecat", "customer-info"] });
     },
   });
 
