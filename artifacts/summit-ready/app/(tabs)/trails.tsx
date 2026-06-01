@@ -2,7 +2,7 @@ import {
   Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Clock, Navigation, Filter, ChevronDown,
+  Footprints, ChevronRight, Filter, ChevronDown,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -10,9 +10,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -65,24 +63,12 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
   return sorted;
 }
 
-function formatDuration(mins: number): string {
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
 export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
-    updateGoalLocation, exploreHikes, customRoutes, appMode,
+    updateGoalLocation, appMode,
   } = useApp();
 
   const isExploreMode = appMode === "explore";
@@ -140,16 +126,6 @@ export default function TrackScreen() {
     [nearbyHills]
   );
   const allSortedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
-
-  const recentHikes = useMemo(() => {
-    return exploreHikes
-      .filter(h => h.date)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
-  }, [exploreHikes]);
-
-  type HikeDetail = typeof recentHikes[number];
-  const [selectedHike, setSelectedHike] = useState<HikeDetail | null>(null);
 
   function stepRadius(dir: 1 | -1) {
     setUserChangedRadius(true);
@@ -520,64 +496,6 @@ export default function TrackScreen() {
           </Animated.View>
         )}
 
-        {/* YOUR HIKES */}
-        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
-          <View style={styles.sectionHeader}>
-            <Footprints size={14} color={T.green} />
-            <Text style={styles.sectionTitle}>Your Hikes</Text>
-          </View>
-        </Animated.View>
-
-        {recentHikes.length === 0 ? (
-          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>🥾</Text>
-              <Text style={styles.emptyTitle}>No hikes recorded yet</Text>
-              <Text style={styles.emptyText}>
-                Tap "Start Hiking" above to record your first hike. Your routes will appear here.
-              </Text>
-            </View>
-          </Animated.View>
-        ) : (
-          recentHikes.map((hike, i) => (
-            <Animated.View key={hike.id} entering={FadeInDown.delay(100 + i * 50).duration(400)}>
-              <TouchableOpacity style={styles.hikeCard} onPress={() => setSelectedHike(hike)} activeOpacity={0.75}>
-                <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                <View style={styles.hikeCardTop}>
-                  <View style={styles.hikeIconWrap}>
-                    <Footprints size={16} color={T.green} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.hikeName}>{hike.name}</Text>
-                    <Text style={styles.hikeDate}>{formatDate(hike.date)}</Text>
-                  </View>
-                  <ChevronRight size={16} color={T.textMuted} />
-                </View>
-                <View style={styles.hikeStats}>
-                  {hike.distance > 0 && (
-                    <View style={styles.hikeStat}>
-                      <MapPin size={11} color={T.textMuted} />
-                      <Text style={styles.hikeStatVal}>{hike.distance.toFixed(1)}km</Text>
-                    </View>
-                  )}
-                  {hike.elevationGain > 0 && (
-                    <View style={styles.hikeStat}>
-                      <TrendingUp size={11} color={T.orange} />
-                      <Text style={styles.hikeStatVal}>{hike.elevationGain}m</Text>
-                    </View>
-                  )}
-                  {hike.timeTaken > 0 && (
-                    <View style={styles.hikeStat}>
-                      <Clock size={11} color={T.textMuted} />
-                      <Text style={styles.hikeStatVal}>{formatDuration(hike.timeTaken)}</Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          ))
-        )}
-
         {/* MY HILLS */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)}>
           <View style={styles.sectionHeader}>
@@ -819,65 +737,6 @@ export default function TrackScreen() {
 
 
       </ScrollView>
-
-      {/* HIKE DETAIL MODAL */}
-      <Modal
-        visible={selectedHike !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedHike(null)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedHike(null)}>
-          <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]} onPress={() => {}}>
-            <View style={styles.modalHandle} />
-
-            <View style={styles.modalHeader}>
-              <View style={styles.hikeIconWrap}>
-                <Footprints size={18} color={T.green} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>{selectedHike?.name}</Text>
-                <Text style={styles.modalDate}>{selectedHike ? formatDate(selectedHike.date) : ""}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setSelectedHike(null)} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalStats}>
-              <View style={styles.modalStat}>
-                <MapPin size={20} color={T.green} />
-                <Text style={styles.modalStatVal}>
-                  {selectedHike && selectedHike.distance > 0 ? `${selectedHike.distance.toFixed(2)} km` : "—"}
-                </Text>
-                <Text style={styles.modalStatLbl}>Distance</Text>
-              </View>
-              <View style={styles.modalStatDivider} />
-              <View style={styles.modalStat}>
-                <TrendingUp size={20} color={T.orange} />
-                <Text style={styles.modalStatVal}>
-                  {selectedHike && selectedHike.elevationGain > 0 ? `${selectedHike.elevationGain} m` : "—"}
-                </Text>
-                <Text style={styles.modalStatLbl}>Elevation gain</Text>
-              </View>
-              <View style={styles.modalStatDivider} />
-              <View style={styles.modalStat}>
-                <Clock size={20} color={T.blue} />
-                <Text style={styles.modalStatVal}>
-                  {selectedHike && selectedHike.timeTaken > 0 ? formatDuration(selectedHike.timeTaken) : "—"}
-                </Text>
-                <Text style={styles.modalStatLbl}>Duration</Text>
-              </View>
-            </View>
-
-            {selectedHike?.notes ? (
-              <View style={styles.modalNotes}>
-                <Text style={styles.modalNotesText}>{selectedHike.notes}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -924,17 +783,6 @@ const styles = StyleSheet.create({
 
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, marginBottom: 8 },
   loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
-
-  hikeCard: { backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.green + "30", padding: 14, marginBottom: 10, overflow: "hidden", gap: 10 },
-  hikeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  hikeIconWrap: { width: 36, height: 36, borderRadius: 11, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
-  hikeName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  hikeDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  trackedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: T.blueDim, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 },
-  trackedBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.blue },
-  hikeStats: { flexDirection: "row", gap: 14 },
-  hikeStat: { flexDirection: "row", alignItems: "center", gap: 5 },
-  hikeStatVal: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
 
   hillCard: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12, overflow: "hidden", gap: 12 },
   hillTop: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -1016,19 +864,4 @@ const styles = StyleSheet.create({
   lockedBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: T.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingHorizontal: 20, borderWidth: 1, borderColor: T.green + "25" },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: "center", marginBottom: 20 },
-  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 },
-  modalTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
-  modalDate: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  modalClose: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
-  modalCloseText: { fontSize: 14, color: T.textMuted },
-  modalStats: { flexDirection: "row", backgroundColor: T.surface, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 20, marginBottom: 16 },
-  modalStat: { flex: 1, alignItems: "center", gap: 8 },
-  modalStatVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
-  modalStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" },
-  modalStatDivider: { width: 1, backgroundColor: T.border, marginHorizontal: 4 },
-  modalNotes: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14 },
-  modalNotesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
 });

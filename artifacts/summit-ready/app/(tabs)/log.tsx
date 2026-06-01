@@ -709,9 +709,9 @@ export default function LogScreen() {
               <View style={styles.startHikeIconBox}>
                 <Footprints size={22} color={T.white} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.startHikeTitle}>Start Hiking</Text>
-                <Text style={styles.startHikeSub}>Track your route — help others discover great hikes</Text>
+                <Text style={styles.startHikeSub} numberOfLines={1}>Track your route in real time</Text>
               </View>
             </View>
             <View style={styles.startHikeArrow}>
