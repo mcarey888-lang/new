@@ -2,8 +2,6 @@ import {
   Activity,
   ArrowLeft,
   CheckCircle,
-  Compass,
-  MoveVertical,
   Pause,
   Play,
   Square,
@@ -186,6 +184,7 @@ export default function HikeTrackingScreen() {
   const [saving, setSaving]               = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmLeave, setConfirmLeave]   = useState(false);
+  const [drawerOpen, setDrawerOpen]       = useState(true);
 
   const trackPoints    = useRef<TrackPoint[]>([]);
   const lastAltRef     = useRef<number | null>(null);
@@ -328,6 +327,11 @@ export default function HikeTrackingScreen() {
     const id = setInterval(syncBgPoints, 1000);
     return () => clearInterval(id);
   }, [status, syncBgPoints]);
+
+  // ── Auto-expand drawer when tracking starts ───────────────────────────────
+  useEffect(() => {
+    if (status === "tracking") setDrawerOpen(true);
+  }, [status]);
 
   // ── Core tracking logic ──────────────────────────────────────────────────
 
@@ -689,17 +693,41 @@ export default function HikeTrackingScreen() {
   const canStart   = gpsReady && routeName.trim().length > 0;
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <View style={s.root}>
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => {
-          if (isTracking || isPaused) {
-            setConfirmLeave(true);
-          } else {
-            router.back();
-          }
-        }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      {/* ── Full-screen map (always rendered behind everything) ── */}
+      <View style={StyleSheet.absoluteFill}>
+        {Platform.OS !== "web" ? (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: `${API_BASE}/hike-map` }}
+            style={{ flex: 1 }}
+            scrollEnabled={false}
+            javaScriptEnabled
+            domStorageEnabled
+            originWhitelist={["*"]}
+          />
+        ) : (
+          <View ref={webMapContainerRef} style={{ flex: 1 }} />
+        )}
+      </View>
+
+      {/* ── Top gradient for header readability ── */}
+      <LinearGradient
+        colors={["rgba(5,13,26,0.90)", "rgba(5,13,26,0.0)"]}
+        style={s.topGradient}
+        pointerEvents="none"
+      />
+
+      {/* ── Header (floats over map) ── */}
+      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isTracking || isPaused) setConfirmLeave(true);
+            else router.back();
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <ArrowLeft size={22} color={T.text} />
         </TouchableOpacity>
 
@@ -715,24 +743,19 @@ export default function HikeTrackingScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 32 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        scrollEnabled
-      >
-
-        {/* ── Route name input ─────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.nameCard}>
+      {/* ── Route name card — floats over map, only visible when idle ── */}
+      {isIdle && (
+        <Animated.View
+          entering={FadeInDown.delay(50).duration(400)}
+          style={[s.nameOverlay, { top: insets.top + 70 }]}
+        >
           <Text style={s.nameLabel}>Route name <Text style={s.nameRequired}>*</Text></Text>
           <TextInput
-            style={[s.nameInput, nameError && s.nameInputError, nameLocked && s.nameInputLocked]}
+            style={[s.nameInput, nameError && s.nameInputError]}
             value={routeName}
             onChangeText={(t) => { setRouteName(t); if (t.trim()) setNameError(false); }}
             placeholder="e.g. Morning Ridge Loop"
             placeholderTextColor={T.textDim}
-            editable={!nameLocked}
             autoCorrect={false}
             returnKeyType="done"
             maxLength={60}
@@ -741,87 +764,57 @@ export default function HikeTrackingScreen() {
             <Text style={s.nameErrorText}>Please name your route before starting</Text>
           )}
         </Animated.View>
+      )}
 
-        {/* ── Status + timer ───────────────────────────────────────────── */}
-        <View style={s.statusRow}>
-          <View style={[s.statusPill,
-            isTracking && s.statusPillTracking,
-            isPaused   && s.statusPillPaused,
-          ]}>
-            {isTracking && <Activity size={12} color={T.green} />}
-            {isPaused   && <Pause size={12} color={T.orange} />}
-            {isIdle     && <Compass size={12} color={T.textMuted} />}
-            <Text style={[s.statusText,
-              isTracking && { color: T.green },
-              isPaused   && { color: T.orange },
-            ]}>
-              {isTracking ? "TRACKING" : isPaused ? "PAUSED" : "READY"}
-            </Text>
-          </View>
-        </View>
+      {/* ── Bottom sheet ── */}
+      <View style={[s.sheet, { paddingBottom: insets.bottom + 12 }]}>
 
-        <View style={s.timerBlock}>
-          <Text style={s.timerText}>{formatTime(elapsedSecs)}</Text>
-          <Text style={s.timerLabel}>elapsed</Text>
-        </View>
+        {/* Drag handle — tapping toggles drawer when tracking */}
+        <TouchableOpacity
+          onPress={() => !isIdle && setDrawerOpen(o => !o)}
+          activeOpacity={isIdle ? 1 : 0.7}
+          style={s.sheetHandleArea}
+        >
+          <View style={s.handle} />
 
-        {/* ── Main stats ───────────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.delay(100).duration(400)} style={s.statsRow}>
-          <View style={s.statCell}>
-            <Text style={s.statValue}>{fmtKm(distanceKm)}</Text>
-            <Text style={s.statLabel}>Distance</Text>
-          </View>
-          <View style={[s.statCell, s.statCellMid]}>
-            <View style={s.statValueRow}>
-              <TrendingUp size={14} color={T.green} style={{ marginRight: 3 }} />
-              <Text style={[s.statValue, { color: T.green }]}>{fmtM(elevGainM)}</Text>
+          {/* Status + timer — always visible in header row of sheet */}
+          {!isIdle && (
+            <View style={s.sheetStatusRow}>
+              <View style={[s.statusPill,
+                isTracking && s.statusPillTracking,
+                isPaused   && s.statusPillPaused,
+              ]}>
+                {isTracking && <Activity size={11} color={T.green} />}
+                {isPaused   && <Pause size={11} color={T.orange} />}
+                <Text style={[s.statusText,
+                  isTracking && { color: T.green },
+                  isPaused   && { color: T.orange },
+                ]}>
+                  {isTracking ? "TRACKING" : "PAUSED"}
+                </Text>
+              </View>
+              <Text style={s.timerInline}>{formatTime(elapsedSecs)}</Text>
+              <Text style={s.chevron}>{drawerOpen ? "▾" : "▴"}</Text>
             </View>
-            <Text style={s.statLabel}>Gained</Text>
-          </View>
-          <View style={s.statCell}>
-            <Text style={s.statValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
-            <Text style={s.statLabel}>Altitude</Text>
-          </View>
-        </Animated.View>
-
-        {/* ── Secondary stats ──────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.delay(200).duration(400)} style={s.statsRow2}>
-          <View style={s.statCell2}>
-            <Text style={s.statValue2}>
-              {currentSpeedKmh > 0 ? `${currentSpeedKmh.toFixed(1)} km/h` : "—"}
-            </Text>
-            <Text style={s.statLabel}>Speed</Text>
-          </View>
-          <View style={[s.statCell2, { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" }]}>
-            <View style={s.statValueRow}>
-              <TrendingDown size={13} color={T.orange} style={{ marginRight: 3 }} />
-              <Text style={[s.statValue2, { color: T.orange }]}>{fmtM(elevLossM)}</Text>
-            </View>
-            <Text style={s.statLabel}>Descended</Text>
-          </View>
-        </Animated.View>
-
-        {/* ── Live route map ───────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.delay(250).duration(400)} style={s.mapWrap}>
-          {Platform.OS !== "web" ? (
-            <WebView
-              ref={webViewRef}
-              source={{ uri: `${API_BASE}/hike-map` }}
-              style={s.mapWebView}
-              scrollEnabled={false}
-              javaScriptEnabled
-              domStorageEnabled
-              originWhitelist={["*"]}
-            />
-          ) : (
-            <View ref={webMapContainerRef} style={s.mapWebView} />
           )}
-        </Animated.View>
+        </TouchableOpacity>
 
-        {/* ── Controls ─────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInUp.delay(300).duration(400)} style={s.controls}>
-
-          {isIdle && (
+        {/* ── Idle state: GPS hint + start button ── */}
+        {isIdle && (
+          <View style={s.sheetBody}>
+            {!gpsReady ? (
+              <View style={s.gpsNote}>
+                <WifiOff size={13} color={T.textMuted} />
+                <Text style={s.gpsNoteText}>Waiting for GPS — go outdoors for best accuracy</Text>
+              </View>
+            ) : (
+              <View style={s.gpsNote}>
+                <Wifi size={13} color={T.green} />
+                <Text style={[s.gpsNoteText, { color: "rgba(62,207,117,0.8)" }]}>
+                  GPS ready — name your route above
+                </Text>
+              </View>
+            )}
             <TouchableOpacity
               style={[s.startBtn, !canStart && { opacity: 0.45 }]}
               onPress={startTracking}
@@ -843,47 +836,73 @@ export default function HikeTrackingScreen() {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-          )}
+          </View>
+        )}
 
-          {(isTracking || isPaused) && (
-            <TouchableOpacity
-              style={isPaused ? s.resumeBtn : s.pauseBtn}
-              onPress={isPaused ? resumeTracking : pauseTracking}
-              activeOpacity={0.85}
-            >
-              {isPaused ? <Play size={20} color={T.green} /> : <Pause size={20} color={T.blue} />}
-              <Text style={[s.pauseBtnText, isPaused && { color: T.green }]}>
-                {isPaused ? "Resume" : "Pause"}
+        {/* ── Tracking / paused: full stats + controls (collapsible) ── */}
+        {!isIdle && drawerOpen && (
+          <Animated.View entering={FadeIn.duration(200)} style={s.sheetBody}>
+
+            {/* 4-stat row: distance · gained · altitude · descended */}
+            <View style={s.statsRow}>
+              <View style={s.statCell}>
+                <Text style={s.statValue}>{fmtKm(distanceKm)}</Text>
+                <Text style={s.statLabel}>Distance</Text>
+              </View>
+              <View style={[s.statCell, s.statCellBorder]}>
+                <View style={s.statValueRow}>
+                  <TrendingUp size={13} color={T.green} style={{ marginRight: 2 }} />
+                  <Text style={[s.statValue, { color: T.green }]}>{fmtM(elevGainM)}</Text>
+                </View>
+                <Text style={s.statLabel}>Gained</Text>
+              </View>
+              <View style={[s.statCell, s.statCellBorder]}>
+                <Text style={s.statValue}>{currentAltM != null ? fmtM(currentAltM) : "—"}</Text>
+                <Text style={s.statLabel}>Altitude</Text>
+              </View>
+              <View style={[s.statCell, s.statCellBorder]}>
+                <View style={s.statValueRow}>
+                  <TrendingDown size={13} color={T.orange} style={{ marginRight: 2 }} />
+                  <Text style={[s.statValue, { color: T.orange }]}>{fmtM(elevLossM)}</Text>
+                </View>
+                <Text style={s.statLabel}>Descended</Text>
+              </View>
+            </View>
+
+            {/* Speed */}
+            <View style={s.speedRow}>
+              <Activity size={12} color={T.textMuted} />
+              <Text style={s.speedText}>
+                {currentSpeedKmh > 0 ? `${currentSpeedKmh.toFixed(1)} km/h` : "— km/h"}
               </Text>
-            </TouchableOpacity>
-          )}
+              <Text style={s.speedLabel}>current speed</Text>
+            </View>
 
-          {(isTracking || isPaused) && (
-            <TouchableOpacity style={s.stopBtn} onPress={handleStopPress} activeOpacity={0.8}>
-              <Square size={16} color={T.red} fill={T.red} />
-              <Text style={s.stopBtnText}>Finish Hike</Text>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
+            {/* Pause / finish controls */}
+            <View style={s.controls}>
+              <TouchableOpacity
+                style={[s.controlBtn, isPaused ? s.controlBtnResume : s.controlBtnPause]}
+                onPress={isPaused ? resumeTracking : pauseTracking}
+                activeOpacity={0.85}
+              >
+                {isPaused
+                  ? <Play size={18} color={T.green} />
+                  : <Pause size={18} color={T.blue} />}
+                <Text style={[s.controlBtnText, isPaused && { color: T.green }]}>
+                  {isPaused ? "Resume" : "Pause"}
+                </Text>
+              </TouchableOpacity>
 
-        {/* ── GPS notes ────────────────────────────────────────────────── */}
-        {isIdle && !gpsReady && (
-          <Animated.View entering={FadeIn.duration(600)} style={s.gpsNote}>
-            <WifiOff size={14} color={T.textMuted} />
-            <Text style={s.gpsNoteText}>Waiting for GPS signal. Go outdoors for best accuracy.</Text>
+              <TouchableOpacity style={[s.controlBtn, s.controlBtnStop]} onPress={handleStopPress} activeOpacity={0.8}>
+                <Square size={14} color={T.red} fill={T.red} />
+                <Text style={[s.controlBtnText, { color: T.red }]}>Finish Hike</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         )}
-        {isIdle && gpsReady && (
-          <Animated.View entering={FadeIn.duration(400)} style={s.gpsNote}>
-            <Wifi size={14} color={T.green} />
-            <Text style={[s.gpsNoteText, { color: "rgba(62,207,117,0.75)" }]}>
-              GPS ready — name your route and tap Start Tracking.
-            </Text>
-          </Animated.View>
-        )}
-      </ScrollView>
+      </View>
 
-      {/* ── Finish hike confirm sheet ──────────────────────────────────── */}
+      {/* ── Finish hike confirm sheet ── */}
       {confirmFinish && (
         <Animated.View entering={FadeInUp.duration(250)} style={[s.confirmSheet, { paddingBottom: insets.bottom + 20 }]}>
           <View style={s.confirmHandle} />
@@ -910,7 +929,7 @@ export default function HikeTrackingScreen() {
         </Animated.View>
       )}
 
-      {/* ── Leave-while-tracking confirm sheet ────────────────────────── */}
+      {/* ── Leave-while-tracking confirm sheet ── */}
       {confirmLeave && (
         <Animated.View entering={FadeInUp.duration(250)} style={[s.confirmSheet, { paddingBottom: insets.bottom + 20 }]}>
           <View style={s.confirmHandle} />
@@ -931,12 +950,18 @@ export default function HikeTrackingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root:               { flex: 1, backgroundColor: "#050D1A" },
+  root: { flex: 1, backgroundColor: "#050D1A" },
 
-  // Header
+  // Top gradient overlay for header legibility
+  topGradient: {
+    position: "absolute", top: 0, left: 0, right: 0, height: 160, zIndex: 1,
+  },
+
+  // Header — floats over the map
   header: {
-    flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)", gap: 12,
+    position: "absolute", top: 0, left: 0, right: 0, zIndex: 2,
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 20, paddingBottom: 16, gap: 12,
   },
   headerTitle: {
     flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold",
@@ -947,120 +972,114 @@ const s = StyleSheet.create({
   // GPS pill
   gpsPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 12,
+    backgroundColor: "rgba(5,13,26,0.75)", borderRadius: 12,
     paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
   },
-  gpsPillReady: { borderColor: "rgba(62,207,117,0.35)", backgroundColor: "rgba(62,207,117,0.08)" },
+  gpsPillReady: { borderColor: "rgba(62,207,117,0.5)", backgroundColor: "rgba(5,13,26,0.85)" },
   gpsDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: T.textMuted },
   gpsText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   gpsTextReady: { color: T.green },
 
-  // Content
-  content: { paddingHorizontal: 20, gap: 16, paddingTop: 16 },
-
-  // Route name card
-  nameCard: {
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  // Route name card — absolute overlay, idle only
+  nameOverlay: {
+    position: "absolute", left: 16, right: 16, zIndex: 2,
+    backgroundColor: "rgba(6,13,27,0.93)",
+    borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
     padding: 16, gap: 8,
   },
   nameLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.6 },
   nameRequired: { color: T.green },
   nameInput: {
-    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text,
   },
   nameInputError: { borderColor: T.red + "80" },
-  nameInputLocked: { opacity: 0.6 },
   nameErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
 
-  // Status
-  statusRow:     { alignItems: "center" },
+  // Bottom sheet
+  sheet: {
+    position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2,
+    backgroundColor: "rgba(6,13,27,0.97)",
+    borderTopLeftRadius: 26, borderTopRightRadius: 26,
+    borderTopWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+  },
+  sheetHandleArea: { alignItems: "center", paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 8,
+  },
+  sheetStatusRow: {
+    flexDirection: "row", alignItems: "center", gap: 10, width: "100%",
+  },
+  timerInline: { flex: 1, fontSize: 30, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -0.5 },
+  chevron: { fontSize: 14, color: T.textMuted },
+
+  // Status pill (inside sheet header row)
   statusPill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 6,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16,
+    paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
   statusPillTracking: { backgroundColor: "rgba(62,207,117,0.1)", borderColor: "rgba(62,207,117,0.3)" },
   statusPillPaused:   { backgroundColor: "rgba(251,146,60,0.1)", borderColor: "rgba(251,146,60,0.3)" },
-  statusText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 1 },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 0.8 },
 
-  // Timer
-  timerBlock: { alignItems: "center", gap: 2 },
-  timerText:  { fontSize: 52, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -1 },
-  timerLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 1 },
+  // Sheet body (stats + controls)
+  sheetBody: { paddingHorizontal: 16, paddingBottom: 4, gap: 10 },
 
-  // Stats row (main)
+  // Stats row — 4 cells
   statsRow: {
-    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    paddingVertical: 18,
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 12,
   },
-  statCell: { flex: 1, alignItems: "center", gap: 6 },
-  statCellMid: {
-    borderLeftWidth: 1, borderRightWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-  },
+  statCell: { flex: 1, alignItems: "center", gap: 4 },
+  statCellBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
   statValueRow: { flexDirection: "row", alignItems: "center" },
-  statValue:    { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
-  statLabel:    { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  statValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
+  statLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 
-  // Stats row 2
-  statsRow2: {
-    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 14,
+  // Speed bar
+  speedRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 2,
   },
-  statCell2:  { flex: 1, alignItems: "center", gap: 4 },
-  statValue2: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
-
-  // Live map
-  mapWrap: {
-    borderRadius: 18, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-    height: 230,
-  },
-  mapWebView: { flex: 1, backgroundColor: "#050D1A" },
+  speedText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  speedLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   // Controls
-  controls: { gap: 12 },
+  controls: { flexDirection: "row", gap: 10 },
+  controlBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
+  },
+  controlBtnPause:  { backgroundColor: "rgba(96,165,250,0.1)", borderColor: "rgba(96,165,250,0.3)" },
+  controlBtnResume: { backgroundColor: "rgba(62,207,117,0.1)", borderColor: "rgba(62,207,117,0.3)" },
+  controlBtnStop:   { backgroundColor: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.25)" },
+  controlBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.blue },
+
+  // Start button
   startBtn: { borderRadius: 18, overflow: "hidden" },
   startBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, paddingVertical: 18,
+    gap: 10, paddingVertical: 16,
   },
   startBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
-  pauseBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    paddingVertical: 16, borderRadius: 16,
-    backgroundColor: "rgba(96,165,250,0.1)", borderWidth: 1, borderColor: "rgba(96,165,250,0.3)",
-  },
-  resumeBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    paddingVertical: 16, borderRadius: 16,
-    backgroundColor: "rgba(62,207,117,0.1)", borderWidth: 1, borderColor: "rgba(62,207,117,0.3)",
-  },
-  pauseBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.blue },
-  stopBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 14, borderRadius: 16,
-    backgroundColor: "rgba(239,68,68,0.08)", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)",
-  },
-  stopBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.red },
 
   // GPS note
   gpsNote: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12,
-    paddingVertical: 10, paddingHorizontal: 16,
+    paddingVertical: 8, paddingHorizontal: 14,
   },
-  gpsNoteText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", flex: 1 },
+  gpsNoteText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
 
-  // Finished summary
+  // Finished summary (used by the finished early-return render)
   summaryContainer: { alignItems: "center", gap: 20, paddingTop: 32 },
   summaryIconRow:   { marginBottom: 4 },
   summaryIcon: {
