@@ -13,9 +13,9 @@ then tap the link above to join the beta.
 
 Android (Google Play)
 ----------------------
-Closed testing opt-in link: [to be confirmed — check back shortly]
-Note: Tap the link on your Android device and follow the instructions to join
-the closed testing programme, then install SummitReady from Google Play.
+Install link:   https://play.google.com/store/apps/details?id=uk.summitready.app
+Note: Tap the link on your Android device. If prompted, join the testing programme
+first, then install SummitReady from Google Play.
 
 --------------------------------
 WHAT TO TEST
