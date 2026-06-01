@@ -100,6 +100,8 @@ export default function TrackScreen() {
   const [locText, setLocText] = useState(summitGoal?.location ?? "");
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const locInputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const searchCardY = useRef<number>(0);
 
   const [searchText, setSearchText] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -115,6 +117,14 @@ export default function TrackScreen() {
   useEffect(() => {
     if (!userChangedRadius && summitGoal?.maxRadius) setLocalRadius(summitGoal.maxRadius);
   }, [summitGoal?.maxRadius, userChangedRadius]);
+
+  useEffect(() => {
+    if (searchResult) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: searchCardY.current, animated: true });
+      }, 100);
+    }
+  }, [searchResult]);
 
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
   const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
@@ -230,6 +240,7 @@ export default function TrackScreen() {
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.scroll,
           {
@@ -302,8 +313,88 @@ export default function TrackScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* FIND HILLS (collapsible) */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+        {/* SEARCH HILLS */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+          <View style={styles.sectionHeader}>
+            <Search size={14} color={T.purple} />
+            <Text style={styles.sectionTitle}>Search Hills</Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+          <View
+            style={styles.searchCard}
+            onLayout={e => { searchCardY.current = e.nativeEvent.layout.y; }}
+          >
+            <Text style={styles.searchHint}>Know a hill you want to train on? Search by name.</Text>
+            <View style={styles.searchRow}>
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+                placeholder="e.g. Pendle Hill, Ben Nevis…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={handleHillSearch}
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={handleHillSearch}
+                disabled={searchLoading || searchText.trim().length < 2}
+                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                activeOpacity={0.75}
+              >
+                {searchLoading
+                  ? <ActivityIndicator size="small" color={T.white} />
+                  : <Search size={16} color={T.white} />}
+              </TouchableOpacity>
+            </View>
+
+            {searchError && (
+              <View style={styles.searchErrRow}>
+                <AlertCircle size={13} color={T.red} />
+                <Text style={styles.searchErrText}>{searchError}</Text>
+              </View>
+            )}
+
+            {searchResult && (
+              <View style={styles.searchResult}>
+                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.searchResultTop}>
+                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
+                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
+                  </View>
+                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
+                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
+                  </View>
+                </View>
+                <View style={styles.searchResultStats}>
+                  <View style={styles.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.searchStatVal}>{searchResult.elevation}m</Text><Text style={styles.searchStatLbl}>per rep</Text></View>
+                  <View style={styles.searchStat}><MapPin size={11} color={T.green} /><Text style={styles.searchStatVal}>{searchResult.distance}km</Text><Text style={styles.searchStatLbl}>away</Text></View>
+                  <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
+                  <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddSearchResult}
+                  disabled={searchAdded}
+                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.75}
+                >
+                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
+                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
+                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* FIND HILLS WITH AI (collapsible) */}
+        <Animated.View entering={FadeInDown.delay(140).duration(400)}>
           <TouchableOpacity
             style={styles.findHillsToggle}
             activeOpacity={0.75}
@@ -428,82 +519,6 @@ export default function TrackScreen() {
             )}
           </Animated.View>
         )}
-        {/* SEARCH HILLS */}
-        <Animated.View entering={FadeInDown.delay(160).duration(400)}>
-          <View style={styles.sectionHeader}>
-            <Search size={14} color={T.purple} />
-            <Text style={styles.sectionTitle}>Search Hills</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(180).duration(400)}>
-          <View style={styles.searchCard}>
-            <Text style={styles.searchHint}>Know a hill you want to train on? Search by name.</Text>
-            <View style={styles.searchRow}>
-              <TextInput
-                ref={searchInputRef}
-                style={styles.searchInput}
-                value={searchText}
-                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
-                placeholder="e.g. Pendle Hill, Ben Nevis…"
-                placeholderTextColor={T.textDim}
-                returnKeyType="search"
-                onSubmitEditing={handleHillSearch}
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={handleHillSearch}
-                disabled={searchLoading || searchText.trim().length < 2}
-                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
-                activeOpacity={0.75}
-              >
-                {searchLoading
-                  ? <ActivityIndicator size="small" color={T.white} />
-                  : <Search size={16} color={T.white} />}
-              </TouchableOpacity>
-            </View>
-
-            {searchError && (
-              <View style={styles.searchErrRow}>
-                <AlertCircle size={13} color={T.red} />
-                <Text style={styles.searchErrText}>{searchError}</Text>
-              </View>
-            )}
-
-            {searchResult && (
-              <View style={styles.searchResult}>
-                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                <View style={styles.searchResultTop}>
-                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
-                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
-                  </View>
-                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
-                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
-                  </View>
-                </View>
-                <View style={styles.searchResultStats}>
-                  <View style={styles.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.searchStatVal}>{searchResult.elevation}m</Text><Text style={styles.searchStatLbl}>per rep</Text></View>
-                  <View style={styles.searchStat}><MapPin size={11} color={T.green} /><Text style={styles.searchStatVal}>{searchResult.distance}km</Text><Text style={styles.searchStatLbl}>away</Text></View>
-                  <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
-                  <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
-                </View>
-                <TouchableOpacity
-                  onPress={handleAddSearchResult}
-                  disabled={searchAdded}
-                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                  activeOpacity={0.75}
-                >
-                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
-                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
-                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </Animated.View>
 
         {/* YOUR HIKES */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
