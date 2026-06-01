@@ -82,8 +82,10 @@ export default function TrackScreen() {
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
-    updateGoalLocation, exploreHikes, customRoutes,
+    updateGoalLocation, exploreHikes, customRoutes, appMode,
   } = useApp();
+
+  const isExploreMode = appMode === "explore";
   const { isSubscribed } = useSubscription();
 
   const [localRadius, setLocalRadius] = useState(summitGoal?.maxRadius ?? 25);
@@ -561,22 +563,35 @@ export default function TrackScreen() {
           ))
         )}
 
-        {/* SUGGESTED HILLS */}
+        {/* MY HILLS */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)}>
           <View style={styles.sectionHeader}>
             <Mountain size={14} color={T.orange} />
-            <Text style={styles.sectionTitle}>Suggested Hills</Text>
+            <Text style={styles.sectionTitle}>My Hills</Text>
             {nearbyHills.length > 0 && (
-              <Text style={styles.sectionSub}>{summitGoal?.location ?? ""}</Text>
+              <Text style={styles.sectionSub}>
+                {nearbyHills.length} hill{nearbyHills.length !== 1 ? "s" : ""} saved
+              </Text>
             )}
           </View>
         </Animated.View>
+
+        {/* Explore-mode carry-over nudge */}
+        {isExploreMode && nearbyHills.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(130).duration(400)}>
+            <View style={styles.carryOverBanner}>
+              <Text style={styles.carryOverText}>
+                💡 Your hills and hike log carry over automatically if you switch to Summit Training mode.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {nearbyHills.length === 0 && !hillsLoading && (
           <Animated.View entering={FadeInDown.delay(140).duration(400)}>
             <View style={styles.noHillsCard}>
               <Text style={styles.noHillsText}>
-                No hills loaded yet. Use "Find hills" below to discover training hills near you.
+                No hills saved yet. Search for a hill above, or use "Find hills" to discover hills near you.
               </Text>
             </View>
           </Animated.View>
@@ -591,7 +606,7 @@ export default function TrackScreen() {
           </Animated.View>
         )}
 
-        {suggestedHills.map((hill, i) => {
+        {(isExploreMode ? allSortedHills : suggestedHills).map((hill, i) => {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
@@ -635,25 +650,31 @@ export default function TrackScreen() {
                   </View>
                 </View>
 
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
-                </View>
-                <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
+                {!isExploreMode && (
+                  <>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
+                    </View>
+                    <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
+                  </>
+                )}
 
                 <View style={styles.actionRow}>
+                  {!isExploreMode && (
+                    <TouchableOpacity
+                      style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                      activeOpacity={inPlan ? 1 : 0.7}
+                      onPress={() => !inPlan && handleAddToPlan(hill)}
+                      disabled={inPlan}
+                    >
+                      {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                      <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
+                        {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
-                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                    activeOpacity={inPlan ? 1 : 0.7}
-                    onPress={() => !inPlan && handleAddToPlan(hill)}
-                    disabled={inPlan}
-                  >
-                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
-                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.mapBtn}
+                    style={[styles.mapBtn, isExploreMode && { flex: 1, justifyContent: "center" }]}
                     activeOpacity={0.7}
                     onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
                   >
@@ -661,7 +682,7 @@ export default function TrackScreen() {
                     <Text style={styles.mapBtnText}>Map</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.detailsBtn}
+                    style={[styles.detailsBtn, isExploreMode && { flex: 1, justifyContent: "center" }]}
                     activeOpacity={0.7}
                     onPress={() =>
                       router.push({
@@ -689,8 +710,8 @@ export default function TrackScreen() {
           );
         })}
 
-        {/* View all hills toggle */}
-        {nearbyHills.length > SUGGESTED_COUNT && (
+        {/* View all hills toggle — only needed in summit mode (explore shows all by default) */}
+        {!isExploreMode && nearbyHills.length > SUGGESTED_COUNT && (
           <Animated.View entering={FadeInDown.delay(260).duration(400)}>
             <TouchableOpacity
               style={styles.viewAllBtn}
@@ -883,6 +904,8 @@ const styles = StyleSheet.create({
 
   noHillsCard: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.cardBorder, padding: 16, marginBottom: 12 },
   noHillsText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
+  carryOverBanner: { backgroundColor: T.blueDim, borderRadius: 12, borderWidth: 1, borderColor: T.blue + "30", paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10 },
+  carryOverText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.blue, lineHeight: 18 },
 
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, marginBottom: 8 },
   loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
