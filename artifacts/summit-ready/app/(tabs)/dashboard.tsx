@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -532,6 +532,7 @@ export default function DashboardScreen() {
   const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek) : 0;
   const maxElev = sessions.filter(s => s.completed).reduce((m, s) => Math.max(m, s.elevationGain), 0);
   const totalDone = sessions.filter(s => s.completed).length;
+  const hillsDone = sessions.filter(s => s.completed && s.type === "hill").length;
 
   const trackingMsg =
     readinessScore >= 70 ? "You are on track" :
@@ -676,13 +677,52 @@ export default function DashboardScreen() {
           </View>
         </Animated.View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <StatCard icon={Calendar} label="Days Remaining" value={days} accent={T.blue} delay={120} />
-          <StatCard icon={TrendingUp} label="Max Ascent" value={maxElev} unit="m" accent={T.orange} delay={160} />
-          <StatCard icon={CheckCircle} label="Sessions Done" value={totalDone} accent={T.green} delay={200} />
-          <StatCard icon={BarChart2} label="This Week" value={weekCompletion} unit="%" accent={T.purple} delay={240} />
-        </View>
+        {/* Stats Strip */}
+        <Animated.View entering={FadeInDown.delay(110).duration(500)}>
+          <View style={styles.statsSectionHeader}>
+            <Text style={styles.statsSectionTitle}>Your Stats</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7} style={styles.statsSectionLink}>
+              <Text style={styles.statsSectionLinkText}>Account</Text>
+              <ChevronRight size={12} color={T.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.statsStrip}>
+            <View style={styles.statsTile}>
+              <View style={[styles.statsTileIcon, { backgroundColor: T.orange + "20" }]}>
+                <TrendingUp size={13} color={T.orange} />
+              </View>
+              <Text style={[styles.statsTileValue, { color: T.orange }]}>
+                {summitGoal.elevationGain.toLocaleString()}
+                <Text style={styles.statsTileUnit}>m</Text>
+              </Text>
+              <Text style={styles.statsTileLabel}>Elev. Goal</Text>
+            </View>
+            <View style={styles.statsTileDivider} />
+            <View style={styles.statsTile}>
+              <View style={[styles.statsTileIcon, { backgroundColor: T.green + "20" }]}>
+                <Mountain size={13} color={T.green} />
+              </View>
+              <Text style={[styles.statsTileValue, { color: T.green }]}>{hillsDone}</Text>
+              <Text style={styles.statsTileLabel}>Hills Done</Text>
+            </View>
+            <View style={styles.statsTileDivider} />
+            <View style={styles.statsTile}>
+              <View style={[styles.statsTileIcon, { backgroundColor: T.blue + "20" }]}>
+                <CheckCircle size={13} color={T.blue} />
+              </View>
+              <Text style={[styles.statsTileValue, { color: T.blue }]}>{totalDone}</Text>
+              <Text style={styles.statsTileLabel}>Sessions</Text>
+            </View>
+            <View style={styles.statsTileDivider} />
+            <View style={styles.statsTile}>
+              <View style={[styles.statsTileIcon, { backgroundColor: "#FFD70022" }]}>
+                <Trophy size={13} color="#FFD700" />
+              </View>
+              <Text style={[styles.statsTileValue, { color: "#FFD700" }]}>{unlockedAchievements.length}</Text>
+              <Text style={styles.statsTileLabel}>Badges</Text>
+            </View>
+          </View>
+        </Animated.View>
 
         {/* Achievements Strip */}
         {unlockedAchievements.length > 0 && (
@@ -1028,6 +1068,31 @@ const styles = StyleSheet.create({
   diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   diffText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+  statsSectionHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  statsSectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  statsSectionLink: { flexDirection: "row", alignItems: "center", gap: 2 },
+  statsSectionLinkText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statsStrip: {
+    flexDirection: "row",
+    backgroundColor: T.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  statsTile: { flex: 1, alignItems: "center", gap: 5 },
+  statsTileIcon: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+  },
+  statsTileValue: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  statsTileUnit: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  statsTileLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statsTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
   achieveStrip: {
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: T.card, borderRadius: 16,

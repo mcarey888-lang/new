@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,7 +14,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, useAnimatedProps, useSharedValue, withTiming, Easing } from "react-native-reanimated";
+import Svg, { Circle, Line, Polyline, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   AlertCircle, ArrowLeft, CheckCircle, ChevronRight, Lock,
@@ -24,6 +26,92 @@ import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges, type ChallengeActivity } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlannerSection";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+function ChallengeRing({
+  pct, value, label, color, size = 170,
+}: {
+  pct: number; value: string; label: string; color: string; size?: number;
+}) {
+  const strokeWidth = 14;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(pct / 100, { duration: 1400, easing: Easing.out(Easing.cubic) });
+  }, [pct]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - progress.value),
+  }));
+
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size} style={{ position: "absolute" }}>
+        <Circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth}
+        />
+        <AnimatedCircle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          animatedProps={animatedProps}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={{ alignItems: "center", gap: 3 }}>
+        <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color, lineHeight: 30 }}>{value}</Text>
+        <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.4)", letterSpacing: 1.2, textTransform: "uppercase" }}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ProgressChart({
+  activities, target, color, metric,
+}: {
+  activities: ChallengeActivity[]; target: number; color: string; metric: string;
+}) {
+  const W = SCREEN_WIDTH - 80;
+  const H = 72;
+
+  const chartData = useMemo(() => {
+    const sorted = [...activities].sort((a, b) => a.date.localeCompare(b.date));
+    const data = [0];
+    let running = 0;
+    for (const act of sorted) {
+      running += metric === "elevation" ? act.elevationGain : 1;
+      data.push(running);
+    }
+    return data;
+  }, [activities, metric]);
+
+  if (chartData.length < 2) return null;
+
+  const maxVal = Math.max(target, chartData[chartData.length - 1]);
+  const toX = (i: number) => 12 + (i / (chartData.length - 1)) * (W - 24);
+  const toY = (v: number) => H - 10 - (v / maxVal) * (H - 18);
+
+  const polylinePoints = chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
+  const targetY = toY(target);
+  const areaPath = `M${chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" L")} L${toX(chartData.length - 1)},${H} L${toX(0)},${H} Z`;
+  const lastX = toX(chartData.length - 1);
+  const lastY = toY(chartData[chartData.length - 1]);
+
+  return (
+    <Svg width={W} height={H}>
+      <Line x1={12} y1={targetY} x2={W - 12} y2={targetY} stroke={color} strokeWidth={1} strokeDasharray="5,4" opacity={0.3} />
+      <Path d={areaPath} fill={color} fillOpacity={0.07} />
+      <Polyline points={polylinePoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={lastX} cy={lastY} r={4} fill={color} />
+    </Svg>
+  );
+}
 
 function ProgressBar({ pct, color, height = 6 }: { pct: number; color: string; height?: number }) {
   return (
@@ -331,46 +419,59 @@ export default function ChallengeDetailScreen() {
         {/* Progress */}
         {isActive && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.progressCard}>
-            <LinearGradient colors={[color + "10", "transparent"]} style={StyleSheet.absoluteFill} />
-            <View style={s.progressHeader}>
-              <Text style={s.progressTitle}>Your progress</Text>
-              <Text style={[s.progressPct, { color }]}>{pct}%</Text>
-            </View>
-            <ProgressBar pct={pct} color={color} height={8} />
-            <View style={s.progressStats}>
-              <View style={s.progressStat}>
-                <Text style={[s.progressStatVal, { color }]}>
-                  {c.metric === "elevation" ? `${progress.toLocaleString()}m` : `${ac.activities.length}`}
-                </Text>
-                <Text style={s.progressStatLbl}>Completed</Text>
-              </View>
-              <View style={s.progressStatDivider} />
-              <View style={s.progressStat}>
-                <Text style={s.progressStatVal}>
+            <LinearGradient colors={[color + "12", "transparent"]} style={StyleSheet.absoluteFill} />
+
+            {/* Ring */}
+            <View style={s.ringArea}>
+              <ChallengeRing
+                pct={pct}
+                value={c.metric === "elevation" ? `${progress.toLocaleString()}m` : `${ac.activities.length}`}
+                label={c.metric === "elevation" ? "GAINED" : "SESSIONS"}
+                color={color}
+                size={170}
+              />
+              <View style={s.ringBelow}>
+                <Text style={[s.ringPct, { color }]}>{pct}% COMPLETED</Text>
+                <Text style={s.ringRemaining}>
                   {c.metric === "elevation"
-                    ? `${(c.targetValue - progress).toLocaleString()}m`
-                    : `${c.targetValue - ac.activities.length}`}
+                    ? `${(c.targetValue - progress).toLocaleString()}m to go`
+                    : `${c.targetValue - ac.activities.length} sessions remaining`}
                 </Text>
-                <Text style={s.progressStatLbl}>Remaining</Text>
               </View>
-              <View style={s.progressStatDivider} />
-              <View style={s.progressStat}>
-                <Text style={s.progressStatVal}>{ac.activities.length}</Text>
-                <Text style={s.progressStatLbl}>Activities</Text>
-              </View>
-              {ac.activities.length > 0 && (
-                <>
-                  <View style={s.progressStatDivider} />
-                  <View style={s.progressStat}>
-                    <Text style={s.progressStatVal}>
-                      {Math.round(progress / ac.activities.length).toLocaleString()}
-                      {c.metric === "elevation" ? "m" : ""}
-                    </Text>
-                    <Text style={s.progressStatLbl}>Per session</Text>
-                  </View>
-                </>
-              )}
             </View>
+
+            {/* Progress chart */}
+            {ac.activities.length > 0 && (
+              <View style={s.chartArea}>
+                <View style={s.chartHeader}>
+                  <Text style={s.chartLabel}>Progress vs target</Text>
+                </View>
+                <ProgressChart activities={ac.activities} target={c.targetValue} color={color} metric={c.metric} />
+              </View>
+            )}
+
+            {/* Stat tiles */}
+            <View style={s.statTiles}>
+              <View style={s.statTile}>
+                <Text style={[s.statTileVal, { color }]}>{ac.activities.length}</Text>
+                <Text style={s.statTileLbl}>Climbs</Text>
+              </View>
+              <View style={s.statTileDivider} />
+              <View style={s.statTile}>
+                <Text style={[s.statTileVal, { color }]}>
+                  {progress.toLocaleString()}{c.metric === "elevation" ? "m" : ""}
+                </Text>
+                <Text style={s.statTileLbl}>Gained</Text>
+              </View>
+              <View style={s.statTileDivider} />
+              <View style={s.statTile}>
+                <Text style={[s.statTileVal, { color }]}>
+                  {new Set(ac.activities.map(a => a.date)).size}
+                </Text>
+                <Text style={s.statTileLbl}>Days Active</Text>
+              </View>
+            </View>
+
             {nextMilestone && (
               <View style={s.nextMilestone}>
                 <ChevronRight size={12} color={color} />
@@ -536,7 +637,7 @@ const s = StyleSheet.create({
   heroMetaText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
   heroMetaDot: { fontSize: 12, color: T.textDim },
 
-  progressCard: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12, overflow: "hidden" },
+  progressCard: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 14, overflow: "hidden" },
   progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   progressTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   progressPct: { fontSize: 20, fontFamily: "Inter_700Bold" },
@@ -547,6 +648,25 @@ const s = StyleSheet.create({
   progressStatDivider: { width: 1, backgroundColor: T.border },
   nextMilestone: { flexDirection: "row", alignItems: "center", gap: 4 },
   nextMilestoneText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  ringArea: { alignItems: "center", gap: 10 },
+  ringBelow: { alignItems: "center", gap: 4 },
+  ringPct: { fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  ringRemaining: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  chartArea: { gap: 8, alignItems: "center" },
+  chartHeader: { width: "100%", flexDirection: "row", alignItems: "center" },
+  chartLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 0.4, textTransform: "uppercase" },
+
+  statTiles: {
+    flexDirection: "row", backgroundColor: T.surface,
+    borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    paddingVertical: 12,
+  },
+  statTile: { flex: 1, alignItems: "center", gap: 3 },
+  statTileVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  statTileLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
 
   card: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
