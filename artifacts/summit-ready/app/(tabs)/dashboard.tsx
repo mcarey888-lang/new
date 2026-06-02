@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain } from "lucide-react-native";
+import { Video, ResizeMode } from "expo-av";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -31,6 +32,8 @@ import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 
 const MASCOT = require("@/assets/mascot.gif");
+// [GUIDE] New waving guide character (MP4, looping, muted)
+const GUIDE_VIDEO = require("@/assets/summit-guide/guide.mp4");
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -260,6 +263,57 @@ function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
     </View>
   );
 }
+
+// [GUIDE] Waving guide character with speech bubble.
+// Shows the MP4 animation on the right and a speech bubble on the left
+// containing the AI coach summary (or a fallback if no advice yet).
+// To remove this feature: delete this component and the GuideWithBubble
+// usage in the coach body below. To expand: swap GUIDE_VIDEO or resize.
+function GuideWithBubble({ text, tone }: { text: string; tone?: "positive" | "warning" | "neutral" }) {
+  const bubbleBg     = tone === "positive" ? T.greenDim  : tone === "warning" ? T.orangeDim : T.blueDim;
+  const bubbleBorder = tone === "positive" ? T.green + "50" : tone === "warning" ? T.orange + "50" : T.blue + "50";
+
+  return (
+    <View style={guideStyles.row}>
+      {/* Speech bubble + right-pointing tail */}
+      <View style={guideStyles.bubbleWrap}>
+        <View style={[guideStyles.bubble, { backgroundColor: bubbleBg, borderColor: bubbleBorder }]}>
+          <Text style={guideStyles.bubbleText}>{text}</Text>
+        </View>
+        {/* Triangle tail pointing right toward the guide */}
+        <View style={[guideStyles.bubbleTail, { borderLeftColor: bubbleBg }]} />
+      </View>
+
+      {/* Animated guide character (MP4, looping, muted) */}
+      <Video
+        source={GUIDE_VIDEO}
+        style={guideStyles.guideVideo}
+        shouldPlay
+        isLooping
+        isMuted
+        resizeMode={ResizeMode.CONTAIN}
+        useNativeControls={false}
+      />
+    </View>
+  );
+}
+
+const guideStyles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 0 },
+  bubbleWrap: { flex: 1, flexDirection: "row", alignItems: "center" },
+  bubble: {
+    flex: 1, borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  bubbleText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 19 },
+  // CSS-triangle tail: right-pointing, vertically centred by parent alignItems:"center"
+  bubbleTail: {
+    width: 0, height: 0,
+    borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 9,
+    borderTopColor: "transparent", borderBottomColor: "transparent",
+  },
+  guideVideo: { width: 110, height: 130 },
+});
 
 function StatCard({
   icon: IconComp,
@@ -922,29 +976,37 @@ export default function DashboardScreen() {
                 <WifiOff size={15} color={T.textMuted} />
                 <Text style={styles.coachLoadingText}>Couldn't reach coach — tap to retry</Text>
               </TouchableOpacity>
-            ) : coach ? (
+            ) : (
               <>
-                <Text style={styles.coachSummary}>{coach.summary}</Text>
-                <View style={styles.coachTips}>
-                  {coach.tips.map((tip, i) => (
-                    <View key={i} style={styles.coachTip}>
-                      <View style={[
-                        styles.coachTipDot,
-                        {
-                          backgroundColor:
-                            coach.tone === "positive" ? T.green :
-                            coach.tone === "warning"  ? T.orange : T.blue,
-                        },
-                      ]} />
-                      <Text style={styles.coachTipText}>{tip}</Text>
+                {/* [GUIDE] Animated guide + speech bubble showing AI summary */}
+                <GuideWithBubble
+                  text={coach?.summary ?? "Log a training session and I'll give you your next summit tip."}
+                  tone={coach?.tone}
+                />
+                {coach && (
+                  <>
+                    <View style={styles.coachTips}>
+                      {coach.tips.map((tip, i) => (
+                        <View key={i} style={styles.coachTip}>
+                          <View style={[
+                            styles.coachTipDot,
+                            {
+                              backgroundColor:
+                                coach.tone === "positive" ? T.green :
+                                coach.tone === "warning"  ? T.orange : T.blue,
+                            },
+                          ]} />
+                          <Text style={styles.coachTipText}>{tip}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
-                <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
-                  AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
-                </Text>
+                    <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
+                      AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
+                    </Text>
+                  </>
+                )}
               </>
-            ) : null}
+            )}
           </View>
         </Animated.View>
 
