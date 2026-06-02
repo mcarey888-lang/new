@@ -791,10 +791,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   function parseDuration(dur: string): number {
     if (dur.includes("hour")) {
-      const m = dur.match(/(\d+)-(\d+)/);
+      const m = dur.match(/(\d+)[–\-](\d+)/);
       return m ? Math.round(((+m[1]) + (+m[2])) / 2 * 60) : 180;
     }
-    const m = dur.match(/(\d+)-(\d+)/);
+    const m = dur.match(/(\d+)[–\-](\d+)/);
     return m ? Math.round(((+m[1]) + (+m[2])) / 2) : 60;
   }
 
