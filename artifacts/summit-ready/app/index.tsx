@@ -78,7 +78,7 @@ export default function LandingScreen() {
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      <View style={styles.mountainDeco} pointerEvents="none">
+      <View style={[styles.mountainDeco, { pointerEvents: "none" }]}>
         <LinearGradient colors={["transparent", T.green + "08"]} style={styles.mountainGlow} />
       </View>
 

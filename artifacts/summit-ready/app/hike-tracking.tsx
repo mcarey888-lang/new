@@ -716,8 +716,7 @@ export default function HikeTrackingScreen() {
       {/* ── Top gradient for header readability ── */}
       <LinearGradient
         colors={["rgba(5,13,26,0.90)", "rgba(5,13,26,0.0)"]}
-        style={s.topGradient}
-        pointerEvents="none"
+        style={[s.topGradient, { pointerEvents: "none" }]}
       />
 
       {/* ── Header (floats over map) ── */}
