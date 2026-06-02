@@ -111,19 +111,19 @@ function ProgressChart({
   }, [activities, metric]);
 
   const hasData = chartData.length >= 2;
-  const n = Math.max(1, chartData.length - 1);
-  const toX = (i: number) => PAD_L + (i / n) * cW;
+  const toX = (v: number) => PAD_L + Math.min(1, v / target) * cW;
   const toY = (v: number) => PAD_T + cH - Math.min(1, v / target) * cH;
 
   const STEPS = 4;
   const yLabels = Array.from({ length: STEPS + 1 }, (_, i) => Math.round((target / STEPS) * i));
   const xLabels = ["0", "25%", "50%", "75%", "100%"];
 
-  const polyPoints = hasData ? chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ") : "";
-  const lastX = hasData ? toX(chartData.length - 1) : PAD_L;
-  const lastY = hasData ? toY(chartData[chartData.length - 1]) : PAD_T + cH;
+  const polyPoints = hasData ? chartData.map((v) => `${toX(v)},${toY(v)}`).join(" ") : "";
+  const lastVal = hasData ? chartData[chartData.length - 1] : 0;
+  const lastX = hasData ? toX(lastVal) : PAD_L;
+  const lastY = hasData ? toY(lastVal) : PAD_T + cH;
   const areaD = hasData
-    ? `M${toX(0)},${PAD_T + cH} ${chartData.map((v, i) => `L${toX(i)},${toY(v)}`).join(" ")} L${lastX},${PAD_T + cH} Z`
+    ? `M${toX(0)},${PAD_T + cH} ${chartData.map((v) => `L${toX(v)},${toY(v)}`).join(" ")} L${lastX},${PAD_T + cH} Z`
     : "";
 
   function fmtY(v: number) {
