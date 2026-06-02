@@ -53,6 +53,9 @@ function MountainHero({
   onEdit,
   isSubscribed,
   hasViewedPlan,
+  elevationGain,
+  distance,
+  highestAltitude,
 }: {
   mountainName: string;
   summitDate: string;
@@ -60,6 +63,9 @@ function MountainHero({
   onEdit: () => void;
   isSubscribed: boolean;
   hasViewedPlan: boolean;
+  elevationGain: number;
+  distance: number;
+  highestAltitude: number;
 }) {
   const [imageError, setImageError] = useState(false);
 
@@ -101,6 +107,9 @@ function MountainHero({
             onEdit={onEdit}
             isSubscribed={isSubscribed}
             hasViewedPlan={hasViewedPlan}
+            elevationGain={elevationGain}
+            distance={distance}
+            highestAltitude={highestAltitude}
           />
         </ImageBackground>
       ) : (
@@ -119,6 +128,9 @@ function MountainHero({
             onEdit={onEdit}
             isSubscribed={isSubscribed}
             hasViewedPlan={hasViewedPlan}
+            elevationGain={elevationGain}
+            distance={distance}
+            highestAltitude={highestAltitude}
           />
         </LinearGradient>
       )}
@@ -128,7 +140,8 @@ function MountainHero({
 
 function HeroContent({
   mountainName, dateStr, topInset, onEdit, isSubscribed, hasViewedPlan,
-}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean }) {
+  elevationGain, distance, highestAltitude,
+}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean; elevationGain: number; distance: number; highestAltitude: number }) {
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
       {/* logo centred, buttons pinned right */}
@@ -150,6 +163,13 @@ function HeroContent({
         <Text style={heroStyles.trainingFor}>Training for</Text>
         <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
         {dateStr ? <Text style={heroStyles.summitDate}>🗓 {dateStr}</Text> : null}
+        <View style={heroStyles.statChips}>
+          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>▲ {elevationGain}m</Text></View>
+          <View style={heroStyles.statChipDot} />
+          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>⟶ {distance}km</Text></View>
+          <View style={heroStyles.statChipDot} />
+          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>⛰ {highestAltitude}m</Text></View>
+        </View>
       </View>
     </View>
   );
@@ -190,6 +210,10 @@ const heroStyles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   bottomText: { gap: 4 },
+  statChips: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+  statChip: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  statChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.85)", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  statChipDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.3)" },
   trainingFor: {
     fontSize: 12, fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)", letterSpacing: 0.5,
@@ -559,6 +583,9 @@ export default function DashboardScreen() {
           onEdit={() => router.push("/setup")}
           isSubscribed={isSubscribed}
           hasViewedPlan={hasViewedPlan}
+          elevationGain={summitGoal.elevationGain}
+          distance={summitGoal.distance}
+          highestAltitude={summitGoal.highestAltitude}
         />
 
         {/* Upgrade banner — shown only after user has seen their plan */}
@@ -765,26 +792,6 @@ export default function DashboardScreen() {
             loading={alpineProfileLoading}
           />
         )}
-
-        {/* Summit Goal Strip */}
-        <Animated.View entering={FadeInDown.delay(260).duration(500)}>
-          <View style={styles.goalStrip}>
-            <View style={styles.goalItem}>
-              <Text style={styles.goalVal}>{summitGoal.elevationGain}m</Text>
-              <Text style={styles.goalLbl}>Elev. Gain</Text>
-            </View>
-            <View style={styles.goalDivider} />
-            <View style={styles.goalItem}>
-              <Text style={styles.goalVal}>{summitGoal.distance}km</Text>
-              <Text style={styles.goalLbl}>Distance</Text>
-            </View>
-            <View style={styles.goalDivider} />
-            <View style={styles.goalItem}>
-              <Text style={styles.goalVal}>{summitGoal.highestAltitude}m</Text>
-              <Text style={styles.goalLbl}>Max Altitude</Text>
-            </View>
-          </View>
-        </Animated.View>
 
         {/* Current Week */}
         {currentWeek && (
@@ -1130,19 +1137,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
   statUnit: { fontSize: 15, fontFamily: "Inter_400Regular" },
   statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  goalStrip: {
-    backgroundColor: T.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.cardBorder,
-    flexDirection: "row",
-    paddingVertical: 14,
-    marginBottom: 12,
-  },
-  goalItem: { flex: 1, alignItems: "center" },
-  goalVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 2 },
-  goalLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  goalDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
   weekCard: {
     borderRadius: 20,
     borderWidth: 1.5,
