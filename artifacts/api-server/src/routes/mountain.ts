@@ -1,8 +1,16 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { db, cachedMountains } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const router: IRouter = Router();
+
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function mountainSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
 const RequestSchema = z.object({
   name: z.string().min(2).max(200).trim(),
@@ -60,10 +68,27 @@ router.post("/mountain-lookup", async (req, res) => {
     return;
   }
   const { name } = parsed.data;
+  const slug = mountainSlug(name);
+
+  // Check DB cache first — mountain geography doesn't change
+  try {
+    const rows = await db.select().from(cachedMountains).where(eq(cachedMountains.slug, slug)).limit(1);
+    if (rows.length > 0) {
+      const row = rows[0];
+      const age = Date.now() - new Date(row.cachedAt).getTime();
+      if (age < CACHE_TTL_MS) {
+        req.log.info({ slug }, "Mountain cache hit");
+        res.json(JSON.parse(row.data));
+        return;
+      }
+    }
+  } catch (err) {
+    req.log.warn({ err }, "Mountain cache read failed, falling back to AI");
+  }
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 1200,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -85,27 +110,38 @@ router.post("/mountain-lookup", async (req, res) => {
       return;
     }
 
-    // Strip markdown code fences if present
     const cleaned = content
       .replace(/^```(?:json)?\s*/i, "")
       .replace(/\s*```$/i, "")
       .trim();
 
-    let parsed: unknown;
+    let parsedJson: unknown;
     try {
-      parsed = JSON.parse(cleaned);
+      parsedJson = JSON.parse(cleaned);
     } catch {
-      // Try to extract JSON object from text
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         req.log.error({ content: content.slice(0, 300) }, "Could not extract JSON from response");
         res.status(500).json({ error: "Could not parse route data" });
         return;
       }
-      parsed = JSON.parse(jsonMatch[0]);
+      parsedJson = JSON.parse(jsonMatch[0]);
     }
 
-    const validated = MountainResponseSchema.parse(parsed);
+    const validated = MountainResponseSchema.parse(parsedJson);
+
+    // Store in DB cache
+    try {
+      await db.insert(cachedMountains)
+        .values({ slug, data: JSON.stringify(validated) })
+        .onConflictDoUpdate({
+          target: cachedMountains.slug,
+          set: { data: JSON.stringify(validated), cachedAt: new Date() },
+        });
+    } catch (err) {
+      req.log.warn({ err }, "Mountain cache write failed");
+    }
+
     res.json(validated);
   } catch (err) {
     req.log.error({ err }, "Mountain lookup failed");

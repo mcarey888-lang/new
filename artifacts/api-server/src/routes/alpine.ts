@@ -1,8 +1,16 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { db, cachedAlpine } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const router: IRouter = Router();
+
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function alpineSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
 const RequestSchema = z.object({
   mountainName: z.string().min(2).max(200).trim(),
@@ -73,9 +81,27 @@ router.post("/alpine-assessment", async (req, res) => {
     difficulty?: string;
   };
 
+  const slug = alpineSlug(mountainName);
+
+  // Check DB cache — alpine requirements for a given mountain are stable
+  try {
+    const rows = await db.select().from(cachedAlpine).where(eq(cachedAlpine.slug, slug)).limit(1);
+    if (rows.length > 0) {
+      const row = rows[0];
+      const age = Date.now() - new Date(row.cachedAt).getTime();
+      if (age < CACHE_TTL_MS) {
+        req.log.info({ slug }, "Alpine cache hit");
+        res.json(JSON.parse(row.data));
+        return;
+      }
+    }
+  } catch (err) {
+    req.log.warn({ err }, "Alpine cache read failed, falling back to AI");
+  }
+
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 1100,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -98,9 +124,9 @@ router.post("/alpine-assessment", async (req, res) => {
       .replace(/\s*```$/i, "")
       .trim();
 
-    let parsed: unknown;
+    let parsedJson: unknown;
     try {
-      parsed = JSON.parse(cleaned);
+      parsedJson = JSON.parse(cleaned);
     } catch {
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (!match) {
@@ -108,20 +134,32 @@ router.post("/alpine-assessment", async (req, res) => {
         res.status(500).json({ error: "Could not parse assessment" });
         return;
       }
-      parsed = JSON.parse(match[0]);
+      parsedJson = JSON.parse(match[0]);
     }
 
-    const validated = AlpineAssessmentSchema.parse(parsed);
+    const validated = AlpineAssessmentSchema.parse(parsedJson);
 
     // Safety floor: prevent AI hallucinating unrealistically short timelines
     const minWeeksFloor: Record<string, number> = {
-      "extreme":   36, // 7 000 m+ (Everest, K2, Denali, etc.)
-      "very-high": 20, // 5 000–7 000 m
-      "high":       8, // 3 500–5 000 m
+      "extreme":   36,
+      "very-high": 20,
+      "high":       8,
     };
     const floor = minWeeksFloor[validated.altitudeBand] ?? 4;
     if (validated.minimumWeeks < floor) {
       validated.minimumWeeks = floor;
+    }
+
+    // Store in DB cache
+    try {
+      await db.insert(cachedAlpine)
+        .values({ slug, data: JSON.stringify(validated) })
+        .onConflictDoUpdate({
+          target: cachedAlpine.slug,
+          set: { data: JSON.stringify(validated), cachedAt: new Date() },
+        });
+    } catch (err) {
+      req.log.warn({ err }, "Alpine cache write failed");
     }
 
     res.json(validated);
