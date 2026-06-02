@@ -578,9 +578,9 @@ export default function DashboardScreen() {
                 <View style={styles.upgradeIconWrap}>
                   <Zap size={13} color={T.green} />
                 </View>
-                <View style={{ gap: 1 }}>
-                  <Text style={styles.upgradeBannerTitle}>Upgrade to Summit Ready Pro</Text>
-                  <Text style={styles.upgradeBannerSub}>Unlock adaptive plans, AI coaching & more</Text>
+                <View style={{ gap: 1, flex: 1 }}>
+                  <Text style={styles.upgradeBannerTitle} numberOfLines={1}>Upgrade to Summit Ready Pro</Text>
+                  <Text style={styles.upgradeBannerSub} numberOfLines={1}>Unlock adaptive plans, AI coaching & more</Text>
                 </View>
               </View>
               <ChevronRight size={16} color={T.green} />
