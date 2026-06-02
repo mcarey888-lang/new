@@ -49,10 +49,15 @@ export default function SubscriptionScreen() {
   async function handleRestore() {
     setRestoreMsg(null);
     try {
-      await restore();
-      setRestoreMsg({ type: "success", text: "Purchases restored successfully." });
+      const info = await restore();
+      const hasEntitlement = info?.entitlements?.active?.["premium"] !== undefined;
+      if (hasEntitlement) {
+        setRestoreMsg({ type: "success", text: "Purchases restored successfully." });
+      } else {
+        setRestoreMsg({ type: "error", text: "No active subscription found. Make sure you're signed in with the same Google account used to subscribe." });
+      }
     } catch {
-      setRestoreMsg({ type: "error", text: "No purchases found to restore." });
+      setRestoreMsg({ type: "error", text: "Restore failed. Check your internet connection and try again." });
     }
   }
 

@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     width: "100%", borderRadius: 18, overflow: "hidden",
     shadowColor: T.green, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 10,
   },
-  ctaBtnGrad: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  ctaBtnGrad: { height: 58, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
   ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", marginLeft: 10, flexShrink: 0 },
   demoNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
 });

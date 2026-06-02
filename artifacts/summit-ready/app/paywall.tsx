@@ -111,18 +111,26 @@ export default function PaywallScreen() {
   async function handleRestore() {
     setError(null);
     try {
-      await restore();
-      setRestoreSuccess(true);
-      setTimeout(() => {
-        setRestoreSuccess(false);
-        if (fromQuestionnaire) {
-          router.replace("/setup");
-        } else {
-          router.back();
-        }
-      }, 1500);
+      const info = await restore();
+      const hasEntitlement = info?.entitlements?.active?.["premium"] !== undefined;
+      if (hasEntitlement) {
+        setRestoreSuccess(true);
+        setTimeout(() => {
+          setRestoreSuccess(false);
+          if (fromQuestionnaire) {
+            router.replace("/setup");
+          } else {
+            router.back();
+          }
+        }, 1500);
+      } else {
+        setError(
+          "Your Google Play subscription was found but couldn't be linked to this account. " +
+          "Please ensure you're signed in with the same Google account you subscribed with, then try again."
+        );
+      }
     } catch {
-      setError("Restore failed. Please try again.");
+      setError("Restore failed. Please check your internet connection and try again.");
     }
   }
 
