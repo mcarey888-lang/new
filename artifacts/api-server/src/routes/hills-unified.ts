@@ -10,6 +10,20 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+// Normalise a UK postcode that arrives without a space ("bb44bh" → "BB4 4BH")
+function normalizeLocation(loc: string): string {
+  const stripped = loc.replace(/\s+/g, "").toUpperCase();
+  const match = stripped.match(/^([A-Z]{1,2}[0-9][0-9A-Z]?)([0-9][A-Z]{2})$/);
+  if (match) return `${match[1]} ${match[2]}`;
+  return loc;
+}
+
+// Accept both "Easy-Mod" (hyphen) and "Easy–Mod" (en-dash) from the AI
+const gradeSchema = z
+  .string()
+  .transform(v => v.replace(/Easy[\s\-–]+Mod/i, "Easy–Mod").trim())
+  .pipe(z.enum(["Easy", "Easy–Mod", "Moderate", "Hard", "Alpine"]));
+
 const HillSchema = z.object({
   name: z.string(),
   elevation: z.number(),
@@ -17,7 +31,7 @@ const HillSchema = z.object({
   repeats: z.number(),
   totalElevation: z.number(),
   surface: z.string(),
-  grade: z.enum(["Easy", "Easy–Mod", "Moderate", "Hard", "Alpine"]),
+  grade: gradeSchema,
   emoji: z.string(),
   lat: z.number().optional(),
   lng: z.number().optional(),
@@ -199,7 +213,7 @@ router.post("/hills-unified", async (req, res) => {
   if (isNameSearch) {
     const name = hillName!.trim();
     const slug = slugify(name);
-    const loc = location?.trim() || "unknown location";
+    const loc = location ? normalizeLocation(location.trim()) : "unknown location";
 
     // 1. Check cache
     const cached = await getFromCache(slug);
@@ -244,7 +258,7 @@ router.post("/hills-unified", async (req, res) => {
     return;
   }
 
-  const loc = location.trim();
+  const loc = normalizeLocation(location.trim());
   const r = Number(radius) || 25;
   const minElev = Number(minElevation) || 0;
 
