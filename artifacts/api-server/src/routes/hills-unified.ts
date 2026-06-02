@@ -95,6 +95,10 @@ Rules:
 - For UK: include fells, moors, and popular circular walks
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine`;
 
+// ── In-memory area lookup cache (keyed by "location|radius") ─────────────────
+const areaCache = new Map<string, { hills: Hill[]; ts: number }>();
+const AREA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 function parseAIJson(content: string): unknown {
   const cleaned = content
     .replace(/^```(?:json)?\s*/i, "")
@@ -207,8 +211,8 @@ router.post("/hills-unified", async (req, res) => {
     // 2. Ask AI
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5.4",
-        max_completion_tokens: 400,
+        model: "gpt-4o-mini",
+        max_completion_tokens: 350,
         messages: [
           { role: "system", content: SEARCH_SYSTEM_PROMPT },
           { role: "user", content: `Look up this specific hill for training near "${loc}": "${name}"` },
@@ -244,6 +248,14 @@ router.post("/hills-unified", async (req, res) => {
   const r = Number(radius) || 25;
   const minElev = Number(minElevation) || 0;
 
+  // Check in-memory area cache first
+  const cacheKey = `${loc.toLowerCase()}|${r}|${minElev}`;
+  const cached = areaCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < AREA_CACHE_TTL_MS) {
+    res.json({ hills: cached.hills, fromCache: true });
+    return;
+  }
+
   try {
     let userMsg = `Find training hills within ${r}km of: "${loc}"`;
     if (minElev > 0) {
@@ -251,8 +263,8 @@ router.post("/hills-unified", async (req, res) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
-      max_completion_tokens: 1200,
+      model: "gpt-4o-mini",
+      max_completion_tokens: 900,
       messages: [
         { role: "system", content: LOOKUP_SYSTEM_PROMPT },
         { role: "user", content: userMsg },
@@ -266,7 +278,8 @@ router.post("/hills-unified", async (req, res) => {
     const LookupResponseSchema = z.object({ hills: z.array(HillSchema) });
     const validated = LookupResponseSchema.parse(parsed);
 
-    // Cache each hill in the background so future name searches are instant
+    // Store in area cache + cache each hill individually in background
+    areaCache.set(cacheKey, { hills: validated.hills, ts: Date.now() });
     void Promise.all(validated.hills.map(h => cacheHill(h)));
 
     res.json({ hills: validated.hills });

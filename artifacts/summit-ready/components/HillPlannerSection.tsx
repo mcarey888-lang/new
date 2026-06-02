@@ -386,13 +386,13 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
 
         <View style={s.searchRow}>
           <View style={s.searchInputWrap}>
-            <Search size={13} color={T.textMuted} />
+            <Search size={13} color={T.textMuted} style={{ flexShrink: 0 }} />
             <TextInput
               ref={searchRef}
               style={s.searchInput}
               value={search}
               onChangeText={setSearch}
-              placeholder="Hill name (or leave blank for nearby)"
+              placeholder="Hill name (or leave blank for nearby hills)"
               placeholderTextColor={T.textDim}
               returnKeyType="search"
               onSubmitEditing={doSearch}
@@ -603,15 +603,15 @@ const s = StyleSheet.create({
   },
   locInput: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.text },
 
-  searchRow: { flexDirection: "row", gap: 8 },
+  searchRow: { flexDirection: "row", alignItems: "stretch", gap: 8 },
   searchInputWrap: {
     flex: 1, flexDirection: "row", alignItems: "center", gap: 7,
     backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 10,
+    paddingHorizontal: 10, overflow: "hidden",
   },
-  searchInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, paddingVertical: 10 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, paddingVertical: 10 },
   searchBtn: {
-    width: 42, height: 42, borderRadius: 11,
+    width: 44, height: 44, borderRadius: 11,
     alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
 
