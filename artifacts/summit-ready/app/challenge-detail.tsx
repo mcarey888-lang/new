@@ -37,11 +37,11 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 // ── Challenge Ring ─────────────────────────────────────────────────────────────
 function ChallengeRing({
-  pct, elevation, target, emoji, color, size = 220,
+  pct, elevation, target, emoji, color, size = 160,
 }: {
   pct: number; elevation: number; target: number; emoji: string; color: string; size?: number;
 }) {
-  const strokeWidth = 16;
+  const strokeWidth = 13;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   const progress = useSharedValue(0);
@@ -70,12 +70,12 @@ function ChallengeRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={{ alignItems: "center", gap: 2 }}>
-        <Text style={{ fontSize: 32, lineHeight: 36 }}>{emoji}</Text>
-        <Text style={{ fontSize: 40, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 46 }}>
+      <View style={{ alignItems: "center", gap: 1 }}>
+        <Text style={{ fontSize: 24, lineHeight: 28 }}>{emoji}</Text>
+        <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 34 }}>
           {elevation >= 1000 ? `${elevation.toLocaleString()}M` : `${elevation}M`}
         </Text>
-        <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: T.textMuted }}>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted }}>
           / {target.toLocaleString()}M
         </Text>
       </View>
@@ -109,9 +109,8 @@ function ProgressChart({
     return data;
   }, [activities, metric]);
 
-  if (chartData.length < 2) return null;
-
-  const n = chartData.length - 1;
+  const hasData = chartData.length >= 2;
+  const n = Math.max(1, chartData.length - 1);
   const toX = (i: number) => PAD_L + (i / n) * cW;
   const toY = (v: number) => PAD_T + cH - Math.min(1, v / target) * cH;
 
@@ -119,10 +118,12 @@ function ProgressChart({
   const yLabels = Array.from({ length: STEPS + 1 }, (_, i) => Math.round((target / STEPS) * i));
   const xLabels = ["0", "25%", "50%", "75%", "100%"];
 
-  const polyPoints = chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-  const lastX = toX(n);
-  const lastY = toY(chartData[n]);
-  const areaD = `M${toX(0)},${PAD_T + cH} ${chartData.map((v, i) => `L${toX(i)},${toY(v)}`).join(" ")} L${lastX},${PAD_T + cH} Z`;
+  const polyPoints = hasData ? chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ") : "";
+  const lastX = hasData ? toX(chartData.length - 1) : PAD_L;
+  const lastY = hasData ? toY(chartData[chartData.length - 1]) : PAD_T + cH;
+  const areaD = hasData
+    ? `M${toX(0)},${PAD_T + cH} ${chartData.map((v, i) => `L${toX(i)},${toY(v)}`).join(" ")} L${lastX},${PAD_T + cH} Z`
+    : "";
 
   function fmtY(v: number) {
     if (metric !== "elevation") return `${v}`;
@@ -152,9 +153,11 @@ function ProgressChart({
           fontSize={9}
         >{lbl}</SvgText>
       ))}
+      {/* target diagonal */}
       <Line x1={PAD_L} y1={PAD_T + cH} x2={W - PAD_R} y2={PAD_T} stroke="rgba(255,255,255,0.22)" strokeWidth={1.5} strokeDasharray="5,4" />
-      <Path d={areaD} fill={color} fillOpacity={0.09} />
-      <Polyline points={polyPoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      {hasData && <Path d={areaD} fill={color} fillOpacity={0.09} />}
+      {hasData && <Polyline points={polyPoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
+      {/* current position dot */}
       <Circle cx={lastX} cy={lastY} r={6} fill="rgba(255,255,255,0.18)" />
       <Circle cx={lastX} cy={lastY} r={4} fill="white" />
     </Svg>
@@ -497,7 +500,7 @@ export default function ChallengeDetailScreen() {
                 target={c.targetValue}
                 emoji={c.emoji}
                 color={color}
-                size={220}
+                size={160}
               />
               <Text style={[s.pctText, { color }]}>{pct}% COMPLETED</Text>
               <Text style={s.toGoText}>
@@ -507,17 +510,15 @@ export default function ChallengeDetailScreen() {
               </Text>
             </Animated.View>
 
-            {/* Chart */}
-            {ac.activities.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.chartCard}>
-                <ProgressChart
-                  activities={ac.activities}
-                  target={c.targetValue}
-                  color={color}
-                  metric={c.metric}
-                />
-              </Animated.View>
-            )}
+            {/* Chart — always visible so users see the target line from day one */}
+            <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.chartCard}>
+              <ProgressChart
+                activities={ac.activities}
+                target={c.targetValue}
+                color={color}
+                metric={c.metric}
+              />
+            </Animated.View>
 
             {/* Stat tiles */}
             <Animated.View entering={FadeInDown.delay(100).duration(600)} style={s.statTilesRow}>
