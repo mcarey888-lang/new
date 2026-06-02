@@ -1,0 +1,48 @@
+I want to test a simple prototype of an animated Summit Guide character inside the app.
+
+Please implement this as a small, safe test feature first — do not rebuild the whole AI coach system.
+
+Goal:
+Add my waving guide animation to the AI Coach section and display the existing AI coach advice inside a speech bubble coming from the guide’s mouth.
+
+Current app context:
+- The app already has an AI Coach section.
+- The AI Coach gives advice based on the user's completed training / logged sessions.
+- I want to reuse that same advice text, not create a new AI system yet.
+
+Feature requirements:
+1. Add the guide character animation to the AI Coach screen.
+2. Use my uploaded waving character animation asset.
+3. Place the guide on the right side or lower-right side of the AI Coach screen.
+4. Add a speech bubble positioned near the guide’s mouth.
+5. The speech bubble should show the same AI Coach advice that is already generated in the current AI Coach section.
+6. Keep the design clean and premium, matching the Summit Ready mountain/training style.
+7. Make sure it works on mobile screen sizes.
+8. Do not let the character or speech bubble cover important buttons.
+9. Add a simple fallback text if no AI advice is available yet, for example:
+   “Log a training session and I’ll give you your next summit tip.”
+10. Keep this as a test/prototype that can be removed or expanded later.
+
+Animation handling:
+- First check what format the uploaded animation is: MP4, GIF, WebM, Lottie JSON, or PNG sequence.
+- Use the best supported method for the current Expo/React Native setup.
+- If the format is not ideal, explain what format would work best before changing anything major.
+- Do not convert the animation unless necessary.
+- Store the asset in a sensible location such as:
+  /assets/summit-guide/
+
+Implementation instructions:
+1. Inspect the current AI Coach component/screen.
+2. Identify where the AI advice text is currently generated or displayed.
+3. Reuse that same data source for the speech bubble.
+4. Add the guide animation and speech bubble layout.
+5. Keep the existing AI Coach advice visible for now if needed, so we can compare.
+6. Add comments in the code explaining what was changed.
+7. Make sure there are no TypeScript, build, or Expo errors.
+8. Test on mobile layout.
+
+Please implement the smallest clean version first, then tell me:
+- Which files were changed
+- Where I should place/replace the animation asset
+- Whether the current animation format is suitable
+- How to remove or expand the feature later
