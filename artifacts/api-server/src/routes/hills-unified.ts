@@ -328,7 +328,7 @@ router.post("/hills-unified", async (req, res) => {
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_completion_tokens: 2000,
+      max_completion_tokens: 1400,
       messages: [
         { role: "system", content: LOOKUP_SYSTEM_PROMPT },
         { role: "user", content: userMsg },

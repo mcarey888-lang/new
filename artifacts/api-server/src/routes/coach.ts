@@ -4,6 +4,16 @@ import { z } from "zod";
 
 const router: IRouter = Router();
 
+// Cache coach responses keyed by a lightweight hash of the user context.
+// Avoids a fresh AI call on every dashboard view — TTL 10 minutes.
+const coachCache = new Map<string, { data: unknown; ts: number }>();
+const COACH_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function coachCacheKey(body: Record<string, unknown>): string {
+  const { summitGoal, totalSessionsDone, totalElevationLogged, currentWeekNumber, weekCompletion } = body;
+  return JSON.stringify({ summitGoal, totalSessionsDone, totalElevationLogged, currentWeekNumber, weekCompletion });
+}
+
 const CoachResponseSchema = z.object({
   summary: z.string(),
   tone: z.enum(["positive", "warning", "neutral"]),
@@ -27,6 +37,14 @@ Rules:
 - If no sessions logged yet: give starter tips for their specific mountain and difficulty level.`;
 
 router.post("/coach-assessment", async (req, res) => {
+  // Serve from cache if the training context hasn't changed
+  const cacheKey = coachCacheKey(req.body as Record<string, unknown>);
+  const cached = coachCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < COACH_CACHE_TTL_MS) {
+    res.json(cached.data);
+    return;
+  }
+
   const {
     summitGoal,
     readinessScore,
@@ -89,8 +107,8 @@ Give an honest coaching assessment.`.trim();
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
-      max_completion_tokens: 500,
+      model: "gpt-4o-mini",
+      max_completion_tokens: 400,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMsg },
@@ -121,6 +139,7 @@ Give an honest coaching assessment.`.trim();
     }
 
     const validated = CoachResponseSchema.parse(parsed);
+    coachCache.set(cacheKey, { data: validated, ts: Date.now() });
     res.json(validated);
   } catch (err) {
     req.log.error({ err }, "Coach assessment failed");
