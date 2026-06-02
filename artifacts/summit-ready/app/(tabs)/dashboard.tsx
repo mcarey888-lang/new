@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain } from "lucide-react-native";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -503,6 +503,19 @@ export default function DashboardScreen() {
   const guideVisibleRef = useRef(false);
   const guideSlideX  = useRef(new RNAnim.Value(width)).current;
   const guideBackdrop = useRef(new RNAnim.Value(0)).current;
+
+  // [GUIDE] expo-video player — must be created unconditionally at hook level
+  const guidePlayer = useVideoPlayer(GUIDE_VIDEO, (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+  useEffect(() => {
+    if (guideVisible) {
+      guidePlayer.play();
+    } else {
+      guidePlayer.pause();
+    }
+  }, [guideVisible, guidePlayer]);
 
   const openGuide = useCallback(() => {
     guideVisibleRef.current = true;
@@ -1121,8 +1134,13 @@ export default function DashboardScreen() {
             onPress={closeGuide}
             activeOpacity={1}
           />
-          {/* Guide content — pointerEvents none so taps fall through to the close button above */}
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {/* Guide content — slides in from right; style.pointerEvents so taps fall to close button */}
+          <RNAnim.View
+            style={[
+              StyleSheet.absoluteFill,
+              { transform: [{ translateX: guideSlideX }], pointerEvents: "none" },
+            ]}
+          >
             {/* Close hint */}
             <View style={guideOverlayStyles.closeHint}>
               <Text style={guideOverlayStyles.closeHintText}>Swipe right or tap to close</Text>
@@ -1144,16 +1162,13 @@ export default function DashboardScreen() {
               </Text>
             </View>
             {/* Guide character video — large, anchored to the bottom */}
-            <Video
-              source={GUIDE_VIDEO}
+            <VideoView
+              player={guidePlayer}
               style={guideOverlayStyles.guideVideo}
-              shouldPlay={guideVisible}
-              isLooping
-              isMuted
-              resizeMode={ResizeMode.CONTAIN}
-              useNativeControls={false}
+              contentFit="contain"
+              nativeControls={false}
             />
-          </View>
+          </RNAnim.View>
         </View>
       </Modal>
     )}
