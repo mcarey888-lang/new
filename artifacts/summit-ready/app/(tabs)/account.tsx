@@ -1,4 +1,4 @@
-import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info, Trophy } from "lucide-react-native";
+import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info, Trophy, PenLine } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -317,6 +317,20 @@ export default function AccountScreen() {
               </View>
             )}
           </View>
+        </Animated.View>
+
+        {/* Log Session button */}
+        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.section}>
+          <TouchableOpacity
+            style={styles.logBtn}
+            onPress={() => router.push("/(tabs)/log")}
+            activeOpacity={0.82}
+          >
+            <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <PenLine size={18} color={T.green} />
+            <Text style={styles.logBtnText}>Log a Session</Text>
+            <ChevronRight size={16} color={T.textMuted} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Subscription card */}
@@ -856,6 +870,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
 
   section: { gap: 8 },
+
+  logBtn: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.green + "30",
+    paddingHorizontal: 16, paddingVertical: 15, overflow: "hidden",
+  },
+  logBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text, flex: 1 },
 
   sectionLabel: {
     fontSize: 11, fontFamily: "Inter_600SemiBold",

@@ -112,14 +112,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="log"
-        options={{
-          title: "Log",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <PenLine size={20} color={color} />
-            </View>
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="hikes"
