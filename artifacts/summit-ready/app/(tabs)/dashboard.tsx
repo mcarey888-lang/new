@@ -1062,7 +1062,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
-  trackingMsg: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 22 },
+  trackingMsg: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white, lineHeight: 18 },
   daysText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   difficultyRow: { flexDirection: "row", gap: 6, marginTop: 2 },
   diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
