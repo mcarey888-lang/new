@@ -1,18 +1,14 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain } from "lucide-react-native";
-import { VideoView, useVideoPlayer } from "expo-video";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated as RNAnim,
   Dimensions,
   Image,
   ImageBackground,
-  Modal,
-  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -35,8 +31,6 @@ import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 
 const MASCOT = require("@/assets/mascot.gif");
-// [GUIDE] New waving guide character (MP4, looping, muted)
-const GUIDE_VIDEO = require("@/assets/summit-guide/guide.mp4");
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -48,7 +42,7 @@ interface CoachAssessment {
   tips: string[];
 }
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
 
 // ── Mountain Hero ─────────────────────────────────────────────────────────────
@@ -267,48 +261,6 @@ function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
   );
 }
 
-// [GUIDE] Module-level styles for the full-screen overlay.
-// To remove the guide feature entirely: delete guideOverlayStyles and all
-// sections marked [GUIDE] in DashboardScreen below.
-const guideOverlayStyles = StyleSheet.create({
-  // Invisible right-edge strip that catches the swipe-in gesture
-  edgeStrip: {
-    position: "absolute", right: 0, top: 0, bottom: 0, width: 32, zIndex: 10,
-    justifyContent: "center", alignItems: "flex-end",
-  },
-  edgePill: {
-    width: 4, height: 48, borderRadius: 2,
-    backgroundColor: T.green + "55", marginRight: 4,
-  },
-  closeHint: {
-    position: "absolute", top: 52, left: 0, right: 0, alignItems: "center",
-  },
-  closeHintText: {
-    fontSize: 12, fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.45)", letterSpacing: 0.3,
-  },
-  speechBubble: {
-    position: "absolute", top: 86, left: 20, right: 20,
-    borderRadius: 20, borderWidth: 1, padding: 18,
-  },
-  speechText: {
-    fontSize: 15, fontFamily: "Inter_500Medium", color: T.text, lineHeight: 23,
-  },
-  // Guide video — large, anchored to bottom of screen
-  guideVideo: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: height * 0.66,
-  },
-  // Small "meet guide" button inside the coach card
-  meetGuideBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    marginTop: 12, paddingVertical: 10, paddingHorizontal: 14,
-    borderRadius: 12, borderWidth: 1,
-    borderColor: T.green + "35", backgroundColor: T.greenDim,
-    alignSelf: "flex-start",
-  },
-  meetGuideBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
-});
 
 function StatCard({
   icon: IconComp,
@@ -498,104 +450,6 @@ export default function DashboardScreen() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // [GUIDE] Full-screen overlay state & animation values
-  const [guideVisible, setGuideVisible] = useState(false);
-  const guideVisibleRef = useRef(false);
-  const guideSlideX  = useRef(new RNAnim.Value(width)).current;
-  const guideBackdrop = useRef(new RNAnim.Value(0)).current;
-
-  // [GUIDE] expo-video player — must be created unconditionally at hook level
-  const guidePlayer = useVideoPlayer(GUIDE_VIDEO, (p) => {
-    p.loop = true;
-    p.muted = true;
-  });
-  useEffect(() => {
-    if (guideVisible) {
-      guidePlayer.play();
-    } else {
-      guidePlayer.pause();
-    }
-  }, [guideVisible, guidePlayer]);
-
-  const openGuide = useCallback(() => {
-    guideVisibleRef.current = true;
-    setGuideVisible(true);
-    RNAnim.parallel([
-      RNAnim.spring(guideSlideX,  { toValue: 0,    useNativeDriver: false, bounciness: 4 }),
-      RNAnim.timing(guideBackdrop, { toValue: 0.65, useNativeDriver: false, duration: 320 }),
-    ]).start();
-  }, [guideSlideX, guideBackdrop]);
-
-  const closeGuide = useCallback(() => {
-    guideVisibleRef.current = false;
-    RNAnim.parallel([
-      RNAnim.timing(guideSlideX,  { toValue: width, useNativeDriver: false, duration: 260 }),
-      RNAnim.timing(guideBackdrop, { toValue: 0,    useNativeDriver: false, duration: 260 }),
-    ]).start(() => setGuideVisible(false));
-  }, [guideSlideX, guideBackdrop]);
-
-  // Swipe-in trigger: invisible strip on the right edge of the screen
-  const edgePanRef = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => gs.dx < -8,
-      onPanResponderGrant: () => {
-        if (!guideVisibleRef.current) {
-          guideVisibleRef.current = true;
-          setGuideVisible(true);
-        }
-      },
-      onPanResponderMove: (_, gs) => {
-        if (gs.dx < 0) {
-          guideSlideX.setValue(Math.max(0, width + gs.dx));
-          guideBackdrop.setValue(Math.min(0.65, (-gs.dx / width) * 0.65));
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (-gs.dx > 60 || gs.vx < -0.5) {
-          guideVisibleRef.current = true;
-          RNAnim.parallel([
-            RNAnim.spring(guideSlideX,  { toValue: 0,    useNativeDriver: false, bounciness: 3 }),
-            RNAnim.timing(guideBackdrop, { toValue: 0.65, useNativeDriver: false, duration: 280 }),
-          ]).start();
-        } else {
-          guideVisibleRef.current = false;
-          RNAnim.parallel([
-            RNAnim.timing(guideSlideX,  { toValue: width, useNativeDriver: false, duration: 220 }),
-            RNAnim.timing(guideBackdrop, { toValue: 0,    useNativeDriver: false, duration: 220 }),
-          ]).start(() => setGuideVisible(false));
-        }
-      },
-    })
-  );
-
-  // Swipe-right to dismiss while overlay is open
-  const dismissPanRef = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => gs.dx > 15,
-      onPanResponderMove: (_, gs) => {
-        if (gs.dx > 0) {
-          guideSlideX.setValue(Math.min(width, gs.dx));
-          guideBackdrop.setValue(Math.max(0, 0.65 * (1 - gs.dx / width)));
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx > 80 || gs.vx > 0.5) {
-          guideVisibleRef.current = false;
-          RNAnim.parallel([
-            RNAnim.timing(guideSlideX,  { toValue: width, useNativeDriver: false, duration: 250 }),
-            RNAnim.timing(guideBackdrop, { toValue: 0,    useNativeDriver: false, duration: 250 }),
-          ]).start(() => setGuideVisible(false));
-        } else {
-          RNAnim.parallel([
-            RNAnim.spring(guideSlideX,  { toValue: 0,    useNativeDriver: false }),
-            RNAnim.timing(guideBackdrop, { toValue: 0.65, useNativeDriver: false, duration: 200 }),
-          ]).start();
-        }
-      },
-    })
-  );
 
   // Mark the plan as viewed after the user has had 5 seconds to see their
   // readiness score and plan — upgrade prompts only appear after this.
@@ -712,7 +566,6 @@ export default function DashboardScreen() {
     "Behind — prioritise training";
 
   return (
-    <>
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
@@ -1092,11 +945,6 @@ export default function DashboardScreen() {
                 <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
                   AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
                 </Text>
-                {/* [GUIDE] Button to open the full-screen guide overlay */}
-                <TouchableOpacity style={guideOverlayStyles.meetGuideBtn} onPress={openGuide} activeOpacity={0.8}>
-                  <Text style={guideOverlayStyles.meetGuideBtnText}>👋  Meet your guide</Text>
-                  <ChevronRight size={14} color={T.green} />
-                </TouchableOpacity>
               </>
             ) : null}
           </View>
@@ -1108,71 +956,7 @@ export default function DashboardScreen() {
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
       )}
 
-      {/* [GUIDE] Invisible right-edge strip — swipe left from here to open the guide */}
-      <View style={guideOverlayStyles.edgeStrip} {...edgePanRef.current.panHandlers}>
-        <View style={guideOverlayStyles.edgePill} />
-      </View>
     </LinearGradient>
-
-    {/* [GUIDE] Full-screen overlay — slides in from the right over everything */}
-    {guideVisible && (
-      <Modal
-        transparent
-        visible={guideVisible}
-        animationType="none"
-        onRequestClose={closeGuide}
-        statusBarTranslucent
-      >
-        <View style={{ flex: 1 }} {...dismissPanRef.current.panHandlers}>
-          {/* Animated dark backdrop */}
-          <RNAnim.View
-            style={[StyleSheet.absoluteFill, { backgroundColor: "#000", opacity: guideBackdrop }]}
-          />
-          {/* Tappable area — tap anywhere to close */}
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            onPress={closeGuide}
-            activeOpacity={1}
-          />
-          {/* Guide content — slides in from right; style.pointerEvents so taps fall to close button */}
-          <RNAnim.View
-            style={[
-              StyleSheet.absoluteFill,
-              { transform: [{ translateX: guideSlideX }], pointerEvents: "none" },
-            ]}
-          >
-            {/* Close hint */}
-            <View style={guideOverlayStyles.closeHint}>
-              <Text style={guideOverlayStyles.closeHintText}>Swipe right or tap to close</Text>
-            </View>
-            {/* Speech bubble — tinted by AI coach tone */}
-            <View style={[
-              guideOverlayStyles.speechBubble,
-              {
-                backgroundColor:
-                  coach?.tone === "positive" ? T.greenDim :
-                  coach?.tone === "warning"  ? T.orangeDim : T.blueDim,
-                borderColor:
-                  coach?.tone === "positive" ? T.green  + "55" :
-                  coach?.tone === "warning"  ? T.orange + "55" : T.blue + "55",
-              },
-            ]}>
-              <Text style={guideOverlayStyles.speechText}>
-                {coach?.summary ?? "Log a training session and I'll give you your next summit tip."}
-              </Text>
-            </View>
-            {/* Guide character video — large, anchored to the bottom */}
-            <VideoView
-              player={guidePlayer}
-              style={guideOverlayStyles.guideVideo}
-              contentFit="contain"
-              nativeControls={false}
-            />
-          </RNAnim.View>
-        </View>
-      </Modal>
-    )}
-    </>
   );
 }
 
