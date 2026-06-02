@@ -25,6 +25,7 @@ import {
 import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges, type ChallengeActivity } from "@/context/ChallengesContext";
+import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlannerSection";
 
@@ -225,13 +226,19 @@ function LogModal({
   visible,
   onClose,
   onSubmit,
+  color,
 }: {
   challengeId: string;
   visible: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<ChallengeActivity, "id" | "createdAt">) => void;
+  onSubmit: (data: Omit<ChallengeActivity, "id" | "createdAt">[]) => void;
+  color: string;
 }) {
+  const { sessions, exploreHikes } = useApp();
   const todayStr = () => new Date().toISOString().split("T")[0];
+
+  const [tab, setTab] = useState<"new" | "history">("new");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [dateStr, setDateStr] = useState(todayStr());
   const [elev, setElev] = useState("");
@@ -240,10 +247,42 @@ function LogModal({
   const [notes, setNotes] = useState("");
 
   function reset() {
+    setTab("new"); setSelected(new Set());
     setTitle(""); setDateStr(todayStr()); setElev(""); setDist(""); setDur(""); setNotes("");
   }
 
-  function handleSubmit() {
+  // Build merged history list: completed training sessions + GPS-tracked hikes
+  const historyItems = useMemo(() => {
+    const fromSessions = sessions
+      .filter(s => s.completed)
+      .map(s => ({
+        key: `s-${s.id}`,
+        title: s.type === "hill" ? (s.hillName || "Hill session") : s.type === "cardio" ? "Cardio session" : "Big day",
+        date: s.date,
+        elevationGain: s.elevationGain,
+        distance: s.distance,
+        duration: s.duration,
+      }));
+    const fromHikes = exploreHikes.map(h => ({
+      key: `h-${h.id}`,
+      title: h.name,
+      date: h.date,
+      elevationGain: h.elevationGain,
+      distance: h.distance,
+      duration: h.timeTaken,
+    }));
+    return [...fromSessions, ...fromHikes].sort((a, b) => b.date.localeCompare(a.date));
+  }, [sessions, exploreHikes]);
+
+  function toggleSelect(key: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
+  function handleSubmitNew() {
     const elevNum = parseFloat(elev) || 0;
     const distNum = parseFloat(dist) || 0;
     const durNum = parseInt(dur) || 0;
@@ -251,18 +290,16 @@ function LogModal({
       Alert.alert("Add a title or elevation", "Please fill in at least the activity name or elevation gain.");
       return;
     }
-    // Parse date — accept YYYY-MM-DD or DD/MM/YYYY
     let resolvedDate = todayStr();
-    const dmyMatch = dateStr.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    const isoymdMatch = dateStr.trim().match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    const dmyMatch = dateStr.trim().match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})$/);
+    const isoymdMatch = dateStr.trim().match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
     if (dmyMatch) {
       resolvedDate = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
     } else if (isoymdMatch) {
       resolvedDate = `${isoymdMatch[1]}-${isoymdMatch[2].padStart(2, "0")}-${isoymdMatch[3].padStart(2, "0")}`;
     }
-    // Don't allow future dates
     if (resolvedDate > todayStr()) resolvedDate = todayStr();
-    onSubmit({
+    onSubmit([{
       challengeId,
       title: title.trim() || "Training session",
       date: resolvedDate,
@@ -270,7 +307,25 @@ function LogModal({
       distance: distNum,
       duration: durNum,
       notes: notes.trim(),
-    });
+    }]);
+    reset();
+    onClose();
+  }
+
+  function handleAddFromHistory() {
+    if (selected.size === 0) return;
+    const entries = historyItems
+      .filter(h => selected.has(h.key))
+      .map(item => ({
+        challengeId,
+        title: item.title,
+        date: item.date,
+        elevationGain: item.elevationGain,
+        distance: item.distance,
+        duration: item.duration,
+        notes: "",
+      }));
+    onSubmit(entries);
     reset();
     onClose();
   }
@@ -281,89 +336,160 @@ function LogModal({
         <View style={lm.container}>
           <View style={lm.handle} />
           <Text style={lm.title}>Log Activity</Text>
-          <Text style={lm.subtitle}>This will count toward your challenge and your training progress.</Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={lm.fields}>
-            <View style={lm.row}>
-              <View style={[lm.field, { flex: 2 }]}>
-                <Text style={lm.label}>Activity name</Text>
-                <TextInput
-                  style={lm.input}
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="e.g. Local hill repeats"
-                  placeholderTextColor={T.textDim}
-                />
-              </View>
-              <View style={[lm.field, { flex: 1 }]}>
-                <Text style={lm.label}>Date</Text>
-                <TextInput
-                  style={lm.input}
-                  value={dateStr}
-                  onChangeText={setDateStr}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor={T.textDim}
-                  keyboardType="numbers-and-punctuation"
-                />
-              </View>
-            </View>
-            <View style={lm.row}>
-              <View style={[lm.field, { flex: 1 }]}>
-                <Text style={lm.label}>Elevation gain (m)</Text>
-                <TextInput
-                  style={lm.input}
-                  value={elev}
-                  onChangeText={setElev}
-                  placeholder="450"
-                  placeholderTextColor={T.textDim}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={[lm.field, { flex: 1 }]}>
-                <Text style={lm.label}>Distance (km)</Text>
-                <TextInput
-                  style={lm.input}
-                  value={dist}
-                  onChangeText={setDist}
-                  placeholder="6"
-                  placeholderTextColor={T.textDim}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-            <View style={lm.field}>
-              <Text style={lm.label}>Duration (minutes)</Text>
-              <TextInput
-                style={lm.input}
-                value={dur}
-                onChangeText={setDur}
-                placeholder="90"
-                placeholderTextColor={T.textDim}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={lm.field}>
-              <Text style={lm.label}>Notes (optional)</Text>
-              <TextInput
-                style={[lm.input, { height: 80, textAlignVertical: "top" }]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="How did it go?"
-                placeholderTextColor={T.textDim}
-                multiline
-              />
-            </View>
-          </ScrollView>
-
-          <View style={lm.actions}>
-            <TouchableOpacity onPress={onClose} style={lm.cancelBtn} activeOpacity={0.7}>
-              <Text style={lm.cancelText}>Cancel</Text>
+          {/* Tab switcher */}
+          <View style={lm.tabs}>
+            <TouchableOpacity
+              style={[lm.tab, tab === "new" && { borderBottomColor: color, borderBottomWidth: 2 }]}
+              onPress={() => setTab("new")} activeOpacity={0.7}
+            >
+              <Text style={[lm.tabText, tab === "new" && { color }]}>Log New</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSubmit} style={lm.submitBtn} activeOpacity={0.8}>
-              <TrendingUp size={15} color={T.bg} />
-              <Text style={lm.submitText}>Log Activity</Text>
+            <TouchableOpacity
+              style={[lm.tab, tab === "history" && { borderBottomColor: color, borderBottomWidth: 2 }]}
+              onPress={() => setTab("history")} activeOpacity={0.7}
+            >
+              <Text style={[lm.tabText, tab === "history" && { color }]}>
+                From History{historyItems.length > 0 ? ` (${historyItems.length})` : ""}
+              </Text>
             </TouchableOpacity>
           </View>
+
+          {tab === "new" ? (
+            <>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={lm.fields}>
+                <View style={lm.row}>
+                  <View style={[lm.field, { flex: 2 }]}>
+                    <Text style={lm.label}>Activity name</Text>
+                    <TextInput
+                      style={lm.input}
+                      value={title}
+                      onChangeText={setTitle}
+                      placeholder="e.g. Local hill repeats"
+                      placeholderTextColor={T.textDim}
+                    />
+                  </View>
+                  <View style={[lm.field, { flex: 1 }]}>
+                    <Text style={lm.label}>Date</Text>
+                    <TextInput
+                      style={lm.input}
+                      value={dateStr}
+                      onChangeText={setDateStr}
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor={T.textDim}
+                      keyboardType="numbers-and-punctuation"
+                    />
+                  </View>
+                </View>
+                <View style={lm.row}>
+                  <View style={[lm.field, { flex: 1 }]}>
+                    <Text style={lm.label}>Elevation gain (m)</Text>
+                    <TextInput
+                      style={lm.input}
+                      value={elev}
+                      onChangeText={setElev}
+                      placeholder="450"
+                      placeholderTextColor={T.textDim}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={[lm.field, { flex: 1 }]}>
+                    <Text style={lm.label}>Distance (km)</Text>
+                    <TextInput
+                      style={lm.input}
+                      value={dist}
+                      onChangeText={setDist}
+                      placeholder="6"
+                      placeholderTextColor={T.textDim}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <View style={lm.field}>
+                  <Text style={lm.label}>Duration (minutes)</Text>
+                  <TextInput
+                    style={lm.input}
+                    value={dur}
+                    onChangeText={setDur}
+                    placeholder="90"
+                    placeholderTextColor={T.textDim}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={lm.field}>
+                  <Text style={lm.label}>Notes (optional)</Text>
+                  <TextInput
+                    style={[lm.input, { height: 80, textAlignVertical: "top" }]}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="How did it go?"
+                    placeholderTextColor={T.textDim}
+                    multiline
+                  />
+                </View>
+              </ScrollView>
+              <View style={lm.actions}>
+                <TouchableOpacity onPress={onClose} style={lm.cancelBtn} activeOpacity={0.7}>
+                  <Text style={lm.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSubmitNew} style={[lm.submitBtn, { backgroundColor: color }]} activeOpacity={0.8}>
+                  <TrendingUp size={15} color={T.bg} />
+                  <Text style={lm.submitText}>Log Activity</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              {historyItems.length === 0 ? (
+                <View style={lm.emptyHistory}>
+                  <Text style={lm.emptyHistoryText}>No previous sessions found.</Text>
+                  <Text style={lm.emptyHistorySubText}>Complete training sessions or track hikes to import them here.</Text>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 8 }}>
+                  {historyItems.map(item => {
+                    const isSelected = selected.has(item.key);
+                    return (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={[lm.histRow, isSelected && { borderColor: color }]}
+                        onPress={() => toggleSelect(item.key)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[lm.checkbox, isSelected && { backgroundColor: color, borderColor: color }]}>
+                          {isSelected && <Text style={lm.checkMark}>✓</Text>}
+                        </View>
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text style={lm.histName} numberOfLines={1}>{item.title}</Text>
+                          <Text style={lm.histMeta}>
+                            {item.date}
+                            {item.elevationGain > 0 ? ` · ${item.elevationGain.toLocaleString()}m` : ""}
+                            {item.distance > 0 ? ` · ${item.distance}km` : ""}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+              <View style={lm.actions}>
+                <TouchableOpacity onPress={onClose} style={lm.cancelBtn} activeOpacity={0.7}>
+                  <Text style={lm.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAddFromHistory}
+                  style={[lm.submitBtn, { backgroundColor: selected.size === 0 ? T.surface : color }]}
+                  activeOpacity={0.8}
+                  disabled={selected.size === 0}
+                >
+                  <CheckCircle size={15} color={selected.size === 0 ? T.textMuted : T.bg} />
+                  <Text style={[lm.submitText, selected.size === 0 && { color: T.textMuted }]}>
+                    {selected.size === 0 ? "Select sessions" : `Add ${selected.size} session${selected.size > 1 ? "s" : ""}`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -375,6 +501,11 @@ const lm = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: "center", marginBottom: 20 },
   title: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text, marginBottom: 4 },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 20, lineHeight: 18 },
+  // Tabs
+  tabs: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: T.border, marginBottom: 16 },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent" },
+  tabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  // New activity form
   fields: { gap: 14, paddingBottom: 20 },
   field: { gap: 6 },
   row: { flexDirection: "row", gap: 10 },
@@ -383,6 +514,23 @@ const lm = StyleSheet.create({
     backgroundColor: T.card, borderRadius: 12, borderWidth: 1, borderColor: T.border,
     color: T.text, fontFamily: "Inter_400Regular", fontSize: 14, padding: 12,
   },
+  // History list
+  histRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginHorizontal: 0, marginBottom: 8,
+  },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: T.border,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  checkMark: { fontSize: 12, color: "#fff", fontFamily: "Inter_700Bold" },
+  histName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  histMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  emptyHistory: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 24 },
+  emptyHistoryText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text, textAlign: "center" },
+  emptyHistorySubText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 18 },
+  // Actions
   actions: { flexDirection: "row", gap: 10, paddingTop: 12 },
   cancelBtn: {
     flex: 1, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
@@ -391,7 +539,7 @@ const lm = StyleSheet.create({
   cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   submitBtn: {
     flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.green, borderRadius: 12, paddingVertical: 14,
+    borderRadius: 12, paddingVertical: 14,
   },
   submitText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 });
@@ -441,9 +589,12 @@ export default function ChallengeDetailScreen() {
     startChallenge(c!.id);
   }
 
-  async function handleLog(data: Omit<ChallengeActivity, "id" | "createdAt">) {
-    await logActivity(data);
-    const newProgress = progress + (data.elevationGain || (c!.metric === "hikes" ? 1 : 0));
+  async function handleLog(entries: Omit<ChallengeActivity, "id" | "createdAt">[]) {
+    let newProgress = progress;
+    for (const data of entries) {
+      await logActivity(data);
+      newProgress += data.elevationGain || (c!.metric === "hikes" ? 1 : 0);
+    }
     if (newProgress >= c!.targetValue && !isCompleted) {
       router.replace({ pathname: "/challenge-complete", params: { id: c!.id } });
     }
@@ -739,6 +890,7 @@ export default function ChallengeDetailScreen() {
         visible={logVisible}
         onClose={() => setLogVisible(false)}
         onSubmit={handleLog}
+        color={color}
       />
     </LinearGradient>
   );
