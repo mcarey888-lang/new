@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,11 +16,11 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import Animated, { FadeInDown, useAnimatedProps, useSharedValue, withTiming, Easing } from "react-native-reanimated";
-import Svg, { Circle, Line, Polyline, Path } from "react-native-svg";
+import Svg, { Circle, Line, Polyline, Path, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  AlertCircle, ArrowLeft, CheckCircle, ChevronRight, Lock,
-  Mountain, PlusCircle, TrendingUp, Zap,
+  AlertCircle, ArrowLeft, CalendarDays, CheckCircle, ChevronRight, Compass, Lock,
+  MoreHorizontal, Mountain, PlusCircle, TrendingUp, Zap,
 } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
@@ -30,12 +31,17 @@ import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlan
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
+
+// ── Challenge Ring ─────────────────────────────────────────────────────────────
 function ChallengeRing({
-  pct, value, label, color, size = 170,
+  pct, elevation, target, emoji, color, size = 220,
 }: {
-  pct: number; value: string; label: string; color: string; size?: number;
+  pct: number; elevation: number; target: number; emoji: string; color: string; size?: number;
 }) {
-  const strokeWidth = 14;
+  const strokeWidth = 16;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   const progress = useSharedValue(0);
@@ -53,7 +59,7 @@ function ChallengeRing({
       <Svg width={size} height={size} style={{ position: "absolute" }}>
         <Circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth}
+          fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={strokeWidth}
         />
         <AnimatedCircle
           cx={size / 2} cy={size / 2} r={r}
@@ -64,21 +70,33 @@ function ChallengeRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={{ alignItems: "center", gap: 3 }}>
-        <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color, lineHeight: 30 }}>{value}</Text>
-        <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.4)", letterSpacing: 1.2, textTransform: "uppercase" }}>{label}</Text>
+      <View style={{ alignItems: "center", gap: 2 }}>
+        <Text style={{ fontSize: 32, lineHeight: 36 }}>{emoji}</Text>
+        <Text style={{ fontSize: 40, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 46 }}>
+          {elevation >= 1000 ? `${elevation.toLocaleString()}M` : `${elevation}M`}
+        </Text>
+        <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: T.textMuted }}>
+          / {target.toLocaleString()}M
+        </Text>
       </View>
     </View>
   );
 }
 
+// ── Progress Chart ─────────────────────────────────────────────────────────────
 function ProgressChart({
   activities, target, color, metric,
 }: {
   activities: ChallengeActivity[]; target: number; color: string; metric: string;
 }) {
-  const W = SCREEN_WIDTH - 80;
-  const H = 72;
+  const PAD_L = 44;
+  const PAD_B = 22;
+  const PAD_R = 10;
+  const PAD_T = 8;
+  const W = SCREEN_WIDTH - 40;
+  const H = 150;
+  const cW = W - PAD_L - PAD_R;
+  const cH = H - PAD_T - PAD_B;
 
   const chartData = useMemo(() => {
     const sorted = [...activities].sort((a, b) => a.date.localeCompare(b.date));
@@ -93,25 +111,99 @@ function ProgressChart({
 
   if (chartData.length < 2) return null;
 
-  const maxVal = Math.max(target, chartData[chartData.length - 1]);
-  const toX = (i: number) => 12 + (i / (chartData.length - 1)) * (W - 24);
-  const toY = (v: number) => H - 10 - (v / maxVal) * (H - 18);
+  const n = chartData.length - 1;
+  const toX = (i: number) => PAD_L + (i / n) * cW;
+  const toY = (v: number) => PAD_T + cH - Math.min(1, v / target) * cH;
 
-  const polylinePoints = chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-  const targetY = toY(target);
-  const areaPath = `M${chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" L")} L${toX(chartData.length - 1)},${H} L${toX(0)},${H} Z`;
-  const lastX = toX(chartData.length - 1);
-  const lastY = toY(chartData[chartData.length - 1]);
+  const STEPS = 4;
+  const yLabels = Array.from({ length: STEPS + 1 }, (_, i) => Math.round((target / STEPS) * i));
+  const xLabels = ["0", "25%", "50%", "75%", "100%"];
+
+  const polyPoints = chartData.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
+  const lastX = toX(n);
+  const lastY = toY(chartData[n]);
+  const areaD = `M${toX(0)},${PAD_T + cH} ${chartData.map((v, i) => `L${toX(i)},${toY(v)}`).join(" ")} L${lastX},${PAD_T + cH} Z`;
+
+  function fmtY(v: number) {
+    if (metric !== "elevation") return `${v}`;
+    if (v === 0) return "0m";
+    if (v >= 1000) return `${(v / 1000).toFixed(3).replace(/\.?0+$/, "")}k`;
+    return `${v}m`;
+  }
 
   return (
     <Svg width={W} height={H}>
-      <Line x1={12} y1={targetY} x2={W - 12} y2={targetY} stroke={color} strokeWidth={1} strokeDasharray="5,4" opacity={0.3} />
-      <Path d={areaPath} fill={color} fillOpacity={0.07} />
-      <Polyline points={polylinePoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={lastX} cy={lastY} r={4} fill={color} />
+      {yLabels.map((v, i) => {
+        const y = PAD_T + (cH / STEPS) * (STEPS - i);
+        return (
+          <React.Fragment key={i}>
+            <Line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+            <SvgText x={PAD_L - 4} y={y + 4} textAnchor="end" fill="rgba(255,255,255,0.3)" fontSize={9}>{fmtY(v)}</SvgText>
+          </React.Fragment>
+        );
+      })}
+      {xLabels.map((lbl, i) => (
+        <SvgText
+          key={i}
+          x={PAD_L + (cW / (xLabels.length - 1)) * i}
+          y={H - 5}
+          textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"}
+          fill="rgba(255,255,255,0.3)"
+          fontSize={9}
+        >{lbl}</SvgText>
+      ))}
+      <Line x1={PAD_L} y1={PAD_T + cH} x2={W - PAD_R} y2={PAD_T} stroke="rgba(255,255,255,0.22)" strokeWidth={1.5} strokeDasharray="5,4" />
+      <Path d={areaD} fill={color} fillOpacity={0.09} />
+      <Polyline points={polyPoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={lastX} cy={lastY} r={6} fill="rgba(255,255,255,0.18)" />
+      <Circle cx={lastX} cy={lastY} r={4} fill="white" />
     </Svg>
   );
 }
+
+// ── Climb Row ──────────────────────────────────────────────────────────────────
+function ClimbRow({ activity, color }: { activity: ChallengeActivity; color: string }) {
+  const [imgErr, setImgErr] = useState(false);
+  const imgUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(activity.title)}`;
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  let dateLabel: string;
+  if (activity.date === today) dateLabel = "Today";
+  else if (activity.date === yesterday) dateLabel = "Yesterday";
+  else {
+    const diff = Math.round((Date.now() - new Date(activity.date).getTime()) / 86400000);
+    dateLabel = diff <= 6
+      ? `${diff} days ago`
+      : new Date(activity.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  return (
+    <View style={cr.row}>
+      {!imgErr ? (
+        <Image source={{ uri: imgUri }} style={cr.thumb} onError={() => setImgErr(true)} resizeMode="cover" />
+      ) : (
+        <View style={[cr.thumb, cr.thumbFb]}>
+          <Text style={{ fontSize: 18 }}>⛰️</Text>
+        </View>
+      )}
+      <Text style={cr.name} numberOfLines={1}>{activity.title}</Text>
+      <View style={cr.right}>
+        {activity.elevationGain > 0 && (
+          <Text style={[cr.elev, { color }]}>{activity.elevationGain.toLocaleString()}m</Text>
+        )}
+        <Text style={cr.date}>{dateLabel}</Text>
+      </View>
+    </View>
+  );
+}
+const cr = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
+  thumb: { width: 42, height: 42, borderRadius: 10, backgroundColor: T.surface, flexShrink: 0 },
+  thumbFb: { alignItems: "center", justifyContent: "center" },
+  name: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  right: { alignItems: "flex-end", gap: 2 },
+  elev: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  date: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+});
 
 function ProgressBar({ pct, color, height = 6 }: { pct: number; color: string; height?: number }) {
   return (
@@ -362,252 +454,258 @@ export default function ChallengeDetailScreen() {
     ]);
   }
 
+  function openMenu() {
+    Alert.alert(c!.title, "What would you like to do?", [
+      { text: "Log Activity", onPress: () => setLogVisible(true) },
+      { text: "Abandon Challenge", style: "destructive", onPress: handleAbandon },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 120 },
+          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12, paddingBottom: isActive ? 110 : 100 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Back */}
-        <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={12} activeOpacity={0.7}>
-          <ArrowLeft size={18} color={T.textMuted} />
-          <Text style={s.backText}>Challenges</Text>
-        </TouchableOpacity>
+        {/* Header */}
+        <View style={s.cdHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12} activeOpacity={0.7} style={s.headerBtn}>
+            <ArrowLeft size={18} color={T.textMuted} />
+          </TouchableOpacity>
+          <Text style={s.cdTitle} numberOfLines={1}>{c.title.toUpperCase()}</Text>
+          {isActive ? (
+            <TouchableOpacity style={s.headerBtn} activeOpacity={0.7} onPress={openMenu}>
+              <MoreHorizontal size={20} color={T.textMuted} />
+            </TouchableOpacity>
+          ) : (
+            <View style={s.headerBtn} />
+          )}
+        </View>
 
-        {/* Hero */}
-        <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.hero}>
-          <LinearGradient colors={[color + "18", "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={s.heroTop}>
-            <View style={[s.heroEmoji, { backgroundColor: color + "22" }]}>
-              <Text style={s.heroEmojiText}>{c.emoji}</Text>
-            </View>
-            <View style={s.heroBadges}>
-              <View style={[s.badge, { backgroundColor: diffColor + "22" }]}>
-                <Text style={[s.badgeText, { color: diffColor }]}>{c.difficulty}</Text>
-              </View>
-              {c.isPremium && (
-                <View style={[s.badge, { backgroundColor: T.purpleDim }]}>
-                  <Zap size={9} color={T.purple} />
-                  <Text style={[s.badgeText, { color: T.purple }]}>Pro</Text>
-                </View>
-              )}
-              {isCompleted && (
-                <View style={[s.badge, { backgroundColor: T.greenDim }]}>
-                  <CheckCircle size={9} color={T.green} />
-                  <Text style={[s.badgeText, { color: T.green }]}>Complete</Text>
-                </View>
-              )}
-            </View>
-          </View>
-          <Text style={s.heroTitle}>{c.title}</Text>
-          <Text style={s.heroDesc}>{c.description}</Text>
-          <View style={s.heroMeta}>
-            <Text style={s.heroMetaText}>
-              {c.metric === "elevation" ? `${c.targetValue.toLocaleString()}m total` : `${c.targetValue} sessions`}
-            </Text>
-            {c.durationDays && <Text style={s.heroMetaDot}>·</Text>}
-            {c.durationDays && <Text style={s.heroMetaText}>{c.durationDays} days</Text>}
-            <Text style={s.heroMetaDot}>·</Text>
-            <Text style={s.heroMetaText}>{c.mountain}</Text>
-          </View>
-        </Animated.View>
-
-        {/* Progress */}
-        {isActive && (
-          <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.progressCard}>
-            <LinearGradient colors={[color + "12", "transparent"]} style={StyleSheet.absoluteFill} />
-
+        {isActive ? (
+          <>
             {/* Ring */}
-            <View style={s.ringArea}>
+            <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.ringSection}>
               <ChallengeRing
                 pct={pct}
-                value={c.metric === "elevation" ? `${progress.toLocaleString()}m` : `${ac.activities.length}`}
-                label={c.metric === "elevation" ? "GAINED" : "SESSIONS"}
+                elevation={c.metric === "elevation" ? progress : ac.activities.length}
+                target={c.targetValue}
+                emoji={c.emoji}
                 color={color}
-                size={170}
+                size={220}
               />
-              <View style={s.ringBelow}>
-                <Text style={[s.ringPct, { color }]}>{pct}% COMPLETED</Text>
-                <Text style={s.ringRemaining}>
-                  {c.metric === "elevation"
-                    ? `${(c.targetValue - progress).toLocaleString()}m to go`
-                    : `${c.targetValue - ac.activities.length} sessions remaining`}
-                </Text>
-              </View>
-            </View>
+              <Text style={[s.pctText, { color }]}>{pct}% COMPLETED</Text>
+              <Text style={s.toGoText}>
+                {c.metric === "elevation"
+                  ? `${(c.targetValue - progress).toLocaleString()}M to go`
+                  : `${c.targetValue - ac.activities.length} sessions remaining`}
+              </Text>
+            </Animated.View>
 
-            {/* Progress chart */}
+            {/* Chart */}
             {ac.activities.length > 0 && (
-              <View style={s.chartArea}>
-                <View style={s.chartHeader}>
-                  <Text style={s.chartLabel}>Progress vs target</Text>
-                </View>
-                <ProgressChart activities={ac.activities} target={c.targetValue} color={color} metric={c.metric} />
-              </View>
+              <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.chartCard}>
+                <ProgressChart
+                  activities={ac.activities}
+                  target={c.targetValue}
+                  color={color}
+                  metric={c.metric}
+                />
+              </Animated.View>
             )}
 
             {/* Stat tiles */}
-            <View style={s.statTiles}>
+            <Animated.View entering={FadeInDown.delay(100).duration(600)} style={s.statTilesRow}>
               <View style={s.statTile}>
+                <Compass size={22} color={color} />
                 <Text style={[s.statTileVal, { color }]}>{ac.activities.length}</Text>
                 <Text style={s.statTileLbl}>Climbs</Text>
               </View>
               <View style={s.statTileDivider} />
               <View style={s.statTile}>
+                <TrendingUp size={22} color={color} />
                 <Text style={[s.statTileVal, { color }]}>
-                  {progress.toLocaleString()}{c.metric === "elevation" ? "m" : ""}
+                  {c.metric === "elevation" ? `${progress.toLocaleString()}m` : `${ac.activities.length}`}
                 </Text>
                 <Text style={s.statTileLbl}>Gained</Text>
               </View>
               <View style={s.statTileDivider} />
               <View style={s.statTile}>
+                <CalendarDays size={22} color={color} />
                 <Text style={[s.statTileVal, { color }]}>
                   {new Set(ac.activities.map(a => a.date)).size}
                 </Text>
                 <Text style={s.statTileLbl}>Days Active</Text>
               </View>
-            </View>
+            </Animated.View>
 
+            {/* Recent Climbs */}
+            {ac.activities.length > 0 && (
+              <Animated.View entering={FadeInDown.delay(120).duration(600)}>
+                <View style={s.recentHeader}>
+                  <Text style={s.recentTitle}>RECENT CLIMBS</Text>
+                  <TouchableOpacity onPress={() => setLogVisible(true)} activeOpacity={0.7}>
+                    <Text style={[s.recentViewAll, { color }]}>View all</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={s.recentList}>
+                  {[...ac.activities].reverse().slice(0, 5).map((a, i, arr) => (
+                    <React.Fragment key={a.id}>
+                      <ClimbRow activity={a} color={color} />
+                      {i < arr.length - 1 && <View style={s.recentDivider} />}
+                    </React.Fragment>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
+
+            {/* Hill Planner */}
+            <Animated.View entering={FadeInDown.delay(140).duration(600)}>
+              <HillPlannerSection
+                targetValue={c.targetValue}
+                metric={c.metric}
+                color={color}
+                currentProgress={progress}
+                onLog={handlePlannerLog}
+              />
+            </Animated.View>
+
+            {/* Next milestone banner */}
             {nextMilestone && (
-              <View style={s.nextMilestone}>
-                <ChevronRight size={12} color={color} />
-                <Text style={[s.nextMilestoneText, { color }]}>
+              <Animated.View entering={FadeInDown.delay(160).duration(500)} style={s.milestoneBanner}>
+                <ChevronRight size={13} color={color} />
+                <Text style={[s.milestoneBannerText, { color }]}>
                   Next: {nextMilestone.label} at {nextMilestone.pct}%
                 </Text>
-              </View>
+              </Animated.View>
             )}
-          </Animated.View>
-        )}
-
-        {/* Not-started banner */}
-        {!ac && (
-          <Animated.View entering={FadeInDown.delay(75).duration(600)} style={s.notStartedBanner}>
-            <AlertCircle size={15} color={T.orange} />
-            <Text style={s.notStartedText}>
-              Tap <Text style={s.notStartedBold}>Start Challenge</Text> below before logging any progress — your activities won't be saved until the challenge is active.
-            </Text>
-          </Animated.View>
-        )}
-
-        {/* Hill planner */}
-        {!isCompleted && (
-          <Animated.View entering={FadeInDown.delay(95).duration(600)}>
-            <HillPlannerSection
-              targetValue={c.targetValue}
-              metric={c.metric}
-              color={color}
-              currentProgress={progress}
-              onLog={handlePlannerLog}
-            />
-          </Animated.View>
-        )}
-
-        {/* Milestones */}
-        <Animated.View entering={FadeInDown.delay(100).duration(600)} style={s.card}>
-          <Text style={s.cardTitle}>Milestones</Text>
-          {c.milestones.map((m) => {
-            const reached = pct >= m.pct;
-            return (
-              <View key={m.pct} style={s.milestoneRow}>
-                <View style={[s.milestoneDot, reached && { backgroundColor: color }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.milestoneLabel, reached && { color: T.text }]}>{m.label}</Text>
+          </>
+        ) : (
+          <>
+            {/* Hero card — non-active state */}
+            <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.hero}>
+              <LinearGradient colors={[color + "18", "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={s.heroTop}>
+                <View style={[s.heroEmoji, { backgroundColor: color + "22" }]}>
+                  <Text style={s.heroEmojiText}>{c.emoji}</Text>
                 </View>
-                <Text style={s.milestoneEmoji}>{reached ? m.emoji : "○"}</Text>
-                <Text style={[s.milestonePct, reached && { color }]}>{m.pct}%</Text>
-              </View>
-            );
-          })}
-        </Animated.View>
-
-        {/* Recent activity */}
-        {ac && ac.activities.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(120).duration(600)} style={s.card}>
-            <Text style={s.cardTitle}>Recent activity</Text>
-            {ac.activities.slice(0, 5).map((a) => {
-              const dateStr = new Date(a.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-              return (
-                <View key={a.id} style={s.activityRow}>
-                  <View style={s.activityIcon}>
-                    <Mountain size={14} color={color} />
+                <View style={s.heroBadges}>
+                  <View style={[s.badge, { backgroundColor: diffColor + "22" }]}>
+                    <Text style={[s.badgeText, { color: diffColor }]}>{c.difficulty}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.activityName}>{a.title}</Text>
-                    <View style={s.activityMeta}>
-                      <Text style={s.activityDim}>{dateStr}</Text>
-                      {a.elevationGain > 0 && <Text style={s.activityDim}>· {a.elevationGain}m gain</Text>}
-                      {a.distance > 0 && <Text style={s.activityDim}>· {a.distance}km</Text>}
-                      {a.duration > 0 && <Text style={s.activityDim}>· {a.duration}min</Text>}
+                  {c.isPremium && (
+                    <View style={[s.badge, { backgroundColor: T.purpleDim }]}>
+                      <Zap size={9} color={T.purple} />
+                      <Text style={[s.badgeText, { color: T.purple }]}>Pro</Text>
                     </View>
-                    {!!a.notes && <Text style={s.activityNotes}>{a.notes}</Text>}
-                  </View>
+                  )}
+                  {isCompleted && (
+                    <View style={[s.badge, { backgroundColor: T.greenDim }]}>
+                      <CheckCircle size={9} color={T.green} />
+                      <Text style={[s.badgeText, { color: T.green }]}>Complete</Text>
+                    </View>
+                  )}
                 </View>
-              );
-            })}
-          </Animated.View>
-        )}
-
-        {/* CTA */}
-        <Animated.View entering={FadeInDown.delay(140).duration(600)} style={s.ctaArea}>
-          {!ac && (
-            <TouchableOpacity
-              onPress={handleStart}
-              style={[s.ctaBtn, locked && s.ctaBtnLocked]}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={locked ? [T.surface, T.surface] : [color, color + "CC"]}
-                style={s.ctaBtnInner}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              >
-                {locked ? <Lock size={16} color={T.textMuted} /> : <Zap size={16} color={T.bg} />}
-                <Text style={[s.ctaBtnText, locked && { color: T.textMuted }]}>
-                  {locked ? "Unlock with Pro" : "Start Challenge"}
+              </View>
+              <Text style={s.heroTitle}>{c.title}</Text>
+              <Text style={s.heroDesc}>{c.description}</Text>
+              <View style={s.heroMeta}>
+                <Text style={s.heroMetaText}>
+                  {c.metric === "elevation" ? `${c.targetValue.toLocaleString()}m total` : `${c.targetValue} sessions`}
                 </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+                {c.durationDays && <Text style={s.heroMetaDot}>·</Text>}
+                {c.durationDays && <Text style={s.heroMetaText}>{c.durationDays} days</Text>}
+                <Text style={s.heroMetaDot}>·</Text>
+                <Text style={s.heroMetaText}>{c.mountain}</Text>
+              </View>
+            </Animated.View>
 
-          {isActive && (
-            <>
-              <TouchableOpacity onPress={() => setLogVisible(true)} style={s.ctaBtn} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={[color, color + "CC"]}
-                  style={s.ctaBtnInner}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            {/* Not-started banner */}
+            {!ac && (
+              <Animated.View entering={FadeInDown.delay(60).duration(600)} style={s.notStartedBanner}>
+                <AlertCircle size={15} color={T.orange} />
+                <Text style={s.notStartedText}>
+                  Tap <Text style={s.notStartedBold}>Start Challenge</Text> below before logging — activities won't be saved until active.
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Hill planner */}
+            {!isCompleted && (
+              <Animated.View entering={FadeInDown.delay(80).duration(600)}>
+                <HillPlannerSection
+                  targetValue={c.targetValue}
+                  metric={c.metric}
+                  color={color}
+                  currentProgress={progress}
+                  onLog={handlePlannerLog}
+                />
+              </Animated.View>
+            )}
+
+            {/* Milestones */}
+            <Animated.View entering={FadeInDown.delay(100).duration(600)} style={s.card}>
+              <Text style={s.cardTitle}>Milestones</Text>
+              {c.milestones.map((m) => {
+                const reached = pct >= m.pct;
+                return (
+                  <View key={m.pct} style={s.milestoneRow}>
+                    <View style={[s.milestoneDot, reached && { backgroundColor: color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.milestoneLabel, reached && { color: T.text }]}>{m.label}</Text>
+                    </View>
+                    <Text style={s.milestoneEmoji}>{reached ? m.emoji : "○"}</Text>
+                    <Text style={[s.milestonePct, reached && { color }]}>{m.pct}%</Text>
+                  </View>
+                );
+              })}
+            </Animated.View>
+
+            {/* CTA */}
+            <Animated.View entering={FadeInDown.delay(120).duration(600)} style={s.ctaArea}>
+              {!ac && (
+                <TouchableOpacity onPress={handleStart} style={[s.ctaBtn, locked && s.ctaBtnLocked]} activeOpacity={0.85}>
+                  <LinearGradient
+                    colors={locked ? [T.surface, T.surface] : [color, color + "CC"]}
+                    style={s.ctaBtnInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  >
+                    {locked ? <Lock size={16} color={T.textMuted} /> : <Zap size={16} color={T.bg} />}
+                    <Text style={[s.ctaBtnText, locked && { color: T.textMuted }]}>
+                      {locked ? "Unlock with Pro" : "Start Challenge"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+              {isCompleted && (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: "/challenge-complete", params: { id: c.id } })}
+                  style={s.ctaBtn} activeOpacity={0.85}
                 >
-                  <PlusCircle size={16} color={T.bg} />
-                  <Text style={s.ctaBtnText}>Log Activity</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAbandon} style={s.abandonBtn} activeOpacity={0.7}>
-                <Text style={s.abandonText}>Abandon challenge</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {isCompleted && (
-            <TouchableOpacity
-              onPress={() => router.push({ pathname: "/challenge-complete", params: { id: c.id } })}
-              style={s.ctaBtn}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[T.green, T.green + "CC"]}
-                style={s.ctaBtnInner}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              >
-                <CheckCircle size={16} color={T.bg} />
-                <Text style={s.ctaBtnText}>View Results</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
+                  <LinearGradient colors={[T.green, T.green + "CC"]} style={s.ctaBtnInner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <CheckCircle size={16} color={T.bg} />
+                    <Text style={s.ctaBtnText}>View Results</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          </>
+        )}
       </ScrollView>
+
+      {/* Floating Log Activity button (active challenges only) */}
+      {isActive && (
+        <View style={[s.fab, { bottom: Platform.OS === "web" ? 28 : insets.bottom + 16 }]}>
+          <TouchableOpacity onPress={() => setLogVisible(true)} activeOpacity={0.88} style={[s.fabInner, { backgroundColor: color }]}>
+            <PlusCircle size={18} color={T.bg} />
+            <Text style={s.fabText}>Log Activity</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <LogModal
         challengeId={c.id}
@@ -621,9 +719,47 @@ export default function ChallengeDetailScreen() {
 
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 16 },
-  back: { flexDirection: "row", alignItems: "center", gap: 6 },
-  backText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
 
+  // ── Header ────────────────────────────────────────────────────────────────
+  cdHeader: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  headerBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  cdTitle: { flex: 1, textAlign: "center", fontSize: 13, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: 1.5 },
+
+  // ── Active state ──────────────────────────────────────────────────────────
+  ringSection: { alignItems: "center", gap: 8, paddingVertical: 4 },
+  pctText: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
+  toGoText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  chartCard: {
+    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    paddingTop: 14, paddingBottom: 6, paddingHorizontal: 0, overflow: "hidden",
+  },
+
+  statTilesRow: {
+    flexDirection: "row", backgroundColor: T.card,
+    borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    paddingVertical: 16,
+  },
+  statTile: { flex: 1, alignItems: "center", gap: 6 },
+  statTileVal: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  statTileLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 8 },
+
+  recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  recentTitle: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 1.4 },
+  recentViewAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  recentList: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14 },
+  recentDivider: { height: 1, backgroundColor: T.border },
+
+  milestoneBanner: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: T.border },
+  milestoneBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  // FAB
+  fab: { position: "absolute", left: 20, right: 20 },
+  fabInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 17, borderRadius: 16 },
+  fabText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
+
+  // ── Hero / non-active ─────────────────────────────────────────────────────
   hero: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 18, gap: 10, overflow: "hidden" },
   heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   heroEmoji: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -637,37 +773,6 @@ const s = StyleSheet.create({
   heroMetaText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
   heroMetaDot: { fontSize: 12, color: T.textDim },
 
-  progressCard: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 14, overflow: "hidden" },
-  progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  progressTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  progressPct: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  progressStats: { flexDirection: "row", justifyContent: "space-around" },
-  progressStat: { alignItems: "center", gap: 3 },
-  progressStatVal: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
-  progressStatLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
-  progressStatDivider: { width: 1, backgroundColor: T.border },
-  nextMilestone: { flexDirection: "row", alignItems: "center", gap: 4 },
-  nextMilestoneText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-
-  ringArea: { alignItems: "center", gap: 10 },
-  ringBelow: { alignItems: "center", gap: 4 },
-  ringPct: { fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  ringRemaining: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-
-  chartArea: { gap: 8, alignItems: "center" },
-  chartHeader: { width: "100%", flexDirection: "row", alignItems: "center" },
-  chartLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 0.4, textTransform: "uppercase" },
-
-  statTiles: {
-    flexDirection: "row", backgroundColor: T.surface,
-    borderRadius: 12, borderWidth: 1, borderColor: T.border,
-    paddingVertical: 12,
-  },
-  statTile: { flex: 1, alignItems: "center", gap: 3 },
-  statTileVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  statTileLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
-  statTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
-
   card: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
 
@@ -677,40 +782,17 @@ const s = StyleSheet.create({
   milestoneEmoji: { fontSize: 16 },
   milestonePct: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textDim, minWidth: 32, textAlign: "right" },
 
-  activityRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  activityIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: T.surface, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  activityName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
-  activityMeta: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
-  activityDim: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  activityNotes: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, fontStyle: "italic" },
-
   ctaArea: { gap: 10 },
   ctaBtn: { borderRadius: 14, overflow: "hidden" },
   ctaBtnLocked: { opacity: 0.8 },
   ctaBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
   ctaBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
-  abandonBtn: { alignItems: "center", paddingVertical: 10 },
-  abandonText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim },
 
   notStartedBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    backgroundColor: "rgba(255,144,48,0.10)",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,144,48,0.25)",
-    padding: 14,
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: "rgba(255,144,48,0.10)", borderRadius: 14,
+    borderWidth: 1, borderColor: "rgba(255,144,48,0.25)", padding: 14,
   },
-  notStartedText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: T.textMuted,
-    lineHeight: 19,
-  },
-  notStartedBold: {
-    fontFamily: "Inter_700Bold",
-    color: T.text,
-  },
+  notStartedText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
+  notStartedBold: { fontFamily: "Inter_700Bold", color: T.text },
 });
