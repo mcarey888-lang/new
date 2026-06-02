@@ -24,7 +24,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "elev_1000",  title: "First Thousand",      emoji: "📈", description: "1,000m of total elevation gained",                       tier: "bronze", category: "elevation" },
   { id: "elev_5000",  title: "High Achiever",        emoji: "🌄", description: "5,000m of total elevation gained",                       tier: "silver", category: "elevation" },
   { id: "elev_10000", title: "Ten Peaks",            emoji: "🗻", description: "10,000m of total elevation — a serious mountaineer",    tier: "silver", category: "elevation" },
-  { id: "elev_29029", title: "Everest Equivalent",   emoji: "🏔️", description: "29,029m gained — the height of Everest, in training",  tier: "gold",   category: "elevation" },
+  { id: "elev_8849",  title: "Everest Equivalent",   emoji: "🏔️", description: "8,849m gained — the height of Everest, in training",  tier: "gold",   category: "elevation" },
 
   // Hill repeats
   { id: "first_hill", title: "Hill Bagger",   emoji: "🏃", description: "Completed your first hill repeat session",            tier: "bronze", category: "hills" },
@@ -91,7 +91,7 @@ export function computeUnlocked(
   if (totalElev >= 1000)  u.add("elev_1000");
   if (totalElev >= 5000)  u.add("elev_5000");
   if (totalElev >= 10000) u.add("elev_10000");
-  if (totalElev >= 29029) u.add("elev_29029");
+  if (totalElev >= 8849)  u.add("elev_8849");
 
   if (hillSessions.length >= 1)  u.add("first_hill");
   if (hillSessions.length >= 10) u.add("hills_10");
