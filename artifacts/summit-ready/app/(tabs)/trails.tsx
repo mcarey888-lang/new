@@ -1,5 +1,5 @@
 import {
-  Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search,
+  Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
   Footprints, ChevronRight, Filter, ChevronDown,
@@ -68,7 +68,7 @@ export default function TrackScreen() {
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
-    updateGoalLocation, appMode,
+    appMode,
   } = useApp();
 
   const isExploreMode = appMode === "explore";
@@ -82,10 +82,8 @@ export default function TrackScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [allHillsOpen, setAllHillsOpen] = useState(false);
 
-  const [editingLoc, setEditingLoc] = useState(false);
   const [locText, setLocText] = useState(summitGoal?.location ?? "");
   const [justAdded, setJustAdded] = useState<string | null>(null);
-  const locInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
   const searchCardY = useRef<number>(0);
 
@@ -97,7 +95,7 @@ export default function TrackScreen() {
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (summitGoal?.location && !editingLoc) setLocText(summitGoal.location);
+    if (summitGoal?.location) setLocText(summitGoal.location);
   }, [summitGoal?.location]);
 
   useEffect(() => {
@@ -150,29 +148,6 @@ export default function TrackScreen() {
       const next = idx + dir;
       if (next >= 0 && next < ELEV_STEPS.length) setMinElevation(ELEV_STEPS[next]);
     }
-  }
-
-  function startEditLoc() {
-    setLocText(summitGoal?.location ?? "");
-    setEditingLoc(true);
-    setTimeout(() => locInputRef.current?.focus(), 80);
-  }
-
-  async function confirmLoc() {
-    const trimmed = locText.trim();
-    if (trimmed.length >= 2) {
-      if (summitGoal) await updateGoalLocation(trimmed);
-      setEditingLoc(false);
-      await fetchNearbyHills(localRadius, undefined, summitGoal ? undefined : trimmed);
-    } else {
-      setEditingLoc(false);
-      setLocText(summitGoal?.location ?? "");
-    }
-  }
-
-  function cancelLoc() {
-    setEditingLoc(false);
-    setLocText(summitGoal?.location ?? "");
   }
 
   async function handleAddToPlan(hill: NearbyHill) {
@@ -231,35 +206,6 @@ export default function TrackScreen() {
         <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Track</Text>
-            {editingLoc ? (
-              <View style={styles.locEditRow}>
-                <TextInput
-                  ref={locInputRef}
-                  style={styles.locInput}
-                  value={locText}
-                  onChangeText={setLocText}
-                  placeholderTextColor={T.textMuted}
-                  placeholder="City, Country"
-                  returnKeyType="done"
-                  onSubmitEditing={confirmLoc}
-                  autoCorrect={false}
-                />
-                <TouchableOpacity onPress={confirmLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Check size={16} color={T.green} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={cancelLoc} style={styles.locActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={T.textMuted} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity onPress={startEditLoc} style={styles.locRow} activeOpacity={0.7}>
-                <MapPin size={11} color={T.textMuted} />
-                <Text style={styles.subtitle}>
-                  {summitGoal ? summitGoal.location : "Tap to set location"}
-                </Text>
-                <Pencil size={11} color={T.textMuted} />
-              </TouchableOpacity>
-            )}
           </View>
         </Animated.View>
 
@@ -746,12 +692,6 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
-  locRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
-  locEditRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  locInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.white, backgroundColor: T.surface, borderRadius: 10, borderWidth: 1, borderColor: T.green + "50", paddingHorizontal: 10, paddingVertical: 6 },
-  locActionBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border },
-
   startHero: {
     borderRadius: 20, overflow: "hidden", marginBottom: 20,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
