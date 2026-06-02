@@ -59,17 +59,24 @@ const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running area
   }
 }
 
-Rules:
-- elevation = elevation gain per climb in metres (not total ascent)
-- distance = estimated distance in km from the base location to the hill
+CRITICAL — elevation definition:
+- elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
+- This is NOT the summit's altitude above sea level
+- This is NOT the total route distance
+- Example: Pendle Hill summit is 557m above sea level, but the typical ascent from the Nick of Pendle car park (at ~270m) gains approximately 290m — so elevation = 290
+- Example: Snowdon is 1085m above sea level, but the Pyg Track gains ~750m from the Pen-y-Pass car park — so elevation = 750
+- Example: Scafell Pike summit is 978m, the Wasdale Head approach gains ~900m — so elevation = 900
+- Always use the ASCENT (height gained) for a typical single climb, not the peak's altitude above sea level
+
+Other rules:
+- distance = estimated distance in km from the base location to the hill's trailhead
 - repeats = recommended number of repeats for a good training session (1-5)
 - totalElevation = elevation × repeats
 - surface = brief description e.g. "Grassy moorland", "Rocky path"
-- grade: Easy ≤ 200m, Easy–Mod 150-300m, Moderate 250-450m, Hard 400-700m, Alpine 600m+
+- grade: Easy ≤ 150m gain, Easy–Mod 150-300m, Moderate 300-500m, Hard 500-700m, Alpine 700m+
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
-- lat/lng = accurate GPS coordinates of the hill summit or main trailhead (decimal degrees, 4 decimal places)
-- If you cannot identify the hill, make a reasonable estimate based on the name
-- Use the real elevation data for well-known hills/peaks`;
+- lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
+- Use real, accurate elevation gain data for well-known hills and peaks`;
 
 const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
 
@@ -93,19 +100,27 @@ const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill trainin
   ]
 }
 
-Rules:
+CRITICAL — elevation definition:
+- elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
+- This is NOT the summit's altitude above sea level
+- This is NOT the total route distance
+- Example: Pendle Hill summit is 557m above sea level, but ascending from the Nick of Pendle car park (~270m) gains ~290m — so elevation = 290
+- Example: Boulsworth Hill summit is 517m above sea level, ascending from the road at ~280m gains ~240m — so elevation = 240
+- Example: Ingleborough summit is 723m, ascending from Horton (~270m) gains ~450m — so elevation = 450
+- Always report the ASCENT (height gained walking uphill) not the peak's altitude above sea level
+
+Other rules:
 - Return 8-10 results total: at least 7 should be named hills or fells good for training repeats; include at most 1-2 circular/out-and-back routes only if no more distinct hills exist within the radius
-- elevation = total elevation gain in metres for the outing (for hills: gain per climb; for routes: total ascent of the full circuit)
 - distance = distance from the given location to the trailhead in km (must be within the radius)
 - repeats = 1 for routes; recommended repeats (1-5) for hills
 - totalElevation = elevation × repeats
 - surface = brief description e.g. "Grassy moorland", "Rocky path", "Circular fell walk", "Forest trail"
-- grade: Easy ≤ 200m, Easy–Mod 150-300m, Moderate 250-450m, Hard 400-700m, Alpine 600m+
+- grade: Easy ≤ 150m gain, Easy–Mod 150-300m, Moderate 300-500m, Hard 500-700m, Alpine 700m+
 - routeType: "hill" for standalone hills good for repeats; "circular" for loop routes; "out-and-back" for there-and-back routes
 - routeDistance: total circuit/route distance in km for circular or out-and-back routes; null for hills
 - estimatedTime: estimated walking time e.g. "1.5–2 hrs", "3–4 hrs"; null for pure hills
 - Use real place names and realistic hills/trails for the given location
-- lat/lng = accurate GPS coordinates of the hill summit or main trailhead (decimal degrees, 4 decimal places)
+- lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
 - For UK: include fells, moors, and popular circular walks
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine`;
 
@@ -193,11 +208,15 @@ async function cacheHill(hill: Hill): Promise<void> {
   }
 }
 
+const DB_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 async function getFromCache(slug: string): Promise<Hill | null> {
   try {
     const rows = await db.select().from(cachedHills).where(eq(cachedHills.slug, slug)).limit(1);
     if (!rows.length) return null;
     const r = rows[0];
+    // Reject stale entries so bad AI data doesn't persist forever
+    if (r.cachedAt && Date.now() - new Date(r.cachedAt).getTime() > DB_CACHE_TTL_MS) return null;
     return {
       name: r.name,
       elevation: r.elevation,
@@ -256,8 +275,8 @@ router.post("/hills-unified", async (req, res) => {
     // 2. Ask AI
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        max_completion_tokens: 350,
+        model: "gpt-4o",
+        max_completion_tokens: 400,
         messages: [
           { role: "system", content: SEARCH_SYSTEM_PROMPT },
           { role: "user", content: `Look up this specific hill for training near "${loc}": "${name}"` },
