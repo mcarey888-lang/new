@@ -118,13 +118,44 @@ function parseAIJson(content: string): unknown {
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
+
+  // 1. Try a straight parse first
   try {
     return JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Could not parse AI response as JSON");
-    return JSON.parse(match[0]);
+  } catch { /* fall through */ }
+
+  // 2. Try extracting the outermost {...} block
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]); } catch { /* fall through */ }
   }
+
+  // 3. Truncated array recovery: pull out individually-complete JSON objects
+  //    from the "hills" array even if the closing brackets are missing.
+  const arrayStart = cleaned.indexOf('"hills"');
+  if (arrayStart !== -1) {
+    const bracketStart = cleaned.indexOf("[", arrayStart);
+    if (bracketStart !== -1) {
+      const partial = cleaned.slice(bracketStart);
+      const hills: unknown[] = [];
+      // Walk through objects one by one using brace depth counting
+      let depth = 0, start = -1;
+      for (let i = 0; i < partial.length; i++) {
+        const ch = partial[i];
+        if (ch === "{") { if (depth === 0) start = i; depth++; }
+        else if (ch === "}") {
+          depth--;
+          if (depth === 0 && start !== -1) {
+            try { hills.push(JSON.parse(partial.slice(start, i + 1))); } catch { /* skip malformed */ }
+            start = -1;
+          }
+        }
+      }
+      if (hills.length > 0) return { hills };
+    }
+  }
+
+  throw new Error("Could not parse AI response as JSON");
 }
 
 function hillToRow(hill: Hill) {
@@ -278,7 +309,7 @@ router.post("/hills-unified", async (req, res) => {
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_completion_tokens: 900,
+      max_completion_tokens: 2000,
       messages: [
         { role: "system", content: LOOKUP_SYSTEM_PROMPT },
         { role: "user", content: userMsg },
