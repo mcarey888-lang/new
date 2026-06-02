@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Audio } from "expo-av";
 import {
   Platform,
   ScrollView,
@@ -106,13 +107,28 @@ export default function ChallengeCompleteScreen() {
   useEffect(() => {
     if (!id) return;
     const key = CELEBRATION_KEY_PREFIX + id;
-    AsyncStorage.getItem(key).then((val) => {
+    let sound: Audio.Sound | null = null;
+    AsyncStorage.getItem(key).then(async (val) => {
       if (!val) {
         setIsCelebrating(true);
         setShowConfetti(true);
         AsyncStorage.setItem(key, "1");
+        try {
+          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+          const { sound: s } = await Audio.Sound.createAsync(
+            require("../assets/sounds/challenge_complete.mp3"),
+            { shouldPlay: true, volume: 1.0 }
+          );
+          sound = s;
+          s.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) s.unloadAsync();
+          });
+        } catch {
+          // Audio playback is non-critical — ignore errors silently
+        }
       }
     });
+    return () => { sound?.unloadAsync(); };
   }, [id]);
 
   if (!c || !ac) {
