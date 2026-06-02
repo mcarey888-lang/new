@@ -231,14 +231,16 @@ function LogModal({
   onClose: () => void;
   onSubmit: (data: Omit<ChallengeActivity, "id" | "createdAt">) => void;
 }) {
+  const todayStr = () => new Date().toISOString().split("T")[0];
   const [title, setTitle] = useState("");
+  const [dateStr, setDateStr] = useState(todayStr());
   const [elev, setElev] = useState("");
   const [dist, setDist] = useState("");
   const [dur, setDur] = useState("");
   const [notes, setNotes] = useState("");
 
   function reset() {
-    setTitle(""); setElev(""); setDist(""); setDur(""); setNotes("");
+    setTitle(""); setDateStr(todayStr()); setElev(""); setDist(""); setDur(""); setNotes("");
   }
 
   function handleSubmit() {
@@ -249,10 +251,21 @@ function LogModal({
       Alert.alert("Add a title or elevation", "Please fill in at least the activity name or elevation gain.");
       return;
     }
+    // Parse date — accept YYYY-MM-DD or DD/MM/YYYY
+    let resolvedDate = todayStr();
+    const dmyMatch = dateStr.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    const isoymdMatch = dateStr.trim().match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (dmyMatch) {
+      resolvedDate = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
+    } else if (isoymdMatch) {
+      resolvedDate = `${isoymdMatch[1]}-${isoymdMatch[2].padStart(2, "0")}-${isoymdMatch[3].padStart(2, "0")}`;
+    }
+    // Don't allow future dates
+    if (resolvedDate > todayStr()) resolvedDate = todayStr();
     onSubmit({
       challengeId,
       title: title.trim() || "Training session",
-      date: new Date().toISOString().split("T")[0],
+      date: resolvedDate,
       elevationGain: elevNum,
       distance: distNum,
       duration: durNum,
@@ -271,15 +284,28 @@ function LogModal({
           <Text style={lm.subtitle}>This will count toward your challenge and your training progress.</Text>
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={lm.fields}>
-            <View style={lm.field}>
-              <Text style={lm.label}>Activity name</Text>
-              <TextInput
-                style={lm.input}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="e.g. Local hill repeats"
-                placeholderTextColor={T.textDim}
-              />
+            <View style={lm.row}>
+              <View style={[lm.field, { flex: 2 }]}>
+                <Text style={lm.label}>Activity name</Text>
+                <TextInput
+                  style={lm.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="e.g. Local hill repeats"
+                  placeholderTextColor={T.textDim}
+                />
+              </View>
+              <View style={[lm.field, { flex: 1 }]}>
+                <Text style={lm.label}>Date</Text>
+                <TextInput
+                  style={lm.input}
+                  value={dateStr}
+                  onChangeText={setDateStr}
+                  placeholder="DD/MM/YYYY"
+                  placeholderTextColor={T.textDim}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
             </View>
             <View style={lm.row}>
               <View style={[lm.field, { flex: 1 }]}>
