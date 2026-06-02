@@ -740,13 +740,13 @@ export default function DashboardScreen() {
                 <View style={styles.achieveStripIcon}>
                   <Text style={styles.achieveStripTrophy}>🏆</Text>
                 </View>
-                <View>
-                  <Text style={styles.achieveStripTitle}>Achievements</Text>
-                  <Text style={styles.achieveStripSub}>{unlockedAchievements.length} unlocked</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.achieveStripTitle} numberOfLines={1}>Achievements</Text>
+                  <Text style={styles.achieveStripSub} numberOfLines={1}>{unlockedAchievements.length} unlocked</Text>
                 </View>
               </View>
               <View style={styles.achieveStripEmojis}>
-                {[...unlockedAchievements].reverse().slice(0, 5).map(id => {
+                {[...unlockedAchievements].reverse().slice(0, 4).map(id => {
                   const a = ACHIEVEMENTS.find(x => x.id === id);
                   return a ? <Text key={id} style={styles.achieveStripEmoji}>{a.emoji}</Text> : null;
                 })}
@@ -1109,7 +1109,7 @@ const styles = StyleSheet.create({
   achieveStripTrophy: { fontSize: 18 },
   achieveStripTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
   achieveStripSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  achieveStripEmojis: { flexDirection: "row", gap: 2, alignItems: "center" },
+  achieveStripEmojis: { flexDirection: "row", gap: 2, alignItems: "center", flexShrink: 0 },
   achieveStripEmoji: { fontSize: 17 },
   statCard: {
     backgroundColor: T.card,
