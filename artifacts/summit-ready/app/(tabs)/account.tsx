@@ -1,20 +1,18 @@
-import { User, LogIn, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Info, Trophy, PenLine } from "lucide-react-native";
+import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine } from "lucide-react-native";
+import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Linking,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -58,10 +56,7 @@ const REFERENCE_PEAKS: { name: string; emoji: string; elevation: number; difficu
   { name: "Denali",        emoji: "🗻", elevation: 3000, difficulty: "Alpine",   location: "Alaska, USA" },
 ];
 
-const ACCOUNT_EMAIL_KEY = "summitready_account_email";
-
 function maskId(id: string) {
-  if (id.startsWith("$RCAnonymousID:")) return "Guest account";
   if (id.length > 20) return id.slice(0, 6) + "…" + id.slice(-4);
   return id;
 }
@@ -80,6 +75,9 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
   const inProgressChallenges = activeChallenges.filter(ac => !ac.completed);
@@ -114,20 +112,14 @@ export default function AccountScreen() {
     .slice(0, 8);
   const { customerInfo, isSubscribed, restore, isRestoring, refetchCustomerInfo } = useSubscription();
 
-  const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [signInOpen, setSignInOpen] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [signingIn, setSigningIn] = useState(false);
-  const [signInError, setSignInError] = useState("");
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  useEffect(() => {
-    AsyncStorage.getItem(ACCOUNT_EMAIL_KEY).then(val => setAccountEmail(val));
-  }, []);
-
-  const userId = customerInfo?.originalAppUserId ?? null;
-  const isGuest = !accountEmail;
+  // Clerk user info
+  const displayEmail = user?.primaryEmailAddress?.emailAddress ?? null;
+  const displayName = user?.fullName ?? user?.firstName ?? displayEmail ?? "Account";
+  const avatarInitial = (user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? "?")[0].toUpperCase();
+  const userId = user?.id ?? null;
 
   const entitlement = customerInfo?.entitlements.active?.["premium"];
   const expiresDate = entitlement?.expirationDate
@@ -141,35 +133,13 @@ export default function AccountScreen() {
   const totalPlanSessions = trainingPlan.reduce((a, w) => a + w.sessions.length, 0);
   const currentWeek = trainingPlan.find(w => w.isCurrentWeek);
 
-  async function handleSignIn() {
-    const email = emailInput.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      setSignInError("Please enter a valid email address.");
-      return;
-    }
-    setSigningIn(true);
-    setSignInError("");
-    try {
-      await Purchases.logIn(email);
-      await AsyncStorage.setItem(ACCOUNT_EMAIL_KEY, email);
-      setAccountEmail(email);
-      await refetchCustomerInfo();
-      setSignInOpen(false);
-      setEmailInput("");
-    } catch {
-      setSignInError("Sign in failed. Please try again.");
-    } finally {
-      setSigningIn(false);
-    }
-  }
-
   async function handleSignOut() {
     if (Platform.OS === "web") {
       doSignOut();
     } else {
       Alert.alert(
         "Sign out",
-        "You'll revert to a guest account. Your training data stays on this device.",
+        "Your training data stays on this device.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Sign out", style: "destructive", onPress: doSignOut },
@@ -179,12 +149,9 @@ export default function AccountScreen() {
   }
 
   async function doSignOut() {
-    try {
-      await Purchases.logOut();
-    } catch {}
-    await AsyncStorage.removeItem(ACCOUNT_EMAIL_KEY);
-    setAccountEmail(null);
-    await refetchCustomerInfo();
+    try { await Purchases.logOut(); } catch {}
+    await signOut();
+    router.replace("/");
   }
 
   async function handleResetData() {
@@ -203,11 +170,6 @@ export default function AccountScreen() {
   }
 
   async function doResetData() {
-    try {
-      await Purchases.logOut();
-    } catch {}
-    await AsyncStorage.removeItem(ACCOUNT_EMAIL_KEY);
-    setAccountEmail(null);
     await clearChallenges();
     await clearPlan();
     router.replace("/");
@@ -216,7 +178,7 @@ export default function AccountScreen() {
   async function handleDeleteAccount() {
     Alert.alert(
       "Delete account",
-      "This will permanently delete your account and all associated data, including any routes you've submitted. This cannot be undone.",
+      "This will permanently delete your Clerk account and all local data. This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: doDeleteAccount },
@@ -234,11 +196,11 @@ export default function AccountScreen() {
         )
       );
     } catch {}
+    try { await Purchases.logOut(); } catch {}
     try {
-      await Purchases.logOut();
+      await user?.delete();
     } catch {}
     await AsyncStorage.clear();
-    setAccountEmail(null);
     setDeletingAccount(false);
     router.replace("/");
   }
@@ -269,53 +231,35 @@ export default function AccountScreen() {
 
         {/* Profile card */}
         <Animated.View entering={FadeInDown.delay(40).duration(400)}>
-          <View style={[styles.profileCard, !isGuest && { borderColor: T.green + "40" }]}>
-            <LinearGradient
-              colors={isGuest ? ["transparent", "transparent"] : [T.greenDim, "transparent"]}
-              style={StyleSheet.absoluteFill}
-            />
+          <View style={[styles.profileCard, { borderColor: T.green + "40" }]}>
+            <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
             <View style={styles.avatarRow}>
-              <View style={[styles.avatar, { backgroundColor: isGuest ? T.surface : T.greenDim }]}>
-                {isGuest
-                  ? <User size={24} color={T.textMuted} />
-                  : <Text style={styles.avatarInitial}>{accountEmail![0].toUpperCase()}</Text>
+              <View style={[styles.avatar, { backgroundColor: T.greenDim }]}>
+                {isSignedIn
+                  ? <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+                  : <User size={24} color={T.textMuted} />
                 }
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.displayName}>
-                  {isGuest ? "Guest" : accountEmail}
-                </Text>
+                <Text style={styles.displayName}>{displayName}</Text>
+                {displayEmail && displayEmail !== displayName && (
+                  <Text style={styles.userId}>{displayEmail}</Text>
+                )}
                 {userId && (
-                  <Text style={styles.userId}>ID: {maskId(userId)}</Text>
+                  <Text style={[styles.userId, { marginTop: 1 }]}>ID: {maskId(userId)}</Text>
                 )}
               </View>
-              <View style={[styles.guestBadge, { backgroundColor: isGuest ? T.surface : T.greenDim, borderColor: isGuest ? T.border : T.green + "40" }]}>
-                <View style={[styles.guestDot, { backgroundColor: isGuest ? T.textDim : T.green }]} />
-                <Text style={[styles.guestBadgeText, { color: isGuest ? T.textMuted : T.green }]}>
-                  {isGuest ? "Guest" : "Signed in"}
-                </Text>
+              <View style={[styles.guestBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
+                <View style={[styles.guestDot, { backgroundColor: T.green }]} />
+                <Text style={[styles.guestBadgeText, { color: T.green }]}>Signed in</Text>
               </View>
             </View>
-
-            {isGuest ? (
-              <TouchableOpacity
-                style={styles.signInBtn}
-                onPress={() => setSignInOpen(true)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.signInBtnGrad}>
-                  <LogIn size={15} color="#fff" />
-                  <Text style={styles.signInBtnText}>Sign in with email</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.signedInNote}>
-                <Shield size={12} color={T.green} />
-                <Text style={styles.signedInNoteText}>
-                  Your purchases are linked to this account and can be restored on any device.
-                </Text>
-              </View>
-            )}
+            <View style={styles.signedInNote}>
+              <Shield size={12} color={T.green} />
+              <Text style={styles.signedInNoteText}>
+                Your account is secured. Sign in on any device to restore your purchases.
+              </Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -746,19 +690,11 @@ export default function AccountScreen() {
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>ACCOUNT</Text>
           <View style={styles.actionList}>
-            {!isGuest ? (
-              <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>
-                <LogOut size={16} color={T.orange} />
-                <Text style={[styles.actionText, { color: T.orange }]}>Sign out</Text>
-                <ChevronRight size={16} color={T.textDim} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.actionRow} onPress={() => setSignInOpen(true)} activeOpacity={0.7}>
-                <LogIn size={16} color={T.blue} />
-                <Text style={styles.actionText}>Sign in</Text>
-                <ChevronRight size={16} color={T.textDim} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>
+              <LogOut size={16} color={T.orange} />
+              <Text style={[styles.actionText, { color: T.orange }]}>Sign out</Text>
+              <ChevronRight size={16} color={T.textDim} />
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleResetData} activeOpacity={0.7}>
               <Trash2 size={16} color="#FF4444" />
               <View style={{ flex: 1 }}>
@@ -773,7 +709,7 @@ export default function AccountScreen() {
                 : <Trash2 size={16} color="#FF4444" />}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionText, { color: "#FF4444" }]}>Delete account</Text>
-                <Text style={styles.actionSub}>Permanently removes your account and all data</Text>
+                <Text style={styles.actionSub}>Permanently removes your Clerk account and all data</Text>
               </View>
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
@@ -795,71 +731,6 @@ export default function AccountScreen() {
         </Animated.View>
       </ScrollView>
 
-      {/* Sign-in modal */}
-      <Modal visible={signInOpen} transparent animationType="slide" onRequestClose={() => setSignInOpen(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => { setSignInOpen(false); setSignInError(""); }} />
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={[styles.modalSheet, { paddingBottom: Platform.OS === "web" ? 32 : Math.max(insets.bottom, 24) }]}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalTitleRow}>
-              <View style={styles.modalIconBox}>
-                <LogIn size={18} color={T.blue} />
-              </View>
-              <View>
-                <Text style={styles.modalTitle}>Sign in</Text>
-                <Text style={styles.modalSubtitle}>Link your purchases across devices</Text>
-              </View>
-            </View>
-
-            <Text style={styles.modalLabel}>Email address</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={emailInput}
-              onChangeText={txt => { setEmailInput(txt); setSignInError(""); }}
-              placeholder="you@example.com"
-              placeholderTextColor={T.textDim}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {signInError ? (
-              <View style={styles.errorRow}>
-                <AlertCircle size={13} color={T.orange} />
-                <Text style={styles.errorText}>{signInError}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.modalNote}>
-              <Info size={12} color={T.textMuted} />
-              <Text style={styles.modalNoteText}>
-                We use your email as a secure account ID to link RevenueCat purchases. No password required.
-              </Text>
-            </View>
-
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setSignInOpen(false); setSignInError(""); setEmailInput(""); }} activeOpacity={0.7}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmBtn}
-                onPress={handleSignIn}
-                disabled={signingIn}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={["#4A9FF5", "#2E7FD4"]} style={styles.confirmBtnGrad}>
-                  {signingIn
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <>
-                        <Check size={15} color="#fff" />
-                        <Text style={styles.confirmText}>Sign in</Text>
-                      </>
-                  }
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </LinearGradient>
   );
 }
