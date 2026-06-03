@@ -19,8 +19,14 @@ function getRevenueCatApiKey() {
     throw new Error("RevenueCat Entitlement Identifier not provided");
   }
 
-  if (Platform.OS === "android") return REVENUECAT_ANDROID_API_KEY;
+  // In Expo Go (storeClient), dev mode, or web — always use the test store key.
+  // The test store works without any App Store / Play Store configuration.
+  if (__DEV__ || Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
+    return REVENUECAT_TEST_API_KEY;
+  }
+
   if (Platform.OS === "ios") return REVENUECAT_IOS_API_KEY;
+  if (Platform.OS === "android") return REVENUECAT_ANDROID_API_KEY;
   return REVENUECAT_TEST_API_KEY;
 }
 
