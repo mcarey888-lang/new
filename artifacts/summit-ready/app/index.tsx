@@ -62,6 +62,8 @@ export default function LandingScreen() {
       router.replace("/questionnaire");
     } else if (appMode === "explore") {
       router.replace("/(tabs)/explore");
+    } else {
+      router.replace("/mode-select");
     }
   }, [authLoaded, isSignedIn, isLoading, appMode, summitGoal]);
 
