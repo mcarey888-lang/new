@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { Compass, MapPin, TrendingUp, Activity, Loader } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +18,7 @@ const DEV_TAP_WINDOW_MS = 2000;
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, isLoading, appMode, reloadApp } = useApp();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -52,7 +54,8 @@ export default function LandingScreen() {
   }
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!authLoaded || isLoading) return;
+    if (!isSignedIn) return;
     if (appMode === "summit" && summitGoal) {
       router.replace("/(tabs)/dashboard");
     } else if (appMode === "summit") {
@@ -60,7 +63,7 @@ export default function LandingScreen() {
     } else if (appMode === "explore") {
       router.replace("/(tabs)/explore");
     }
-  }, [isLoading, appMode, summitGoal]);
+  }, [authLoaded, isSignedIn, isLoading, appMode, summitGoal]);
 
   if (isLoading || demoLoading) {
     return (
@@ -121,7 +124,7 @@ export default function LandingScreen() {
         <Animated.View entering={FadeInUp.delay(420).duration(600)} style={styles.cta}>
           <TouchableOpacity
             style={styles.ctaBtn}
-            onPress={() => router.push("/mode-select")}
+            onPress={() => router.push("/(auth)/sign-up" as any)}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -131,10 +134,12 @@ export default function LandingScreen() {
               style={styles.ctaBtnGrad}
             >
               <Compass size={19} color="#fff" />
-              <Text style={styles.ctaBtnText}>Get started</Text>
+              <Text style={styles.ctaBtnText}>Create free account</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.demoNote}>Free to start · No account needed</Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/sign-in" as any)} activeOpacity={0.7}>
+            <Text style={styles.signInLink}>Already have an account? <Text style={{ color: T.green }}>Sign in</Text></Text>
+          </TouchableOpacity>
         </Animated.View>
       </View>
 
@@ -176,5 +181,5 @@ const styles = StyleSheet.create({
   },
   ctaBtnGrad: { height: 58, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
   ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", marginLeft: 10, flexShrink: 0 },
-  demoNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  signInLink: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 });

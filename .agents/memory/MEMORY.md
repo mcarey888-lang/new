@@ -1,0 +1,2 @@
+- [Clerk Expo Auth](clerk-expo-auth.md) — Clerk Phase 1 implemented; key patterns and gotchas for future phases.
+- [Theme constants](theme-constants.md) — T.surface, T.border, T.textMuted, T.textDim, T.bgGrad, T.greenDim all exist; useColors.ts TS2352 is a pre-existing harmless error, always ignore.

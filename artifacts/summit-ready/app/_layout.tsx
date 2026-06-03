@@ -5,6 +5,8 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -29,10 +31,13 @@ try {
 
 const queryClient = new QueryClient();
 
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="setup" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
@@ -74,22 +79,26 @@ export default function RootLayout() {
   }, [ready]);
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <SubscriptionProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <AppProvider>
-                  <ChallengesProvider>
-                    <RootLayoutNav />
-                  </ChallengesProvider>
-                </AppProvider>
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </SubscriptionProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <SubscriptionProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <AppProvider>
+                      <ChallengesProvider>
+                        <RootLayoutNav />
+                      </ChallengesProvider>
+                    </AppProvider>
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </SubscriptionProvider>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }
