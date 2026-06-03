@@ -961,7 +961,7 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 18 },
+  scroll: { paddingHorizontal: 18, gap: 12 },
   upgradeBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
     borderRadius: 14, borderWidth: 1, borderColor: T.green + "30",

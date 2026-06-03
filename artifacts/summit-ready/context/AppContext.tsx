@@ -517,7 +517,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // No else — fresh users start from the landing page with no pre-loaded data
 
         if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
-        if (exploreHikesStr) setExploreHikes(JSON.parse(exploreHikesStr) as ExploreHike[]);
+        if (exploreHikesStr) {
+          const rawHikes = JSON.parse(exploreHikesStr) as ExploreHike[];
+          // Migration: older builds stored timeTaken in seconds instead of minutes.
+          // A timeTaken > 300 as minutes (5+ hours) is implausible for most hikes,
+          // but 300 seconds is only 5 minutes — so divide by 60 to correct it.
+          const migratedHikes = rawHikes.map(h =>
+            h.timeTaken > 300 ? { ...h, timeTaken: Math.round(h.timeTaken / 60) } : h
+          );
+          setExploreHikes(migratedHikes);
+        }
         if (savedTrailsStr) setSavedTrailIds(JSON.parse(savedTrailsStr) as string[]);
         if (completedTrailsStr) setCompletedTrailIds(JSON.parse(completedTrailsStr) as string[]);
         if (customRoutesStr) setCustomRoutes(JSON.parse(customRoutesStr) as Trail[]);

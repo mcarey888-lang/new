@@ -23,6 +23,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -311,6 +312,7 @@ export default function HillsFinderScreen() {
   const hasFetched = hills.length > 0;
 
   return (
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
@@ -505,6 +507,7 @@ export default function HillsFinderScreen() {
 
       <LogHikeModal visible={logVisible} prefillName={prefillName} onClose={() => setLogVisible(false)} />
     </LinearGradient>
+    </KeyboardAvoidingView>
   );
 }
 

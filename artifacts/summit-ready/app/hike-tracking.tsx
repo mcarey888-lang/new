@@ -109,7 +109,7 @@ interface TrackPoint {
   acc?: number | null;
 }
 
-const ALTITUDE_NOISE_THRESHOLD = 2;
+const ALTITUDE_NOISE_THRESHOLD = 1;
 const GPS_MAX_ACCURACY_M = 25;   // reject fixes noisier than 25 m horizontal accuracy
 const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountainside
 const HIKE_LOCATION_TASK = "hike-location-task";

@@ -1210,7 +1210,7 @@ export default function PlanScreen() {
       {/* Edit Session Modal */}
       <Modal visible={editModalOpen} transparent animationType="fade" onRequestClose={() => setEditModalOpen(false)}>
         <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setEditModalOpen(false)} />
-        <View style={editStyles.sheet}>
+        <View style={[editStyles.sheet, { paddingBottom: Math.max(36, insets.bottom + 20) }]}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
             <Pencil size={16} color={T.blue} />
@@ -1267,7 +1267,7 @@ export default function PlanScreen() {
       {/* Swap Exercise Modal */}
       <Modal visible={swapModalOpen} transparent animationType="fade" onRequestClose={() => setSwapModalOpen(false)}>
         <TouchableOpacity style={editStyles.backdrop} activeOpacity={1} onPress={() => setSwapModalOpen(false)} />
-        <View style={editStyles.sheet}>
+        <View style={[editStyles.sheet, { paddingBottom: Math.max(36, insets.bottom + 20) }]}>
           <View style={editStyles.handle} />
           <View style={editStyles.titleRow}>
             <RefreshCw size={16} color={T.blue} />

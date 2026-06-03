@@ -591,7 +591,7 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
           <ScrollView
             contentContainerStyle={[
               styles.modalScroll,
-              { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 48 },
+              { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: Math.max(48, insets.bottom + 24) },
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
