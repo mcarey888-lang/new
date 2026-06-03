@@ -66,7 +66,7 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
-  const { offerings, purchase, restore, isPurchasing, isRestoring } = useSubscription();
+  const { offerings, purchase, restore, isPurchasing, isRestoring, offeringsLoading, offeringsError, refetchOfferings } = useSubscription();
   const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string }>();
 
   const fromQuestionnaire = params.fromQuestionnaire === "true";
@@ -272,28 +272,36 @@ export default function PaywallScreen() {
         <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.ctaSection}>
           <TouchableOpacity
             onPress={handleSubscribe}
-            disabled={isPurchasing || !activePkg}
+            disabled={isPurchasing || offeringsLoading || !activePkg}
             activeOpacity={0.85}
-            style={[styles.ctaBtn, (isPurchasing || !activePkg) && { opacity: 0.6 }]}
+            style={[styles.ctaBtn, (isPurchasing || offeringsLoading || !activePkg) && { opacity: offeringsLoading ? 0.8 : 0.6 }]}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.ctaGrad}>
-              {isPurchasing
+              {isPurchasing || offeringsLoading
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <Zap size={18} color="#fff" />}
               <Text style={styles.ctaText}>
                 {isPurchasing
                   ? "Processing…"
-                  : fromQuestionnaire
-                    ? "Start My Training Plan"
-                    : "Start 7-Day Free Trial"}
+                  : offeringsLoading
+                    ? "Loading plans…"
+                    : fromQuestionnaire
+                      ? "Start My Training Plan"
+                      : "Start 7-Day Free Trial"}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          {!activePkg && !isPurchasing && (
-            <Text style={styles.offeringsErrorNote}>
-              Billing unavailable — make sure you're signed into {Platform.select({ ios: "the App Store", android: "Google Play", default: "your store account" })} and connected to the internet.
-            </Text>
+          {offeringsError && !offeringsLoading && (
+            <View style={styles.offeringsErrorBox}>
+              <AlertCircle size={14} color={T.orange} />
+              <Text style={styles.offeringsErrorNote}>
+                Couldn't load subscription plans. This can happen if the store isn't reachable right now.
+              </Text>
+              <TouchableOpacity onPress={() => refetchOfferings()} style={styles.retryBtn} activeOpacity={0.7}>
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <Text style={styles.cancelNote}>Cancel anytime · No commitment</Text>
@@ -430,7 +438,19 @@ const styles = StyleSheet.create({
   },
   ctaText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
   cancelNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
-  offeringsErrorNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#FF9030", textAlign: "center", marginTop: 6, lineHeight: 17 },
+  offeringsErrorBox: {
+    flexDirection: "column", alignItems: "center", gap: 6,
+    backgroundColor: T.orangeDim, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: T.orange + "30",
+    width: "100%",
+  },
+  offeringsErrorNote: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange, textAlign: "center", lineHeight: 18 },
+  retryBtn: {
+    paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1, borderColor: T.orange + "50",
+    backgroundColor: T.orange + "15",
+  },
+  retryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange },
   restoreBtn: { paddingVertical: 6 },
   restoreText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textDecorationLine: "underline" },
 
