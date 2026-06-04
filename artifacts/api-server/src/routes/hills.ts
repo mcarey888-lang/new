@@ -91,7 +91,7 @@ Rules:
 - If you cannot identify the hill, make a reasonable estimate based on the name
 - Use the real elevation data for well-known hills/peaks`;
 
-const HILL_DETAIL_SYSTEM_PROMPT = `You are an expert mountain and hiking guide. Given a hill name and region, provide detailed practical information for a hillwalker training for a mountain summit. Return ONLY valid JSON — no markdown, no explanation:
+const HILL_DETAIL_SYSTEM_PROMPT = `You are an expert mountain and hiking guide. Given a hill name, region, and known stats, provide detailed practical information for a hillwalker training for a mountain summit. Return ONLY valid JSON — no markdown, no explanation:
 
 {
   "description": string,
@@ -117,7 +117,7 @@ const HILL_DETAIL_SYSTEM_PROMPT = `You are an expert mountain and hiking guide. 
 }
 
 Rules:
-- description: 2-3 sentences about the hill's character, terrain and why it is good for training
+- description: 2-3 sentences about the hill's character, terrain and why it is good for training. Must be consistent with the known elevation gain and surface type provided in the user message.
 - startPoint.name: name of the car park, village, layby or trailhead
 - startPoint.lat/lng: accurate GPS coordinates of the start point (decimal degrees, 4 decimal places)
 - startPoint.postcode: the nearest UK postcode to the car park or trailhead (e.g. "BB7 3AJ"). If outside the UK, use the nearest ZIP/postal code. Always provide this — it is the primary navigation destination used by the app
@@ -126,7 +126,7 @@ Rules:
 - routes: provide 2-4 distinct route options (different approaches, loops, or distances)
 - routes[].name: short descriptive name e.g. "Standard Ascent", "Ridge Loop", "North Approach"
 - routes[].distance: round-trip distance in km
-- routes[].elevationGain: total elevation gain in metres
+- routes[].elevationGain: total elevation gain in metres — the standard ascent route's elevation gain must match the known elevation figure provided
 - routes[].difficulty: "Easy" | "Moderate" | "Hard" | "Alpine"
 - routes[].description: 1-2 sentences describing the route character and highlights
 - routes[].estimatedTime: e.g. "1.5–2 hours", "3–4 hours"
@@ -174,7 +174,7 @@ router.post("/hills-search", async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 400,
       messages: [
         { role: "system", content: SEARCH_SYSTEM_PROMPT },
@@ -236,7 +236,7 @@ router.post("/hills-lookup", async (req, res) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 1200,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -425,8 +425,22 @@ async function geocodeStartPoint(
   return { lat: aiLat, lng: aiLng };
 }
 
+// In-memory cache for hill-detail responses (keyed by hillName slug)
+const hillDetailCache = new Map<string, { data: unknown; ts: number }>();
+const HILL_DETAIL_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function hillDetailCacheKey(hillName: string): string {
+  return hillName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 router.post("/hill-detail", async (req, res) => {
-  const { hillName, location } = req.body as { hillName?: string; location?: string };
+  const { hillName, location, elevation, grade, surface } = req.body as {
+    hillName?: string;
+    location?: string;
+    elevation?: number;
+    grade?: string;
+    surface?: string;
+  };
 
   if (!hillName || typeof hillName !== "string" || hillName.trim().length < 2) {
     res.status(400).json({ error: "Hill name required" });
@@ -434,16 +448,33 @@ router.post("/hill-detail", async (req, res) => {
   }
 
   const loc = location?.trim() || "unknown location";
+  const cacheKey = hillDetailCacheKey(hillName.trim());
+
+  // Serve from cache if fresh
+  const cached = hillDetailCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < HILL_DETAIL_CACHE_TTL_MS) {
+    res.json(cached.data);
+    return;
+  }
+
+  // Build context line from known stats so description stays consistent
+  const contextParts: string[] = [];
+  if (elevation) contextParts.push(`known elevation gain per climb: ${elevation}m`);
+  if (grade) contextParts.push(`grade: ${grade}`);
+  if (surface) contextParts.push(`surface: ${surface}`);
+  const contextLine = contextParts.length
+    ? ` Known stats for this hill — ${contextParts.join(", ")}. The description must be consistent with these figures.`
+    : "";
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 1000,
       messages: [
         { role: "system", content: HILL_DETAIL_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Provide detailed information for hillwalkers about: "${hillName.trim()}" near ${loc}`,
+          content: `Provide detailed information for hillwalkers about: "${hillName.trim()}" near ${loc}.${contextLine}`,
         },
       ],
     });
@@ -493,6 +524,9 @@ router.post("/hill-detail", async (req, res) => {
     }
     validated.startPoint.lat = geocoded.lat;
     validated.startPoint.lng = geocoded.lng;
+
+    // Store in 24-hour in-memory cache
+    hillDetailCache.set(cacheKey, { data: validated, ts: Date.now() });
 
     res.json(validated);
   } catch (err) {

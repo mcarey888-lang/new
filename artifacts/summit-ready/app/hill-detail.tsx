@@ -103,7 +103,13 @@ export default function HillDetailScreen() {
         const res = await fetch(`${API_BASE}/hill-detail`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hillName: name, location: location ?? "" }),
+          body: JSON.stringify({
+            hillName: name,
+            location: location ?? "",
+            elevation: elevation ? parseFloat(elevation) : undefined,
+            grade: grade ?? undefined,
+            surface: surface ?? undefined,
+          }),
         });
         if (!res.ok) throw new Error("Failed");
         const data: HillDetail = await res.json();
