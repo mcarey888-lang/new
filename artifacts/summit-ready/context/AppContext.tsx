@@ -826,8 +826,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // For gym cardio sessions use logged km/floors to derive elevation.
         let elevationGain = s.targetElevation;
         const loggedReps = sessionReps[key];
+        const hill = assignedHills[key] ?? week.hills[0] ?? null;
         if (loggedReps !== undefined && (s.type === "hill" || s.type === "bigDay")) {
-          const hill = assignedHills[key] ?? week.hills[0] ?? null;
           const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
           elevationGain = loggedReps * elevPerRep;
         } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "treadmill") {

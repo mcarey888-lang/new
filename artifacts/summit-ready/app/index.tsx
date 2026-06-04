@@ -84,11 +84,12 @@ export default function LandingScreen() {
         style={[
           styles.inner,
           {
-            paddingTop: Platform.OS === "web" ? 80 : insets.top + 32,
+            paddingTop: Platform.OS === "web" ? 60 : insets.top + 24,
             paddingBottom: Platform.OS === "web" ? 50 : insets.bottom + 32,
           },
         ]}
       >
+        {/* Logo */}
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.hero}>
           <TouchableOpacity onPress={handleLogoPress} activeOpacity={1}>
             <Image
@@ -102,21 +103,8 @@ export default function LandingScreen() {
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(250).duration(600)} style={styles.features}>
-          {features.map((item, i) => {
-            const FIcon = item.icon;
-            return (
-              <View key={i} style={styles.featureRow}>
-                <View style={styles.featureIconWrap}>
-                  <FIcon size={16} color={T.green} />
-                </View>
-                <Text style={styles.featureText}>{item.text}</Text>
-              </View>
-            );
-          })}
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(420).duration(600)} style={styles.cta}>
+        {/* CTA — sits directly below logo so it's always above the fold */}
+        <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.cta}>
           <TouchableOpacity
             style={styles.ctaBtn}
             onPress={() => router.push("/(auth)/sign-up" as any)}
@@ -129,12 +117,31 @@ export default function LandingScreen() {
               style={styles.ctaBtnGrad}
             >
               <Compass size={19} color="#fff" />
-              <Text style={styles.ctaBtnText}>Create free account</Text>
+              <Text style={styles.ctaBtnText}>Get started — it's free</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/(auth)/sign-in" as any)} activeOpacity={0.7}>
-            <Text style={styles.signInLink}>Already have an account? <Text style={{ color: T.green }}>Sign in</Text></Text>
+          <TouchableOpacity
+            onPress={() => router.push("/(auth)/sign-in" as any)}
+            activeOpacity={0.7}
+            style={styles.signInBtn}
+          >
+            <Text style={styles.signInBtnText}>Sign in</Text>
           </TouchableOpacity>
+        </Animated.View>
+
+        {/* Feature highlights below CTA */}
+        <Animated.View entering={FadeInUp.delay(380).duration(600)} style={styles.features}>
+          {features.map((item, i) => {
+            const FIcon = item.icon;
+            return (
+              <View key={i} style={styles.featureRow}>
+                <View style={styles.featureIconWrap}>
+                  <FIcon size={16} color={T.green} />
+                </View>
+                <Text style={styles.featureText}>{item.text}</Text>
+              </View>
+            );
+          })}
         </Animated.View>
       </View>
 
@@ -151,7 +158,7 @@ export default function LandingScreen() {
 const styles = StyleSheet.create({
   mountainDeco: { position: "absolute", bottom: 0, left: 0, right: 0, height: 300, overflow: "hidden" },
   mountainGlow: { flex: 1 },
-  inner: { flex: 1, paddingHorizontal: 28, justifyContent: "space-between" },
+  inner: { flex: 1, paddingHorizontal: 28, justifyContent: "space-evenly" },
   hero: { alignItems: "center", gap: 12 },
   logo: { width: 390, height: 156 },
   tagline: {
@@ -177,4 +184,9 @@ const styles = StyleSheet.create({
   ctaBtnGrad: { height: 58, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
   ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", marginLeft: 10, flexShrink: 0 },
   signInLink: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  signInBtn: {
+    width: "100%", height: 50, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)", alignItems: "center", justifyContent: "center",
+  },
+  signInBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },
 });

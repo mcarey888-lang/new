@@ -655,6 +655,33 @@ export default function DashboardScreen() {
               <ChevronRight size={13} color={T.orange} />
             </TouchableOpacity>
           </View>
+
+          {/* AI Coach teaser */}
+          <View style={[homeStyles.lockedCard, { borderColor: "rgba(74,159,245,0.18)" }]}>
+            <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={homeStyles.lockedHeader}>
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 14 }}>🗻</Text>
+              </View>
+              <Text style={homeStyles.lockedTitle}>AI Coach</Text>
+              <View style={homeStyles.lockBadge}>
+                <Lock size={10} color={T.textMuted} />
+                <Text style={homeStyles.lockText}>Requires goal</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 }}>
+              Once you set a summit goal, your AI Coach analyses your training and gives you personalised tips, weekly assessments, and readiness feedback.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/questionnaire")}
+              style={homeStyles.unlockBtn}
+              activeOpacity={0.8}
+            >
+              <Compass size={13} color={T.blue} />
+              <Text style={[homeStyles.unlockBtnText, { color: T.blue }]}>Set goal to meet your coach</Text>
+              <ChevronRight size={13} color={T.blue} />
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </LinearGradient>
     );
@@ -987,7 +1014,7 @@ export default function DashboardScreen() {
                 <AlpineGuide tone={coach?.tone} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={styles.coachTitle}>Your Guide</Text>
+                    <Text style={styles.coachTitle}>AI Coach</Text>
                     <View style={[
                       styles.coachBadge,
                       {
