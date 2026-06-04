@@ -31,7 +31,7 @@ export function ProgressRing({
 }: ProgressRingProps) {
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
-  const progress = useSharedValue(0);
+  const progress = useSharedValue(score / 100);
 
   useEffect(() => {
     progress.value = withTiming(score / 100, {
