@@ -919,7 +919,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.statsStrip}>
-            <View style={styles.statsTile}>
+            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/setup")} activeOpacity={0.7}>
               <View style={[styles.statsTileIcon, { backgroundColor: T.orange + "20" }]}>
                 <TrendingUp size={13} color={T.orange} />
               </View>
@@ -928,31 +928,31 @@ export default function DashboardScreen() {
                 <Text style={styles.statsTileUnit}>m</Text>
               </Text>
               <Text style={styles.statsTileLabel}>Elev. Goal</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statsTileDivider} />
-            <View style={styles.statsTile}>
+            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/(tabs)/hills")} activeOpacity={0.7}>
               <View style={[styles.statsTileIcon, { backgroundColor: T.green + "20" }]}>
                 <Mountain size={13} color={T.green} />
               </View>
               <Text style={[styles.statsTileValue, { color: T.green }]}>{hillsDone}</Text>
               <Text style={styles.statsTileLabel}>Hills Done</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statsTileDivider} />
-            <View style={styles.statsTile}>
+            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/(tabs)/plan")} activeOpacity={0.7}>
               <View style={[styles.statsTileIcon, { backgroundColor: T.blue + "20" }]}>
                 <CheckCircle size={13} color={T.blue} />
               </View>
               <Text style={[styles.statsTileValue, { color: T.blue }]}>{totalDone}</Text>
               <Text style={styles.statsTileLabel}>Sessions</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statsTileDivider} />
-            <View style={styles.statsTile}>
+            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7}>
               <View style={[styles.statsTileIcon, { backgroundColor: "#FFD70022" }]}>
                 <Trophy size={13} color="#FFD700" />
               </View>
               <Text style={[styles.statsTileValue, { color: "#FFD700" }]}>{unlockedAchievements.length}</Text>
               <Text style={styles.statsTileLabel}>Badges</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </Animated.View>
 
