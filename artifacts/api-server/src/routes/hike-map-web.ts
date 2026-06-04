@@ -3,12 +3,12 @@ import { Router, type IRouter } from "express";
 const router: IRouter = Router();
 
 function buildHtml(osKey: string | undefined): string {
-  const tileUrl = osKey
+  const osTileUrl = osKey
     ? `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${osKey}`
-    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const attribution = osKey
-    ? "&copy; Crown copyright and database rights 2024 OS"
-    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    : null;
+  const osmTileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const osAttribution = "&copy; Crown copyright and database rights 2024 OS";
 
   return `<!DOCTYPE html>
 <html>
@@ -44,10 +44,37 @@ html,body{height:100%;background:#050D1A;overflow:hidden}
 <div id="pill"></div>
 <script>
 var map = L.map("map", { zoomControl: true, attributionControl: true }).setView([54.0, -2.0], 6);
-L.tileLayer(${JSON.stringify(tileUrl)}, {
+
+// Always start with reliable OSM tiles
+var osmLayer = L.tileLayer(${JSON.stringify(osmTileUrl)}, {
   maxZoom: 20,
-  attribution: ${JSON.stringify(attribution)}
+  attribution: ${JSON.stringify(osmAttribution)},
+  subdomains: "abc"
 }).addTo(map);
+
+${osTileUrl ? `
+// Attempt OS Maps on top — if tiles fail, remove it and keep OSM
+var osErrors = 0;
+var osFailed = false;
+var osLayer = L.tileLayer(${JSON.stringify(osTileUrl)}, {
+  maxZoom: 20,
+  attribution: ${JSON.stringify(osAttribution)}
+});
+osLayer.on("tileerror", function() {
+  osErrors++;
+  if (osErrors >= 3 && !osFailed) {
+    osFailed = true;
+    map.removeLayer(osLayer);
+  }
+});
+osLayer.on("tileload", function() {
+  // OS Maps working — remove OSM to avoid double tile cost
+  if (!osFailed && map.hasLayer(osmLayer)) {
+    map.removeLayer(osmLayer);
+  }
+});
+osLayer.addTo(map);
+` : ""}
 
 var pts = [];
 var polyline = L.polyline([], {
