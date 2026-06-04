@@ -376,8 +376,212 @@ export default function TrackScreen() {
           ))
         )}
 
-        {/* SUGGESTED HILLS */}
+        {/* SEARCH HILLS */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+          <View style={styles.sectionHeader}>
+            <Search size={14} color={T.purple} />
+            <Text style={styles.sectionTitle}>Search Hills</Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(130).duration(400)}>
+          <View style={styles.searchCard}>
+            <Text style={styles.searchHint}>Know a hill you want to train on? Search by name.</Text>
+            <View style={styles.searchRow}>
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
+                placeholder="e.g. Pendle Hill, Ben Nevis…"
+                placeholderTextColor={T.textDim}
+                returnKeyType="search"
+                onSubmitEditing={handleHillSearch}
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={handleHillSearch}
+                disabled={searchLoading || searchText.trim().length < 2}
+                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                activeOpacity={0.75}
+              >
+                {searchLoading
+                  ? <ActivityIndicator size="small" color={T.white} />
+                  : <Search size={16} color={T.white} />}
+              </TouchableOpacity>
+            </View>
+
+            {searchError && (
+              <View style={styles.searchErrRow}>
+                <AlertCircle size={13} color={T.red} />
+                <Text style={styles.searchErrText}>{searchError}</Text>
+              </View>
+            )}
+
+            {searchResult && (
+              <View style={styles.searchResult}>
+                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                <View style={styles.searchResultTop}>
+                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
+                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
+                  </View>
+                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
+                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
+                  </View>
+                </View>
+                <View style={styles.searchResultStats}>
+                  <View style={styles.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.searchStatVal}>{searchResult.elevation}m</Text><Text style={styles.searchStatLbl}>per rep</Text></View>
+                  <View style={styles.searchStat}><MapPin size={11} color={T.green} /><Text style={styles.searchStatVal}>{searchResult.distance}km</Text><Text style={styles.searchStatLbl}>away</Text></View>
+                  <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
+                  <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddSearchResult}
+                  disabled={searchAdded}
+                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.75}
+                >
+                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
+                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
+                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* FIND HILLS (collapsible) */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+          <TouchableOpacity
+            style={styles.findHillsToggle}
+            activeOpacity={0.75}
+            onPress={() => setFiltersOpen(v => !v)}
+          >
+            <View style={styles.findHillsToggleLeft}>
+              <Filter size={14} color={T.green} />
+              <Text style={styles.findHillsToggleText}>Find hills with AI</Text>
+              {nearbyHills.length > 0 && (
+                <View style={styles.hillCountBadge}>
+                  <Text style={styles.hillCountText}>{nearbyHills.length}</Text>
+                </View>
+              )}
+            </View>
+            <ChevronDown size={14} color={T.textMuted} style={filtersOpen ? { transform: [{ rotate: "180deg" }] } : {}} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {filtersOpen && (
+          <Animated.View entering={FadeInDown.duration(300)}>
+            <View style={styles.controlCard}>
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <MapPin size={13} color={T.green} />
+                  <Text style={styles.controlLabel}>Location</Text>
+                </View>
+                <TextInput
+                  style={styles.inlineLocInput}
+                  value={locText}
+                  onChangeText={setLocText}
+                  placeholder="Town, city or postcode…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <Radio size={13} color={T.green} />
+                  <Text style={styles.controlLabel}>Search radius</Text>
+                </View>
+                <View style={styles.radiusStepper}>
+                  <TouchableOpacity onPress={() => stepRadius(-1)} disabled={localRadius <= RADIUS_STEPS[0]} style={[styles.stepBtn, localRadius <= RADIUS_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Minus size={14} color={T.white} />
+                  </TouchableOpacity>
+                  <View style={styles.radiusValueBox}>
+                    <Text style={[styles.radiusValue, radiusChanged && { color: T.orange }]}>{localRadius}<Text style={styles.radiusUnit}> km</Text></Text>
+                  </View>
+                  <TouchableOpacity onPress={() => stepRadius(1)} disabled={localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]} style={[styles.stepBtn, localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Plus size={14} color={T.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <Mountain size={13} color={T.orange} />
+                  <Text style={styles.controlLabel}>Min elevation</Text>
+                </View>
+                <View style={styles.radiusStepper}>
+                  <TouchableOpacity onPress={() => stepMinElev(-1)} disabled={minElevation <= ELEV_STEPS[0]} style={[styles.stepBtn, minElevation <= ELEV_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Minus size={14} color={T.white} />
+                  </TouchableOpacity>
+                  <View style={styles.radiusValueBox}>
+                    {minElevation === 0 ? <Text style={styles.radiusValue}>Any</Text> : <Text style={[styles.radiusValue, { color: T.orange }]}>{minElevation}<Text style={styles.radiusUnit}>m+</Text></Text>}
+                  </View>
+                  <TouchableOpacity onPress={() => stepMinElev(1)} disabled={minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1]} style={[styles.stepBtn, minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Plus size={14} color={T.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.controlDivider} />
+
+              <View style={styles.controlRow}>
+                <View style={styles.controlLabelRow}>
+                  <SlidersHorizontal size={13} color={T.blue} />
+                  <Text style={styles.controlLabel}>Sort by</Text>
+                </View>
+                <View style={styles.sortChips}>
+                  {(["distance", "elevation", "popularity"] as SortKey[]).map(key => (
+                    <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={[styles.sortChip, sortBy === key && styles.sortChipActive]} activeOpacity={0.7}>
+                      <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>
+                        {key === "distance" ? "Nearest" : key === "elevation" ? "Highest" : "Popular"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
+              disabled={hillsLoading}
+              style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={settingsChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
+                style={styles.fetchBtnInner}
+              >
+                {hillsLoading ? (
+                  <><ActivityIndicator size="small" color={T.green} /><Text style={styles.fetchBtnText}>Finding hills…</Text></>
+                ) : settingsChanged ? (
+                  <><Search size={15} color={T.orange} /><Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km{minElevation > 0 ? ` · min ${minElevation}m` : ""}</Text></>
+                ) : (
+                  <>{nearbyHills.length > 0 ? <RefreshCw size={15} color={T.green} /> : <Zap size={15} color={T.green} />}<Text style={styles.fetchBtnText}>{nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}</Text></>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {hillsError && !hillsLoading && (
+              <View style={styles.hillsErrorRow}>
+                <Text style={styles.hillsErrorText}>{hillsError}</Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
+
+        {/* SUGGESTED HILLS */}
+        <Animated.View entering={FadeInDown.delay(180).duration(400)}>
           <View style={styles.sectionHeader}>
             <Mountain size={14} color={T.orange} />
             <Text style={styles.sectionTitle}>Suggested Hills</Text>
@@ -388,17 +592,17 @@ export default function TrackScreen() {
         </Animated.View>
 
         {nearbyHills.length === 0 && !hillsLoading && (
-          <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
             <View style={styles.noHillsCard}>
               <Text style={styles.noHillsText}>
-                No hills loaded yet. Use "Find hills" below to discover training hills near you.
+                No hills loaded yet. Use "Find hills" above to discover training hills near you.
               </Text>
             </View>
           </Animated.View>
         )}
 
         {hillsLoading && (
-          <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={T.green} />
               <Text style={styles.loadingText}>Finding hills near {summitGoal?.location ?? "you"}…</Text>
@@ -595,210 +799,6 @@ export default function TrackScreen() {
             </Animated.View>
           );
         })}
-
-        {/* SEARCH HILLS */}
-        <Animated.View entering={FadeInDown.delay(160).duration(400)}>
-          <View style={styles.sectionHeader}>
-            <Search size={14} color={T.purple} />
-            <Text style={styles.sectionTitle}>Search Hills</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(180).duration(400)}>
-          <View style={styles.searchCard}>
-            <Text style={styles.searchHint}>Know a hill you want to train on? Search by name.</Text>
-            <View style={styles.searchRow}>
-              <TextInput
-                ref={searchInputRef}
-                style={styles.searchInput}
-                value={searchText}
-                onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); setSearchAdded(false); }}
-                placeholder="e.g. Pendle Hill, Ben Nevis…"
-                placeholderTextColor={T.textDim}
-                returnKeyType="search"
-                onSubmitEditing={handleHillSearch}
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={handleHillSearch}
-                disabled={searchLoading || searchText.trim().length < 2}
-                style={[styles.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
-                activeOpacity={0.75}
-              >
-                {searchLoading
-                  ? <ActivityIndicator size="small" color={T.white} />
-                  : <Search size={16} color={T.white} />}
-              </TouchableOpacity>
-            </View>
-
-            {searchError && (
-              <View style={styles.searchErrRow}>
-                <AlertCircle size={13} color={T.red} />
-                <Text style={styles.searchErrText}>{searchError}</Text>
-              </View>
-            )}
-
-            {searchResult && (
-              <View style={styles.searchResult}>
-                <LinearGradient colors={[T.purpleDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                <View style={styles.searchResultTop}>
-                  <Text style={styles.searchResultEmoji}>{searchResult.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.searchResultName}>{searchResult.name}</Text>
-                    <Text style={styles.searchResultSub}>{searchResult.surface}</Text>
-                  </View>
-                  <View style={[styles.searchGradeBadge, { backgroundColor: (GRADE_COLOR[searchResult.grade] ?? T.blue) + "25" }]}>
-                    <Text style={[styles.searchGradeText, { color: GRADE_COLOR[searchResult.grade] ?? T.blue }]}>{searchResult.grade}</Text>
-                  </View>
-                </View>
-                <View style={styles.searchResultStats}>
-                  <View style={styles.searchStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.searchStatVal}>{searchResult.elevation}m</Text><Text style={styles.searchStatLbl}>per rep</Text></View>
-                  <View style={styles.searchStat}><MapPin size={11} color={T.green} /><Text style={styles.searchStatVal}>{searchResult.distance}km</Text><Text style={styles.searchStatLbl}>away</Text></View>
-                  <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
-                  <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
-                </View>
-                <TouchableOpacity
-                  onPress={handleAddSearchResult}
-                  disabled={searchAdded}
-                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                  activeOpacity={0.75}
-                >
-                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
-                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
-                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </Animated.View>
-
-        {/* FIND HILLS (collapsible) */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-          <TouchableOpacity
-            style={styles.findHillsToggle}
-            activeOpacity={0.75}
-            onPress={() => setFiltersOpen(v => !v)}
-          >
-            <View style={styles.findHillsToggleLeft}>
-              <Filter size={14} color={T.green} />
-              <Text style={styles.findHillsToggleText}>Find hills with AI</Text>
-              {nearbyHills.length > 0 && (
-                <View style={styles.hillCountBadge}>
-                  <Text style={styles.hillCountText}>{nearbyHills.length}</Text>
-                </View>
-              )}
-            </View>
-            <ChevronDown size={14} color={T.textMuted} style={filtersOpen ? { transform: [{ rotate: "180deg" }] } : {}} />
-          </TouchableOpacity>
-        </Animated.View>
-
-        {filtersOpen && (
-          <Animated.View entering={FadeInDown.duration(300)}>
-            <View style={styles.controlCard}>
-              <View style={styles.controlRow}>
-                <View style={styles.controlLabelRow}>
-                  <MapPin size={13} color={T.green} />
-                  <Text style={styles.controlLabel}>Location</Text>
-                </View>
-                <TextInput
-                  style={styles.inlineLocInput}
-                  value={locText}
-                  onChangeText={setLocText}
-                  placeholder="Town, city or postcode…"
-                  placeholderTextColor={T.textDim}
-                  returnKeyType="search"
-                  onSubmitEditing={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.controlDivider} />
-
-              <View style={styles.controlRow}>
-                <View style={styles.controlLabelRow}>
-                  <Radio size={13} color={T.green} />
-                  <Text style={styles.controlLabel}>Search radius</Text>
-                </View>
-                <View style={styles.radiusStepper}>
-                  <TouchableOpacity onPress={() => stepRadius(-1)} disabled={localRadius <= RADIUS_STEPS[0]} style={[styles.stepBtn, localRadius <= RADIUS_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Minus size={14} color={T.white} />
-                  </TouchableOpacity>
-                  <View style={styles.radiusValueBox}>
-                    <Text style={[styles.radiusValue, radiusChanged && { color: T.orange }]}>{localRadius}<Text style={styles.radiusUnit}> km</Text></Text>
-                  </View>
-                  <TouchableOpacity onPress={() => stepRadius(1)} disabled={localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1]} style={[styles.stepBtn, localRadius >= RADIUS_STEPS[RADIUS_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Plus size={14} color={T.white} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.controlDivider} />
-
-              <View style={styles.controlRow}>
-                <View style={styles.controlLabelRow}>
-                  <Mountain size={13} color={T.orange} />
-                  <Text style={styles.controlLabel}>Min elevation</Text>
-                </View>
-                <View style={styles.radiusStepper}>
-                  <TouchableOpacity onPress={() => stepMinElev(-1)} disabled={minElevation <= ELEV_STEPS[0]} style={[styles.stepBtn, minElevation <= ELEV_STEPS[0] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Minus size={14} color={T.white} />
-                  </TouchableOpacity>
-                  <View style={styles.radiusValueBox}>
-                    {minElevation === 0 ? <Text style={styles.radiusValue}>Any</Text> : <Text style={[styles.radiusValue, { color: T.orange }]}>{minElevation}<Text style={styles.radiusUnit}>m+</Text></Text>}
-                  </View>
-                  <TouchableOpacity onPress={() => stepMinElev(1)} disabled={minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1]} style={[styles.stepBtn, minElevation >= ELEV_STEPS[ELEV_STEPS.length - 1] && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Plus size={14} color={T.white} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.controlDivider} />
-
-              <View style={styles.controlRow}>
-                <View style={styles.controlLabelRow}>
-                  <SlidersHorizontal size={13} color={T.blue} />
-                  <Text style={styles.controlLabel}>Sort by</Text>
-                </View>
-                <View style={styles.sortChips}>
-                  {(["distance", "elevation", "popularity"] as SortKey[]).map(key => (
-                    <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={[styles.sortChip, sortBy === key && styles.sortChipActive]} activeOpacity={0.7}>
-                      <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>
-                        {key === "distance" ? "Nearest" : key === "elevation" ? "Highest" : "Popular"}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => fetchNearbyHills(localRadius, minElevation > 0 ? minElevation : undefined, locText.trim() || undefined)}
-              disabled={hillsLoading}
-              style={[styles.fetchBtn, hillsLoading && { opacity: 0.7 }]}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={settingsChanged ? [T.orangeDim, T.orangeDim] : nearbyHills.length > 0 ? [T.surface, T.surface] : [T.greenDim, T.greenDim]}
-                style={styles.fetchBtnInner}
-              >
-                {hillsLoading ? (
-                  <><ActivityIndicator size="small" color={T.green} /><Text style={styles.fetchBtnText}>Finding hills…</Text></>
-                ) : settingsChanged ? (
-                  <><Search size={15} color={T.orange} /><Text style={[styles.fetchBtnText, { color: T.orange }]}>Search {localRadius}km{minElevation > 0 ? ` · min ${minElevation}m` : ""}</Text></>
-                ) : (
-                  <>{nearbyHills.length > 0 ? <RefreshCw size={15} color={T.green} /> : <Zap size={15} color={T.green} />}<Text style={styles.fetchBtnText}>{nearbyHills.length > 0 ? "Refresh hills with AI" : "Find hills with AI"}</Text></>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {hillsError && !hillsLoading && (
-              <View style={styles.hillsErrorRow}>
-                <Text style={styles.hillsErrorText}>{hillsError}</Text>
-              </View>
-            )}
-          </Animated.View>
-        )}
 
       </ScrollView>
     </LinearGradient>
