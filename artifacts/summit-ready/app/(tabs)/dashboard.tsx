@@ -234,32 +234,13 @@ const heroStyles = StyleSheet.create({
 });
 
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
-function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
-  const badge =
-    tone === "positive" ? "👍" :
-    tone === "warning"  ? "⚠️" : "🧭";
-
+function AlpineGuide({ tone: _tone }: { tone?: "positive" | "warning" | "neutral" }) {
   return (
-    <View style={{ width: 72, height: 72 }}>
-      <Image
-        source={MASCOT}
-        style={{ width: 72, height: 72 }}
-        resizeMode="cover"
-      />
-      {/* Small tone indicator badge */}
-      <View style={{
-        position: "absolute", bottom: 0, right: 0,
-        width: 22, height: 22, borderRadius: 11,
-        backgroundColor: T.card,
-        borderWidth: 1.5,
-        borderColor:
-          tone === "positive" ? T.green :
-          tone === "warning"  ? T.orange : T.blue,
-        alignItems: "center", justifyContent: "center",
-      }}>
-        <Text style={{ fontSize: 11 }}>{badge}</Text>
-      </View>
-    </View>
+    <Image
+      source={MASCOT}
+      style={{ width: 72, height: 72 }}
+      resizeMode="cover"
+    />
   );
 }
 
@@ -1108,6 +1089,11 @@ export default function DashboardScreen() {
                           {coach?.tone === "positive" ? "On track" : coach?.tone === "warning" ? "Needs work" : "AI Coach"}
                         </Text>
                       </View>
+                      {coach?.tone ? (
+                        <Text style={{ fontSize: 14 }}>
+                          {coach.tone === "positive" ? "👍" : coach.tone === "warning" ? "⚠️" : "🧭"}
+                        </Text>
+                      ) : null}
                     </View>
                     <Text style={styles.coachSubtitle}>
                       {coach?.tone === "positive" ? "Looking good — keep the momentum going" :
