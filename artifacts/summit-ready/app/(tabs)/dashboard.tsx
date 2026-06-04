@@ -234,11 +234,14 @@ const heroStyles = StyleSheet.create({
 });
 
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
-function AlpineGuide({ tone: _tone }: { tone?: "positive" | "warning" | "neutral" }) {
+function AlpineGuide({ tone: _tone, flush }: { tone?: "positive" | "warning" | "neutral"; flush?: boolean }) {
   return (
     <Image
       source={MASCOT}
-      style={{ width: 72, height: 72 }}
+      style={[
+        { width: 72, height: 72 },
+        flush && { marginLeft: -16, marginTop: -16, marginBottom: -16 },
+      ]}
       resizeMode="cover"
     />
   );
@@ -1066,7 +1069,7 @@ export default function DashboardScreen() {
               {/* Header row: mascot + title + refresh */}
               <View style={styles.coachHeader}>
                 <View style={styles.coachTitleRow}>
-                  <AlpineGuide tone={coach?.tone} />
+                  <AlpineGuide tone={coach?.tone} flush />
                   <View style={{ flex: 1, gap: 2 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       <Text style={styles.coachTitle}>AI Coach</Text>
@@ -1203,7 +1206,7 @@ export default function DashboardScreen() {
               {/* Header */}
               <View style={styles.coachHeader}>
                 <View style={styles.coachTitleRow}>
-                  <AlpineGuide tone="neutral" />
+                  <AlpineGuide tone="neutral" flush />
                   <View style={{ flex: 1, gap: 2 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       <Text style={styles.coachTitle}>AI Coach</Text>
