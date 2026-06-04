@@ -20,7 +20,7 @@ import Svg, { Circle, Line, Polyline, Path, Text as SvgText } from "react-native
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   AlertCircle, ArrowLeft, CalendarDays, CheckCircle, ChevronRight, Compass, Lock,
-  MoreHorizontal, Mountain, PlusCircle, TrendingUp, Zap,
+  MoreHorizontal, Mountain, TrendingUp, Zap,
 } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
@@ -660,7 +660,7 @@ export default function ChallengeDetailScreen() {
       <ScrollView
         contentContainerStyle={[
           s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12, paddingBottom: isActive ? 110 : 100 },
+          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12, paddingBottom: insets.bottom + 32 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -888,16 +888,6 @@ export default function ChallengeDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Log Activity button (active challenges only) */}
-      {isActive && (
-        <View style={[s.fab, { bottom: Platform.OS === "web" ? 28 : insets.bottom + 16 }]}>
-          <TouchableOpacity onPress={() => setLogVisible(true)} activeOpacity={0.88} style={[s.fabInner, { backgroundColor: color }]}>
-            <PlusCircle size={18} color={T.bg} />
-            <Text style={s.fabText}>Log Activity</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <LogModal
         challengeId={c.id}
         visible={logVisible}
@@ -946,10 +936,6 @@ const s = StyleSheet.create({
   milestoneBanner: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: T.border },
   milestoneBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
-  // FAB
-  fab: { position: "absolute", left: 20, right: 20 },
-  fabInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 17, borderRadius: 16 },
-  fabText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
 
   // ── Hero / non-active ─────────────────────────────────────────────────────
   hero: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 18, gap: 10, overflow: "hidden" },
