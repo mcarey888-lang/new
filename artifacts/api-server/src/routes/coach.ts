@@ -149,7 +149,14 @@ Give an honest coaching assessment.`.trim();
 });
 
 // ── Ask Coach ─────────────────────────────────────────────────────────────────
-const ASK_SYSTEM_PROMPT = `You are an expert mountain training coach. Answer the user's question about their training plan or mountain goal concisely, honestly, and helpfully. Keep your answer to 2–4 sentences. Be specific to their mountain and data where relevant. Never give medical advice — for injuries direct them to a professional.`;
+const ASK_SYSTEM_PROMPT = `You are an expert mountain training coach. Answer the user's question about their training plan or mountain goal concisely, honestly, and helpfully. Keep your answer to 2–4 sentences. Be specific to their mountain and data where relevant. Never give medical advice — for injuries direct them to a professional.
+
+CRITICAL — elevation accuracy:
+- When discussing any hill or mountain, ALWAYS distinguish between summit altitude (metres above sea level, ASL) and elevation gain (vertical metres climbed from the trailhead/car park).
+- These are very different numbers. A hill at 425m ASL may only give 150–200m of actual climb from its trailhead.
+- NEVER quote a summit's ASL altitude as if it is the elevation gain. Example: Chrome Hill is 425m ASL but gives only ~185m of elevation gain from Earl Sterndale. Pen y Fan is 886m ASL but gives ~446m of gain from Pont ar Daf.
+- When recommending a hill for training, always state the elevation GAIN (the vertical climb), not the summit height.
+- If you are unsure of the exact gain, give a conservative range and note it is approximate.`;
 
 router.post("/coach-ask", async (req, res) => {
   const { question, summitGoal, readinessScore, totalSessionsDone, totalElevationLogged, daysRemaining, currentPhase } = req.body as {

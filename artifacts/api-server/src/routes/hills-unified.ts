@@ -54,6 +54,10 @@ Peak District:
   Kinder Scout     summit 636m | Edale car park ~200m                → elevation = 436
   Lose Hill        summit 476m | Hope car park ~160m                 → elevation = 316
   Shutlingsloe     summit 506m | Trentabank car park ~280m           → elevation = 250
+  Chrome Hill      summit 425m | Earl Sterndale car park ~240m       → elevation = 185
+  Parkhouse Hill   summit 432m | Earl Sterndale car park ~240m       → elevation = 192
+  Thorpe Cloud     summit 287m | Dovedale car park ~130m             → elevation = 157
+  Axe Edge Moor   summit 551m | Flash Bottom ~420m                  → elevation = 131
 
 Yorkshire Dales / South Pennines:
   Pen-y-ghent      summit 694m | Horton-in-Ribblesdale car park ~240m → elevation = 454
