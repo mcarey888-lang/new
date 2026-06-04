@@ -1,6 +1,6 @@
 import {
   Mountain, MapPin, TrendingUp, Repeat, Map, Trash2,
-  PlusCircle, CheckCircle, Minus, Plus, X, BarChart2,
+  PlusCircle, CheckCircle, Minus, Plus, X, BarChart2, Info,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -33,6 +33,7 @@ const GRADE_COLOR: Record<string, string> = {
 export default function MyHillsScreen() {
   const insets = useSafeAreaInsets();
   const { myHills, removeFromMyHills, addSession, summitGoal } = useApp();
+  const location = summitGoal?.location ?? "";
 
   const [logTarget, setLogTarget] = useState<NearbyHill | null>(null);
   const [reps, setReps] = useState(1);
@@ -199,6 +200,29 @@ export default function MyHillsScreen() {
                     <Text style={styles.mapBtnText}>Map</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
+                    style={styles.detailsBtn}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/hill-detail",
+                        params: {
+                          name:      hill.name,
+                          location,
+                          lat:       hill.lat?.toString()       ?? "",
+                          lng:       hill.lng?.toString()       ?? "",
+                          elevation: hill.elevation.toString(),
+                          distance:  hill.distance.toString(),
+                          grade:     hill.grade,
+                          surface:   hill.surface,
+                          emoji:     hill.emoji,
+                        },
+                      })
+                    }
+                  >
+                    <Info size={14} color={T.purple} />
+                    <Text style={styles.detailsBtnText}>Details</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={styles.removeBtn}
                     activeOpacity={0.7}
                     onPress={() => removeFromMyHills(hill.name)}
@@ -338,6 +362,8 @@ const styles = StyleSheet.create({
   logBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
   mapBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: T.blue + "40", backgroundColor: T.blueDim },
   mapBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.blue },
+  detailsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: T.purple + "40", backgroundColor: T.purple + "15" },
+  detailsBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
   removeBtn: { width: 42, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: T.red + "40", backgroundColor: T.red + "12" },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
