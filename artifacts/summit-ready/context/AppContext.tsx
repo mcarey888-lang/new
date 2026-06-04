@@ -862,6 +862,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           notes,
           completed: true,
           weekNumber: weekNum,
+          hillName: hill?.name ?? undefined,
         });
         newSubmitted[key] = true;
       }
