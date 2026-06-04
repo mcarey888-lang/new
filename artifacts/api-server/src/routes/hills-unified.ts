@@ -42,6 +42,67 @@ const HillSchema = z.object({
 
 type Hill = z.infer<typeof HillSchema>;
 
+// ── Shared verified calibration table ────────────────────────────────────────
+// All figures researched from AllTrails, OS maps, and authoritative hiking guides.
+// Format: hill name — summit ASL | trailhead ASL | elevation gain
+const ELEVATION_CALIBRATION = `
+VERIFIED UK ELEVATION GAINS — use these exact figures when these hills appear:
+Formula: elevation = summit_metres_ASL − nearest_car_park_metres_ASL
+
+Peak District:
+  Mam Tor          summit 517m | Mam Tor car park (old A625) ~365m  → elevation = 152
+  Kinder Scout     summit 636m | Edale car park ~200m                → elevation = 436
+  Lose Hill        summit 476m | Hope car park ~160m                 → elevation = 316
+  Shutlingsloe     summit 506m | Trentabank car park ~280m           → elevation = 250
+
+Yorkshire Dales / South Pennines:
+  Pen-y-ghent      summit 694m | Horton-in-Ribblesdale car park ~240m → elevation = 454
+  Whernside        summit 736m | Ribblehead car park ~260m            → elevation = 476
+  Ingleborough     summit 724m | Horton-in-Ribblesdale car park ~240m → elevation = 484
+  Great Whernside  summit 704m | Kettlewell car park ~200m            → elevation = 504
+
+Lake District:
+  Skiddaw          summit 931m | Latrigg/Gale Road car park ~280m    → elevation = 651
+  Helvellyn        summit 950m | Swirls car park ~210m               → elevation = 741
+  Blencathra       summit 868m | Scales car park ~250m               → elevation = 618
+  Catbells         summit 451m | Hawse End car park ~80m             → elevation = 371
+  Great Gable      summit 899m | Wasdale Head car park ~75m          → elevation = 824
+  Scafell Pike     summit 978m | Wasdale Head car park ~75m          → elevation = 900
+  Coniston Old Man summit 803m | Coniston car park ~55m              → elevation = 748
+
+Wales:
+  Pen y Fan        summit 886m | Pont ar Daf car park ~440m          → elevation = 446
+  Corn Du          summit 873m | Pont ar Daf car park ~440m          → elevation = 433
+  Cribyn           summit 795m | Pont ar Daf car park ~440m          → elevation = 355
+  Snowdon (Pyg)    summit 1085m| Pen-y-Pass car park ~359m          → elevation = 726
+  Snowdon (Llan.)  summit 1085m| Llanberis car park ~105m           → elevation = 980
+  Cadair Idris     summit 893m | Ty Nant car park ~200m              → elevation = 693
+  Sugar Loaf       summit 596m | car park ~350m                      → elevation = 246
+  Skirrid Fawr     summit 486m | car park ~100m                      → elevation = 386
+
+Scotland:
+  Ben Nevis        summit 1345m| Glen Nevis car park ~20m            → elevation = 1325
+  Ben Lomond       summit 974m | Rowardennan car park ~15m           → elevation = 959
+  Schiehallion     summit 1083m| Braes of Foss car park ~350m        → elevation = 733
+  Cairngorm        summit 1245m| ski centre car park ~640m           → elevation = 605
+  Arthur's Seat    summit 251m | Holyrood Park ~7m                   → elevation = 244
+  Tinto Hill       summit 707m | Fallburn car park ~220m             → elevation = 487
+
+Lancashire / West Pennines:
+  Pendle Hill      summit 557m | Nick of Pendle car park ~270m       → elevation = 290
+  Bull Hill        summit 456m | road-end near Helmshore ~140m       → elevation = 316
+  Winter Hill      summit 456m | Rivington car park ~140m            → elevation = 316
+  Rivington Pike   summit 373m | Rivington car park ~120m            → elevation = 253
+  Holcombe Hill    summit 420m | Scout Road car park ~200m           → elevation = 220
+  Boulsworth Hill  summit 517m | Laneshaw road ~280m                 → elevation = 237
+  Great Hameldon   summit 391m | parking near Hameldon ~180m         → elevation = 210
+
+FORBIDDEN — do NOT return these as elevation values (they are summit altitudes, not gains):
+  Pen y Fan = 886 ✗  |  Helvellyn = 950 ✗  |  Skiddaw = 931 ✗  |  Blencathra = 868 ✗
+  Snowdon = 1085 ✗   |  Ben Nevis = 1345 ✗ |  Scafell Pike = 978 ✗ | Great Gable = 899 ✗
+  Whernside = 736 ✗  |  Ingleborough = 723 ✗| Kinder Scout = 636 ✗ | Mam Tor = 517 ✗
+`;
+
 const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running areas worldwide. Given a specific hill or trail name and a base location, return realistic data for that hill. Return ONLY valid JSON — no markdown, no explanation:
 
 {
@@ -60,21 +121,12 @@ const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running area
 }
 
 CRITICAL — elevation definition:
-- elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
-- This is NOT the summit's altitude above sea level — it MUST be less than the summit altitude
-- This is NOT the total route distance
-- COMMON MISTAKES TO AVOID: do not return the summit's altitude (e.g. Winter Hill summit = 456m ASL, so elevation gain CANNOT be 456 or more)
+- elevation = summit altitude (m ASL) MINUS the nearest public car park / trailhead altitude (m ASL)
+- This is the vertical metres gained walking UP to the summit from where you park
+- It is ALWAYS less than the summit's altitude above sea level
+- FATAL ERROR: returning the summit's altitude as elevation (e.g. Helvellyn elevation = 950 is WRONG; correct answer is 741)
 
-Calibrated UK examples (use as a reference for accuracy):
-- Pendle Hill: summit 557m, Nick of Pendle car park ~270m → elevation = 290
-- Bull Hill (West Pennines): summit 456m, road-end near Helmshore ~140m → elevation = 316
-- Winter Hill: summit 456m, Rivington car park ~140m → elevation = 316
-- Rivington Pike: summit 373m, Rivington car park ~120m → elevation = 253
-- Kinder Scout: summit 636m, Edale car park ~200m → elevation = ~430 (Grindsbrook route)
-- Snowdon: summit 1085m, Pen-y-Pass car park ~359m → elevation = 726 (Pyg Track)
-- Scafell Pike: summit 978m, Wasdale Head ~75m → elevation = 900
-- Ben Nevis: summit 1345m, Glen Nevis car park ~20m → elevation = 1325
-- Always use the ASCENT (height gained) for a typical single climb, not the peak's altitude above sea level
+${ELEVATION_CALIBRATION}
 
 Other rules:
 - distance = estimated distance in km from the base location to the hill's trailhead
@@ -84,7 +136,7 @@ Other rules:
 - grade: Easy ≤ 150m gain, Easy–Mod 150-300m, Moderate 300-500m, Hard 500-700m, Alpine 700m+
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
 - lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
-- Use real, accurate elevation gain data for well-known hills and peaks`;
+- If the hill appears in the verified table above, use that exact elevation value`;
 
 const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
 
@@ -109,23 +161,12 @@ const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill trainin
 }
 
 CRITICAL — elevation definition:
-- elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
-- This is NOT the summit's altitude above sea level — it MUST be less than the summit altitude
-- This is NOT the total route distance
-- COMMON MISTAKES TO AVOID: do not return the summit's altitude (e.g. Winter Hill summit = 456m ASL, so elevation gain CANNOT be 456 or more)
+- elevation = summit altitude (m ASL) MINUS the nearest public car park / trailhead altitude (m ASL)
+- This is the vertical metres gained walking UP to the summit from where you park
+- It is ALWAYS less than the summit's altitude above sea level
+- FATAL ERROR: returning the summit's altitude as elevation (e.g. Helvellyn elevation = 950 is WRONG; correct answer is 741)
 
-Calibrated UK examples (use as a reference for accuracy):
-- Pendle Hill: summit 557m, Nick of Pendle car park ~270m → elevation = 290
-- Bull Hill (West Pennines): summit 456m, road-end near Helmshore ~140m → elevation = 316
-- Winter Hill: summit 456m, Rivington car park ~140m → elevation = 316
-- Rivington Pike: summit 373m, Rivington car park ~120m → elevation = 253
-- Holcombe Hill / Peel Tower: summit ~420m, Ramsbottom ~100m → elevation = ~320 (from Ramsbottom); from Scout Road car park ~200m → elevation = ~220
-- Great Hameldon: summit 391m, parking near Hameldon ~180m → elevation = ~210
-- Kinder Scout: summit 636m, Edale car park ~200m → elevation = ~430 (Grindsbrook route)
-- Boulsworth Hill: summit 517m, road at ~280m → elevation = 240
-- Ingleborough: summit 723m, Horton-in-Ribblesdale ~270m → elevation = 450
-- Snowdon: summit 1085m, Pen-y-Pass car park ~359m → elevation = 726 (Pyg Track)
-- Always report the ASCENT (height gained walking uphill) not the peak's altitude above sea level
+${ELEVATION_CALIBRATION}
 
 Other rules:
 - Return 8-10 results total: at least 7 should be named hills or fells good for training repeats; include at most 1-2 circular/out-and-back routes only if no more distinct hills exist within the radius
@@ -140,7 +181,8 @@ Other rules:
 - Use real place names and realistic hills/trails for the given location
 - lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
 - For UK: include fells, moors, and popular circular walks
-- emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine`;
+- emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
+- If a hill appears in the verified table above, use that exact elevation value`;
 
 // ── Haversine distance in km ──────────────────────────────────────────────────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
