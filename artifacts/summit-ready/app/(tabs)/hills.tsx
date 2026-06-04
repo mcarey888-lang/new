@@ -78,7 +78,7 @@ function formatDate(iso: string): string {
 export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
-    summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
+    summitGoal, trainingPlan, sessions, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
     updateGoalLocation, exploreHikes, customRoutes,
   } = useApp();
@@ -146,11 +146,22 @@ export default function TrackScreen() {
       timeTaken: 0,
       source: "tracked" as const,
     }));
-    return [...fromExplore, ...fromRoutes]
+    const fromPlan = sessions
+      .filter(s => s.completed && (s.type === "hill" || s.type === "bigDay"))
+      .map(s => ({
+        id: s.id,
+        name: s.hillName ?? (s.type === "bigDay" ? "Big Day Training" : "Hill Training"),
+        date: s.date,
+        distance: s.distance,
+        elevationGain: s.elevationGain,
+        timeTaken: s.duration,
+        source: "plan" as const,
+      }));
+    return [...fromExplore, ...fromRoutes, ...fromPlan]
       .filter(h => h.date)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
-  }, [exploreHikes, customRoutes]);
+      .slice(0, 20);
+  }, [exploreHikes, customRoutes, sessions]);
 
   function stepRadius(dir: 1 | -1) {
     setUserChangedRadius(true);
@@ -313,21 +324,26 @@ export default function TrackScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* YOUR HIKES */}
+        {/* YOUR HILLS */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
           <View style={styles.sectionHeader}>
-            <Footprints size={14} color={T.green} />
-            <Text style={styles.sectionTitle}>Your Hikes</Text>
+            <Mountain size={14} color={T.green} />
+            <Text style={styles.sectionTitle}>Your Hills</Text>
+            {recentHikes.length > 0 && (
+              <Text style={styles.sectionSub}>
+                {recentHikes.length} hill{recentHikes.length !== 1 ? "s" : ""} logged
+              </Text>
+            )}
           </View>
         </Animated.View>
 
         {recentHikes.length === 0 ? (
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>🥾</Text>
-              <Text style={styles.emptyTitle}>No hikes recorded yet</Text>
+              <Text style={styles.emptyEmoji}>⛰️</Text>
+              <Text style={styles.emptyTitle}>No hills logged yet</Text>
               <Text style={styles.emptyText}>
-                Tap "Start Hiking" above to record your first hike. Your routes will appear here.
+                Complete hill sessions in your training plan, or tap "Start Hiking" above to track a route.
               </Text>
             </View>
           </Animated.View>
@@ -338,7 +354,9 @@ export default function TrackScreen() {
                 <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
                 <View style={styles.hikeCardTop}>
                   <View style={styles.hikeIconWrap}>
-                    <Footprints size={16} color={T.green} />
+                    {hike.source === "plan"
+                      ? <Mountain size={16} color={T.green} />
+                      : <Footprints size={16} color={T.green} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.hikeName}>{hike.name}</Text>
@@ -348,6 +366,12 @@ export default function TrackScreen() {
                     <View style={styles.trackedBadge}>
                       <Navigation size={10} color={T.blue} />
                       <Text style={styles.trackedBadgeText}>GPS</Text>
+                    </View>
+                  )}
+                  {hike.source === "plan" && (
+                    <View style={[styles.trackedBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
+                      <Mountain size={10} color={T.green} />
+                      <Text style={[styles.trackedBadgeText, { color: T.green }]}>Plan</Text>
                     </View>
                   )}
                 </View>
