@@ -155,6 +155,9 @@ interface AppState {
   submitWeekSessions: (weekNum: number) => Promise<number>;
   hillsInPlan: string[];
   addHillToPlan: (hill: NearbyHill) => Promise<void>;
+  myHills: NearbyHill[];
+  addToMyHills: (hill: NearbyHill) => Promise<void>;
+  removeFromMyHills: (hillName: string) => Promise<void>;
   addToNearbyHills: (hill: NearbyHill) => Promise<void>;
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
@@ -212,6 +215,9 @@ const AppContext = createContext<AppState>({
   submitWeekSessions: async () => 0,
   hillsInPlan: [],
   addHillToPlan: async () => {},
+  myHills: [],
+  addToMyHills: async () => {},
+  removeFromMyHills: async () => {},
   addToNearbyHills: async () => {},
   updateGoalLocation: async () => {},
   setSessionReps: async () => {},
@@ -258,6 +264,7 @@ const EXPLORE_HIKES_KEY = "summitready_explore_hikes";
 const SAVED_TRAILS_KEY = "summitready_saved_trails";
 const COMPLETED_TRAILS_KEY = "summitready_completed_trails";
 const CUSTOM_ROUTES_KEY = "summitready_custom_routes";
+const MY_HILLS_KEY = "summitready_my_hills";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -355,6 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [planAdjustNote, setPlanAdjustNote] = useState<string | null>(null);
   const [submittedPlanSessions, setSubmittedPlanSessions] = useState<Record<string, boolean>>({});
   const [hillsInPlan, setHillsInPlan] = useState<string[]>([]);
+  const [myHills, setMyHills] = useState<NearbyHill[]>([]);
   const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
   const [sessionEfforts, setSessionEffortsState] = useState<Record<string, 1 | 2 | 3 | 4 | 5>>({});
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
@@ -397,9 +405,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -493,6 +501,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setReadinessScore(calculateReadiness(goal, plan, storedSessions, { sessionReps: loadedReps, assignedHills: assigned }));
           if (noteStr) setPlanAdjustNote(noteStr);
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
+          if (myHillsStr) setMyHills(JSON.parse(myHillsStr));
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
@@ -679,7 +688,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCompletedTrailIds([]);
     setCustomRoutes([]);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, "summitready_questionnaire_data", "summitready_challenges",
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
     ]);
   }, []);
 
@@ -881,6 +890,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return toSubmit.length;
   }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
+  const addToMyHills = useCallback(async (hill: NearbyHill) => {
+    const updated = myHills.some(h => h.name === hill.name)
+      ? myHills
+      : [...myHills, hill];
+    setMyHills(updated);
+    await AsyncStorage.setItem(MY_HILLS_KEY, JSON.stringify(updated));
+  }, [myHills]);
+
+  const removeFromMyHills = useCallback(async (hillName: string) => {
+    const updated = myHills.filter(h => h.name !== hillName);
+    setMyHills(updated);
+    await AsyncStorage.setItem(MY_HILLS_KEY, JSON.stringify(updated));
+  }, [myHills]);
+
   const addHillToPlan = useCallback(async (hill: NearbyHill) => {
     if (!summitGoal) return;
 
@@ -1073,7 +1096,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasViewedPlan, markPlanViewed,
       setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
+      submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
       appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,

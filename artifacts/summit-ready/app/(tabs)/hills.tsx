@@ -2,7 +2,7 @@ import {
   Check, X, Pencil, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Clock, Navigation, Filter, ChevronDown,
+  Footprints, ChevronRight, Clock, Navigation, Filter, ChevronDown, Trash2,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -79,7 +79,7 @@ export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, sessions, nearbyHills, hillsLoading, hillsError,
-    fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
+    fetchNearbyHills, myHills, addToMyHills, removeFromMyHills, addToNearbyHills,
     updateGoalLocation, exploreHikes, customRoutes,
   } = useApp();
   const { isSubscribed } = useSubscription();
@@ -211,8 +211,8 @@ export default function TrackScreen() {
     setLocText(summitGoal?.location ?? "");
   }
 
-  async function handleAddToPlan(hill: NearbyHill) {
-    await addHillToPlan(hill);
+  async function handleAddToMyHills(hill: NearbyHill) {
+    await addToMyHills(hill);
     setJustAdded(hill.name);
     setTimeout(() => setJustAdded(null), 2000);
   }
@@ -324,80 +324,141 @@ export default function TrackScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* YOUR HILLS */}
+        {/* MY HILLS — saved hills with full details */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
           <View style={styles.sectionHeader}>
             <Mountain size={14} color={T.green} />
-            <Text style={styles.sectionTitle}>Your Hills</Text>
-            {recentHikes.length > 0 && (
+            <Text style={styles.sectionTitle}>My Hills</Text>
+            {myHills.length > 0 && (
               <Text style={styles.sectionSub}>
-                {recentHikes.length} hill{recentHikes.length !== 1 ? "s" : ""} logged
+                {myHills.length} hill{myHills.length !== 1 ? "s" : ""} saved
               </Text>
             )}
           </View>
         </Animated.View>
 
-        {recentHikes.length === 0 ? (
+        {myHills.length === 0 ? (
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
             <View style={styles.emptyCard}>
               <Text style={styles.emptyEmoji}>⛰️</Text>
-              <Text style={styles.emptyTitle}>No hills logged yet</Text>
+              <Text style={styles.emptyTitle}>No hills saved yet</Text>
               <Text style={styles.emptyText}>
-                Complete hill sessions in your training plan, or tap "Start Hiking" above to track a route.
+                Tap "Add to my hills" on any nearby hill below to build your personal list.
               </Text>
             </View>
           </Animated.View>
         ) : (
-          recentHikes.map((hike, i) => (
-            <Animated.View key={hike.id} entering={FadeInDown.delay(100 + i * 50).duration(400)}>
-              <View style={styles.hikeCard}>
-                <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                <View style={styles.hikeCardTop}>
-                  <View style={styles.hikeIconWrap}>
-                    {hike.source === "plan"
-                      ? <Mountain size={16} color={T.green} />
-                      : <Footprints size={16} color={T.green} />}
+          myHills.map((hill, i) => {
+            const gc = GRADE_COLOR[hill.grade] ?? T.blue;
+            return (
+              <Animated.View key={hill.name + i} entering={FadeInDown.delay(100 + i * 50).duration(400)}>
+                <View style={styles.hillCard}>
+                  <LinearGradient colors={[gc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.hillTop}>
+                    <View style={[styles.hillIconBox, { backgroundColor: gc + "18" }]}>
+                      <Text style={styles.hillEmoji}>{hill.emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.hillName}>{hill.name}</Text>
+                      <Text style={styles.hillSurface}>{hill.surface}</Text>
+                    </View>
+                    <View style={[styles.gradeBadge, { backgroundColor: gc + "20" }]}>
+                      <Text style={[styles.gradeText, { color: gc }]}>{hill.grade}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.hikeName}>{hike.name}</Text>
-                    <Text style={styles.hikeDate}>{formatDate(hike.date)}</Text>
+                  <View style={styles.hillStats}>
+                    <View style={styles.hillStat}>
+                      <MapPin size={12} color={T.green} />
+                      <Text style={styles.hillStatVal}>{hill.distance}km</Text>
+                      <Text style={styles.hillStatLbl}>away</Text>
+                    </View>
+                    <View style={styles.hillStat}>
+                      <TrendingUp size={12} color={T.orange} />
+                      <Text style={styles.hillStatVal}>{hill.elevation}m</Text>
+                      <Text style={styles.hillStatLbl}>per climb</Text>
+                    </View>
+                    <View style={styles.hillStat}>
+                      <Repeat size={12} color={T.textMuted} />
+                      <Text style={styles.hillStatVal}>{hill.repeats}×</Text>
+                      <Text style={styles.hillStatLbl}>repeats</Text>
+                    </View>
                   </View>
-                  {hike.source === "tracked" && (
-                    <View style={styles.trackedBadge}>
-                      <Navigation size={10} color={T.blue} />
-                      <Text style={styles.trackedBadgeText}>GPS</Text>
-                    </View>
-                  )}
-                  {hike.source === "plan" && (
-                    <View style={[styles.trackedBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
-                      <Mountain size={10} color={T.green} />
-                      <Text style={[styles.trackedBadgeText, { color: T.green }]}>Plan</Text>
-                    </View>
-                  )}
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={styles.mapBtn}
+                      activeOpacity={0.7}
+                      onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
+                    >
+                      <Map size={14} color={T.green} />
+                      <Text style={styles.mapBtnText}>Map</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.detailsBtn}
+                      activeOpacity={0.7}
+                      onPress={() => router.push({ pathname: "/hill-detail", params: { name: hill.name, location: summitGoal?.location ?? "", lat: hill.lat?.toString() ?? "", lng: hill.lng?.toString() ?? "", elevation: hill.elevation.toString(), distance: hill.distance.toString(), grade: hill.grade, surface: hill.surface, emoji: hill.emoji } })}
+                    >
+                      <Info size={14} color={T.purple} />
+                      <Text style={styles.detailsBtnText}>Details</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.addPlanBtn, { backgroundColor: "rgba(255,80,80,0.08)", borderColor: "rgba(255,80,80,0.25)" }]}
+                      activeOpacity={0.7}
+                      onPress={() => removeFromMyHills(hill.name)}
+                    >
+                      <Trash2 size={14} color="#FF5050" />
+                      <Text style={[styles.addPlanText, { color: "#FF5050" }]}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.hikeStats}>
-                  {hike.distance > 0 && (
-                    <View style={styles.hikeStat}>
-                      <MapPin size={11} color={T.textMuted} />
-                      <Text style={styles.hikeStatVal}>{hike.distance.toFixed(1)}km</Text>
-                    </View>
-                  )}
-                  {hike.elevationGain > 0 && (
-                    <View style={styles.hikeStat}>
-                      <TrendingUp size={11} color={T.orange} />
-                      <Text style={styles.hikeStatVal}>{hike.elevationGain}m</Text>
-                    </View>
-                  )}
-                  {hike.timeTaken > 0 && (
-                    <View style={styles.hikeStat}>
-                      <Clock size={11} color={T.textMuted} />
-                      <Text style={styles.hikeStatVal}>{formatDuration(hike.timeTaken)}</Text>
-                    </View>
-                  )}
-                </View>
+              </Animated.View>
+            );
+          })
+        )}
+
+        {/* LOGGED HILLS */}
+        {recentHikes.length > 0 && (
+          <>
+            <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+              <View style={styles.sectionHeader}>
+                <Footprints size={14} color={T.blue} />
+                <Text style={styles.sectionTitle}>Logged Hills</Text>
+                <Text style={styles.sectionSub}>{recentHikes.length} logged</Text>
               </View>
             </Animated.View>
-          ))
+            {recentHikes.map((hike, i) => (
+              <Animated.View key={hike.id} entering={FadeInDown.delay(130 + i * 50).duration(400)}>
+                <View style={styles.hikeCard}>
+                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.hikeCardTop}>
+                    <View style={styles.hikeIconWrap}>
+                      {hike.source === "plan" ? <Mountain size={16} color={T.green} /> : <Footprints size={16} color={T.green} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.hikeName}>{hike.name}</Text>
+                      <Text style={styles.hikeDate}>{formatDate(hike.date)}</Text>
+                    </View>
+                    {hike.source === "tracked" && (
+                      <View style={styles.trackedBadge}>
+                        <Navigation size={10} color={T.blue} />
+                        <Text style={styles.trackedBadgeText}>GPS</Text>
+                      </View>
+                    )}
+                    {hike.source === "plan" && (
+                      <View style={[styles.trackedBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
+                        <Mountain size={10} color={T.green} />
+                        <Text style={[styles.trackedBadgeText, { color: T.green }]}>Plan</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.hikeStats}>
+                    {hike.distance > 0 && <View style={styles.hikeStat}><MapPin size={11} color={T.textMuted} /><Text style={styles.hikeStatVal}>{hike.distance.toFixed(1)}km</Text></View>}
+                    {hike.elevationGain > 0 && <View style={styles.hikeStat}><TrendingUp size={11} color={T.orange} /><Text style={styles.hikeStatVal}>{hike.elevationGain}m</Text></View>}
+                    {hike.timeTaken > 0 && <View style={styles.hikeStat}><Clock size={11} color={T.textMuted} /><Text style={styles.hikeStatVal}>{formatDuration(hike.timeTaken)}</Text></View>}
+                  </View>
+                </View>
+              </Animated.View>
+            ))}
+          </>
         )}
 
         {/* SEARCH HILLS */}
@@ -638,7 +699,7 @@ export default function TrackScreen() {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
-          const inPlan = hillsInPlan.includes(hill.name);
+          const inMyHills = myHills.some(h => h.name === hill.name);
           const wasJustAdded = justAdded === hill.name;
           const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
           if (isLocked) return null;
@@ -685,14 +746,14 @@ export default function TrackScreen() {
 
                 <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                    activeOpacity={inPlan ? 1 : 0.7}
-                    onPress={() => !inPlan && handleAddToPlan(hill)}
-                    disabled={inPlan}
+                    style={[styles.addPlanBtn, inMyHills && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                    activeOpacity={inMyHills ? 1 : 0.7}
+                    onPress={() => !inMyHills && handleAddToMyHills(hill)}
+                    disabled={inMyHills}
                   >
-                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
-                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inMyHills ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                    <Text style={[styles.addPlanText, inMyHills && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inMyHills ? "In my hills" : "Add to my hills"}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -753,7 +814,7 @@ export default function TrackScreen() {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
-          const inPlan = hillsInPlan.includes(hill.name);
+          const inMyHills = myHills.some(h => h.name === hill.name);
           const wasJustAdded = justAdded === hill.name;
           const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
           if (isLocked && i === FREE_HILLS_LIMIT) {
@@ -798,14 +859,14 @@ export default function TrackScreen() {
                 <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
                 <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                    activeOpacity={inPlan ? 1 : 0.7}
-                    onPress={() => !inPlan && handleAddToPlan(hill)}
-                    disabled={inPlan}
+                    style={[styles.addPlanBtn, inMyHills && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                    activeOpacity={inMyHills ? 1 : 0.7}
+                    onPress={() => !inMyHills && handleAddToMyHills(hill)}
+                    disabled={inMyHills}
                   >
-                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
-                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inMyHills ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                    <Text style={[styles.addPlanText, inMyHills && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inMyHills ? "In my hills" : "Add to my hills"}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}>
