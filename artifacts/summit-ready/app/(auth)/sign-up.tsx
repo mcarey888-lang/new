@@ -40,27 +40,40 @@ export default function SignUpScreen() {
 
   async function handleEmailSignUp() {
     setError(null);
-    const { error: signUpError } = await signUp.password({ emailAddress: email, password });
-    if (signUpError) {
-      setError(signUpError.message ?? "Sign-up failed. Please try again.");
-      return;
-    }
-    if (!signUpError) {
+    try {
+      const { error: signUpError } = await signUp.password({ emailAddress: email, password });
+      if (signUpError) {
+        setError(signUpError.message ?? "Sign-up failed. Please try again.");
+        return;
+      }
       await signUp.verifications.sendEmailCode();
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-up failed. Please try again.";
+      setError(msg);
     }
   }
 
   async function handleVerify() {
     setError(null);
-    await signUp.verifications.verifyEmailCode({ code: verifyCode });
-    if (signUp.status === "complete") {
-      await signUp.finalize({
-        navigate: ({ decorateUrl }) => {
-          router.replace(decorateUrl("/") as any);
-        },
-      });
-    } else {
-      setError("Verification failed. Please check the code and try again.");
+    try {
+      const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code: verifyCode });
+      if (verifyError) {
+        setError(verifyError.message ?? "Verification failed. Please check the code and try again.");
+        return;
+      }
+      if (signUp.status === "complete") {
+        const { error: finalizeError } = await signUp.finalize();
+        if (finalizeError) {
+          setError(finalizeError.message ?? "Sign-up could not be completed.");
+          return;
+        }
+        router.replace("/");
+      } else {
+        setError("Verification failed. Please check the code and try again.");
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
+      setError(msg);
     }
   }
 
@@ -73,14 +86,10 @@ export default function SignUpScreen() {
         redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
       });
       if (createdSessionId && setActive) {
-        await setActive({
-          session: createdSessionId,
-          navigate: async ({ decorateUrl }) => {
-            router.replace(decorateUrl("/") as any);
-          },
-        });
+        await setActive({ session: createdSessionId });
+        router.replace("/");
       }
-    } catch {
+    } catch (err: any) {
       setError("Google sign-in failed. Please try again.");
     } finally {
       setGoogleLoading(false);

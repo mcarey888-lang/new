@@ -40,33 +40,45 @@ export default function SignInScreen() {
 
   async function handleEmailSignIn() {
     setError(null);
-    const { error: signInError } = await signIn.password({ emailAddress: email, password });
-    if (signInError) {
-      setError(signInError.message ?? "Sign-in failed. Check your email and password.");
-      return;
-    }
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          router.replace(decorateUrl("/") as any);
-        },
-      });
-    } else if (signIn.status === "needs_client_trust") {
-      await signIn.mfa.sendEmailCode();
+    try {
+      const { error: signInError } = await signIn.password({ emailAddress: email, password });
+      if (signInError) {
+        setError(signInError.message ?? "Sign-in failed. Check your email and password.");
+        return;
+      }
+      if (signIn.status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) {
+          setError(finalizeError.message ?? "Sign-in could not be completed.");
+          return;
+        }
+        router.replace("/");
+      } else if (signIn.status === "needs_second_factor") {
+        await signIn.mfa.sendEmailCode();
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-in failed. Please try again.";
+      setError(msg);
     }
   }
 
   async function handleVerify() {
     setError(null);
-    await signIn.mfa.verifyEmailCode({ code: verifyCode });
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          router.replace(decorateUrl("/") as any);
-        },
-      });
-    } else {
-      setError("Verification failed. Please try again.");
+    try {
+      await signIn.mfa.verifyEmailCode({ code: verifyCode });
+      if (signIn.status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) {
+          setError(finalizeError.message ?? "Sign-in could not be completed.");
+          return;
+        }
+        router.replace("/");
+      } else {
+        setError("Verification failed. Please try again.");
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
+      setError(msg);
     }
   }
 
@@ -79,14 +91,10 @@ export default function SignInScreen() {
         redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
       });
       if (createdSessionId && setActive) {
-        await setActive({
-          session: createdSessionId,
-          navigate: async ({ decorateUrl }) => {
-            router.replace(decorateUrl("/") as any);
-          },
-        });
+        await setActive({ session: createdSessionId });
+        router.replace("/");
       }
-    } catch {
+    } catch (err: any) {
       setError("Google sign-in failed. Please try again.");
     } finally {
       setGoogleLoading(false);
@@ -95,7 +103,7 @@ export default function SignInScreen() {
 
   const isLoading = fetchStatus === "fetching" || googleLoading;
 
-  if (signIn.status === "needs_client_trust") {
+  if (signIn.status === "needs_second_factor") {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
