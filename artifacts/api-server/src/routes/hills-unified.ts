@@ -124,6 +124,86 @@ Other rules:
 - For UK: include fells, moors, and popular circular walks
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine`;
 
+// ── Haversine distance in km ──────────────────────────────────────────────────
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const GEO_UA = "SummitReady/1.0 (hill training app)";
+
+interface NominatimResult { lat: string; lon: string; class: string; type: string }
+
+/** Geocode a free-text location string to lat/lng using Nominatim (OSM). */
+async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const q = encodeURIComponent(location);
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3`;
+    const res = await fetch(url, { headers: { "User-Agent": GEO_UA }, signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return null;
+    const data = await res.json() as NominatimResult[];
+    if (!data?.length) return null;
+    const best = data[0];
+    return { lat: parseFloat(best.lat), lng: parseFloat(best.lon) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate and correct a list of hills against the user's real geocoded position.
+ * - Rejects hills with zero/missing coords or zero elevation.
+ * - Recalculates `distance` from the user's real location (if geocoded).
+ * - Filters out hills where the computed distance exceeds radius * 1.4.
+ * - Clamps `totalElevation` to elevation × repeats in case AI sends inconsistent values.
+ */
+function validateAndCorrectHills(
+  hills: Hill[],
+  userLat: number | null,
+  userLng: number | null,
+  radiusKm: number,
+): Hill[] {
+  const MAX_MULTIPLIER = 1.4; // allow 40% over the stated radius (some trailheads are further than crow-flies)
+
+  return hills
+    .filter(h => {
+      // Must have valid coordinates
+      if (!h.lat || !h.lng || Math.abs(h.lat) < 0.01 || Math.abs(h.lng) < 0.01) return false;
+      // Must have positive elevation
+      if (!h.elevation || h.elevation <= 0) return false;
+      return true;
+    })
+    .map(h => {
+      let distance = h.distance;
+
+      if (userLat !== null && userLng !== null && h.lat && h.lng) {
+        // Always overwrite the AI's distance with the real haversine value
+        distance = Math.round(haversineKm(userLat, userLng, h.lat, h.lng) * 10) / 10;
+      }
+
+      return {
+        ...h,
+        distance,
+        totalElevation: Math.round(h.elevation * h.repeats),
+      };
+    })
+    .filter(h => {
+      // After distance correction, drop anything genuinely out of range
+      if (userLat !== null && userLng !== null) {
+        return h.distance <= radiusKm * MAX_MULTIPLIER;
+      }
+      return true;
+    })
+    .sort((a, b) => a.distance - b.distance);
+}
+
 // ── In-memory area lookup cache (keyed by "location|radius") ─────────────────
 const areaCache = new Map<string, { hills: Hill[]; ts: number }>();
 const AREA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -326,14 +406,18 @@ router.post("/hills-unified", async (req, res) => {
       userMsg += `. Prioritise hills with at least ${minElev}m elevation gain per climb. If fewer than 3 hills meeting this minimum exist within ${r}km, include the nearest qualifying hills even if slightly outside the radius. Return at least 5 results total.`;
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 1400,
-      messages: [
-        { role: "system", content: LOOKUP_SYSTEM_PROMPT },
-        { role: "user", content: userMsg },
-      ],
-    });
+    // Run AI call and user geocoding in parallel — geocoding lets us verify/correct AI distances
+    const [response, userCoords] = await Promise.all([
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        max_completion_tokens: 1400,
+        messages: [
+          { role: "system", content: LOOKUP_SYSTEM_PROMPT },
+          { role: "user", content: userMsg },
+        ],
+      }),
+      geocodeLocation(loc),
+    ]);
 
     const content = response.choices?.[0]?.message?.content;
     if (!content) { res.status(500).json({ error: "No response from AI" }); return; }
@@ -342,11 +426,19 @@ router.post("/hills-unified", async (req, res) => {
     const LookupResponseSchema = z.object({ hills: z.array(HillSchema) });
     const validated = LookupResponseSchema.parse(parsed);
 
-    // Store in area cache + cache each hill individually in background
-    areaCache.set(cacheKey, { hills: validated.hills, ts: Date.now() });
-    void Promise.all(validated.hills.map(h => cacheHill(h)));
+    // Validate, correct distances using real geocoded coords, and filter out-of-range hills
+    const corrected = validateAndCorrectHills(
+      validated.hills,
+      userCoords?.lat ?? null,
+      userCoords?.lng ?? null,
+      r,
+    );
 
-    res.json({ hills: validated.hills });
+    // Store in area cache + cache each valid hill individually in background
+    areaCache.set(cacheKey, { hills: corrected, ts: Date.now() });
+    void Promise.all(corrected.map(h => cacheHill(h)));
+
+    res.json({ hills: corrected });
   } catch (err) {
     req.log.error({ err }, "hills-unified area lookup failed");
     const msg = err instanceof Error ? err.message : "Unknown error";
