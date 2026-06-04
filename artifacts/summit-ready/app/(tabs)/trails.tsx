@@ -67,7 +67,7 @@ export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
-    fetchNearbyHills, hillsInPlan, addHillToPlan, addToNearbyHills,
+    fetchNearbyHills, myHills, addToMyHills, addToNearbyHills,
     appMode,
   } = useApp();
 
@@ -150,8 +150,8 @@ export default function TrackScreen() {
     }
   }
 
-  async function handleAddToPlan(hill: NearbyHill) {
-    await addHillToPlan(hill);
+  async function handleAddToMyHills(hill: NearbyHill) {
+    await addToMyHills(hill);
     setJustAdded(hill.name);
     setTimeout(() => setJustAdded(null), 2000);
   }
@@ -442,14 +442,14 @@ export default function TrackScreen() {
           </Animated.View>
         )}
 
-        {/* MY HILLS */}
+        {/* NEARBY HILLS */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)}>
           <View style={styles.sectionHeader}>
             <Mountain size={14} color={T.orange} />
-            <Text style={styles.sectionTitle}>My Hills</Text>
+            <Text style={styles.sectionTitle}>Nearby Hills</Text>
             {nearbyHills.length > 0 && (
               <Text style={styles.sectionSub}>
-                {nearbyHills.length} hill{nearbyHills.length !== 1 ? "s" : ""} saved
+                {nearbyHills.length} result{nearbyHills.length !== 1 ? "s" : ""}
               </Text>
             )}
           </View>
@@ -470,7 +470,7 @@ export default function TrackScreen() {
           <Animated.View entering={FadeInDown.delay(140).duration(400)}>
             <View style={styles.noHillsCard}>
               <Text style={styles.noHillsText}>
-                No hills saved yet. Search for a hill above, or use "Find hills" to discover hills near you.
+                No hills yet. Search by name above, or use "Find hills with AI" to discover hills near you. Tap "Add to my hills" to save them to your Hills tab.
               </Text>
             </View>
           </Animated.View>
@@ -489,7 +489,7 @@ export default function TrackScreen() {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
-          const inPlan = hillsInPlan.includes(hill.name);
+          const inMyHills = myHills.some(h => h.name === hill.name);
           const wasJustAdded = justAdded === hill.name;
           const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
           if (isLocked) return null;
@@ -539,19 +539,17 @@ export default function TrackScreen() {
                 )}
 
                 <View style={styles.actionRow}>
-                  {!isExploreMode && (
-                    <TouchableOpacity
-                      style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                      activeOpacity={inPlan ? 1 : 0.7}
-                      onPress={() => !inPlan && handleAddToPlan(hill)}
-                      disabled={inPlan}
-                    >
-                      {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                      <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
-                        {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={[styles.addPlanBtn, inMyHills && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                    activeOpacity={inMyHills ? 1 : 0.7}
+                    onPress={() => !inMyHills && handleAddToMyHills(hill)}
+                    disabled={inMyHills}
+                  >
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inMyHills ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                    <Text style={[styles.addPlanText, inMyHills && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inMyHills ? "In my hills" : "Add to my hills"}
+                    </Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.mapBtn, isExploreMode && { flex: 1, justifyContent: "center" }]}
                     activeOpacity={0.7}
@@ -610,7 +608,7 @@ export default function TrackScreen() {
           const total = hill.elevation * hill.repeats;
           const pct = Math.min(100, Math.round((total / weekTarget) * 100));
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
-          const inPlan = hillsInPlan.includes(hill.name);
+          const inMyHills = myHills.some(h => h.name === hill.name);
           const wasJustAdded = justAdded === hill.name;
           const isLocked = !isSubscribed && i >= FREE_HILLS_LIMIT;
           if (isLocked && i === FREE_HILLS_LIMIT) {
@@ -655,14 +653,14 @@ export default function TrackScreen() {
                 <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
                 <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={[styles.addPlanBtn, inPlan && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                    activeOpacity={inPlan ? 1 : 0.7}
-                    onPress={() => !inPlan && handleAddToPlan(hill)}
-                    disabled={inPlan}
+                    style={[styles.addPlanBtn, inMyHills && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                    activeOpacity={inMyHills ? 1 : 0.7}
+                    onPress={() => !inMyHills && handleAddToMyHills(hill)}
+                    disabled={inMyHills}
                   >
-                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inPlan ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
-                    <Text style={[styles.addPlanText, inPlan && { color: T.green }]}>
-                      {wasJustAdded ? "Added!" : inPlan ? "In your plan" : "Add to plan"}
+                    {wasJustAdded ? <CheckCircle size={14} color={T.green} /> : inMyHills ? <Check size={14} color={T.green} /> : <PlusCircle size={14} color={T.blue} />}
+                    <Text style={[styles.addPlanText, inMyHills && { color: T.green }]}>
+                      {wasJustAdded ? "Added!" : inMyHills ? "In my hills" : "Add to my hills"}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.mapBtn} activeOpacity={0.7} onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}>
