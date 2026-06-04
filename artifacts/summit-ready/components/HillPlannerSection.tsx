@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -48,6 +48,8 @@ interface Props {
   color: string;
   currentProgress?: number;
   onLog?: (hills: PlannedHillEntry[]) => Promise<void>;
+  onPlannedChange?: (hills: PlannedHillEntry[]) => void;
+  logTriggerRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
 // ─── Animated fill bar ─────────────────────────────────────────────────────
@@ -151,7 +153,7 @@ const fb = StyleSheet.create({
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0, onLog }: Props) {
+export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0, onLog, onPlannedChange, logTriggerRef }: Props) {
   const [location, setLocation] = useState("");
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(false);
@@ -239,7 +241,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
     }
   }
 
-  async function doLog() {
+  const doLog = useCallback(async () => {
     if (!onLog || planned.length === 0 || logging) return;
     setLogging(true);
     try {
@@ -250,7 +252,17 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
     } finally {
       setLogging(false);
     }
-  }
+  }, [onLog, planned, logging]);
+
+  // Notify parent whenever planned hills change
+  useEffect(() => {
+    onPlannedChange?.(planned);
+  }, [planned, onPlannedChange]);
+
+  // Keep the trigger ref current so the parent can call doLog
+  useEffect(() => {
+    if (logTriggerRef) logTriggerRef.current = doLog;
+  }, [doLog, logTriggerRef]);
 
   return (
     <View style={s.container}>
@@ -531,25 +543,6 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
         </Animated.View>
       )}
 
-      {/* Log session button */}
-      {onLog && planned.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(300)}>
-          <TouchableOpacity
-            style={[s.logBtn, { backgroundColor: color }, logging && { opacity: 0.55 }]}
-            onPress={doLog}
-            disabled={logging}
-            activeOpacity={0.85}
-          >
-            {logging
-              ? <ActivityIndicator size="small" color={T.bg} />
-              : <CheckCircle size={16} color={T.bg} />
-            }
-            <Text style={s.logBtnText}>
-              {logging ? "Logging…" : `Log ${planned.length} hill${planned.length !== 1 ? "s" : ""} as completed`}
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
     </View>
   );
 }

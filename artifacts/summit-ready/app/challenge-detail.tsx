@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import Animated, { FadeInDown, useAnimatedProps, useSharedValue, withTiming, Easing } from "react-native-reanimated";
+import Animated, { FadeInDown, useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming, Easing } from "react-native-reanimated";
 import Svg, { Circle, Line, Polyline, Path, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -551,6 +551,34 @@ export default function ChallengeDetailScreen() {
   const { isSubscribed } = useSubscription();
   const [logVisible, setLogVisible] = useState(false);
 
+  // Planned hills state — lifted from HillPlannerSection via onPlannedChange
+  const [plannedHills, setPlannedHills] = useState<PlannedHillEntry[]>([]);
+  const plannerLogRef = useRef<(() => Promise<void>) | null>(null);
+  const isLoggingRef = useRef(false);
+
+  // Animate sticky log bar in/out when hills are selected
+  const logBarAnim = useSharedValue(0);
+  useEffect(() => {
+    logBarAnim.value = withTiming(plannedHills.length > 0 ? 1 : 0, {
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [plannedHills.length]);
+  const logBarStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: (1 - logBarAnim.value) * 80 }],
+    opacity: logBarAnim.value,
+  }));
+
+  async function handleLogBarPress() {
+    if (!plannerLogRef.current || isLoggingRef.current) return;
+    isLoggingRef.current = true;
+    try {
+      await plannerLogRef.current();
+    } finally {
+      isLoggingRef.current = false;
+    }
+  }
+
   const c = getChallenge(id ?? "");
 
   // Derive ac and progress from the reactive activeChallenges array so the
@@ -664,6 +692,7 @@ export default function ChallengeDetailScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentInset={{ bottom: plannedHills.length > 0 ? 80 : 0 }}
       >
         {/* Header */}
         <View style={s.cdHeader}>
@@ -763,6 +792,8 @@ export default function ChallengeDetailScreen() {
                 color={color}
                 currentProgress={progress}
                 onLog={handlePlannerLog}
+                onPlannedChange={setPlannedHills}
+                logTriggerRef={plannerLogRef}
               />
             </Animated.View>
 
@@ -835,6 +866,8 @@ export default function ChallengeDetailScreen() {
                   color={color}
                   currentProgress={progress}
                   onLog={handlePlannerLog}
+                  onPlannedChange={setPlannedHills}
+                  logTriggerRef={plannerLogRef}
                 />
               </Animated.View>
             )}
@@ -888,6 +921,23 @@ export default function ChallengeDetailScreen() {
         )}
       </ScrollView>
 
+      {/* Sticky "Log hills" bar — slides up from bottom when hills are selected */}
+      <Animated.View
+        style={[s.logBar, { bottom: Platform.OS === "web" ? 20 : insets.bottom + 10 }, logBarStyle]}
+        pointerEvents={plannedHills.length > 0 ? "auto" : "none"}
+      >
+        <TouchableOpacity
+          onPress={handleLogBarPress}
+          activeOpacity={0.88}
+          style={[s.logBarInner, { backgroundColor: color }]}
+        >
+          <CheckCircle size={18} color={T.bg} />
+          <Text style={s.logBarText}>
+            Log {plannedHills.length} hill{plannedHills.length !== 1 ? "s" : ""} as completed
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+
       <LogModal
         challengeId={c.id}
         visible={logVisible}
@@ -901,6 +951,16 @@ export default function ChallengeDetailScreen() {
 
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 16 },
+
+  // ── Sticky log bar ────────────────────────────────────────────────────────
+  logBar: { position: "absolute", left: 20, right: 20 },
+  logBarInner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9,
+    paddingVertical: 17, borderRadius: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 8,
+  },
+  logBarText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
+
 
   // ── Header ────────────────────────────────────────────────────────────────
   cdHeader: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
