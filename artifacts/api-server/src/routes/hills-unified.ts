@@ -35,6 +35,8 @@ const HillSchema = z.object({
   emoji: z.string(),
   lat: z.number().optional(),
   lng: z.number().optional(),
+  trailheadLat: z.number().optional(),
+  trailheadLng: z.number().optional(),
   routeType: z.enum(["hill", "circular", "out-and-back"]).nullish(),
   routeDistance: z.number().nullish(),
   estimatedTime: z.string().nullish(),
@@ -120,7 +122,9 @@ const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running area
     "grade": "Easy" | "Easy–Mod" | "Moderate" | "Hard" | "Alpine",
     "emoji": "🌿" | "⛰️" | "🏔️" | "🗻",
     "lat": number,
-    "lng": number
+    "lng": number,
+    "trailheadLat": number,
+    "trailheadLng": number
   }
 }
 
@@ -140,6 +144,7 @@ Other rules:
 - grade: Easy ≤ 150m gain, Easy–Mod 150-300m, Moderate 300-500m, Hard 500-700m, Alpine 700m+
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
 - lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
+- trailheadLat/trailheadLng = GPS coordinates of the recommended public car park or trailhead start point (decimal degrees, 4 decimal places)
 - If the hill appears in the verified table above, use that exact elevation value`;
 
 const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
@@ -157,6 +162,8 @@ const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill trainin
       "emoji": "🌿" | "⛰️" | "🏔️" | "🗻",
       "lat": number,
       "lng": number,
+      "trailheadLat": number,
+      "trailheadLng": number,
       "routeType": "hill" | "circular" | "out-and-back",
       "routeDistance": number | null,
       "estimatedTime": string | null
@@ -184,6 +191,7 @@ Other rules:
 - estimatedTime: estimated walking time e.g. "1.5–2 hrs", "3–4 hrs"; null for pure hills
 - Use real place names and realistic hills/trails for the given location
 - lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
+- trailheadLat/trailheadLng = GPS coordinates of the recommended public car park or trailhead start point (decimal degrees, 4 decimal places)
 - For UK: include fells, moors, and popular circular walks
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
 - If a hill appears in the verified table above, use that exact elevation value`;
@@ -219,6 +227,136 @@ async function geocodeLocation(location: string): Promise<{ lat: number; lng: nu
   } catch {
     return null;
   }
+}
+
+// ── Grade + emoji helpers ─────────────────────────────────────────────────────
+function gradeFromGain(gain: number): Hill["grade"] {
+  if (gain <= 150) return "Easy";
+  if (gain <= 300) return "Easy–Mod";
+  if (gain <= 500) return "Moderate";
+  if (gain <= 700) return "Hard";
+  return "Alpine";
+}
+function emojiFromGrade(grade: Hill["grade"]): string {
+  if (grade === "Easy") return "🌿";
+  if (grade === "Alpine") return "🗻";
+  if (grade === "Hard") return "🏔️";
+  return "⛰️";
+}
+
+// ── Terrain elevation via OpenTopoData (SRTM 30m, free, no key) ──────────────
+interface TopoResult { elevation: number | null }
+interface TopoResponse { results: TopoResult[] }
+
+/**
+ * Fetch real terrain elevations for up to 100 lat/lng points in one request.
+ * Returns null for each point if the API is unavailable.
+ */
+async function fetchTopoElevations(
+  points: Array<{ lat: number; lng: number }>,
+): Promise<Array<number | null>> {
+  if (!points.length) return [];
+  try {
+    const locations = points.map(p => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join("|");
+    const url = `https://api.opentopodata.org/v1/srtm30m?locations=${locations}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": GEO_UA },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return points.map(() => null);
+    const data = await res.json() as TopoResponse;
+    return (data.results ?? []).map((r: TopoResult) =>
+      typeof r.elevation === "number" ? r.elevation : null
+    );
+  } catch {
+    return points.map(() => null);
+  }
+}
+
+/**
+ * Use real terrain data to verify and correct the elevation gain for a hill.
+ *
+ * Queries OpenTopoData for summit and trailhead elevations, computes
+ * gain = summit_elev - trailhead_elev, and updates grade/emoji/totalElevation
+ * to match. Falls back to the AI's original value if the API fails or the
+ * terrain result is implausible (negative or >3× the AI estimate).
+ */
+async function applyTerrainElevation(hill: Hill): Promise<Hill> {
+  const summitOk  = hill.lat && hill.lng;
+  const trailOk   = hill.trailheadLat && hill.trailheadLng;
+  if (!summitOk || !trailOk) return hill;
+
+  const points = [
+    { lat: hill.lat!, lng: hill.lng! },
+    { lat: hill.trailheadLat!, lng: hill.trailheadLng! },
+  ];
+  const [summitElev, trailElev] = await fetchTopoElevations(points);
+
+  if (summitElev === null || trailElev === null) return hill;
+
+  const verifiedGain = Math.round(summitElev - trailElev);
+
+  // Sanity checks — discard obviously wrong results
+  if (verifiedGain <= 0) return hill;
+  if (verifiedGain > hill.elevation * 4) return hill; // topo point wildly off
+
+  const grade = gradeFromGain(verifiedGain);
+  return {
+    ...hill,
+    elevation: verifiedGain,
+    grade,
+    emoji: emojiFromGrade(grade),
+    totalElevation: Math.round(verifiedGain * hill.repeats),
+  };
+}
+
+/**
+ * Apply terrain elevation verification to a batch of hills in parallel.
+ * Runs at most 5 hills concurrently to respect OpenTopoData rate limits.
+ */
+async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
+  // Batch all summit+trailhead points into a single API call (max 100 pts)
+  const pairs: Array<{ summit: { lat: number; lng: number }; trail: { lat: number; lng: number } } | null> =
+    hills.map(h => {
+      if (h.lat && h.lng && h.trailheadLat && h.trailheadLng) {
+        return { summit: { lat: h.lat, lng: h.lng }, trail: { lat: h.trailheadLat, lng: h.trailheadLng } };
+      }
+      return null;
+    });
+
+  // Build flat points list for a single API call
+  const flatPoints: Array<{ lat: number; lng: number }> = [];
+  const indexMap: Array<[number, number] | null> = []; // [summitIdx, trailIdx] into flatPoints
+  for (const pair of pairs) {
+    if (pair) {
+      indexMap.push([flatPoints.length, flatPoints.length + 1]);
+      flatPoints.push(pair.summit, pair.trail);
+    } else {
+      indexMap.push(null);
+    }
+  }
+
+  // One API call for all points
+  const elevations = flatPoints.length > 0 ? await fetchTopoElevations(flatPoints) : [];
+
+  return hills.map((hill, i) => {
+    const idx = indexMap[i];
+    if (!idx) return hill;
+    const [si, ti] = idx;
+    const summitElev = elevations[si] ?? null;
+    const trailElev = elevations[ti] ?? null;
+    if (summitElev === null || trailElev === null) return hill;
+    const verifiedGain = Math.round(summitElev - trailElev);
+    if (verifiedGain <= 0 || verifiedGain > hill.elevation * 4) return hill;
+    const grade = gradeFromGain(verifiedGain);
+    return {
+      ...hill,
+      elevation: verifiedGain,
+      grade,
+      emoji: emojiFromGrade(grade),
+      totalElevation: Math.round(verifiedGain * hill.repeats),
+    };
+  });
 }
 
 /**
@@ -434,10 +572,13 @@ router.post("/hills-unified", async (req, res) => {
       const SearchResponseSchema = z.object({ hill: HillSchema });
       const validated = SearchResponseSchema.parse(parsed);
 
-      // 3. Cache in background (don't await)
-      void cacheHill(validated.hill);
+      // 3. Verify elevation against real terrain data
+      const verified = await applyTerrainElevation(validated.hill);
 
-      res.json({ hill: validated.hill, fromCache: false });
+      // 4. Cache in background (don't await)
+      void cacheHill(verified);
+
+      res.json({ hill: verified, fromCache: false });
     } catch (err) {
       req.log.error({ err }, "hills-unified name search failed");
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -491,12 +632,15 @@ router.post("/hills-unified", async (req, res) => {
     const validated = LookupResponseSchema.parse(parsed);
 
     // Validate, correct distances using real geocoded coords, and filter out-of-range hills
-    const corrected = validateAndCorrectHills(
+    const distCorrected = validateAndCorrectHills(
       validated.hills,
       userCoords?.lat ?? null,
       userCoords?.lng ?? null,
       r,
     );
+
+    // Verify all elevations against real terrain data in a single batched API call
+    const corrected = await applyTerrainElevationBatch(distCorrected);
 
     // Store in area cache + cache each valid hill individually in background
     areaCache.set(cacheKey, { hills: corrected, ts: Date.now() });
