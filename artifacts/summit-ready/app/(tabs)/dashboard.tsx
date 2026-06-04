@@ -782,14 +782,23 @@ export default function DashboardScreen() {
           highestAltitude={summitGoal.highestAltitude}
         />
 
-        {/* Ask Coach pill — compact teaser that scrolls to the AI Coach card */}
+        {/* Ask Coach pill — scrolls to coach for Pro, upsells for free */}
         <Animated.View entering={FadeInDown.delay(20).duration(400)}>
-          <TouchableOpacity onPress={scrollToCoach} activeOpacity={0.82} style={styles.askPill}>
+          <TouchableOpacity
+            onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")}
+            activeOpacity={0.82}
+            style={styles.askPill}
+          >
             <View style={styles.askPillIcon}>
-              <MessageCircle size={13} color={T.blue} />
+              <MessageCircle size={13} color={isSubscribed ? T.blue : T.textMuted} />
             </View>
-            <Text style={styles.askPillText}>Ask your coach a question</Text>
-            <ChevronRight size={13} color={T.blue} />
+            <Text style={[styles.askPillText, !isSubscribed && { color: T.textMuted }]}>
+              {isSubscribed ? "Ask your coach a question" : "AI Coach — Pro feature"}
+            </Text>
+            {isSubscribed
+              ? <ChevronRight size={13} color={T.blue} />
+              : <View style={styles.askPillProBadge}><Text style={styles.askPillProText}>PRO</Text></View>
+            }
           </TouchableOpacity>
         </Animated.View>
 
@@ -1058,141 +1067,193 @@ export default function DashboardScreen() {
 
         {/* AI Coach */}
         <Animated.View entering={FadeInDown.delay(320).duration(500)}>
-          <View
-            style={styles.coachCard}
-            onLayout={e => { coachY.current = e.nativeEvent.layout.y; }}
-          >
-            <LinearGradient
-              colors={
-                coach?.tone === "positive" ? [T.greenDim, "transparent"] :
-                coach?.tone === "warning"  ? [T.orangeDim, "transparent"] :
-                                             [T.blueDim, "transparent"]
-              }
-              style={StyleSheet.absoluteFill}
-            />
+          {isSubscribed ? (
+            /* ── Pro: full interactive coach card ── */
+            <View
+              style={styles.coachCard}
+              onLayout={e => { coachY.current = e.nativeEvent.layout.y; }}
+            >
+              <LinearGradient
+                colors={
+                  coach?.tone === "positive" ? [T.greenDim, "transparent"] :
+                  coach?.tone === "warning"  ? [T.orangeDim, "transparent"] :
+                                               [T.blueDim, "transparent"]
+                }
+                style={StyleSheet.absoluteFill}
+              />
 
-            {/* Header row: mascot + title + refresh */}
-            <View style={styles.coachHeader}>
-              <View style={styles.coachTitleRow}>
-                <AlpineGuide tone={coach?.tone} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={styles.coachTitle}>AI Coach</Text>
-                    <View style={[
-                      styles.coachBadge,
-                      {
-                        backgroundColor:
-                          coach?.tone === "positive" ? T.green + "22" :
-                          coach?.tone === "warning"  ? T.orange + "22" : T.blue + "22",
-                      },
-                    ]}>
-                      <Text style={[
-                        styles.coachBadgeText,
-                        {
-                          color:
-                            coach?.tone === "positive" ? T.green :
-                            coach?.tone === "warning"  ? T.orange : T.blue,
-                        },
-                      ]}>
-                        {coach?.tone === "positive" ? "On track" : coach?.tone === "warning" ? "Needs work" : "AI Coach"}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.coachSubtitle}>
-                    {coach?.tone === "positive" ? "Looking good — keep the momentum going" :
-                     coach?.tone === "warning"  ? "A few things need your attention" :
-                     coachLoading                ? "Checking your training data..." :
-                                                  "Your personalised assessment"}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={fetchCoach}
-                disabled={coachLoading}
-                style={styles.coachRefresh}
-                activeOpacity={0.7}
-              >
-                <RefreshCw size={13} color={T.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.coachDivider} />
-
-            {/* Body */}
-            {coachLoading ? (
-              <View style={styles.coachLoading}>
-                <ActivityIndicator size="small" color={T.green} />
-                <Text style={styles.coachLoadingText}>Analysing your training...</Text>
-              </View>
-            ) : coachError ? (
-              <TouchableOpacity onPress={fetchCoach} style={styles.coachLoading} activeOpacity={0.7}>
-                <WifiOff size={15} color={T.textMuted} />
-                <Text style={styles.coachLoadingText}>Couldn't reach coach — tap to retry</Text>
-              </TouchableOpacity>
-            ) : coach ? (
-              <>
-                <Text style={styles.coachSummary}>{coach.summary}</Text>
-                <View style={styles.coachTips}>
-                  {coach.tips.map((tip, i) => (
-                    <View key={i} style={styles.coachTip}>
+              {/* Header row: mascot + title + refresh */}
+              <View style={styles.coachHeader}>
+                <View style={styles.coachTitleRow}>
+                  <AlpineGuide tone={coach?.tone} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={styles.coachTitle}>AI Coach</Text>
                       <View style={[
-                        styles.coachTipDot,
+                        styles.coachBadge,
                         {
                           backgroundColor:
-                            coach.tone === "positive" ? T.green :
-                            coach.tone === "warning"  ? T.orange : T.blue,
+                            coach?.tone === "positive" ? T.green + "22" :
+                            coach?.tone === "warning"  ? T.orange + "22" : T.blue + "22",
                         },
-                      ]} />
-                      <Text style={styles.coachTipText}>{tip}</Text>
+                      ]}>
+                        <Text style={[
+                          styles.coachBadgeText,
+                          {
+                            color:
+                              coach?.tone === "positive" ? T.green :
+                              coach?.tone === "warning"  ? T.orange : T.blue,
+                          },
+                        ]}>
+                          {coach?.tone === "positive" ? "On track" : coach?.tone === "warning" ? "Needs work" : "AI Coach"}
+                        </Text>
+                      </View>
                     </View>
-                  ))}
+                    <Text style={styles.coachSubtitle}>
+                      {coach?.tone === "positive" ? "Looking good — keep the momentum going" :
+                       coach?.tone === "warning"  ? "A few things need your attention" :
+                       coachLoading                ? "Checking your training data..." :
+                                                    "Your personalised assessment"}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
-                  AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
-                </Text>
-              </>
-            ) : null}
-
-            {/* Ask Coach input */}
-            <View style={styles.askDivider} />
-            {askAnswer && (
-              <View style={styles.askAnswerBubble}>
-                <AlpineGuide tone={coach?.tone} />
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={styles.askAnswerText}>{askAnswer}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setAskAnswer(null)} hitSlop={8}>
-                  <X size={13} color={T.textMuted} />
+                <TouchableOpacity
+                  onPress={fetchCoach}
+                  disabled={coachLoading}
+                  style={styles.coachRefresh}
+                  activeOpacity={0.7}
+                >
+                  <RefreshCw size={13} color={T.textMuted} />
                 </TouchableOpacity>
               </View>
-            )}
-            <View style={styles.askBar}>
-              <TextInput
-                ref={askInputRef}
-                style={styles.askInput}
-                placeholder="Ask your coach anything…"
-                placeholderTextColor={T.textDim}
-                value={askText}
-                onChangeText={setAskText}
-                onSubmitEditing={handleAsk}
-                returnKeyType="send"
-                editable={!askLoading}
-                multiline={false}
-              />
-              <TouchableOpacity
-                onPress={handleAsk}
-                disabled={!askText.trim() || askLoading}
-                style={[styles.askSendBtn, { opacity: (!askText.trim() || askLoading) ? 0.4 : 1 }]}
-                activeOpacity={0.75}
-              >
-                {askLoading
-                  ? <ActivityIndicator size="small" color={T.blue} />
-                  : <Send size={15} color={T.blue} />
-                }
-              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.coachDivider} />
+
+              {/* Body */}
+              {coachLoading ? (
+                <View style={styles.coachLoading}>
+                  <ActivityIndicator size="small" color={T.green} />
+                  <Text style={styles.coachLoadingText}>Analysing your training...</Text>
+                </View>
+              ) : coachError ? (
+                <TouchableOpacity onPress={fetchCoach} style={styles.coachLoading} activeOpacity={0.7}>
+                  <WifiOff size={15} color={T.textMuted} />
+                  <Text style={styles.coachLoadingText}>Couldn't reach coach — tap to retry</Text>
+                </TouchableOpacity>
+              ) : coach ? (
+                <>
+                  <Text style={styles.coachSummary}>{coach.summary}</Text>
+                  <View style={styles.coachTips}>
+                    {coach.tips.map((tip, i) => (
+                      <View key={i} style={styles.coachTip}>
+                        <View style={[
+                          styles.coachTipDot,
+                          {
+                            backgroundColor:
+                              coach.tone === "positive" ? T.green :
+                              coach.tone === "warning"  ? T.orange : T.blue,
+                          },
+                        ]} />
+                        <Text style={styles.coachTipText}>{tip}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={{ color: T.textDim, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 10, lineHeight: 14 }}>
+                    AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
+                  </Text>
+                </>
+              ) : null}
+
+              {/* Ask Coach input */}
+              <View style={styles.askDivider} />
+              {askAnswer && (
+                <View style={styles.askAnswerBubble}>
+                  <AlpineGuide tone={coach?.tone} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.askAnswerText}>{askAnswer}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setAskAnswer(null)} hitSlop={8}>
+                    <X size={13} color={T.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={styles.askBar}>
+                <TextInput
+                  ref={askInputRef}
+                  style={styles.askInput}
+                  placeholder="Ask your coach anything…"
+                  placeholderTextColor={T.textDim}
+                  value={askText}
+                  onChangeText={setAskText}
+                  onSubmitEditing={handleAsk}
+                  returnKeyType="send"
+                  editable={!askLoading}
+                  multiline={false}
+                />
+                <TouchableOpacity
+                  onPress={handleAsk}
+                  disabled={!askText.trim() || askLoading}
+                  style={[styles.askSendBtn, { opacity: (!askText.trim() || askLoading) ? 0.4 : 1 }]}
+                  activeOpacity={0.75}
+                >
+                  {askLoading
+                    ? <ActivityIndicator size="small" color={T.blue} />
+                    : <Send size={15} color={T.blue} />
+                  }
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          ) : (
+            /* ── Free: locked coach teaser ── */
+            <TouchableOpacity
+              onPress={() => router.push("/paywall")}
+              activeOpacity={0.88}
+              style={styles.coachCard}
+              onLayout={e => { coachY.current = e.nativeEvent.layout.y; }}
+            >
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+
+              {/* Header */}
+              <View style={styles.coachHeader}>
+                <View style={styles.coachTitleRow}>
+                  <AlpineGuide tone="neutral" />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={styles.coachTitle}>AI Coach</Text>
+                      <View style={[styles.coachBadge, { backgroundColor: T.green + "22" }]}>
+                        <Zap size={9} color={T.green} />
+                        <Text style={[styles.coachBadgeText, { color: T.green }]}>Pro</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.coachSubtitle}>Personalised training insights & Q&A</Text>
+                  </View>
+                </View>
+                <View style={[styles.coachRefresh, { backgroundColor: T.green + "18" }]}>
+                  <Lock size={12} color={T.green} />
+                </View>
+              </View>
+
+              <View style={styles.coachDivider} />
+
+              {/* Blurred fake content */}
+              <View style={{ gap: 8, marginBottom: 14 }}>
+                {["Loading your readiness data…", "Here are your top 3 tips for this week.", "Focus on elevation — you're 200m behind benchmark."].map((line, i) => (
+                  <View key={i} style={{ overflow: "hidden", borderRadius: 6 }}>
+                    <Text style={[styles.coachTipText, { opacity: 0 }]}>{line}</Text>
+                    <BlurView intensity={18} style={[StyleSheet.absoluteFill, { borderRadius: 6 }]} />
+                    <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 6 }} />
+                  </View>
+                ))}
+              </View>
+
+              {/* CTA */}
+              <View style={styles.coachLockedCta}>
+                <Zap size={14} color={T.bg} />
+                <Text style={styles.coachLockedCtaText}>Unlock AI Coach — Upgrade to Pro</Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
       </ScrollView>
@@ -1239,6 +1300,15 @@ const styles = StyleSheet.create({
     color: T.text, paddingVertical: 6,
   },
   askSendBtn: { padding: 4 },
+  askPillProBadge: { backgroundColor: T.green + "22", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  askPillProText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
+
+  // ── Locked coach CTA ──────────────────────────────────────────────────────
+  coachLockedCta: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    backgroundColor: T.green, borderRadius: 12, paddingVertical: 13,
+  },
+  coachLockedCtaText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 
   upgradeBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
