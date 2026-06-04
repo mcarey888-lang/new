@@ -17,7 +17,7 @@ const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, isLoading, appMode, reloadApp } = useApp();
+  const { isLoading, reloadApp } = useApp();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
@@ -56,16 +56,9 @@ export default function LandingScreen() {
   useEffect(() => {
     if (!authLoaded || isLoading) return;
     if (!isSignedIn) return;
-    if (appMode === "summit" && summitGoal) {
-      router.replace("/(tabs)/dashboard");
-    } else if (appMode === "summit") {
-      router.replace("/questionnaire");
-    } else if (appMode === "explore") {
-      router.replace("/(tabs)/explore");
-    } else {
-      router.replace("/mode-select");
-    }
-  }, [authLoaded, isSignedIn, isLoading, appMode, summitGoal]);
+    // Everyone lands on the unified dashboard — it handles the no-goal state itself
+    router.replace("/(tabs)/dashboard");
+  }, [authLoaded, isSignedIn, isLoading]);
 
   if (isLoading || demoLoading) {
     return (

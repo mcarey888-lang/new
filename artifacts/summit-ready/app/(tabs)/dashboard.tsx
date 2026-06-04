@@ -522,25 +522,141 @@ export default function DashboardScreen() {
 
   if (!summitGoal) {
     return (
-      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 18, paddingHorizontal: 32 }}>
-        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" }}>
-          <Compass size={28} color={T.green} />
-        </View>
-        <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
-        <TouchableOpacity onPress={() => router.push("/setup")} style={[styles.createPlanBtn, { width: "100%" }]}>
-          <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.createPlanGrad}>
-            <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" }}>Create my plan</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/hills")}
-          activeOpacity={0.8}
-          style={styles.startHikingSecondary}
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: Platform.OS === "web" ? 56 : insets.top + 20,
+            paddingBottom: Platform.OS === "web" ? 110 : insets.bottom + 130,
+            paddingHorizontal: 18,
+            gap: 14,
+          }}
+          showsVerticalScrollIndicator={false}
         >
-          <Footprints size={16} color={T.green} />
-          <Text style={styles.startHikingSecondaryText}>Track a hike</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Header */}
+          <View style={{ marginBottom: 4 }}>
+            <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: T.text }}>
+              SummitReady
+            </Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 4 }}>
+              Train for any mountain using hills near you
+            </Text>
+          </View>
+
+          {/* Summit Goal Hero CTA */}
+          <TouchableOpacity
+            onPress={() => router.push("/questionnaire")}
+            activeOpacity={0.88}
+            style={homeStyles.goalHero}
+          >
+            <LinearGradient
+              colors={["rgba(74,159,245,0.18)", "rgba(74,159,245,0.04)"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={homeStyles.goalHeroLeft}>
+              <View style={homeStyles.goalHeroIcon}>
+                <Mountain size={26} color={T.blue} />
+              </View>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={homeStyles.goalHeroTitle}>Set your summit goal</Text>
+                <Text style={homeStyles.goalHeroSub}>
+                  Tell us your target mountain and we'll build a personalised training plan
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={T.blue} style={{ flexShrink: 0 }} />
+          </TouchableOpacity>
+
+          {/* Quick actions */}
+          <View style={homeStyles.quickRow}>
+            <TouchableOpacity
+              style={homeStyles.quickCard}
+              onPress={() => router.push("/hike-tracking")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <Footprints size={22} color={T.green} />
+              <Text style={homeStyles.quickLabel}>Start Hiking</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={homeStyles.quickCard}
+              onPress={() => router.push("/(tabs)/hills")}
+              activeOpacity={0.8}
+            >
+              <Mountain size={22} color={T.orange} />
+              <Text style={homeStyles.quickLabel}>Find Hills</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={homeStyles.quickCard}
+              onPress={() => router.push("/(tabs)/challenges")}
+              activeOpacity={0.8}
+            >
+              <Trophy size={22} color={T.blue} />
+              <Text style={homeStyles.quickLabel}>Challenges</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Locked Training Plan teaser */}
+          <View style={homeStyles.lockedCard}>
+            <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={homeStyles.lockedHeader}>
+              <Calendar size={14} color={T.blue} />
+              <Text style={homeStyles.lockedTitle}>Training Plan</Text>
+              <View style={homeStyles.lockBadge}>
+                <Lock size={10} color={T.textMuted} />
+                <Text style={homeStyles.lockText}>Requires goal</Text>
+              </View>
+            </View>
+            <View style={{ gap: 10, opacity: 0.35, marginTop: 4 }}>
+              {["Week 1 · Base fitness", "Week 2 · Hill endurance", "Week 3 · Summit prep"].map((w, i) => (
+                <View key={i} style={homeStyles.fakeWeekRow}>
+                  <View style={homeStyles.fakeWeekDot} />
+                  <Text style={homeStyles.fakeWeekText}>{w}</Text>
+                  <View style={homeStyles.fakeWeekBar}>
+                    <View style={[homeStyles.fakeWeekFill, { width: `${70 - i * 20}%` as unknown as number }]} />
+                  </View>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push("/questionnaire")}
+              style={homeStyles.unlockBtn}
+              activeOpacity={0.8}
+            >
+              <Compass size={13} color={T.blue} />
+              <Text style={[homeStyles.unlockBtnText, { color: T.blue }]}>Set a summit goal to unlock</Text>
+              <ChevronRight size={13} color={T.blue} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Locked Readiness Score teaser */}
+          <View style={homeStyles.lockedCard}>
+            <LinearGradient colors={[T.orangeDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={homeStyles.lockedHeader}>
+              <TrendingUp size={14} color={T.orange} />
+              <Text style={homeStyles.lockedTitle}>Readiness Score</Text>
+              <View style={homeStyles.lockBadge}>
+                <Lock size={10} color={T.textMuted} />
+                <Text style={homeStyles.lockText}>Requires goal</Text>
+              </View>
+            </View>
+            <View style={{ alignItems: "center", paddingVertical: 16, opacity: 0.3 }}>
+              <Text style={{ fontSize: 52, fontFamily: "Inter_700Bold", color: T.orange, lineHeight: 60 }}>—</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 4 }}>
+                How ready are you for your mountain?
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push("/questionnaire")}
+              style={[homeStyles.unlockBtn, { borderColor: T.orange + "30" }]}
+              activeOpacity={0.8}
+            >
+              <TrendingUp size={13} color={T.orange} />
+              <Text style={[homeStyles.unlockBtnText, { color: T.orange }]}>Check your readiness</Text>
+              <ChevronRight size={13} color={T.orange} />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     );
   }
 
@@ -1399,5 +1515,146 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: T.textMuted,
+  },
+});
+
+const homeStyles = StyleSheet.create({
+  goalHero: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(74,159,245,0.25)",
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    overflow: "hidden",
+  },
+  goalHeroLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  goalHeroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: T.blueDim,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  goalHeroTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+  },
+  goalHeroSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    lineHeight: 18,
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  quickCard: {
+    flex: 1,
+    backgroundColor: T.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+    overflow: "hidden",
+  },
+  quickLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: T.text,
+    textAlign: "center",
+  },
+  lockedCard: {
+    backgroundColor: T.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: T.border,
+    padding: 18,
+    gap: 14,
+    overflow: "hidden",
+  },
+  lockedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  lockedTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+    flex: 1,
+  },
+  lockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  lockText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+  },
+  fakeWeekRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  fakeWeekDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: T.textDim,
+    flexShrink: 0,
+  },
+  fakeWeekText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    width: 130,
+  },
+  fakeWeekBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  fakeWeekFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.textDim,
+  },
+  unlockBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: "flex-start",
+  },
+  unlockBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: T.blue,
   },
 });

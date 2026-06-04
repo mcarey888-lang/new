@@ -5,16 +5,11 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
-import { useApp } from "@/context/AppContext";
 
 export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const { appMode } = useApp();
   const insets = useSafeAreaInsets();
-
-  const isExplore = appMode === "explore";
-  const isSummit = appMode === "summit" || appMode === null;
 
   const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
 
@@ -46,12 +41,10 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* ── Summit-only tabs ── */}
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
-          href: isExplore ? null : undefined,
+          title: "Home",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Home size={20} color={color} />
@@ -63,7 +56,6 @@ export default function TabLayout() {
         name="plan"
         options={{
           title: "Plan",
-          href: isExplore ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Calendar size={20} color={color} />
@@ -72,18 +64,10 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Explore-only tabs ── */}
+      {/* Explore tab hidden — its content lives in Home and Hills */}
       <Tabs.Screen
         name="explore"
-        options={{
-          title: "Explore",
-          href: isSummit ? null : undefined,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-              <Map size={20} color={color} />
-            </View>
-          ),
-        }}
+        options={{ href: null }}
       />
 
       {/* ── Shared tabs ── */}
@@ -121,8 +105,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="hills"
         options={{
-          title: "My Hills",
-          href: isExplore ? null : undefined,
+          title: "Hills",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Mountain size={20} color={color} />
