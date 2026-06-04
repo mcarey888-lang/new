@@ -244,7 +244,7 @@ function AlpineGuide({ tone }: { tone?: "positive" | "warning" | "neutral" }) {
       <Image
         source={MASCOT}
         style={{ width: 72, height: 72 }}
-        resizeMode="contain"
+        resizeMode="cover"
       />
       {/* Small tone indicator badge */}
       <View style={{
