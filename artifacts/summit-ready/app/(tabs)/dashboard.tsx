@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -9,10 +9,12 @@ import {
   Dimensions,
   Image,
   ImageBackground,
+  Keyboard,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -447,8 +449,15 @@ export default function DashboardScreen() {
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState(false);
   const hasFetched = useRef(false);
-
   const abortRef = useRef<AbortController | null>(null);
+
+  // Ask Coach
+  const [askText, setAskText] = useState("");
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askLoading, setAskLoading] = useState(false);
+  const askInputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const coachY = useRef(0);
 
 
   // Mark the plan as viewed after the user has had 5 seconds to see their
@@ -519,6 +528,45 @@ export default function DashboardScreen() {
   useEffect(() => {
     return () => { abortRef.current?.abort(); };
   }, []);
+
+  const handleAsk = useCallback(async () => {
+    const q = askText.trim();
+    if (!q || askLoading) return;
+    Keyboard.dismiss();
+    setAskLoading(true);
+    setAskAnswer(null);
+    try {
+      const completed = sessions.filter(s => s.completed);
+      const currentWeek = getCurrentWeek(trainingPlan);
+      const totalElevation = completed.reduce((s, x) => s + x.elevationGain, 0);
+      const days = summitGoal ? getDaysRemaining(summitGoal.summitDate) : undefined;
+      const res = await fetch(`${API_BASE}/coach-ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: q,
+          summitGoal,
+          readinessScore,
+          totalSessionsDone: completed.length,
+          totalElevationLogged: totalElevation,
+          daysRemaining: days,
+          currentPhase: currentWeek?.phase,
+        }),
+      });
+      const data = await res.json() as { answer?: string; error?: string };
+      setAskAnswer(data.answer ?? data.error ?? "Couldn't get an answer.");
+    } catch {
+      setAskAnswer("Couldn't reach your coach. Check your connection.");
+    } finally {
+      setAskLoading(false);
+      setAskText("");
+    }
+  }, [askText, askLoading, sessions, trainingPlan, summitGoal, readinessScore]);
+
+  function scrollToCoach() {
+    scrollRef.current?.scrollTo({ y: coachY.current, animated: true });
+    setTimeout(() => askInputRef.current?.focus(), 400);
+  }
 
   if (!summitGoal) {
     return (
@@ -711,6 +759,7 @@ export default function DashboardScreen() {
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.scroll,
           {
@@ -732,6 +781,17 @@ export default function DashboardScreen() {
           distance={summitGoal.distance}
           highestAltitude={summitGoal.highestAltitude}
         />
+
+        {/* Ask Coach pill — compact teaser that scrolls to the AI Coach card */}
+        <Animated.View entering={FadeInDown.delay(20).duration(400)}>
+          <TouchableOpacity onPress={scrollToCoach} activeOpacity={0.82} style={styles.askPill}>
+            <View style={styles.askPillIcon}>
+              <MessageCircle size={13} color={T.blue} />
+            </View>
+            <Text style={styles.askPillText}>Ask your coach a question</Text>
+            <ChevronRight size={13} color={T.blue} />
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Upgrade banner — shown only after user has seen their plan */}
         {hasViewedPlan && !isSubscribed && (
@@ -998,7 +1058,10 @@ export default function DashboardScreen() {
 
         {/* AI Coach */}
         <Animated.View entering={FadeInDown.delay(320).duration(500)}>
-          <View style={styles.coachCard}>
+          <View
+            style={styles.coachCard}
+            onLayout={e => { coachY.current = e.nativeEvent.layout.y; }}
+          >
             <LinearGradient
               colors={
                 coach?.tone === "positive" ? [T.greenDim, "transparent"] :
@@ -1090,6 +1153,45 @@ export default function DashboardScreen() {
                 </Text>
               </>
             ) : null}
+
+            {/* Ask Coach input */}
+            <View style={styles.askDivider} />
+            {askAnswer && (
+              <View style={styles.askAnswerBubble}>
+                <AlpineGuide tone={coach?.tone} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.askAnswerText}>{askAnswer}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setAskAnswer(null)} hitSlop={8}>
+                  <X size={13} color={T.textMuted} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.askBar}>
+              <TextInput
+                ref={askInputRef}
+                style={styles.askInput}
+                placeholder="Ask your coach anything…"
+                placeholderTextColor={T.textDim}
+                value={askText}
+                onChangeText={setAskText}
+                onSubmitEditing={handleAsk}
+                returnKeyType="send"
+                editable={!askLoading}
+                multiline={false}
+              />
+              <TouchableOpacity
+                onPress={handleAsk}
+                disabled={!askText.trim() || askLoading}
+                style={[styles.askSendBtn, { opacity: (!askText.trim() || askLoading) ? 0.4 : 1 }]}
+                activeOpacity={0.75}
+              >
+                {askLoading
+                  ? <ActivityIndicator size="small" color={T.blue} />
+                  : <Send size={15} color={T.blue} />
+                }
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
 
@@ -1105,6 +1207,39 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, gap: 12 },
+
+  // ── Ask Coach pill ────────────────────────────────────────────────────────
+  askPill: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: T.blue + "12",
+    borderWidth: 1, borderColor: T.blue + "28",
+    borderRadius: 20, paddingVertical: 9, paddingHorizontal: 14,
+  },
+  askPillIcon: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: T.blue + "20", alignItems: "center", justifyContent: "center",
+  },
+  askPillText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue },
+
+  // ── Ask Coach bar (inside coach card) ────────────────────────────────────
+  askDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.06)", marginTop: 14, marginBottom: 12 },
+  askAnswerBubble: {
+    flexDirection: "row", gap: 10, alignItems: "flex-start",
+    backgroundColor: T.blue + "10", borderRadius: 10, padding: 10, marginBottom: 10,
+  },
+  askAnswerText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 19 },
+  askBar: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  askInput: {
+    flex: 1, fontSize: 13, fontFamily: "Inter_400Regular",
+    color: T.text, paddingVertical: 6,
+  },
+  askSendBtn: { padding: 4 },
+
   upgradeBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
     borderRadius: 14, borderWidth: 1, borderColor: T.green + "30",

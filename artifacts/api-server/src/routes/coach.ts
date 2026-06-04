@@ -148,4 +148,49 @@ Give an honest coaching assessment.`.trim();
   }
 });
 
+// ── Ask Coach ─────────────────────────────────────────────────────────────────
+const ASK_SYSTEM_PROMPT = `You are an expert mountain training coach. Answer the user's question about their training plan or mountain goal concisely, honestly, and helpfully. Keep your answer to 2–4 sentences. Be specific to their mountain and data where relevant. Never give medical advice — for injuries direct them to a professional.`;
+
+router.post("/coach-ask", async (req, res) => {
+  const { question, summitGoal, readinessScore, totalSessionsDone, totalElevationLogged, daysRemaining, currentPhase } = req.body as {
+    question?: string;
+    summitGoal?: { mountainName: string; difficulty: string; fitnessLevel: string; elevationGain: number; distance: number; summitDate: string; trainingDaysPerWeek: number };
+    readinessScore?: number;
+    totalSessionsDone?: number;
+    totalElevationLogged?: number;
+    daysRemaining?: number;
+    currentPhase?: string;
+  };
+
+  if (!question?.trim()) {
+    res.status(400).json({ error: "question required" });
+    return;
+  }
+
+  const context = summitGoal
+    ? `Context: ${summitGoal.mountainName} (${summitGoal.difficulty}, ${summitGoal.elevationGain}m gain, ${summitGoal.distance}km). ${daysRemaining ?? "?"} days to summit. Fitness: ${summitGoal.fitnessLevel}. Readiness: ${readinessScore ?? "?"}/100. Sessions done: ${totalSessionsDone ?? 0}. Elevation logged: ${totalElevationLogged ?? 0}m. Phase: ${currentPhase ?? "Base"}.`
+    : "";
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 200,
+      messages: [
+        { role: "system", content: ASK_SYSTEM_PROMPT },
+        { role: "user", content: `${context}\n\nQuestion: ${question.trim()}` },
+      ],
+    });
+
+    const answer = response.choices?.[0]?.message?.content?.trim();
+    if (!answer) {
+      res.status(500).json({ error: "No response from AI" });
+      return;
+    }
+    res.json({ answer });
+  } catch (err) {
+    req.log.error({ err }, "Coach ask failed");
+    res.status(500).json({ error: "Coach unavailable" });
+  }
+});
+
 export default router;
