@@ -547,13 +547,26 @@ const lm = StyleSheet.create({
 export default function ChallengeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { activeChallenges, startChallenge, abandonChallenge, logActivity, getProgress, getActiveChallenge } = useChallenges();
+  const { activeChallenges, startChallenge, abandonChallenge, logActivity } = useChallenges();
   const { isSubscribed } = useSubscription();
   const [logVisible, setLogVisible] = useState(false);
 
   const c = getChallenge(id ?? "");
-  const ac = getActiveChallenge(id ?? "");
-  const progress = getProgress(id ?? "");
+
+  // Derive ac and progress from the reactive activeChallenges array so the
+  // screen re-renders immediately when startChallenge / logActivity updates state.
+  const ac = useMemo(
+    () => activeChallenges.find(a => a.challengeId === (id ?? "")),
+    [activeChallenges, id],
+  );
+  const progress = useMemo(() => {
+    if (!ac || !c) return 0;
+    const total = ac.activities.reduce((sum, a) => {
+      if (c.metric === "hikes") return sum + 1;
+      return sum + a.elevationGain;
+    }, 0);
+    return Math.min(total, c.targetValue);
+  }, [ac, c]);
 
   const pct = useMemo(() => {
     if (!c) return 0;
