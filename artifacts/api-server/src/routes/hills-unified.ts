@@ -61,11 +61,19 @@ const SEARCH_SYSTEM_PROMPT = `You are an expert on hiking and trail running area
 
 CRITICAL — elevation definition:
 - elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
-- This is NOT the summit's altitude above sea level
+- This is NOT the summit's altitude above sea level — it MUST be less than the summit altitude
 - This is NOT the total route distance
-- Example: Pendle Hill summit is 557m above sea level, but the typical ascent from the Nick of Pendle car park (at ~270m) gains approximately 290m — so elevation = 290
-- Example: Snowdon is 1085m above sea level, but the Pyg Track gains ~750m from the Pen-y-Pass car park — so elevation = 750
-- Example: Scafell Pike summit is 978m, the Wasdale Head approach gains ~900m — so elevation = 900
+- COMMON MISTAKES TO AVOID: do not return the summit's altitude (e.g. Winter Hill summit = 456m ASL, so elevation gain CANNOT be 456 or more)
+
+Calibrated UK examples (use as a reference for accuracy):
+- Pendle Hill: summit 557m, Nick of Pendle car park ~270m → elevation = 290
+- Bull Hill (West Pennines): summit 456m, road-end near Helmshore ~140m → elevation = 316
+- Winter Hill: summit 456m, Rivington car park ~140m → elevation = 316
+- Rivington Pike: summit 373m, Rivington car park ~120m → elevation = 253
+- Kinder Scout: summit 636m, Edale car park ~200m → elevation = ~430 (Grindsbrook route)
+- Snowdon: summit 1085m, Pen-y-Pass car park ~359m → elevation = 726 (Pyg Track)
+- Scafell Pike: summit 978m, Wasdale Head ~75m → elevation = 900
+- Ben Nevis: summit 1345m, Glen Nevis car park ~20m → elevation = 1325
 - Always use the ASCENT (height gained) for a typical single climb, not the peak's altitude above sea level
 
 Other rules:
@@ -102,11 +110,21 @@ const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill trainin
 
 CRITICAL — elevation definition:
 - elevation = the vertical height gained (in metres) walking UP from the typical start point (car park / trailhead) to the summit, for ONE repeat
-- This is NOT the summit's altitude above sea level
+- This is NOT the summit's altitude above sea level — it MUST be less than the summit altitude
 - This is NOT the total route distance
-- Example: Pendle Hill summit is 557m above sea level, but ascending from the Nick of Pendle car park (~270m) gains ~290m — so elevation = 290
-- Example: Boulsworth Hill summit is 517m above sea level, ascending from the road at ~280m gains ~240m — so elevation = 240
-- Example: Ingleborough summit is 723m, ascending from Horton (~270m) gains ~450m — so elevation = 450
+- COMMON MISTAKES TO AVOID: do not return the summit's altitude (e.g. Winter Hill summit = 456m ASL, so elevation gain CANNOT be 456 or more)
+
+Calibrated UK examples (use as a reference for accuracy):
+- Pendle Hill: summit 557m, Nick of Pendle car park ~270m → elevation = 290
+- Bull Hill (West Pennines): summit 456m, road-end near Helmshore ~140m → elevation = 316
+- Winter Hill: summit 456m, Rivington car park ~140m → elevation = 316
+- Rivington Pike: summit 373m, Rivington car park ~120m → elevation = 253
+- Holcombe Hill / Peel Tower: summit ~420m, Ramsbottom ~100m → elevation = ~320 (from Ramsbottom); from Scout Road car park ~200m → elevation = ~220
+- Great Hameldon: summit 391m, parking near Hameldon ~180m → elevation = ~210
+- Kinder Scout: summit 636m, Edale car park ~200m → elevation = ~430 (Grindsbrook route)
+- Boulsworth Hill: summit 517m, road at ~280m → elevation = 240
+- Ingleborough: summit 723m, Horton-in-Ribblesdale ~270m → elevation = 450
+- Snowdon: summit 1085m, Pen-y-Pass car park ~359m → elevation = 726 (Pyg Track)
 - Always report the ASCENT (height gained walking uphill) not the peak's altitude above sea level
 
 Other rules:
