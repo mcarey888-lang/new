@@ -1,5 +1,6 @@
 import {
   Bookmark,
+  Check,
   CheckCircle,
   ChevronRight,
   Compass,
@@ -29,14 +30,22 @@ import { LogHikeModal } from "@/components/LogHikeModal";
 
 // ── Logged hike row ───────────────────────────────────────────────────────────
 
-function LoggedHikeRow({ hike, onDelete }: { hike: ExploreHike; onDelete: (id: string) => void }) {
+function LoggedHikeRow({
+  hike, onDelete, onAddToPlan, addedToPlan, hasPlan,
+}: {
+  hike: ExploreHike;
+  onDelete: (id: string) => void;
+  onAddToPlan?: () => void;
+  addedToPlan?: boolean;
+  hasPlan?: boolean;
+}) {
   const dateStr = new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
     <View style={lh.row}>
       <View style={lh.iconWrap}>
         <Map size={14} color={T.green} />
       </View>
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: 6 }}>
         <Text style={lh.name}>{hike.name}</Text>
         <View style={lh.meta}>
           <Text style={lh.dim}>{dateStr}</Text>
@@ -48,6 +57,19 @@ function LoggedHikeRow({ hike, onDelete }: { hike: ExploreHike; onDelete: (id: s
           <Text style={lh.dim}>{hike.timeTaken}min</Text>
         </View>
         {!!hike.notes && <Text style={lh.notes}>{hike.notes}</Text>}
+        {hasPlan && (
+          addedToPlan ? (
+            <View style={lh.addedPill}>
+              <Check size={11} color={T.green} />
+              <Text style={lh.addedText}>Added to training plan</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={lh.addBtn} onPress={onAddToPlan} activeOpacity={0.8}>
+              <Plus size={12} color={T.green} />
+              <Text style={lh.addBtnText}>Add to training plan</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
       <TouchableOpacity
         onPress={() => {
@@ -78,6 +100,19 @@ const lh = StyleSheet.create({
   dot: { fontSize: 12, color: T.textDim },
   notes: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, fontStyle: "italic" },
   delBtn: { padding: 4, flexShrink: 0 },
+  addBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    backgroundColor: T.green + "18", borderRadius: 9,
+    borderWidth: 1, borderColor: T.green + "40",
+    paddingHorizontal: 9, paddingVertical: 5,
+  },
+  addBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
+  addedPill: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    backgroundColor: T.green + "10", borderRadius: 9,
+    paddingHorizontal: 9, paddingVertical: 5,
+  },
+  addedText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
 });
 
 // ── Category card ─────────────────────────────────────────────────────────────
@@ -144,9 +179,31 @@ export default function HikesScreen() {
   const {
     exploreHikes, deleteExploreHike,
     savedTrailIds, completedTrailIds, customRoutes,
+    addSession, trainingPlan,
   } = useApp();
 
   const [logVisible, setLogVisible] = useState(false);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  const hasPlan = !!(trainingPlan && trainingPlan.length > 0);
+
+  async function handleAddToPlan(hike: ExploreHike) {
+    setAddedIds(prev => new Set(prev).add(hike.id));
+    const wi = trainingPlan?.findIndex(w => w.isCurrentWeek) ?? -1;
+    const weekNum = wi >= 0 ? wi : 0;
+    await addSession({
+      date: hike.date,
+      type: "cardio",
+      distance: hike.distance,
+      elevationGain: hike.elevationGain,
+      duration: hike.timeTaken,
+      effort: 3,
+      notes: `From hike log: ${hike.name}.`,
+      completed: true,
+      weekNumber: weekNum,
+      hillName: hike.name,
+    });
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -272,7 +329,13 @@ export default function HikesScreen() {
           <View style={p.activityList}>
             {exploreHikes.map((hike, i) => (
               <Animated.View key={hike.id} entering={FadeInDown.delay(140 + i * 40).duration(500)}>
-                <LoggedHikeRow hike={hike} onDelete={deleteExploreHike} />
+                <LoggedHikeRow
+                  hike={hike}
+                  onDelete={deleteExploreHike}
+                  hasPlan={hasPlan}
+                  addedToPlan={addedIds.has(hike.id)}
+                  onAddToPlan={() => handleAddToPlan(hike)}
+                />
               </Animated.View>
             ))}
           </View>

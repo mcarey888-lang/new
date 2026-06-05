@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Clock,
   Map,
+  Plus,
   TrendingUp,
   Trash2,
 } from "lucide-react-native";
@@ -108,8 +109,15 @@ function SessionCard({
 
 // ── Hike card ────────────────────────────────────────────────────────────────
 function HikeCard({
-  hike, index, onDelete,
-}: { hike: ExploreHike; index: number; onDelete: () => void }) {
+  hike, index, onDelete, onAddToPlan, addedToPlan, hasPlan,
+}: {
+  hike: ExploreHike;
+  index: number;
+  onDelete: () => void;
+  onAddToPlan?: () => void;
+  addedToPlan?: boolean;
+  hasPlan?: boolean;
+}) {
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 12) * 40).duration(350)}>
       <View style={s.card}>
@@ -145,6 +153,19 @@ function HikeCard({
           })}
         </View>
         {!!hike.notes && <Text style={s.cardNotes} numberOfLines={2}>{hike.notes}</Text>}
+        {hasPlan && (
+          addedToPlan ? (
+            <View style={s.addedPill}>
+              <Check size={11} color={T.green} />
+              <Text style={s.addedText}>Added to training plan</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={s.addToPlanBtn} onPress={onAddToPlan} activeOpacity={0.8}>
+              <Plus size={12} color={T.green} />
+              <Text style={s.addToPlanText}>Add to training plan</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
     </Animated.View>
   );
@@ -153,8 +174,30 @@ function HikeCard({
 // ── Screen ───────────────────────────────────────────────────────────────────
 export default function SessionsScreen() {
   const insets = useSafeAreaInsets();
-  const { sessions, exploreHikes, deleteSession, updateSession, deleteExploreHike } = useApp();
+  const { sessions, exploreHikes, deleteSession, updateSession, deleteExploreHike, addSession, trainingPlan } = useApp();
   const [filter, setFilter] = useState<FilterTab>("all");
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  const hasPlan = !!(trainingPlan && trainingPlan.length > 0);
+
+  async function handleAddToPlan(hike: ExploreHike) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAddedIds(prev => new Set(prev).add(hike.id));
+    const wi = trainingPlan?.findIndex(w => w.isCurrentWeek) ?? -1;
+    const weekNum = wi >= 0 ? wi : 0;
+    await addSession({
+      date: hike.date,
+      type: "cardio",
+      distance: hike.distance,
+      elevationGain: hike.elevationGain,
+      duration: hike.timeTaken,
+      effort: 3,
+      notes: `From hike log: ${hike.name}.`,
+      completed: true,
+      weekNumber: weekNum,
+      hillName: hike.name,
+    });
+  }
 
   const allItems = useMemo<LogItem[]>(() => {
     const base: LogItem[] = [
@@ -282,6 +325,9 @@ export default function SessionsScreen() {
                 hike={item.data}
                 index={i}
                 onDelete={() => deleteExploreHike(item.data.id)}
+                hasPlan={hasPlan}
+                addedToPlan={addedIds.has(item.data.id)}
+                onAddToPlan={() => handleAddToPlan(item.data)}
               />
             )
           )
@@ -355,6 +401,22 @@ const s = StyleSheet.create({
 
   toggleBtn: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   delBtn:    { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+
+  addToPlanBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: T.green + "18", borderRadius: 10,
+    borderWidth: 1, borderColor: T.green + "40",
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  addToPlanText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
+  addedPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    alignSelf: "flex-start",
+    backgroundColor: T.green + "10", borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  addedText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
 
   empty:      { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyIcon:  { width: 72, height: 72, borderRadius: 22, alignItems: "center", justifyContent: "center" },
