@@ -160,7 +160,7 @@ export default function AccountScreen() {
     } else {
       Alert.alert(
         "Reset all data",
-        "This will permanently delete your summit goal, training plan, and session history. This cannot be undone.",
+        "This will permanently delete your summit goal, training plan, session history, and all saved hills. This cannot be undone.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Reset", style: "destructive", onPress: doResetData },
