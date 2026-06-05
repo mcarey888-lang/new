@@ -2,7 +2,7 @@ import {
   Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Filter, ChevronDown,
+  Footprints, ChevronRight, Filter, ChevronDown, Activity,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -231,6 +231,28 @@ export default function TrackScreen() {
             </View>
             <View style={styles.startHeroArrow}>
               <ChevronRight size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* LOG TRAINING SESSION */}
+        <Animated.View entering={FadeInDown.delay(60).duration(500)}>
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/log")}
+            activeOpacity={0.88}
+            style={styles.logTrainingBtn}
+          >
+            <View style={styles.logTrainingLeft}>
+              <View style={styles.logTrainingIconWrap}>
+                <Activity size={22} color={T.blue} />
+              </View>
+              <View style={{ gap: 3 }}>
+                <Text style={styles.logTrainingTitle}>Log Training Session</Text>
+                <Text style={styles.logTrainingSub}>Treadmill, stepper, hill repeats &amp; more</Text>
+              </View>
+            </View>
+            <View style={styles.logTrainingArrow}>
+              <ChevronRight size={18} color={T.blue} />
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -700,6 +722,24 @@ const styles = StyleSheet.create({
   startHeroTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
   startHeroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
   startHeroArrow: { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
+
+  logTrainingBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderRadius: 20,
+    backgroundColor: T.blue + "14",
+    borderWidth: 1, borderColor: T.blue + "40",
+    paddingHorizontal: 20, paddingVertical: 16,
+    marginBottom: 20,
+  },
+  logTrainingLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  logTrainingIconWrap: {
+    width: 48, height: 48, borderRadius: 16,
+    backgroundColor: T.blue + "20",
+    alignItems: "center", justifyContent: "center",
+  },
+  logTrainingTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  logTrainingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  logTrainingArrow: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.blue + "20", alignItems: "center", justifyContent: "center" },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10, marginTop: 4 },
   sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: 0.5, flex: 1 },
