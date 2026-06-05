@@ -363,11 +363,13 @@ export default function AccountScreen() {
           <TouchableOpacity
             style={styles.viewSessionsBtn}
             onPress={() => router.push("/sessions")}
-            activeOpacity={0.8}
+            activeOpacity={0.75}
           >
-            <Activity size={15} color={T.textMuted} />
+            <View style={styles.viewSessionsIconWrap}>
+              <Activity size={15} color={T.green} />
+            </View>
             <Text style={styles.viewSessionsBtnText}>View all sessions</Text>
-            <ChevronRight size={15} color={T.textMuted} style={{ marginLeft: "auto" }} />
+            <ChevronRight size={15} color={T.green} style={{ marginLeft: "auto" }} />
           </TouchableOpacity>
 
           {summitGoal && (
@@ -830,12 +832,17 @@ const styles = StyleSheet.create({
   statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   viewSessionsBtn: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 14,
-    borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: T.green + "14", borderRadius: 14,
+    borderWidth: 1, borderColor: T.green + "45",
+    paddingHorizontal: 14, paddingVertical: 13,
     marginTop: 10,
   },
-  viewSessionsBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  viewSessionsIconWrap: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: T.green + "20",
+    alignItems: "center", justifyContent: "center",
+  },
+  viewSessionsBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
 
   goalPill: {
     flexDirection: "row", alignItems: "center", gap: 8,
