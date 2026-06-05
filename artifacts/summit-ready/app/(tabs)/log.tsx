@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react-native";
 import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { router } from "expo-router";
 import {
   Dimensions,
@@ -27,6 +27,13 @@ const SESSION_TYPES: { value: "cardio" | "hill" | "bigDay"; label: string; icon:
   { value: "hill", label: "Hill Repeats", icon: TrendingUp, color: T.blue },
   { value: "bigDay", label: "Big Day", icon: Flag, color: T.orange },
 ];
+
+type AddModalSeed = {
+  type: "cardio" | "hill" | "bigDay";
+  cardioSubtype?: "treadmill" | "stepper" | "outdoor";
+  treadmillIncline?: number;
+  label?: string;
+};
 
 function EffortPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const labels = ["Easy", "Steady", "Hard", "Very Hard", "Max"];
@@ -459,7 +466,7 @@ function MiniCalendar({ sessions, exploreHikes, trainingPlan }: {
   );
 }
 
-function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function AddModal({ visible, onClose, seed }: { visible: boolean; onClose: () => void; seed?: AddModalSeed }) {
   const insets = useSafeAreaInsets();
   const { addSession, trainingPlan, nearbyHills } = useApp();
   const [type, setType] = useState<"cardio" | "hill" | "bigDay">("cardio");
@@ -480,6 +487,15 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   const [treadmillKm, setTreadmillKm] = useState("");
   const [treadmillIncline, setTreadmillIncline] = useState("10");
   const [stepperFloors, setStepperFloors] = useState("");
+
+  // Apply seed when modal opens
+  useEffect(() => {
+    if (visible && seed) {
+      setType(seed.type);
+      if (seed.cardioSubtype) setCardioSubtype(seed.cardioSubtype);
+      if (seed.treadmillIncline) setTreadmillIncline(String(seed.treadmillIncline));
+    }
+  }, [visible, seed]);
 
   function handleSelectHill(h: NearbyHill | null) {
     setSelectedHill(h);
@@ -778,6 +794,138 @@ function AddModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   );
 }
 
+// ── Training session picker ───────────────────────────────────────────────────
+const EXERCISE_META: Record<string, { icon: LucideIcon; color: string; sub?: "treadmill" | "stepper" | "outdoor" }> = {
+  treadmill: { icon: TrendingUp, color: T.green,  sub: "treadmill" },
+  stepper:   { icon: Activity,   color: T.blue,   sub: "stepper"   },
+  outdoor:   { icon: Map,        color: T.orange,  sub: "outdoor"   },
+};
+
+function TrainingSessionPickerModal({
+  visible, onClose, trainingPlan, onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  trainingPlan: TrainingWeek[];
+  onSelect: (seed: AddModalSeed) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const currentWeek = trainingPlan.find(w => w.isCurrentWeek) ?? trainingPlan[0];
+  const sessions = currentWeek?.sessions ?? [];
+
+  function iconFor(s: { type: string; gymExercise?: string }): { Icon: LucideIcon; color: string } {
+    if (s.type === "cardio" && s.gymExercise && EXERCISE_META[s.gymExercise]) {
+      const m = EXERCISE_META[s.gymExercise];
+      return { Icon: m.icon, color: m.color };
+    }
+    if (s.type === "hill") return { Icon: TrendingUp, color: T.blue };
+    if (s.type === "bigDay") return { Icon: Flag, color: T.orange };
+    return { Icon: Heart, color: T.green };
+  }
+
+  function seedFor(s: (typeof sessions)[number]): AddModalSeed {
+    return {
+      type: s.type as "cardio" | "hill" | "bigDay",
+      cardioSubtype: s.gymExercise as "treadmill" | "stepper" | "outdoor" | undefined,
+      treadmillIncline: s.inclinePct,
+      label: s.label,
+    };
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.modalScroll,
+            { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: Math.max(48, insets.bottom + 24) },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Log Training Session</Text>
+              {currentWeek && (
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 }}>
+                  Week {currentWeek.weekNumber + 1} · {currentWeek.phase}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <X size={18} color={T.white} />
+            </TouchableOpacity>
+          </View>
+
+          {sessions.length === 0 ? (
+            <View style={{ alignItems: "center", paddingTop: 40, gap: 12 }}>
+              <Activity size={36} color={T.textMuted} />
+              <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center" }}>
+                No plan sessions this week
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.fLabel, { marginTop: 4 }]}>THIS WEEK'S EXERCISES</Text>
+              {sessions.map((s, i) => {
+                const { Icon, color } = iconFor(s);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.pickerCard}
+                    activeOpacity={0.8}
+                    onPress={() => { onClose(); onSelect(seedFor(s)); }}
+                  >
+                    <View style={[styles.pickerIconWrap, { backgroundColor: color + "18" }]}>
+                      <Icon size={18} color={color} />
+                    </View>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text style={styles.pickerCardTitle}>{s.label}</Text>
+                      <View style={{ flexDirection: "row", gap: 10 }}>
+                        {!!s.targetElevation && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <TrendingUp size={11} color={T.orange} />
+                            <Text style={styles.pickerCardMeta}>{s.targetElevation}m target</Text>
+                          </View>
+                        )}
+                        {!!s.duration && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Clock size={11} color={T.textMuted} />
+                            <Text style={styles.pickerCardMeta}>{s.duration}</Text>
+                          </View>
+                        )}
+                        {!!s.inclinePct && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <TrendingUp size={11} color={T.green} />
+                            <Text style={styles.pickerCardMeta}>{s.inclinePct}% incline</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <ChevronRight size={16} color={T.textDim} />
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
+
+          <Text style={[styles.fLabel, { marginTop: 24 }]}>OR</Text>
+          <TouchableOpacity
+            style={[styles.pickerCard, { borderColor: T.border }]}
+            activeOpacity={0.8}
+            onPress={() => { onClose(); onSelect({ type: "cardio", cardioSubtype: "outdoor" }); }}
+          >
+            <View style={[styles.pickerIconWrap, { backgroundColor: T.surface }]}>
+              <Plus size={18} color={T.textMuted} />
+            </View>
+            <Text style={[styles.pickerCardTitle, { color: T.textMuted }]}>Log a custom session</Text>
+            <ChevronRight size={16} color={T.textDim} />
+          </TouchableOpacity>
+        </ScrollView>
+      </LinearGradient>
+    </Modal>
+  );
+}
+
 type LogItem =
   | { kind: "session"; data: Session }
   | { kind: "hike"; data: ExploreHike };
@@ -786,7 +934,14 @@ export default function LogScreen() {
   const insets = useSafeAreaInsets();
   const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike, trainingPlan } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [addModalSeed, setAddModalSeed] = useState<AddModalSeed | undefined>();
   const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
+
+  function handlePickerSelect(seed: AddModalSeed) {
+    setAddModalSeed(seed);
+    setModalOpen(true);
+  }
 
   const allItems = useMemo<LogItem[]>(() => {
     const items: LogItem[] = [
@@ -880,6 +1035,28 @@ export default function LogScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* Log Training Session */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+          <TouchableOpacity
+            onPress={() => setPickerOpen(true)}
+            activeOpacity={0.85}
+            style={styles.logTrainingBtn}
+          >
+            <View style={styles.logTrainingLeft}>
+              <View style={styles.logTrainingIconBox}>
+                <Activity size={20} color={T.blue} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.logTrainingTitle}>Log Training Session</Text>
+                <Text style={styles.logTrainingSub} numberOfLines={1}>Treadmill, stepper, hill repeats &amp; more</Text>
+              </View>
+            </View>
+            <View style={styles.logTrainingArrow}>
+              <ChevronRight size={16} color={T.blue} />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {allItems.length === 0 ? (
           <View style={styles.empty}>
             <View style={[styles.emptyIcon, { backgroundColor: T.blueDim }]}>
@@ -915,7 +1092,17 @@ export default function LogScreen() {
           )
         )}
       </ScrollView>
-      <AddModal visible={modalOpen} onClose={() => setModalOpen(false)} />
+      <AddModal
+        visible={modalOpen}
+        onClose={() => { setModalOpen(false); setAddModalSeed(undefined); }}
+        seed={addModalSeed}
+      />
+      <TrainingSessionPickerModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        trainingPlan={trainingPlan}
+        onSelect={handlePickerSelect}
+      />
       {selectedHike && <HikeDetailSheet hike={selectedHike} onClose={() => setSelectedHike(null)} />}
     </LinearGradient>
   );
@@ -962,6 +1149,35 @@ const styles = StyleSheet.create({
   startHikeTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
   startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
   startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
+
+  logTrainingBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderRadius: 16,
+    backgroundColor: T.blue + "14",
+    borderWidth: 1, borderColor: T.blue + "40",
+    paddingVertical: 14, paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  logTrainingLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  logTrainingIconBox: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: T.blue + "20",
+    alignItems: "center", justifyContent: "center",
+  },
+  logTrainingTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  logTrainingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  logTrainingArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: T.blue + "20", alignItems: "center", justifyContent: "center" },
+
+  pickerCard: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 14, paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  pickerIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  pickerCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  pickerCardMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   sessionCard: {
     backgroundColor: T.card,
     borderRadius: 18,
