@@ -69,16 +69,20 @@ function SessionCard({
               {" · Week "}{session.weekNumber + 1}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
-            style={[s.toggleBtn, { backgroundColor: session.completed ? T.green : T.surface }]}
-          >
-            <Check size={13} color={session.completed ? "#fff" : T.textDim} />
-          </TouchableOpacity>
           <TouchableOpacity onPress={onDelete} style={s.delBtn}>
             <Trash2 size={14} color={T.textDim} />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onToggle(); }}
+          activeOpacity={0.8}
+          style={session.completed ? s.completedPill : s.markCompletePill}
+        >
+          <Check size={11} color={session.completed ? T.green : T.textDim} />
+          <Text style={session.completed ? s.completedPillText : s.markCompleteText}>
+            {session.completed ? "Completed" : "Mark as complete"}
+          </Text>
+        </TouchableOpacity>
         <View style={s.cardStats}>
           {([
             { icon: TrendingUp, val: `${session.elevationGain}m`, color: T.orange },
@@ -399,8 +403,21 @@ const s = StyleSheet.create({
   effortDots: { flexDirection: "row", gap: 3, marginLeft: "auto" as any },
   effortPip:  { width: 9, height: 9, borderRadius: 3 },
 
-  toggleBtn: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  delBtn:    { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  completedPill: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    backgroundColor: T.green + "18", borderRadius: 9,
+    borderWidth: 1, borderColor: T.green + "40",
+    paddingHorizontal: 9, paddingVertical: 5, marginBottom: 2,
+  },
+  completedPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
+  markCompletePill: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    backgroundColor: T.surface, borderRadius: 9,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 9, paddingVertical: 5, marginBottom: 2,
+  },
+  markCompleteText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  delBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
 
   addToPlanBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
