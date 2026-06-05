@@ -24,11 +24,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
-import {
-  TrainingSeed,
-  AddSessionModal,
-  TrainingSessionPickerModal,
-} from "@/components/LogSessionModals";
 
 const FREE_HILLS_LIMIT = 3;
 const SUGGESTED_COUNT = 3;
@@ -117,15 +112,6 @@ export default function TrackScreen() {
 
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
   const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
-
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [addSeed, setAddSeed] = useState<TrainingSeed | undefined>();
-  const [addOpen, setAddOpen] = useState(false);
-
-  function handlePickerSelect(seed: TrainingSeed) {
-    setAddSeed(seed);
-    setAddOpen(true);
-  }
 
   const currentWeek = trainingPlan.find(w => {
     const now = new Date();
@@ -252,7 +238,7 @@ export default function TrackScreen() {
         {/* LOG TRAINING SESSION */}
         <Animated.View entering={FadeInDown.delay(60).duration(500)}>
           <TouchableOpacity
-            onPress={() => setPickerOpen(true)}
+            onPress={() => router.push("/(tabs)/log")}
             activeOpacity={0.88}
             style={styles.logTrainingBtn}
           >
@@ -717,17 +703,6 @@ export default function TrackScreen() {
 
 
       </ScrollView>
-      <TrainingSessionPickerModal
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        trainingPlan={trainingPlan}
-        onSelect={handlePickerSelect}
-      />
-      <AddSessionModal
-        visible={addOpen}
-        onClose={() => { setAddOpen(false); setAddSeed(undefined); }}
-        seed={addSeed}
-      />
     </LinearGradient>
   );
 }

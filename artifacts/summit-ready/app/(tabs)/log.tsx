@@ -27,7 +27,6 @@ import {
   EffortPicker,
   HillSearchSection,
   AddSessionModal,
-  TrainingSessionPickerModal,
 } from "@/components/LogSessionModals";
 
 function SessionCard({ session, onDelete, onToggle, index }: {
@@ -308,15 +307,58 @@ type LogItem =
   | { kind: "session"; data: Session }
   | { kind: "hike"; data: ExploreHike };
 
+const EXERCISE_CHOICES: {
+  label: string;
+  sub: string;
+  icon: typeof Activity;
+  color: string;
+  seed: TrainingSeed;
+}[] = [
+  {
+    label: "Incline Treadmill",
+    sub: "10–15% incline, brisk hike pace",
+    icon: TrendingUp,
+    color: T.green,
+    seed: { type: "cardio", cardioSubtype: "treadmill", treadmillIncline: 10 },
+  },
+  {
+    label: "Stepper Machine",
+    sub: "Step machine for leg drive and cardio",
+    icon: Activity,
+    color: T.blue,
+    seed: { type: "cardio", cardioSubtype: "stepper" },
+  },
+  {
+    label: "Outdoor Walk / Hike",
+    sub: "Weighted pack or natural terrain",
+    icon: Map,
+    color: T.orange,
+    seed: { type: "cardio", cardioSubtype: "outdoor" },
+  },
+  {
+    label: "Hill Repeats",
+    sub: "Uphill intervals for elevation gain",
+    icon: Flag,
+    color: T.purple ?? T.blue,
+    seed: { type: "hill" },
+  },
+  {
+    label: "Big Day Training",
+    sub: "Long endurance session",
+    icon: Heart,
+    color: T.orange,
+    seed: { type: "bigDay" },
+  },
+];
+
 export default function LogScreen() {
   const insets = useSafeAreaInsets();
   const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike, trainingPlan } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [addModalSeed, setAddModalSeed] = useState<TrainingSeed | undefined>();
   const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
 
-  function handlePickerSelect(seed: TrainingSeed) {
+  function openExercise(seed: TrainingSeed) {
     setAddModalSeed(seed);
     setModalOpen(true);
   }
@@ -413,26 +455,26 @@ export default function LogScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Log Training Session */}
+        {/* Exercise picker */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
-          <TouchableOpacity
-            onPress={() => setPickerOpen(true)}
-            activeOpacity={0.85}
-            style={styles.logTrainingBtn}
-          >
-            <View style={styles.logTrainingLeft}>
-              <View style={styles.logTrainingIconBox}>
-                <Activity size={20} color={T.blue} />
+          <Text style={styles.exerciseHeading}>Log a Session</Text>
+          {EXERCISE_CHOICES.map((ex, i) => (
+            <TouchableOpacity
+              key={ex.label}
+              onPress={() => openExercise(ex.seed)}
+              activeOpacity={0.8}
+              style={styles.exerciseRow}
+            >
+              <View style={[styles.exerciseIconBox, { backgroundColor: ex.color + "18" }]}>
+                {(() => { const EIcon = ex.icon; return <EIcon size={20} color={ex.color} />; })()}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.logTrainingTitle}>Log Training Session</Text>
-                <Text style={styles.logTrainingSub} numberOfLines={1}>Treadmill, stepper, hill repeats &amp; more</Text>
+                <Text style={styles.exerciseLabel}>{ex.label}</Text>
+                <Text style={styles.exerciseSub}>{ex.sub}</Text>
               </View>
-            </View>
-            <View style={styles.logTrainingArrow}>
-              <ChevronRight size={16} color={T.blue} />
-            </View>
-          </TouchableOpacity>
+              <ChevronRight size={16} color={T.textDim} />
+            </TouchableOpacity>
+          ))}
         </Animated.View>
 
         {allItems.length === 0 ? (
@@ -474,12 +516,6 @@ export default function LogScreen() {
         visible={modalOpen}
         onClose={() => { setModalOpen(false); setAddModalSeed(undefined); }}
         seed={addModalSeed}
-      />
-      <TrainingSessionPickerModal
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        trainingPlan={trainingPlan}
-        onSelect={handlePickerSelect}
       />
       {selectedHike && <HikeDetailSheet hike={selectedHike} onClose={() => setSelectedHike(null)} />}
     </LinearGradient>
@@ -528,23 +564,20 @@ const styles = StyleSheet.create({
   startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
   startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
 
-  logTrainingBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    borderRadius: 16,
-    backgroundColor: T.blue + "14",
-    borderWidth: 1, borderColor: T.blue + "40",
-    paddingVertical: 14, paddingHorizontal: 16,
-    marginBottom: 16,
+  exerciseHeading: {
+    fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted,
+    letterSpacing: 0.5, marginBottom: 10, marginTop: 4,
   },
-  logTrainingLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
-  logTrainingIconBox: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: T.blue + "20",
-    alignItems: "center", justifyContent: "center",
+  exerciseRow: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 14, paddingHorizontal: 14,
+    marginBottom: 10,
   },
-  logTrainingTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
-  logTrainingSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  logTrainingArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: T.blue + "20", alignItems: "center", justifyContent: "center" },
+  exerciseIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  exerciseLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.white },
+  exerciseSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
 
   pickerCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
