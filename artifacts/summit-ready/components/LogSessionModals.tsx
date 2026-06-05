@@ -581,39 +581,29 @@ export function TrainingSessionPickerModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={[
-            ms.modalScroll,
-            { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: Math.max(48, insets.bottom + 24) },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={ms.modalHeader}>
-            <View>
-              <Text style={ms.modalTitle}>Log Training Session</Text>
-              {currentWeek && (
-                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 }}>
-                  Week {currentWeek.weekNumber + 1} · {currentWeek.phase}
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity onPress={onClose} style={ms.closeBtn}>
-              <X size={18} color={T.white} />
-            </TouchableOpacity>
-          </View>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <TouchableOpacity style={ms.sheetBackdrop} activeOpacity={1} onPress={onClose} />
+      <View style={[ms.sheet, { paddingBottom: Math.max(24, insets.bottom + 8) }]}>
+        {/* Handle */}
+        <View style={ms.sheetHandle} />
 
-          {sessions.length === 0 ? (
-            <View style={{ alignItems: "center", paddingTop: 40, gap: 12 }}>
-              <Activity size={36} color={T.textMuted} />
-              <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center" }}>
-                No plan sessions this week
-              </Text>
-            </View>
-          ) : (
+        {/* Title */}
+        <View style={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 18 }}>
+          <Text style={ms.sheetTitle}>Log Training Session</Text>
+          {currentWeek && (
+            <Text style={ms.sheetSub}>
+              Week {currentWeek.weekNumber + 1} · {currentWeek.phase}
+            </Text>
+          )}
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 0 }}
+        >
+          {sessions.length > 0 && (
             <>
-              <Text style={[ms.fLabel, { marginTop: 4 }]}>THIS WEEK'S EXERCISES</Text>
+              <Text style={[ms.fLabel, { marginHorizontal: 6, marginBottom: 10 }]}>THIS WEEK'S EXERCISES</Text>
               {sessions.map((s, i) => {
                 const { Icon, color } = iconFor(s);
                 return (
@@ -653,10 +643,10 @@ export function TrainingSessionPickerModal({
                   </TouchableOpacity>
                 );
               })}
+              <Text style={[ms.fLabel, { marginHorizontal: 6, marginTop: 16, marginBottom: 10 }]}>OR</Text>
             </>
           )}
 
-          <Text style={[ms.fLabel, { marginTop: 24 }]}>OR</Text>
           <TouchableOpacity
             style={[ms.pickerCard, { borderColor: T.border }]}
             activeOpacity={0.8}
@@ -669,7 +659,12 @@ export function TrainingSessionPickerModal({
             <ChevronRight size={16} color={T.textDim} />
           </TouchableOpacity>
         </ScrollView>
-      </LinearGradient>
+
+        {/* Cancel */}
+        <TouchableOpacity style={ms.sheetCancel} activeOpacity={0.7} onPress={onClose}>
+          <Text style={ms.sheetCancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
@@ -704,6 +699,29 @@ const ms = StyleSheet.create({
   saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
   autoCalcRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, paddingHorizontal: 2 },
   autoCalcText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange },
+  sheetBackdrop: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sheet: {
+    backgroundColor: "#14181F",
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingTop: 12,
+    maxHeight: "85%",
+  },
+  sheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignSelf: "center", marginBottom: 14,
+  },
+  sheetTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
+  sheetSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 },
+  sheetCancel: {
+    marginHorizontal: 16, marginTop: 12,
+    height: 52, borderRadius: 16,
+    backgroundColor: T.surface,
+    alignItems: "center", justifyContent: "center",
+  },
+  sheetCancelText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   pickerCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: T.card, borderRadius: 16,
