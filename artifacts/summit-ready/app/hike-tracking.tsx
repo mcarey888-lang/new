@@ -41,6 +41,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
+import type { PlanSession } from "@/context/AppContext";
 import type { TrailBenefit } from "@/constants/trailData";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -183,6 +184,7 @@ export default function HikeTrackingScreen() {
   const [permDenied, setPermDenied]       = useState(false);
   const [saving, setSaving]               = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [confirmLeave, setConfirmLeave]   = useState(false);
   const [drawerOpen, setDrawerOpen]       = useState(true);
 
@@ -553,9 +555,9 @@ export default function HikeTrackingScreen() {
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
       });
 
-      // 2 ── In training mode, also log to the plan session log
-      if (appMode !== "explore") {
-        const currentWeek = trainingPlan?.findIndex(w => !w.sessions?.every((s: any) => s.completed)) ?? 0;
+      // 2 ── Optionally log to the plan session log
+      if (addToPlan && trainingPlan && trainingPlan.length > 0) {
+        const currentWeek = trainingPlan.findIndex(w => !w.sessions?.every((ps: PlanSession) => ps.label === "")) ?? 0;
         await addSession({
           date: new Date().toISOString(),
           type: "cardio",
@@ -597,7 +599,7 @@ export default function HikeTrackingScreen() {
     } catch {
       setSaving(false);
     }
-  }, [appMode, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike]);
+  }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
@@ -662,6 +664,28 @@ export default function HikeTrackingScreen() {
                 <Text style={s.summaryCellLabel}>Final Alt</Text>
               </View>
             </View>
+
+            {trainingPlan && trainingPlan.length > 0 && (
+              <TouchableOpacity
+                style={s.planToggle}
+                onPress={() => setAddToPlan(v => !v)}
+                activeOpacity={0.8}
+              >
+                <View style={[s.planToggleCheck, addToPlan && s.planToggleCheckOn]}>
+                  {addToPlan && <CheckCircle size={13} color="#fff" />}
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={s.planToggleTitle}>Add to training plan</Text>
+                  <Text style={s.planToggleSub}>
+                    {(() => {
+                      const wi = trainingPlan.findIndex(w => w.isCurrentWeek);
+                      const wn = wi >= 0 ? wi : 0;
+                      return `Log as a session for Week ${wn + 1}`;
+                    })()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
@@ -1104,6 +1128,23 @@ const s = StyleSheet.create({
   },
   summaryCellValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
   summaryCellLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+
+  planToggle: {
+    flexDirection: "row", alignItems: "center", gap: 14, width: "100%",
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    paddingHorizontal: 18, paddingVertical: 14,
+  },
+  planToggleCheck: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: "rgba(255,255,255,0.25)",
+    alignItems: "center", justifyContent: "center",
+  },
+  planToggleCheckOn: {
+    backgroundColor: T.green, borderColor: T.green,
+  },
+  planToggleTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  planToggleSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   saveBtn: { width: "100%", borderRadius: 18, overflow: "hidden", marginTop: 8 },
   saveBtnGrad: {
