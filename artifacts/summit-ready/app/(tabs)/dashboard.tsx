@@ -931,7 +931,7 @@ export default function DashboardScreen() {
               <Text style={styles.statsTileLabel}>Hills Done</Text>
             </TouchableOpacity>
             <View style={styles.statsTileDivider} />
-            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/(tabs)/plan")} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.statsTile} onPress={() => router.push("/sessions")} activeOpacity={0.7}>
               <View style={[styles.statsTileIcon, { backgroundColor: T.blue + "20" }]}>
                 <CheckCircle size={13} color={T.blue} />
               </View>
