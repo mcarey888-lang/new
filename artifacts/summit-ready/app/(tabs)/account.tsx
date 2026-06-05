@@ -1,4 +1,4 @@
-import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine } from "lucide-react-native";
+import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -360,6 +360,16 @@ export default function AccountScreen() {
               <Text style={styles.statLbl}>Plan sessions total</Text>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.viewSessionsBtn}
+            onPress={() => router.push("/sessions")}
+            activeOpacity={0.8}
+          >
+            <Activity size={15} color={T.textMuted} />
+            <Text style={styles.viewSessionsBtnText}>View all sessions</Text>
+            <ChevronRight size={15} color={T.textMuted} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+
           {summitGoal && (
             <View style={styles.goalPill}>
               <Flag size={13} color={T.green} />
@@ -818,6 +828,15 @@ const styles = StyleSheet.create({
   },
   statVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
   statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  viewSessionsBtn: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: T.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    marginTop: 10,
+  },
+  viewSessionsBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+
   goalPill: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: T.card, borderRadius: 14,
