@@ -44,15 +44,6 @@ export const SESSION_TYPES: {
   { value: "bigDay",  label: "Big Day",       icon: Flag,      color: T.orange },
 ];
 
-export const EXERCISE_META: Record<
-  string,
-  { icon: LucideIcon; color: string; sub?: "treadmill" | "stepper" | "outdoor" }
-> = {
-  treadmill: { icon: TrendingUp, color: T.green,  sub: "treadmill" },
-  stepper:   { icon: Activity,   color: T.blue,   sub: "stepper"   },
-  outdoor:   { icon: Map,        color: T.orange, sub: "outdoor"   },
-};
-
 // ── Effort picker ─────────────────────────────────────────────────────────────
 
 export function EffortPicker({
@@ -544,131 +535,6 @@ export function AddSessionModal({
   );
 }
 
-// ── Training session picker modal ─────────────────────────────────────────────
-
-export function TrainingSessionPickerModal({
-  visible,
-  onClose,
-  trainingPlan,
-  onSelect,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  trainingPlan: TrainingWeek[];
-  onSelect: (seed: TrainingSeed) => void;
-}) {
-  const insets = useSafeAreaInsets();
-  const currentWeek = trainingPlan.find(w => w.isCurrentWeek) ?? trainingPlan[0];
-  const sessions = currentWeek?.sessions ?? [];
-
-  function iconFor(s: { type: string; gymExercise?: string }): { Icon: LucideIcon; color: string } {
-    if (s.type === "cardio" && s.gymExercise && EXERCISE_META[s.gymExercise]) {
-      const m = EXERCISE_META[s.gymExercise];
-      return { Icon: m.icon, color: m.color };
-    }
-    if (s.type === "hill") return { Icon: TrendingUp, color: T.blue };
-    if (s.type === "bigDay") return { Icon: Flag, color: T.orange };
-    return { Icon: Heart, color: T.green };
-  }
-
-  function seedFor(s: (typeof sessions)[number]): TrainingSeed {
-    return {
-      type: s.type as "cardio" | "hill" | "bigDay",
-      cardioSubtype: s.gymExercise as "treadmill" | "stepper" | "outdoor" | undefined,
-      treadmillIncline: s.inclinePct,
-      label: s.label,
-    };
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <TouchableOpacity style={ms.sheetBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={[ms.sheet, { paddingBottom: Math.max(24, insets.bottom + 8) }]}>
-        {/* Handle */}
-        <View style={ms.sheetHandle} />
-
-        {/* Title */}
-        <View style={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 18 }}>
-          <Text style={ms.sheetTitle}>Log Training Session</Text>
-          {currentWeek && (
-            <Text style={ms.sheetSub}>
-              Week {currentWeek.weekNumber + 1} · {currentWeek.phase}
-            </Text>
-          )}
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 0 }}
-        >
-          {sessions.length > 0 && (
-            <>
-              <Text style={[ms.fLabel, { marginHorizontal: 6, marginBottom: 10 }]}>THIS WEEK'S EXERCISES</Text>
-              {sessions.map((s, i) => {
-                const { Icon, color } = iconFor(s);
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    style={ms.pickerCard}
-                    activeOpacity={0.8}
-                    onPress={() => { onClose(); onSelect(seedFor(s)); }}
-                  >
-                    <View style={[ms.pickerIconWrap, { backgroundColor: color + "18" }]}>
-                      <Icon size={18} color={color} />
-                    </View>
-                    <View style={{ flex: 1, gap: 3 }}>
-                      <Text style={ms.pickerCardTitle}>{s.label}</Text>
-                      <View style={{ flexDirection: "row", gap: 10 }}>
-                        {!!s.targetElevation && (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <TrendingUp size={11} color={T.orange} />
-                            <Text style={ms.pickerCardMeta}>{s.targetElevation}m target</Text>
-                          </View>
-                        )}
-                        {!!s.duration && (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <Clock size={11} color={T.textMuted} />
-                            <Text style={ms.pickerCardMeta}>{s.duration}</Text>
-                          </View>
-                        )}
-                        {!!s.inclinePct && (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <TrendingUp size={11} color={T.green} />
-                            <Text style={ms.pickerCardMeta}>{s.inclinePct}% incline</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    <ChevronRight size={16} color={T.textDim} />
-                  </TouchableOpacity>
-                );
-              })}
-              <Text style={[ms.fLabel, { marginHorizontal: 6, marginTop: 16, marginBottom: 10 }]}>OR</Text>
-            </>
-          )}
-
-          <TouchableOpacity
-            style={[ms.pickerCard, { borderColor: T.border }]}
-            activeOpacity={0.8}
-            onPress={() => { onClose(); onSelect({ type: "cardio", cardioSubtype: "outdoor" }); }}
-          >
-            <View style={[ms.pickerIconWrap, { backgroundColor: T.surface }]}>
-              <Plus size={18} color={T.textMuted} />
-            </View>
-            <Text style={[ms.pickerCardTitle, { color: T.textMuted }]}>Log a custom session</Text>
-            <ChevronRight size={16} color={T.textDim} />
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Cancel */}
-        <TouchableOpacity style={ms.sheetCancel} activeOpacity={0.7} onPress={onClose}>
-          <Text style={ms.sheetCancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
-}
-
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const ms = StyleSheet.create({
@@ -699,38 +565,6 @@ const ms = StyleSheet.create({
   saveBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
   autoCalcRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, paddingHorizontal: 2 },
   autoCalcText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange },
-  sheetBackdrop: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  sheet: {
-    backgroundColor: "#14181F",
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingTop: 12,
-    maxHeight: "85%",
-  },
-  sheetHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignSelf: "center", marginBottom: 14,
-  },
-  sheetTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
-  sheetSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3 },
-  sheetCancel: {
-    marginHorizontal: 16, marginTop: 12,
-    height: 52, borderRadius: 16,
-    backgroundColor: T.surface,
-    alignItems: "center", justifyContent: "center",
-  },
-  sheetCancelText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  pickerCard: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: T.card, borderRadius: 16,
-    borderWidth: 1, borderColor: T.cardBorder,
-    paddingVertical: 14, paddingHorizontal: 14, marginBottom: 10,
-  },
-  pickerIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  pickerCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
-  pickerCardMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   hillSearchWrap: {
     flexDirection: "row", alignItems: "center", backgroundColor: T.surface,
     borderRadius: 14, borderWidth: 1, borderColor: T.blue + "40", height: 50, gap: 8,

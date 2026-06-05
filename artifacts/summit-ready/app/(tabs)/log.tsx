@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, TrendingUp, Flag, X, Search, Minus, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
+import { Heart, TrendingUp, Flag, X, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { router } from "expo-router";
 import {
   Dimensions,
@@ -19,7 +19,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Session, ExploreHike, NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
+import { Session, ExploreHike, TrainingWeek, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import {
   TrainingSeed,
@@ -579,16 +579,6 @@ const styles = StyleSheet.create({
   exerciseLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.white },
   exerciseSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
 
-  pickerCard: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: T.card, borderRadius: 16,
-    borderWidth: 1, borderColor: T.cardBorder,
-    paddingVertical: 14, paddingHorizontal: 14,
-    marginBottom: 10,
-  },
-  pickerIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  pickerCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
-  pickerCardMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   sessionCard: {
     backgroundColor: T.card,
     borderRadius: 18,
