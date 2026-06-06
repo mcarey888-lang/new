@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X } from "lucide-react-native";
 import { BlurView } from "expo-blur";
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -32,7 +33,7 @@ import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 
-const MASCOT = require("@/assets/mascot.webp");
+const MASCOT = require("@/assets/mascot.gif");
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -148,7 +149,7 @@ function HeroContent({
     <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
       {/* logo centred, buttons pinned right */}
       <View style={heroStyles.topRow}>
-        <Image source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} resizeMode="contain" />
+        <ExpoImage source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} contentFit="contain" />
         <View style={heroStyles.headerButtons}>
           {hasViewedPlan && (
             <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
@@ -236,13 +237,13 @@ const heroStyles = StyleSheet.create({
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
 function AlpineGuide({ tone: _tone, flush }: { tone?: "positive" | "warning" | "neutral"; flush?: boolean }) {
   return (
-    <Image
+    <ExpoImage
       source={MASCOT}
       style={[
         { width: 72, height: 72 },
         flush && { marginLeft: -16, marginTop: -16, marginBottom: -16 },
       ]}
-      resizeMode="cover"
+      contentFit="cover"
     />
   );
 }
