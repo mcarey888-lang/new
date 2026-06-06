@@ -1,3 +1,5 @@
 - [Clerk Expo Auth](clerk-expo-auth.md) — Clerk Phase 1 implemented; key patterns and gotchas for future phases.
 - [Theme constants](theme-constants.md) — T.surface, T.border, T.textMuted, T.textDim, T.bgGrad, T.greenDim all exist; useColors.ts TS2352 is a pre-existing harmless error, always ignore.
 - [Clerk v3 finalize navigation](clerk-v3-finalize.md) — In Expo web, decorateUrl returns an absolute URL Expo Router can't handle; call finalize() with no args, then router.replace("/") manually.
+- [Clerk key missing from EAS builds](clerk-eas-build-key.md) — EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be in eas.json env for all build profiles or app crashes on launch instantly.
+- [Android MergeJavaResWorkAction fix](android-merge-java-res.md) — Two conflicts fixed: async-storage version clash (pnpm override to 2.2.0) + META-INF MANIFEST.MF clash (expo-build-properties packagingOptions.pickFirst).
