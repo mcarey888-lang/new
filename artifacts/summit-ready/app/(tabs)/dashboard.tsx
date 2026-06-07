@@ -28,7 +28,7 @@ import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { ProgressRing } from "@/components/ProgressRing";
 import { AchievementToast } from "@/components/AchievementToast";
-import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
+import { getDaysRemaining, getWeeklyCompletion, isRequirementMet, getPeakExperienceState } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
@@ -428,7 +428,7 @@ function AlpineCard({
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -736,10 +736,13 @@ export default function DashboardScreen() {
   const totalDone = sessions.filter(s => s.completed).length;
   const hillsDone = sessions.filter(s => s.completed && s.type === "hill").length;
 
-  const trackingMsg =
-    readinessScore >= 70 ? "You are on track" :
-    readinessScore >= 40 ? "Keep building fitness" :
-    "Behind — prioritise training";
+  const peakState = getPeakExperienceState(summitGoal, completedGoals);
+
+  const trackingMsg = peakState.superseded
+    ? `Proven on ${peakState.mountain}`
+    : readinessScore >= 70 ? "You are on track"
+    : readinessScore >= 40 ? "Keep building fitness"
+    : "Behind — prioritise training";
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -883,6 +886,12 @@ export default function DashboardScreen() {
                       <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
                     </View>
                     <Text style={styles.trackingMsg}>{trackingMsg}</Text>
+                    {peakState.superseded && (
+                      <View style={styles.provenBadge}>
+                        <Trophy size={11} color={T.green} />
+                        <Text style={styles.provenBadgeText}>Been there, done harder</Text>
+                      </View>
+                    )}
                     <Text style={styles.daysText}>
                       {days > 0 ? `${days} days until summit` : "Summit day!"}
                     </Text>
@@ -1411,6 +1420,8 @@ const styles = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
   trackingMsg: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white, lineHeight: 18 },
+  provenBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(62,207,117,0.13)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 },
+  provenBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green, letterSpacing: 0.2 },
   daysText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   difficultyRow: { flexDirection: "row", gap: 6, marginTop: 2 },
   diffPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },

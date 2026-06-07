@@ -1,4 +1,35 @@
-import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement } from "@/context/AppContext";
+import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, CompletedGoal } from "@/context/AppContext";
+
+const DIFFICULTY_RANK: Record<string, number> = {
+  Easy: 1, Moderate: 2, Hard: 3, Alpine: 4,
+};
+
+/**
+ * Returns whether the user's completed goal history supersedes the current
+ * goal (both harder + more elevation) or at least partially qualifies (either).
+ * Used to apply a readiness floor or full override in calculateReadiness.
+ */
+export function getPeakExperienceState(
+  goal: SummitGoal,
+  completedGoals: CompletedGoal[],
+): { superseded: boolean; floor: boolean; mountain: string } {
+  if (!completedGoals.length) return { superseded: false, floor: false, mountain: "" };
+  const goalRank = DIFFICULTY_RANK[goal.difficulty] ?? 2;
+
+  for (const cg of completedGoals) {
+    const cgRank = DIFFICULTY_RANK[cg.difficulty] ?? 2;
+    if (cgRank >= goalRank && cg.elevationGain >= goal.elevationGain) {
+      return { superseded: true, floor: false, mountain: cg.mountainName };
+    }
+  }
+  for (const cg of completedGoals) {
+    const cgRank = DIFFICULTY_RANK[cg.difficulty] ?? 2;
+    if (cgRank >= goalRank || cg.elevationGain >= goal.elevationGain) {
+      return { superseded: false, floor: true, mountain: cg.mountainName };
+    }
+  }
+  return { superseded: false, floor: false, mountain: "" };
+}
 
 // Maximum achievable score based on actual logged sessions and difficulty.
 // The cap prevents zero-session gaming but must not punish genuine plan completion.
@@ -58,6 +89,7 @@ export function calculateReadiness(
     virtualSessionCount?: number;
     sessionReps?: Record<string, number>;
     assignedHills?: Record<string, NearbyHill>;
+    completedGoals?: CompletedGoal[];
   }
 ): number {
   if (!goal || plan.length === 0) return 0;
@@ -212,7 +244,15 @@ export function calculateReadiness(
   const bonus = capBonus[goal.difficulty] ?? 14;
   const baseCap = sessionCap(completed.length, goal.difficulty);
   const cap = baseline > 0 ? Math.max(baseCap, Math.min(baseline + bonus, 95)) : baseCap;
-  return Math.min(cap, raw);
+  const capped = Math.min(cap, raw);
+
+  // ── Peak experience: completed goals that supersede or compare to this goal ─
+  if (opts?.completedGoals?.length) {
+    const peak = getPeakExperienceState(goal, opts.completedGoals);
+    if (peak.superseded) return Math.max(capped, 95);
+    if (peak.floor)      return Math.max(capped, 85);
+  }
+  return capped;
 }
 
 export function getReadinessStatus(score: number): {
