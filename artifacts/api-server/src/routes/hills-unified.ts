@@ -296,9 +296,12 @@ async function applyTerrainElevation(hill: Hill): Promise<Hill> {
 
   const verifiedGain = Math.round(summitElev - trailElev);
 
-  // Sanity checks — discard obviously wrong results
+  // Sanity checks — discard obviously wrong results.
+  // Lower bound (< 25% of AI estimate): topo coords were probably wrong/misplaced.
+  // Upper bound (> 4× AI estimate): topo point is wildly off or AI gave summit altitude.
   if (verifiedGain <= 0) return hill;
-  if (verifiedGain > hill.elevation * 4) return hill; // topo point wildly off
+  if (verifiedGain < hill.elevation * 0.25) return hill; // topo coords misplaced — keep AI value
+  if (verifiedGain > hill.elevation * 4) return hill;    // topo wildly off — keep AI value
 
   const grade = gradeFromGain(verifiedGain);
   return {
@@ -347,7 +350,7 @@ async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
     const trailElev = elevations[ti] ?? null;
     if (summitElev === null || trailElev === null) return hill;
     const verifiedGain = Math.round(summitElev - trailElev);
-    if (verifiedGain <= 0 || verifiedGain > hill.elevation * 4) return hill;
+    if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.25 || verifiedGain > hill.elevation * 4) return hill;
     const grade = gradeFromGain(verifiedGain);
     return {
       ...hill,

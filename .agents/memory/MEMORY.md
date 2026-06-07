@@ -1,3 +1,4 @@
+- [Topo elevation sanity check bounds](topo-elevation-sanity.md) — lower bound (< 0.25× AI) must exist alongside upper bound or misplaced coords produce tiny gains that slip through.
 - [Clerk Expo Auth](clerk-expo-auth.md) — Clerk Phase 1 implemented; key patterns and gotchas for future phases.
 - [Theme constants](theme-constants.md) — T.surface, T.border, T.textMuted, T.textDim, T.bgGrad, T.greenDim all exist; useColors.ts TS2352 is a pre-existing harmless error, always ignore.
 - [Clerk v3 finalize navigation](clerk-v3-finalize.md) — In Expo web, decorateUrl returns an absolute URL Expo Router can't handle; call finalize() with no args, then router.replace("/") manually.
