@@ -184,6 +184,7 @@ export default function TrackScreen() {
 
   async function handleAddSearchResult() {
     if (!searchResult) return;
+    await addToMyHills(searchResult);
     await addToNearbyHills(searchResult);
     setSearchAdded(true);
   }
