@@ -11,6 +11,7 @@ import {
   Image,
   ImageBackground,
   Keyboard,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -450,6 +452,20 @@ export default function DashboardScreen() {
   const askInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
   const coachY = useRef(0);
+
+  const [showBaselineModal, setShowBaselineModal] = useState(false);
+
+  useEffect(() => {
+    if (!summitGoal || readinessScore >= 40) return;
+    AsyncStorage.getItem("baseline_popup_seen").then(val => {
+      if (!val) setShowBaselineModal(true);
+    });
+  }, [summitGoal, readinessScore]);
+
+  const dismissBaselineModal = async () => {
+    await AsyncStorage.setItem("baseline_popup_seen", "1");
+    setShowBaselineModal(false);
+  };
 
 
   // Mark the plan as viewed after the user has had 5 seconds to see their
@@ -1268,6 +1284,29 @@ export default function DashboardScreen() {
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
       )}
 
+      <Modal
+        visible={showBaselineModal}
+        transparent
+        animationType="fade"
+        onRequestClose={dismissBaselineModal}
+      >
+        <View style={styles.baselineOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={dismissBaselineModal} activeOpacity={1} />
+          <View style={styles.baselineSheet}>
+            <View style={styles.baselineIconWrap}>
+              <TrendingUp size={28} color={T.green} />
+            </View>
+            <Text style={styles.baselineTitle}>This is your baseline</Text>
+            <Text style={styles.baselineBody}>
+              Your starting score is built from your questionnaire — it reflects where you are right now, not where you'll be.{"\n\n"}The more training sessions you log, the more accurately it reflects your real fitness. Keep training and watch it grow.
+            </Text>
+            <TouchableOpacity onPress={dismissBaselineModal} activeOpacity={0.85} style={styles.baselineBtn}>
+              <Text style={styles.baselineBtnText}>Got it, let's go</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </LinearGradient>
   );
 }
@@ -1755,6 +1794,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: T.textMuted,
+  },
+  baselineOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "flex-end",
+  },
+  baselineSheet: {
+    backgroundColor: T.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: T.border,
+    padding: 28,
+    paddingBottom: 48,
+    gap: 14,
+  },
+  baselineIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: T.greenDim,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  baselineTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+    textAlign: "center",
+  },
+  baselineBody: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    textAlign: "center",
+    lineHeight: 23,
+  },
+  baselineBtn: {
+    backgroundColor: T.green,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  baselineBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
   },
 });
 
