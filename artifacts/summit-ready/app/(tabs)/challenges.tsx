@@ -217,25 +217,25 @@ export default function ChallengesScreen() {
         {active.length === 0 && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)}>
             <TouchableOpacity
-              onPress={() => goTo(CHALLENGES[0])}
+              onPress={() => goTo(CHALLENGES.find(c => c.id === "1000m-7days")!)}
               activeOpacity={0.85}
               style={s.featured}
             >
               <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={s.featuredTop}>
                 <Text style={s.featuredEyebrow}>FEATURED CHALLENGE</Text>
-                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR["Advanced"] + "25" }]}>
-                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR["Advanced"] }]}>Advanced</Text>
+                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR["Beginner"] + "25" }]}>
+                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR["Beginner"] }]}>Beginner</Text>
                 </View>
               </View>
-              <Text style={s.featuredTitle}>Everest Elevation Challenge</Text>
+              <Text style={s.featuredTitle}>1,000m in 7 Days</Text>
               <Text style={s.featuredDesc}>
-                Gain 8,848m — the height of Everest — using your local hills. Every climb counts.
+                One week. One thousand metres. Build the habit of getting out consistently.
               </Text>
               <View style={s.featuredMeta}>
-                <Text style={s.featuredMetaText}>8,848m elevation gain</Text>
+                <Text style={s.featuredMetaText}>1,000m elevation gain</Text>
                 <Text style={s.featuredMetaDot}>·</Text>
-                <Text style={s.featuredMetaText}>Flexible timeline</Text>
+                <Text style={s.featuredMetaText}>7 days</Text>
               </View>
               <View style={s.startBtn}>
                 <Zap size={13} color={T.bg} />
