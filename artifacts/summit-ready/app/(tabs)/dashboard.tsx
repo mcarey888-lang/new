@@ -164,7 +164,12 @@ function HeroContent({
       {/* name + date — bottom of hero */}
       <View style={heroStyles.bottomText}>
         <Text style={heroStyles.trainingFor}>Training for</Text>
-        <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
+        <View style={heroStyles.mountainNameRow}>
+          <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
+          <TouchableOpacity onPress={() => router.push("/setup?mode=change")} style={heroStyles.namePencil} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Pencil size={13} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        </View>
         {dateStr ? <Text style={heroStyles.summitDate}>🗓 {dateStr}</Text> : null}
         <View style={heroStyles.statChips}>
           <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>▲ {elevationGain}m</Text></View>
@@ -213,6 +218,8 @@ const heroStyles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   bottomText: { gap: 4 },
+  mountainNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  namePencil: { marginTop: 2, opacity: 0.85 },
   statChips: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
   statChip: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   statChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.85)", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
