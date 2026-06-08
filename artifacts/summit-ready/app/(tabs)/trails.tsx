@@ -2,8 +2,9 @@ import {
   Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Filter, ChevronDown, Activity,
+  Footprints, ChevronRight, Filter, ChevronDown, Activity, Flag,
 } from "lucide-react-native";
+import { LogHillModal } from "@/components/LogSessionModals";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -86,6 +87,8 @@ export default function TrackScreen() {
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const searchCardY = useRef<number>(0);
+
+  const [logHillOpen, setLogHillOpen] = useState(false);
 
   const [searchText, setSearchText] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
