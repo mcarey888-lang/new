@@ -49,6 +49,7 @@ export function SiteNav() {
           <Link to="/training-guides" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/training-guides") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Training Guides</Link>
           <Link to="/can-i-climb" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/can-i-climb") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Can I Climb?</Link>
           <Link to="/mountains" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/mountains") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Mountains</Link>
+          <Link to="/readiness-check" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/readiness-check") ? "border-primary/50 text-primary bg-primary/10" : "border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"}`}>Readiness Check</Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -87,6 +88,7 @@ export function SiteNav() {
             <Link to="/training-guides" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Training Guides</Link>
             <Link to="/can-i-climb" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Can I Climb?</Link>
             <Link to="/mountains" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Mountains</Link>
+            <Link to="/readiness-check" className="py-3 text-primary font-semibold border-b border-border">Readiness Check</Link>
             <div className="pt-4">
               <a href={ctaHref} className="block">
                 <Button className="w-full bg-primary text-primary-foreground font-semibold rounded-full">

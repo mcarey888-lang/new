@@ -195,6 +195,20 @@ export default function MontBlancCIC() {
               </div>
             </section>
 
+            {/* Readiness assessment inline CTA */}
+            <section className="mb-8 bg-white/3 border border-white/8 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
+              <div className="flex-1">
+                <div className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Free Assessment</div>
+                <h3 className="font-bold text-white mb-1">Check your personal readiness score</h3>
+                <p className="text-sm text-muted-foreground">Answer 17 questions and get an instant result — including what to focus on and how long you need to prepare for Mont Blanc.</p>
+              </div>
+              <Link to="/readiness-check?mountain=mont-blanc" className="shrink-0">
+                <Button size="sm" className="rounded-full bg-primary/15 text-primary hover:bg-primary/25 border border-primary/25 transition-all text-xs whitespace-nowrap font-semibold">
+                  Take the assessment →
+                </Button>
+              </Link>
+            </section>
+
             {/* CTA */}
             <section className="bg-primary/8 border border-primary/25 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-display font-bold text-white mb-3">Ready to build your plan?</h2>

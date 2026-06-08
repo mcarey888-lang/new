@@ -20,6 +20,7 @@ const MOUNTAINS = [
     available: true,
     trainingHref: "/training-guides/mont-blanc-training-plan",
     cic: "/can-i-climb/mont-blanc",
+    readinessHref: "/readiness-check?mountain=mont-blanc",
   },
   {
     name: "Kilimanjaro",
@@ -35,6 +36,7 @@ const MOUNTAINS = [
     available: true,
     trainingHref: "/training-guides/kilimanjaro-training-plan",
     cic: "/can-i-climb/kilimanjaro",
+    readinessHref: "/readiness-check?mountain=kilimanjaro",
   },
   {
     name: "Matterhorn",
@@ -50,6 +52,7 @@ const MOUNTAINS = [
     available: true,
     trainingHref: "/training-guides/matterhorn-preparation-guide",
     cic: null,
+    readinessHref: "/readiness-check?mountain=matterhorn",
   },
   {
     name: "Gran Paradiso",
@@ -65,6 +68,7 @@ const MOUNTAINS = [
     available: false,
     trainingHref: null,
     cic: null,
+    readinessHref: null,
   },
   {
     name: "Everest Base Camp",
@@ -80,6 +84,7 @@ const MOUNTAINS = [
     available: false,
     trainingHref: null,
     cic: null,
+    readinessHref: null,
   },
   {
     name: "Breithorn",
@@ -95,6 +100,7 @@ const MOUNTAINS = [
     available: false,
     trainingHref: null,
     cic: null,
+    readinessHref: null,
   },
 ];
 
@@ -187,6 +193,13 @@ export default function Mountains() {
                           <Link to={m.trainingHref}>
                             <Button size="sm" className="rounded-full bg-primary/15 text-primary hover:bg-primary/25 border border-primary/25 transition-all text-xs">
                               Training plan
+                            </Button>
+                          </Link>
+                        )}
+                        {m.readinessHref && (
+                          <Link to={m.readinessHref}>
+                            <Button size="sm" className="rounded-full bg-white/5 text-white/60 hover:bg-primary/10 hover:text-primary border border-white/10 hover:border-primary/25 transition-all text-xs">
+                              Am I ready?
                             </Button>
                           </Link>
                         )}

@@ -149,6 +149,10 @@ export default function MatterhornMtn() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Mont Blanc Training Plan — Complete this before the Matterhorn
                 </Link>
+                <Link to="/readiness-check?mountain=matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Am I Ready for the Matterhorn? — Personalised readiness assessment
+                </Link>
               </div>
             </section>
 

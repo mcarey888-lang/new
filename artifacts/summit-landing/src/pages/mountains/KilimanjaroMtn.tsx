@@ -126,6 +126,10 @@ export default function KilimanjaroMtn() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Can I Climb Kilimanjaro? — Honest fitness assessment
                 </Link>
+                <Link to="/readiness-check?mountain=kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Am I Ready for Kilimanjaro? — Personalised readiness assessment
+                </Link>
               </div>
             </section>
 

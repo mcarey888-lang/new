@@ -123,6 +123,25 @@ export default function CanIClimb() {
           </div>
         </section>
 
+        {/* Readiness Assessment Banner */}
+        <section className="py-8 border-b border-white/5">
+          <div className="container mx-auto px-6 max-w-6xl">
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
+              <div className="flex-1">
+                <div className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Free Assessment</div>
+                <h3 className="font-bold text-white mb-1">Not sure which mountain fits your current level?</h3>
+                <p className="text-sm text-muted-foreground">Answer 17 questions and get a personalised readiness score — calibrated to your chosen mountain's specific demands.</p>
+              </div>
+              <Link to="/readiness-check" className="shrink-0">
+                <Button className="rounded-full bg-primary/15 text-primary hover:bg-primary/25 border border-primary/25 transition-all text-sm whitespace-nowrap font-semibold">
+                  Take the assessment
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Mountain cards */}
         <section className="py-16 md:py-24">
           <div className="container mx-auto px-6 max-w-6xl">
