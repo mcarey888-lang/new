@@ -143,3 +143,9 @@ id = "nSt4T2x6KcSuo-OBWzn-E"
 uri = "file://artifacts/summit-ready/assets/sounds/challenge_complete.mp3"
 type = "audio"
 title = "challenge_complete"
+
+[[outputs]]
+id = "kNwSBBIKn5--S3yE4EZoC"
+uri = "file://.local/exports/summitready-seo-audit.md"
+type = "text"
+title = "SummitReady SEO & Content Audit"
