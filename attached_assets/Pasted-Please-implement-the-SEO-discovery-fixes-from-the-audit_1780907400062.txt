@@ -1,0 +1,87 @@
+Please implement the SEO discovery fixes from the audit.
+
+Do not create new content pages yet.
+
+Tasks:
+
+1. Fix all broken internal links:
+
+* In Mountains.tsx:
+
+  * Gran Paradiso should not link to /mountains/mont-blanc
+  * Everest Base Camp should not link to /mountains/mont-blanc
+  * Breithorn should not link to /mountains/mont-blanc
+* In CanIClimb.tsx:
+
+  * Everest Base Camp should link to /can-i-climb/everest-base-camp
+  * Gran Paradiso should link to /can-i-climb/gran-paradiso
+  * Matterhorn should link to /can-i-climb/matterhorn
+
+2. Update sitemap.xml:
+   Include every public route, not just the homepage.
+
+Include:
+/
+/privacy
+/terms
+/training-guides
+/training-guides/mont-blanc-training-plan
+/training-guides/kilimanjaro-training-plan
+/training-guides/matterhorn-preparation-guide
+/training-guides/everest-base-camp-training-plan
+/training-guides/gran-paradiso-training-plan
+/training-guides/6-week-hiking-training-plan
+/training-guides/beginner-mountain-fitness-plan
+/can-i-climb
+/can-i-climb/kilimanjaro
+/can-i-climb/mont-blanc
+/can-i-climb/matterhorn
+/can-i-climb/gran-paradiso
+/can-i-climb/everest-base-camp
+/mountains
+/mountains/kilimanjaro
+/mountains/mont-blanc
+/mountains/matterhorn
+
+Do not include /screenshot-helper.
+
+3. Check robots.txt:
+   Make sure it allows crawling and points to:
+   https://summitready.uk/sitemap.xml
+
+4. Add cross-links:
+   On each mountain-related page, add links between:
+
+* The mountain profile page
+* The training guide page
+* The “Can I Climb?” readiness page
+
+Example:
+Kilimanjaro profile should link to:
+
+* /training-guides/kilimanjaro-training-plan
+* /can-i-climb/kilimanjaro
+
+Kilimanjaro training guide should link to:
+
+* /mountains/kilimanjaro
+* /can-i-climb/kilimanjaro
+
+Kilimanjaro “Can I Climb?” page should link to:
+
+* /mountains/kilimanjaro
+* /training-guides/kilimanjaro-training-plan
+
+5. Add missing schema:
+   Add suitable schema.org markup to:
+
+* /mountains
+* all /mountains/* pages
+
+Use safe, general structured data such as CollectionPage for /mountains and Place or TouristAttraction schema for individual mountain pages.
+
+6. After changes:
+   Report exactly which files were changed.
+   Report all sitemap URLs included.
+   Confirm there are no broken internal links.
+   Do not create Ben Nevis, Snowdon or new local-hill pages yet. We will do those after the discovery fixes are complete.

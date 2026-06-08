@@ -10,6 +10,16 @@ export default function KilimanjaroMtn() {
     title: "Kilimanjaro — Mountain Profile | Routes, Conditions & Training | SummitReady",
     description: "Everything you need to know about climbing Kilimanjaro: routes, best season, altitude effects, and how to train for Africa's highest peak.",
     canonical: "https://summitready.uk/mountains/kilimanjaro/",
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "TouristAttraction",
+      "name": "Kilimanjaro",
+      "description": "Africa's highest peak and one of the Seven Summits at 5,895m in Tanzania. No technical climbing required, but altitude demands serious preparation.",
+      "url": "https://summitready.uk/mountains/kilimanjaro/",
+      "geo": { "@type": "GeoCoordinates", "latitude": -3.0674, "longitude": 37.3556 },
+      "touristType": "Mountain climbing",
+      "publisher": { "@type": "Organization", "name": "SummitReady", "url": "https://summitready.uk/" },
+    },
   });
 
   return (

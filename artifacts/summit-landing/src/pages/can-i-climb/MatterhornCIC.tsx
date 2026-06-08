@@ -197,6 +197,10 @@ export default function MatterhornCIC() {
             <section className="mb-12 p-6 bg-white/3 border border-white/8 rounded-2xl">
               <h3 className="font-bold text-white mb-4">Start building toward the Matterhorn</h3>
               <div className="space-y-3">
+                <Link to="/mountains/matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Matterhorn Mountain Profile — Routes, conditions, and what to expect
+                </Link>
                 <Link to="/training-guides/matterhorn-preparation-guide" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Matterhorn Preparation Guide — Full training and skills programme

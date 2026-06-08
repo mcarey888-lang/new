@@ -319,6 +319,14 @@ export default function MontBlancPlan() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Gran Paradiso Training Plan — The ideal first 4,000m peak before Mont Blanc
                 </Link>
+                <Link to="/mountains/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Mont Blanc Mountain Profile — Routes, conditions, and logistics
+                </Link>
+                <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Can I Climb Mont Blanc? — Honest fitness assessment
+                </Link>
                 <Link to="/training-guides/kilimanjaro-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Kilimanjaro Training Plan — Africa's highest peak, 5,895m

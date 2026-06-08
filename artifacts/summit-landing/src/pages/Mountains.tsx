@@ -53,7 +53,7 @@ const MOUNTAINS = [
   },
   {
     name: "Gran Paradiso",
-    href: "/mountains/mont-blanc",
+    href: "/mountains/gran-paradiso",
     elevation: "4,061m",
     location: "Aosta Valley, Italy",
     type: "Alpine",
@@ -68,7 +68,7 @@ const MOUNTAINS = [
   },
   {
     name: "Everest Base Camp",
-    href: "/mountains/mont-blanc",
+    href: "/mountains/everest-base-camp",
     elevation: "5,364m",
     location: "Nepal",
     type: "Trek",
@@ -83,7 +83,7 @@ const MOUNTAINS = [
   },
   {
     name: "Breithorn",
-    href: "/mountains/mont-blanc",
+    href: "/mountains/breithorn",
     elevation: "4,164m",
     location: "Zermatt, Switzerland",
     type: "Alpine",
@@ -103,6 +103,14 @@ export default function Mountains() {
     title: "Mountain Profiles | Mont Blanc, Kilimanjaro, Matterhorn | SummitReady",
     description: "Detailed profiles for Mont Blanc, Kilimanjaro, the Matterhorn and more. Discover what each mountain demands and how to train for it.",
     canonical: "https://summitready.uk/mountains/",
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Mountain Profiles",
+      "description": "Detailed profiles for Mont Blanc, Kilimanjaro, the Matterhorn and more. Discover what each mountain demands and how to train for it.",
+      "url": "https://summitready.uk/mountains/",
+      "publisher": { "@type": "Organization", "name": "SummitReady", "url": "https://summitready.uk/" },
+    },
   });
 
   return (

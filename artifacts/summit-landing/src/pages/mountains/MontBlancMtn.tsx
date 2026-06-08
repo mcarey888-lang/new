@@ -10,6 +10,16 @@ export default function MontBlancMtn() {
     title: "Mont Blanc — Mountain Profile | Routes, Conditions & Training | SummitReady",
     description: "Everything you need to know about climbing Mont Blanc: routes, best seasons, difficulty, kit list, and how to train for Western Europe's highest peak.",
     canonical: "https://summitready.uk/mountains/mont-blanc/",
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "TouristAttraction",
+      "name": "Mont Blanc",
+      "description": "The highest peak in the Alps and Western Europe at 4,808m, on the border of France and Italy. A non-technical but serious and committing mountain.",
+      "url": "https://summitready.uk/mountains/mont-blanc/",
+      "geo": { "@type": "GeoCoordinates", "latitude": 45.8326, "longitude": 6.8652 },
+      "touristType": "Mountain climbing",
+      "publisher": { "@type": "Organization", "name": "SummitReady", "url": "https://summitready.uk/" },
+    },
   });
 
   return (

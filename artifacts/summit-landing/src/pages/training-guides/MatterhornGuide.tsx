@@ -252,6 +252,14 @@ export default function MatterhornGuide() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Mont Blanc Training Plan — Complete this first
                 </Link>
+                <Link to="/mountains/matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Matterhorn Mountain Profile — Routes, conditions, and what to expect
+                </Link>
+                <Link to="/can-i-climb/matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Can I Climb the Matterhorn? — Honest skills and fitness assessment
+                </Link>
                 <Link to="/training-guides/kilimanjaro-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Kilimanjaro Training Plan — Build your multi-day endurance base

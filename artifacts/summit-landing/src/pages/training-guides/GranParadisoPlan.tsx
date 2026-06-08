@@ -290,7 +290,7 @@ export default function GranParadisoPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/gran-paradiso" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Gran Paradiso? — Fitness and experience assessment
+                  Can I Climb Gran Paradiso? — Honest fitness and readiness assessment
                 </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

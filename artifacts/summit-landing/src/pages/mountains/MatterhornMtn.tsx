@@ -10,6 +10,16 @@ export default function MatterhornMtn() {
     title: "Matterhorn — Mountain Profile | Routes, Conditions & Training | SummitReady",
     description: "Everything you need to know about the Matterhorn: the Hörnli Ridge, technical requirements, best conditions, and how to prepare for the Alps' most iconic peak.",
     canonical: "https://summitready.uk/mountains/matterhorn/",
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "TouristAttraction",
+      "name": "Matterhorn",
+      "description": "The Alps' most iconic peak at 4,478m on the Swiss/Italian border, known for its pyramid silhouette and demanding Hörnli Ridge route.",
+      "url": "https://summitready.uk/mountains/matterhorn/",
+      "geo": { "@type": "GeoCoordinates", "latitude": 45.9763, "longitude": 7.6586 },
+      "touristType": "Mountain climbing",
+      "publisher": { "@type": "Organization", "name": "SummitReady", "url": "https://summitready.uk/" },
+    },
   });
 
   return (
@@ -130,6 +140,10 @@ export default function MatterhornMtn() {
                 <Link to="/training-guides/matterhorn-preparation-guide" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Matterhorn Preparation Guide — 6–12 month programme
+                </Link>
+                <Link to="/can-i-climb/matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Can I Climb the Matterhorn? — Honest skills and fitness assessment
                 </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

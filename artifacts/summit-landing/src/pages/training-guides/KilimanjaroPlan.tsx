@@ -256,6 +256,10 @@ export default function KilimanjaroPlan() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Can I Climb Kilimanjaro? — Honest fitness assessment and beginner suitability
                 </Link>
+                <Link to="/mountains/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Kilimanjaro Mountain Profile — Routes, best season, and logistics
+                </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Mont Blanc Training Plan — Western Europe's highest peak
