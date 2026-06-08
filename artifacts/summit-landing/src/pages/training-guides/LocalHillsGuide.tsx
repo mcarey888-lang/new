@@ -478,6 +478,10 @@ export default function LocalHillsGuide() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Can I Climb Mont Blanc? — What you actually need before you book
                 </Link>
+                <Link to="/training-guides/beginner-mountain-fitness-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Beginner Mountain Fitness Plan — Build the foundation before mountain training
+                </Link>
                 <Link to="/readiness-check" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Mountain Readiness Assessment — Get your personalised score
