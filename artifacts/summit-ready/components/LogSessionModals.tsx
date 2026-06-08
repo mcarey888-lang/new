@@ -306,7 +306,6 @@ export function AddSessionModal({
 }) {
   const insets = useSafeAreaInsets();
   const { addSession, trainingPlan, nearbyHills } = useApp();
-  const [type, setType] = useState<"cardio" | "hill" | "bigDay">("cardio");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [showCalendar, setShowCalendar] = useState(false);
   const [dist, setDist] = useState("");
@@ -316,9 +315,6 @@ export function AddSessionModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [selectedHill, setSelectedHill] = useState<NearbyHill | null>(null);
-  const [reps, setReps] = useState(3);
-
   const [cardioSubtype, setCardioSubtype] = useState<"treadmill" | "stepper" | "outdoor">("outdoor");
   const [treadmillKmNum, setTreadmillKmNum] = useState(3.0);
   const [treadmillIncline, setTreadmillIncline] = useState("10");
@@ -326,40 +322,15 @@ export function AddSessionModal({
 
   useEffect(() => {
     if (visible && seed) {
-      setType(seed.type);
       if (seed.cardioSubtype) setCardioSubtype(seed.cardioSubtype);
       if (seed.treadmillIncline) setTreadmillIncline(String(seed.treadmillIncline));
     }
   }, [visible, seed]);
 
-  function handleSelectHill(h: NearbyHill | null) {
-    setSelectedHill(h);
-    if (h) {
-      setElev(String(h.elevation * reps));
-      setDist((h.distance * reps).toFixed(1));
-    }
-  }
-
-  function handleChangeReps(r: number) {
-    setReps(r);
-    if (selectedHill) {
-      setElev(String(selectedHill.elevation * r));
-      setDist((selectedHill.distance * r).toFixed(1));
-    }
-  }
-
-  function handleTypeChange(t: "cardio" | "hill" | "bigDay") {
-    setType(t);
-    if (t !== "hill") { setSelectedHill(null); setReps(3); }
-    if (t !== "cardio") { setCardioSubtype("outdoor"); setTreadmillKmNum(3.0); setTreadmillIncline("10"); setStepperFloorsNum(20); }
-  }
-
   function reset() {
-    setType("cardio");
     setDate(new Date().toISOString().split("T")[0]);
     setShowCalendar(false);
     setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
-    setSelectedHill(null); setReps(3);
     setCardioSubtype("outdoor"); setTreadmillKmNum(3.0); setTreadmillIncline("10"); setStepperFloorsNum(20);
   }
 
@@ -377,7 +348,7 @@ export function AddSessionModal({
     let savedTreadmillInclinePct: number | undefined;
     let savedStepperFloors: number | undefined;
 
-    if (type === "cardio" && cardioSubtype === "treadmill") {
+    if (cardioSubtype === "treadmill") {
       const km = treadmillKmNum;
       const inc = parseFloat(treadmillIncline) || 10;
       effectiveElev = Math.round(km * 1000 * (inc / 100));
@@ -385,7 +356,7 @@ export function AddSessionModal({
       gymSubtype = "treadmill";
       savedTreadmillKm = km;
       savedTreadmillInclinePct = inc;
-    } else if (type === "cardio" && cardioSubtype === "stepper") {
+    } else if (cardioSubtype === "stepper") {
       const floors = stepperFloorsNum;
       effectiveElev = floors * 3;
       effectiveDist = 0;
@@ -394,11 +365,11 @@ export function AddSessionModal({
     } else {
       effectiveElev = Number(elev);
       effectiveDist = Number(dist) || 0;
-      if (type === "cardio") gymSubtype = "outdoor";
+      gymSubtype = "outdoor";
     }
 
     await addSession({
-      date, type,
+      date, type: "cardio",
       distance: effectiveDist,
       elevationGain: effectiveElev,
       duration: Number(dur),
@@ -406,8 +377,6 @@ export function AddSessionModal({
       notes: notes.trim(),
       completed: true,
       weekNumber: weekNum,
-      hillName: selectedHill?.name,
-      reps: selectedHill ? reps : undefined,
       gymSubtype,
       treadmillKm: savedTreadmillKm,
       treadmillInclinePct: savedTreadmillInclinePct,
@@ -419,13 +388,11 @@ export function AddSessionModal({
     reset();
   }
 
-  const isValid = type === "hill"
-    ? !!elev
-    : type === "cardio" && cardioSubtype === "treadmill"
-      ? treadmillKmNum > 0
-      : type === "cardio" && cardioSubtype === "stepper"
-        ? stepperFloorsNum > 0
-        : !!dist && !!elev;
+  const isValid = cardioSubtype === "treadmill"
+    ? treadmillKmNum > 0
+    : cardioSubtype === "stepper"
+      ? stepperFloorsNum > 0
+      : !!dist && !!elev;
 
   const inp = [ms.input];
 
@@ -459,26 +426,6 @@ export function AddSessionModal({
               </TouchableOpacity>
             </View>
 
-            <Text style={ms.fLabel}>Session Type</Text>
-            <View style={ms.typeRow}>
-              {SESSION_TYPES.map(t => (
-                <TouchableOpacity
-                  key={t.value}
-                  onPress={() => handleTypeChange(t.value)}
-                  style={[
-                    ms.typeBtn,
-                    { borderColor: type === t.value ? t.color : T.border },
-                    type === t.value && { backgroundColor: t.color + "18" },
-                  ]}
-                >
-                  {(() => { const TBtnIcon = t.icon; return <TBtnIcon size={15} color={type === t.value ? t.color : T.textMuted} />; })()}
-                  <Text style={[ms.typeBtnText, { color: type === t.value ? t.color : T.textMuted }]}>
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
             <Text style={ms.fLabel}>Date</Text>
             <TouchableOpacity
               style={ms.dateTrigger}
@@ -492,18 +439,7 @@ export function AddSessionModal({
               <ChevronRight size={14} color={T.textDim} />
             </TouchableOpacity>
 
-            {type === "hill" && (
-              <HillSearchSection
-                hills={nearbyHills}
-                selectedHill={selectedHill}
-                reps={reps}
-                onSelectHill={handleSelectHill}
-                onChangeReps={handleChangeReps}
-              />
-            )}
-
-            {type === "cardio" && (
-              <>
+            <>
                 <Text style={ms.fLabel}>Exercise type</Text>
                 <View style={ms.typeRow}>
                   {(["treadmill", "stepper", "outdoor"] as const).map(sub => {
@@ -603,29 +539,6 @@ export function AddSessionModal({
                   </View>
                 )}
               </>
-            )}
-
-            {type !== "cardio" && (
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                {type !== "hill" && (
-                  <View style={{ flex: 1 }}>
-                    <Text style={ms.fLabel}>Distance (km)</Text>
-                    <TextInput style={inp} value={dist} onChangeText={setDist} placeholder="8.5" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={ms.fLabel}>Elev. Gain (m)</Text>
-                  <TextInput
-                    style={[inp, selectedHill && ms.inputAutoFilled]}
-                    value={elev}
-                    onChangeText={setElev}
-                    placeholder="450"
-                    placeholderTextColor={T.textDim}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-            )}
 
             <Text style={ms.fLabel}>Duration (min) <Text style={ms.fLabelOptional}>optional</Text></Text>
             <TextInput style={inp} value={dur} onChangeText={setDur} placeholder="90" placeholderTextColor={T.textDim} keyboardType="number-pad" />
@@ -653,6 +566,141 @@ export function AddSessionModal({
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={ms.saveBtnGrad}>
                 <Check size={18} color="#fff" />
                 <Text style={ms.saveBtnText}>{saving ? "Saving..." : "Log Session"}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </Modal>
+  );
+}
+
+// ── Log Hill Modal ────────────────────────────────────────────────────────────
+
+export function LogHillModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { addSession, trainingPlan, nearbyHills } = useApp();
+  const [selectedHill, setSelectedHill] = useState<NearbyHill | null>(null);
+  const [reps, setReps] = useState(3);
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [dur, setDur] = useState("");
+  const [effort, setEffort] = useState<number>(3);
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function handleSelectHill(h: NearbyHill | null) {
+    setSelectedHill(h);
+    if (h) setReps(h.repeats > 0 ? h.repeats : 3);
+  }
+
+  function reset() {
+    setSelectedHill(null);
+    setReps(3);
+    setDate(new Date().toISOString().split("T")[0]);
+    setShowCalendar(false);
+    setDur(""); setNotes(""); setEffort(3);
+  }
+
+  async function save() {
+    if (!selectedHill) return;
+    setSaving(true);
+    const d = new Date(date);
+    const weekNum = trainingPlan.find(w =>
+      new Date(w.startDate) <= d && new Date(w.endDate) >= d
+    )?.weekNumber ?? 1;
+
+    await addSession({
+      date,
+      type: "hill",
+      distance: Math.round(selectedHill.distance * reps * 2 * 10) / 10,
+      elevationGain: selectedHill.elevation * reps,
+      duration: Number(dur),
+      effort: effort as 1 | 2 | 3 | 4 | 5,
+      notes: notes.trim() || `${selectedHill.name} — ${reps} rep${reps !== 1 ? "s" : ""}`,
+      completed: true,
+      weekNumber: weekNum,
+      hillName: selectedHill.name,
+      reps,
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSaving(false);
+    onClose();
+    reset();
+  }
+
+  const isValid = !!selectedHill;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { onClose(); reset(); }}>
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        {showCalendar && (
+          <TouchableOpacity style={ms.calOverlay} activeOpacity={1} onPress={() => setShowCalendar(false)}>
+            <View style={ms.calCard}>
+              <CalendarCard value={date} onChange={setDate} onClose={() => setShowCalendar(false)} />
+            </View>
+          </TouchableOpacity>
+        )}
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={[ms.modalScroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={ms.modalHeader}>
+              <Text style={ms.modalTitle}>Log Hill</Text>
+              <TouchableOpacity onPress={() => { onClose(); reset(); }} style={ms.closeBtn}>
+                <X size={18} color={T.white} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={ms.fLabel}>Date</Text>
+            <TouchableOpacity
+              style={ms.dateTrigger}
+              onPress={() => { Haptics.selectionAsync(); setShowCalendar(true); }}
+              activeOpacity={0.75}
+            >
+              <Calendar size={16} color={T.textMuted} />
+              <Text style={ms.dateTriggerText}>
+                {new Date(date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+              </Text>
+              <ChevronRight size={14} color={T.textDim} />
+            </TouchableOpacity>
+
+            <HillSearchSection
+              hills={nearbyHills}
+              selectedHill={selectedHill}
+              reps={reps}
+              onSelectHill={handleSelectHill}
+              onChangeReps={setReps}
+            />
+
+            <Text style={ms.fLabel}>Duration (min) <Text style={ms.fLabelOptional}>optional</Text></Text>
+            <TextInput style={ms.input} value={dur} onChangeText={setDur} placeholder="60" placeholderTextColor={T.textDim} keyboardType="number-pad" />
+
+            <Text style={ms.fLabel}>Effort Level</Text>
+            <EffortPicker value={effort} onChange={setEffort} />
+
+            <Text style={[ms.fLabel, { marginTop: 16 }]}>Notes</Text>
+            <TextInput
+              style={[ms.input, ms.notesInput]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="How did it go?"
+              placeholderTextColor={T.textDim}
+              multiline
+              numberOfLines={3}
+            />
+
+            <TouchableOpacity
+              onPress={save}
+              disabled={saving || !isValid}
+              style={[ms.saveBtn, { opacity: saving || !isValid ? 0.5 : 1 }]}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={ms.saveBtnGrad}>
+                <Check size={18} color="#fff" />
+                <Text style={ms.saveBtnText}>{saving ? "Saving..." : "Log Hill"}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>

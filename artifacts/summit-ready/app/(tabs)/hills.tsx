@@ -1,6 +1,7 @@
 import {
   Mountain, MapPin, TrendingUp, Repeat, Map, Trash2,
   PlusCircle, CheckCircle, Minus, Plus, X, BarChart2, Info,
+  Clock, Activity, Footprints,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -19,7 +20,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp, NearbyHill } from "@/context/AppContext";
+import { useApp, NearbyHill, ExploreHike, Session } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 
 const GRADE_COLOR: Record<string, string> = {
@@ -30,15 +31,77 @@ const GRADE_COLOR: Record<string, string> = {
   "Alpine": "#FF4444",
 };
 
+function fmtDuration(mins: number) {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function HikeDetailSheet({ hike, onClose }: { hike: ExploreHike; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.hdOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[styles.hdSheet, { paddingBottom: insets.bottom + 24 }]}>
+          <LinearGradient colors={["#142236", "#0C1828"]} style={StyleSheet.absoluteFill} />
+          <View style={styles.hdHandle} />
+          <View style={styles.hdHeader}>
+            <View style={[styles.hdIconBox, { backgroundColor: T.green + "18" }]}>
+              <Footprints size={20} color={T.green} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.hdTitle}>{hike.name}</Text>
+              <Text style={styles.hdDate}>
+                {new Date(hike.date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.hdCloseBtn}>
+              <X size={16} color={T.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.hdStatRow}>
+            <View style={styles.hdStatCell}>
+              <TrendingUp size={20} color={T.orange} />
+              <Text style={styles.hdStatVal}>{hike.elevationGain}m</Text>
+              <Text style={styles.hdStatLbl}>Elevation</Text>
+            </View>
+            <View style={styles.hdStatDivider} />
+            <View style={styles.hdStatCell}>
+              <Map size={20} color={T.blue} />
+              <Text style={styles.hdStatVal}>{hike.distance.toFixed(2)}km</Text>
+              <Text style={styles.hdStatLbl}>Distance</Text>
+            </View>
+            <View style={styles.hdStatDivider} />
+            <View style={styles.hdStatCell}>
+              <Clock size={20} color={T.textMuted} />
+              <Text style={styles.hdStatVal}>{fmtDuration(hike.timeTaken)}</Text>
+              <Text style={styles.hdStatLbl}>Duration</Text>
+            </View>
+          </View>
+          {!!hike.notes && (
+            <View style={styles.hdNotesBox}>
+              <Text style={styles.hdNotesText}>{hike.notes}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 export default function MyHillsScreen() {
   const insets = useSafeAreaInsets();
-  const { myHills, removeFromMyHills, addSession, summitGoal } = useApp();
+  const { myHills, removeFromMyHills, addSession, summitGoal, sessions, exploreHikes, deleteExploreHike } = useApp();
   const location = summitGoal?.location ?? "";
+
+  const hillSessions = sessions.filter((s: Session) => s.type === "hill");
 
   const [logTarget, setLogTarget] = useState<NearbyHill | null>(null);
   const [reps, setReps] = useState(1);
   const [logging, setLogging] = useState(false);
   const [loggedHill, setLoggedHill] = useState<string | null>(null);
+  const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
 
   function openLogModal(hill: NearbyHill) {
     setLogTarget(hill);
@@ -127,6 +190,78 @@ export default function MyHillsScreen() {
               </TouchableOpacity>
             </View>
           </Animated.View>
+        )}
+
+        {/* GPS Tracked Hikes */}
+        {exploreHikes.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+            <Text style={styles.sectionHeading}>GPS Tracked Hikes</Text>
+            {exploreHikes.map((hike, i) => (
+              <TouchableOpacity
+                key={hike.id}
+                style={styles.hikeCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedHike(hike)}
+              >
+                <View style={[styles.hikeIconBox, { backgroundColor: T.green + "18" }]}>
+                  <Footprints size={20} color={T.green} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hikeName}>{hike.name}</Text>
+                  <Text style={styles.hikeDate}>
+                    {new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </Text>
+                </View>
+                <View style={styles.hikeStats}>
+                  <View style={styles.hikeStat}>
+                    <TrendingUp size={11} color={T.orange} />
+                    <Text style={styles.hikeStatVal}>{hike.elevationGain}m</Text>
+                  </View>
+                  <View style={styles.hikeStat}>
+                    <Map size={11} color={T.blue} />
+                    <Text style={styles.hikeStatVal}>{hike.distance.toFixed(1)}km</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        )}
+
+        {/* Hill Sessions */}
+        {hillSessions.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(130).duration(400)}>
+            <Text style={styles.sectionHeading}>Hill Sessions</Text>
+            {hillSessions.map((session: Session, i: number) => (
+              <View key={session.id} style={styles.hillSessionCard}>
+                <View style={[styles.hikeIconBox, { backgroundColor: T.purple + "18" }]}>
+                  <Activity size={18} color={T.purple} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hikeName}>{session.hillName ?? "Hill session"}</Text>
+                  <Text style={styles.hikeDate}>
+                    {new Date(session.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </Text>
+                </View>
+                <View style={styles.hikeStats}>
+                  {!!session.reps && (
+                    <View style={styles.hikeStat}>
+                      <Repeat size={11} color={T.textMuted} />
+                      <Text style={styles.hikeStatVal}>{session.reps}×</Text>
+                    </View>
+                  )}
+                  <View style={styles.hikeStat}>
+                    <TrendingUp size={11} color={T.orange} />
+                    <Text style={styles.hikeStatVal}>{session.elevationGain}m</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
+        {/* My Hills heading */}
+        {myHills.length > 0 && (
+          <Text style={styles.sectionHeading}>My Hills</Text>
         )}
 
         {/* Hill cards */}
@@ -235,6 +370,8 @@ export default function MyHillsScreen() {
           );
         })}
       </ScrollView>
+
+      {selectedHike && <HikeDetailSheet hike={selectedHike} onClose={() => setSelectedHike(null)} />}
 
       {/* Log session modal */}
       <Modal
@@ -365,6 +502,45 @@ const styles = StyleSheet.create({
   detailsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: T.purple + "40", backgroundColor: T.purple + "15" },
   detailsBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.purple },
   removeBtn: { width: 42, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: T.red + "40", backgroundColor: T.red + "12" },
+
+  sectionHeading: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 0.5, marginBottom: 10, marginTop: 6 },
+
+  hikeCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 14, paddingHorizontal: 14, marginBottom: 10,
+  },
+  hillSessionCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.cardBorder,
+    paddingVertical: 14, paddingHorizontal: 14, marginBottom: 10,
+  },
+  hikeIconBox: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  hikeName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  hikeDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  hikeStats: { alignItems: "flex-end", gap: 4 },
+  hikeStat: { flexDirection: "row", alignItems: "center", gap: 4 },
+  hikeStatVal: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.white },
+
+  hdOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  hdSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 22, paddingTop: 16, gap: 16,
+    overflow: "hidden", borderWidth: 1, borderColor: T.cardBorder,
+  },
+  hdHandle: { width: 36, height: 4, backgroundColor: T.border, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  hdHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  hdIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  hdTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
+  hdDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  hdCloseBtn: { width: 32, height: 32, borderRadius: 9, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  hdStatRow: { flexDirection: "row", backgroundColor: T.surface, borderRadius: 16, borderWidth: 1, borderColor: T.border, paddingVertical: 16 },
+  hdStatCell: { flex: 1, alignItems: "center", gap: 4 },
+  hdStatDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  hdStatVal: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
+  hdStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  hdNotesBox: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14 },
+  hdNotesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
   modalSheet: {

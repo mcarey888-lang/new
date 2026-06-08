@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, TrendingUp, Flag, X, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
+import { TrendingUp, Flag, X, Plus, Map, Clock, Check, Trash2, Activity, CheckCircle, Footprints, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useState, useMemo } from "react";
@@ -27,6 +27,7 @@ import {
   EffortPicker,
   HillSearchSection,
   AddSessionModal,
+  LogHillModal,
 } from "@/components/LogSessionModals";
 
 function SessionCard({ session, onDelete, onToggle, index }: {
@@ -335,20 +336,6 @@ const EXERCISE_CHOICES: {
     color: T.orange,
     seed: { type: "cardio", cardioSubtype: "outdoor" },
   },
-  {
-    label: "Hill Repeats",
-    sub: "Uphill intervals for elevation gain",
-    icon: Flag,
-    color: T.purple ?? T.blue,
-    seed: { type: "hill" },
-  },
-  {
-    label: "Big Day Training",
-    sub: "Long endurance session",
-    icon: Heart,
-    color: T.orange,
-    seed: { type: "bigDay" },
-  },
 ];
 
 export default function LogScreen() {
@@ -356,6 +343,7 @@ export default function LogScreen() {
   const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike, trainingPlan } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [addModalSeed, setAddModalSeed] = useState<TrainingSeed | undefined>();
+  const [logHillOpen, setLogHillOpen] = useState(false);
   const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
 
   function openExercise(seed: TrainingSeed) {
@@ -455,6 +443,28 @@ export default function LogScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* Log Hill */}
+        <Animated.View entering={FadeInDown.delay(135).duration(400)}>
+          <TouchableOpacity
+            onPress={() => setLogHillOpen(true)}
+            activeOpacity={0.85}
+            style={styles.logHillBtn}
+          >
+            <View style={styles.startHikeLeft}>
+              <View style={[styles.startHikeIconBox, { backgroundColor: "rgba(0,0,0,0.15)" }]}>
+                <Flag size={22} color={T.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.startHikeTitle}>Log Hill</Text>
+                <Text style={styles.startHikeSub} numberOfLines={1}>Search a hill and log your reps</Text>
+              </View>
+            </View>
+            <View style={styles.startHikeArrow}>
+              <Text style={{ color: T.white, fontSize: 18 }}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Exercise picker */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
           <Text style={styles.exerciseHeading}>Log a Session</Text>
@@ -517,6 +527,7 @@ export default function LogScreen() {
         onClose={() => { setModalOpen(false); setAddModalSeed(undefined); }}
         seed={addModalSeed}
       />
+      <LogHillModal visible={logHillOpen} onClose={() => setLogHillOpen(false)} />
       {selectedHike && <HikeDetailSheet hike={selectedHike} onClose={() => setSelectedHike(null)} />}
     </LinearGradient>
   );
@@ -563,6 +574,16 @@ const styles = StyleSheet.create({
   startHikeTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
   startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
   startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
+  logHillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 16,
+    backgroundColor: T.purple,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
 
   exerciseHeading: {
     fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted,
