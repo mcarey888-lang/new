@@ -55,11 +55,11 @@ Return ONLY valid JSON — no markdown fences, no explanation, just the raw JSON
 
 Rules:
 - distance = round trip km (realistic number)
-- elevationGain = total ascent metres
-- highestAltitude = summit altitude metres above sea level
+- elevationGain = summit altitude MINUS the specific trailhead/car-park elevation for THAT route. Every route starts at a different elevation — do NOT use the same elevationGain for multiple routes. Example for Snowdon (summit 1085m): Pyg Track starts at Pen-y-Pass ~359m → gain 726m; Llanberis Path starts at Llanberis ~115m → gain 970m; Watkin Path starts at Nantgwynant ~102m → gain 983m. Calculate each route individually.
+- highestAltitude = summit altitude metres above sea level (same for all routes on the same mountain)
 - Provide 2-4 routes
 - Difficulty: Easy=walking, Moderate=sustained climb, Hard=steep/scrambling, Alpine=technical/glacier
-- Use real accurate data for well-known peaks (Alps, UK peaks, etc.)`;
+- Use real, verified data for well-known peaks (UK peaks, Alps, etc.). Double-check trailhead elevations — they vary significantly between routes on the same mountain.`;
 
 router.post("/mountain-lookup", async (req, res) => {
   const parsed = RequestSchema.safeParse(req.body);
