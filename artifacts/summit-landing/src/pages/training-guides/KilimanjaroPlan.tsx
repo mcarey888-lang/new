@@ -96,7 +96,7 @@ export default function KilimanjaroPlan() {
               </p>
 
               <div className="mt-7 p-5 bg-white/3 border border-white/8 rounded-xl">
-                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Unsure whether Kilimanjaro is the right mountain for you?</span> Read: <Link to="/can-i-climb/kilimanjaro" className="text-primary hover:underline">Can I Climb Kilimanjaro?</Link></p>
+                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Unsure whether Kilimanjaro is the right mountain for you?</span> Read: <Link to="/can-i-climb/kilimanjaro" className="text-primary hover:underline">Am I Ready for Kilimanjaro?</Link></p>
               </div>
             </section>
 
@@ -254,7 +254,7 @@ export default function KilimanjaroPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Kilimanjaro? — Honest fitness assessment and beginner suitability
+                  Am I Ready for Kilimanjaro? — Honest fitness assessment and beginner suitability
                 </Link>
                 <Link to="/mountains/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

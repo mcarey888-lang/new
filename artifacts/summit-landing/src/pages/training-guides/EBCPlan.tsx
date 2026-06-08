@@ -290,7 +290,7 @@ export default function EBCPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/everest-base-camp" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Do Everest Base Camp? — Honest fitness and readiness assessment
+                  Am I Ready for Everest Base Camp? — Honest fitness and readiness assessment
                 </Link>
                 <Link to="/training-guides/kilimanjaro-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

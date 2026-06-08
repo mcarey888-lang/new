@@ -260,7 +260,7 @@ export default function LocalHillsGuide() {
                 </div>
 
                 <div className="p-5 bg-white/3 border border-white/8 rounded-xl">
-                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/kilimanjaro-training-plan" className="text-primary hover:underline">Kilimanjaro Training Plan</Link> · <Link to="/can-i-climb/kilimanjaro" className="text-primary hover:underline">Can I Climb Kilimanjaro?</Link></p>
+                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/kilimanjaro-training-plan" className="text-primary hover:underline">Kilimanjaro Training Plan</Link> · <Link to="/can-i-climb/kilimanjaro" className="text-primary hover:underline">Am I Ready for Kilimanjaro?</Link></p>
                 </div>
               </div>
 
@@ -298,7 +298,7 @@ export default function LocalHillsGuide() {
                 </div>
 
                 <div className="p-5 bg-white/3 border border-white/8 rounded-xl">
-                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/mont-blanc-training-plan" className="text-primary hover:underline">Mont Blanc Training Plan</Link> · <Link to="/can-i-climb/mont-blanc" className="text-primary hover:underline">Can I Climb Mont Blanc?</Link></p>
+                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/mont-blanc-training-plan" className="text-primary hover:underline">Mont Blanc Training Plan</Link> · <Link to="/can-i-climb/mont-blanc" className="text-primary hover:underline">Am I Ready for Mont Blanc?</Link></p>
                 </div>
               </div>
 
@@ -336,7 +336,7 @@ export default function LocalHillsGuide() {
                 </div>
 
                 <div className="p-5 bg-white/3 border border-white/8 rounded-xl">
-                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/everest-base-camp-training-plan" className="text-primary hover:underline">EBC Training Plan</Link> · <Link to="/can-i-climb/everest-base-camp" className="text-primary hover:underline">Can I Climb Everest Base Camp?</Link></p>
+                  <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Read more:</span> <Link to="/training-guides/everest-base-camp-training-plan" className="text-primary hover:underline">EBC Training Plan</Link> · <Link to="/can-i-climb/everest-base-camp" className="text-primary hover:underline">Am I Ready for Everest Base Camp?</Link></p>
                 </div>
               </div>
             </section>
@@ -472,11 +472,11 @@ export default function LocalHillsGuide() {
                 </Link>
                 <Link to="/can-i-climb/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Kilimanjaro? — Honest fitness and beginner suitability assessment
+                  Am I Ready for Kilimanjaro? — Honest fitness and beginner suitability assessment
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — What you actually need before you book
+                  Am I Ready for Mont Blanc? — What you actually need before you book
                 </Link>
                 <Link to="/training-guides/beginner-mountain-fitness-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

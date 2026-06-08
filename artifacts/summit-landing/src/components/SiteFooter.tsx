@@ -33,7 +33,7 @@ export function SiteFooter() {
               <Link to="/mountains/mont-blanc" className="hover:text-primary transition-colors">Mont Blanc</Link>
               <Link to="/mountains/kilimanjaro" className="hover:text-primary transition-colors">Kilimanjaro</Link>
               <Link to="/mountains/matterhorn" className="hover:text-primary transition-colors">Matterhorn</Link>
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors text-primary/70">Can I Climb? →</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors text-primary/70">Am I Ready? →</Link>
             </div>
           </div>
 

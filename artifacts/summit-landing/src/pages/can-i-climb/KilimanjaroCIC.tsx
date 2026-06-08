@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function KilimanjaroCIC() {
   usePageMeta({
-    title: "Can I Climb Kilimanjaro? | Fitness & Preparation Guide | SummitReady",
+    title: "Am I Ready for Kilimanjaro? | Fitness & Preparation Guide | SummitReady",
     description: "Find out if you're ready to climb Kilimanjaro. Honest assessment covering altitude, multi-day endurance, and whether beginners can summit Africa's highest peak.",
     canonical: "https://summitready.uk/can-i-climb/kilimanjaro/",
     schema: {
@@ -43,7 +43,7 @@ export default function KilimanjaroCIC() {
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Can I Climb?</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Am I Ready?</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-white">Kilimanjaro</span>
             </nav>
@@ -59,7 +59,7 @@ export default function KilimanjaroCIC() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Climb Kilimanjaro?
+              Am I Ready for Kilimanjaro?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl">
               An honest guide to what it takes to summit Africa's highest peak — including whether beginners can do it, and what you'll actually encounter on the mountain.
@@ -180,7 +180,7 @@ export default function KilimanjaroCIC() {
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Compare with Western Europe's highest peak
+                  Am I Ready for Mont Blanc? — Compare with Western Europe's highest peak
                 </Link>
               </div>
             </section>

@@ -95,7 +95,7 @@ export default function GranParadisoPlan() {
               </p>
 
               <div className="mt-7 p-5 bg-white/3 border border-white/8 rounded-xl">
-                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Not sure if you're ready?</span> Read our honest assessment: <Link to="/can-i-climb/gran-paradiso" className="text-primary hover:underline">Can I Climb Gran Paradiso?</Link></p>
+                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Not sure if you're ready?</span> Read our honest assessment: <Link to="/can-i-climb/gran-paradiso" className="text-primary hover:underline">Am I Ready for Gran Paradiso?</Link></p>
               </div>
             </section>
 
@@ -290,7 +290,7 @@ export default function GranParadisoPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/gran-paradiso" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Gran Paradiso? — Honest fitness and readiness assessment
+                  Am I Ready for Gran Paradiso? — Honest fitness and readiness assessment
                 </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
@@ -298,7 +298,7 @@ export default function GranParadisoPlan() {
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Comparing both objectives
+                  Am I Ready for Mont Blanc? — Comparing both objectives
                 </Link>
                 <Link to="/training-guides/train-for-mountains-using-local-hills" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

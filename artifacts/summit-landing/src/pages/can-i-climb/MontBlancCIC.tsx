@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function MontBlancCIC() {
   usePageMeta({
-    title: "Can I Climb Mont Blanc? | Fitness & Preparation Guide | SummitReady",
+    title: "Am I Ready for Mont Blanc? | Fitness & Preparation Guide | SummitReady",
     description: "Find out if you're ready to climb Mont Blanc. Honest assessment of the fitness, experience, and preparation required for the Goûter route.",
     canonical: "https://summitready.uk/can-i-climb/mont-blanc/",
     schema: {
@@ -44,7 +44,7 @@ export default function MontBlancCIC() {
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Can I Climb?</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Am I Ready?</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-white">Mont Blanc</span>
             </nav>
@@ -60,7 +60,7 @@ export default function MontBlancCIC() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Climb Mont Blanc?
+              Am I Ready for Mont Blanc?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl">
               An honest assessment of the fitness, experience, and preparation required before you book your trip to Chamonix.
@@ -190,7 +190,7 @@ export default function MontBlancCIC() {
                 </Link>
                 <Link to="/can-i-climb/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Kilimanjaro? — Compare Mont Blanc vs Kilimanjaro
+                  Am I Ready for Kilimanjaro? — Compare Mont Blanc vs Kilimanjaro
                 </Link>
               </div>
             </section>

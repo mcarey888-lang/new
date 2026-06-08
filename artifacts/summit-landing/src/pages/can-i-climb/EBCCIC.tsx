@@ -43,7 +43,7 @@ export default function EBCCIC() {
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Can I Climb?</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Am I Ready?</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-white">Everest Base Camp</span>
             </nav>
@@ -59,7 +59,7 @@ export default function EBCCIC() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Do Everest Base Camp?
+              Am I Ready for Everest Base Camp?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl">
               EBC is achievable for determined, well-prepared people — but it's not a casual holiday. Here's an honest look at what you need physically and mentally before booking your flights.
@@ -187,7 +187,7 @@ export default function EBCCIC() {
                 </Link>
                 <Link to="/can-i-climb/kilimanjaro" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Kilimanjaro? — Compare EBC vs Kilimanjaro
+                  Am I Ready for Kilimanjaro? — Compare EBC vs Kilimanjaro
                 </Link>
               </div>
             </section>

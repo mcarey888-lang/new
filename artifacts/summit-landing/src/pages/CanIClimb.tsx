@@ -88,13 +88,13 @@ const MOUNTAINS = [
 
 export default function CanIClimb() {
   usePageMeta({
-    title: "Can I Climb This Mountain? | SummitReady",
+    title: "Am I Ready to Climb? | SummitReady",
     description: "Find out what fitness and preparation you need before committing to Mont Blanc, Kilimanjaro, the Matterhorn and more. Honest assessments for real climbers.",
     canonical: "https://summitready.uk/can-i-climb/",
     schema: {
       "@context": "https://schema.org",
       "@type": "CollectionPage",
-      "name": "Can I Climb This Mountain?",
+      "name": "Am I Ready to Climb?",
       "description": "Find out what fitness and preparation you need before committing to your mountain.",
       "url": "https://summitready.uk/can-i-climb/",
     },
@@ -109,10 +109,10 @@ export default function CanIClimb() {
           <div className="container mx-auto px-6 max-w-4xl relative">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary mb-6 uppercase tracking-widest">
               <AlertTriangle className="w-3 h-3" />
-              Can I Climb?
+              Am I Ready?
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Climb This Mountain?
+              Am I Ready to Climb?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mb-4">
               Find out what fitness and preparation you need before committing.

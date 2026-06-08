@@ -133,7 +133,7 @@ export default function MontBlancMtn() {
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Fitness assessment
+                  Am I Ready for Mont Blanc? — Fitness assessment
                 </Link>
                 <Link to="/readiness-check?mountain=mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

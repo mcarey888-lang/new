@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function MatterhornCIC() {
   usePageMeta({
-    title: "Can I Climb the Matterhorn? | Honest Fitness & Experience Guide | SummitReady",
+    title: "Am I Ready for the Matterhorn? | Honest Fitness & Experience Guide | SummitReady",
     description: "An honest guide to what it takes to climb the Matterhorn. The fitness, technical skills, and alpine experience required — and why most people aren't ready yet.",
     canonical: "https://summitready.uk/can-i-climb/matterhorn/",
     schema: {
@@ -43,7 +43,7 @@ export default function MatterhornCIC() {
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Can I Climb?</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Am I Ready?</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-white">Matterhorn</span>
             </nav>
@@ -59,7 +59,7 @@ export default function MatterhornCIC() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Climb the Matterhorn?
+              Am I Ready for the Matterhorn?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl">
               The Matterhorn is one of the most recognisable mountains in the world — and one of the most dangerous. Here's an honest answer to whether you're ready for it, and what the realistic path looks like.
@@ -211,7 +211,7 @@ export default function MatterhornCIC() {
                 </Link>
                 <Link to="/can-i-climb/gran-paradiso" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Gran Paradiso? — The right first alpine summit
+                  Am I Ready for Gran Paradiso? — The right first alpine summit
                 </Link>
               </div>
             </section>

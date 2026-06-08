@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function GranParadisoCIC() {
   usePageMeta({
-    title: "Can I Climb Gran Paradiso? | Fitness & Preparation Guide | SummitReady",
+    title: "Am I Ready for Gran Paradiso? | Fitness & Preparation Guide | SummitReady",
     description: "Find out if you're ready to climb Gran Paradiso. An honest assessment of what Italy's highest peak demands — fitness, experience, and the right preparation.",
     canonical: "https://summitready.uk/can-i-climb/gran-paradiso/",
     schema: {
@@ -43,7 +43,7 @@ export default function GranParadisoCIC() {
             <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Can I Climb?</Link>
+              <Link to="/can-i-climb" className="hover:text-primary transition-colors">Am I Ready?</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-white">Gran Paradiso</span>
             </nav>
@@ -59,7 +59,7 @@ export default function GranParadisoCIC() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 tracking-tight leading-[1.05]">
-              Can I Climb Gran Paradiso?
+              Am I Ready for Gran Paradiso?
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl">
               Gran Paradiso is Italy's highest peak and one of the most accessible 4,000m summits in the Alps. Here's an honest look at whether you're ready — and what it actually takes.
@@ -179,7 +179,7 @@ export default function GranParadisoCIC() {
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — The natural next step after Gran Paradiso
+                  Am I Ready for Mont Blanc? — The natural next step after Gran Paradiso
                 </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

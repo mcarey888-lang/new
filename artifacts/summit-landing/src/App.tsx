@@ -75,7 +75,7 @@ function Hero() {
             </Link>
             <Link to="/can-i-climb" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
               <HelpCircle className="w-3.5 h-3.5 text-primary" />
-              Can I Climb?
+              Am I Ready?
             </Link>
             <Link to="/mountains" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
               <Mountain className="w-3.5 h-3.5 text-primary" />
@@ -323,8 +323,8 @@ function ContentSection() {
             },
             {
               icon: HelpCircle,
-              label: "Can I Climb?",
-              title: "Can I Climb Mont Blanc?",
+              label: "Am I Ready?",
+              title: "Am I Ready for Mont Blanc?",
               desc: "An honest assessment of the fitness, experience, and preparation required before you book your Chamonix trip.",
               href: "/can-i-climb/mont-blanc",
               cta: "Find out",

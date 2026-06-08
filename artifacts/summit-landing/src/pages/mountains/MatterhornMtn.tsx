@@ -143,7 +143,7 @@ export default function MatterhornMtn() {
                 </Link>
                 <Link to="/can-i-climb/matterhorn" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb the Matterhorn? — Honest skills and fitness assessment
+                  Am I Ready for the Matterhorn? — Honest skills and fitness assessment
                 </Link>
                 <Link to="/training-guides/mont-blanc-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />

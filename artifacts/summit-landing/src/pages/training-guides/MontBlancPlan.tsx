@@ -102,7 +102,7 @@ export default function MontBlancPlan() {
               </p>
 
               <div className="mt-7 p-5 bg-white/3 border border-white/8 rounded-xl">
-                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Not sure if you're ready for Mont Blanc?</span> Read our full assessment: <Link to="/can-i-climb/mont-blanc" className="text-primary hover:underline">Can I Climb Mont Blanc?</Link></p>
+                <p className="text-sm text-muted-foreground"><span className="text-white font-semibold">Not sure if you're ready for Mont Blanc?</span> Read our full assessment: <Link to="/can-i-climb/mont-blanc" className="text-primary hover:underline">Am I Ready for Mont Blanc?</Link></p>
               </div>
             </section>
 
@@ -313,7 +313,7 @@ export default function MontBlancPlan() {
               <div className="space-y-3">
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Honest fitness assessment before you book
+                  Am I Ready for Mont Blanc? — Honest fitness assessment before you book
                 </Link>
                 <Link to="/training-guides/gran-paradiso-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
@@ -325,7 +325,7 @@ export default function MontBlancPlan() {
                 </Link>
                 <Link to="/can-i-climb/mont-blanc" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
-                  Can I Climb Mont Blanc? — Honest fitness assessment
+                  Am I Ready for Mont Blanc? — Honest fitness assessment
                 </Link>
                 <Link to="/training-guides/kilimanjaro-training-plan" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
