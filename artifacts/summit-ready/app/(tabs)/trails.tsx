@@ -2,15 +2,15 @@ import {
   Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Filter, ChevronDown, Activity, Flag,
+  Footprints, ChevronRight, Filter, ChevronDown, Activity, Flag, X,
 } from "lucide-react-native";
-import { LogHillModal } from "@/components/LogSessionModals";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -252,7 +252,7 @@ export default function TrackScreen() {
               </View>
               <View style={{ gap: 3 }}>
                 <Text style={styles.logTrainingTitle}>Log Training Session</Text>
-                <Text style={styles.logTrainingSub}>Treadmill, stepper, hill repeats &amp; more</Text>
+                <Text style={styles.logTrainingSub}>Treadmill, stepper &amp; more</Text>
               </View>
             </View>
             <View style={styles.logTrainingArrow}>
