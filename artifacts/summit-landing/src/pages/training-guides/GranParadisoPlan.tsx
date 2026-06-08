@@ -300,6 +300,10 @@ export default function GranParadisoPlan() {
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                   Can I Climb Mont Blanc? — Comparing both objectives
                 </Link>
+                <Link to="/training-guides/train-for-mountains-using-local-hills" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group">
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                  Train for Mountains Using Local Hills — UK hill repeats for big summits
+                </Link>
               </div>
             </section>
 

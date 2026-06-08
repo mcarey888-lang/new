@@ -11,6 +11,7 @@ import EBCPlan from "./pages/training-guides/EBCPlan";
 import GranParadisoPlan from "./pages/training-guides/GranParadisoPlan";
 import SixWeekHikingPlan from "./pages/training-guides/SixWeekHikingPlan";
 import BeginnerMountainFitnessPlan from "./pages/training-guides/BeginnerMountainFitnessPlan";
+import LocalHillsGuide from "./pages/training-guides/LocalHillsGuide";
 import CanIClimb from "./pages/CanIClimb";
 import MontBlancCIC from "./pages/can-i-climb/MontBlancCIC";
 import KilimanjaroCIC from "./pages/can-i-climb/KilimanjaroCIC";
@@ -45,6 +46,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/training-guides/gran-paradiso-training-plan" element={<GranParadisoPlan />} />
       <Route path="/training-guides/6-week-hiking-training-plan" element={<SixWeekHikingPlan />} />
       <Route path="/training-guides/beginner-mountain-fitness-plan" element={<BeginnerMountainFitnessPlan />} />
+      <Route path="/training-guides/train-for-mountains-using-local-hills" element={<LocalHillsGuide />} />
 
       {/* Can I Climb */}
       <Route path="/can-i-climb" element={<CanIClimb />} />

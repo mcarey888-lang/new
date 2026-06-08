@@ -77,6 +77,17 @@ const GUIDES = [
     image: null,
     imageAlt: "",
   },
+  {
+    title: "Train for Mountains Using Local Hills",
+    href: "/training-guides/train-for-mountains-using-local-hills",
+    difficulty: "All Levels",
+    diffColor: "text-primary bg-primary/10 border-primary/20",
+    weeks: "12+ weeks",
+    description: "You don't need the Alps to prepare for the Alps. How to use UK hills and hill repeats to build fitness for Kilimanjaro, Mont Blanc, and EBC — with exact rep counts and training examples.",
+    available: true,
+    image: climberBg,
+    imageAlt: "Hiker ascending a hill during mountain training",
+  },
 ];
 
 export default function TrainingGuides() {
