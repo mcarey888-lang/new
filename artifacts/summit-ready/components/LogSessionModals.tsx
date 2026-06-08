@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react-native";
 import {
   Heart, TrendingUp, Flag, X, Search, Minus, Plus,
-  Map, Clock, Check, Activity, ChevronRight,
+  Map, Clock, Check, Activity, ChevronRight, ChevronLeft, Calendar,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -210,6 +210,89 @@ export function HillSearchSection({
   );
 }
 
+// ── Inline calendar card ──────────────────────────────────────────────────────
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function CalendarCard({ value, onChange, onClose }: {
+  value: string;
+  onChange: (v: string) => void;
+  onClose: () => void;
+}) {
+  const parsedSelected = new Date(value + "T12:00:00");
+  const [viewYear, setViewYear] = useState(parsedSelected.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsedSelected.getMonth());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+  const today = new Date();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+  function selectDay(d: number) {
+    const m = String(viewMonth + 1).padStart(2, "0");
+    const day = String(d).padStart(2, "0");
+    onChange(`${viewYear}-${m}-${day}`);
+    Haptics.selectionAsync();
+    onClose();
+  }
+
+  const selYear = parsedSelected.getFullYear();
+  const selMonth = parsedSelected.getMonth();
+  const selDay = parsedSelected.getDate();
+
+  return (
+    <View style={ms.calCard}>
+      <View style={ms.calHeader}>
+        <TouchableOpacity onPress={prevMonth} style={ms.calNavBtn}>
+          <ChevronLeft size={18} color={T.white} />
+        </TouchableOpacity>
+        <Text style={ms.calMonthTitle}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+        <TouchableOpacity onPress={nextMonth} style={ms.calNavBtn}>
+          <ChevronRight size={18} color={T.white} />
+        </TouchableOpacity>
+      </View>
+      <View style={ms.calDayRow}>
+        {DAY_NAMES.map(d => (
+          <Text key={d} style={ms.calDayName}>{d}</Text>
+        ))}
+      </View>
+      <View style={ms.calGrid}>
+        {cells.map((d, i) => {
+          if (!d) return <View key={`e${i}`} style={ms.calCell} />;
+          const isSelected = d === selDay && viewMonth === selMonth && viewYear === selYear;
+          const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+          return (
+            <TouchableOpacity
+              key={`d${d}`}
+              style={[ms.calCell, isSelected && ms.calCellSelected, !isSelected && isToday && ms.calCellToday]}
+              onPress={() => selectDay(d)}
+            >
+              <Text style={[ms.calDayNum, isSelected && ms.calDayNumSelected, !isSelected && isToday && ms.calDayNumToday]}>
+                {d}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <TouchableOpacity onPress={onClose} style={ms.calCancelBtn}>
+        <Text style={ms.calCancelText}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ── Add Session modal ─────────────────────────────────────────────────────────
 
 export function AddSessionModal({
@@ -225,6 +308,7 @@ export function AddSessionModal({
   const { addSession, trainingPlan, nearbyHills } = useApp();
   const [type, setType] = useState<"cardio" | "hill" | "bigDay">("cardio");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [dist, setDist] = useState("");
   const [elev, setElev] = useState("");
   const [dur, setDur] = useState("");
@@ -236,9 +320,9 @@ export function AddSessionModal({
   const [reps, setReps] = useState(3);
 
   const [cardioSubtype, setCardioSubtype] = useState<"treadmill" | "stepper" | "outdoor">("outdoor");
-  const [treadmillKm, setTreadmillKm] = useState("");
+  const [treadmillKmNum, setTreadmillKmNum] = useState(3.0);
   const [treadmillIncline, setTreadmillIncline] = useState("10");
-  const [stepperFloors, setStepperFloors] = useState("");
+  const [stepperFloorsNum, setStepperFloorsNum] = useState(20);
 
   useEffect(() => {
     if (visible && seed) {
@@ -267,15 +351,16 @@ export function AddSessionModal({
   function handleTypeChange(t: "cardio" | "hill" | "bigDay") {
     setType(t);
     if (t !== "hill") { setSelectedHill(null); setReps(3); }
-    if (t !== "cardio") { setCardioSubtype("outdoor"); setTreadmillKm(""); setTreadmillIncline("10"); setStepperFloors(""); }
+    if (t !== "cardio") { setCardioSubtype("outdoor"); setTreadmillKmNum(3.0); setTreadmillIncline("10"); setStepperFloorsNum(20); }
   }
 
   function reset() {
     setType("cardio");
     setDate(new Date().toISOString().split("T")[0]);
+    setShowCalendar(false);
     setDist(""); setElev(""); setDur(""); setNotes(""); setEffort(3);
     setSelectedHill(null); setReps(3);
-    setCardioSubtype("outdoor"); setTreadmillKm(""); setTreadmillIncline("10"); setStepperFloors("");
+    setCardioSubtype("outdoor"); setTreadmillKmNum(3.0); setTreadmillIncline("10"); setStepperFloorsNum(20);
   }
 
   async function save() {
@@ -293,7 +378,7 @@ export function AddSessionModal({
     let savedStepperFloors: number | undefined;
 
     if (type === "cardio" && cardioSubtype === "treadmill") {
-      const km = parseFloat(treadmillKm) || 0;
+      const km = treadmillKmNum;
       const inc = parseFloat(treadmillIncline) || 10;
       effectiveElev = Math.round(km * 1000 * (inc / 100));
       effectiveDist = km;
@@ -301,7 +386,7 @@ export function AddSessionModal({
       savedTreadmillKm = km;
       savedTreadmillInclinePct = inc;
     } else if (type === "cardio" && cardioSubtype === "stepper") {
-      const floors = parseInt(stepperFloors) || 0;
+      const floors = stepperFloorsNum;
       effectiveElev = floors * 3;
       effectiveDist = 0;
       gymSubtype = "stepper";
@@ -335,18 +420,29 @@ export function AddSessionModal({
   }
 
   const isValid = type === "hill"
-    ? !!elev && !!dur
+    ? !!elev
     : type === "cardio" && cardioSubtype === "treadmill"
-      ? !!treadmillKm && !!dur
+      ? treadmillKmNum > 0
       : type === "cardio" && cardioSubtype === "stepper"
-        ? !!stepperFloors && !!dur
-        : !!dist && !!elev && !!dur;
+        ? stepperFloorsNum > 0
+        : !!dist && !!elev;
 
   const inp = [ms.input];
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        {showCalendar && (
+          <TouchableOpacity
+            style={ms.calOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCalendar(false)}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation?.()}>
+              <CalendarCard value={date} onChange={setDate} onClose={() => setShowCalendar(false)} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <ScrollView
             contentContainerStyle={[
@@ -384,14 +480,17 @@ export function AddSessionModal({
             </View>
 
             <Text style={ms.fLabel}>Date</Text>
-            <TextInput
-              style={inp}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={T.textDim}
-              keyboardType="numbers-and-punctuation"
-            />
+            <TouchableOpacity
+              style={ms.dateTrigger}
+              onPress={() => { Haptics.selectionAsync(); setShowCalendar(true); }}
+              activeOpacity={0.75}
+            >
+              <Calendar size={16} color={T.textMuted} />
+              <Text style={ms.dateTriggerText}>
+                {new Date(date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+              </Text>
+              <ChevronRight size={14} color={T.textDim} />
+            </TouchableOpacity>
 
             {type === "hill" && (
               <HillSearchSection
@@ -415,7 +514,7 @@ export function AddSessionModal({
                     return (
                       <TouchableOpacity
                         key={sub}
-                        onPress={() => { setCardioSubtype(sub); setTreadmillKm(""); setStepperFloors(""); }}
+                        onPress={() => { setCardioSubtype(sub); setTreadmillKmNum(3.0); setStepperFloorsNum(20); }}
                         style={[ms.typeBtn, { borderColor: active ? colors[sub] : T.border }, active && { backgroundColor: colors[sub] + "18" }]}
                       >
                         <SubIcon size={15} color={active ? colors[sub] : T.textMuted} />
@@ -427,39 +526,67 @@ export function AddSessionModal({
 
                 {cardioSubtype === "treadmill" && (
                   <>
-                    <View style={{ flexDirection: "row", gap: 12 }}>
-                      <View style={{ flex: 2 }}>
-                        <Text style={ms.fLabel}>Distance (km)</Text>
-                        <TextInput style={inp} value={treadmillKm} onChangeText={setTreadmillKm} placeholder="3.0" placeholderTextColor={T.textDim} keyboardType="decimal-pad" />
+                    <Text style={ms.fLabel}>Distance (km)</Text>
+                    <View style={ms.stepperRow}>
+                      <TouchableOpacity
+                        onPress={() => { const v = Math.max(0.5, Math.round((treadmillKmNum - 0.5) * 10) / 10); setTreadmillKmNum(v); Haptics.selectionAsync(); }}
+                        style={[ms.stepperBtn, { opacity: treadmillKmNum <= 0.5 ? 0.35 : 1 }]}
+                      >
+                        <Minus size={18} color={T.white} />
+                      </TouchableOpacity>
+                      <View style={ms.stepperDisplay}>
+                        <Text style={ms.stepperCount}>{treadmillKmNum.toFixed(1)}</Text>
+                        <Text style={ms.stepperUnit}>km</Text>
                       </View>
+                      <TouchableOpacity
+                        onPress={() => { setTreadmillKmNum(v => Math.round((v + 0.5) * 10) / 10); Haptics.selectionAsync(); }}
+                        style={ms.stepperBtn}
+                      >
+                        <Plus size={18} color={T.white} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={ms.fLabel}>Incline (%)</Text>
                         <TextInput style={inp} value={treadmillIncline} onChangeText={setTreadmillIncline} placeholder="10" placeholderTextColor={T.textDim} keyboardType="number-pad" />
                       </View>
-                    </View>
-                    {!!treadmillKm && (
-                      <View style={ms.autoCalcRow}>
-                        <TrendingUp size={13} color={T.orange} />
-                        <Text style={ms.autoCalcText}>
-                          ≈ {Math.round((parseFloat(treadmillKm) || 0) * 1000 * ((parseFloat(treadmillIncline) || 10) / 100))}m elevation gain
-                        </Text>
+                      <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: 2 }}>
+                        <View style={ms.autoCalcRow}>
+                          <TrendingUp size={13} color={T.orange} />
+                          <Text style={ms.autoCalcText}>
+                            ≈ {Math.round(treadmillKmNum * 1000 * ((parseFloat(treadmillIncline) || 10) / 100))}m gain
+                          </Text>
+                        </View>
                       </View>
-                    )}
+                    </View>
                   </>
                 )}
 
                 {cardioSubtype === "stepper" && (
                   <>
                     <Text style={ms.fLabel}>Floors completed</Text>
-                    <TextInput style={inp} value={stepperFloors} onChangeText={setStepperFloors} placeholder="120" placeholderTextColor={T.textDim} keyboardType="number-pad" />
-                    {!!stepperFloors && (
-                      <View style={ms.autoCalcRow}>
-                        <TrendingUp size={13} color={T.orange} />
-                        <Text style={ms.autoCalcText}>
-                          ≈ {(parseInt(stepperFloors) || 0) * 3}m elevation gain
-                        </Text>
+                    <View style={ms.stepperRow}>
+                      <TouchableOpacity
+                        onPress={() => { setStepperFloorsNum(v => Math.max(5, v - 5)); Haptics.selectionAsync(); }}
+                        style={[ms.stepperBtn, { opacity: stepperFloorsNum <= 5 ? 0.35 : 1 }]}
+                      >
+                        <Minus size={18} color={T.white} />
+                      </TouchableOpacity>
+                      <View style={ms.stepperDisplay}>
+                        <Text style={ms.stepperCount}>{stepperFloorsNum}</Text>
+                        <Text style={ms.stepperUnit}>floors</Text>
                       </View>
-                    )}
+                      <TouchableOpacity
+                        onPress={() => { setStepperFloorsNum(v => v + 5); Haptics.selectionAsync(); }}
+                        style={ms.stepperBtn}
+                      >
+                        <Plus size={18} color={T.white} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={ms.autoCalcRow}>
+                      <TrendingUp size={13} color={T.orange} />
+                      <Text style={ms.autoCalcText}>≈ {stepperFloorsNum * 3}m elevation gain</Text>
+                    </View>
                   </>
                 )}
 
@@ -500,7 +627,7 @@ export function AddSessionModal({
               </View>
             )}
 
-            <Text style={ms.fLabel}>Duration (min)</Text>
+            <Text style={ms.fLabel}>Duration (min) <Text style={ms.fLabelOptional}>optional</Text></Text>
             <TextInput style={inp} value={dur} onChangeText={setDur} placeholder="90" placeholderTextColor={T.textDim} keyboardType="number-pad" />
 
             <Text style={ms.fLabel}>Effort Level</Text>
@@ -609,4 +736,53 @@ const ms = StyleSheet.create({
   },
   repAutoFillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange },
   repAutoFillSep: { fontSize: 12, color: T.textDim },
+
+  fLabelOptional: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, letterSpacing: 0 },
+
+  dateTrigger: {
+    height: 50, backgroundColor: T.surface, borderRadius: 14, borderWidth: 1,
+    borderColor: T.border, paddingHorizontal: 16, flexDirection: "row",
+    alignItems: "center", gap: 10,
+  },
+  dateTriggerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
+
+  stepperRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
+  stepperBtn: {
+    width: 48, height: 48, borderRadius: 13, backgroundColor: T.surface,
+    borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center",
+  },
+  stepperDisplay: { flex: 1, flexDirection: "row", alignItems: "baseline", justifyContent: "center", gap: 5 },
+  stepperCount: { fontSize: 32, fontFamily: "Inter_700Bold", color: T.white },
+  stepperUnit: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  calOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    zIndex: 99,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  calCard: {
+    width: "100%",
+    backgroundColor: T.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.border,
+    padding: 16,
+  },
+  calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  calNavBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  calMonthTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  calDayRow: { flexDirection: "row", marginBottom: 6 },
+  calDayName: { flex: 1, textAlign: "center", fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  calCell: { width: "14.285714%", aspectRatio: 1, alignItems: "center", justifyContent: "center", borderRadius: 8 },
+  calCellSelected: { backgroundColor: T.green },
+  calCellToday: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.green + "60" },
+  calDayNum: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.white },
+  calDayNumSelected: { fontFamily: "Inter_700Bold", color: "#fff" },
+  calDayNumToday: { color: T.green, fontFamily: "Inter_600SemiBold" },
+  calCancelBtn: { marginTop: 14, alignItems: "center", paddingVertical: 10 },
+  calCancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
 });
