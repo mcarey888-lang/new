@@ -458,6 +458,182 @@ function validateAndCorrectHills(
     .sort((a, b) => a.distance - b.distance);
 }
 
+// ── OSM Overpass — global peak discovery ─────────────────────────────────────
+
+interface OSMPeak {
+  id: number;
+  lat: number;
+  lng: number;
+  name: string;
+  ele: number | null; // summit metres ASL from OSM ele tag, null if untagged
+}
+
+/**
+ * Query the Overpass API for named natural peaks within `radiusKm` of a point.
+ * Returns an empty array on any network/parse failure so the caller can fall back.
+ */
+async function fetchOSMPeaks(
+  centerLat: number,
+  centerLng: number,
+  radiusKm: number,
+): Promise<OSMPeak[]> {
+  const radiusM = Math.round(radiusKm * 1000);
+  const query =
+    `[out:json][timeout:20];` +
+    `node["natural"="peak"]["name"](around:${radiusM},${centerLat},${centerLng});` +
+    `out body;`;
+  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": GEO_UA },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as {
+      elements: Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }>;
+    };
+    return (data.elements ?? [])
+      .filter(e => e.tags?.name && e.lat && e.lon)
+      .map(e => ({
+        id: e.id,
+        lat: e.lat,
+        lng: e.lon,
+        name: e.tags!.name!,
+        ele: e.tags?.ele ? parseFloat(e.tags.ele) : null,
+      }))
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Return N evenly-spaced sample lat/lng points arranged in a circle at
+ * `radiusM` metres around the given centre.  These are used to estimate
+ * the "valley floor" elevation below a summit.
+ */
+function radialSamplePoints(
+  lat: number,
+  lng: number,
+  radiusM: number,
+  count: number,
+): Array<{ lat: number; lng: number }> {
+  const latDeg = radiusM / 111_320;
+  const lngDeg = radiusM / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (2 * Math.PI * i) / count;
+    return {
+      lat: lat + latDeg * Math.cos(angle),
+      lng: lng + lngDeg * Math.sin(angle),
+    };
+  });
+}
+
+/** Pick a surface description from summit elevation (metres ASL). */
+function surfaceFromElevation(summitM: number): string {
+  if (summitM < 200) return "Grassy hill";
+  if (summitM < 400) return "Moorland trail";
+  if (summitM < 700) return "Rocky path";
+  return "Alpine trail";
+}
+
+/**
+ * Convert a list of OSM peaks to Hill objects using real topo elevations.
+ *
+ * For each peak we sample 6 terrain points at 1 500 m from the summit in a
+ * circle and compute gain = summit_elevation − min(sampled_base_elevations).
+ * This gives a reliable elevation-gain figure worldwide without relying on
+ * AI-guessed trailhead coordinates.
+ *
+ * Limits processing to MAX_PEAKS closest peaks so all points fit in a single
+ * OpenTopoData request (100-point cap).
+ */
+async function osmPeaksToHills(
+  peaks: OSMPeak[],
+  userLat: number,
+  userLng: number,
+  radiusKm: number,
+  minElevation: number,
+): Promise<Hill[]> {
+  if (!peaks.length) return [];
+
+  const SAMPLE_COUNT = 4;
+  const SAMPLE_RADIUS_M = 1_500;
+  const MAX_PEAKS = 19; // 19 × (1 + 4) = 95 pts — within 100-pt topo limit
+
+  // Keep only named peaks within range, take the N closest ones
+  const inRange = peaks
+    .map(p => ({ ...p, distKm: haversineKm(userLat, userLng, p.lat, p.lng) }))
+    .filter(p => p.distKm <= radiusKm * 1.4)
+    .sort((a, b) => a.distKm - b.distKm)
+    .slice(0, MAX_PEAKS);
+
+  if (!inRange.length) return [];
+
+  // Build a flat point list: [summit, s0, s1, ..., s5] per peak
+  const allPoints: Array<{ lat: number; lng: number }> = [];
+  const offsets: number[] = [];
+  for (const peak of inRange) {
+    offsets.push(allPoints.length);
+    allPoints.push({ lat: peak.lat, lng: peak.lng });
+    allPoints.push(...radialSamplePoints(peak.lat, peak.lng, SAMPLE_RADIUS_M, SAMPLE_COUNT));
+  }
+
+  const elevations = allPoints.length > 0 ? await fetchTopoElevations(allPoints) : [];
+
+  const hills: Hill[] = [];
+  for (let i = 0; i < inRange.length; i++) {
+    const peak = inRange[i];
+    const offset = offsets[i];
+
+    // Prefer the OSM ele tag (tagged by surveyors); fall back to topo
+    const summitElev =
+      peak.ele !== null && Number.isFinite(peak.ele) && peak.ele > 0
+        ? peak.ele
+        : (elevations[offset] ?? null);
+    if (summitElev === null) continue;
+
+    const baseSamples = elevations
+      .slice(offset + 1, offset + 1 + SAMPLE_COUNT)
+      .filter((e): e is number => e !== null);
+    if (baseSamples.length < 2) continue;
+
+    const baseElev = Math.min(...baseSamples);
+    let gain = Math.round(summitElev - baseElev);
+
+    // Skip flat ground or implausible values
+    if (gain < 30 || gain > 6_000) continue;
+
+    // Known-gains table overrides computed gain for well-researched hills
+    const known = KNOWN_GAINS[slugify(peak.name)];
+    if (known) gain = known;
+
+    if (gain < minElevation) continue;
+
+    const distance = Math.round(peak.distKm * 10) / 10;
+    const repeats = gain > 350 ? 1 : gain > 200 ? 2 : 3;
+    const grade = gradeFromGain(gain);
+
+    hills.push({
+      name: peak.name,
+      elevation: gain,
+      distance,
+      repeats,
+      totalElevation: Math.round(gain * repeats),
+      surface: surfaceFromElevation(summitElev),
+      grade,
+      emoji: emojiFromGrade(grade),
+      lat: peak.lat,
+      lng: peak.lng,
+      routeType: "hill",
+      routeDistance: null,
+      estimatedTime: null,
+    });
+  }
+
+  return hills.sort((a, b) => a.distance - b.distance).slice(0, 10);
+}
+
 // ── In-memory area lookup cache (keyed by "location|radius") ─────────────────
 const areaCache = new Map<string, { hills: Hill[]; ts: number }>();
 const AREA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -658,23 +834,41 @@ router.post("/hills-unified", async (req, res) => {
   }
 
   try {
+    // ── Phase 1: geocode (required as Overpass centre), then Overpass ─────
+    const userCoords = await geocodeLocation(loc);
+    const osmPeaks = userCoords
+      ? await fetchOSMPeaks(userCoords.lat, userCoords.lng, r)
+      : [];
+
+    // ── Phase 2: try Overpass path ────────────────────────────────────────
+    if (userCoords && osmPeaks.length >= 3) {
+      const osmHills = await osmPeaksToHills(osmPeaks, userCoords.lat, userCoords.lng, r, minElev);
+
+      if (osmHills.length >= 5) {
+        req.log.info({ count: osmHills.length, source: "overpass" }, "hills-unified area lookup via OSM Overpass");
+        areaCache.set(cacheKey, { hills: osmHills, ts: Date.now() });
+        void Promise.all(osmHills.map(h => cacheHill(h)));
+        res.json({ hills: osmHills, source: "overpass" });
+        return;
+      }
+    }
+
+    // ── Phase 3: AI fallback (Overpass unavailable or too few results) ────
+    req.log.info({ osmCount: osmPeaks.length, source: "ai" }, "hills-unified falling back to AI");
+
     let userMsg = `Find training hills within ${r}km of: "${loc}"`;
     if (minElev > 0) {
       userMsg += `. Prioritise hills with at least ${minElev}m elevation gain per climb. If fewer than 3 hills meeting this minimum exist within ${r}km, include the nearest qualifying hills even if slightly outside the radius. Return at least 5 results total.`;
     }
 
-    // Run AI call and user geocoding in parallel — geocoding lets us verify/correct AI distances
-    const [response, userCoords] = await Promise.all([
-      openai.chat.completions.create({
-        model: "gpt-4o",
-        max_completion_tokens: 1400,
-        messages: [
-          { role: "system", content: LOOKUP_SYSTEM_PROMPT },
-          { role: "user", content: userMsg },
-        ],
-      }),
-      geocodeLocation(loc),
-    ]);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 1400,
+      messages: [
+        { role: "system", content: LOOKUP_SYSTEM_PROMPT },
+        { role: "user", content: userMsg },
+      ],
+    });
 
     const content = response.choices?.[0]?.message?.content;
     if (!content) { res.status(500).json({ error: "No response from AI" }); return; }
@@ -683,7 +877,7 @@ router.post("/hills-unified", async (req, res) => {
     const LookupResponseSchema = z.object({ hills: z.array(HillSchema) });
     const validated = LookupResponseSchema.parse(parsed);
 
-    // Validate, correct distances using real geocoded coords, and filter out-of-range hills
+    // Correct distances using real geocoded coords and filter out-of-range hills
     const distCorrected = validateAndCorrectHills(
       validated.hills,
       userCoords?.lat ?? null,
@@ -694,11 +888,10 @@ router.post("/hills-unified", async (req, res) => {
     // Verify all elevations against real terrain data in a single batched API call
     const corrected = await applyTerrainElevationBatch(distCorrected);
 
-    // Store in area cache + cache each valid hill individually in background
     areaCache.set(cacheKey, { hills: corrected, ts: Date.now() });
     void Promise.all(corrected.map(h => cacheHill(h)));
 
-    res.json({ hills: corrected });
+    res.json({ hills: corrected, source: "ai" });
   } catch (err) {
     req.log.error({ err }, "hills-unified area lookup failed");
     const msg = err instanceof Error ? err.message : "Unknown error";
