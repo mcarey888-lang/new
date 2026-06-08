@@ -460,7 +460,7 @@ export default function SetupScreen() {
           )}
 
           {/* Fitness Assessment — slider quiz */}
-          <Section label="Your Fitness" icon={Zap}>
+          {!isChangeMode && <Section label="Your Fitness" icon={Zap}>
             <Text style={styles.sectionDesc}>
               Slide each to where you honestly sit — this shapes your entire plan.
             </Text>
@@ -581,7 +581,7 @@ export default function SetupScreen() {
                 );
               })}
             </View>
-          </Section>
+          </Section>}
 
           <Section label="Choose your route" icon={MapPin}>
             <View style={styles.fieldWrap}>
