@@ -124,16 +124,18 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   }
 
   // No equipment — walks, runs, stairs.
-  // Stair repeats: ~3 min per round trip on a 5-floor staircase (15 m per climb).
-  //   At 3 min/rep: 35-min session → 12 reps × 15 m = 180 m.
+  // Stair repeats: ~3 min per round trip on a 5-flight staircase (15 m per ascent).
+  //   At 3 min/rep: 35-min session → 12 reps × 5 flights = 60 flights total.
   // Outdoor uphill walk/run: ~300 m/hr vertical gain (mixed walk/jog on incline).
   // Sustained Brisk Walk: ~200 m/hr (less elevation-focused, time-on-feet session).
   const midDur = parseDurationMidpoint(dur);
-  const metresPerRep = 15; // 5 floors × 3 m
-  const floorsPerRep = Math.round(metresPerRep / 3); // 5 floors
+  const metresPerFlight = 3; // 1 flight = 1 floor ≈ 3 m
+  const flightsPerRep = 5; // minimum staircase size
+  const metresPerRep = flightsPerRep * metresPerFlight; // 15 m per ascent
   const minPerRep = 3; // ~1.5 min up + 1 min down
   const stairReps = Math.max(3, Math.round(midDur / minPerRep));
-  const totalElev = stairReps * metresPerRep;
+  const totalFlights = stairReps * flightsPerRep;
+  const totalElev = totalFlights * metresPerFlight;
   // max() preserves progressive overload — duration-based floor only applies when
   // the elevation-ratio target would be unrealistically small (early weeks).
   const uphillElev = Math.max(elevTarget, Math.round((midDur / 60) * 300)); // walk/run mixed
@@ -141,8 +143,9 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
   const opts = [
     {
       label: "Stair Repeats",
-      description: `Find a staircase with at least ${floorsPerRep} floors — a car park, block of flats, or office building works well. Walk up at a controlled pace, descend for recovery, and repeat ${stairReps} times to accumulate ${totalElev}m of elevation gain (~3 min per round trip). Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
+      description: `Find a staircase with at least 5 flights — a car park, block of flats, or office building works well. The more flights per staircase, the better. Walk up one full ascent at a controlled pace, descend for recovery, and keep going until you've completed ${totalFlights} flights total (≈${totalElev}m elevation gain). Keep your weight slightly forward and drive through the heel on each step, just as you would on a mountain path.`,
       targetElevation: totalElev,
+      targetFlights: totalFlights,
     },
     {
       label: "Uphill Walk / Run",
@@ -156,7 +159,7 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     },
   ];
   const o = opts[variant % opts.length];
-  return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, duration: dur };
+  return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, ...(o.targetFlights !== undefined ? { targetFlights: o.targetFlights } : {}), duration: dur };
 }
 
 function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {

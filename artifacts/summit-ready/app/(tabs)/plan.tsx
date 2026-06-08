@@ -112,8 +112,81 @@ function RepStepper({
   );
 }
 
+// ── Flights Logger ────────────────────────────────────────────────────────────
+// For stair repeat sessions. Logs flights of stairs (1 flight = 1 floor ≈ 3m).
+function FlightsLogger({
+  sessionKey,
+  targetFlights,
+  sessionReps,
+  isDone,
+  onSet,
+}: {
+  sessionKey: string;
+  targetFlights: number;
+  sessionReps: Record<string, number>;
+  isDone: boolean;
+  onSet: (key: string, value: number) => void;
+}) {
+  const logged = sessionReps[sessionKey];
+  const hasLogged = logged !== undefined;
+  const displayVal = hasLogged ? logged : 0;
+  const hitTarget = hasLogged && displayVal >= targetFlights;
+
+  function handleDecrement() {
+    onSet(sessionKey, Math.max(0, displayVal - 1));
+  }
+  function handleIncrement() {
+    onSet(sessionKey, displayVal + 1);
+  }
+
+  return (
+    <View style={[rsStyles.container, isDone && rsStyles.containerDone]}>
+      <View style={rsStyles.targetRow}>
+        <Flag size={11} color={T.orange} />
+        <Text style={rsStyles.targetLabel}>
+          Target:{" "}
+          <Text style={rsStyles.targetNum}>{targetFlights} flights</Text>
+        </Text>
+      </View>
+      <View style={rsStyles.logRow}>
+        <Text style={rsStyles.logLabel}>Flights done:</Text>
+        <TouchableOpacity
+          onPress={handleDecrement}
+          style={[rsStyles.btn, (displayVal <= 0 || isDone) && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={displayVal <= 0 || isDone}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Minus size={12} color={(displayVal <= 0 || isDone) ? T.textDim : T.white} />
+        </TouchableOpacity>
+        <Text style={[rsStyles.count, hitTarget && rsStyles.countHit, hasLogged && !hitTarget && rsStyles.countPartial]}>
+          {hasLogged ? `${displayVal}` : "–"}
+        </Text>
+        <TouchableOpacity
+          onPress={handleIncrement}
+          style={[rsStyles.btn, isDone && rsStyles.btnDisabled]}
+          activeOpacity={0.7}
+          disabled={isDone}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Plus size={12} color={isDone ? T.textDim : T.white} />
+        </TouchableOpacity>
+        {hitTarget && (
+          <View style={rsStyles.hitBadge}>
+            <Check size={10} color={T.green} />
+            <Text style={rsStyles.hitText}>Target hit!</Text>
+          </View>
+        )}
+        {hasLogged && !hitTarget && displayVal > 0 && (
+          <Text style={rsStyles.progressText}>{displayVal}/{targetFlights} flights</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 // ── Elevation Logger ──────────────────────────────────────────────────────────
-// For non-gym cardio sessions (stair repeats, uphill walks, taper walks).
+// For non-gym cardio sessions (uphill walks, taper walks).
 // Logs actual elevation gain in metres against the session's target.
 function ElevationLogger({
   sessionKey,
@@ -801,6 +874,8 @@ function WeekCard({
                             ? `${(effectiveTargetKm ?? 0).toFixed(1)}km @ ${s.inclinePct ?? 10}% incline`
                             : `${effectiveTargetFloors ?? 0} floors target`}
                         </Text>
+                      ) : s.targetFlights !== undefined ? (
+                        <Text style={[styles.sessionElev, { color: T.orange }]}>{s.targetFlights} flights target</Text>
                       ) : (
                         <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
                       )}
@@ -840,7 +915,16 @@ function WeekCard({
                       />
                     )}
 
-                    {s.type === "cardio" && !isGymCardio && s.targetElevation > 0 && (
+                    {s.type === "cardio" && !isGymCardio && s.targetFlights !== undefined && (
+                      <FlightsLogger
+                        sessionKey={sessionKey}
+                        targetFlights={s.targetFlights}
+                        sessionReps={sessionReps}
+                        isDone={isSubmitted}
+                        onSet={onSetReps}
+                      />
+                    )}
+                    {s.type === "cardio" && !isGymCardio && s.targetFlights === undefined && s.targetElevation > 0 && (
                       <ElevationLogger
                         sessionKey={sessionKey}
                         targetElevation={s.targetElevation}

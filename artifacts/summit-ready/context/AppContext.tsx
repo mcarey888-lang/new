@@ -62,6 +62,7 @@ export interface PlanSession {
   gymExercise?: "treadmill" | "stepper" | "outdoor";
   targetDistanceKm?: number;
   targetFloors?: number;
+  targetFlights?: number;
   inclinePct?: number;
 }
 
@@ -847,6 +848,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           elevationGain = Math.round(loggedReps * (incline / 100) * 1000);
         } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "stepper") {
           elevationGain = Math.round(loggedReps * 3);
+        } else if (loggedReps !== undefined && s.type === "cardio" && !s.gymExercise && s.targetFlights !== undefined) {
+          elevationGain = Math.round(loggedReps * 3);
         }
 
         const storedEffort = sessionEfforts[key];
@@ -861,6 +864,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           notes = `Submitted from plan: ${s.label} (${loggedReps.toFixed(1)}km done)`;
         } else if (loggedReps !== undefined && s.type === "cardio" && s.gymExercise === "stepper") {
           notes = `Submitted from plan: ${s.label} (${loggedReps} floors done)`;
+        } else if (loggedReps !== undefined && s.type === "cardio" && !s.gymExercise && s.targetFlights !== undefined) {
+          notes = `Submitted from plan: ${s.label} (${loggedReps} flight${loggedReps !== 1 ? "s" : ""} done)`;
         }
 
         toSubmit.push({
@@ -1013,7 +1018,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
-    updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>
+    updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "targetFlights" | "inclinePct">>
   ) => {
     const updatedPlan = trainingPlan.map(week => {
       if (week.weekNumber !== weekNum) return week;

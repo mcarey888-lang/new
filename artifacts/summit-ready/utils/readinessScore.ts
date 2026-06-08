@@ -158,9 +158,14 @@ export function calculateReadiness(
         const targetFloors = session.targetFloors ?? 0;
         if (targetFloors > 0) repEntries.push(Math.min(1, loggedReps / targetFloors));
       } else if (session.type === "cardio" && !session.gymExercise) {
-        // Non-gym cardio (stair repeats, uphill walks, taper walks) — loggedReps = elevation in metres
-        const target = session.targetElevation ?? 0;
-        if (target > 0) repEntries.push(Math.min(1, loggedReps / target));
+        if (session.targetFlights !== undefined && session.targetFlights > 0) {
+          // Stair repeats — loggedReps = flights done
+          repEntries.push(Math.min(1, loggedReps / session.targetFlights));
+        } else {
+          // Uphill walks / taper walks — loggedReps = elevation in metres
+          const target = session.targetElevation ?? 0;
+          if (target > 0) repEntries.push(Math.min(1, loggedReps / target));
+        }
       }
     }
     if (repEntries.length > 0) {
