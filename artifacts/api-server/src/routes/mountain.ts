@@ -6,7 +6,8 @@ import { z } from "zod";
 
 const router: IRouter = Router();
 
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Mountain geography is permanent — cache hits never expire.
+// To force a refresh for a specific mountain, delete its row from cached_mountains.
 
 function mountainSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -74,13 +75,9 @@ router.post("/mountain-lookup", async (req, res) => {
   try {
     const rows = await db.select().from(cachedMountains).where(eq(cachedMountains.slug, slug)).limit(1);
     if (rows.length > 0) {
-      const row = rows[0];
-      const age = Date.now() - new Date(row.cachedAt).getTime();
-      if (age < CACHE_TTL_MS) {
-        req.log.info({ slug }, "Mountain cache hit");
-        res.json(JSON.parse(row.data));
-        return;
-      }
+      req.log.info({ slug }, "Mountain cache hit");
+      res.json(JSON.parse(rows[0].data));
+      return;
     }
   } catch (err) {
     req.log.warn({ err }, "Mountain cache read failed, falling back to AI");
