@@ -1,9 +1,8 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, Navigation, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind } from "lucide-react-native";
+import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
   Dimensions,
@@ -837,35 +836,7 @@ function WeekCard({
                       </View>
                     </View>
 
-                    {(() => {
-                      const displayHill: (NearbyHill & { name: string }) | null =
-                        assignedHill ?? (canPickHill && week.hills[0] ? (week.hills[0] as any) : null);
-                      return (
-                        <>
-                          {assignedHill ? (
-                            <View style={styles.assignedHillRow}>
-                              <Text style={styles.assignedHillEmoji}>{assignedHill.emoji}</Text>
-                              <Text style={styles.assignedHillName}>{assignedHill.name}</Text>
-                              <Text style={styles.assignedHillSub}> · {assignedHill.elevation}m ×{assignedHill.repeats}</Text>
-                            </View>
-                          ) : (
-                            <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
-                          )}
-                          {displayHill && (
-                            <TouchableOpacity
-                              style={styles.directionsBtn}
-                              activeOpacity={0.7}
-                              onPress={() => openMapsForHill((displayHill as any).lat, (displayHill as any).lng, displayHill.name, true)}
-                            >
-                              <Navigation size={11} color={T.blue} />
-                              <Text style={styles.directionsBtnText}>
-                                {assignedHill ? "Get directions to start" : `Directions to ${displayHill.name}`}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </>
-                      );
-                    })()}
+                    <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
 
                     <View style={styles.sessionFooter}>
                       {isGymCardio ? (
@@ -879,18 +850,7 @@ function WeekCard({
                       ) : (
                         <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
                       )}
-                      {canPickHill ? (
-                        <TouchableOpacity
-                          onPress={() => onAssignHill(week.weekNumber, i)}
-                          style={styles.pickHillBtn}
-                          activeOpacity={0.7}
-                        >
-                          <MapPin size={11} color={T.green} />
-                          <Text style={styles.pickHillText}>
-                            {assignedHill ? "Change hill" : "Pick hill"}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : s.type === "cardio" ? (
+                      {s.type === "cardio" ? (
                         <TouchableOpacity
                           onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
                           style={styles.swapBtn}
@@ -935,8 +895,7 @@ function WeekCard({
                     )}
 
                     {canPickHill && (() => {
-                      const hill = assignedHill ?? week.hills[0] ?? null;
-                      const elevPerRep = hill ? hill.elevation : Math.max(50, Math.round(s.targetElevation / 4));
+                      const elevPerRep = Math.max(50, Math.round(s.targetElevation / 4));
                       const targetReps = Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <RepStepper
@@ -954,25 +913,6 @@ function WeekCard({
               );
             })}
 
-            {week.hills.slice(0, 2).length > 0 && (
-              <>
-                <Text style={[styles.sectionHead, { marginTop: 14 }]}>SUGGESTED HILLS</Text>
-                {week.hills.slice(0, 2).map((h, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={styles.hillRow}
-                    activeOpacity={0.7}
-                    onPress={() => openMapsForHill(h.lat, h.lng, h.name, true)}
-                  >
-                    <Navigation size={13} color={T.blue} />
-                    <Text style={styles.hillRowText}>
-                      {h.name} – {h.elevation}m × {h.repeats} = ~{h.totalElevation}m total
-                    </Text>
-                    <Text style={{ fontSize: 10, color: T.blue, fontFamily: "Inter_600SemiBold", marginLeft: "auto" }}>Directions</Text>
-                  </TouchableOpacity>
-                ))}
-              </>
-            )}
 
             {/* Submit / confirmation row */}
             {(() => {
