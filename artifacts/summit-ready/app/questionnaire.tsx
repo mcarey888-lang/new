@@ -1,10 +1,11 @@
-import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight } from "lucide-react-native";
+import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -485,6 +486,8 @@ export default function QuestionnaireScreen() {
 
   const [step, setStep] = useState(0);
   const [animKey, setAnimKey] = useState(0);
+  const [showBaselineModal, setShowBaselineModal] = useState(false);
+  const pendingParams = useRef<{ score: number; mountain: string } | null>(null);
 
   const [mountainName, setMountainName] = useState("");
   const [fitnessLevel, setFitnessLevel] = useState(0);
@@ -565,14 +568,23 @@ export default function QuestionnaireScreen() {
       rawUphillFreq: uphillFreq,
     }));
 
-    router.push({
-      pathname: "/paywall",
-      params: {
-        score: String(score),
-        mountain: mountainName.trim(),
-        fromQuestionnaire: "true",
-      },
-    });
+    pendingParams.current = { score, mountain: mountainName.trim() };
+    setShowBaselineModal(true);
+  }
+
+  function navigateToPaywall() {
+    setShowBaselineModal(false);
+    const p = pendingParams.current;
+    if (p) {
+      router.push({
+        pathname: "/paywall",
+        params: {
+          score: String(p.score),
+          mountain: p.mountain,
+          fromQuestionnaire: "true",
+        },
+      });
+    }
   }
 
   const progress = (step + 1) / TOTAL_STEPS;
@@ -628,6 +640,29 @@ export default function QuestionnaireScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={showBaselineModal}
+        transparent
+        animationType="fade"
+        onRequestClose={navigateToPaywall}
+      >
+        <View style={s.baselineOverlay}>
+          <View style={s.baselineSheet}>
+            <View style={s.baselineIconWrap}>
+              <TrendingUp size={28} color={T.green} />
+            </View>
+            <Text style={s.baselineTitle}>This is your baseline</Text>
+            <Text style={s.baselineBody}>
+              Your starting score is built from your questionnaire — it reflects where you are right now, not where you'll be.{"\n\n"}The more training sessions you log, the more accurately it reflects your real fitness. Keep training and watch it grow.
+            </Text>
+            <TouchableOpacity onPress={navigateToPaywall} activeOpacity={0.85} style={s.baselineBtn}>
+              <Text style={s.baselineBtnText}>Got it, show me my score</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </LinearGradient>
   );
 }
@@ -766,4 +801,55 @@ const s = StyleSheet.create({
     gap: 10, paddingVertical: 17,
   },
   nextBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  baselineOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "flex-end",
+  },
+  baselineSheet: {
+    backgroundColor: T.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: T.border,
+    padding: 28,
+    paddingBottom: 48,
+    gap: 14,
+  },
+  baselineIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: T.greenDim,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  baselineTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: T.text,
+    textAlign: "center",
+  },
+  baselineBody: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    textAlign: "center",
+    lineHeight: 23,
+  },
+  baselineBtn: {
+    backgroundColor: T.green,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  baselineBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
+  },
 });
