@@ -105,7 +105,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="hills"
         options={{
-          title: "Hills",
+          title: "My Hills",
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
               <Mountain size={20} color={color} />
