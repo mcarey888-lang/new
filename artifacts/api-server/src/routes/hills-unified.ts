@@ -196,6 +196,48 @@ Other rules:
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
 - If a hill appears in the verified table above, use that exact elevation value`;
 
+// ── Hard-coded verified elevation gains ──────────────────────────────────────
+// Keyed by slugified hill name. These take precedence over terrain API results
+// because AI trailhead coords are often misplaced (too high), producing low gains.
+const KNOWN_GAINS: Record<string, number> = {
+  // Peak District
+  "mam-tor": 152, "kinder-scout": 436, "lose-hill": 316,
+  "shutlingsloe": 250, "chrome-hill": 185, "parkhouse-hill": 192,
+  "thorpe-cloud": 157, "axe-edge-moor": 131,
+  // Yorkshire Dales / South Pennines
+  "pen-y-ghent": 454, "whernside": 476, "ingleborough": 484,
+  "great-whernside": 504,
+  // Lake District
+  "skiddaw": 651, "helvellyn": 741, "blencathra": 618,
+  "catbells": 371, "great-gable": 824, "scafell-pike": 900,
+  "coniston-old-man": 748,
+  // Wales
+  "pen-y-fan": 446, "corn-du": 433, "cribyn": 355,
+  "snowdon": 726, "cadair-idris": 693,
+  "sugar-loaf": 246, "skirrid-fawr": 386,
+  // Scotland
+  "ben-nevis": 1325, "ben-lomond": 959, "schiehallion": 733,
+  "cairngorm": 605, "arthurs-seat": 244, "tinto-hill": 487,
+  // Lancashire / West Pennines
+  "pendle-hill": 290, "bull-hill": 316, "winter-hill": 316,
+  "rivington-pike": 253, "holcombe-hill": 220,
+  "boulsworth-hill": 237, "great-hameldon": 210,
+};
+
+/** Apply hard-coded verified gain if the hill is in the known table. */
+function applyKnownGain(hill: Hill): Hill {
+  const known = KNOWN_GAINS[slugify(hill.name)];
+  if (!known) return hill;
+  const grade = gradeFromGain(known);
+  return {
+    ...hill,
+    elevation: known,
+    grade,
+    emoji: emojiFromGrade(grade),
+    totalElevation: Math.round(known * hill.repeats),
+  };
+}
+
 // ── Haversine distance in km ──────────────────────────────────────────────────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -284,7 +326,7 @@ async function fetchTopoElevations(
 async function applyTerrainElevation(hill: Hill): Promise<Hill> {
   const summitOk  = hill.lat && hill.lng;
   const trailOk   = hill.trailheadLat && hill.trailheadLng;
-  if (!summitOk || !trailOk) return hill;
+  if (!summitOk || !trailOk) return applyKnownGain(hill);
 
   const points = [
     { lat: hill.lat!, lng: hill.lng! },
@@ -292,25 +334,27 @@ async function applyTerrainElevation(hill: Hill): Promise<Hill> {
   ];
   const [summitElev, trailElev] = await fetchTopoElevations(points);
 
-  if (summitElev === null || trailElev === null) return hill;
+  if (summitElev === null || trailElev === null) return applyKnownGain(hill);
 
   const verifiedGain = Math.round(summitElev - trailElev);
 
   // Sanity checks — discard obviously wrong results.
   // Lower bound (< 25% of AI estimate): topo coords were probably wrong/misplaced.
   // Upper bound (> 4× AI estimate): topo point is wildly off or AI gave summit altitude.
-  if (verifiedGain <= 0) return hill;
-  if (verifiedGain < hill.elevation * 0.25) return hill; // topo coords misplaced — keep AI value
-  if (verifiedGain > hill.elevation * 4) return hill;    // topo wildly off — keep AI value
+  if (verifiedGain <= 0) return applyKnownGain(hill);
+  if (verifiedGain < hill.elevation * 0.25) return applyKnownGain(hill);
+  if (verifiedGain > hill.elevation * 4) return applyKnownGain(hill);
 
   const grade = gradeFromGain(verifiedGain);
-  return {
+  const corrected = {
     ...hill,
     elevation: verifiedGain,
     grade,
     emoji: emojiFromGrade(grade),
     totalElevation: Math.round(verifiedGain * hill.repeats),
   };
+  // Known-gains table always wins — AI trailhead coords are often misplaced
+  return applyKnownGain(corrected);
 }
 
 /**
@@ -344,21 +388,26 @@ async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
 
   return hills.map((hill, i) => {
     const idx = indexMap[i];
-    if (!idx) return hill;
+    // Even if we can't do terrain verification, apply the known-gains table
+    if (!idx) return applyKnownGain(hill);
     const [si, ti] = idx;
     const summitElev = elevations[si] ?? null;
     const trailElev = elevations[ti] ?? null;
-    if (summitElev === null || trailElev === null) return hill;
+    if (summitElev === null || trailElev === null) return applyKnownGain(hill);
     const verifiedGain = Math.round(summitElev - trailElev);
-    if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.25 || verifiedGain > hill.elevation * 4) return hill;
+    if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.25 || verifiedGain > hill.elevation * 4) {
+      return applyKnownGain(hill);
+    }
     const grade = gradeFromGain(verifiedGain);
-    return {
+    const terrainCorrected = {
       ...hill,
       elevation: verifiedGain,
       grade,
       emoji: emojiFromGrade(grade),
       totalElevation: Math.round(verifiedGain * hill.repeats),
     };
+    // Known-gains table always wins over terrain API (AI trailhead coords are often misplaced)
+    return applyKnownGain(terrainCorrected);
   });
 }
 
