@@ -811,7 +811,7 @@ function WeekCard({
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    {isDone && <Check size={12} color="#fff" />}
+                    {isDone && <Check size={15} color="#fff" />}
                   </TouchableOpacity>
 
                   <View style={[
@@ -1724,12 +1724,12 @@ const styles = StyleSheet.create({
     borderColor: T.green + "30",
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: T.border,
-    backgroundColor: T.surface,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: T.textMuted,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
