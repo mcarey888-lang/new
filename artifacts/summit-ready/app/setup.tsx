@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react-native";
 import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -104,7 +104,9 @@ const LOCATIONS = [
 
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
-  const { setSummitGoal } = useApp();
+  const { setSummitGoal, changeSummit, summitGoal } = useApp();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isChangeMode = mode === "change";
 
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
@@ -215,6 +217,29 @@ export default function SetupScreen() {
       } catch {}
     });
   }, []);
+
+  // When arriving in change-summit mode, pre-populate every field from the current goal
+  useEffect(() => {
+    if (!isChangeMode || !summitGoal) return;
+    skipLookupRef.current = true;
+    setName(summitGoal.mountainName);
+    setDate(summitGoal.summitDate);
+    setDist(String(summitGoal.distance));
+    setElev(String(summitGoal.elevationGain));
+    setAlt(String(summitGoal.highestAltitude));
+    setDiff(summitGoal.difficulty);
+    setFit(summitGoal.fitnessLevel);
+    setEquipment(summitGoal.equipment);
+    setTrainingDays(summitGoal.trainingDaysPerWeek);
+    setHillDays(summitGoal.hillDaysPerWeek);
+    setLoc(summitGoal.location);
+    setRadius(String(summitGoal.maxRadius));
+    if (summitGoal.preferredHills?.length) setPreferredHills(summitGoal.preferredHills);
+    if (summitGoal.planStartMode) setPlanStartMode(summitGoal.planStartMode);
+    if (typeof summitGoal.fitnessBaseline === "number") setPrefillBaseline(summitGoal.fitnessBaseline);
+  // Only run once on mount when isChangeMode is true
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChangeMode]);
 
   // Derive fitness level from the three sliders
   useEffect(() => {
@@ -370,7 +395,7 @@ export default function SetupScreen() {
   async function submit() {
     if (!validate()) return;
     setSaving(true);
-    await setSummitGoal({
+    const newGoal: SummitGoal = {
       mountainName: name.trim(),
       summitDate: date,
       distance: +dist,
@@ -386,7 +411,12 @@ export default function SetupScreen() {
       preferredHills: preferredHills.length > 0 ? preferredHills : undefined,
       fitnessBaseline,
       planStartMode,
-    });
+    };
+    if (isChangeMode) {
+      await changeSummit(newGoal);
+    } else {
+      await setSummitGoal(newGoal);
+    }
     setSaving(false);
     router.replace("/(tabs)/dashboard");
   }
@@ -414,10 +444,20 @@ export default function SetupScreen() {
               <ArrowLeft size={20} color={T.white} />
             </TouchableOpacity>
             <View>
-              <Text style={styles.title}>Your Summit</Text>
-              <Text style={styles.subtitle}>Build a plan tailored to you</Text>
+              <Text style={styles.title}>{isChangeMode ? "Change Summit" : "Your Summit"}</Text>
+              <Text style={styles.subtitle}>{isChangeMode ? "Your training sessions are kept" : "Build a plan tailored to you"}</Text>
             </View>
           </View>
+
+          {/* Change-mode notice */}
+          {isChangeMode && (
+            <View style={styles.changeBanner}>
+              <CheckCircle size={14} color={T.green} />
+              <Text style={styles.changeBannerText}>
+                Your logged training sessions will carry over to the new summit. Only the training plan is regenerated.
+              </Text>
+            </View>
+          )}
 
           {/* Fitness Assessment — slider quiz */}
           <Section label="Your Fitness" icon={Zap}>
@@ -1393,6 +1433,14 @@ const styles = StyleSheet.create({
 
   autofillBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: T.green + "30" },
   autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
+
+  changeBanner: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1,
+    borderColor: T.green + "40", paddingHorizontal: 14, paddingVertical: 12,
+    marginBottom: 4,
+  },
+  changeBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.green, lineHeight: 18 },
 
   diffRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   diffBtn: { flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4, paddingHorizontal: 4 },

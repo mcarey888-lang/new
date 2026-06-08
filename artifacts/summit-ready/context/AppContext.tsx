@@ -145,6 +145,7 @@ interface AppState {
   sessionEfforts: Record<string, 1 | 2 | 3 | 4 | 5>;
   hasViewedPlan: boolean;
   setSummitGoal: (goal: SummitGoal) => Promise<void>;
+  changeSummit: (goal: SummitGoal) => Promise<void>;
   addSession: (session: Omit<Session, "id">) => Promise<void>;
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
@@ -205,6 +206,7 @@ const AppContext = createContext<AppState>({
   sessionEfforts: {},
   hasViewedPlan: false,
   setSummitGoal: async () => {},
+  changeSummit: async () => {},
   addSession: async () => {},
   updateSession: async () => {},
   deleteSession: async () => {},
@@ -611,6 +613,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
   }, [summitGoal, sessions, trainingPlan, completedGoals]);
+
+  const changeSummit = useCallback(async (goal: SummitGoal) => {
+    // Update the summit target WITHOUT archiving the old goal or clearing sessions.
+    // Existing logged sessions are preserved — only the plan is regenerated.
+    const plan = generatePlan(goal);
+    setSummitGoalState(goal);
+    setTrainingPlan(plan);
+    // Reset plan-tracking state (old tick-marks don't map to the new plan)
+    setCompletedPlanSessions({});
+    setAssignedHills({});
+    setSubmittedPlanSessions({});
+    setHillsInPlan([]);
+    setSessionRepsState({});
+    setSessionEffortsState({});
+    setPlanAdjustNote(null);
+    setHasViewedPlan(false);
+    // Recalculate readiness with existing sessions against the new goal
+    const score = calculateReadiness(goal, plan, sessions, { completedGoals });
+    setReadinessScore(score);
+    await AsyncStorage.multiSet([
+      [GOAL_KEY, JSON.stringify(goal)],
+      [PLAN_KEY, JSON.stringify(plan)],
+      [COMPLETED_KEY, "{}"],
+      [ASSIGNED_KEY, "{}"],
+      [SUBMITTED_KEY, "{}"],
+      [HILLS_IN_PLAN_KEY, "[]"],
+      [ADJUST_NOTE_KEY, ""],
+      [REPS_KEY, "{}"],
+      [HAS_VIEWED_PLAN_KEY, "false"],
+    ]);
+    // Fire-and-forget Alpine profile fetch
+    if (goal.difficulty === "Alpine") {
+      setAlpineProfileLoading(true);
+      fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
+        if (profile) {
+          setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
+          const gs = await AsyncStorage.getItem(GOAL_KEY);
+          if (gs) {
+            const g = JSON.parse(gs) as SummitGoal;
+            await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
+          }
+        }
+        setAlpineProfileLoading(false);
+      });
+    }
+  }, [sessions, completedGoals]);
 
   const clearNewlyUnlocked = useCallback(() => {
     setNewlyUnlocked([]);
@@ -1103,7 +1151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nearbyHills, hillsLoading, hillsError, alpineProfileLoading, completedPlanSessions, assignedHills,
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       hasViewedPlan, markPlanViewed,
-      setSummitGoal, addSession, updateSession, deleteSession, clearPlan,
+      setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
       submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,

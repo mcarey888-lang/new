@@ -373,15 +373,25 @@ export default function AccountScreen() {
           </TouchableOpacity>
 
           {summitGoal && (
-            <View style={styles.goalPill}>
+            <TouchableOpacity
+              style={styles.goalPill}
+              onPress={() => router.push("/setup?mode=change")}
+              activeOpacity={0.75}
+            >
               <Flag size={13} color={T.green} />
-              <Text style={styles.goalPillText} numberOfLines={1}>
-                {summitGoal.mountainName}
-              </Text>
-              <Text style={styles.goalPillSub}>
-                {summitGoal.elevationGain}m · {new Date(summitGoal.summitDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
-              </Text>
-            </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.goalPillText} numberOfLines={1}>
+                  {summitGoal.mountainName}
+                </Text>
+                <Text style={styles.goalPillSub}>
+                  {summitGoal.elevationGain}m · {new Date(summitGoal.summitDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                </Text>
+              </View>
+              <View style={styles.changeSummitBtn}>
+                <PenLine size={12} color={T.green} />
+                <Text style={styles.changeSummitText}>Change</Text>
+              </View>
+            </TouchableOpacity>
           )}
         </Animated.View>
 
@@ -850,8 +860,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: T.green + "30",
     paddingVertical: 10, paddingHorizontal: 14, marginTop: 2,
   },
-  goalPillText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
+  goalPillText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.text },
   goalPillSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  changeSummitBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: T.greenDim, borderRadius: 8,
+    borderWidth: 1, borderColor: T.green + "40",
+    paddingHorizontal: 9, paddingVertical: 5,
+  },
+  changeSummitText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
 
   actionList: { gap: 8 },
   actionRow: {
