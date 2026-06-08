@@ -26,6 +26,51 @@ export interface ChallengeTemplate {
 
 export const CHALLENGES: ChallengeTemplate[] = [
   {
+    id: "everest-basecamp",
+    title: "Everest: Base Camp to Summit",
+    description:
+      "3,485m of elevation — the vertical gain from Everest Base Camp (5,364m) to the summit. The hardest 3.5k you'll ever train for.",
+    tagline: "Summit training for the world's highest peak.",
+    metric: "elevation",
+    targetValue: 3485,
+    difficulty: "Advanced",
+    durationDays: null,
+    mountain: "Everest",
+    emoji: "⛺",
+    isPremium: true,
+    recommendedFor: ["Everest Base Camp trek", "High altitude expeditions"],
+    milestones: [
+      { pct: 25, label: "Camp I level", emoji: "🏕️" },
+      { pct: 50, label: "Camp III level", emoji: "🧊" },
+      { pct: 75, label: "South Col reached", emoji: "💀" },
+      { pct: 100, label: "Summit — 8,849m", emoji: "🏔️" },
+    ],
+    color: "#38BDF8",
+  },
+  {
+    id: "everest-sea-level",
+    title: "Everest: Sea Level to Summit",
+    description:
+      "8,849m of total elevation — the full height of Everest from sea level. Accumulated across your local hills, this is the ultimate long-game challenge.",
+    tagline: "The full height of Everest. Every metre counts.",
+    metric: "elevation",
+    targetValue: 8849,
+    difficulty: "Expedition",
+    durationDays: null,
+    mountain: "Everest",
+    emoji: "🏔️",
+    isPremium: true,
+    recommendedFor: ["Everest expedition", "Elite mountain athletes"],
+    milestones: [
+      { pct: 10, label: "Lukla altitude", emoji: "✈️" },
+      { pct: 25, label: "Namche Bazaar level", emoji: "🏘️" },
+      { pct: 50, label: "Base Camp reached", emoji: "⛺" },
+      { pct: 75, label: "Death Zone entry", emoji: "🧊" },
+      { pct: 100, label: "Top of the world", emoji: "🏔️" },
+    ],
+    color: "#A78BFA",
+  },
+  {
     id: "1000m-7days",
     title: "1,000m in 7 Days",
     description:
