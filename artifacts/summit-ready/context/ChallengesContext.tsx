@@ -28,6 +28,7 @@ interface ChallengesState {
   startChallenge: (challengeId: string) => Promise<void>;
   abandonChallenge: (challengeId: string) => Promise<void>;
   logActivity: (activity: Omit<ChallengeActivity, "id" | "createdAt">) => Promise<void>;
+  logActivityOnly: (activity: Omit<ChallengeActivity, "id" | "createdAt">) => Promise<void>;
   getProgress: (challengeId: string) => number;
   getActiveChallenge: (challengeId: string) => ActiveChallenge | undefined;
   clearChallenges: () => Promise<void>;
@@ -38,6 +39,7 @@ const ChallengesContext = createContext<ChallengesState>({
   startChallenge: async () => {},
   abandonChallenge: async () => {},
   logActivity: async () => {},
+  logActivityOnly: async () => {},
   getProgress: () => 0,
   getActiveChallenge: () => undefined,
   clearChallenges: async () => {},
@@ -146,6 +148,35 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
     });
   }, [addSession, logExploreHike]);
 
+  const logActivityOnly = useCallback(async (
+    activityData: Omit<ChallengeActivity, "id" | "createdAt">
+  ) => {
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
+    const activity: ChallengeActivity = {
+      ...activityData,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    const template = getChallenge(activityData.challengeId);
+    const current = latestRef.current;
+    const updated = current.map(ac => {
+      if (ac.challengeId !== activityData.challengeId || ac.completed) return ac;
+      const updatedActivities = [activity, ...ac.activities];
+      const total = updatedActivities.reduce((sum, a) => {
+        if (template?.metric === "hikes") return sum + 1;
+        return sum + a.elevationGain;
+      }, 0);
+      const isNowComplete = template ? total >= template.targetValue : false;
+      return {
+        ...ac,
+        activities: updatedActivities,
+        completed: isNowComplete,
+        completedAt: isNowComplete ? new Date().toISOString() : null,
+      };
+    });
+    await persist(updated);
+  }, []);
+
   const getProgress = useCallback((challengeId: string): number => {
     const ac = latestRef.current.find(c => c.challengeId === challengeId);
     if (!ac) return 0;
@@ -172,6 +203,7 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       startChallenge,
       abandonChallenge,
       logActivity,
+      logActivityOnly,
       getProgress,
       getActiveChallenge,
       clearChallenges,

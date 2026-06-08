@@ -21,6 +21,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp, NearbyHill, ExploreHike, Session } from "@/context/AppContext";
+import { useChallenges } from "@/context/ChallengesContext";
+import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 
 const GRADE_COLOR: Record<string, string> = {
@@ -93,6 +95,7 @@ function HikeDetailSheet({ hike, onClose }: { hike: ExploreHike; onClose: () => 
 export default function MyHillsScreen() {
   const insets = useSafeAreaInsets();
   const { myHills, removeFromMyHills, addSession, summitGoal, sessions, exploreHikes, deleteExploreHike } = useApp();
+  const { activeChallenges } = useChallenges();
   const location = summitGoal?.location ?? "";
 
   const hillSessions = sessions.filter((s: Session) => s.type === "hill");
@@ -102,6 +105,9 @@ export default function MyHillsScreen() {
   const [logging, setLogging] = useState(false);
   const [loggedHill, setLoggedHill] = useState<string | null>(null);
   const [selectedHike, setSelectedHike] = useState<ExploreHike | null>(null);
+  const [pendingChallenge, setPendingChallenge] = useState<{
+    hillName: string; elevationGain: number; distance: number; date: string;
+  } | null>(null);
 
   function openLogModal(hill: NearbyHill) {
     setLogTarget(hill);
@@ -118,11 +124,14 @@ export default function MyHillsScreen() {
     setLogging(true);
     try {
       const now = new Date();
+      const dateStr = now.toISOString().split("T")[0];
+      const elevGain = logTarget.elevation * reps;
+      const dist = Math.round(logTarget.distance * reps * 2 * 10) / 10;
       await addSession({
         date: now.toISOString(),
         type: "hill",
-        distance: Math.round(logTarget.distance * reps * 2 * 10) / 10,
-        elevationGain: logTarget.elevation * reps,
+        distance: dist,
+        elevationGain: elevGain,
         duration: 0,
         effort: 3,
         notes: `${logTarget.name} — ${reps} rep${reps !== 1 ? "s" : ""}`,
@@ -131,9 +140,14 @@ export default function MyHillsScreen() {
         hillName: logTarget.name,
         reps,
       });
-      setLoggedHill(logTarget.name);
+      const hillName = logTarget.name;
+      setLoggedHill(hillName);
       closeLogModal();
       setTimeout(() => setLoggedHill(null), 3000);
+      const hasActive = activeChallenges.some(ac => !ac.completed);
+      if (hasActive) {
+        setPendingChallenge({ hillName, elevationGain: elevGain, distance: dist, date: dateStr });
+      }
     } finally {
       setLogging(false);
     }
@@ -459,6 +473,15 @@ export default function MyHillsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <AddToChallengeSheet
+        visible={!!pendingChallenge}
+        onClose={() => setPendingChallenge(null)}
+        hillName={pendingChallenge?.hillName ?? ""}
+        elevationGain={pendingChallenge?.elevationGain ?? 0}
+        distance={pendingChallenge?.distance ?? 0}
+        date={pendingChallenge?.date ?? ""}
+      />
     </LinearGradient>
   );
 }
