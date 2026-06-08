@@ -7,6 +7,7 @@ import Constants from "expo-constants";
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const REVENUECAT_ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
+const USE_TEST_STORE = process.env.EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE === "true";
 
 export const REVENUECAT_ENTITLEMENT_IDENTIFIER = "premium";
 
@@ -19,9 +20,13 @@ function getRevenueCatApiKey() {
     throw new Error("RevenueCat Entitlement Identifier not provided");
   }
 
-  // In Expo Go (storeClient), dev mode, or web — always use the test store key.
+  // Use test store when:
+  // - explicitly requested via EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE (dev/preview EAS builds)
+  // - running in Expo Go (storeClient)
+  // - running in dev mode
+  // - running on web
   // The test store works without any App Store / Play Store configuration.
-  if (__DEV__ || Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
+  if (USE_TEST_STORE || __DEV__ || Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
     return REVENUECAT_TEST_API_KEY;
   }
 

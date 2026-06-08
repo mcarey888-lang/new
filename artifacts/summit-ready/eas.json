@@ -15,6 +15,7 @@
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_ydwWJzCJnygaMTTzTiRRTRClbVm",
+        "EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE": "true",
         "EXPO_PUBLIC_DOMAIN": "summitready.uk"
       }
     },
@@ -28,6 +29,7 @@
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_ydwWJzCJnygaMTTzTiRRTRClbVm",
+        "EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE": "true",
         "EXPO_PUBLIC_DOMAIN": "summitready.uk"
       }
     },
