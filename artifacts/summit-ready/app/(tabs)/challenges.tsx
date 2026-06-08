@@ -223,19 +223,19 @@ export default function ChallengesScreen() {
             >
               <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={s.featuredTop}>
-                <Text style={s.featuredEyebrow}>FEATURED CHALLENGE</Text>
-                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR["Advanced"] + "25" }]}>
-                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR["Advanced"] }]}>Advanced</Text>
+                <Text style={s.featuredEyebrow}>FREE CHALLENGE</Text>
+                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR["Beginner"] + "25" }]}>
+                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR["Beginner"] }]}>Beginner</Text>
                 </View>
               </View>
-              <Text style={s.featuredTitle}>Everest Elevation Challenge</Text>
+              <Text style={s.featuredTitle}>1,000m in 7 Days</Text>
               <Text style={s.featuredDesc}>
-                Gain 8,848m — the height of Everest — using your local hills. Every climb counts.
+                One week. One thousand metres. Build the habit of getting out consistently — no subscription needed.
               </Text>
               <View style={s.featuredMeta}>
-                <Text style={s.featuredMetaText}>8,848m elevation gain</Text>
+                <Text style={s.featuredMetaText}>1,000m elevation gain</Text>
                 <Text style={s.featuredMetaDot}>·</Text>
-                <Text style={s.featuredMetaText}>Flexible timeline</Text>
+                <Text style={s.featuredMetaText}>7 days</Text>
               </View>
               <View style={s.startBtn}>
                 <Zap size={13} color={T.bg} />
