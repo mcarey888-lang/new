@@ -443,6 +443,28 @@ export default function LogScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* Log Hill */}
+        <Animated.View entering={FadeInDown.delay(135).duration(400)}>
+          <TouchableOpacity
+            onPress={() => setLogHillOpen(true)}
+            activeOpacity={0.85}
+            style={styles.logHillBtn}
+          >
+            <View style={styles.startHikeLeft}>
+              <View style={[styles.startHikeIconBox, { backgroundColor: "rgba(0,0,0,0.15)" }]}>
+                <Flag size={22} color={T.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.startHikeTitle}>Log Hill</Text>
+                <Text style={styles.startHikeSub} numberOfLines={1}>Search a hill and log your reps</Text>
+              </View>
+            </View>
+            <View style={styles.startHikeArrow}>
+              <Text style={{ color: T.white, fontSize: 18 }}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Exercise picker */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
           <Text style={styles.exerciseHeading}>Log a Session</Text>
@@ -463,28 +485,6 @@ export default function LogScreen() {
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
           ))}
-        </Animated.View>
-
-        {/* Log Hill */}
-        <Animated.View entering={FadeInDown.delay(165).duration(400)}>
-          <TouchableOpacity
-            onPress={() => setLogHillOpen(true)}
-            activeOpacity={0.85}
-            style={styles.logHillBtn}
-          >
-            <View style={styles.startHikeLeft}>
-              <View style={[styles.startHikeIconBox, { backgroundColor: "rgba(0,0,0,0.15)" }]}>
-                <Flag size={22} color={T.white} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.startHikeTitle}>Log Hill</Text>
-                <Text style={styles.startHikeSub} numberOfLines={1}>Search a hill and log your reps</Text>
-              </View>
-            </View>
-            <View style={styles.startHikeArrow}>
-              <Text style={{ color: T.white, fontSize: 18 }}>›</Text>
-            </View>
-          </TouchableOpacity>
         </Animated.View>
 
         {allItems.length === 0 ? (
