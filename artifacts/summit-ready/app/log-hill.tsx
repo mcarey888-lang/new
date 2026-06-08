@@ -2,7 +2,7 @@ import {
   Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  ChevronLeft, Filter, ChevronDown, ChevronRight,
+  ChevronLeft, Filter, ChevronDown, ChevronRight, X,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -10,7 +10,9 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -67,7 +69,7 @@ export default function LogHillScreen() {
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
-    fetchNearbyHills, myHills, addToMyHills, addToNearbyHills,
+    fetchNearbyHills, myHills, addToMyHills, addToNearbyHills, addSession,
   } = useApp();
 
   const { isSubscribed } = useSubscription();
@@ -83,6 +85,42 @@ export default function LogHillScreen() {
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const searchCardY = useRef<number>(0);
+
+  const [logTarget, setLogTarget] = useState<NearbyHill | null>(null);
+  const [reps, setReps] = useState(1);
+  const [logging, setLogging] = useState(false);
+  const [loggedHill, setLoggedHill] = useState<string | null>(null);
+
+  function openLogModal(hill: NearbyHill) {
+    setLogTarget(hill);
+    setReps(hill.repeats > 0 ? hill.repeats : 1);
+  }
+  function closeLogModal() { setLogTarget(null); setReps(1); }
+
+  async function handleLogSession() {
+    if (!logTarget) return;
+    setLogging(true);
+    try {
+      await addSession({
+        date: new Date().toISOString(),
+        type: "hill",
+        distance: Math.round(logTarget.distance * reps * 2 * 10) / 10,
+        elevationGain: logTarget.elevation * reps,
+        duration: 0,
+        effort: 3,
+        notes: `${logTarget.name} — ${reps} rep${reps !== 1 ? "s" : ""}`,
+        completed: true,
+        weekNumber: 0,
+        hillName: logTarget.name,
+        reps,
+      });
+      setLoggedHill(logTarget.name);
+      closeLogModal();
+      setTimeout(() => setLoggedHill(null), 3000);
+    } finally {
+      setLogging(false);
+    }
+  }
 
   const [searchText, setSearchText] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -204,6 +242,16 @@ export default function LogHillScreen() {
           <Text style={styles.title}>Log Hill</Text>
           <View style={{ width: 36 }} />
         </Animated.View>
+
+        {/* Success flash */}
+        {loggedHill && (
+          <Animated.View entering={FadeInDown.duration(300)}>
+            <View style={styles.successBanner}>
+              <CheckCircle size={14} color={T.green} />
+              <Text style={styles.successText}>Session logged for {loggedHill}!</Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* SEARCH HILLS */}
         <Animated.View entering={FadeInDown.delay(40).duration(400)}>
@@ -479,6 +527,21 @@ export default function LogHillScreen() {
                   <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: pct >= 80 ? T.green : T.orange }]} />
                 </View>
                 <Text style={styles.progressCaption}>{total}m total · {pct}% of this week's target</Text>
+                {/* Log session — primary action */}
+                <TouchableOpacity
+                  style={[styles.logBtn, loggedHill === hill.name && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
+                  activeOpacity={0.8}
+                  onPress={() => openLogModal(hill)}
+                >
+                  {loggedHill === hill.name
+                    ? <CheckCircle size={14} color={T.green} />
+                    : <PlusCircle size={14} color={T.green} />}
+                  <Text style={[styles.logBtnText, loggedHill === hill.name && { color: T.green }]}>
+                    {loggedHill === hill.name ? "Logged!" : "Log session"}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Secondary actions */}
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={[styles.addPlanBtn, inMyHills && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
@@ -528,6 +591,63 @@ export default function LogHillScreen() {
           );
         })}
       </ScrollView>
+
+      {/* Log session modal */}
+      <Modal
+        visible={!!logTarget}
+        transparent
+        animationType="slide"
+        onRequestClose={closeLogModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closeLogModal}>
+          <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
+            <LinearGradient colors={["#142236", "#0C1828"]} style={StyleSheet.absoluteFill} />
+            <View style={styles.sheetHandle} />
+            <TouchableOpacity style={styles.closeBtn} onPress={closeLogModal} activeOpacity={0.7}>
+              <X size={18} color={T.textMuted} />
+            </TouchableOpacity>
+            {logTarget && (
+              <>
+                <Text style={styles.modalTitle}>Log session</Text>
+                <Text style={styles.modalHillName}>{logTarget.emoji} {logTarget.name}</Text>
+                <View style={styles.repSection}>
+                  <Text style={styles.repLabel}>Reps completed</Text>
+                  <View style={styles.repStepper}>
+                    <TouchableOpacity onPress={() => setReps(r => Math.max(1, r - 1))} disabled={reps <= 1} style={[styles.modalStepBtn, reps <= 1 && { opacity: 0.3 }]} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Minus size={16} color={T.white} />
+                    </TouchableOpacity>
+                    <View style={styles.repValueBox}>
+                      <Text style={styles.repValue}>{reps}</Text>
+                      <Text style={styles.repUnit}>rep{reps !== 1 ? "s" : ""}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setReps(r => r + 1)} style={styles.modalStepBtn} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Plus size={16} color={T.white} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <TrendingUp size={14} color={T.orange} />
+                    <Text style={styles.summaryVal}>{logTarget.elevation * reps}m</Text>
+                    <Text style={styles.summaryLbl}>elevation</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <MapPin size={14} color={T.green} />
+                    <Text style={styles.summaryVal}>{Math.round(logTarget.distance * reps * 2 * 10) / 10}km</Text>
+                    <Text style={styles.summaryLbl}>distance</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={[styles.confirmBtn, logging && { opacity: 0.7 }]} activeOpacity={0.85} onPress={handleLogSession} disabled={logging}>
+                  <LinearGradient colors={["#1E8C4E", "#14703D"]} style={StyleSheet.absoluteFill} />
+                  <CheckCircle size={16} color="#fff" />
+                  <Text style={styles.confirmBtnText}>{logging ? "Logging…" : "Log session"}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -625,4 +745,31 @@ const styles = StyleSheet.create({
   lockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
   lockedBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
+
+  logBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11, borderRadius: 14, borderWidth: 1, borderColor: T.green + "50", backgroundColor: T.greenDim },
+  logBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.green },
+
+  successBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40", paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
+  successText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green, flex: 1 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden", padding: 28, paddingTop: 20, gap: 16 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.2)", alignSelf: "center", marginBottom: 8 },
+  closeBtn: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
+  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
+  modalHillName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center", marginTop: -8 },
+  repSection: { alignItems: "center", gap: 12 },
+  repLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  repStepper: { flexDirection: "row", alignItems: "center", gap: 20 },
+  modalStepBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center" },
+  repValueBox: { alignItems: "center", minWidth: 70 },
+  repValue: { fontSize: 40, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 46 },
+  repUnit: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+  summaryRow: { flexDirection: "row", backgroundColor: T.surface, borderRadius: 16, borderWidth: 1, borderColor: T.border, overflow: "hidden" },
+  summaryItem: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 16 },
+  summaryDivider: { width: 1, backgroundColor: T.border },
+  summaryVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
+  summaryLbl: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  confirmBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderRadius: 16, paddingVertical: 15, overflow: "hidden" },
+  confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });
