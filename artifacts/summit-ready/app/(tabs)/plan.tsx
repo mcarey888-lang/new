@@ -1043,14 +1043,23 @@ function WeekCard({
                     )}
 
                     {canPickHill && (() => {
-                      // If a specific hill is assigned, use its actual gain-per-climb and repeats
-                      // rather than dividing targetElevation by 4 (which is only a generic fallback).
+                      // Priority 1 — manually assigned hill (user picked it from the picker)
+                      // Priority 2 — parse per-climb data from the AI-generated session description
+                      //              e.g. "Tor Hill (145m per climb × 1 rep = 145m)"
+                      // Priority 3 — generic heuristic: divide targetElevation by 4
+                      const descMatch = !assignedHill
+                        ? (s.description ?? "").match(/(\d+)m per climb\s*[×x]\s*(\d+)\s*rep/i)
+                        : null;
                       const elevPerRep = assignedHill
                         ? assignedHill.elevation
-                        : Math.max(50, Math.round(s.targetElevation / 4));
+                        : descMatch
+                          ? parseInt(descMatch[1], 10)
+                          : Math.max(50, Math.round(s.targetElevation / 4));
                       const targetReps = assignedHill
                         ? assignedHill.repeats
-                        : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
+                        : descMatch
+                          ? parseInt(descMatch[2], 10)
+                          : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <>
                           <HillActionCard
