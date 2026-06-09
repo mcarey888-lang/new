@@ -116,6 +116,17 @@ export interface Session {
   stepperFloors?: number;
 }
 
+export const PENDING_PAST_HIKES_KEY = "summitready_pending_past_hikes";
+
+export interface PastHike {
+  trailId?: string;
+  name: string;
+  elevationGain: number;
+  distance: number;
+  monthsAgo: number;
+  emoji?: string;
+}
+
 export interface ExploreHike {
   id: string;
   name: string;
@@ -151,6 +162,7 @@ interface AppState {
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearPlan: () => Promise<void>;
+  seedPastActivity: (hikes: PastHike[]) => Promise<void>;
   fetchNearbyHills: (radiusOverride?: number, minElevation?: number, locationOverride?: string) => Promise<void>;
   togglePlanSession: (weekNum: number, sessionIdx: number) => Promise<void>;
   assignHillToSession: (weekNum: number, sessionIdx: number, hill: NearbyHill) => Promise<void>;
@@ -212,6 +224,7 @@ const AppContext = createContext<AppState>({
   updateSession: async () => {},
   deleteSession: async () => {},
   clearPlan: async () => {},
+  seedPastActivity: async () => {},
   fetchNearbyHills: async () => {},
   togglePlanSession: async () => {},
   assignHillToSession: async () => {},
@@ -571,10 +584,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(COMPLETED_GOALS_KEY, JSON.stringify(updatedHistory));
     }
     const plan = generatePlan(goal);
+    // Consume any past hikes saved during the "Catch me up" onboarding step
+    const _pendingStr = await AsyncStorage.getItem(PENDING_PAST_HIKES_KEY);
+    const _pendingHikes: PastHike[] = _pendingStr ? (JSON.parse(_pendingStr) as PastHike[]) : [];
+    const initialSessions: Session[] = _pendingHikes.map((hike, idx) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - hike.monthsAgo);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-15`;
+      return {
+        id: `past_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+        type: "hill" as const,
+        date: dateStr,
+        distance: hike.distance,
+        elevationGain: hike.elevationGain,
+        duration: Math.round(hike.distance * 20 + hike.elevationGain / 20),
+        effort: 4 as const,
+        notes: `Past summit: ${hike.name}`,
+        completed: true,
+        weekNumber: 0,
+        hillName: hike.name,
+      };
+    });
     setSummitGoalState(goal);
     setTrainingPlan(plan);
-    // Reset ALL session data — old sessions from a previous goal are irrelevant
-    setSessions([]);
+    // Reset ALL session data, seeding any past-activity hikes from onboarding
+    setSessions(initialSessions);
     setCompletedPlanSessions({});
     setAssignedHills({});
     setSubmittedPlanSessions({});
@@ -584,14 +618,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPlanAdjustNote(null);
     // Reset plan-viewed flag so user sees their new plan before upgrade prompts
     setHasViewedPlan(false);
-    const score = calculateReadiness(goal, plan, [], { completedGoals });
+    const score = calculateReadiness(goal, plan, initialSessions, { completedGoals });
     setReadinessScore(score);
     setUnlockedAchievements([]);
     setNewlyUnlocked([]);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
       [PLAN_KEY, JSON.stringify(plan)],
-      [SESSIONS_KEY, "[]"],
+      [SESSIONS_KEY, JSON.stringify(initialSessions)],
       [COMPLETED_KEY, "{}"],
       [ASSIGNED_KEY, "{}"],
       [SUBMITTED_KEY, "{}"],
@@ -603,6 +637,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [EXCLUDED_HILLS_KEY, "[]"],
     ]);
     setExcludedFromMyHills([]);
+    // Clear pending key and mark past-hike trails completed
+    if (_pendingStr) {
+      await AsyncStorage.removeItem(PENDING_PAST_HIKES_KEY);
+      const newTrailIds = _pendingHikes
+        .filter(h => h.trailId && !completedTrailIds.includes(h.trailId))
+        .map(h => h.trailId!);
+      if (newTrailIds.length > 0) {
+        const updatedTrails = [...completedTrailIds, ...newTrailIds];
+        setCompletedTrailIds(updatedTrails);
+        await AsyncStorage.setItem(COMPLETED_TRAILS_KEY, JSON.stringify(updatedTrails));
+      }
+    }
     // Fire-and-forget Alpine profile fetch — doesn't block the goal save
     if (goal.difficulty === "Alpine") {  
       setAlpineProfileLoading(true);
@@ -752,6 +798,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
     ]);
   }, []);
+
+  const seedPastActivity = useCallback(async (hikes: PastHike[]) => {
+    if (hikes.length === 0) return;
+    const newSessions: Session[] = hikes.map((hike, idx) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - hike.monthsAgo);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-15`;
+      return {
+        id: `past_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+        type: "hill" as const,
+        date: dateStr,
+        distance: hike.distance,
+        elevationGain: hike.elevationGain,
+        duration: Math.round(hike.distance * 20 + hike.elevationGain / 20),
+        effort: 4 as const,
+        notes: `Past summit: ${hike.name}`,
+        completed: true,
+        weekNumber: 0,
+        hillName: hike.name,
+      };
+    });
+    const updated = [...newSessions, ...sessions];
+    setSessions(updated);
+    if (summitGoal) {
+      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals }));
+    }
+    await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
+    const newTrailIds = hikes
+      .filter(h => h.trailId && !completedTrailIds.includes(h.trailId))
+      .map(h => h.trailId!);
+    if (newTrailIds.length > 0) {
+      const updatedTrails = [...completedTrailIds, ...newTrailIds];
+      setCompletedTrailIds(updatedTrails);
+      await AsyncStorage.setItem(COMPLETED_TRAILS_KEY, JSON.stringify(updatedTrails));
+    }
+  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, completedTrailIds]);
 
   const setAppMode = useCallback(async (mode: "summit" | "explore") => {
     setAppModeState(mode);
@@ -1209,7 +1291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nearbyHills, hillsLoading, hillsError, alpineProfileLoading, completedPlanSessions, assignedHills,
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       hasViewedPlan, markPlanViewed,
-      setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan,
+      setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan, seedPastActivity,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
       submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,

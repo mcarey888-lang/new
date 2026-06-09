@@ -416,6 +416,24 @@ export default function LogScreen() {
           </View>
         </Animated.View>
 
+        {/* Past activity shortcut */}
+        <Animated.View entering={FadeInDown.delay(75).duration(400)}>
+          <TouchableOpacity
+            onPress={() => router.push("/past-activity" as never)}
+            style={styles.pastActCard}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pastActIconWrap}>
+              <Clock size={17} color={T.green} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pastActTitle}>Add past summits</Text>
+              <Text style={styles.pastActSub}>Log hills you've already done</Text>
+            </View>
+            <ChevronRight size={15} color={T.textDim} />
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* Calendar */}
         <Animated.View entering={FadeInDown.delay(90).duration(400)}>
           <MiniCalendar sessions={sessions} exploreHikes={exploreHikes} trainingPlan={trainingPlan} />
@@ -552,6 +570,19 @@ const styles = StyleSheet.create({
   summaryVal: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
   summaryLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   summaryDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  pastActCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14,
+  },
+  pastActIconWrap: {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: T.green + "18", borderWidth: 1, borderColor: T.green + "40",
+    alignItems: "center", justifyContent: "center",
+  },
+  pastActTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  pastActSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   startHikeBtn: {
     flexDirection: "row",
     alignItems: "center",

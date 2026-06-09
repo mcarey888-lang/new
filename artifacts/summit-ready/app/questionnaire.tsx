@@ -1,5 +1,6 @@
-import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp } from "lucide-react-native";
+import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -19,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
 
 export const QUIZ_KEY = "summitready_questionnaire_data";
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const LOCATIONS = [
   // English cities & large towns
@@ -453,6 +454,172 @@ function StepPlan({
   );
 }
 
+// ─── Step 7: Catch me up ─────────────────────────────────────────────────────
+
+const POPULAR_PEAKS_Q = [
+  { id: "h001", name: "Ben Nevis",    location: "Scotland",        elevationGain: 1340, distance: 17.4, emoji: "🏔️" },
+  { id: "h002", name: "Snowdon",      location: "Wales",           elevationGain: 900,  distance: 11.5, emoji: "🏔️" },
+  { id: "h003", name: "Scafell Pike", location: "Lake District",   elevationGain: 950,  distance: 13.8, emoji: "🏔️" },
+  { id: "h004", name: "Helvellyn",    location: "Lake District",   elevationGain: 760,  distance: 14.4, emoji: "⛰️" },
+  { id: "h006", name: "Pen y Fan",    location: "Brecon Beacons",  elevationGain: 420,  distance: 9.8,  emoji: "🏔️" },
+  { id: "h007", name: "Kinder Scout", location: "Peak District",   elevationGain: 490,  distance: 14.2, emoji: "🌫️" },
+  { id: "h009", name: "Ingleborough", location: "Yorkshire Dales", elevationGain: 460,  distance: 12.6, emoji: "⛰️" },
+  { id: "h010", name: "Whernside",    location: "Yorkshire Dales", elevationGain: 455,  distance: 12.4, emoji: "🌾" },
+  { id: "h012", name: "Ben Lomond",   location: "Scotland",        elevationGain: 1010, distance: 12.0, emoji: "🏔️" },
+] as const;
+
+function getCatchMonthChips() {
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i, 1);
+    return {
+      monthsAgo: i,
+      label: d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+    };
+  });
+}
+
+type SelectedQHike = PastHike & { key: string };
+
+function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: (hikes: PastHike[]) => void }) {
+  const [selected, setSelected] = React.useState<SelectedQHike[]>([]);
+  const [showCustom, setShowCustom] = React.useState(false);
+  const [customName, setCustomName] = React.useState("");
+  const [customElev, setCustomElev] = React.useState("");
+  const monthChips = React.useMemo(() => getCatchMonthChips(), []);
+
+  React.useEffect(() => { setPastHikes(selected); }, [selected, setPastHikes]);
+
+  function togglePeak(peak: typeof POPULAR_PEAKS_Q[number]) {
+    setSelected(prev => {
+      const exists = prev.find(s => s.key === peak.id);
+      if (exists) return prev.filter(s => s.key !== peak.id);
+      return [...prev, {
+        key: peak.id, trailId: peak.id, name: peak.name,
+        elevationGain: peak.elevationGain, distance: peak.distance,
+        monthsAgo: 1, emoji: peak.emoji,
+      }];
+    });
+  }
+
+  function setMonth(key: string, monthsAgo: number) {
+    setSelected(prev => prev.map(s => s.key === key ? { ...s, monthsAgo } : s));
+  }
+
+  function addCustom() {
+    const name = customName.trim();
+    const elev = parseInt(customElev.trim(), 10);
+    if (!name || !elev || isNaN(elev) || elev <= 0) return;
+    const key = `custom_${Date.now()}`;
+    setSelected(prev => [...prev, {
+      key, name, elevationGain: elev,
+      distance: Math.round(elev / 80), monthsAgo: 1, emoji: "⛰️",
+    }]);
+    setCustomName(""); setCustomElev(""); setShowCustom(false);
+  }
+
+  return (
+    <View style={s.stepWrap}>
+      <Text style={s.stepTitle}>Already been training?</Text>
+      <Text style={s.stepSub}>
+        Tick any hills you've done in the last 6 months — they'll boost your readiness score. This step is optional.
+      </Text>
+
+      {selected.length > 0 && (
+        <View style={s.catchSelectedBox}>
+          <Text style={s.catchSectionLabel}>YOUR RECENT SUMMITS</Text>
+          {selected.map(item => (
+            <View key={item.key} style={s.catchSelectedItem}>
+              <View style={s.catchSelectedTop}>
+                <Text style={{ fontSize: 18 }}>{item.emoji ?? "⛰️"}</Text>
+                <Text style={s.catchSelectedName}>{item.name}</Text>
+                <TouchableOpacity onPress={() => setSelected(p => p.filter(x => x.key !== item.key))} hitSlop={10} style={{ marginLeft: "auto" }}>
+                  <X size={15} color={T.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={s.catchMonthRow}>
+                  {monthChips.map(chip => {
+                    const active = item.monthsAgo === chip.monthsAgo;
+                    return (
+                      <TouchableOpacity
+                        key={chip.monthsAgo}
+                        onPress={() => setMonth(item.key, chip.monthsAgo)}
+                        style={[s.catchChip, active && s.catchChipActive]}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.catchChipText, active && { color: T.green }]}>{chip.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <Text style={s.catchSectionLabel}>POPULAR UK PEAKS</Text>
+      {POPULAR_PEAKS_Q.map(peak => {
+        const isSel = selected.some(x => x.key === peak.id);
+        return (
+          <TouchableOpacity
+            key={peak.id}
+            onPress={() => togglePeak(peak)}
+            style={[s.catchPeakCard, isSel && s.catchPeakCardSel]}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 22 }}>{peak.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.catchPeakName, isSel && { color: T.green }]}>{peak.name}</Text>
+              <Text style={s.catchPeakMeta}>{peak.location} · {peak.elevationGain}m gain</Text>
+            </View>
+            <View style={[s.catchPeakCheck, isSel && s.catchPeakCheckSel]}>
+              {isSel && <Check size={11} color="#fff" />}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      {!showCustom ? (
+        <TouchableOpacity onPress={() => setShowCustom(true)} style={s.catchCustomBtn} activeOpacity={0.75}>
+          <Plus size={14} color={T.green} />
+          <Text style={s.catchCustomBtnText}>Add a different hill</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={s.catchCustomForm}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <Text style={s.catchPeakName}>Custom hill</Text>
+            <TouchableOpacity onPress={() => setShowCustom(false)} hitSlop={8}><X size={16} color={T.textMuted} /></TouchableOpacity>
+          </View>
+          <TextInput
+            style={s.locationInput}
+            placeholder="Hill or mountain name"
+            placeholderTextColor={T.textDim}
+            value={customName}
+            onChangeText={setCustomName}
+            autoFocus
+            returnKeyType="next"
+          />
+          <TextInput
+            style={[s.locationInput, { marginTop: 8 }]}
+            placeholder="Elevation gain in metres"
+            placeholderTextColor={T.textDim}
+            value={customElev}
+            onChangeText={setCustomElev}
+            keyboardType="number-pad"
+            returnKeyType="done"
+          />
+          <TouchableOpacity onPress={addCustom} style={[s.catchCustomBtn, { marginTop: 8, justifyContent: "center" }]} activeOpacity={0.8}>
+            <Plus size={14} color={T.green} />
+            <Text style={s.catchCustomBtnText}>Add hill</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Score calculation ────────────────────────────────────────────────────────
 
 function calcScore(
@@ -501,6 +668,7 @@ export default function QuestionnaireScreen() {
   const [trainingDays, setTrainingDays] = useState(4);
   const [equipment, setEquipment] = useState<Equipment[]>(["none"]);
   const [location, setLocation] = useState("");
+  const [pastHikes, setPastHikes] = useState<PastHike[]>([]);
 
   function toggleEquipment(val: Equipment) {
     if (val === "none") {
@@ -526,6 +694,7 @@ export default function QuestionnaireScreen() {
       case 4: return uphillFreq > 0 && summitHistory > 0;
       case 5: return running > 0 && strength > 0;
       case 6: return location.trim().length >= 2;
+      case 7: return true;
       default: return false;
     }
   };
@@ -568,6 +737,11 @@ export default function QuestionnaireScreen() {
       rawUphillFreq: uphillFreq,
     }));
 
+    if (pastHikes.length > 0) {
+      await AsyncStorage.setItem(PENDING_PAST_HIKES_KEY, JSON.stringify(pastHikes));
+    } else {
+      await AsyncStorage.removeItem(PENDING_PAST_HIKES_KEY);
+    }
     pendingParams.current = { score, mountain: mountainName.trim() };
     setShowBaselineModal(true);
   }
@@ -620,6 +794,7 @@ export default function QuestionnaireScreen() {
             {step === 4 && <StepUphill uphillFreq={uphillFreq} setUphillFreq={setUphillFreq} summitHistory={summitHistory} setSummitHistory={setSummitHistory} />}
             {step === 5 && <StepCardio running={running} setRunning={setRunning} strength={strength} setStrength={setStrength} />}
             {step === 6 && <StepPlan trainingDays={trainingDays} setTrainingDays={setTrainingDays} equipment={equipment} toggleEquipment={toggleEquipment} location={location} setLocation={setLocation} />}
+            {step === 7 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} />}
           </Animated.View>
         </ScrollView>
 
@@ -851,5 +1026,49 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: "#000",
+  },
+
+  catchSectionLabel: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim,
+    textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8,
+  },
+  catchSelectedBox: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1.5, borderColor: T.green + "40",
+    padding: 12, gap: 8, marginBottom: 4,
+  },
+  catchSelectedItem: { gap: 8 },
+  catchSelectedTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  catchSelectedName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+  catchMonthRow: { flexDirection: "row", gap: 6, paddingBottom: 2 },
+  catchChip: {
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1.5, borderColor: T.border, backgroundColor: T.surface,
+  },
+  catchChipActive: { borderColor: T.green + "80", backgroundColor: T.green + "18" },
+  catchChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
+  catchPeakCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    padding: 12, marginBottom: 6,
+  },
+  catchPeakCardSel: { borderColor: T.green + "60", borderWidth: 1.5 },
+  catchPeakName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  catchPeakMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  catchPeakCheck: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 1.5, borderColor: T.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  catchPeakCheckSel: { backgroundColor: T.green, borderColor: T.green },
+  catchCustomBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  catchCustomBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.green },
+  catchCustomForm: {
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border, padding: 12,
   },
 });
