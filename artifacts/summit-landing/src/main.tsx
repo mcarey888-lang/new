@@ -25,6 +25,7 @@ import KilimanjaroMtn from "./pages/mountains/KilimanjaroMtn";
 import MatterhornMtn from "./pages/mountains/MatterhornMtn";
 import NotFound from "./pages/not-found";
 import ReadinessCheck from "./pages/ReadinessCheck";
+import MountainVerification from "./pages/admin/MountainVerification";
 import "./index.css";
 
 import { ThemeProvider } from "./lib/ThemeContext";
@@ -64,6 +65,7 @@ createRoot(document.getElementById("root")!).render(
 
       <Route path="/readiness-check" element={<ReadinessCheck />} />
       <Route path="/screenshot-helper" element={<ScreenshotHelper />} />
+      <Route path="/admin/mountain-verification" element={<MountainVerification />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

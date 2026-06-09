@@ -14,6 +14,7 @@ import hikeMapWebRouter from "./hike-map-web";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import demoLoadRouter from "./demo-load";
+import mountainVerificationRouter from "./mountain-verification";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(hikeMapWebRouter);
 router.use(seededTrailsRouter);
 router.use(trackedRoutesRouter);
 router.use(demoLoadRouter);
+router.use(mountainVerificationRouter);
 
 export default router;

@@ -5,3 +5,4 @@ export * from "./tracked-routes";
 export * from "./cached-hills";
 export * from "./cached-mountains";
 export * from "./cached-alpine";
+export * from "./mountain-verification";
