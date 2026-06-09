@@ -3,7 +3,8 @@ import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
@@ -78,6 +79,18 @@ export default function AccountScreen() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
+  const scrollRef = useRef<ScrollView>(null);
+  const achievementsY = useRef<number>(0);
+
+  useEffect(() => {
+    if (scrollTo === "achievements") {
+      const timer = setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: achievementsY.current, animated: true });
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollTo]);
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
   const inProgressChallenges = activeChallenges.filter(ac => !ac.completed);
@@ -221,6 +234,7 @@ export default function AccountScreen() {
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.scroll, { paddingTop: topPad, paddingBottom: botPad }]}
         showsVerticalScrollIndicator={false}
       >
@@ -618,7 +632,11 @@ export default function AccountScreen() {
         )}
 
         {/* Achievements */}
-        <Animated.View entering={FadeInDown.delay(130).duration(400)} style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.delay(130).duration(400)}
+          style={styles.section}
+          onLayout={e => { achievementsY.current = e.nativeEvent.layout.y; }}
+        >
           <Text style={styles.sectionLabel}>
             ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
           </Text>

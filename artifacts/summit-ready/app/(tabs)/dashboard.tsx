@@ -987,7 +987,7 @@ export default function DashboardScreen() {
           <Animated.View entering={FadeInDown.delay(115).duration(500)}>
             <TouchableOpacity
               style={styles.achieveStrip}
-              onPress={() => router.push("/(tabs)/account")}
+              onPress={() => router.push("/(tabs)/account?scrollTo=achievements")}
               activeOpacity={0.8}
             >
               <LinearGradient
