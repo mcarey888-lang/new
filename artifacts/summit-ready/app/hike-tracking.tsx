@@ -2,11 +2,14 @@ import {
   Activity,
   ArrowLeft,
   CheckCircle,
+  ChevronRight,
+  MapPin,
   Pause,
   Play,
   Square,
   TrendingDown,
   TrendingUp,
+  Users,
   Wifi,
   WifiOff,
 } from "lucide-react-native";
@@ -19,6 +22,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AppState,
   AppStateStatus,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -108,6 +112,17 @@ interface TrackPoint {
   ts: number;
   speed?: number | null;
   acc?: number | null;
+}
+
+interface NearbyRoute {
+  id: string;
+  name: string;
+  distanceKm: number;
+  elevationGain: number;
+  durationSecs: number;
+  difficulty: string;
+  distFromUserKm: number;
+  contributionCount: number;
 }
 
 const ALTITUDE_NOISE_THRESHOLD = 1;
@@ -205,6 +220,12 @@ export default function HikeTrackingScreen() {
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [confirmLeave, setConfirmLeave]   = useState(false);
   const [drawerOpen, setDrawerOpen]       = useState(true);
+
+  // ── Nearby route picker ───────────────────────────────────────────────────
+  const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
+  const [nearbyLoading, setNearbyLoading]       = useState(false);
+  const [nearbyPickerOpen, setNearbyPickerOpen] = useState(false);
+  const [selectedCanonical, setSelectedCanonical] = useState<{ id: string; name: string } | null>(null);
 
   const trackPoints    = useRef<TrackPoint[]>([]);
   const lastAltRef     = useRef<number | null>(null);
@@ -308,13 +329,9 @@ export default function HikeTrackingScreen() {
   }, []);
 
   // ── Send a community reference route to the map as a ghost overlay ────────
-  const referenceRouteSentRef = useRef(false);
-  const sendReferenceRouteToMap = useCallback(async () => {
-    const rid = params.referenceRouteId;
-    if (!rid || referenceRouteSentRef.current) return;
-    referenceRouteSentRef.current = true;
+  const sendRouteOverlay = useCallback(async (routeId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/tracked-routes/${rid}`);
+      const res = await fetch(`${API_BASE}/tracked-routes/${routeId}`);
       if (!res.ok) return;
       const data = await res.json() as { route: { trackPoints: Array<{ lat: number; lon: number }> | null } };
       const pts = data.route.trackPoints ?? [];
@@ -326,8 +343,31 @@ export default function HikeTrackingScreen() {
       } else {
         webViewRef.current?.postMessage(msg);
       }
-    } catch { /* best-effort — map still works without overlay */ }
-  }, [params.referenceRouteId]);
+    } catch { /* best-effort */ }
+  }, []);
+
+  const referenceRouteSentRef = useRef(false);
+  const sendReferenceRouteToMap = useCallback(async () => {
+    const rid = params.referenceRouteId;
+    if (!rid || referenceRouteSentRef.current) return;
+    referenceRouteSentRef.current = true;
+    await sendRouteOverlay(rid);
+  }, [params.referenceRouteId, sendRouteOverlay]);
+
+  const fetchNearbyRoutes = useCallback(async () => {
+    const pos = initialPosRef.current;
+    if (!pos) return;
+    setNearbyLoading(true);
+    setNearbyPickerOpen(true);
+    try {
+      const res = await fetch(`${API_BASE}/tracked-routes/nearby?lat=${pos.lat}&lng=${pos.lon}&radiusKm=5`);
+      if (res.ok) {
+        const data = await res.json() as { routes: NearbyRoute[] };
+        setNearbyRoutes(data.routes ?? []);
+      }
+    } catch { /* ignore */ }
+    setNearbyLoading(false);
+  }, []);
 
   // ── Sync background-collected GPS points into foreground state ────────────
   const syncBgPoints = useCallback(async () => {
@@ -630,26 +670,42 @@ export default function HikeTrackingScreen() {
         });
       }
 
-      // 3 ── Submit to backend so other users can discover this route
+      // 3 ── Submit to backend: contribute to canonical route or create a new one
       try {
-        await fetch(`${API_BASE}/tracked-routes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id:            routeId,
-            name,
-            location:      "GPS Tracked Route",
-            distanceKm:    distKm,
-            elevationGain: elevGain,
-            elevationLoss: elevLoss,
-            durationSecs:  elapsedSecs,
-            difficulty:    computeDifficulty(distKm, elevGain),
-            startLat:      firstPt?.lat ?? null,
-            startLng:      firstPt?.lon ?? null,
-            trackPoints:   trackPoints.current,
-            notes:         `Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "0"} km/h.`,
-          }),
-        });
+        if (selectedCanonical) {
+          // Merge this track into the existing canonical route
+          await fetch(`${API_BASE}/tracked-routes/${selectedCanonical.id}/contribute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              trackPoints:   trackPoints.current,
+              distanceKm:    distKm,
+              elevationGain: elevGain,
+              elevationLoss: elevLoss,
+              durationSecs:  elapsedSecs,
+            }),
+          });
+        } else {
+          // First walk of this route — creates the canonical entry
+          await fetch(`${API_BASE}/tracked-routes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id:            routeId,
+              name,
+              location:      "GPS Tracked Route",
+              distanceKm:    distKm,
+              elevationGain: elevGain,
+              elevationLoss: elevLoss,
+              durationSecs:  elapsedSecs,
+              difficulty:    computeDifficulty(distKm, elevGain),
+              startLat:      firstPt?.lat ?? null,
+              startLng:      firstPt?.lon ?? null,
+              trackPoints:   trackPoints.current,
+              notes:         `Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "0"} km/h.`,
+            }),
+          });
+        }
       } catch { /* backend submit is best-effort — local save already succeeded */ }
 
       // 4 ── If this was launched from a hill training session, save hill session data
@@ -869,6 +925,25 @@ export default function HikeTrackingScreen() {
           {nameError && (
             <Text style={s.nameErrorText}>Please name your route before starting</Text>
           )}
+
+          {/* ── Nearby route picker ── */}
+          <View style={s.orRow}>
+            <View style={s.orLine} /><Text style={s.orText}>or</Text><View style={s.orLine} />
+          </View>
+          <TouchableOpacity
+            style={[s.nearbyBtn, selectedCanonical && s.nearbyBtnSelected]}
+            onPress={fetchNearbyRoutes}
+            activeOpacity={0.8}
+          >
+            <MapPin size={14} color={selectedCanonical ? T.green : T.blue} />
+            <Text style={[s.nearbyBtnText, selectedCanonical && { color: T.green }]}>
+              {selectedCanonical ? `Following: ${selectedCanonical.name}` : "Pick a nearby route"}
+            </Text>
+            {selectedCanonical
+              ? <CheckCircle size={14} color={T.green} />
+              : <ChevronRight size={14} color={T.textMuted} />
+            }
+          </TouchableOpacity>
         </Animated.View>
       )}
 
@@ -1049,6 +1124,76 @@ export default function HikeTrackingScreen() {
           </TouchableOpacity>
         </Animated.View>
       )}
+
+      {/* ── Nearby routes picker modal ── */}
+      <Modal
+        visible={nearbyPickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setNearbyPickerOpen(false)}
+      >
+        <TouchableOpacity style={s.pickerBackdrop} activeOpacity={1} onPress={() => setNearbyPickerOpen(false)} />
+        <View style={[s.pickerSheet, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={s.pickerHandle} />
+          <Text style={s.pickerTitle}>Nearby Routes</Text>
+          <Text style={s.pickerSub}>Pick a route to follow and contribute to</Text>
+
+          {nearbyLoading ? (
+            <View style={s.pickerEmpty}>
+              <Text style={s.pickerEmptyText}>Searching nearby routes…</Text>
+            </View>
+          ) : nearbyRoutes.length === 0 ? (
+            <View style={s.pickerEmpty}>
+              <MapPin size={28} color={T.textMuted} />
+              <Text style={s.pickerEmptyText}>No routes found within 5 km</Text>
+              <Text style={s.pickerEmptySub}>Track a new route to add one to the community</Text>
+            </View>
+          ) : (
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {nearbyRoutes.map(route => (
+                <TouchableOpacity
+                  key={route.id}
+                  style={[s.pickerRow, selectedCanonical?.id === route.id && s.pickerRowSelected]}
+                  onPress={() => {
+                    setSelectedCanonical({ id: route.id, name: route.name });
+                    setRouteName(route.name);
+                    setNearbyPickerOpen(false);
+                    sendRouteOverlay(route.id);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={s.pickerRowLeft}>
+                    <Text style={s.pickerRowName} numberOfLines={1}>{route.name}</Text>
+                    <View style={s.pickerRowMeta}>
+                      <Text style={s.pickerRowMetaText}>
+                        {route.distanceKm.toFixed(1)} km · +{route.elevationGain} m · {route.difficulty}
+                      </Text>
+                      {route.contributionCount > 0 && (
+                        <View style={s.contribBadge}>
+                          <Users size={10} color={T.blue} />
+                          <Text style={s.contribBadgeText}>{route.contributionCount}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <View style={s.pickerRowRight}>
+                    <Text style={s.pickerRowDist}>{route.distFromUserKm.toFixed(1)} km</Text>
+                    <Text style={s.pickerRowDistLabel}>away</Text>
+                  </View>
+                  {selectedCanonical?.id === route.id && <CheckCircle size={16} color={T.green} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          <TouchableOpacity style={s.pickerDismiss} onPress={() => {
+            setSelectedCanonical(null);
+            setNearbyPickerOpen(false);
+          }} activeOpacity={0.7}>
+            <Text style={s.pickerDismissText}>Track as a new route instead</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1269,4 +1414,74 @@ const s = StyleSheet.create({
   confirmDestructiveText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.red },
   confirmCancel: { paddingVertical: 12, alignItems: "center" },
   confirmCancelText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  // ── Nearby route picker (name overlay) ────────────────────────────────────
+  orRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10,
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.08)" },
+  orText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  nearbyBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "rgba(74,159,245,0.08)", borderRadius: 10,
+    borderWidth: 1, borderColor: "rgba(74,159,245,0.2)",
+    paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+  },
+  nearbyBtnSelected: {
+    backgroundColor: "rgba(62,207,117,0.08)",
+    borderColor: "rgba(62,207,117,0.3)",
+  },
+  nearbyBtnText: {
+    flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue,
+  },
+
+  // ── Nearby routes picker modal ─────────────────────────────────────────────
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  pickerSheet: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: "#0B1724",
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderColor: "rgba(255,255,255,0.09)",
+    paddingHorizontal: 20, paddingTop: 12,
+  },
+  pickerHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignSelf: "center", marginBottom: 16,
+  },
+  pickerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text, marginBottom: 2 },
+  pickerSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 16 },
+  pickerEmpty: {
+    alignItems: "center", justifyContent: "center", paddingVertical: 32, gap: 8,
+  },
+  pickerEmptyText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  pickerEmptySub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
+  pickerRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 12, marginBottom: 6,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+  },
+  pickerRowSelected: {
+    backgroundColor: "rgba(62,207,117,0.07)",
+    borderColor: "rgba(62,207,117,0.25)",
+  },
+  pickerRowLeft: { flex: 1 },
+  pickerRowName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text, marginBottom: 4 },
+  pickerRowMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pickerRowMetaText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  contribBadge: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: "rgba(74,159,245,0.12)", borderRadius: 6,
+    paddingHorizontal: 5, paddingVertical: 2,
+  },
+  contribBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.blue },
+  pickerRowRight: { alignItems: "flex-end", gap: 1 },
+  pickerRowDist: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  pickerRowDistLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  pickerDismiss: { paddingVertical: 14, alignItems: "center", marginTop: 4 },
+  pickerDismissText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 });
