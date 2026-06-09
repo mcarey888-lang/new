@@ -292,6 +292,18 @@ export default function HikeTrackingScreen() {
     }
   }, []);
 
+  // ── Replay the full track on the map (fixes straight-line after unlock) ──
+  const replayTrackOnMap = useCallback(() => {
+    const points = trackPoints.current.map(p => [p.lat, p.lon] as [number, number]);
+    if (points.length === 0) return;
+    const msg = JSON.stringify({ type: "replay", points });
+    if (Platform.OS === "web") {
+      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
+    } else {
+      webViewRef.current?.postMessage(msg);
+    }
+  }, []);
+
   // ── Sync background-collected GPS points into foreground state ────────────
   const syncBgPoints = useCallback(async () => {
     if (statusRef.current !== "tracking") return;
@@ -304,6 +316,7 @@ export default function HikeTrackingScreen() {
       const pts = trackPoints.current;
       const lastTs = pts.length > 0 ? pts[pts.length - 1].ts : 0;
       const fresh = newPts.filter(p => p.ts > lastTs);
+      let addedAny = false;
       for (const p of fresh) {
         if (!isPlausiblePoint(p.lat, p.lon, p.ts, p.acc ?? null, pts)) continue;
         if (p.speed != null && p.speed >= 0) setCurrentSpeedKmh(p.speed * 3.6);
@@ -326,10 +339,13 @@ export default function HikeTrackingScreen() {
           if (d > 0.003) setDistanceKm(km => km + d);
         }
         pts.push({ lat: p.lat, lon: p.lon, alt: p.alt, ts: p.ts });
-        sendPointToMap(p.lat, p.lon);
+        addedAny = true;
       }
+      // Replay the complete route on the map so any straight-line gap caused
+      // by the foreground watcher firing before this sync is corrected.
+      if (addedAny) replayTrackOnMap();
     } catch { /* ignore */ }
-  }, [sendPointToMap]);
+  }, [replayTrackOnMap]);
 
   // ── Sync when app returns to foreground (e.g. from lock screen) ──────────
   useEffect(() => {
@@ -633,7 +649,8 @@ export default function HikeTrackingScreen() {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
+      // Navigate to hike history so the user can see their saved route
+      router.replace("/(tabs)/hikes");
     } catch {
       setSaving(false);
     }

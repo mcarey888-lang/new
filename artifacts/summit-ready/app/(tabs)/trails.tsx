@@ -2,7 +2,7 @@ import {
   Check, Radio, Minus, Plus, SlidersHorizontal, Search,
   AlertCircle, TrendingUp, MapPin, Repeat, BarChart2, CheckCircle,
   PlusCircle, RefreshCw, Zap, Lock, Map, Info, Mountain,
-  Footprints, ChevronRight, Filter, ChevronDown, Activity, Flag,
+  Footprints, ChevronRight, Filter, ChevronDown, Activity, Flag, Clock,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -280,8 +280,30 @@ export default function TrackScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* SAVED HIKES */}
+        <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/hikes")}
+            activeOpacity={0.88}
+            style={styles.savedHikesBtn}
+          >
+            <View style={styles.logTrainingLeft}>
+              <View style={[styles.logTrainingIconWrap, { backgroundColor: T.green + "20" }]}>
+                <Clock size={22} color={T.green} />
+              </View>
+              <View style={{ gap: 3 }}>
+                <Text style={[styles.logTrainingTitle, { color: T.green }]}>Saved Hikes</Text>
+                <Text style={styles.logTrainingSub}>View your tracked routes &amp; hike log</Text>
+              </View>
+            </View>
+            <View style={[styles.logTrainingArrow, { backgroundColor: T.green + "20" }]}>
+              <ChevronRight size={18} color={T.green} />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* SEARCH HILLS */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
           <View style={styles.sectionHeader}>
             <Search size={14} color={T.purple} />
             <Text style={styles.sectionTitle}>Search Hills</Text>
@@ -759,6 +781,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: T.purpleDim,
     borderWidth: 1, borderColor: T.purple + "40",
+    paddingHorizontal: 20, paddingVertical: 16,
+    marginBottom: 12,
+  },
+  savedHikesBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderRadius: 20,
+    backgroundColor: T.green + "12",
+    borderWidth: 1, borderColor: T.green + "35",
     paddingHorizontal: 20, paddingVertical: 16,
     marginBottom: 20,
   },

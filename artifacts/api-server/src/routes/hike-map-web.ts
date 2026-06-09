@@ -129,33 +129,37 @@ function addPoint(lat, lng) {
     dist < 1 ? Math.round(dist * 1000) + " m tracked" : dist.toFixed(2) + " km tracked";
 }
 
+function replayTrack(points) {
+  pts = [];
+  polyline.setLatLngs([]);
+  glowLine.setLatLngs([]);
+  if (posMarker)   { map.removeLayer(posMarker);   posMarker   = null; }
+  if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+  document.getElementById("waiting").style.display = "flex";
+  document.getElementById("pill").style.display = "none";
+  for (var i = 0; i < points.length; i++) {
+    addPoint(points[i][0], points[i][1]);
+  }
+}
+
+function handleMsg(e) {
+  try {
+    var msg = JSON.parse(e.data);
+    if (msg.type === "point") addPoint(msg.lat, msg.lng);
+    if (msg.type === "replay" && Array.isArray(msg.points)) replayTrack(msg.points);
+    if (msg.type === "clear") {
+      pts = []; polyline.setLatLngs([]); glowLine.setLatLngs([]);
+      if (posMarker)   { map.removeLayer(posMarker);   posMarker   = null; }
+      if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+      document.getElementById("waiting").style.display = "flex";
+      document.getElementById("pill").style.display = "none";
+    }
+  } catch(err) {}
+}
+
 // Receive messages from React Native (injectJavaScript calls addPoint/clearTrack)
-document.addEventListener("message", function(e) {
-  try {
-    var msg = JSON.parse(e.data);
-    if (msg.type === "point") addPoint(msg.lat, msg.lng);
-    if (msg.type === "clear") {
-      pts = []; polyline.setLatLngs([]); glowLine.setLatLngs([]);
-      if (posMarker) { map.removeLayer(posMarker); posMarker = null; }
-      if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
-      document.getElementById("waiting").style.display = "flex";
-      document.getElementById("pill").style.display = "none";
-    }
-  } catch(err) {}
-});
-window.addEventListener("message", function(e) {
-  try {
-    var msg = JSON.parse(e.data);
-    if (msg.type === "point") addPoint(msg.lat, msg.lng);
-    if (msg.type === "clear") {
-      pts = []; polyline.setLatLngs([]); glowLine.setLatLngs([]);
-      if (posMarker) { map.removeLayer(posMarker); posMarker = null; }
-      if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
-      document.getElementById("waiting").style.display = "flex";
-      document.getElementById("pill").style.display = "none";
-    }
-  } catch(err) {}
-});
+document.addEventListener("message", handleMsg);
+window.addEventListener("message", handleMsg);
 </script>
 </body>
 </html>`;

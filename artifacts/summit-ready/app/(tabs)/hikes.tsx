@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   Bookmark,
   Check,
   CheckCircle,
@@ -216,9 +217,11 @@ export default function HikesScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={p.header}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={10} style={p.backBtn}>
+            <ArrowLeft size={20} color={T.text} />
+          </TouchableOpacity>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={p.eyebrow}>EXPLORE MODE</Text>
-            <Text style={p.title}>Explore Trails</Text>
+            <Text style={p.title}>Saved Hikes</Text>
           </View>
           <TouchableOpacity style={p.logFab} onPress={() => setLogVisible(true)} activeOpacity={0.85}>
             <Plus size={15} color={T.green} />
@@ -350,6 +353,7 @@ export default function HikesScreen() {
 const p = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 16 },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
+  backBtn: { padding: 4, marginRight: 2 },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
   logFab: {
