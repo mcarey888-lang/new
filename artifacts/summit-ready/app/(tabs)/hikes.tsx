@@ -42,7 +42,11 @@ function LoggedHikeRow({
 }) {
   const dateStr = new Date(hike.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
-    <View style={lh.row}>
+    <TouchableOpacity
+      style={lh.row}
+      activeOpacity={0.75}
+      onPress={() => router.push({ pathname: "/hike-detail", params: { id: hike.id } })}
+    >
       <View style={lh.iconWrap}>
         <Map size={14} color={T.green} />
       </View>
@@ -85,7 +89,7 @@ function LoggedHikeRow({
       >
         <Trash2 size={14} color={T.red} />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 

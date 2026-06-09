@@ -124,6 +124,7 @@ export interface ExploreHike {
   elevationGain: number;
   timeTaken: number;
   notes: string;
+  trackPoints?: Array<{ lat: number; lon: number }>;
 }
 
 interface AppState {

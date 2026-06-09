@@ -585,6 +585,7 @@ export default function HikeTrackingScreen() {
         elevationGain: elevGain,
         timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
+        trackPoints: trackPoints.current,
       });
 
       // 2 ── Optionally log to the plan session log
