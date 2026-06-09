@@ -15,6 +15,8 @@ import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
+import hillSessionRouter from "./hill-session";
+import hillVerificationAdminRouter from "./hill-verification-admin";
 
 const router: IRouter = Router();
 
@@ -34,5 +36,7 @@ router.use(seededTrailsRouter);
 router.use(trackedRoutesRouter);
 router.use(demoLoadRouter);
 router.use(mountainVerificationRouter);
+router.use("/hill-session", hillSessionRouter);
+router.use("/admin/hill-verification", hillVerificationAdminRouter);
 
 export default router;

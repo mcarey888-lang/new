@@ -23,6 +23,154 @@ import { T, PHASE_COLOR } from "@/constants/theme";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 
+const PLAN_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
+
+// ── Hill Action Card ──────────────────────────────────────────────────────────
+// Shows per-rep elevation, target reps, total gain, data-confidence badge, and
+// two CTA buttons: "Track this hike" (launches GPS) and "Mark complete".
+function HillActionCard({
+  sessionKey,
+  assignedHill,
+  elevPerRep,
+  targetReps,
+  estimatedTotalGain,
+  isDone,
+  isSubmitted,
+  onMarkComplete,
+  onTrack,
+}: {
+  sessionKey: string;
+  assignedHill?: import("@/context/AppContext").NearbyHill;
+  elevPerRep: number;
+  targetReps: number;
+  estimatedTotalGain: number;
+  isDone: boolean;
+  isSubmitted: boolean;
+  onMarkComplete: () => void;
+  onTrack: () => void;
+}) {
+  const hillName = assignedHill?.name ?? null;
+
+  async function handleMarkComplete() {
+    if (!isDone) {
+      onMarkComplete();
+      // Fire-and-forget: save estimated completion to backend
+      try {
+        await fetch(`${PLAN_API_BASE}/hill-session/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            plannedHillName: hillName ?? sessionKey,
+            trainingSessionId: sessionKey,
+            targetReps,
+            estimatedGainPerRepM: elevPerRep,
+            estimatedTotalGainM: Math.round(estimatedTotalGain),
+          }),
+        });
+      } catch { /* best-effort — local state already updated */ }
+    }
+  }
+
+  return (
+    <View style={hacStyles.container}>
+      {/* Stats row */}
+      <View style={hacStyles.statsRow}>
+        <View style={hacStyles.statCell}>
+          <Text style={hacStyles.statVal}>{elevPerRep}m</Text>
+          <Text style={hacStyles.statLbl}>per rep</Text>
+        </View>
+        <View style={[hacStyles.statCell, hacStyles.statCellMid]}>
+          <Text style={hacStyles.statVal}>{targetReps}</Text>
+          <Text style={hacStyles.statLbl}>reps target</Text>
+        </View>
+        <View style={hacStyles.statCell}>
+          <Text style={hacStyles.statVal}>{Math.round(estimatedTotalGain)}m</Text>
+          <Text style={hacStyles.statLbl}>total gain</Text>
+        </View>
+      </View>
+
+      {/* Data confidence badge */}
+      <View style={hacStyles.badgeRow}>
+        <View style={hacStyles.badge}>
+          <Text style={hacStyles.badgeText}>ESTIMATED DATA</Text>
+        </View>
+        <Text style={hacStyles.badgeSub}>GPS track improves accuracy for everyone</Text>
+      </View>
+
+      {/* Action buttons */}
+      {!isSubmitted && (
+        <View style={hacStyles.btnRow}>
+          <TouchableOpacity
+            style={[hacStyles.btn, hacStyles.btnTrack, isDone && { opacity: 0.5 }]}
+            onPress={onTrack}
+            activeOpacity={0.8}
+            disabled={isDone}
+          >
+            <Activity size={13} color={T.blue} />
+            <Text style={[hacStyles.btnText, { color: T.blue }]}>Track this hike</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[hacStyles.btn, hacStyles.btnComplete, isDone && hacStyles.btnDone]}
+            onPress={handleMarkComplete}
+            activeOpacity={0.8}
+            disabled={isDone}
+          >
+            <CheckCircle size={13} color={isDone ? T.green : T.textMuted} />
+            <Text style={[hacStyles.btnText, { color: isDone ? T.green : T.textMuted }]}>
+              {isDone ? "Completed" : "Mark complete"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const hacStyles = StyleSheet.create({
+  container: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    padding: 10,
+    gap: 8,
+  },
+  statsRow: {
+    flexDirection: "row",
+  },
+  statCell: { flex: 1, alignItems: "center", gap: 2 },
+  statCellMid: {
+    borderLeftWidth: 1, borderRightWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  statVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  statLbl: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badge: {
+    backgroundColor: "rgba(251,146,60,0.1)",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.3)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.orange, letterSpacing: 0.7 },
+  badgeSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, flex: 1 },
+  btnRow: { flexDirection: "row", gap: 8 },
+  btn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 9, borderRadius: 10, borderWidth: 1,
+  },
+  btnTrack: { backgroundColor: T.blueDim, borderColor: T.blue + "40" },
+  btnComplete: { backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.12)" },
+  btnDone: { backgroundColor: T.greenDim, borderColor: T.green + "40" },
+  btnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+});
+
 // ── Rep Tracker ───────────────────────────────────────────────────────────────
 // Shows summit-equivalent target reps, lets user log how many they actually
 // managed, and turns green when they hit the target.
@@ -898,14 +1046,38 @@ function WeekCard({
                       const elevPerRep = Math.max(50, Math.round(s.targetElevation / 4));
                       const targetReps = Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
-                        <RepStepper
-                          sessionKey={sessionKey}
-                          targetReps={targetReps}
-                          elevPerRep={elevPerRep}
-                          sessionReps={sessionReps}
-                          isDone={isSubmitted}
-                          onSet={onSetReps}
-                        />
+                        <>
+                          <HillActionCard
+                            sessionKey={sessionKey}
+                            assignedHill={assignedHill}
+                            elevPerRep={elevPerRep}
+                            targetReps={targetReps}
+                            estimatedTotalGain={s.targetElevation}
+                            isDone={isDone}
+                            isSubmitted={isSubmitted}
+                            onMarkComplete={() => onToggleSession(week.weekNumber, i)}
+                            onTrack={() =>
+                              router.push({
+                                pathname: "/hike-tracking",
+                                params: {
+                                  hillSessionKey: sessionKey,
+                                  hillName: assignedHill?.name ?? s.label ?? "",
+                                  targetReps: String(targetReps),
+                                  estimatedGainPerRep: String(elevPerRep),
+                                  estimatedTotalGain: String(Math.round(s.targetElevation)),
+                                },
+                              })
+                            }
+                          />
+                          <RepStepper
+                            sessionKey={sessionKey}
+                            targetReps={targetReps}
+                            elevPerRep={elevPerRep}
+                            sessionReps={sessionReps}
+                            isDone={isSubmitted}
+                            onSet={onSetReps}
+                          />
+                        </>
                       );
                     })()}
                   </View>

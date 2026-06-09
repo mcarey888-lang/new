@@ -38,7 +38,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import type { PlanSession } from "@/context/AppContext";
@@ -167,8 +167,24 @@ export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { appMode, addSession, logExploreHike, trainingPlan } = useApp();
 
+  // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
+  const params = useLocalSearchParams<{
+    hillSessionKey?: string;
+    hillName?: string;
+    targetReps?: string;
+    estimatedGainPerRep?: string;
+    estimatedTotalGain?: string;
+  }>();
+  const hillMeta = {
+    sessionKey:          params.hillSessionKey    ?? null,
+    hillName:            params.hillName          ?? null,
+    targetReps:          params.targetReps          ? parseInt(params.targetReps, 10)          : null,
+    estimatedGainPerRep: params.estimatedGainPerRep ? parseInt(params.estimatedGainPerRep, 10) : null,
+    estimatedTotalGain:  params.estimatedTotalGain  ? parseInt(params.estimatedTotalGain, 10)  : null,
+  };
+
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
-  const [routeName, setRouteName]       = useState("");
+  const [routeName, setRouteName]       = useState(params.hillName ?? "");
   const [nameLocked, setNameLocked]     = useState(false);
   const [nameError, setNameError]       = useState(false);
 
@@ -593,6 +609,28 @@ export default function HikeTrackingScreen() {
           }),
         });
       } catch { /* backend submit is best-effort — local save already succeeded */ }
+
+      // 4 ── If this was launched from a hill training session, save hill session data
+      if (hillMeta.hillName) {
+        try {
+          await fetch(`${API_BASE}/hill-session/save-tracked`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              plannedHillName:      hillMeta.hillName,
+              plannedRouteName:     name,
+              trainingSessionId:    hillMeta.sessionKey ?? undefined,
+              targetReps:           hillMeta.targetReps ?? undefined,
+              estimatedGainPerRepM: hillMeta.estimatedGainPerRep ?? undefined,
+              estimatedTotalGainM:  hillMeta.estimatedTotalGain ?? undefined,
+              recordedDistanceKm:   distKm,
+              recordedElevationGainM: elevGain,
+              recordedDurationSeconds: elapsedSecs,
+              rawGpsTrack:          trackPoints.current,
+            }),
+          });
+        } catch { /* best-effort — hike was already saved locally */ }
+      }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
