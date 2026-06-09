@@ -161,3 +161,9 @@ id = "9turqZPCbYsGEMo4U_fjr"
 uri = "file://.local/reports/mountain-lookup-evaluation-2026-06-09.md"
 type = "text"
 title = "Mountain Lookup Evaluation Report — 9 June 2026"
+
+[[outputs]]
+id = "0FFO-kzI3ZYXar1VmAxQU"
+uri = "file://mountain-lookup-evaluation-2026-06-09.md"
+type = "text"
+title = "Mountain Lookup Evaluation Report — 9 June 2026"
