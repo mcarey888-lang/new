@@ -598,7 +598,7 @@ export default function TrackScreen() {
                   <TouchableOpacity
                     style={[styles.mapBtn, isExploreMode && { flex: 1, justifyContent: "center" }]}
                     activeOpacity={0.7}
-                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
+                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name, false, summitGoal?.location)}
                   >
                     <Map size={14} color={T.green} />
                     <Text style={styles.mapBtnText}>Map</Text>

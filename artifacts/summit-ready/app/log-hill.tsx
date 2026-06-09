@@ -573,7 +573,7 @@ export default function LogHillScreen() {
                   <TouchableOpacity
                     style={styles.mapBtn}
                     activeOpacity={0.7}
-                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name)}
+                    onPress={() => openMapsForHill(hill.lat, hill.lng, hill.name, false, summitGoal?.location)}
                   >
                     <Map size={14} color={T.green} />
                     <Text style={styles.mapBtnText}>Map</Text>

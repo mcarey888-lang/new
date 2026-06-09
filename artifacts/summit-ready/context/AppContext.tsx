@@ -268,6 +268,7 @@ const SAVED_TRAILS_KEY = "summitready_saved_trails";
 const COMPLETED_TRAILS_KEY = "summitready_completed_trails";
 const CUSTOM_ROUTES_KEY = "summitready_custom_routes";
 const MY_HILLS_KEY = "summitready_my_hills";
+const EXCLUDED_HILLS_KEY = "summitready_excluded_my_hills";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -366,6 +367,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [submittedPlanSessions, setSubmittedPlanSessions] = useState<Record<string, boolean>>({});
   const [hillsInPlan, setHillsInPlan] = useState<string[]>([]);
   const [myHills, setMyHills] = useState<NearbyHill[]>([]);
+  const [excludedFromMyHills, setExcludedFromMyHills] = useState<string[]>([]);
   const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
   const [sessionEfforts, setSessionEffortsState] = useState<Record<string, 1 | 2 | 3 | 4 | 5>>({});
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
@@ -408,9 +410,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       try {
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY,
+          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr] =
+        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr, excludedHillsStr] =
           pairs.map(([, v]) => v);
 
         if (goalStr) {
@@ -506,6 +508,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (noteStr) setPlanAdjustNote(noteStr);
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
           if (myHillsStr) setMyHills(JSON.parse(myHillsStr));
+          if (excludedHillsStr) setExcludedFromMyHills(JSON.parse(excludedHillsStr));
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
@@ -596,7 +599,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [REPS_KEY, "{}"],
       [HAS_VIEWED_PLAN_KEY, "false"],
       [ACHIEVEMENTS_KEY, "[]"],
+      [EXCLUDED_HILLS_KEY, "[]"],
     ]);
+    setExcludedFromMyHills([]);
     // Fire-and-forget Alpine profile fetch — doesn't block the goal save
     if (goal.difficulty === "Alpine") {  
       setAlpineProfileLoading(true);
@@ -642,7 +647,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [ADJUST_NOTE_KEY, ""],
       [REPS_KEY, "{}"],
       [HAS_VIEWED_PLAN_KEY, "false"],
+      [EXCLUDED_HILLS_KEY, "[]"],
     ]);
+    setExcludedFromMyHills([]);
     // Fire-and-forget Alpine profile fetch
     if (goal.difficulty === "Alpine") {
       setAlpineProfileLoading(true);
@@ -739,8 +746,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCustomRoutes([]);
     setExploreHikes([]);
     setMyHills([]);
+    setExcludedFromMyHills([]);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
+      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
     ]);
   }, []);
 
@@ -979,13 +987,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setMyHills(prev => {
       const existingNames = new Set(prev.map(h => h.name));
-      const newHills = planHills.filter(h => !existingNames.has(h.name));
+      const excluded = new Set(excludedFromMyHills);
+      const newHills = planHills.filter(h => !existingNames.has(h.name) && !excluded.has(h.name));
       if (newHills.length === 0) return prev;
       const updated = [...prev, ...newHills];
       AsyncStorage.setItem(MY_HILLS_KEY, JSON.stringify(updated)).catch(() => {});
       return updated;
     });
-  }, [trainingPlan]);
+  }, [trainingPlan, excludedFromMyHills]);
 
   const addToMyHills = useCallback(async (hill: NearbyHill) => {
     const updated = myHills.some(h => h.name === hill.name)
@@ -998,8 +1007,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeFromMyHills = useCallback(async (hillName: string) => {
     const updated = myHills.filter(h => h.name !== hillName);
     setMyHills(updated);
-    await AsyncStorage.setItem(MY_HILLS_KEY, JSON.stringify(updated));
-  }, [myHills]);
+    const updatedExcluded = excludedFromMyHills.includes(hillName)
+      ? excludedFromMyHills
+      : [...excludedFromMyHills, hillName];
+    setExcludedFromMyHills(updatedExcluded);
+    await AsyncStorage.multiSet([
+      [MY_HILLS_KEY, JSON.stringify(updated)],
+      [EXCLUDED_HILLS_KEY, JSON.stringify(updatedExcluded)],
+    ]);
+  }, [myHills, excludedFromMyHills]);
 
   const addHillToPlan = useCallback(async (hill: NearbyHill) => {
     if (!summitGoal) return;

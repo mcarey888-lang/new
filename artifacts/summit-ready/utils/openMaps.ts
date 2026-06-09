@@ -67,15 +67,20 @@ export function openMapSearch(name: string) {
  * and trails, so this is more reliable than AI-generated lat/lng coordinates
  * which can be inaccurate.
  *
+ * Pass `location` (e.g. "Lancashire" or "BB4 7JU") to disambiguate hills whose
+ * names also exist in other countries (e.g. "Bull Hill" exists in the US too).
+ *
  * Set `directions = true` to open turn-by-turn navigation instead of a pin.
  */
 export function openMapsForHill(
   _lat: number | undefined | null,
   _lng: number | undefined | null,
   name: string,
-  directions = false
+  directions = false,
+  location?: string
 ) {
-  const searchName = directions ? `${name} car park` : name;
+  const ctx = location ? ` ${location}` : "";
+  const searchName = directions ? `${name} car park${ctx}` : `${name}${ctx}`;
   const encoded = encodeURIComponent(searchName);
 
   if (Platform.OS === "ios") {
