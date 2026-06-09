@@ -1043,8 +1043,14 @@ function WeekCard({
                     )}
 
                     {canPickHill && (() => {
-                      const elevPerRep = Math.max(50, Math.round(s.targetElevation / 4));
-                      const targetReps = Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
+                      // If a specific hill is assigned, use its actual gain-per-climb and repeats
+                      // rather than dividing targetElevation by 4 (which is only a generic fallback).
+                      const elevPerRep = assignedHill
+                        ? assignedHill.elevation
+                        : Math.max(50, Math.round(s.targetElevation / 4));
+                      const targetReps = assignedHill
+                        ? assignedHill.repeats
+                        : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <>
                           <HillActionCard
