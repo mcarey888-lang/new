@@ -2,8 +2,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft, ChevronRight, Compass, Map, Mountain } from "lucide-react-native";
 import React from "react";
-import { Image as ExpoImage } from "expo-image";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -44,10 +43,10 @@ export default function ModeSelectScreen() {
         </TouchableOpacity>
 
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.header}>
-          <ExpoImage
+          <Image
             source={require("@/assets/images/logo.gif")}
             style={styles.logo}
-            contentFit="contain"
+            resizeMode="contain"
           />
           <Text style={styles.subtitle}>How do you want to use SummitReady?</Text>
         </Animated.View>

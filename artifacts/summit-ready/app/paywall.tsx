@@ -3,9 +3,9 @@ import { MapPin, TrendingUp, Navigation, Activity, Cpu, ShoppingBag, X, Zap, Gif
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { Image as ExpoImage } from "expo-image";
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Platform,
   ScrollView,
@@ -150,10 +150,10 @@ export default function PaywallScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} activeOpacity={0.7}>
             <X size={20} color={T.textMuted} />
           </TouchableOpacity>
-          <ExpoImage
+          <Image
             source={require("@/assets/images/logo.gif")}
             style={styles.logo}
-            contentFit="contain"
+            resizeMode="contain"
           />
         </Animated.View>
 

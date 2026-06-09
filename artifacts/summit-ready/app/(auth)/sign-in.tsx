@@ -4,9 +4,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
-import { Image as ExpoImage } from "expo-image";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -143,7 +143,7 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={s.logoWrap}>
-            <ExpoImage source={require("@/assets/images/logo.gif")} style={s.logo} contentFit="contain" />
+            <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
           </View>
 
           <Text style={s.title}>Welcome back</Text>
