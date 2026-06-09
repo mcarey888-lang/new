@@ -155,3 +155,9 @@ id = "NNzJQYI666hAtWT4cYE4z"
 uri = "file://.local/content-plan-local-hills-guide.md"
 type = "text"
 title = "Content Plan — Train for Mountains Using Local Hills"
+
+[[outputs]]
+id = "9turqZPCbYsGEMo4U_fjr"
+uri = "file://.local/reports/mountain-lookup-evaluation-2026-06-09.md"
+type = "text"
+title = "Mountain Lookup Evaluation Report — 9 June 2026"
