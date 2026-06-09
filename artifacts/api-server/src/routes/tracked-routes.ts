@@ -87,6 +87,23 @@ router.get("/tracked-routes", async (req, res) => {
   }
 });
 
+router.get("/tracked-routes/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) { res.status(400).json({ error: "Missing id" }); return; }
+  try {
+    const rows = await db
+      .select()
+      .from(trackedRoutes)
+      .where(eq(trackedRoutes.id, id))
+      .limit(1);
+    if (rows.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+    res.json({ route: rows[0] });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch tracked route");
+    res.status(500).json({ error: "Failed to fetch route" });
+  }
+});
+
 router.delete("/tracked-routes/:id", async (req, res) => {
   const { id } = req.params;
   if (!id) {

@@ -174,6 +174,8 @@ export default function HikeTrackingScreen() {
     targetReps?: string;
     estimatedGainPerRep?: string;
     estimatedTotalGain?: string;
+    referenceRouteId?: string;
+    referenceRouteName?: string;
   }>();
   const hillMeta = {
     sessionKey:          params.hillSessionKey    ?? null,
@@ -184,7 +186,7 @@ export default function HikeTrackingScreen() {
   };
 
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
-  const [routeName, setRouteName]       = useState(params.hillName ?? "");
+  const [routeName, setRouteName]       = useState(params.hillName ?? params.referenceRouteName ?? "");
   const [nameLocked, setNameLocked]     = useState(false);
   const [nameError, setNameError]       = useState(false);
 
@@ -230,6 +232,7 @@ export default function HikeTrackingScreen() {
     iframe.src = `${API_BASE}/hike-map`;
     iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
     iframe.allow = "geolocation";
+    iframe.onload = () => sendReferenceRouteToMap();
     iframeRef.current = iframe;
     container.appendChild(iframe);
     return () => {
@@ -303,6 +306,28 @@ export default function HikeTrackingScreen() {
       webViewRef.current?.postMessage(msg);
     }
   }, []);
+
+  // ── Send a community reference route to the map as a ghost overlay ────────
+  const referenceRouteSentRef = useRef(false);
+  const sendReferenceRouteToMap = useCallback(async () => {
+    const rid = params.referenceRouteId;
+    if (!rid || referenceRouteSentRef.current) return;
+    referenceRouteSentRef.current = true;
+    try {
+      const res = await fetch(`${API_BASE}/tracked-routes/${rid}`);
+      if (!res.ok) return;
+      const data = await res.json() as { route: { trackPoints: Array<{ lat: number; lon: number }> | null } };
+      const pts = data.route.trackPoints ?? [];
+      if (pts.length < 2) return;
+      const points = pts.map(p => [p.lat, p.lon]);
+      const msg = JSON.stringify({ type: "referenceRoute", points });
+      if (Platform.OS === "web") {
+        try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
+      } else {
+        webViewRef.current?.postMessage(msg);
+      }
+    } catch { /* best-effort — map still works without overlay */ }
+  }, [params.referenceRouteId]);
 
   // ── Sync background-collected GPS points into foreground state ────────────
   const syncBgPoints = useCallback(async () => {
@@ -787,6 +812,7 @@ export default function HikeTrackingScreen() {
             javaScriptEnabled
             domStorageEnabled
             originWhitelist={["*"]}
+            onLoad={sendReferenceRouteToMap}
           />
         ) : (
           <View ref={webMapContainerRef} style={{ flex: 1 }} />

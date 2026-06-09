@@ -302,6 +302,28 @@ export default function TrackScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* COMMUNITY ROUTES */}
+        <Animated.View entering={FadeInDown.delay(110).duration(500)}>
+          <TouchableOpacity
+            onPress={() => router.push("/community-routes")}
+            activeOpacity={0.88}
+            style={styles.savedHikesBtn}
+          >
+            <View style={styles.logTrainingLeft}>
+              <View style={[styles.logTrainingIconWrap, { backgroundColor: T.blue + "20" }]}>
+                <Footprints size={22} color={T.blue} />
+              </View>
+              <View style={{ gap: 3 }}>
+                <Text style={[styles.logTrainingTitle, { color: T.blue }]}>Community Routes</Text>
+                <Text style={styles.logTrainingSub}>Follow routes tracked by other hikers</Text>
+              </View>
+            </View>
+            <View style={[styles.logTrainingArrow, { backgroundColor: T.blue + "20" }]}>
+              <ChevronRight size={18} color={T.blue} />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* SEARCH HILLS */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)}>
           <View style={styles.sectionHeader}>
