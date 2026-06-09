@@ -4,7 +4,8 @@ import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -92,10 +93,10 @@ export default function LandingScreen() {
         {/* Logo */}
         <Animated.View entering={FadeInDown.delay(80).duration(700)} style={styles.hero}>
           <TouchableOpacity onPress={handleLogoPress} activeOpacity={1}>
-            <Image
+            <ExpoImage
               source={require("@/assets/images/logo.gif")}
               style={styles.logo}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </TouchableOpacity>
           <Text style={styles.tagline}>

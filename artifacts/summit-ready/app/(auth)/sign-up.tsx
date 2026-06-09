@@ -4,9 +4,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
+import { Image as ExpoImage } from "expo-image";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -108,7 +108,7 @@ export default function SignUpScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
             <View style={s.logoWrap}>
-              <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
+              <ExpoImage source={require("@/assets/images/logo.gif")} style={s.logo} contentFit="contain" />
             </View>
             <Text style={s.title}>Verify your email</Text>
             <Text style={s.subtitle}>We sent a code to {email}</Text>
@@ -146,7 +146,7 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={s.logoWrap}>
-            <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
+            <ExpoImage source={require("@/assets/images/logo.gif")} style={s.logo} contentFit="contain" />
           </View>
 
           <Text style={s.title}>Create your account</Text>
