@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +18,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   AlertCircle,
   BarChart2,
+  BookMarked,
   CheckCircle,
+  ChevronDown,
   Map,
   Minus,
   Mountain,
@@ -28,7 +31,7 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { T } from "@/constants/theme";
-import type { NearbyHill } from "@/context/AppContext";
+import { useApp, type NearbyHill } from "@/context/AppContext";
 import type { ChallengeMetric } from "@/constants/challenges";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -154,6 +157,7 @@ const fb = StyleSheet.create({
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0, onLog, onPlannedChange, logTriggerRef }: Props) {
+  const { myHills } = useApp();
   const [location, setLocation] = useState("");
   const [search, setSearch]     = useState("");
   const [loading, setLoading]   = useState(false);
@@ -163,6 +167,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
   const [planned, setPlanned]   = useState<PlannedHillEntry[]>([]);
   const [logging, setLogging]   = useState(false);
   const [logSuccess, setLogSuccess] = useState(false);
+  const [myHillsOpen, setMyHillsOpen] = useState(true);
   const searchRef = useRef<TextInput>(null);
 
   // Pre-fill location from Hills cache
@@ -378,6 +383,74 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
               </Animated.View>
             );
           })}
+        </View>
+      )}
+
+      {/* My Hills picker */}
+      {myHills.length > 0 && (
+        <View style={s.myHillsBlock}>
+          <TouchableOpacity
+            style={s.myHillsHeader}
+            onPress={() => setMyHillsOpen(o => !o)}
+            activeOpacity={0.75}
+          >
+            <View style={[s.myHillsIcon, { backgroundColor: color + "20" }]}>
+              <BookMarked size={13} color={color} />
+            </View>
+            <Text style={s.myHillsTitle}>My Hills</Text>
+            <View style={[s.myHillsBadge, { backgroundColor: color + "22" }]}>
+              <Text style={[s.myHillsBadgeText, { color }]}>{myHills.length}</Text>
+            </View>
+            <Animated.View style={{ marginLeft: "auto", transform: [{ rotate: myHillsOpen ? "180deg" : "0deg" }] }}>
+              <ChevronDown size={15} color={T.textDim} />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {myHillsOpen && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.myHillsScroll}
+            >
+              {myHills.map((h, i) => {
+                const entry = getPlannedEntry(h.name);
+                return (
+                  <Animated.View
+                    key={h.name}
+                    entering={FadeInDown.delay(i * 30).duration(250)}
+                    style={[s.myHillChip, entry && { borderColor: color + "60" }]}
+                  >
+                    <View style={[s.myHillChipEmoji, { backgroundColor: color + "18" }]}>
+                      <Text style={s.emojiText}>{h.emoji || "⛰️"}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 1 }}>
+                      <Text style={s.myHillChipName} numberOfLines={1}>{h.name}</Text>
+                      <Text style={s.myHillChipMeta}>{h.elevation}m</Text>
+                    </View>
+                    {entry ? (
+                      <View style={s.inlineReps}>
+                        <TouchableOpacity onPress={() => setReps(h.name, entry.reps - 1)} style={s.inlineRepBtn} hitSlop={6}>
+                          <Minus size={11} color={T.text} />
+                        </TouchableOpacity>
+                        <Text style={[s.inlineRepVal, { color }]}>{entry.reps}</Text>
+                        <TouchableOpacity onPress={() => setReps(h.name, entry.reps + 1)} style={s.inlineRepBtn} hitSlop={6}>
+                          <Plus size={11} color={T.text} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[s.myHillAddBtn, { backgroundColor: color }]}
+                        onPress={() => addHill(h)}
+                        activeOpacity={0.85}
+                      >
+                        <Plus size={13} color={T.bg} />
+                      </TouchableOpacity>
+                    )}
+                  </Animated.View>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
       )}
 
@@ -649,4 +722,35 @@ const s = StyleSheet.create({
     padding: 12,
   },
   successText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green, flex: 1 },
+
+  myHillsBlock: { gap: 10 },
+  myHillsHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  myHillsIcon: {
+    width: 26, height: 26, borderRadius: 7,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  myHillsTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  myHillsBadge: {
+    borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
+  },
+  myHillsBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+
+  myHillsScroll: { gap: 8, paddingBottom: 2 },
+  myHillChip: {
+    flexDirection: "row", alignItems: "center", gap: 9,
+    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    padding: 10, width: 190,
+  },
+  myHillChipEmoji: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  myHillChipName: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.text },
+  myHillChipMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  myHillAddBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
 });
