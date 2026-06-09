@@ -946,6 +946,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return toSubmit.length;
   }, [trainingPlan, sessions, summitGoal, completedPlanSessions, submittedPlanSessions, sessionReps, assignedHills, completedGoals, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
+  // Auto-sync hills from the training plan into My Hills.
+  // Runs whenever the plan changes (new goal, AI adjustment, plan loaded from storage).
+  // Uses TrainingWeek.hills which is populated by the plan generator with name/elevation/distance/repeats/lat/lng.
+  useEffect(() => {
+    if (trainingPlan.length === 0) return;
+
+    const planHills: NearbyHill[] = [];
+    const seen = new Set<string>();
+
+    for (const week of trainingPlan) {
+      for (const h of (week.hills ?? [])) {
+        if (h.name && !seen.has(h.name)) {
+          seen.add(h.name);
+          planHills.push({
+            name:           h.name,
+            elevation:      h.elevation,
+            distance:       h.distance,
+            repeats:        h.repeats,
+            totalElevation: h.totalElevation,
+            surface:        "mixed",
+            grade:          h.elevation > 200 ? "steep" : "moderate",
+            emoji:          "⛰️",
+            lat:            h.lat,
+            lng:            h.lng,
+          });
+        }
+      }
+    }
+
+    if (planHills.length === 0) return;
+
+    setMyHills(prev => {
+      const existingNames = new Set(prev.map(h => h.name));
+      const newHills = planHills.filter(h => !existingNames.has(h.name));
+      if (newHills.length === 0) return prev;
+      const updated = [...prev, ...newHills];
+      AsyncStorage.setItem(MY_HILLS_KEY, JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  }, [trainingPlan]);
+
   const addToMyHills = useCallback(async (hill: NearbyHill) => {
     const updated = myHills.some(h => h.name === hill.name)
       ? myHills
