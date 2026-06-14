@@ -201,26 +201,39 @@ Other rules:
 // because AI trailhead coords are often misplaced (too high), producing low gains.
 const KNOWN_GAINS: Record<string, number> = {
   // Peak District
-  "mam-tor": 152, "kinder-scout": 436, "lose-hill": 316,
-  "shutlingsloe": 250, "chrome-hill": 185, "parkhouse-hill": 192,
-  "thorpe-cloud": 157, "axe-edge-moor": 131,
+  "mam-tor": 260, "mam-tor-great-ridge": 260,
+  "kinder-scout": 490, "kinder-scout-circular": 490,
+  "lose-hill": 316, "shutlingsloe": 250, "chrome-hill": 185,
+  "parkhouse-hill": 192, "thorpe-cloud": 157, "axe-edge-moor": 131,
   // Yorkshire Dales / South Pennines
   "pen-y-ghent": 454, "whernside": 476, "ingleborough": 484,
   "great-whernside": 504,
   // Lake District
-  "skiddaw": 651, "helvellyn": 741, "blencathra": 618,
-  "catbells": 371, "great-gable": 824, "scafell-pike": 900,
-  "coniston-old-man": 748,
+  "skiddaw": 651, "helvellyn": 760, "helvellyn-via-striding-edge": 760,
+  "blencathra": 640, "blencathra-via-sharp-edge": 640,
+  "catbells": 451, "great-gable": 870, "scafell-pike": 950,
+  "sca-fell-scafell-pike-loop": 1150, "sca-fell": 910,
+  "coniston-old-man": 748, "fairfield": 640, "st-sunday-crag": 700,
+  "red-screes": 625, "high-street": 680,
   // Wales
-  "pen-y-fan": 446, "corn-du": 433, "cribyn": 355,
-  "snowdon": 726, "cadair-idris": 693,
-  "tryfan": 617, "tryfan-north-ridge": 617,
+  "pen-y-fan": 446, "pen-y-fan-south-ridge": 420,
+  "corn-du": 433, "cribyn": 355,
+  "snowdon": 726, "snowdon-via-pyg-track": 900, "snowdon-via-rhyd-ddu": 870,
+  "cadair-idris": 693,
+  "tryfan": 617, "tryfan-north-ridge": 680,
   "glyder-fawr": 740, "glyder-fach": 720, "y-garn": 584,
-  "carnedd-llewelyn": 815, "carnedd-dafydd": 785,
+  "carnedd-llewelyn": 815, "carnedd-dafydd": 785, "pen-yr-ole-wen": 780,
   "sugar-loaf": 246, "skirrid-fawr": 386,
+  "old-man-of-storr": 380,
   // Scotland
-  "ben-nevis": 1325, "ben-lomond": 959, "schiehallion": 733,
-  "cairngorm": 605, "arthurs-seat": 244, "tinto-hill": 487,
+  "ben-nevis": 1340, "ben-lomond": 1010, "schiehallion": 733,
+  "cairngorm": 640, "cairn-gorm-via-ptarmigan-ridge": 640,
+  "ben-macdui": 1260, "braeriach": 1130, "cairn-toul": 1240,
+  "arthurs-seat": 244, "tinto-hill": 487, "ben-ledi": 733,
+  "ben-more-crianlarich": 966, "stob-binnein": 910,
+  // Ireland
+  "croagh-patrick": 760, "carrauntoohil": 1040,
+  "brandon-mountain": 870, "diamond-hill": 442,
   // Lancashire / West Pennines
   "pendle-hill": 290, "bull-hill": 316, "winter-hill": 316,
   "rivington-pike": 253, "holcombe-hill": 220,
@@ -342,10 +355,11 @@ async function applyTerrainElevation(hill: Hill): Promise<Hill> {
   const verifiedGain = Math.round(summitElev - trailElev);
 
   // Sanity checks — discard obviously wrong results.
-  // Lower bound (< 25% of AI estimate): topo coords were probably wrong/misplaced.
+  // Lower bound (< 50% of AI estimate): topo trailhead coords were probably placed
+  // too high on the mountain, producing an understated gain (Tryfan-class errors).
   // Upper bound (> 4× AI estimate): topo point is wildly off or AI gave summit altitude.
   if (verifiedGain <= 0) return applyKnownGain(hill);
-  if (verifiedGain < hill.elevation * 0.25) return applyKnownGain(hill);
+  if (verifiedGain < hill.elevation * 0.50) return applyKnownGain(hill);
   if (verifiedGain > hill.elevation * 4) return applyKnownGain(hill);
 
   const grade = gradeFromGain(verifiedGain);
@@ -398,7 +412,7 @@ async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
     const trailElev = elevations[ti] ?? null;
     if (summitElev === null || trailElev === null) return applyKnownGain(hill);
     const verifiedGain = Math.round(summitElev - trailElev);
-    if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.25 || verifiedGain > hill.elevation * 4) {
+    if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.50 || verifiedGain > hill.elevation * 4) {
       return applyKnownGain(hill);
     }
     const grade = gradeFromGain(verifiedGain);
