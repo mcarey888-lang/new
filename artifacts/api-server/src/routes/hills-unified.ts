@@ -214,6 +214,9 @@ const KNOWN_GAINS: Record<string, number> = {
   // Wales
   "pen-y-fan": 446, "corn-du": 433, "cribyn": 355,
   "snowdon": 726, "cadair-idris": 693,
+  "tryfan": 617, "tryfan-north-ridge": 617,
+  "glyder-fawr": 740, "glyder-fach": 720, "y-garn": 584,
+  "carnedd-llewelyn": 815, "carnedd-dafydd": 785,
   "sugar-loaf": 246, "skirrid-fawr": 386,
   // Scotland
   "ben-nevis": 1325, "ben-lomond": 959, "schiehallion": 733,
