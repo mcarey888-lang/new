@@ -464,7 +464,7 @@ export default function LogScreen() {
         {/* Log Hill */}
         <Animated.View entering={FadeInDown.delay(135).duration(400)}>
           <TouchableOpacity
-            onPress={() => setLogHillOpen(true)}
+            onPress={() => router.push("/hills-finder")}
             activeOpacity={0.85}
             style={styles.logHillBtn}
           >
@@ -474,7 +474,7 @@ export default function LogScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.startHikeTitle}>Log Hill</Text>
-                <Text style={styles.startHikeSub} numberOfLines={1}>Search a hill and log your reps</Text>
+                <Text style={styles.startHikeSub} numberOfLines={1}>Find hills near you</Text>
               </View>
             </View>
             <View style={styles.startHikeArrow}>
