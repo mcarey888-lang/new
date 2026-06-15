@@ -77,10 +77,15 @@ osLayer.addTo(map);
 ` : ""}
 
 var pts = [];
+var refGlow = L.polyline([], {
+  color: "rgba(255,138,0,0.22)", weight: 14, opacity: 1,
+  lineCap: "round", lineJoin: "round", interactive: false
+}).addTo(map);
+
 var refPolyline = L.polyline([], {
-  color: "rgba(255,255,255,0.40)", weight: 3, opacity: 1,
+  color: "#FF8A00", weight: 4.5, opacity: 0.92,
   lineCap: "round", lineJoin: "round",
-  dashArray: "9, 7", interactive: false
+  dashArray: "12, 8", interactive: false
 }).addTo(map);
 
 var polyline = L.polyline([], {
@@ -155,15 +160,16 @@ function handleMsg(e) {
     if (msg.type === "replay" && Array.isArray(msg.points)) replayTrack(msg.points);
     if (msg.type === "referenceRoute" && Array.isArray(msg.points)) {
       refPolyline.setLatLngs(msg.points);
+      refGlow.setLatLngs(msg.points);
       if (msg.points.length > 1) {
         L.circleMarker(msg.points[0], {
-          radius: 5, fillColor: "rgba(255,255,255,0.7)", color: "rgba(255,255,255,0.3)",
-          weight: 2, fillOpacity: 1, interactive: false
-        }).addTo(map);
+          radius: 8, fillColor: "#fff", color: "#FF8A00",
+          weight: 3, fillOpacity: 1, interactive: false
+        }).bindTooltip("Start", { permanent: false, direction: "top" }).addTo(map);
         L.circleMarker(msg.points[msg.points.length-1], {
-          radius: 5, fillColor: "rgba(255,100,100,0.7)", color: "rgba(255,100,100,0.3)",
-          weight: 2, fillOpacity: 1, interactive: false
-        }).addTo(map);
+          radius: 8, fillColor: "#FF8A00", color: "#fff",
+          weight: 3, fillOpacity: 1, interactive: false
+        }).bindTooltip("Summit", { permanent: false, direction: "top" }).addTo(map);
         map.fitBounds(refPolyline.getBounds(), { padding: [60, 60], maxZoom: 15, animate: false });
       }
     }
