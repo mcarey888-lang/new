@@ -235,6 +235,7 @@ function LogModal({
   color: string;
 }) {
   const { sessions, exploreHikes } = useApp();
+  const insets = useSafeAreaInsets();
   const todayStr = () => new Date().toISOString().split("T")[0];
 
   const [tab, setTab] = useState<"new" | "history">("new");
@@ -333,7 +334,7 @@ function LogModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <View style={lm.container}>
+        <View style={[lm.container, Platform.OS === "android" && { paddingBottom: insets.bottom + 20 }]}>
           <View style={lm.handle} />
           <Text style={lm.title}>Log Activity</Text>
 
