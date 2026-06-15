@@ -253,7 +253,11 @@ export default function HikeTrackingScreen() {
     iframe.src = `${API_BASE}/hike-map`;
     iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
     iframe.allow = "geolocation";
-    iframe.onload = () => sendReferenceRouteToMap();
+    iframe.onload = () => {
+      sendReferenceRouteToMap();
+      const pos = initialPosRef.current;
+      if (pos) sendLocateToMap(pos.lat, pos.lon);
+    };
     iframeRef.current = iframe;
     container.appendChild(iframe);
     return () => {
@@ -286,6 +290,7 @@ export default function HikeTrackingScreen() {
           initialPosRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
           setCurrentAltM(pos.coords.altitude);
           setGpsReady(true);
+          sendLocateToMap(pos.coords.latitude, pos.coords.longitude);
         }
       } catch { /* GPS unavailable on simulator */ }
     }
@@ -309,6 +314,16 @@ export default function HikeTrackingScreen() {
   // ── Send a GPS point to the live map ─────────────────────────────────────
   const sendPointToMap = useCallback((lat: number, lng: number) => {
     const msg = JSON.stringify({ type: "point", lat, lng });
+    if (Platform.OS === "web") {
+      try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
+    } else {
+      webViewRef.current?.postMessage(msg);
+    }
+  }, []);
+
+  // ── Show current position on map without starting a track ────────────────
+  const sendLocateToMap = useCallback((lat: number, lng: number) => {
+    const msg = JSON.stringify({ type: "locate", lat, lng });
     if (Platform.OS === "web") {
       try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
     } else {
@@ -868,7 +883,11 @@ export default function HikeTrackingScreen() {
             javaScriptEnabled
             domStorageEnabled
             originWhitelist={["*"]}
-            onLoad={sendReferenceRouteToMap}
+            onLoad={() => {
+              sendReferenceRouteToMap();
+              const pos = initialPosRef.current;
+              if (pos) sendLocateToMap(pos.lat, pos.lon);
+            }}
           />
         ) : (
           <View ref={webMapContainerRef} style={{ flex: 1 }} />

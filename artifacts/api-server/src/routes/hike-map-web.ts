@@ -77,6 +77,8 @@ osLayer.addTo(map);
 ` : ""}
 
 var pts = [];
+var idleMarker = null;
+
 var refGlow = L.polyline([], {
   color: "rgba(255,138,0,0.22)", weight: 14, opacity: 1,
   lineCap: "round", lineJoin: "round", interactive: false
@@ -106,6 +108,9 @@ function addPoint(lat, lng) {
   pts.push(p);
   polyline.setLatLngs(pts);
   glowLine.setLatLngs(pts);
+
+  // Remove idle pre-start marker once real tracking begins
+  if (idleMarker) { map.removeLayer(idleMarker); idleMarker = null; }
 
   if (!posMarker) {
     document.getElementById("waiting").style.display = "none";
@@ -158,7 +163,21 @@ function handleMsg(e) {
     var msg = JSON.parse(e.data);
     if (msg.type === "point") addPoint(msg.lat, msg.lng);
     if (msg.type === "replay" && Array.isArray(msg.points)) replayTrack(msg.points);
+    if (msg.type === "locate") {
+      document.getElementById("waiting").style.display = "none";
+      var lp = [msg.lat, msg.lng];
+      if (!idleMarker) {
+        idleMarker = L.circleMarker(lp, {
+          radius: 9, fillColor: "#3ECF75", color: "#fff", weight: 3,
+          fillOpacity: 0.85, interactive: false
+        }).addTo(map);
+        map.setView(lp, 15);
+      } else {
+        idleMarker.setLatLng(lp);
+      }
+    }
     if (msg.type === "referenceRoute" && Array.isArray(msg.points)) {
+      document.getElementById("waiting").style.display = "none";
       refPolyline.setLatLngs(msg.points);
       refGlow.setLatLngs(msg.points);
       if (msg.points.length > 1) {
