@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -30,6 +30,29 @@ try {
 }
 
 const queryClient = new QueryClient();
+
+/**
+ * Renders children once Clerk's auth state is ready, OR after a 4-second
+ * timeout — whichever comes first.  This prevents a permanent white screen
+ * when the device is offline: Clerk tries to validate the cached session
+ * token against its API and can hang indefinitely without network access.
+ * After the timeout the app renders normally; authenticated state (if the
+ * user was previously signed in) is still available from the secure token
+ * cache even without a network round-trip.
+ */
+function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
+  const { isLoaded } = useAuth();
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded) return;
+    const t = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
+  if (!isLoaded && !timedOut) return null;
+  return <>{children}</>;
+}
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -81,7 +104,7 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
+      <ClerkLoadedOrTimeout>
         <SafeAreaProvider>
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
@@ -99,7 +122,7 @@ export default function RootLayout() {
             </QueryClientProvider>
           </ErrorBoundary>
         </SafeAreaProvider>
-      </ClerkLoaded>
+      </ClerkLoadedOrTimeout>
     </ClerkProvider>
   );
 }
