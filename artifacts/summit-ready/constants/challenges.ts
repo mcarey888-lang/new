@@ -560,6 +560,29 @@ export const CHALLENGES: ChallengeTemplate[] = [
     ],
     color: "#4A9FF5",
   },
+  {
+    id: "all-wainwrights",
+    title: "All 214 Wainwrights",
+    description:
+      "Every one of Alfred Wainwright's 214 Lake District fells — from the gentle Latrigg to the dramatic Striding Edge of Helvellyn. Around 35,000m of total ascent across ~540km of some of England's finest mountain terrain. No time limit. This one might take years.",
+    tagline: "214 Lake District fells. The ultimate tick list.",
+    metric: "elevation",
+    targetValue: 35000,
+    difficulty: "Expedition",
+    durationDays: null,
+    mountain: "Lake District",
+    emoji: "📖",
+    isPremium: true,
+    recommendedFor: ["Wainwrights", "Lake District", "Long-term challenges", "Fell walking"],
+    milestones: [
+      { pct: 10,  label: "First 21 fells bagged",          emoji: "📖" },
+      { pct: 25,  label: "Over 50 Wainwrights",            emoji: "🥾" },
+      { pct: 50,  label: "Halfway — 107 fells",            emoji: "⛰️" },
+      { pct: 75,  label: "Into the final stretch",         emoji: "🔥" },
+      { pct: 100, label: "All 214 — a Wainwright compleat", emoji: "📖" },
+    ],
+    color: "#F59E0B",
+  },
 ];
 
 export const DIFF_COLOR: Record<ChallengeDifficulty, string> = {
