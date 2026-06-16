@@ -28,6 +28,7 @@ import { useChallenges, type ChallengeActivity } from "@/context/ChallengesConte
 import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlannerSection";
+import { WainwrightTickList } from "@/components/WainwrightTickList";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -785,18 +786,31 @@ export default function ChallengeDetailScreen() {
               </Animated.View>
             )}
 
-            {/* Hill Planner */}
-            <Animated.View entering={FadeInDown.delay(140).duration(600)}>
-              <HillPlannerSection
-                targetValue={c.targetValue}
-                metric={c.metric}
-                color={color}
-                currentProgress={progress}
-                onLog={handlePlannerLog}
-                onPlannedChange={setPlannedHills}
-                logTriggerRef={plannerLogRef}
-              />
-            </Animated.View>
+            {/* Hill Planner — hidden for Wainwrights (use tick list instead) */}
+            {c.id !== "all-wainwrights" && (
+              <Animated.View entering={FadeInDown.delay(140).duration(600)}>
+                <HillPlannerSection
+                  targetValue={c.targetValue}
+                  metric={c.metric}
+                  color={color}
+                  currentProgress={progress}
+                  onLog={handlePlannerLog}
+                  onPlannedChange={setPlannedHills}
+                  logTriggerRef={plannerLogRef}
+                />
+              </Animated.View>
+            )}
+
+            {/* Wainwright tick list */}
+            {c.id === "all-wainwrights" && (
+              <Animated.View entering={FadeInDown.delay(140).duration(600)}>
+                <WainwrightTickList
+                  challengeId={c.id}
+                  color={color}
+                  isActive={isActive}
+                />
+              </Animated.View>
+            )}
 
             {/* Next milestone banner */}
             {nextMilestone && (
@@ -858,8 +872,8 @@ export default function ChallengeDetailScreen() {
               </Animated.View>
             )}
 
-            {/* Hill planner */}
-            {!isCompleted && (
+            {/* Hill planner — hidden for Wainwrights */}
+            {!isCompleted && c.id !== "all-wainwrights" && (
               <Animated.View entering={FadeInDown.delay(80).duration(600)}>
                 <HillPlannerSection
                   targetValue={c.targetValue}
@@ -869,6 +883,17 @@ export default function ChallengeDetailScreen() {
                   onLog={handlePlannerLog}
                   onPlannedChange={setPlannedHills}
                   logTriggerRef={plannerLogRef}
+                />
+              </Animated.View>
+            )}
+
+            {/* Wainwright tick list — shown on non-active/completed state too */}
+            {c.id === "all-wainwrights" && (
+              <Animated.View entering={FadeInDown.delay(80).duration(600)}>
+                <WainwrightTickList
+                  challengeId={c.id}
+                  color={color}
+                  isActive={isActive ?? false}
                 />
               </Animated.View>
             )}
