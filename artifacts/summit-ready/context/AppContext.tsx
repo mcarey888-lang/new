@@ -429,6 +429,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr, excludedHillsStr] =
           pairs.map(([, v]) => v);
 
+        // Parse explore hikes before the goal block so they're available
+        // both for readiness scoring (inside) and hike history (outside).
+        const loadedHikes: ExploreHike[] = exploreHikesStr
+          ? (JSON.parse(exploreHikesStr) as ExploreHike[]).map(h =>
+              h.timeTaken > 300 ? { ...h, timeTaken: Math.round(h.timeTaken / 60) } : h
+            )
+          : [];
+
         if (goalStr) {
           const goal: SummitGoal = JSON.parse(goalStr);
           const rawPlan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
@@ -518,7 +526,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setSubmittedPlanSessions(submitted);
           const loadedReps = repsStr ? JSON.parse(repsStr) : {};
           const parsedCompletedGoals: CompletedGoal[] = completedGoalsStr ? JSON.parse(completedGoalsStr) : [];
-          setReadinessScore(calculateReadiness(goal, plan, storedSessions, { sessionReps: loadedReps, assignedHills: assigned, completedGoals: parsedCompletedGoals }));
+          setReadinessScore(calculateReadiness(goal, plan, storedSessions, { sessionReps: loadedReps, assignedHills: assigned, completedGoals: parsedCompletedGoals, exploreHikes: loadedHikes }));
           if (noteStr) setPlanAdjustNote(noteStr);
           if (hillsInPlanStr) setHillsInPlan(JSON.parse(hillsInPlanStr));
           if (myHillsStr) setMyHills(JSON.parse(myHillsStr));
@@ -547,16 +555,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // No else — fresh users start from the landing page with no pre-loaded data
 
         if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
-        if (exploreHikesStr) {
-          const rawHikes = JSON.parse(exploreHikesStr) as ExploreHike[];
-          // Migration: older builds stored timeTaken in seconds instead of minutes.
-          // A timeTaken > 300 as minutes (5+ hours) is implausible for most hikes,
-          // but 300 seconds is only 5 minutes — so divide by 60 to correct it.
-          const migratedHikes = rawHikes.map(h =>
-            h.timeTaken > 300 ? { ...h, timeTaken: Math.round(h.timeTaken / 60) } : h
-          );
-          setExploreHikes(migratedHikes);
-        }
+        // loadedHikes already parsed and migrated above (before readiness calculation)
+        if (loadedHikes.length > 0) setExploreHikes(loadedHikes);
         if (savedTrailsStr) setSavedTrailIds(JSON.parse(savedTrailsStr) as string[]);
         if (completedTrailsStr) setCompletedTrailIds(JSON.parse(completedTrailsStr) as string[]);
         if (customRoutesStr) setCustomRoutes(JSON.parse(customRoutesStr) as Trail[]);
@@ -618,7 +618,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPlanAdjustNote(null);
     // Reset plan-viewed flag so user sees their new plan before upgrade prompts
     setHasViewedPlan(false);
-    const score = calculateReadiness(goal, plan, initialSessions, { completedGoals });
+    const score = calculateReadiness(goal, plan, initialSessions, { completedGoals, exploreHikes });
     setReadinessScore(score);
     setUnlockedAchievements([]);
     setNewlyUnlocked([]);
@@ -682,7 +682,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPlanAdjustNote(null);
     setHasViewedPlan(false);
     // Recalculate readiness with existing sessions against the new goal
-    const score = calculateReadiness(goal, plan, sessions, { completedGoals });
+    const score = calculateReadiness(goal, plan, sessions, { completedGoals, exploreHikes });
     setReadinessScore(score);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
@@ -749,7 +749,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSessions(updated);
     let score = readinessScore;
     if (summitGoal) {
-      score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals });
+      score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes });
       setReadinessScore(score);
     }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
@@ -759,16 +759,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
     const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
     setSessions(updated);
-    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals }));
+    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes }));
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
-  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals]);
+  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const deleteSession = useCallback(async (id: string) => {
     const updated = sessions.filter(s => s.id !== id);
     setSessions(updated);
-    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals }));
+    if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes }));
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
-  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals]);
+  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const clearPlan = useCallback(async () => {
     setSummitGoalState(null);
@@ -822,7 +822,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [...newSessions, ...sessions];
     setSessions(updated);
     if (summitGoal) {
-      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals }));
+      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes }));
     }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
     const newTrailIds = hikes
@@ -938,10 +938,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Recalculate readiness in real-time using checked-but-not-submitted sessions as virtual progress
     if (summitGoal) {
       const virtualCount = Object.keys(updated).filter(k => updated[k] && !submittedPlanSessions[k]).length;
-      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { virtualSessionCount: virtualCount, sessionReps, assignedHills, completedGoals }));
+      setReadinessScore(calculateReadiness(summitGoal, trainingPlan, sessions, { virtualSessionCount: virtualCount, sessionReps, assignedHills, completedGoals, exploreHikes }));
     }
     await AsyncStorage.setItem(COMPLETED_KEY, JSON.stringify(updated));
-  }, [completedPlanSessions, submittedPlanSessions, summitGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals]);
+  }, [completedPlanSessions, submittedPlanSessions, summitGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const assignHillToSession = useCallback(async (weekNum: number, sessionIdx: number, hill: NearbyHill) => {
     const key = `${weekNum}-${sessionIdx}`;
@@ -1029,7 +1029,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [...toSubmit, ...sessions];
     setSessions(updated);
     setSubmittedPlanSessions(newSubmitted);
-    const score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals });
+    const score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes });
     setReadinessScore(score);
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
     await AsyncStorage.setItem(SUBMITTED_KEY, JSON.stringify(newSubmitted));
@@ -1151,10 +1151,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     setTrainingPlan(updatedPlan);
-    setReadinessScore(calculateReadiness(summitGoal, updatedPlan, sessions, { sessionReps, assignedHills, completedGoals }));
+    setReadinessScore(calculateReadiness(summitGoal, updatedPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes }));
     await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updatedPlan));
     await AsyncStorage.setItem(HILLS_IN_PLAN_KEY, JSON.stringify(updatedInPlan));
-  }, [summitGoal, trainingPlan, sessions, hillsInPlan, sessionReps, assignedHills, completedGoals]);
+  }, [summitGoal, trainingPlan, sessions, hillsInPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const addToNearbyHills = useCallback(async (hill: NearbyHill) => {
     // Avoid duplicates by name
@@ -1191,11 +1191,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           sessionReps: updated,
           assignedHills,
           completedGoals,
+          exploreHikes,
         }),
       );
     }
     await AsyncStorage.setItem(REPS_KEY, JSON.stringify(updated));
-  }, [sessionReps, summitGoal, trainingPlan, sessions, completedPlanSessions, submittedPlanSessions, assignedHills, completedGoals]);
+  }, [sessionReps, summitGoal, trainingPlan, sessions, completedPlanSessions, submittedPlanSessions, assignedHills, completedGoals, exploreHikes]);
 
   const setSessionEffort = useCallback(async (key: string, effort: 1 | 2 | 3 | 4 | 5) => {
     const updated = { ...sessionEfforts, [key]: effort };
