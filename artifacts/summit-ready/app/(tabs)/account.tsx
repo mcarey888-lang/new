@@ -726,8 +726,20 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
-        {/* Account actions */}
+        {/* Support */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
+          <Text style={styles.sectionLabel}>SUPPORT</Text>
+          <View style={styles.actionList}>
+            <TouchableOpacity style={styles.actionRow} onPress={() => Linking.openURL("mailto:support@summitready.uk")} activeOpacity={0.7}>
+              <Shield size={16} color={T.blue} />
+              <Text style={styles.actionText}>Contact support</Text>
+              <ChevronRight size={16} color={T.textDim} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Account actions */}
+        <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>ACCOUNT</Text>
           <View style={styles.actionList}>
             <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.7}>

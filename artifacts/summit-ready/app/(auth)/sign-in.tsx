@@ -203,6 +203,10 @@ export default function SignInScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password" as any)} style={s.forgotBtn} activeOpacity={0.7}>
+            <Text style={s.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
           <View style={s.footer}>
             <Text style={s.footerText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.push("/(auth)/sign-up" as any)} activeOpacity={0.7}>
@@ -243,6 +247,8 @@ const s = StyleSheet.create({
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   link: { alignItems: "center", paddingVertical: 8 },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+  forgotBtn: { alignItems: "center", paddingVertical: 4 },
+  forgotText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 8 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },

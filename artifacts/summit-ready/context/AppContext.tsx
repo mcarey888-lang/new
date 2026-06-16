@@ -1281,7 +1281,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPlanAdjustNote(data.overallNote);
       await AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updatedPlan));
       await AsyncStorage.setItem(ADJUST_NOTE_KEY, data.overallNote);
-    } catch {}
+    } catch {
+      setPlanAdjustNote("AI coaching couldn't update your plan right now. Check your connection and try again later.");
+    }
     setPlanAdjusting(false);
   }, [summitGoal, trainingPlan, completedPlanSessions]);
 
