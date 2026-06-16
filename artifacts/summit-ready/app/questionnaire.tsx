@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,6 +19,10 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 
 export const QUIZ_KEY = "summitready_questionnaire_data";
 const TOTAL_STEPS = 8;
@@ -486,9 +491,41 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
   const [showCustom, setShowCustom] = React.useState(false);
   const [customName, setCustomName] = React.useState("");
   const [customElev, setCustomElev] = React.useState("");
+  const [lookupLoading, setLookupLoading] = React.useState(false);
+  const [lookupFound, setLookupFound] = React.useState(false);
+  const lookupDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const monthChips = React.useMemo(() => getCatchMonthChips(), []);
 
   React.useEffect(() => { setPastHikes(selected); }, [selected, setPastHikes]);
+
+  React.useEffect(() => {
+    if (lookupDebounce.current) clearTimeout(lookupDebounce.current);
+    setLookupFound(false);
+    const trimmed = customName.trim();
+    if (trimmed.length < 3) { setLookupLoading(false); return; }
+    setLookupLoading(true);
+    lookupDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/mountain-lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmed }),
+        });
+        if (!res.ok) throw new Error("lookup failed");
+        const data = await res.json();
+        const firstRoute = data.routes?.[0];
+        if (firstRoute?.elevationGain) {
+          setCustomElev(String(firstRoute.elevationGain));
+          setLookupFound(true);
+        }
+      } catch {
+        // silent — user fills in manually
+      } finally {
+        setLookupLoading(false);
+      }
+    }, 800);
+    return () => { if (lookupDebounce.current) clearTimeout(lookupDebounce.current); };
+  }, [customName]);
 
   function togglePeak(peak: typeof POPULAR_PEAKS_Q[number]) {
     setSelected(prev => {
@@ -516,6 +553,7 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
       distance: Math.round(elev / 80), monthsAgo: 1, emoji: "⛰️",
     }]);
     setCustomName(""); setCustomElev(""); setShowCustom(false);
+    setLookupFound(false);
   }
 
   return (
@@ -584,23 +622,45 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
       {!showCustom ? (
         <TouchableOpacity onPress={() => setShowCustom(true)} style={s.catchCustomBtn} activeOpacity={0.75}>
           <Plus size={14} color={T.green} />
-          <Text style={s.catchCustomBtnText}>Add a different hill</Text>
+          <Text style={s.catchCustomBtnText}>Add custom hill</Text>
         </TouchableOpacity>
       ) : (
         <View style={s.catchCustomForm}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <Text style={s.catchPeakName}>Custom hill</Text>
-            <TouchableOpacity onPress={() => setShowCustom(false)} hitSlop={8}><X size={16} color={T.textMuted} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setShowCustom(false); setCustomName(""); setCustomElev(""); setLookupFound(false); }} hitSlop={8}>
+              <X size={16} color={T.textMuted} />
+            </TouchableOpacity>
           </View>
-          <TextInput
-            style={s.locationInput}
-            placeholder="Hill or mountain name"
-            placeholderTextColor={T.textDim}
-            value={customName}
-            onChangeText={setCustomName}
-            autoFocus
-            returnKeyType="next"
-          />
+
+          {/* Name input with AI lookup indicator */}
+          <View style={s.catchCustomNameWrap}>
+            <TextInput
+              style={[s.locationInput, { flex: 1 }]}
+              placeholder="Hill or mountain name"
+              placeholderTextColor={T.textDim}
+              value={customName}
+              onChangeText={v => { setCustomName(v); setLookupFound(false); }}
+              autoFocus
+              returnKeyType="next"
+            />
+            {lookupLoading && (
+              <ActivityIndicator size="small" color={T.green} style={s.catchLookupIcon} />
+            )}
+            {!lookupLoading && lookupFound && (
+              <View style={s.catchLookupBadge}>
+                <Check size={11} color={T.green} />
+              </View>
+            )}
+          </View>
+
+          {lookupFound && (
+            <Text style={s.catchLookupHint}>Elevation auto-filled — edit if needed</Text>
+          )}
+          {!lookupFound && lookupLoading && (
+            <Text style={s.catchLookupHint}>Looking up elevation…</Text>
+          )}
+
           <TextInput
             style={[s.locationInput, { marginTop: 8 }]}
             placeholder="Elevation gain in metres"
@@ -1070,5 +1130,21 @@ const s = StyleSheet.create({
   catchCustomForm: {
     backgroundColor: T.card, borderRadius: 14,
     borderWidth: 1, borderColor: T.border, padding: 12,
+  },
+  catchCustomNameWrap: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  catchLookupIcon: {
+    marginLeft: 4,
+  },
+  catchLookupBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: T.greenDim, borderWidth: 1.5, borderColor: T.green + "60",
+    alignItems: "center", justifyContent: "center",
+    marginLeft: 4,
+  },
+  catchLookupHint: {
+    fontSize: 11, fontFamily: "Inter_400Regular",
+    color: T.green, marginTop: 4, marginBottom: 2,
   },
 });
