@@ -1,15 +1,29 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Home, Calendar, PenLine, Footprints, User, Map, Trophy, Mountain } from "lucide-react-native";
-import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import React, { useEffect } from "react";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
 
 export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
+  const { scoreStagnation, clearScoreStagnation } = useApp();
+
+  // Show "why didn't my score improve?" popup whenever a session or hike
+  // is logged and the readiness score stays the same or drops.
+  useEffect(() => {
+    if (!scoreStagnation) return;
+    Alert.alert(
+      scoreStagnation.title,
+      `${scoreStagnation.body}\n\n💡 ${scoreStagnation.tip}`,
+      [{ text: "Got it", onPress: clearScoreStagnation, style: "default" }],
+      { cancelable: true, onDismiss: clearScoreStagnation },
+    );
+  }, [scoreStagnation, clearScoreStagnation]);
 
   const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
 

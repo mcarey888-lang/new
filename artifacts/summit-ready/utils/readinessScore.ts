@@ -270,6 +270,136 @@ export function calculateReadiness(
   return capped;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Score stagnation diagnosis
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ScoreInsight {
+  title: string;
+  body: string;
+  tip: string;
+}
+
+/**
+ * Returns a human-readable explanation of why the readiness score didn't
+ * improve after logging a session.  Returns null if no clear cause is found
+ * (e.g. score is already capped for the current training phase and every
+ * metric looks healthy — which is fine, just not explainable in one line).
+ */
+export function diagnoseScoreStagnation(
+  goal: SummitGoal,
+  sessions: Session[],
+  exploreHikes: ExploreHike[],
+  oldScore: number,
+  newScore: number,
+): ScoreInsight | null {
+  if (newScore > oldScore) return null;
+
+  const planCompleted = sessions.filter(s => s.completed);
+  const hikeCompleted: Session[] = exploreHikes.map(h => ({
+    id: h.id, date: h.date, type: "cardio" as const,
+    distance: h.distance, elevationGain: h.elevationGain,
+    duration: h.timeTaken, effort: 3 as const,
+    notes: h.notes, completed: true, weekNumber: 0,
+  }));
+  const allCompleted = [...planCompleted, ...hikeCompleted].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  if (allCompleted.length === 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const byRecent = [...allCompleted].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const daysSincePrev = allCompleted.length >= 2
+    ? Math.floor(
+        (new Date(byRecent[0].date).getTime() - new Date(byRecent[1].date).getTime())
+        / (1000 * 60 * 60 * 24)
+      )
+    : 0;
+
+  // 1. Long inactivity gap before this session (penalty was already applied)
+  if (daysSincePrev > 10) {
+    return {
+      title: "Long gap before this session",
+      body: `There was a ${daysSincePrev}-day gap since your last session. The score applies a fitness penalty after 10 days of inactivity — this session helped, but the penalty offset it.`,
+      tip: "Regular short sessions maintain fitness far better than occasional big efforts. Try to log something at least every 5–6 days.",
+    };
+  }
+  if (daysSincePrev > 7) {
+    return {
+      title: "Losing momentum",
+      body: `It was ${daysSincePrev} days since your previous session. A small penalty applies after 7 days away — this session helped, but not quite enough to overcome it.`,
+      tip: "Even a short walk or easy cardio day every 5–6 days keeps your score moving forward.",
+    };
+  }
+
+  // 2. Overexertion (high average effort)
+  const avgEffort = allCompleted.reduce((a, s) => a + s.effort, 0) / allCompleted.length;
+  if (avgEffort > 4.5) {
+    return {
+      title: "Going too hard",
+      body: "Your sessions are consistently at maximum effort. When every outing is at the limit, recovery is compromised and the score applies an overexertion penalty.",
+      tip: "Mix in at least one easier session per week (effort 2–3). Recovery is where fitness is built.",
+    };
+  }
+
+  // 3. Cumulative fatigue (recent sessions feel harder than earlier ones)
+  if (allCompleted.length >= 4) {
+    const recent = allCompleted.slice(-3).map(s => s.effort);
+    const older  = allCompleted.slice(-6, -3).map(s => s.effort);
+    if (older.length > 0) {
+      const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
+      const avgOlder  = older.reduce((a, b) => a + b, 0) / older.length;
+      if (avgRecent > avgOlder + 0.8) {
+        return {
+          title: "Fatigue building up",
+          body: "Your recent sessions are feeling notably harder than your earlier ones — a classic sign of accumulated fatigue without enough recovery.",
+          tip: "Take a rest or easy day before your next hard effort. Alternating hard and easy days keeps your score trending up.",
+        };
+      }
+    }
+  }
+
+  // 4. Session cap is the ceiling (early in training)
+  if (allCompleted.length <= 3) {
+    const remaining = 4 - allCompleted.length;
+    return {
+      title: "Score ceiling is still low",
+      body: "Early in training your score has a ceiling based on sessions logged so far — this prevents overconfidence when fitness hasn't been established yet.",
+      tip: `Log ${remaining} more session${remaining !== 1 ? "s" : ""} to start raising the ceiling. It lifts quickly once you build a consistent base.`,
+    };
+  }
+
+  // 5. Elevation too low to move the needle
+  const trainingTarget = goal.elevationGain * 0.60;
+  const maxElev = Math.max(...allCompleted.map(s => s.elevationGain));
+  if (maxElev < trainingTarget * 0.25) {
+    return {
+      title: "Elevation gains are low",
+      body: `Your best session so far reached ${maxElev}m. To move the elevation component of your score, you'll need sessions pushing closer to ${Math.round(trainingTarget)}m.`,
+      tip: "Try chaining extra laps on your local hill, or seek out a longer route with more continuous climbing.",
+    };
+  }
+
+  // 6. Score held steady — generic cap explanation
+  if (newScore === oldScore) {
+    return {
+      title: "Score holding steady",
+      body: "Your score didn't change — you're maintaining current fitness well, but not yet breaking through to the next level. The biggest unlocks come from bigger elevation sessions.",
+      tip: `Aim for a session with at least ${Math.round(trainingTarget * 0.5)}m elevation gain to move the 'Big Day' component, which is worth up to 20 points.`,
+    };
+  }
+
+  // 7. Score dropped
+  return {
+    title: "Score dipped slightly",
+    body: "Your score dropped even with a new session logged — a gap or effort penalty is outweighing this session's contribution.",
+    tip: "Check how long it's been since your last session, and whether your effort levels have been very high recently.",
+  };
+}
+
 export function getReadinessStatus(score: number): {
   label: string; color: string; emoji: string;
 } {

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
-import { calculateReadiness } from "@/utils/readinessScore";
+import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
 import type { Trail } from "@/constants/trailData";
 
@@ -198,6 +198,8 @@ interface AppState {
   addCustomRoute: (route: Omit<Trail, "id" | "isCustom" | "createdAt">) => Promise<void>;
   deleteCustomRoute: (id: string) => Promise<void>;
   reloadApp: () => Promise<void>;
+  scoreStagnation: ScoreInsight | null;
+  clearScoreStagnation: () => void;
 }
 
 const AppContext = createContext<AppState>({
@@ -260,6 +262,8 @@ const AppContext = createContext<AppState>({
   addCustomRoute: async () => {},
   deleteCustomRoute: async () => {},
   reloadApp: async () => {},
+  scoreStagnation: null,
+  clearScoreStagnation: () => {},
 });
 
 const GOAL_KEY = "summitready_goal";
@@ -369,6 +373,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [trainingPlan, setTrainingPlan] = useState<TrainingWeek[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [readinessScore, setReadinessScore] = useState(0);
+  const [scoreStagnation, setScoreStagnation] = useState<ScoreInsight | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [nearbyHills, setNearbyHills] = useState<NearbyHill[]>([]);
   const [hillsLoading, setHillsLoading] = useState(false);
@@ -742,15 +747,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearScoreStagnation = useCallback(() => setScoreStagnation(null), []);
+
   const addSession = useCallback(async (session: Omit<Session, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 6);
     const newSession: Session = { ...session, id };
     const updated = [newSession, ...sessions];
     setSessions(updated);
+    const oldScore = readinessScore;
     let score = readinessScore;
     if (summitGoal) {
       score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes });
       setReadinessScore(score);
+      // Show a why-didn't-my-score-improve popup for completed sessions
+      if (session.completed && score <= oldScore) {
+        const insight = diagnoseScoreStagnation(summitGoal, updated, exploreHikes, oldScore, score);
+        if (insight) setScoreStagnation(insight);
+      }
     }
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
     checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements, exploreHikes);
@@ -846,8 +859,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = [newHike, ...exploreHikes];
     setExploreHikes(updated);
     await AsyncStorage.setItem(EXPLORE_HIKES_KEY, JSON.stringify(updated));
-    checkAndNotifyAchievements(sessions, readinessScore, submittedPlanSessions, unlockedAchievements, updated);
-  }, [exploreHikes, sessions, readinessScore, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
+    const oldScore = readinessScore;
+    let score = readinessScore;
+    if (summitGoal) {
+      score = calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated });
+      setReadinessScore(score);
+      if (score <= oldScore) {
+        const insight = diagnoseScoreStagnation(summitGoal, sessions, updated, oldScore, score);
+        if (insight) setScoreStagnation(insight);
+      }
+    }
+    checkAndNotifyAchievements(sessions, score, submittedPlanSessions, unlockedAchievements, updated);
+  }, [exploreHikes, sessions, readinessScore, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, submittedPlanSessions, unlockedAchievements, checkAndNotifyAchievements]);
 
   const deleteExploreHike = useCallback(async (id: string) => {
     const updated = exploreHikes.filter(h => h.id !== id);
@@ -1303,6 +1326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       savedTrailIds, completedTrailIds, customRoutes,
       saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
       reloadApp,
+      scoreStagnation, clearScoreStagnation,
     }}>
       {children}
     </AppContext.Provider>
