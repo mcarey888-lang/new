@@ -580,17 +580,6 @@ const styles = StyleSheet.create({
   startHikeTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
   startHikeSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
   startHikeArrow: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
-  logHillBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 16,
-    backgroundColor: T.purple,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-
   exerciseHeading: {
     fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted,
     letterSpacing: 0.5, marginBottom: 10, marginTop: 4,
