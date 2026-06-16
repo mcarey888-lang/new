@@ -439,13 +439,18 @@ function AlpineCard({
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState(false);
   const hasFetched = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  // Tracks completed activity count so we can re-fetch the coach whenever
+  // a new session or explore hike is added (count strictly increases).
+  const prevActivityCount = useRef(
+    sessions.filter(s => s.completed).length + exploreHikes.length
+  );
 
   // Ask Coach
   const [askText, setAskText] = useState("");
@@ -534,6 +539,19 @@ export default function DashboardScreen() {
       fetchCoach();
     }
   }, [summitGoal, fetchCoach]);
+
+  // Auto-refresh coach whenever a new activity is logged (plan session or
+  // explore hike). Only fires after the initial fetch is done and only for
+  // Pro users. Uses the existing abort controller so any in-flight request
+  // is cancelled cleanly before the new one starts.
+  useEffect(() => {
+    const count = sessions.filter(s => s.completed).length + exploreHikes.length;
+    if (hasFetched.current && isSubscribed && summitGoal && count > prevActivityCount.current) {
+      fetchCoach();
+    }
+    prevActivityCount.current = count;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, exploreHikes]);
 
   useEffect(() => {
     return () => { abortRef.current?.abort(); };
