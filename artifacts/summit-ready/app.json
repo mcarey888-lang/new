@@ -101,7 +101,8 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      "./plugins/removeMediaPlaybackPermission.js"
     ],
     "experiments": {
       "typedRoutes": true,
