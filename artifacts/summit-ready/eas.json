@@ -11,6 +11,7 @@
         "buildType": "apk"
       },
       "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWJzb2x1dGUtdGFycG9uLTYxLmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
@@ -25,6 +26,7 @@
         "buildType": "apk"
       },
       "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWJzb2x1dGUtdGFycG9uLTYxLmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
@@ -42,6 +44,7 @@
         "buildType": "app-bundle"
       },
       "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWJzb2x1dGUtdGFycG9uLTYxLmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
