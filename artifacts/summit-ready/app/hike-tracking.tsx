@@ -22,6 +22,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AppState,
   AppStateStatus,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -763,7 +764,14 @@ export default function HikeTrackingScreen() {
         <View style={s.centeredMsg}>
           <WifiOff size={48} color={T.textMuted} />
           <Text style={s.msgTitle}>Location Access Needed</Text>
-          <Text style={s.msgBody}>Enable location permissions in your device settings to track your hike.</Text>
+          <Text style={s.msgBody}>SummitReady needs location permission to track your hike.</Text>
+          <TouchableOpacity
+            onPress={() => Linking.openSettings()}
+            style={s.openSettingsBtn}
+            activeOpacity={0.8}
+          >
+            <Text style={s.openSettingsBtnText}>Open Settings</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1404,6 +1412,16 @@ const s = StyleSheet.create({
   centeredMsg: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 40 },
   msgTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   msgBody:  { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 22 },
+  openSettingsBtn: {
+    marginTop: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "50",
+  },
+  openSettingsBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.green },
 
   // In-app confirm sheet (replaces Alert.alert)
   confirmSheet: {

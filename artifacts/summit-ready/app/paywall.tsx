@@ -147,7 +147,11 @@ export default function PaywallScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => fromQuestionnaire ? router.replace("/(tabs)/dashboard") : router.back()}
+            style={styles.closeBtn}
+            activeOpacity={0.7}
+          >
             <X size={20} color={T.textMuted} />
           </TouchableOpacity>
           <Image

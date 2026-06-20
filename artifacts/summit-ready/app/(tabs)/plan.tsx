@@ -726,8 +726,18 @@ function HillPickerModal({
           {filtered.length === 0 && !query.trim() ? (
             <View style={mpStyles.empty}>
               <MapPin size={28} color={T.textDim} />
-              <Text style={mpStyles.emptyText}>No hills loaded yet</Text>
-              <Text style={mpStyles.emptyHint}>Go to the Hills tab to load nearby hills, or search by name above</Text>
+              <Text style={mpStyles.emptyText}>No nearby hills found</Text>
+              <Text style={mpStyles.emptyHint}>
+                Visit the Hills tab to discover hills near your location, then come back to assign one here.
+                {"\n\n"}You can also type any hill name in the search box above to find it directly.
+              </Text>
+              <TouchableOpacity
+                style={mpStyles.emptyBtn}
+                onPress={() => { onClose(); router.push("/(tabs)/hills"); }}
+                activeOpacity={0.8}
+              >
+                <Text style={mpStyles.emptyBtnText}>Go to Hills tab →</Text>
+              </TouchableOpacity>
             </View>
           ) : filtered.length === 0 && query.trim() ? null : (
             <>
@@ -869,6 +879,11 @@ function WeekCard({
             </View>
           </View>
           <View style={styles.cardRight}>
+            {week.weekNumber === 1 && (
+              <View style={[styles.weekBadge, { backgroundColor: T.greenDim }]}>
+                <Text style={[styles.weekBadgeText, { color: T.green }]}>FREE</Text>
+              </View>
+            )}
             {week.isPeakWeek && (
               <View style={[styles.weekBadge, { backgroundColor: T.orangeDim }]}>
                 <Text style={[styles.weekBadgeText, { color: T.orange }]}>PEAK</Text>
@@ -1611,7 +1626,17 @@ const mpStyles = StyleSheet.create({
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginBottom: 16 },
   empty: { alignItems: "center", paddingVertical: 32, gap: 8 },
   emptyText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  emptyHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
+  emptyHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 18 },
+  emptyBtn: {
+    marginTop: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "50",
+  },
+  emptyBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
   hillRow: {
     flexDirection: "row",
     alignItems: "center",
