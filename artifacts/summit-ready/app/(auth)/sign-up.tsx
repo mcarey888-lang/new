@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -207,7 +208,15 @@ export default function SignUpScreen() {
           </TouchableOpacity>
 
           <Text style={s.terms}>
-            By creating an account you agree to our Terms of Service and Privacy Policy.
+            By creating an account you agree to our{" "}
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>
+              Terms of Service
+            </Text>
+            {" "}and{" "}
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/privacy")}>
+              Privacy Policy
+            </Text>
+            .
           </Text>
 
           <View style={s.footer}>
@@ -253,6 +262,7 @@ const s = StyleSheet.create({
   link: { alignItems: "center", paddingVertical: 8 },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   terms: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 16 },
+  termsLink: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green, textDecorationLine: "underline" },
   footer: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
