@@ -24,7 +24,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { signUp, fetchStatus } = useSignUp();
+  const { isLoaded, signUp, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -81,6 +81,10 @@ export default function SignUpScreen() {
   const handleGoogle = useCallback(async () => {
     setGoogleLoading(true);
     setError(null);
+    const timeout = setTimeout(() => {
+      setGoogleLoading(false);
+      setError("Google sign-in timed out. Please try again.");
+    }, 30000);
     try {
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: "oauth_google",
@@ -93,11 +97,21 @@ export default function SignUpScreen() {
     } catch (err: any) {
       setError("Google sign-in failed. Please try again.");
     } finally {
+      clearTimeout(timeout);
       setGoogleLoading(false);
     }
   }, [startSSOFlow]);
 
   const isLoading = fetchStatus === "fetching" || googleLoading;
+
+  if (!isLoaded) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={T.green} size="large" />
+      </LinearGradient>
+    );
+  }
+
   const needsVerification =
     signUp.status === "missing_requirements" &&
     signUp.unverifiedFields.includes("email_address") &&
