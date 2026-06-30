@@ -25,7 +25,22 @@ import { useAuth, useSignIn, useSSO } from "@clerk/expo"; // all from main packa
 // useSSO for Google/OAuth
 ```
 
-## Loading guard — must have a timeout and retry
+## Stale session token — the real cause of "worked then broke after days"
+
+After several days without opening the app, Clerk's cached session token expires.
+On next launch, Clerk hangs silently trying to refresh it → `isLoaded` never becomes `true`.
+`ClerkLoadedOrTimeout` (4s) renders the landing screen anyway, user taps Sign In →
+the sign-in screen's `!isLoaded` guard kicks in → spinner forever.
+
+**Fix**: after an 8-second timeout, render the sign-in/sign-up FORM unconditionally
+(not a dead-end "unable to connect" screen). Show a yellow banner: "Connection slow —
+you can still try signing in." Guard individual auth operations with `if (!signIn)`.
+If Clerk eventually recovers, the banner disappears naturally. If the user submits
+while Clerk is still hung, they get a clear inline error rather than a spinner.
+
+Do NOT use a "Retry" button that resets the timer — it just loops back to the spinner.
+
+## Loading guard — must have a timeout that shows the form
 
 `useAuth().isLoaded` can stay `false` if Clerk fails to initialise (network, config, etc).
 Always pair a `!isLoaded` spinner with an 8-second timeout:

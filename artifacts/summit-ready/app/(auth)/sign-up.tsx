@@ -112,21 +112,7 @@ export default function SignUpScreen() {
     }
   }, [startSSOFlow]);
 
-  if (!isLoaded && clerkTimedOut) {
-    return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
-        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>Unable to connect</Text>
-        <Text style={{ color: T.textMuted, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 }}>
-          Please check your internet connection and try again.
-        </Text>
-        <TouchableOpacity onPress={() => setClerkTimedOut(false)} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
-          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Retry</Text>
-        </TouchableOpacity>
-      </LinearGradient>
-    );
-  }
-
-  if (!isLoaded) {
+  if (!isLoaded && !clerkTimedOut) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={T.green} size="large" />
@@ -172,6 +158,12 @@ export default function SignUpScreen() {
           <View style={s.logoWrap}>
             <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
           </View>
+
+          {clerkTimedOut && (
+            <View style={s.warnBanner}>
+              <Text style={s.warnText}>Connection slow — you can still try signing up.</Text>
+            </View>
+          )}
 
           <Text style={s.title}>Create your account</Text>
           <Text style={s.subtitle}>Join SummitReady and start your mountain journey</Text>
@@ -253,6 +245,8 @@ const s = StyleSheet.create({
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
   btnGrad: { height: 52, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  warnBanner: { backgroundColor: "rgba(255,200,0,0.12)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,200,0,0.3)", paddingHorizontal: 14, paddingVertical: 10 },
+  warnText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#F5C518", textAlign: "center" },
   link: { alignItems: "center", paddingVertical: 8 },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   terms: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 16 },
