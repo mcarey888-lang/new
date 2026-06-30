@@ -1,4 +1,5 @@
-import { useSignIn, useSSO } from "@clerk/expo";
+import { useSignIn } from "@clerk/expo/legacy";
+import { useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -23,14 +24,16 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signIn, fetchStatus } = useSignIn();
+  const { isLoaded, signIn, setActive } = useSignIn();
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -38,40 +41,42 @@ export default function SignInScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
+  useEffect(() => {
+    if (isLoaded) return;
+    const t = setTimeout(() => setClerkTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
   async function handleEmailSignIn() {
+    if (!isLoaded || !signIn) return;
+    setEmailLoading(true);
     setError(null);
     try {
-      const { error: signInError } = await signIn.password({ emailAddress: email, password });
-      if (signInError) {
-        setError(signInError.message ?? "Sign-in failed. Check your email and password.");
-        return;
-      }
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message ?? "Sign-in could not be completed.");
-          return;
-        }
+      const result = await signIn.create({ identifier: email, password });
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
         router.replace("/");
-      } else if (signIn.status === "needs_second_factor") {
-        await signIn.mfa.sendEmailCode();
+      } else if (result.status === "needs_second_factor") {
+        await signIn.prepareSecondFactor({ strategy: "email_code" });
+      } else {
+        setError("Sign-in failed. Please check your email and password.");
       }
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-in failed. Please try again.";
       setError(msg);
+    } finally {
+      setEmailLoading(false);
     }
   }
 
   async function handleVerify() {
+    if (!isLoaded || !signIn) return;
+    setEmailLoading(true);
     setError(null);
     try {
-      await signIn.mfa.verifyEmailCode({ code: verifyCode });
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message ?? "Sign-in could not be completed.");
-          return;
-        }
+      const result = await signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode });
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
         router.replace("/");
       } else {
         setError("Verification failed. Please try again.");
@@ -79,6 +84,8 @@ export default function SignInScreen() {
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
       setError(msg);
+    } finally {
+      setEmailLoading(false);
     }
   }
 
@@ -106,7 +113,21 @@ export default function SignInScreen() {
     }
   }, [startSSOFlow]);
 
-  const isLoading = fetchStatus === "fetching" || googleLoading;
+  if (!isLoaded && clerkTimedOut) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
+        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>
+          Unable to connect
+        </Text>
+        <Text style={{ color: T.textMuted, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 }}>
+          Please check your internet connection and try again.
+        </Text>
+        <TouchableOpacity onPress={() => { setClerkTimedOut(false); }} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Retry</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
 
   if (!isLoaded) {
     return (
@@ -116,7 +137,9 @@ export default function SignInScreen() {
     );
   }
 
-  if (signIn.status === "needs_second_factor") {
+  const isSecondFactor = signIn.status === "needs_second_factor";
+
+  if (isSecondFactor) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
@@ -133,12 +156,12 @@ export default function SignInScreen() {
               autoFocus
             />
             {error && <Text style={s.error}>{error}</Text>}
-            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={isLoading} activeOpacity={0.85}>
+            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
+                {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn.mfa.sendEmailCode()} style={s.link}>
+            <TouchableOpacity onPress={() => signIn.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -162,7 +185,7 @@ export default function SignInScreen() {
           <Text style={s.title}>Welcome back</Text>
           <Text style={s.subtitle}>Sign in to continue your training</Text>
 
-          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={isLoading} activeOpacity={0.85}>
+          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
             {googleLoading
               ? <ActivityIndicator color={T.text} />
               : <>
@@ -205,11 +228,11 @@ export default function SignInScreen() {
           <TouchableOpacity
             style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
             onPress={handleEmailSignIn}
-            disabled={isLoading || !email || !password}
+            disabled={emailLoading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {fetchStatus === "fetching"
+              {emailLoading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={s.btnText}>Sign in</Text>
               }

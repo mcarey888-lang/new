@@ -1,4 +1,5 @@
-import { useSignUp, useSSO } from "@clerk/expo";
+import { useSignUp } from "@clerk/expo/legacy";
+import { useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -24,14 +25,16 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signUp, fetchStatus } = useSignUp();
+  const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -39,35 +42,35 @@ export default function SignUpScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
+  useEffect(() => {
+    if (isLoaded) return;
+    const t = setTimeout(() => setClerkTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
   async function handleEmailSignUp() {
+    if (!isLoaded || !signUp) return;
+    setEmailLoading(true);
     setError(null);
     try {
-      const { error: signUpError } = await signUp.password({ emailAddress: email, password });
-      if (signUpError) {
-        setError(signUpError.message ?? "Sign-up failed. Please try again.");
-        return;
-      }
-      await signUp.verifications.sendEmailCode();
+      await signUp.create({ emailAddress: email, password });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-up failed. Please try again.";
       setError(msg);
+    } finally {
+      setEmailLoading(false);
     }
   }
 
   async function handleVerify() {
+    if (!isLoaded || !signUp) return;
+    setEmailLoading(true);
     setError(null);
     try {
-      const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code: verifyCode });
-      if (verifyError) {
-        setError(verifyError.message ?? "Verification failed. Please check the code and try again.");
-        return;
-      }
-      if (signUp.status === "complete") {
-        const { error: finalizeError } = await signUp.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message ?? "Sign-up could not be completed.");
-          return;
-        }
+      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode });
+      if (result.status === "complete") {
+        await setActive?.({ session: result.createdSessionId });
         router.replace("/");
       } else {
         setError("Verification failed. Please check the code and try again.");
@@ -75,6 +78,8 @@ export default function SignUpScreen() {
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
       setError(msg);
+    } finally {
+      setEmailLoading(false);
     }
   }
 
@@ -102,7 +107,21 @@ export default function SignUpScreen() {
     }
   }, [startSSOFlow]);
 
-  const isLoading = fetchStatus === "fetching" || googleLoading;
+  if (!isLoaded && clerkTimedOut) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
+        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>
+          Unable to connect
+        </Text>
+        <Text style={{ color: T.textMuted, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 }}>
+          Please check your internet connection and try again.
+        </Text>
+        <TouchableOpacity onPress={() => { setClerkTimedOut(false); }} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Retry</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
 
   if (!isLoaded) {
     return (
@@ -138,12 +157,12 @@ export default function SignUpScreen() {
               autoFocus
             />
             {error && <Text style={s.error}>{error}</Text>}
-            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={isLoading || !verifyCode} activeOpacity={0.85}>
+            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading || !verifyCode} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
+                {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signUp.verifications.sendEmailCode()} style={s.link}>
+            <TouchableOpacity onPress={() => signUp.prepareEmailAddressVerification({ strategy: "email_code" })} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -167,7 +186,7 @@ export default function SignUpScreen() {
           <Text style={s.title}>Create your account</Text>
           <Text style={s.subtitle}>Join SummitReady and start your mountain journey</Text>
 
-          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={isLoading} activeOpacity={0.85}>
+          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
             {googleLoading
               ? <ActivityIndicator color={T.text} />
               : <>
@@ -210,11 +229,11 @@ export default function SignUpScreen() {
           <TouchableOpacity
             style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
             onPress={handleEmailSignUp}
-            disabled={isLoading || !email || !password}
+            disabled={emailLoading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {fetchStatus === "fetching"
+              {emailLoading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={s.btnText}>Create account</Text>
               }
