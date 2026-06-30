@@ -1,5 +1,4 @@
-import { useSignUp } from "@clerk/expo/legacy";
-import { useSSO } from "@clerk/expo";
+import { useAuth, useSignUp, useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -25,7 +24,10 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signUp, setActive } = useSignUp();
+  // useAuth is the reliable isLoaded source in @clerk/expo (same as _layout.tsx)
+  const { isLoaded } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { signUp } = useSignUp() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -35,6 +37,7 @@ export default function SignUpScreen() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [clerkTimedOut, setClerkTimedOut] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -49,12 +52,13 @@ export default function SignUpScreen() {
   }, [isLoaded]);
 
   async function handleEmailSignUp() {
-    if (!isLoaded || !signUp) return;
+    if (!signUp) { setError("Authentication service unavailable. Please try again."); return; }
     setEmailLoading(true);
     setError(null);
     try {
       await signUp.create({ emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setNeedsVerification(true);
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-up failed. Please try again.";
       setError(msg);
@@ -64,13 +68,14 @@ export default function SignUpScreen() {
   }
 
   async function handleVerify() {
-    if (!isLoaded || !signUp) return;
+    if (!signUp) return;
     setEmailLoading(true);
     setError(null);
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode });
-      if (result.status === "complete") {
-        await setActive?.({ session: result.createdSessionId });
+      await signUp.attemptEmailAddressVerification({ code: verifyCode });
+      if (signUp.status === "complete") {
+        const { error: finalizeError } = await signUp.finalize();
+        if (finalizeError) { setError(finalizeError.message ?? "Sign-up failed."); return; }
         router.replace("/");
       } else {
         setError("Verification failed. Please check the code and try again.");
@@ -99,7 +104,7 @@ export default function SignUpScreen() {
         await setActive({ session: createdSessionId });
         router.replace("/");
       }
-    } catch (err: any) {
+    } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
       clearTimeout(timeout);
@@ -110,13 +115,11 @@ export default function SignUpScreen() {
   if (!isLoaded && clerkTimedOut) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
-        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>
-          Unable to connect
-        </Text>
+        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>Unable to connect</Text>
         <Text style={{ color: T.textMuted, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 }}>
           Please check your internet connection and try again.
         </Text>
-        <TouchableOpacity onPress={() => { setClerkTimedOut(false); }} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
+        <TouchableOpacity onPress={() => setClerkTimedOut(false)} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
           <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Retry</Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -131,11 +134,6 @@ export default function SignUpScreen() {
     );
   }
 
-  const needsVerification =
-    signUp.status === "missing_requirements" &&
-    signUp.unverifiedFields.includes("email_address") &&
-    signUp.missingFields.length === 0;
-
   if (needsVerification) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -147,22 +145,14 @@ export default function SignUpScreen() {
             <Text style={s.title}>Verify your email</Text>
             <Text style={s.subtitle}>We sent a code to {email}</Text>
             <Text style={s.label}>Verification code</Text>
-            <TextInput
-              style={s.input}
-              value={verifyCode}
-              onChangeText={setVerifyCode}
-              placeholder="Enter 6-digit code"
-              placeholderTextColor={T.textDim}
-              keyboardType="number-pad"
-              autoFocus
-            />
+            <TextInput style={s.input} value={verifyCode} onChangeText={setVerifyCode} placeholder="Enter 6-digit code" placeholderTextColor={T.textDim} keyboardType="number-pad" autoFocus />
             {error && <Text style={s.error}>{error}</Text>}
-            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading || !verifyCode} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.primaryBtn, !verifyCode && { opacity: 0.5 }]} onPress={handleVerify} disabled={emailLoading || !verifyCode} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
                 {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signUp.prepareEmailAddressVerification({ strategy: "email_code" })} style={s.link}>
+            <TouchableOpacity onPress={() => signUp?.prepareEmailAddressVerification({ strategy: "email_code" })} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -189,10 +179,7 @@ export default function SignUpScreen() {
           <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
             {googleLoading
               ? <ActivityIndicator color={T.text} />
-              : <>
-                  <Text style={s.googleIcon}>G</Text>
-                  <Text style={s.googleText}>Continue with Google</Text>
-                </>
+              : <><Text style={s.googleIcon}>G</Text><Text style={s.googleText}>Continue with Google</Text></>
             }
           </TouchableOpacity>
 
@@ -203,26 +190,10 @@ export default function SignUpScreen() {
           </View>
 
           <Text style={s.label}>Email</Text>
-          <TextInput
-            style={s.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            placeholderTextColor={T.textDim}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-          />
+          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={T.textDim} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
 
           <Text style={s.label}>Password</Text>
-          <TextInput
-            style={s.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="At least 8 characters"
-            placeholderTextColor={T.textDim}
-            secureTextEntry
-          />
+          <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor={T.textDim} secureTextEntry />
 
           {error && <Text style={s.error}>{error}</Text>}
 
@@ -233,23 +204,15 @@ export default function SignUpScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {emailLoading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnText}>Create account</Text>
-              }
+              {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Create account</Text>}
             </LinearGradient>
           </TouchableOpacity>
 
           <Text style={s.terms}>
             By creating an account you agree to our{" "}
-            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>
-              Terms of Service
-            </Text>
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>Terms of Service</Text>
             {" "}and{" "}
-            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/privacy")}>
-              Privacy Policy
-            </Text>
-            .
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/privacy")}>Privacy Policy</Text>.
           </Text>
 
           <View style={s.footer}>
@@ -274,8 +237,7 @@ const s = StyleSheet.create({
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", marginBottom: 8 },
   googleBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    paddingVertical: 14,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 14,
   },
   googleIcon: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
   googleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text },
@@ -285,8 +247,7 @@ const s = StyleSheet.create({
   label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4 },
   input: {
     backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
   },
   error: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#FF4444", textAlign: "center" },
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },

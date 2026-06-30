@@ -1,41 +1,39 @@
 ---
-name: Clerk v3 auth hooks — legacy import required
-description: useSignIn/useSignUp from @clerk/expo re-export the signal-based @clerk/react API (SignInSignalValue) which has no isLoaded, no fetchStatus, no finalize(). Use @clerk/expo/legacy instead for the traditional API.
+name: Clerk v3 auth hooks — correct patterns for Expo/React Native
+description: useAuth().isLoaded is the reliable Clerk ready check. useSignIn/useSignUp from @clerk/expo/legacy do NOT work in React Native (isLoaded stays false indefinitely). Use @clerk/expo with as-any casts and signIn.finalize() for completion.
 ---
 
 ## The rule
 
-Always import `useSignIn` and `useSignUp` from `@clerk/expo/legacy`, not from `@clerk/expo`.
+**Do NOT use `@clerk/expo/legacy`** for `useSignIn`/`useSignUp` in React Native/Expo.
+`@clerk/react/legacy` (which it re-exports) is web-only — in React Native, `isLoaded` stays
+`false` indefinitely, causing infinite spinners.
+
+**Do NOT use `useSignIn().isLoaded`** — the Clerk v3 signal-based hook (`SignInSignalValue`)
+doesn't have `isLoaded` at all. It will be `undefined`, not `false` or `true`.
+
+**Use `useAuth().isLoaded`** — this is the correct, reliable ready signal in `@clerk/expo`.
+It is already used this way in `_layout.tsx` for `ClerkLoadedOrTimeout`. Use it the same
+way in any auth screen.
+
+## Correct import pattern
 
 ```typescript
-import { useSignIn } from "@clerk/expo/legacy";
-import { useSignUp } from "@clerk/expo/legacy";
-import { useSSO, useAuth, ClerkProvider } from "@clerk/expo"; // everything else from main
+import { useAuth, useSignIn, useSSO } from "@clerk/expo"; // all from main package
+// useAuth for isLoaded check
+// useSignIn/useSignUp for auth operations (cast to any)
+// useSSO for Google/OAuth
 ```
 
-**Why:** `@clerk/expo` re-exports `useSignIn`/`useSignUp` from `@clerk/react` which in v3 uses a signal-based API (`SignInSignalValue`, `SignInFutureResource`). This type has no `isLoaded`, no `fetchStatus`, no `finalize()`, and different method signatures. The legacy path re-exports from `@clerk/react/legacy` which gives the traditional `{ isLoaded, signIn, setActive }` API with `SignInResource` — which IS the full API.
+## Loading guard — must have a timeout and retry
 
-**How to apply:** Any time you write an auth screen that uses `useSignIn()` or `useSignUp()`, always use the `/legacy` import path.
-
-## Correct patterns with legacy API
-
-```typescript
-const { isLoaded, signIn, setActive } = useSignIn(); // from @clerk/expo/legacy
-const { isLoaded, signUp, setActive } = useSignUp(); // from @clerk/expo/legacy
-```
-
-### Loading state
-
-`fetchStatus` does NOT exist — always use a local state:
-```typescript
-const [emailLoading, setEmailLoading] = useState(false);
-// wrap every async op in try/catch/finally { setEmailLoading(false) }
-```
-
-### isLoaded guard — must have a timeout + retry
+`useAuth().isLoaded` can stay `false` if Clerk fails to initialise (network, config, etc).
+Always pair a `!isLoaded` spinner with an 8-second timeout:
 
 ```typescript
+const { isLoaded } = useAuth();
 const [clerkTimedOut, setClerkTimedOut] = useState(false);
+
 useEffect(() => {
   if (isLoaded) return;
   const t = setTimeout(() => setClerkTimedOut(true), 8000);
@@ -47,28 +45,62 @@ if (!isLoaded) { /* show spinner */ }
 // NEVER show a spinner with no timeout — Clerk can fail to init silently
 ```
 
-### Session activation (replaces finalize())
+## Auth operations — use as any
+
+`useSignIn()` returns `SignInSignalValue` with `signIn` typed as `SignInFutureResource`.
+Most methods need `as any` casts; only `finalize()` is properly typed:
 
 ```typescript
-// signIn.finalize() does NOT exist on SignInResource
-// Instead:
-const result = await signIn.create({ identifier: email, password });
-if (result.status === "complete") {
-  await setActive?.({ session: result.createdSessionId });
-  router.replace("/");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { signIn } = useSignIn() as any;
+
+// Email+password sign-in
+await signIn.create({ identifier: email, password });
+if (signIn.status === "complete") {
+  const { error } = await signIn.finalize(); // finalize() IS typed, no cast needed
+  if (!error) router.replace("/");
+}
+
+// MFA second factor
+await signIn.prepareSecondFactor({ strategy: "email_code" });
+await signIn.attemptSecondFactor({ strategy: "email_code", code });
+if (signIn.status === "complete") {
+  const { error } = await signIn.finalize();
+  if (!error) router.replace("/");
 }
 ```
 
-### Password sign-in
 ```typescript
-signIn.create({ identifier: email, password }) // NOT signIn.password()
-```
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { signUp } = useSignUp() as any;
 
-### Email verification (sign-up)
-```typescript
+// Email+password sign-up
+await signUp.create({ emailAddress: email, password });
 await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-const result = await signUp.attemptEmailAddressVerification({ code });
-if (result.status === "complete") {
-  await setActive?.({ session: result.createdSessionId });
+
+// Verify
+await signUp.attemptEmailAddressVerification({ code });
+if (signUp.status === "complete") {
+  const { error } = await signUp.finalize();
+  if (!error) router.replace("/");
 }
+```
+
+## Loading state — always local
+
+`fetchStatus` does NOT exist on any Clerk v3 hook return. Always track loading with local state:
+
+```typescript
+const [emailLoading, setEmailLoading] = useState(false);
+// wrap every async auth op: setEmailLoading(true) → try/catch/finally setEmailLoading(false)
+```
+
+## Google SSO — 30-second timeout
+
+```typescript
+const timeout = setTimeout(() => { setGoogleLoading(false); setError("Timed out."); }, 30000);
+try {
+  const { createdSessionId, setActive } = await startSSOFlow({ strategy: "oauth_google", ... });
+  if (createdSessionId && setActive) { await setActive({ session: createdSessionId }); router.replace("/"); }
+} finally { clearTimeout(timeout); setGoogleLoading(false); }
 ```

@@ -1,5 +1,4 @@
-import { useSignIn } from "@clerk/expo/legacy";
-import { useSSO } from "@clerk/expo";
+import { useAuth, useSignIn, useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -24,7 +23,10 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoaded, signIn, setActive } = useSignIn();
+  // useAuth is the reliable isLoaded source in @clerk/expo (same as _layout.tsx)
+  const { isLoaded } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { signIn } = useSignIn() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -34,6 +36,7 @@ export default function SignInScreen() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [clerkTimedOut, setClerkTimedOut] = useState(false);
+  const [needsMFA, setNeedsMFA] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -48,16 +51,19 @@ export default function SignInScreen() {
   }, [isLoaded]);
 
   async function handleEmailSignIn() {
-    if (!isLoaded || !signIn) return;
+    if (!signIn) { setError("Authentication service unavailable. Please try again."); return; }
     setEmailLoading(true);
     setError(null);
     try {
-      const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete") {
-        await setActive?.({ session: result.createdSessionId });
+      await signIn.create({ identifier: email, password });
+      const status = signIn.status;
+      if (status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) { setError(finalizeError.message ?? "Sign-in failed."); return; }
         router.replace("/");
-      } else if (result.status === "needs_second_factor") {
+      } else if (status === "needs_second_factor") {
         await signIn.prepareSecondFactor({ strategy: "email_code" });
+        setNeedsMFA(true);
       } else {
         setError("Sign-in failed. Please check your email and password.");
       }
@@ -70,13 +76,14 @@ export default function SignInScreen() {
   }
 
   async function handleVerify() {
-    if (!isLoaded || !signIn) return;
+    if (!signIn) return;
     setEmailLoading(true);
     setError(null);
     try {
-      const result = await signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode });
-      if (result.status === "complete") {
-        await setActive?.({ session: result.createdSessionId });
+      await signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode });
+      if (signIn.status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) { setError(finalizeError.message ?? "Verification failed."); return; }
         router.replace("/");
       } else {
         setError("Verification failed. Please try again.");
@@ -105,7 +112,7 @@ export default function SignInScreen() {
         await setActive({ session: createdSessionId });
         router.replace("/");
       }
-    } catch (err: any) {
+    } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
       clearTimeout(timeout);
@@ -116,13 +123,11 @@ export default function SignInScreen() {
   if (!isLoaded && clerkTimedOut) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
-        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>
-          Unable to connect
-        </Text>
+        <Text style={{ color: T.text, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginBottom: 12 }}>Unable to connect</Text>
         <Text style={{ color: T.textMuted, fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 }}>
           Please check your internet connection and try again.
         </Text>
-        <TouchableOpacity onPress={() => { setClerkTimedOut(false); }} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
+        <TouchableOpacity onPress={() => setClerkTimedOut(false)} style={{ backgroundColor: T.green, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}>
           <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Retry</Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -137,31 +142,21 @@ export default function SignInScreen() {
     );
   }
 
-  const isSecondFactor = signIn.status === "needs_second_factor";
-
-  if (isSecondFactor) {
+  if (needsMFA) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
             <Text style={s.title}>Check your email</Text>
             <Text style={s.subtitle}>We sent a verification code to {email}</Text>
-            <TextInput
-              style={s.input}
-              value={verifyCode}
-              onChangeText={setVerifyCode}
-              placeholder="Enter code"
-              placeholderTextColor={T.textDim}
-              keyboardType="number-pad"
-              autoFocus
-            />
+            <TextInput style={s.input} value={verifyCode} onChangeText={setVerifyCode} placeholder="Enter code" placeholderTextColor={T.textDim} keyboardType="number-pad" autoFocus />
             {error && <Text style={s.error}>{error}</Text>}
             <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
                 {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
+            <TouchableOpacity onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -188,10 +183,7 @@ export default function SignInScreen() {
           <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
             {googleLoading
               ? <ActivityIndicator color={T.text} />
-              : <>
-                  <Text style={s.googleIcon}>G</Text>
-                  <Text style={s.googleText}>Continue with Google</Text>
-                </>
+              : <><Text style={s.googleIcon}>G</Text><Text style={s.googleText}>Continue with Google</Text></>
             }
           </TouchableOpacity>
 
@@ -202,26 +194,10 @@ export default function SignInScreen() {
           </View>
 
           <Text style={s.label}>Email</Text>
-          <TextInput
-            style={s.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            placeholderTextColor={T.textDim}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-          />
+          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={T.textDim} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
 
           <Text style={s.label}>Password</Text>
-          <TextInput
-            style={s.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Your password"
-            placeholderTextColor={T.textDim}
-            secureTextEntry
-          />
+          <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="Your password" placeholderTextColor={T.textDim} secureTextEntry />
 
           {error && <Text style={s.error}>{error}</Text>}
 
@@ -232,10 +208,7 @@ export default function SignInScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {emailLoading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnText}>Sign in</Text>
-              }
+              {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Sign in</Text>}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -263,8 +236,7 @@ const s = StyleSheet.create({
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", marginBottom: 8 },
   googleBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    paddingVertical: 14,
+    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 14,
   },
   googleIcon: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
   googleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text },
@@ -274,8 +246,7 @@ const s = StyleSheet.create({
   label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4 },
   input: {
     backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
-    paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
   },
   error: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#FF4444", textAlign: "center" },
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
