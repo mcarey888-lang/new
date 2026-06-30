@@ -25,20 +25,26 @@ import { useAuth, useSignIn, useSSO } from "@clerk/expo"; // all from main packa
 // useSSO for Google/OAuth
 ```
 
-## Stale session token — the real cause of "worked then broke after days"
+## Stale session token — fix via ClerkProvider remount
 
-After several days without opening the app, Clerk's cached session token expires.
-On next launch, Clerk hangs silently trying to refresh it → `isLoaded` never becomes `true`.
-`ClerkLoadedOrTimeout` (4s) renders the landing screen anyway, user taps Sign In →
-the sign-in screen's `!isLoaded` guard kicks in → spinner forever.
+After several days without opening the app, BOTH the Clerk session token AND
+refresh token expire. Clerk hangs trying to validate the stale SecureStore entry —
+`isLoaded` stays `false` permanently, regardless of network connectivity.
 
-**Fix**: after an 8-second timeout, render the sign-in/sign-up FORM unconditionally
-(not a dead-end "unable to connect" screen). Show a yellow banner: "Connection slow —
-you can still try signing in." Guard individual auth operations with `if (!signIn)`.
-If Clerk eventually recovers, the banner disappears naturally. If the user submits
-while Clerk is still hung, they get a clear inline error rather than a spinner.
+**Root fix** (`_layout.tsx` + `app/utils/clerkTokenCache.ts`):
+- Use a custom `clerkTokenCache` (wraps expo-secure-store, tracks all keys Clerk
+  writes, exposes `clearAll()`).
+- Pass `onTimeout` to `ClerkLoadedOrTimeout`. On first 4-second timeout:
+  `clearAll()` wipes the stale SecureStore entries, then incrementing `clerkKey`
+  remounts `<ClerkProvider>`. With no cached token, Clerk initialises as
+  unauthenticated in milliseconds.
+- `hasRemounted` ref prevents infinite remount loops; second failure falls back
+  to rendering children via the local `timedOut` state.
 
-Do NOT use a "Retry" button that resets the timer — it just loops back to the spinner.
+**Second line of defence** (sign-in/sign-up screens):
+- 8-second `clerkTimedOut` timeout renders the form unconditionally.
+- Yellow banner warns "Connection slow — you can still try signing in."
+- Do NOT use a Retry button that resets the timer — it loops back to the spinner.
 
 ## Loading guard — must have a timeout that shows the form
 
