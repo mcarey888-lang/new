@@ -31,20 +31,18 @@ After several days without opening the app, BOTH the Clerk session token AND
 refresh token expire. Clerk hangs trying to validate the stale SecureStore entry —
 `isLoaded` stays `false` permanently, regardless of network connectivity.
 
-**Root fix** (`_layout.tsx` + `app/utils/clerkTokenCache.ts`):
-- Use a custom `clerkTokenCache` (wraps expo-secure-store, tracks all keys Clerk
-  writes, exposes `clearAll()`).
-- Pass `onTimeout` to `ClerkLoadedOrTimeout`. On first 4-second timeout:
-  `clearAll()` wipes the stale SecureStore entries, then incrementing `clerkKey`
-  remounts `<ClerkProvider>`. With no cached token, Clerk initialises as
-  unauthenticated in milliseconds.
-- `hasRemounted` ref prevents infinite remount loops; second failure falls back
-  to rendering children via the local `timedOut` state.
-
-**Second line of defence** (sign-in/sign-up screens):
-- 8-second `clerkTimedOut` timeout renders the form unconditionally.
-- Yellow banner warns "Connection slow — you can still try signing in."
-- Do NOT use a Retry button that resets the timer — it loops back to the spinner.
+**Correct fix**:
+- Custom `clerkTokenCache` (`app/utils/clerkTokenCache.ts`) tracks all SecureStore
+  keys Clerk uses and exposes `clearAll()`. On `ClerkLoadedOrTimeout` timeout,
+  call `clearAll()` — this clears the stale token for the NEXT launch.
+- Do NOT remount `<ClerkProvider>` — remounting destroys the Expo Router Stack
+  navigation state, causing a frozen/blank screen that looks like a spinner.
+- Do NOT add an `!isLoaded` spinner to sign-in/sign-up screens. Show the form
+  immediately. If Clerk isn't ready, `signIn`/`signUp` will be null/undefined —
+  guard with `if (!signIn) { setError("..."); return; }` for inline feedback.
+- Loading spinners only inside submit buttons (when an operation is in progress).
+- `ClerkLoadedOrTimeout` still blocks the root tree for up to 5s so signed-in
+  users auto-redirect; after timeout it just renders children (no remount).
 
 ## Loading guard — must have a timeout that shows the form
 

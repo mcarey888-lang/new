@@ -1,4 +1,4 @@
-import { useAuth, useSignIn, useSSO } from "@clerk/expo";
+import { useSignIn, useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -23,8 +23,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  // useAuth is the reliable isLoaded source in @clerk/expo (same as _layout.tsx)
-  const { isLoaded } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signIn } = useSignIn() as any;
   const { startSSOFlow } = useSSO();
@@ -35,7 +33,6 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [clerkTimedOut, setClerkTimedOut] = useState(false);
   const [needsMFA, setNeedsMFA] = useState(false);
 
   useEffect(() => {
@@ -44,14 +41,11 @@ export default function SignInScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
-  useEffect(() => {
-    if (isLoaded) return;
-    const t = setTimeout(() => setClerkTimedOut(true), 8000);
-    return () => clearTimeout(t);
-  }, [isLoaded]);
-
   async function handleEmailSignIn() {
-    if (!signIn) { setError("Authentication service unavailable. Please try again."); return; }
+    if (!signIn) {
+      setError("Authentication service is starting up — please try again in a moment.");
+      return;
+    }
     setEmailLoading(true);
     setError(null);
     try {
@@ -68,7 +62,11 @@ export default function SignInScreen() {
         setError("Sign-in failed. Please check your email and password.");
       }
     } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-in failed. Please try again.";
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        "Sign-in failed. Please try again.";
       setError(msg);
     } finally {
       setEmailLoading(false);
@@ -89,7 +87,7 @@ export default function SignInScreen() {
         setError("Verification failed. Please try again.");
       }
     } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed.";
       setError(msg);
     } finally {
       setEmailLoading(false);
@@ -120,29 +118,36 @@ export default function SignInScreen() {
     }
   }, [startSSOFlow]);
 
-  if (!isLoaded && !clerkTimedOut) {
-    return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={T.green} size="large" />
-      </LinearGradient>
-    );
-  }
-
   if (needsMFA) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={s.title}>Check your email</Text>
             <Text style={s.subtitle}>We sent a verification code to {email}</Text>
-            <TextInput style={s.input} value={verifyCode} onChangeText={setVerifyCode} placeholder="Enter code" placeholderTextColor={T.textDim} keyboardType="number-pad" autoFocus />
+            <Text style={s.label}>Verification code</Text>
+            <TextInput
+              style={s.input}
+              value={verifyCode}
+              onChangeText={setVerifyCode}
+              placeholder="Enter code"
+              placeholderTextColor={T.textDim}
+              keyboardType="number-pad"
+              autoFocus
+            />
             {error && <Text style={s.error}>{error}</Text>}
             <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
                 {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
+            <TouchableOpacity
+              onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })}
+              style={s.link}
+            >
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -163,16 +168,15 @@ export default function SignInScreen() {
             <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
           </View>
 
-          {clerkTimedOut && (
-            <View style={s.warnBanner}>
-              <Text style={s.warnText}>Connection slow — you can still try signing in.</Text>
-            </View>
-          )}
-
           <Text style={s.title}>Welcome back</Text>
           <Text style={s.subtitle}>Sign in to continue your training</Text>
 
-          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={s.googleBtn}
+            onPress={handleGoogle}
+            disabled={emailLoading || googleLoading}
+            activeOpacity={0.85}
+          >
             {googleLoading
               ? <ActivityIndicator color={T.text} />
               : <><Text style={s.googleIcon}>G</Text><Text style={s.googleText}>Continue with Google</Text></>
@@ -186,10 +190,26 @@ export default function SignInScreen() {
           </View>
 
           <Text style={s.label}>Email</Text>
-          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={T.textDim} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
+          <TextInput
+            style={s.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            placeholderTextColor={T.textDim}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+          />
 
           <Text style={s.label}>Password</Text>
-          <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="Your password" placeholderTextColor={T.textDim} secureTextEntry />
+          <TextInput
+            style={s.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Your password"
+            placeholderTextColor={T.textDim}
+            secureTextEntry
+          />
 
           {error && <Text style={s.error}>{error}</Text>}
 
@@ -200,11 +220,18 @@ export default function SignInScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Sign in</Text>}
+              {emailLoading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.btnText}>Sign in</Text>
+              }
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password" as any)} style={s.forgotBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => router.push("/(auth)/forgot-password" as any)}
+            style={s.forgotBtn}
+            activeOpacity={0.7}
+          >
             <Text style={s.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
 
@@ -244,8 +271,6 @@ const s = StyleSheet.create({
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
   btnGrad: { height: 52, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-  warnBanner: { backgroundColor: "rgba(255,200,0,0.12)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,200,0,0.3)", paddingHorizontal: 14, paddingVertical: 10 },
-  warnText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#F5C518", textAlign: "center" },
   link: { alignItems: "center", paddingVertical: 8 },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   forgotBtn: { alignItems: "center", paddingVertical: 4 },

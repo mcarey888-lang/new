@@ -1,4 +1,4 @@
-import { useAuth, useSignUp, useSSO } from "@clerk/expo";
+import { useSignUp, useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -24,8 +24,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  // useAuth is the reliable isLoaded source in @clerk/expo (same as _layout.tsx)
-  const { isLoaded } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signUp } = useSignUp() as any;
   const { startSSOFlow } = useSSO();
@@ -36,7 +34,6 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [clerkTimedOut, setClerkTimedOut] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
@@ -45,14 +42,11 @@ export default function SignUpScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
-  useEffect(() => {
-    if (isLoaded) return;
-    const t = setTimeout(() => setClerkTimedOut(true), 8000);
-    return () => clearTimeout(t);
-  }, [isLoaded]);
-
   async function handleEmailSignUp() {
-    if (!signUp) { setError("Authentication service unavailable. Please try again."); return; }
+    if (!signUp) {
+      setError("Authentication service is starting up — please try again in a moment.");
+      return;
+    }
     setEmailLoading(true);
     setError(null);
     try {
@@ -60,7 +54,11 @@ export default function SignUpScreen() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setNeedsVerification(true);
     } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Sign-up failed. Please try again.";
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        "Sign-up failed. Please try again.";
       setError(msg);
     } finally {
       setEmailLoading(false);
@@ -81,7 +79,7 @@ export default function SignUpScreen() {
         setError("Verification failed. Please check the code and try again.");
       }
     } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed. Please try again.";
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed.";
       setError(msg);
     } finally {
       setEmailLoading(false);
@@ -112,33 +110,44 @@ export default function SignUpScreen() {
     }
   }, [startSSOFlow]);
 
-  if (!isLoaded && !clerkTimedOut) {
-    return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={T.green} size="large" />
-      </LinearGradient>
-    );
-  }
-
   if (needsVerification) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={[s.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={s.logoWrap}>
               <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
             </View>
             <Text style={s.title}>Verify your email</Text>
             <Text style={s.subtitle}>We sent a code to {email}</Text>
             <Text style={s.label}>Verification code</Text>
-            <TextInput style={s.input} value={verifyCode} onChangeText={setVerifyCode} placeholder="Enter 6-digit code" placeholderTextColor={T.textDim} keyboardType="number-pad" autoFocus />
+            <TextInput
+              style={s.input}
+              value={verifyCode}
+              onChangeText={setVerifyCode}
+              placeholder="Enter 6-digit code"
+              placeholderTextColor={T.textDim}
+              keyboardType="number-pad"
+              autoFocus
+            />
             {error && <Text style={s.error}>{error}</Text>}
-            <TouchableOpacity style={[s.primaryBtn, !verifyCode && { opacity: 0.5 }]} onPress={handleVerify} disabled={emailLoading || !verifyCode} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={[s.primaryBtn, !verifyCode && { opacity: 0.5 }]}
+              onPress={handleVerify}
+              disabled={emailLoading || !verifyCode}
+              activeOpacity={0.85}
+            >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
                 {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signUp?.prepareEmailAddressVerification({ strategy: "email_code" })} style={s.link}>
+            <TouchableOpacity
+              onPress={() => signUp?.prepareEmailAddressVerification({ strategy: "email_code" })}
+              style={s.link}
+            >
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -159,16 +168,15 @@ export default function SignUpScreen() {
             <Image source={require("@/assets/images/logo.gif")} style={s.logo} resizeMode="contain" />
           </View>
 
-          {clerkTimedOut && (
-            <View style={s.warnBanner}>
-              <Text style={s.warnText}>Connection slow — you can still try signing up.</Text>
-            </View>
-          )}
-
           <Text style={s.title}>Create your account</Text>
           <Text style={s.subtitle}>Join SummitReady and start your mountain journey</Text>
 
-          <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} disabled={emailLoading || googleLoading} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={s.googleBtn}
+            onPress={handleGoogle}
+            disabled={emailLoading || googleLoading}
+            activeOpacity={0.85}
+          >
             {googleLoading
               ? <ActivityIndicator color={T.text} />
               : <><Text style={s.googleIcon}>G</Text><Text style={s.googleText}>Continue with Google</Text></>
@@ -182,10 +190,26 @@ export default function SignUpScreen() {
           </View>
 
           <Text style={s.label}>Email</Text>
-          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={T.textDim} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
+          <TextInput
+            style={s.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            placeholderTextColor={T.textDim}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+          />
 
           <Text style={s.label}>Password</Text>
-          <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor={T.textDim} secureTextEntry />
+          <TextInput
+            style={s.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="At least 8 characters"
+            placeholderTextColor={T.textDim}
+            secureTextEntry
+          />
 
           {error && <Text style={s.error}>{error}</Text>}
 
@@ -196,15 +220,22 @@ export default function SignUpScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Create account</Text>}
+              {emailLoading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.btnText}>Create account</Text>
+              }
             </LinearGradient>
           </TouchableOpacity>
 
           <Text style={s.terms}>
             By creating an account you agree to our{" "}
-            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>Terms of Service</Text>
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/terms")}>
+              Terms of Service
+            </Text>
             {" "}and{" "}
-            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/privacy")}>Privacy Policy</Text>.
+            <Text style={s.termsLink} onPress={() => Linking.openURL("https://summitready.uk/privacy")}>
+              Privacy Policy
+            </Text>.
           </Text>
 
           <View style={s.footer}>
@@ -245,8 +276,6 @@ const s = StyleSheet.create({
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
   btnGrad: { height: 52, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-  warnBanner: { backgroundColor: "rgba(255,200,0,0.12)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,200,0,0.3)", paddingHorizontal: 14, paddingVertical: 10 },
-  warnText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#F5C518", textAlign: "center" },
   link: { alignItems: "center", paddingVertical: 8 },
   linkText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   terms: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 16 },
