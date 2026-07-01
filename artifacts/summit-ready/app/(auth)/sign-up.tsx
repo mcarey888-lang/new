@@ -35,7 +35,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signUp, setActive } = useSignUp() as any;
+  const { signUp, setActive, isLoaded: clerkLoaded } = useSignUp() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -53,8 +53,8 @@ export default function SignUpScreen() {
   }, []);
 
   async function handleEmailSignUp() {
-    if (!signUp) {
-      setError("Authentication service is starting up — please try again in a moment.");
+    if (!clerkLoaded || typeof signUp?.create !== "function") {
+      setError("Authentication service is still loading — please wait a moment.");
       return;
     }
     setEmailLoading(true);
@@ -234,15 +234,17 @@ export default function SignUpScreen() {
           {error && <Text style={s.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
+            style={[s.primaryBtn, (!clerkLoaded || !email || !password) && { opacity: 0.5 }]}
             onPress={handleEmailSignUp}
-            disabled={emailLoading || googleLoading || !email || !password}
+            disabled={!clerkLoaded || emailLoading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {emailLoading
+              {!clerkLoaded
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnText}>Create account</Text>
+                : emailLoading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={s.btnText}>Create account</Text>
               }
             </LinearGradient>
           </TouchableOpacity>
