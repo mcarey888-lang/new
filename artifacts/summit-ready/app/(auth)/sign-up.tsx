@@ -22,10 +22,20 @@ import { T } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
+/** Rejects after `ms` milliseconds with a user-facing timeout message. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), ms)
+    ),
+  ]);
+}
+
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signUp } = useSignUp() as any;
+  const { signUp, setActive } = useSignUp() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -50,8 +60,14 @@ export default function SignUpScreen() {
     setEmailLoading(true);
     setError(null);
     try {
-      await signUp.create({ emailAddress: email, password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await withTimeout(
+        signUp.create({ emailAddress: email, password }),
+        15000
+      );
+      await withTimeout(
+        signUp.prepareEmailAddressVerification({ strategy: "email_code" }),
+        10000
+      );
       setNeedsVerification(true);
     } catch (err: any) {
       const msg =
@@ -70,10 +86,15 @@ export default function SignUpScreen() {
     setEmailLoading(true);
     setError(null);
     try {
-      await signUp.attemptEmailAddressVerification({ code: verifyCode });
-      if (signUp.status === "complete") {
-        const { error: finalizeError } = await signUp.finalize();
-        if (finalizeError) { setError(finalizeError.message ?? "Sign-up failed."); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attempt: any = await withTimeout(
+        signUp.attemptEmailAddressVerification({ code: verifyCode }),
+        15000
+      );
+      const status = attempt?.status ?? signUp.status;
+      if (status === "complete") {
+        const sessionId = attempt?.createdSessionId ?? signUp.createdSessionId;
+        await withTimeout(setActive({ session: sessionId }), 10000);
         router.replace("/");
       } else {
         setError("Verification failed. Please check the code and try again.");
@@ -89,23 +110,22 @@ export default function SignUpScreen() {
   const handleGoogle = useCallback(async () => {
     setGoogleLoading(true);
     setError(null);
-    const timeout = setTimeout(() => {
-      setGoogleLoading(false);
-      setError("Google sign-in timed out. Please try again.");
-    }, 30000);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
-      });
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
+      const { createdSessionId, setActive: ssoSetActive } = await withTimeout(
+        startSSOFlow({
+          strategy: "oauth_google",
+          redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
+        }),
+        30000
+      );
+      if (createdSessionId && ssoSetActive) {
+        await withTimeout(ssoSetActive({ session: createdSessionId }), 10000);
         router.replace("/");
       }
-    } catch {
-      setError("Google sign-in failed. Please try again.");
+    } catch (err: any) {
+      const msg = err?.message ?? "Google sign-in failed. Please try again.";
+      setError(msg);
     } finally {
-      clearTimeout(timeout);
       setGoogleLoading(false);
     }
   }, [startSSOFlow]);

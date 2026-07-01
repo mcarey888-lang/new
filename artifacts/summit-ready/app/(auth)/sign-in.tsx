@@ -21,10 +21,20 @@ import { T } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
+/** Rejects after `ms` milliseconds with a user-facing timeout message. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), ms)
+    ),
+  ]);
+}
+
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signIn } = useSignIn() as any;
+  const { signIn, setActive } = useSignIn() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -49,11 +59,16 @@ export default function SignInScreen() {
     setEmailLoading(true);
     setError(null);
     try {
-      await signIn.create({ identifier: email, password });
-      const status = signIn.status;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attempt: any = await withTimeout(
+        signIn.create({ identifier: email, password }),
+        15000
+      );
+      const status = attempt?.status ?? signIn.status;
+
       if (status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) { setError(finalizeError.message ?? "Sign-in failed."); return; }
+        const sessionId = attempt?.createdSessionId ?? signIn.createdSessionId;
+        await withTimeout(setActive({ session: sessionId }), 10000);
         router.replace("/");
       } else if (status === "needs_second_factor") {
         await signIn.prepareSecondFactor({ strategy: "email_code" });
@@ -78,10 +93,15 @@ export default function SignInScreen() {
     setEmailLoading(true);
     setError(null);
     try {
-      await signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode });
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) { setError(finalizeError.message ?? "Verification failed."); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attempt: any = await withTimeout(
+        signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode }),
+        15000
+      );
+      const status = attempt?.status ?? signIn.status;
+      if (status === "complete") {
+        const sessionId = attempt?.createdSessionId ?? signIn.createdSessionId;
+        await withTimeout(setActive({ session: sessionId }), 10000);
         router.replace("/");
       } else {
         setError("Verification failed. Please try again.");
@@ -97,23 +117,22 @@ export default function SignInScreen() {
   const handleGoogle = useCallback(async () => {
     setGoogleLoading(true);
     setError(null);
-    const timeout = setTimeout(() => {
-      setGoogleLoading(false);
-      setError("Google sign-in timed out. Please try again.");
-    }, 30000);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
-      });
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
+      const { createdSessionId, setActive: ssoSetActive } = await withTimeout(
+        startSSOFlow({
+          strategy: "oauth_google",
+          redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
+        }),
+        30000
+      );
+      if (createdSessionId && ssoSetActive) {
+        await withTimeout(ssoSetActive({ session: createdSessionId }), 10000);
         router.replace("/");
       }
-    } catch {
-      setError("Google sign-in failed. Please try again.");
+    } catch (err: any) {
+      const msg = err?.message ?? "Google sign-in failed. Please try again.";
+      setError(msg);
     } finally {
-      clearTimeout(timeout);
       setGoogleLoading(false);
     }
   }, [startSSOFlow]);
