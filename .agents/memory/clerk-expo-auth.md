@@ -13,6 +13,17 @@ description: Clerk auth Phase 1 for SummitReady Expo app — patterns, gotchas, 
 - `app/(auth)/_layout.tsx` — redirects signed-in users back to `/`
 - `app/index.tsx` — auth-gated redirect: only auto-routes to dashboard/questionnaire if `isSignedIn`; CTAs changed to sign-up/sign-in
 
+## CRITICAL: group layouts block before screens render
+
+`app/(auth)/_layout.tsx` is the layout for the ENTIRE auth group. It runs
+**before** any individual screen (sign-in, sign-up) can mount. If it has an
+`!isLoaded` spinner guard, ALL auth screens are indefinitely blocked whenever
+Clerk is slow — even if the individual screens have no loading guards at all.
+
+**Rule**: never put `!isLoaded` spinners in group layouts. Only redirect when
+BOTH `isLoaded && isSignedIn`. Everything else should fall through to render
+the Stack immediately.
+
 ## Key patterns
 
 - All routes within `(auth)` group need `as any` cast for `router.push("/(auth)/sign-in")` — expo-router type generation doesn't pick up new groups immediately.
