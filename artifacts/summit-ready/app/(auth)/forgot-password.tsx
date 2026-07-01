@@ -17,7 +17,7 @@ import { T } from "@/constants/theme";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn } = useSignIn();
+  const { signIn, setActive } = useSignIn();
 
   const [step, setStep] = useState<"email" | "reset">("email");
   const [email, setEmail] = useState("");
@@ -52,14 +52,9 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (signIn as any).attemptFirstFactor({ strategy: "reset_password_email_code", code, password: newPassword });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((signIn as any).status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message ?? "Could not complete sign-in.");
-          return;
-        }
+      const attempt: any = await (signIn as any).attemptFirstFactor({ strategy: "reset_password_email_code", code, password: newPassword });
+      if (attempt?.status === "complete") {
+        await setActive({ session: attempt.createdSessionId });
         router.replace("/");
       }
     } catch (err: any) {
