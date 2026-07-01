@@ -46,6 +46,7 @@
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuc3VtbWl0cmVhZHkudWsk",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://summitready.uk/api/__clerk",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_NufKmHEkeErPpazVGfLCOIqZmCB",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_VrYCctlOQlErFHBkOryZgOSXnaT",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_ydwWJzCJnygaMTTzTiRRTRClbVm",

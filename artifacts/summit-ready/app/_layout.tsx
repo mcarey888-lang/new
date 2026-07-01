@@ -62,6 +62,9 @@ function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
 }
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+// In production the proxy routes all Clerk API calls through summitready.uk/api/__clerk
+// so Clerk never needs to reach clerk.summitready.uk directly (no DNS record needed).
+const clerkProxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
   return (
@@ -108,7 +111,7 @@ export default function RootLayout() {
   }, [ready]);
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache} proxyUrl={clerkProxyUrl}>
       <ClerkLoadedOrTimeout>
         <SafeAreaProvider>
           <ErrorBoundary>

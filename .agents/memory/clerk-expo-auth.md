@@ -13,6 +13,25 @@ description: Clerk auth Phase 1 for SummitReady Expo app — patterns, gotchas, 
 - `app/(auth)/_layout.tsx` — redirects signed-in users back to `/`
 - `app/index.tsx` — auth-gated redirect: only auto-routes to dashboard/questionnaire if `isSignedIn`; CTAs changed to sign-up/sign-in
 
+## CRITICAL: production builds need EXPO_PUBLIC_CLERK_PROXY_URL
+
+The pk_live_ publishable key encodes `clerk.summitready.uk` as the Clerk FAPI
+domain. That subdomain has NO DNS records — every Clerk API call from the
+production app (signIn.create, setActive, etc.) silently times out.
+
+Fix: add Clerk proxy middleware to the API server + set EXPO_PUBLIC_CLERK_PROXY_URL
+in eas.json production env so the app routes all Clerk calls through
+`https://summitready.uk/api/__clerk` instead.
+
+Files: `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts` (copied
+from skill template), `artifacts/api-server/src/app.ts` (proxy mounted before
+body parsers), `artifacts/summit-ready/eas.json` (EXPO_PUBLIC_CLERK_PROXY_URL
+added to production env), `artifacts/summit-ready/app/_layout.tsx`
+(`proxyUrl={clerkProxyUrl}` on ClerkProvider).
+
+Dev builds unaffected — proxy middleware no-ops when NODE_ENV !== production,
+and pk_test_ key points to absolute-tarpon-61.clerk.accounts.dev (working DNS).
+
 ## CRITICAL: group layouts block before screens render
 
 `app/(auth)/_layout.tsx` is the layout for the ENTIRE auth group. It runs
