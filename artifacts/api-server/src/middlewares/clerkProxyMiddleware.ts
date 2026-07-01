@@ -11,7 +11,7 @@
  * dashboard — all auth configuration is done through the Auth pane.
  *
  * IMPORTANT:
- * - Only active in production (Clerk proxying doesn't work for dev instances)
+ * - Only active when CLERK_SECRET_KEY starts with sk_live_ (production instance)
  * - Must be mounted BEFORE express.json() middleware
  *
  * Usage in app.ts:
@@ -53,13 +53,12 @@ export function getClerkProxyHost(req: {
 }
 
 export function clerkProxyMiddleware(): RequestHandler {
-  // Only run proxy in production — Clerk proxying doesn't work for dev instances
-  if (process.env.NODE_ENV !== "production") {
-    return (_req, _res, next) => next();
-  }
-
   const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) {
+  // Only proxy for production Clerk instances (sk_live_ prefix).
+  // Dev builds never set EXPO_PUBLIC_CLERK_PROXY_URL so they never hit this
+  // path — but guard here anyway so the dev API server isn't accidentally used
+  // as a proxy for the test Clerk instance.
+  if (!secretKey || !secretKey.startsWith("sk_live_")) {
     return (_req, _res, next) => next();
   }
 
