@@ -7,3 +7,4 @@
 - [Clerk key missing from EAS builds](clerk-eas-build-key.md) — EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be in eas.json env for all build profiles or app crashes on launch instantly.
 - [Android MergeJavaResWorkAction fix](android-merge-java-res.md) — Two conflicts fixed: async-storage version clash (pnpm override to 2.2.0) + META-INF MANIFEST.MF clash (expo-build-properties packagingOptions.pickFirst).
 - [Hill verification DB build step](hill-verification-db-build.md) — After adding new tables to lib/db/src/schema, must run `cd lib/db && pnpm exec tsc --build` before API server typecheck; `pnpm run typecheck:libs` at root fails due to pre-existing integrations-openai-ai-server errors blocking all libs.
+- [Clerk dummy resources root cause](clerk-dummy-resources.md) — "undefined is not a function" on auth screens: dummy `signUp/signIn = {}` objects; guard needs `isLoaded && typeof method === 'function'`, not just `!signUp`.
