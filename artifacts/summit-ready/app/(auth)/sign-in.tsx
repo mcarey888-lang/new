@@ -69,7 +69,7 @@ export default function SignInScreen() {
         const { error } = await signIn.finalize();
         if (!error) router.replace("/(tabs)/dashboard" as any);
       } else if (signIn.status === "needs_second_factor") {
-        await signIn.prepareSecondFactor({ strategy: "email_code" });
+        await signIn.mfa.sendEmailCode();
         setNeedsMFA(true);
       } else {
         setError("Sign-in failed — please try again.");
@@ -93,10 +93,7 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await signIn.attemptSecondFactor({
-        strategy: "email_code",
-        code: verifyCode,
-      });
+      await signIn.mfa.verifyEmailCode({ code: verifyCode });
       if (signIn.status === "complete") {
         const { error } = await signIn.finalize();
         if (!error) router.replace("/(tabs)/dashboard" as any);
@@ -163,7 +160,7 @@ export default function SignInScreen() {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
+            <TouchableOpacity onPress={() => signIn?.mfa.sendEmailCode()} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>

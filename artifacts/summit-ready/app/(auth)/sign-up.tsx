@@ -56,7 +56,7 @@ export default function SignUpScreen() {
   }, [isLoaded]);
 
   async function handleSignUp() {
-    if (!isLoaded || !signUp) return;
+    if (!signUp) return;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setError("Please enter a valid email address.");
@@ -65,8 +65,12 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await signUp.create({ emailAddress: email, password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const { error: createErr } = await signUp.password({ emailAddress: email, password });
+      if (createErr) {
+        setError(createErr.message ?? "Sign-up failed — please try again.");
+        return;
+      }
+      await signUp.verifications.sendEmailCode();
       setNeedsVerification(true);
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
@@ -87,7 +91,7 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await signUp.attemptEmailAddressVerification({ code: verifyCode });
+      await signUp.verifications.verifyEmailCode({ code: verifyCode });
       if (signUp.status === "complete") {
         const { error } = await signUp.finalize();
         if (!error) router.replace("/");
@@ -163,7 +167,7 @@ export default function SignUpScreen() {
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => signUp?.prepareEmailAddressVerification({ strategy: "email_code" })}
+              onPress={() => signUp?.verifications.sendEmailCode()}
               style={s.link}
             >
               <Text style={s.linkText}>Resend code</Text>

@@ -64,25 +64,40 @@ if (!isLoaded) { /* show spinner */ }
 // NEVER show a spinner with no timeout — Clerk can fail to init silently
 ```
 
-## Auth operations — use as any
+## Auth operations — use as any (v3.6.x API)
 
-`useSignIn()` returns `SignInSignalValue` with `signIn` typed as `SignInFutureResource`.
-Most methods need `as any` casts; only `finalize()` is properly typed:
+`useSignIn()` returns `SignInSignalValue`. Most methods need `as any` casts.
+
+**The v3 API is completely different from v2.** Key renames:
+
+| v2 (WRONG — throws "not a function") | v3 (correct) |
+|---|---|
+| `signIn.create({ identifier, password })` | `signIn.password({ emailAddress, password })` |
+| `signIn.prepareSecondFactor({ strategy: "email_code" })` | `signIn.mfa.sendEmailCode()` |
+| `signIn.attemptSecondFactor({ strategy: "email_code", code })` | `signIn.mfa.verifyEmailCode({ code })` |
+| `signUp.create({ emailAddress, password })` | `signUp.password({ emailAddress, password })` |
+| `signUp.prepareEmailAddressVerification({ strategy: "email_code" })` | `signUp.verifications.sendEmailCode()` |
+| `signUp.attemptEmailAddressVerification({ code })` | `signUp.verifications.verifyEmailCode({ code })` |
+
+NOTE: `signIn.create()` appears to still work at runtime (user confirmed sign-in works) but the v3 canonical method is `signIn.password()`. `signUp.create()` / `prepareEmailAddressVerification()` do NOT exist.
 
 ```typescript
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { signIn } = useSignIn() as any;
 
-// Email+password sign-in
-await signIn.create({ identifier: email, password });
+// Email+password sign-in — v3 pattern
+const { error: signInErr } = await signIn.password({ emailAddress: email, password });
+if (signInErr) { setError(signInErr.message); return; }
 if (signIn.status === "complete") {
   const { error } = await signIn.finalize(); // finalize() IS typed, no cast needed
   if (!error) router.replace("/");
+} else if (signIn.status === "needs_second_factor") {
+  await signIn.mfa.sendEmailCode();
+  // show MFA UI
 }
 
-// MFA second factor
-await signIn.prepareSecondFactor({ strategy: "email_code" });
-await signIn.attemptSecondFactor({ strategy: "email_code", code });
+// MFA second factor — v3 pattern
+await signIn.mfa.verifyEmailCode({ code });
 if (signIn.status === "complete") {
   const { error } = await signIn.finalize();
   if (!error) router.replace("/");
@@ -93,12 +108,14 @@ if (signIn.status === "complete") {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { signUp } = useSignUp() as any;
 
-// Email+password sign-up
-await signUp.create({ emailAddress: email, password });
-await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+// Email+password sign-up — v3 pattern
+const { error: createErr } = await signUp.password({ emailAddress: email, password });
+if (createErr) { setError(createErr.message); return; }
+await signUp.verifications.sendEmailCode();
+// show verification UI
 
-// Verify
-await signUp.attemptEmailAddressVerification({ code });
+// Verify — v3 pattern
+await signUp.verifications.verifyEmailCode({ code });
 if (signUp.status === "complete") {
   const { error } = await signUp.finalize();
   if (!error) router.replace("/");
