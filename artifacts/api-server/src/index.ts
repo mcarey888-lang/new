@@ -15,6 +15,19 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// ── Process-level error guards ────────────────────────────────────────────────
+// Log and exit cleanly instead of hanging or crashing silently.
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught exception — shutting down");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled promise rejection — shutting down");
+  process.exit(1);
+});
+
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

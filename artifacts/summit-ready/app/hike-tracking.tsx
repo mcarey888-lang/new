@@ -132,6 +132,19 @@ const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountai
 const HIKE_LOCATION_TASK = "hike-location-task";
 const BG_POINTS_KEY = "hike_bg_points";
 
+const LOCATION_UPDATES_CONFIG: Location.LocationTaskOptions = {
+  accuracy: Location.Accuracy.BestForNavigation,
+  distanceInterval: 5,
+  timeInterval: 3000,
+  showsBackgroundLocationIndicator: true,
+  foregroundService: {
+    notificationTitle: "SummitReady — Recording Hike",
+    notificationBody: "Your hike is being tracked. Tap to return to the app.",
+    notificationColor: "#3ECF75",
+  },
+  pausesUpdatesAutomatically: false,
+};
+
 function safeRemoveSub(sub: Location.LocationSubscription | null) {
   if (!sub) return;
   try { sub.remove(); } catch { /* expo-location web: LocationEventEmitter.removeSubscription missing */ }
@@ -244,6 +257,7 @@ export default function HikeTrackingScreen() {
   const trackStartMsRef  = useRef<number>(0);
   const totalPausedMsRef = useRef<number>(0);
   const pauseStartMsRef  = useRef<number>(0);
+  const pauseTogglingRef = useRef(false);        // guard against rapid double-tap
 
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
@@ -539,6 +553,9 @@ export default function HikeTrackingScreen() {
   }, [routeName, sendPointToMap]);
 
   const pauseTracking = useCallback(() => {
+    if (pauseTogglingRef.current) return;
+    pauseTogglingRef.current = true;
+    setTimeout(() => { pauseTogglingRef.current = false; }, 800);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     statusRef.current = "paused";
     setStatus("paused");
@@ -554,6 +571,8 @@ export default function HikeTrackingScreen() {
   }, []);
 
   const resumeTracking = useCallback(async () => {
+    if (pauseTogglingRef.current) return;
+    pauseTogglingRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Accumulate pause duration so elapsed stays accurate
     if (pauseStartMsRef.current > 0) {
@@ -622,6 +641,7 @@ export default function HikeTrackingScreen() {
       );
       locationSubRef.current = fgSub;
     } catch { /* foreground watch unavailable */ }
+    pauseTogglingRef.current = false;
   }, [sendPointToMap]);
 
   const finishHike = useCallback(async () => {

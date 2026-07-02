@@ -123,7 +123,7 @@ export default function AccountScreen() {
   const readyForPeaks = REFERENCE_PEAKS
     .filter(p => p.elevation <= maxTrainedElevation && !trainedNames.has(p.name.toLowerCase()))
     .slice(0, 8);
-  const { customerInfo, isSubscribed, restore, isRestoring, refetchCustomerInfo } = useSubscription();
+  const { customerInfo, isSubscribed, isError: subscriptionError, restore, isRestoring, refetchCustomerInfo } = useSubscription();
 
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -294,6 +294,12 @@ export default function AccountScreen() {
         {/* Subscription card */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
+          {subscriptionError && (
+            <View style={styles.syncErrorBanner}>
+              <AlertCircle size={13} color={T.orange} />
+              <Text style={styles.syncErrorText}>Couldn't verify subscription status — showing last known state.</Text>
+            </View>
+          )}
           <View style={[styles.subCard, isSubscribed && { borderColor: T.green + "50" }]}>
             <LinearGradient
               colors={isSubscribed ? [T.greenDim, "transparent"] : ["transparent", "transparent"]}
@@ -410,6 +416,18 @@ export default function AccountScreen() {
         </Animated.View>
 
         {/* Training History */}
+        {completedGoals.length === 0 && (
+          <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>TRAINING HISTORY</Text>
+            <View style={styles.emptyState}>
+              <Trophy size={28} color={T.textDim} />
+              <Text style={styles.emptyStateTitle}>No completed goals yet</Text>
+              <Text style={styles.emptyStateText}>
+                Complete a training goal and your history will appear here.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
         {completedGoals.length > 0 && (
           <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
             <Text style={styles.sectionLabel}>
@@ -439,7 +457,7 @@ export default function AccountScreen() {
                     </View>
                     <View style={styles.historyStatDivider} />
                     <View style={styles.historyStatItem}>
-                      <Text style={styles.historyStatVal}>{totalKm}k m</Text>
+                      <Text style={styles.historyStatVal}>{totalKm}km</Text>
                       <Text style={styles.historyStatLbl}>elevation trained</Text>
                     </View>
                     <View style={styles.historyStatDivider} />
@@ -462,7 +480,7 @@ export default function AccountScreen() {
               <Text style={styles.lifetimeText}>
                 Lifetime: <Text style={{ color: T.text }}>{lifetimeSessions} sessions</Text>
                 {"  ·  "}
-                <Text style={{ color: T.text }}>{(lifetimeElevation / 1000).toFixed(1)}k m</Text> total elevation
+                <Text style={{ color: T.text }}>{(lifetimeElevation / 1000).toFixed(1)}km</Text> total elevation
               </Text>
             </View>
           </Animated.View>
@@ -1101,4 +1119,12 @@ const styles = StyleSheet.create({
     gap: 8, paddingVertical: 13,
   },
   confirmText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  syncErrorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: T.orange + "15", borderRadius: 10, padding: 10, marginBottom: 8,
+  },
+  syncErrorText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.orange },
+  emptyState: { alignItems: "center", gap: 8, paddingVertical: 24, paddingHorizontal: 12 },
+  emptyStateTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center" },
+  emptyStateText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 19 },
 });

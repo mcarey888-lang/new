@@ -17,9 +17,11 @@ import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
 import hillSessionRouter from "./hill-session";
 import hillVerificationAdminRouter from "./hill-verification-admin";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
+// ── Public routes (no auth required) ─────────────────────────────────────────
 router.use(healthRouter);
 router.use(mountainRouter);
 router.use(mountainImageRouter);
@@ -33,10 +35,22 @@ router.use(trailMapImageRouter);
 router.use(trailMapWebRouter);
 router.use(hikeMapWebRouter);
 router.use(seededTrailsRouter);
-router.use(trackedRoutesRouter);
 router.use(demoLoadRouter);
+
+// ── Auth-required routes ──────────────────────────────────────────────────────
+// trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
+// ownership; GET/POST are public). Auth is enforced inside the router.
+router.use(trackedRoutesRouter);
+
+// Hill sessions and tracking data belong to a user — require auth.
+// The mobile app (only caller) provides a Clerk JWT in the Authorization header.
+router.use("/hill-session", requireAuth(), hillSessionRouter);
+
+// Mountain verification and admin pages are called from the landing site which
+// has no Clerk session. They are protected by rate limiting + CORS + a
+// frontend key-prompt (AdminGuard component). requireAuth is intentionally NOT
+// applied here to avoid breaking the internal admin UI.
 router.use(mountainVerificationRouter);
-router.use("/hill-session", hillSessionRouter);
 router.use("/admin/hill-verification", hillVerificationAdminRouter);
 
 export default router;

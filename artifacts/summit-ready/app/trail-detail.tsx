@@ -195,7 +195,7 @@ export default function TrailDetailScreen() {
 
   const mapImageUri = mapImageError
     ? null
-    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name)}&location=${encodeURIComponent(trail.location)}&color=${dc.replace("#", "")}&width=800&height=400&distance=${trail.distance}&trailLat=${trail.lat}&trailLng=${trail.lng}`;
+    : `${API_BASE}/trail-map-image?name=${encodeURIComponent(trail.name ?? "")}&location=${encodeURIComponent(trail.location ?? "")}&color=${dc.replace("#", "")}&width=800&height=400&distance=${trail.distance}${trail.lat != null ? `&trailLat=${trail.lat}` : ""}${trail.lng != null ? `&trailLng=${trail.lng}` : ""}`;
 
   async function handleDelete() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -218,27 +218,35 @@ export default function TrailDetailScreen() {
 
   async function handleSaveToggle() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (isSaved) {
-      await unsaveTrail(trail!.id);
-    } else {
-      await saveTrail(trail!.id);
+    try {
+      if (isSaved) {
+        await unsaveTrail(trail!.id);
+      } else {
+        await saveTrail(trail!.id);
+      }
+    } catch {
+      Alert.alert("Error", "Could not update saved trails. Please try again.");
     }
   }
 
   async function handleCompleteToggle() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (isCompleted) {
-      if (Platform.OS === "web") {
-        await uncompleteTrail(trail!.id);
+    try {
+      if (isCompleted) {
+        if (Platform.OS === "web") {
+          await uncompleteTrail(trail!.id);
+        } else {
+          Alert.alert("Remove completion?", "This will remove this hill from your completed list.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Remove", style: "destructive", onPress: () => uncompleteTrail(trail!.id) },
+          ]);
+        }
       } else {
-        Alert.alert("Remove completion?", "This will remove this hill from your completed list.", [
-          { text: "Cancel", style: "cancel" },
-          { text: "Remove", style: "destructive", onPress: () => uncompleteTrail(trail!.id) },
-        ]);
+        await completeTrail(trail!.id);
+        setLogVisible(true);
       }
-    } else {
-      await completeTrail(trail!.id);
-      setLogVisible(true);
+    } catch {
+      Alert.alert("Error", "Could not update completion. Please try again.");
     }
   }
 

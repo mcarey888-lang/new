@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { trackedRoutes } from "./tracked-routes";
 
 export const routeContributions = pgTable("route_contributions", {
@@ -10,6 +10,8 @@ export const routeContributions = pgTable("route_contributions", {
   elevationLoss:    integer("elevation_loss").notNull().default(0),
   durationSecs:     integer("duration_secs").notNull(),
   submittedAt:      timestamp("submitted_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("route_contributions_canonical_route_id_idx").on(t.canonicalRouteId),
+]);
 
 export type RouteContribution = typeof routeContributions.$inferSelect;

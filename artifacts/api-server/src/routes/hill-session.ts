@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import {
   canonicalHills,
@@ -128,14 +129,13 @@ async function recalcHillStats(hillId: number, routeId?: number | null) {
 // Called when user taps "Mark complete" (no GPS — estimated data only)
 
 const CompleteSchema = z.object({
-  userId:              z.string().optional(),
-  plannedHillName:     z.string(),
-  hillId:              z.number().int().optional(),
-  targetReps:          z.number().int().min(1),
-  estimatedGainPerRepM:z.number().int().min(1),
-  estimatedTotalGainM: z.number().int().min(1),
-  trainingSessionId:   z.string().optional(),
-  trainingPlanId:      z.string().optional(),
+  plannedHillName:      z.string(),
+  hillId:               z.number().int().optional(),
+  targetReps:           z.number().int().min(1),
+  estimatedGainPerRepM: z.number().int().min(1),
+  estimatedTotalGainM:  z.number().int().min(1),
+  trainingSessionId:    z.string().optional(),
+  trainingPlanId:       z.string().optional(),
 });
 
 router.post("/complete", async (req, res) => {
@@ -144,11 +144,13 @@ router.post("/complete", async (req, res) => {
     return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
   }
 
+  // Derive userId from the verified Clerk token (falls back to null in dev).
+  const { userId } = getAuth(req);
   const d = parsed.data;
 
   try {
     const [row] = await db.insert(trackedHillSessions).values({
-      userId:               d.userId ?? null,
+      userId:               userId ?? null,
       hillId:               d.hillId ?? null,
       routeId:              null,
       trainingPlanId:       d.trainingPlanId ?? null,
@@ -173,23 +175,22 @@ router.post("/complete", async (req, res) => {
 // Called when user finishes GPS tracking with hill metadata
 
 const SaveTrackedSchema = z.object({
-  userId:               z.string().optional(),
-  plannedHillName:      z.string(),
-  plannedRouteName:     z.string().optional(),
-  hillId:               z.number().int().optional(),
-  routeId:              z.number().int().optional(),
-  trainingSessionId:    z.string().optional(),
-  trainingPlanId:       z.string().optional(),
-  targetReps:           z.number().int().min(1).optional(),
-  estimatedGainPerRepM: z.number().int().optional(),
-  estimatedTotalGainM:  z.number().int().optional(),
-  recordedDistanceKm:   z.number().optional(),
+  plannedHillName:        z.string(),
+  plannedRouteName:       z.string().optional(),
+  hillId:                 z.number().int().optional(),
+  routeId:                z.number().int().optional(),
+  trainingSessionId:      z.string().optional(),
+  trainingPlanId:         z.string().optional(),
+  targetReps:             z.number().int().min(1).optional(),
+  estimatedGainPerRepM:   z.number().int().optional(),
+  estimatedTotalGainM:    z.number().int().optional(),
+  recordedDistanceKm:     z.number().optional(),
   recordedElevationGainM: z.number().int().optional(),
-  recordedDurationSeconds: z.number().int().optional(),
-  highestElevationM:    z.number().optional(),
-  lowestElevationM:     z.number().optional(),
-  rawGpsTrack:          z.array(z.unknown()).optional(),
-  elevationProfile:     z.array(z.unknown()).optional(),
+  recordedDurationSeconds:z.number().int().optional(),
+  highestElevationM:      z.number().optional(),
+  lowestElevationM:       z.number().optional(),
+  rawGpsTrack:            z.array(z.unknown()).optional(),
+  elevationProfile:       z.array(z.unknown()).optional(),
 });
 
 router.post("/save-tracked", async (req, res) => {
@@ -198,14 +199,17 @@ router.post("/save-tracked", async (req, res) => {
     return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
   }
 
+  // Derive userId from the verified Clerk token (falls back to null in dev).
+  const { userId } = getAuth(req);
   const d = parsed.data;
+
   const { dataQualityScore, matchConfidence } = computeQualityScore({
-    recordedDistanceKm:    d.recordedDistanceKm,
-    recordedElevationGainM:d.recordedElevationGainM,
+    recordedDistanceKm:     d.recordedDistanceKm,
+    recordedElevationGainM: d.recordedElevationGainM,
     recordedDurationSeconds:d.recordedDurationSeconds,
-    rawGpsTrack:           d.rawGpsTrack,
-    estimatedGainPerRepM:  d.estimatedGainPerRepM,
-    targetReps:            d.targetReps,
+    rawGpsTrack:            d.rawGpsTrack,
+    estimatedGainPerRepM:   d.estimatedGainPerRepM,
+    targetReps:             d.targetReps,
   });
 
   // High-quality GPS tracks are automatically eligible for verification
@@ -213,33 +217,35 @@ router.post("/save-tracked", async (req, res) => {
 
   try {
     const [row] = await db.insert(trackedHillSessions).values({
-      userId:               d.userId ?? null,
-      hillId:               d.hillId ?? null,
-      routeId:              d.routeId ?? null,
-      trainingPlanId:       d.trainingPlanId ?? null,
-      trainingSessionId:    d.trainingSessionId ?? null,
-      plannedHillName:      d.plannedHillName,
-      plannedRouteName:     d.plannedRouteName ?? null,
-      targetReps:           d.targetReps ?? null,
-      estimatedGainPerRepM: d.estimatedGainPerRepM ?? null,
-      estimatedTotalGainM:  d.estimatedTotalGainM ?? null,
-      completionType:       "tracked_gps",
-      recordedDistanceKm:   d.recordedDistanceKm ?? null,
+      userId:                 userId ?? null,
+      hillId:                 d.hillId ?? null,
+      routeId:                d.routeId ?? null,
+      trainingPlanId:         d.trainingPlanId ?? null,
+      trainingSessionId:      d.trainingSessionId ?? null,
+      plannedHillName:        d.plannedHillName,
+      plannedRouteName:       d.plannedRouteName ?? null,
+      targetReps:             d.targetReps ?? null,
+      estimatedGainPerRepM:   d.estimatedGainPerRepM ?? null,
+      estimatedTotalGainM:    d.estimatedTotalGainM ?? null,
+      completionType:         "tracked_gps",
+      recordedDistanceKm:     d.recordedDistanceKm ?? null,
       recordedElevationGainM: d.recordedElevationGainM ?? null,
-      recordedDurationSeconds: d.recordedDurationSeconds ?? null,
-      highestElevationM:    d.highestElevationM ?? null,
-      lowestElevationM:     d.lowestElevationM ?? null,
-      rawGpsTrack:          d.rawGpsTrack ?? null,
-      elevationProfile:     d.elevationProfile ?? null,
+      recordedDurationSeconds:d.recordedDurationSeconds ?? null,
+      highestElevationM:      d.highestElevationM ?? null,
+      lowestElevationM:       d.lowestElevationM ?? null,
+      rawGpsTrack:            d.rawGpsTrack ?? null,
+      elevationProfile:       d.elevationProfile ?? null,
       dataQualityScore,
       matchConfidence,
       usedForVerification,
-      completedAt:          new Date(),
+      completedAt:            new Date(),
     }).returning({ id: trackedHillSessions.id });
 
     // Recalculate stats for this hill if we have a canonical record
     if (d.hillId && usedForVerification) {
-      recalcHillStats(d.hillId, d.routeId).catch(() => {});
+      recalcHillStats(d.hillId, d.routeId).catch((err: unknown) => {
+        req.log.error({ err, hillId: d.hillId, routeId: d.routeId }, "recalcHillStats failed after session creation");
+      });
     }
 
     return res.status(201).json({

@@ -1,3 +1,4 @@
+import { AdminGuard } from "@/components/AdminGuard";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Activity,
@@ -87,7 +88,7 @@ function StatCard({ label, value, sub }: { label: string; value: number | string
   );
 }
 
-export default function HillVerification() {
+function HillVerificationPage() {
   const [sessions, setSessions]       = useState<HillSession[]>([]);
   const [stats, setStats]             = useState<Stats | null>(null);
   const [loading, setLoading]         = useState(false);
@@ -382,5 +383,14 @@ export default function HillVerification() {
         })}
       </div>
     </div>
+  );
+}
+
+
+export default function HillVerification() {
+  return (
+    <AdminGuard title="Hill Verification Admin">
+      <HillVerificationPage />
+    </AdminGuard>
   );
 }

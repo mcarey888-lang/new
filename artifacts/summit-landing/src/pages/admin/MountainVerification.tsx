@@ -1,3 +1,4 @@
+import { AdminGuard } from "@/components/AdminGuard";
 import React, { useState } from "react";
 import { Search, Loader2, CheckCircle, AlertCircle, Minus, TrendingUp, Mountain, Play, RefreshCw, FlaskConical } from "lucide-react";
 
@@ -100,7 +101,7 @@ function MiniProfile({ values }: { values: number[] }) {
 
 const BATCH_MOUNTAINS = ["Musbury Tor", "Peel Tower", "Mam Tor", "Pen y Ghent", "Snowdon", "Ben Nevis"];
 
-export default function MountainVerification() {
+function MountainVerificationPage() {
   const [query, setQuery] = useState("");
   const [gptLoading, setGptLoading] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
@@ -480,5 +481,13 @@ export default function MountainVerification() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MountainVerification() {
+  return (
+    <AdminGuard title="Mountain Verification Lab">
+      <MountainVerificationPage />
+    </AdminGuard>
   );
 }

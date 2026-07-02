@@ -1,3 +1,4 @@
+import { AdminGuard } from "@/components/AdminGuard";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -317,7 +318,7 @@ function LogScreen() {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function ScreenshotHelper() {
+function ScreenshotHelperPage() {
   const [params] = useSearchParams();
   const screen = params.get("s") ?? "dashboard";
 
@@ -335,5 +336,13 @@ export default function ScreenshotHelper() {
       {screen === "plan" && <PlanScreen />}
       {screen === "log" && <LogScreen />}
     </div>
+  );
+}
+
+export default function ScreenshotHelper() {
+  return (
+    <AdminGuard title="Screenshot Helper">
+      <ScreenshotHelperPage />
+    </AdminGuard>
   );
 }

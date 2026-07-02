@@ -1,11 +1,9 @@
-import { pgTable, text, real, integer, timestamp, jsonb, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, timestamp, jsonb, serial, boolean, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 // ── Canonical hill records ───────────────────────────────────────────────────
-// Deduplicated source-of-truth for hills/mountains, separate from the AI cache.
-// Multiple names (e.g. "Snowdon" + "Yr Wyddfa") can eventually point to the
-// same record via alternativeNames.
 export const canonicalHills = pgTable("canonical_hills", {
   id:                   serial("id").primaryKey(),
   slug:                 text("slug").notNull().unique(),
@@ -23,7 +21,10 @@ export const canonicalHills = pgTable("canonical_hills", {
   source:               text("source").notNull().default("ai"),
   createdAt:            timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:            timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  check("chk_canonical_hills_confidence", sql`${t.confidenceScore} IN ('LOW', 'MEDIUM', 'HIGH')`),
+  check("chk_canonical_hills_source",     sql`${t.source} IN ('ai', 'overpass')`),
+]);
 
 // ── Canonical routes for each hill ──────────────────────────────────────────
 export const canonicalHillRoutes = pgTable("canonical_hill_routes", {
@@ -43,7 +44,10 @@ export const canonicalHillRoutes = pgTable("canonical_hill_routes", {
   source:                   text("source").notNull().default("ai"),
   createdAt:                timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:                timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  check("chk_canonical_routes_confidence", sql`${t.confidenceScore} IN ('LOW', 'MEDIUM', 'HIGH')`),
+  check("chk_canonical_routes_source",     sql`${t.source} IN ('ai', 'overpass')`),
+]);
 
 // ── Individual tracked hill sessions from users ──────────────────────────────
 export const trackedHillSessions = pgTable("tracked_hill_sessions", {
@@ -72,7 +76,11 @@ export const trackedHillSessions = pgTable("tracked_hill_sessions", {
   adminApproved:          boolean("admin_approved"),
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   completedAt:            timestamp("completed_at", { withTimezone: true }),
-});
+}, (t) => [
+  index("tracked_hill_sessions_user_id_idx").on(t.userId),
+  index("tracked_hill_sessions_hill_id_idx").on(t.hillId),
+  check("chk_tracked_sessions_completion_type", sql`${t.completionType} IN ('estimated_manual', 'tracked_gps')`),
+]);
 
 // ── Aggregated verification stats per hill/route ─────────────────────────────
 export const hillVerificationStats = pgTable("hill_verification_stats", {

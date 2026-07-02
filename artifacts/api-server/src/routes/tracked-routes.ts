@@ -1,7 +1,9 @@
 import { Router, type IRouter } from "express";
+import { getAuth } from "@clerk/express";
 import { db, trackedRoutes, routeContributions } from "@workspace/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod/v4";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
@@ -64,7 +66,7 @@ function resampleTrack(pts: LatLon[], n: number): Array<[number, number]> {
  */
 function mergeCanonical(canonical: LatLon[], newTrack: LatLon[], existingContributions: number): LatLon[] {
   const N = Math.max(canonical.length, newTrack.length, 50);
-  const w = 1 / (existingContributions + 2); // +1 for canonical, +1 for new
+  const w = 1 / (existingContributions + 2);
   const sampledC = resampleTrack(canonical, N);
   const sampledN = resampleTrack(newTrack, N);
   return sampledC.map((p, i) => ({
@@ -83,9 +85,12 @@ router.post("/tracked-routes", async (req, res) => {
   }
 
   const d = parsed.data;
+  const { userId } = getAuth(req);
+
   try {
     await db.insert(trackedRoutes).values({
       id:            d.id,
+      createdBy:     userId ?? null,
       name:          d.name,
       location:      d.location,
       distanceKm:    d.distanceKm,
@@ -215,69 +220,94 @@ router.post("/tracked-routes/:id/contribute", async (req, res) => {
   }
 
   try {
-    const rows = await db
-      .select()
-      .from(trackedRoutes)
-      .where(eq(trackedRoutes.id, id))
-      .limit(1);
+    // Wrap both the read and write in a serialisable transaction to avoid
+    // a concurrent-write data race on contributionCount / canonical track.
+    await db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(trackedRoutes)
+        .where(eq(trackedRoutes.id, id))
+        .limit(1);
 
-    if (rows.length === 0) {
-      res.status(404).json({ error: "Canonical route not found" });
-      return;
-    }
+      if (rows.length === 0) {
+        res.status(404).json({ error: "Canonical route not found" });
+        return;
+      }
 
-    const canonical = rows[0];
-    const d = parsed.data;
+      const canonical = rows[0];
+      const d = parsed.data;
 
-    // Store the contribution
-    const contribId = "contrib_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
-    await db.insert(routeContributions).values({
-      id:               contribId,
-      canonicalRouteId: id,
-      trackPoints:      d.trackPoints,
-      distanceKm:       d.distanceKm,
-      elevationGain:    d.elevationGain,
-      elevationLoss:    d.elevationLoss,
-      durationSecs:     d.durationSecs,
+      const contribId = "contrib_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
+      await tx.insert(routeContributions).values({
+        id:               contribId,
+        canonicalRouteId: id,
+        trackPoints:      d.trackPoints,
+        distanceKm:       d.distanceKm,
+        elevationGain:    d.elevationGain,
+        elevationLoss:    d.elevationLoss,
+        durationSecs:     d.durationSecs,
+      });
+
+      const canonicalPts = canonical.trackPoints as LatLon[];
+      const newPts        = d.trackPoints as LatLon[];
+      const merged        = mergeCanonical(canonicalPts, newPts, canonical.contributionCount);
+
+      const n    = canonical.contributionCount + 1;
+      const wNew = 1 / (n + 1);
+      await tx
+        .update(trackedRoutes)
+        .set({
+          trackPoints:       merged,
+          contributionCount: sql`contribution_count + 1`,
+          distanceKm:        canonical.distanceKm * (1 - wNew) + d.distanceKm * wNew,
+          elevationGain:     Math.round(canonical.elevationGain * (1 - wNew) + d.elevationGain * wNew),
+          elevationLoss:     Math.round(canonical.elevationLoss * (1 - wNew) + d.elevationLoss * wNew),
+          durationSecs:      Math.round(canonical.durationSecs  * (1 - wNew) + d.durationSecs  * wNew),
+        })
+        .where(eq(trackedRoutes.id, id));
+
+      req.log.info({ id, contributions: n }, "Route contribution merged");
+      res.status(200).json({ ok: true, contributions: n });
     });
-
-    // Merge new track into canonical using weighted running mean
-    const canonicalPts = canonical.trackPoints as LatLon[];
-    const newPts        = d.trackPoints as LatLon[];
-    const merged        = mergeCanonical(canonicalPts, newPts, canonical.contributionCount);
-
-    // Update canonical: refined track + running-mean stats + increment count
-    const n    = canonical.contributionCount + 1; // total contributors including new one
-    const wNew = 1 / (n + 1);                      // weight of new contribution
-    await db
-      .update(trackedRoutes)
-      .set({
-        trackPoints:       merged,
-        contributionCount: sql`contribution_count + 1`,
-        distanceKm:        canonical.distanceKm * (1 - wNew) + d.distanceKm * wNew,
-        elevationGain:     Math.round(canonical.elevationGain * (1 - wNew) + d.elevationGain * wNew),
-        elevationLoss:     Math.round(canonical.elevationLoss * (1 - wNew) + d.elevationLoss * wNew),
-        durationSecs:      Math.round(canonical.durationSecs  * (1 - wNew) + d.durationSecs  * wNew),
-      })
-      .where(eq(trackedRoutes.id, id));
-
-    req.log.info({ id, contributions: n }, "Route contribution merged");
-    res.status(200).json({ ok: true, contributions: n });
   } catch (err) {
     req.log.error({ err }, "Failed to contribute to route");
     res.status(500).json({ error: "Failed to save contribution" });
   }
 });
 
-router.delete("/tracked-routes/:id", async (req, res) => {
+// DELETE requires auth; also verifies the caller owns the route.
+router.delete("/tracked-routes/:id", requireAuth(), async (req, res) => {
   const { id } = req.params;
   if (!id) {
     res.status(400).json({ error: "Missing route id" });
     return;
   }
+
+  const { userId } = getAuth(req);
+
   try {
+    const rows = await db
+      .select({ createdBy: trackedRoutes.createdBy })
+      .from(trackedRoutes)
+      .where(eq(trackedRoutes.id, id))
+      .limit(1);
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "Route not found" });
+      return;
+    }
+
+    const route = rows[0];
+    // Allow deletion only by the original creator.
+    // Routes without a createdBy (legacy) may only be deleted by authenticated
+    // users — we can't verify ownership but at least require a valid session.
+    if (route.createdBy !== null && route.createdBy !== userId) {
+      res.status(403).json({ error: "You do not have permission to delete this route" });
+      return;
+    }
+
     await db.delete(trackedRoutes).where(eq(trackedRoutes.id, id));
-    req.log.info({ id }, "Tracked route deleted");
+    req.log.info({ id, userId }, "Tracked route deleted");
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete tracked route");

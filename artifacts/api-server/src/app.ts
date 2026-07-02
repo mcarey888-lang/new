@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
+import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import {
@@ -37,8 +38,6 @@ app.use(
 );
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// Allow the production domain, the Replit dev proxy, and same-origin requests.
-// Requests with no Origin header (native app, curl) are also allowed.
 const allowedOrigins = new Set<string>([
   "https://summitready.uk",
   "https://www.summitready.uk",
@@ -60,7 +59,6 @@ app.use(
 );
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-// General limit: 120 req/min per IP across all /api routes.
 const generalLimiter = rateLimit({
   windowMs: 60_000,
   max: 120,
@@ -69,7 +67,7 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
-// Strict limit for AI endpoints that call OpenAI (cost protection).
+// Strict limit for AI/expensive endpoints (OpenAI cost protection).
 const aiLimiter = rateLimit({
   windowMs: 60_000,
   max: 15,
@@ -79,15 +77,24 @@ const aiLimiter = rateLimit({
 });
 
 app.use("/api", generalLimiter);
-app.use("/api/coach-assessment",   aiLimiter);
-app.use("/api/alpine-assessment",  aiLimiter);
-app.use("/api/mountain-lookup",    aiLimiter);
-app.use("/api/hills-lookup",       aiLimiter);
-app.use("/api/hills-search",       aiLimiter);
-app.use("/api/hills-unified",      aiLimiter);
-app.use("/api/adjust-plan",        aiLimiter);
-app.use("/api/hill-detail",        aiLimiter);
-app.use("/api/trail-start",        aiLimiter);
+
+// AI-backed routes
+app.use("/api/coach-assessment",             aiLimiter);
+app.use("/api/coach-ask",                    aiLimiter);
+app.use("/api/alpine-assessment",            aiLimiter);
+app.use("/api/mountain-lookup",              aiLimiter);
+app.use("/api/hills-lookup",                 aiLimiter);
+app.use("/api/hills-search",                 aiLimiter);
+app.use("/api/hills-unified",                aiLimiter);
+app.use("/api/adjust-plan",                  aiLimiter);
+app.use("/api/hill-detail",                  aiLimiter);
+app.use("/api/trail-start",                  aiLimiter);
+app.use("/api/mountain-verification-test",   aiLimiter);
+app.use("/api/admin",                        aiLimiter);
+
+// ── Clerk auth — parses JWT from Authorization header for all routes ──────────
+// requireAuth() is applied per-router in routes/index.ts for protected routes.
+app.use(clerkMiddleware());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

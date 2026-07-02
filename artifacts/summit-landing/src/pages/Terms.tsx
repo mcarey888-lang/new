@@ -1,8 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import logoPath from "../assets/logo.gif";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Terms() {
+  usePageMeta({
+    title: "Terms of Service — SummitReady",
+    description: "Read the SummitReady terms of service covering your rights, responsibilities, and our usage policies.",
+  });
   return (
     <div className="min-h-screen bg-background text-foreground">
       <nav className="border-b border-white/5 py-4">

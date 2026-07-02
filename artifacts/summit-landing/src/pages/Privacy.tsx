@@ -1,8 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import logoPath from "../assets/logo.gif";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Privacy() {
+  usePageMeta({
+    title: "Privacy Policy — SummitReady",
+    description: "Read the SummitReady privacy policy to learn how we collect, use, and protect your data.",
+  });
   return (
     <div className="min-h-screen bg-background text-foreground">
       <nav className="border-b border-white/5 py-4">

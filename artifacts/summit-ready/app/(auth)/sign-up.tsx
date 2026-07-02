@@ -3,6 +3,7 @@ import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { Eye, EyeOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,6 +36,7 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -45,6 +47,11 @@ export default function SignUpScreen() {
   async function handleSignUp() {
     if (!isLoaded || !signUp) {
       setError("Still loading — please wait a moment.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address.");
       return;
     }
     setLoading(true);
@@ -205,14 +212,28 @@ export default function SignUpScreen() {
           />
 
           <Text style={s.label}>Password</Text>
-          <TextInput
-            style={s.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="At least 8 characters"
-            placeholderTextColor={T.textDim}
-            secureTextEntry
-          />
+          <View style={s.inputRow}>
+            <TextInput
+              style={[s.input, s.inputWithToggle]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="At least 8 characters"
+              placeholderTextColor={T.textDim}
+              secureTextEntry={!showPassword}
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={s.eyeBtn}
+              onPress={() => setShowPassword(v => !v)}
+              activeOpacity={0.7}
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              accessibilityRole="button"
+            >
+              {showPassword
+                ? <EyeOff size={18} color={T.textMuted} />
+                : <Eye size={18} color={T.textMuted} />}
+            </TouchableOpacity>
+          </View>
 
           {error && <Text style={s.error}>{error}</Text>}
 
@@ -275,7 +296,10 @@ const s = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
   },
-  error: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#FF4444", textAlign: "center" },
+  error: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.red, textAlign: "center" },
+  inputRow: { position: "relative" },
+  inputWithToggle: { paddingRight: 46 },
+  eyeBtn: { position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center", paddingHorizontal: 4 },
   primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
   btnGrad: { height: 52, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },

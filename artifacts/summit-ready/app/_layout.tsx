@@ -20,6 +20,7 @@ import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 import { clerkTokenCache } from "@/app/utils/clerkTokenCache";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,7 +30,33 @@ try {
   Alert.alert("RevenueCat Unavailable", err?.message ?? "Unknown error");
 }
 
+// Point the API client at the production API for native builds.
+// Relative paths work automatically in web/preview; this is a no-op there.
+const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
+setBaseUrl(`https://${apiDomain}`);
+
 const queryClient = new QueryClient();
+
+/**
+ * Keeps the API client auth token in sync with the active Clerk session.
+ * Must live inside ClerkProvider so useAuth() works.
+ */
+function AuthBridge() {
+  const { getToken, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn) {
+      setAuthTokenGetter(() => getToken());
+    } else {
+      setAuthTokenGetter(null);
+    }
+    return () => {
+      setAuthTokenGetter(null);
+    };
+  }, [isSignedIn, getToken]);
+
+  return null;
+}
 
 /**
  * Renders children once Clerk's auth state is ready, OR after a 5-second
@@ -50,8 +77,10 @@ function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) return;
     const t = setTimeout(async () => {
-      // Clear stale token so the next app launch initialises cleanly.
-      await clerkTokenCache.clearAll();
+      try {
+        // Clear stale token so the next app launch initialises cleanly.
+        await clerkTokenCache.clearAll();
+      } catch {}
       setTimedOut(true);
     }, 5000);
     return () => clearTimeout(t);
@@ -112,6 +141,7 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache} proxyUrl={clerkProxyUrl}>
+      <AuthBridge />
       <ClerkLoadedOrTimeout>
         <SafeAreaProvider>
           <ErrorBoundary>

@@ -353,7 +353,9 @@ function AlpineCard({
 
   if (!profile) return null;
 
-  const metCount = profile.requirements.filter(req =>
+  const requirements = Array.isArray(profile.requirements) ? profile.requirements : [];
+  const keyRisks     = Array.isArray(profile.keyRisks) ? profile.keyRisks : [];
+  const metCount = requirements.filter(req =>
     isRequirementMet(req, sessions, weeksElapsed)
   ).length;
 
@@ -392,7 +394,7 @@ function AlpineCard({
         <View style={styles.alpineDivider} />
 
         {/* Requirements checklist */}
-        {profile.requirements.map((req) => {
+        {requirements.map((req) => {
           const met = isRequirementMet(req, sessions, weeksElapsed);
           const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
           const AlpineIcon = ALPINE_CATEGORY_ICON[req.category] ?? CheckCircle;
@@ -418,7 +420,7 @@ function AlpineCard({
         <View style={styles.alpineRisksRow}>
           <Text style={styles.alpineRisksLabel}>Key risks</Text>
           <View style={styles.alpineRisksChips}>
-            {profile.keyRisks.map((risk, i) => (
+            {keyRisks.map((risk, i) => (
               <View key={i} style={styles.alpineRiskChip}>
                 <AlertTriangle size={10} color={T.orange} />
                 <Text style={styles.alpineRiskText}>{risk}</Text>

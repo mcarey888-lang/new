@@ -107,6 +107,7 @@ function useSubscriptionContext() {
     offerings: offeringsQuery.data,
     isSubscribed,
     isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
+    isError: customerInfoQuery.isError,
     offeringsLoading: offeringsQuery.isLoading,
     offeringsError: offeringsQuery.isError,
     refetchOfferings: offeringsQuery.refetch,

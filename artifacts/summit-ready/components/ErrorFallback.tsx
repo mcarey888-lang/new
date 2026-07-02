@@ -24,13 +24,18 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const insets = useSafeAreaInsets();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   const handleRestart = async () => {
+    setRestarting(true);
     try {
       await reloadAppAsync();
-    } catch (restartError) {
-      console.error("Failed to restart app:", restartError);
+    } catch {
+      // reloadAppAsync fails in dev mode (no expo-updates). Reset the boundary
+      // so the app can try to recover without a full restart.
       resetError();
+    } finally {
+      setRestarting(false);
     }
   };
 
@@ -74,27 +79,42 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </Text>
 
         <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue.
+          Please restart the app to continue.
         </Text>
 
         <Pressable
           onPress={handleRestart}
+          disabled={restarting}
+          accessibilityLabel="Restart the app"
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.button,
             {
               backgroundColor: colors.primary,
-              opacity: pressed ? 0.9 : 1,
+              opacity: pressed || restarting ? 0.7 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
-          <Text
-            style={[
-              styles.buttonText,
-              { color: colors.primaryForeground },
-            ]}
-          >
-            Try Again
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
+            {restarting ? "Restarting…" : "Restart App"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={resetError}
+          accessibilityLabel="Dismiss error and try to continue"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            {
+              borderColor: colors.border,
+              opacity: pressed ? 0.6 : 1,
+            },
+          ]}
+        >
+          <Text style={[styles.secondaryButtonText, { color: colors.mutedForeground }]}>
+            Dismiss
           </Text>
         </Pressable>
       </View>
@@ -215,10 +235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     minWidth: 200,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -227,6 +244,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     fontSize: 16,
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 200,
+  },
+  secondaryButtonText: {
+    fontWeight: "500",
+    textAlign: "center",
+    fontSize: 15,
   },
   modalOverlay: {
     flex: 1,
