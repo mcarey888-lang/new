@@ -1,4 +1,4 @@
-import { useSignIn, useSSO } from "@clerk/expo";
+import { useAuth, useSignIn, useSSO } from "@clerk/expo";
 import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -24,8 +24,9 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { isLoaded, signIn, setActive } = useSignIn() as any;
+  const { signIn, setActive } = useSignIn() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
