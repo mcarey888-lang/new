@@ -22,27 +22,17 @@ import { T } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-/** Rejects after `ms` milliseconds with a user-facing timeout message. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), ms)
-    ),
-  ]);
-}
-
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signUp, setActive, isLoaded: clerkLoaded } = useSignUp() as any;
+  const { isLoaded, signUp, setActive } = useSignUp() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [emailLoading, setEmailLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
 
@@ -52,58 +42,54 @@ export default function SignUpScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
-  async function handleEmailSignUp() {
-    if (!clerkLoaded || typeof signUp?.create !== "function") {
-      setError("Authentication service is still loading — please wait a moment.");
+  async function handleSignUp() {
+    if (!isLoaded || !signUp) {
+      setError("Still loading — please wait a moment.");
       return;
     }
-    setEmailLoading(true);
+    setLoading(true);
     setError(null);
     try {
-      await withTimeout(
-        signUp.create({ emailAddress: email, password }),
-        15000
-      );
-      await withTimeout(
-        signUp.prepareEmailAddressVerification({ strategy: "email_code" }),
-        10000
-      );
+      await signUp.create({ emailAddress: email, password });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setNeedsVerification(true);
-    } catch (err: any) {
-      const msg =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        err?.message ??
-        "Sign-up failed. Please try again.";
-      setError(msg);
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const clerkMsg =
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.longMessage ??
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.message;
+      const fallback = (e?.message as string) ?? JSON.stringify(err);
+      setError(clerkMsg ?? fallback ?? "Sign-up failed — please try again.");
     } finally {
-      setEmailLoading(false);
+      setLoading(false);
     }
   }
 
   async function handleVerify() {
-    if (!signUp) return;
-    setEmailLoading(true);
+    if (!isLoaded || !signUp) return;
+    setLoading(true);
     setError(null);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attempt: any = await withTimeout(
-        signUp.attemptEmailAddressVerification({ code: verifyCode }),
-        15000
-      );
-      const status = attempt?.status ?? signUp.status;
-      if (status === "complete") {
-        const sessionId = attempt?.createdSessionId ?? signUp.createdSessionId;
-        await withTimeout(setActive({ session: sessionId }), 10000);
+      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
         router.replace("/");
       } else {
-        setError("Verification failed. Please check the code and try again.");
+        setError(`Verification not complete (status: ${result.status})`);
       }
-    } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed.";
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const msg =
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.longMessage ??
+        (e?.errors as Array<{ message?: string }>)?.[0]?.message ??
+        (e?.message as string) ??
+        "Verification failed.";
       setError(msg);
     } finally {
-      setEmailLoading(false);
+      setLoading(false);
     }
   }
 
@@ -111,20 +97,17 @@ export default function SignUpScreen() {
     setGoogleLoading(true);
     setError(null);
     try {
-      const { createdSessionId, setActive: ssoSetActive } = await withTimeout(
-        startSSOFlow({
-          strategy: "oauth_google",
-          redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
-        }),
-        30000
-      );
+      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
+      });
       if (createdSessionId && ssoSetActive) {
-        await withTimeout(ssoSetActive({ session: createdSessionId }), 10000);
+        await ssoSetActive({ session: createdSessionId });
         router.replace("/");
       }
-    } catch (err: any) {
-      const msg = err?.message ?? "Google sign-in failed. Please try again.";
-      setError(msg);
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      setError((e?.message as string) ?? "Google sign-up failed.");
     } finally {
       setGoogleLoading(false);
     }
@@ -157,11 +140,11 @@ export default function SignUpScreen() {
             <TouchableOpacity
               style={[s.primaryBtn, !verifyCode && { opacity: 0.5 }]}
               onPress={handleVerify}
-              disabled={emailLoading || !verifyCode}
+              disabled={loading || !verifyCode}
               activeOpacity={0.85}
             >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-                {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & get started</Text>}
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
@@ -194,7 +177,7 @@ export default function SignUpScreen() {
           <TouchableOpacity
             style={s.googleBtn}
             onPress={handleGoogle}
-            disabled={emailLoading || googleLoading}
+            disabled={loading || googleLoading}
             activeOpacity={0.85}
           >
             {googleLoading
@@ -234,17 +217,15 @@ export default function SignUpScreen() {
           {error && <Text style={s.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[s.primaryBtn, (!clerkLoaded || !email || !password) && { opacity: 0.5 }]}
-            onPress={handleEmailSignUp}
-            disabled={!clerkLoaded || emailLoading || googleLoading || !email || !password}
+            style={[s.primaryBtn, (!isLoaded || !email || !password) && { opacity: 0.5 }]}
+            onPress={handleSignUp}
+            disabled={!isLoaded || loading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {!clerkLoaded
+              {(!isLoaded || loading)
                 ? <ActivityIndicator color="#fff" />
-                : emailLoading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.btnText}>Create account</Text>
+                : <Text style={s.btnText}>Create account</Text>
               }
             </LinearGradient>
           </TouchableOpacity>
@@ -262,7 +243,7 @@ export default function SignUpScreen() {
 
           <View style={s.footer}>
             <Text style={s.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign-in" as any)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-in" as never)} activeOpacity={0.7}>
               <Text style={s.footerLink}>Sign in</Text>
             </TouchableOpacity>
           </View>

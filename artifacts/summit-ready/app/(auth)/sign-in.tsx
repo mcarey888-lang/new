@@ -21,27 +21,17 @@ import { T } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-/** Rejects after `ms` milliseconds with a user-facing timeout message. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), ms)
-    ),
-  ]);
-}
-
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signIn, setActive, isLoaded: clerkLoaded } = useSignIn() as any;
+  const { isLoaded, signIn, setActive } = useSignIn() as any;
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [emailLoading, setEmailLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [needsMFA, setNeedsMFA] = useState(false);
 
@@ -51,66 +41,64 @@ export default function SignInScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
-  async function handleEmailSignIn() {
-    if (!clerkLoaded || typeof signIn?.create !== "function") {
-      setError("Authentication service is still loading — please wait a moment.");
+  async function handleSignIn() {
+    if (!isLoaded || !signIn) {
+      setError("Still loading — please wait a moment.");
       return;
     }
-    setEmailLoading(true);
+    setLoading(true);
     setError(null);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attempt: any = await withTimeout(
-        signIn.create({ identifier: email, password }),
-        15000
-      );
-      const status = attempt?.status ?? signIn.status;
-
-      if (status === "complete") {
-        const sessionId = attempt?.createdSessionId ?? signIn.createdSessionId;
-        await withTimeout(setActive({ session: sessionId }), 10000);
+      const result = await signIn.create({ identifier: email, password });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
         router.replace("/");
-      } else if (status === "needs_second_factor") {
+      } else if (result.status === "needs_second_factor") {
         await signIn.prepareSecondFactor({ strategy: "email_code" });
         setNeedsMFA(true);
       } else {
-        setError("Sign-in failed. Please check your email and password.");
+        setError(`Sign-in not complete (status: ${result.status})`);
       }
-    } catch (err: any) {
-      const msg =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        err?.message ??
-        "Sign-in failed. Please try again.";
-      setError(msg);
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const clerkMsg =
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.longMessage ??
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.message;
+      const fallback = (e?.message as string) ?? JSON.stringify(err);
+      setError(clerkMsg ?? fallback ?? "Sign-in failed — please try again.");
     } finally {
-      setEmailLoading(false);
+      setLoading(false);
     }
   }
 
   async function handleVerify() {
-    if (!signIn) return;
-    setEmailLoading(true);
+    if (!isLoaded || !signIn) return;
+    setLoading(true);
     setError(null);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attempt: any = await withTimeout(
-        signIn.attemptSecondFactor({ strategy: "email_code", code: verifyCode }),
-        15000
-      );
-      const status = attempt?.status ?? signIn.status;
-      if (status === "complete") {
-        const sessionId = attempt?.createdSessionId ?? signIn.createdSessionId;
-        await withTimeout(setActive({ session: sessionId }), 10000);
+      const result = await signIn.attemptSecondFactor({
+        strategy: "email_code",
+        code: verifyCode,
+      });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
         router.replace("/");
       } else {
-        setError("Verification failed. Please try again.");
+        setError("Verification failed — please try again.");
       }
-    } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Verification failed.";
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const msg =
+        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
+          ?.longMessage ??
+        (e?.errors as Array<{ message?: string }>)?.[0]?.message ??
+        (e?.message as string) ??
+        "Verification failed.";
       setError(msg);
     } finally {
-      setEmailLoading(false);
+      setLoading(false);
     }
   }
 
@@ -118,20 +106,17 @@ export default function SignInScreen() {
     setGoogleLoading(true);
     setError(null);
     try {
-      const { createdSessionId, setActive: ssoSetActive } = await withTimeout(
-        startSSOFlow({
-          strategy: "oauth_google",
-          redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
-        }),
-        30000
-      );
+      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
+      });
       if (createdSessionId && ssoSetActive) {
-        await withTimeout(ssoSetActive({ session: createdSessionId }), 10000);
+        await ssoSetActive({ session: createdSessionId });
         router.replace("/");
       }
-    } catch (err: any) {
-      const msg = err?.message ?? "Google sign-in failed. Please try again.";
-      setError(msg);
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      setError((e?.message as string) ?? "Google sign-in failed.");
     } finally {
       setGoogleLoading(false);
     }
@@ -158,15 +143,12 @@ export default function SignInScreen() {
               autoFocus
             />
             {error && <Text style={s.error}>{error}</Text>}
-            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={emailLoading} activeOpacity={0.85}>
+            <TouchableOpacity style={s.primaryBtn} onPress={handleVerify} disabled={loading} activeOpacity={0.85}>
               <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-                {emailLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })}
-              style={s.link}
-            >
+            <TouchableOpacity onPress={() => signIn?.prepareSecondFactor({ strategy: "email_code" })} style={s.link}>
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -193,7 +175,7 @@ export default function SignInScreen() {
           <TouchableOpacity
             style={s.googleBtn}
             onPress={handleGoogle}
-            disabled={emailLoading || googleLoading}
+            disabled={loading || googleLoading}
             activeOpacity={0.85}
           >
             {googleLoading
@@ -233,23 +215,21 @@ export default function SignInScreen() {
           {error && <Text style={s.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[s.primaryBtn, (!clerkLoaded || !email || !password) && { opacity: 0.5 }]}
-            onPress={handleEmailSignIn}
-            disabled={!clerkLoaded || emailLoading || googleLoading || !email || !password}
+            style={[s.primaryBtn, (!isLoaded || !email || !password) && { opacity: 0.5 }]}
+            onPress={handleSignIn}
+            disabled={!isLoaded || loading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {!clerkLoaded
+              {(!isLoaded || loading)
                 ? <ActivityIndicator color="#fff" />
-                : emailLoading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.btnText}>Sign in</Text>
+                : <Text style={s.btnText}>Sign in</Text>
               }
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push("/(auth)/forgot-password" as any)}
+            onPress={() => router.push("/(auth)/forgot-password" as never)}
             style={s.forgotBtn}
             activeOpacity={0.7}
           >
@@ -258,7 +238,7 @@ export default function SignInScreen() {
 
           <View style={s.footer}>
             <Text style={s.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up" as any)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up" as never)} activeOpacity={0.7}>
               <Text style={s.footerLink}>Create one</Text>
             </TouchableOpacity>
           </View>
