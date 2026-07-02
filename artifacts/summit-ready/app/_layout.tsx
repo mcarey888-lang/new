@@ -10,7 +10,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { T } from "@/constants/theme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -59,36 +61,75 @@ function AuthBridge() {
 }
 
 /**
- * Renders children once Clerk's auth state is ready, OR after a 5-second
+ * Renders children once Clerk's auth state is ready, OR after a 30-second
  * timeout — whichever comes first.
  *
- * This prevents a permanent blank screen when the device has a stale/expired
- * session token: Clerk tries to validate it against its API and can hang
- * indefinitely. After the timeout the app renders normally — the auth screens
- * show the sign-in form immediately so the user can re-authenticate.
+ * Shows a branded loading screen while waiting so the user never sees a blank
+ * screen. The 30-second window covers transient server restarts (the Clerk
+ * proxy at summitready.uk/api/__clerk may be briefly unavailable while the
+ * server restarts; Clerk retries and usually reconnects within 5–10 s).
  *
  * When the timeout fires we also clear the Clerk token cache so the *next*
  * launch starts fresh (no stale token to validate → Clerk loads in < 1 s).
+ *
+ * The sign-in / sign-up screens independently guard their submit buttons with
+ * !isLoaded so there is no race between this timeout and the auth forms.
  */
 function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
   const { isLoaded } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
+  const [slowConnection, setSlowConnection] = useState(false);
 
   useEffect(() => {
-    if (isLoaded) return;
-    const t = setTimeout(async () => {
+    if (isLoaded) {
+      setSlowConnection(false);
+      return;
+    }
+    // After 8 s without a connection, surface the "still connecting" label.
+    const slowTimer = setTimeout(() => setSlowConnection(true), 8000);
+    // After 30 s give up waiting and show the auth screens anyway.
+    const hardTimer = setTimeout(async () => {
       try {
-        // Clear stale token so the next app launch initialises cleanly.
         await clerkTokenCache.clearAll();
       } catch {}
       setTimedOut(true);
-    }, 5000);
-    return () => clearTimeout(t);
+    }, 30000);
+    return () => {
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimer);
+    };
   }, [isLoaded]);
 
-  if (!isLoaded && !timedOut) return null;
+  if (!isLoaded && !timedOut) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={ls.container}>
+        <Image
+          source={require("@/assets/images/logo.gif")}
+          style={ls.logo}
+          resizeMode="contain"
+        />
+        <ActivityIndicator color={T.green} size="large" style={ls.spinner} />
+        {slowConnection && (
+          <Text style={ls.slowText}>Still connecting…</Text>
+        )}
+      </LinearGradient>
+    );
+  }
+
   return <>{children}</>;
 }
+
+const ls = StyleSheet.create({
+  container: { flex: 1, alignItems: "center", justifyContent: "center" },
+  logo: { width: 220, height: 88 },
+  spinner: { marginTop: 32 },
+  slowText: {
+    marginTop: 16,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+  },
+});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 // In production the proxy routes all Clerk API calls through summitready.uk/api/__clerk
