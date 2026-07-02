@@ -55,7 +55,7 @@ export default function SignInScreen() {
   }, [isLoaded]);
 
   async function handleSignIn() {
-    if (!isLoaded || !signIn) return;
+    if (!signIn) return;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setError("Please enter a valid email address.");
@@ -64,15 +64,15 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.replace("/(tabs)/dashboard" as any);
-      } else if (result.status === "needs_second_factor") {
+      await signIn.create({ identifier: email, password });
+      if (signIn.status === "complete") {
+        const { error } = await signIn.finalize();
+        if (!error) router.replace("/(tabs)/dashboard" as any);
+      } else if (signIn.status === "needs_second_factor") {
         await signIn.prepareSecondFactor({ strategy: "email_code" });
         setNeedsMFA(true);
       } else {
-        setError(`Sign-in not complete (status: ${result.status})`);
+        setError("Sign-in failed — please try again.");
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
@@ -89,17 +89,17 @@ export default function SignInScreen() {
   }
 
   async function handleVerify() {
-    if (!isLoaded || !signIn) return;
+    if (!signIn) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await signIn.attemptSecondFactor({
+      await signIn.attemptSecondFactor({
         strategy: "email_code",
         code: verifyCode,
       });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.replace("/(tabs)/dashboard" as any);
+      if (signIn.status === "complete") {
+        const { error } = await signIn.finalize();
+        if (!error) router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Verification failed — please try again.");
       }

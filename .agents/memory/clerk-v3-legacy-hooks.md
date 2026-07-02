@@ -32,7 +32,7 @@ refresh token expire. Clerk hangs trying to validate the stale SecureStore entry
 `isLoaded` stays `false` permanently, regardless of network connectivity.
 
 **Correct fix**:
-- Custom `clerkTokenCache` (`app/utils/clerkTokenCache.ts`) tracks all SecureStore
+- Custom `clerkTokenCache` (`utils/clerkTokenCache.ts`) tracks all SecureStore
   keys Clerk uses and exposes `clearAll()`. On `ClerkLoadedOrTimeout` timeout,
   call `clearAll()` — this clears the stale token for the NEXT launch.
 - Do NOT remount `<ClerkProvider>` — remounting destroys the Expo Router Stack

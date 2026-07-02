@@ -58,11 +58,12 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attempt: any = await (signIn as any).attemptFirstFactor({ strategy: "reset_password_email_code", code, password: newPassword });
-      if (attempt?.status === "complete") {
-        await setActive({ session: attempt.createdSessionId });
-        router.replace("/(tabs)/dashboard" as any);
+      await (signIn as any).attemptFirstFactor({ strategy: "reset_password_email_code", code, password: newPassword });
+      if ((signIn as any).status === "complete") {
+        const { error } = await (signIn as any).finalize();
+        if (!error) router.replace("/(tabs)/dashboard" as any);
+      } else {
+        setError("Reset failed. Check your code and try again.");
       }
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Reset failed. Check your code and try again.";

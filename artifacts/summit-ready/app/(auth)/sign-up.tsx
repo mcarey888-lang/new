@@ -83,16 +83,16 @@ export default function SignUpScreen() {
   }
 
   async function handleVerify() {
-    if (!isLoaded || !signUp) return;
+    if (!signUp) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.replace("/");
+      await signUp.attemptEmailAddressVerification({ code: verifyCode });
+      if (signUp.status === "complete") {
+        const { error } = await signUp.finalize();
+        if (!error) router.replace("/");
       } else {
-        setError(`Verification not complete (status: ${result.status})`);
+        setError("Verification failed — please try again.");
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
