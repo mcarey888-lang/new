@@ -215,13 +215,13 @@ export default function SignInScreen() {
           {error && <Text style={s.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[s.primaryBtn, (!isLoaded || !email || !password) && { opacity: 0.5 }]}
+            style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
             onPress={handleSignIn}
-            disabled={!isLoaded || loading || googleLoading || !email || !password}
+            disabled={loading || googleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
-              {(!isLoaded || loading)
+              {loading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={s.btnText}>Sign in</Text>
               }
