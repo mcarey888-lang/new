@@ -122,7 +122,7 @@ export default function SignInScreen() {
     try {
       const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
         strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri({ scheme: "summit-ready" }),
+        redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });

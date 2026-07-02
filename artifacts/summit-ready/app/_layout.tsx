@@ -21,7 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
-import { clerkTokenCache } from "@/app/utils/clerkTokenCache";
+import { clerkTokenCache } from "@/utils/clerkTokenCache";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 SplashScreen.preventAutoHideAsync();

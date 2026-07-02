@@ -19,7 +19,8 @@ import { T } from "@/constants/theme";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn, setActive } = useSignIn();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { signIn, setActive } = useSignIn() as any;
 
   const [step, setStep] = useState<"email" | "reset">("email");
   const [email, setEmail] = useState("");
