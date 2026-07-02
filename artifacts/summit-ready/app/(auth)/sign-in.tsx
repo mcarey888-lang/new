@@ -36,6 +36,7 @@ export default function SignInScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [needsMFA, setNeedsMFA] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -43,11 +44,17 @@ export default function SignInScreen() {
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
 
-  async function handleSignIn() {
-    if (!isLoaded || !signIn) {
-      setError("Still loading — please wait a moment.");
+  useEffect(() => {
+    if (isLoaded) {
+      setClerkTimedOut(false);
       return;
     }
+    const t = setTimeout(() => setClerkTimedOut(true), 20000);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
+  async function handleSignIn() {
+    if (!isLoaded || !signIn) return;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setError("Please enter a valid email address.");
@@ -233,12 +240,25 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </View>
 
+          {!isLoaded && !clerkTimedOut && (
+            <View style={s.connectingRow}>
+              <ActivityIndicator size="small" color={T.textMuted} style={{ marginRight: 8 }} />
+              <Text style={s.connectingText}>Connecting to auth server…</Text>
+            </View>
+          )}
+
+          {clerkTimedOut && (
+            <Text style={s.error}>
+              Can't reach the authentication server. Check your internet connection and restart the app.
+            </Text>
+          )}
+
           {error && <Text style={s.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
+            style={[s.primaryBtn, (!email || !password || !isLoaded) && { opacity: 0.5 }]}
             onPress={handleSignIn}
-            disabled={loading || googleLoading || !email || !password}
+            disabled={loading || googleLoading || !email || !password || !isLoaded}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
@@ -289,6 +309,8 @@ const s = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, fontFamily: "Inter_400Regular", color: T.text,
   },
+  connectingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 4 },
+  connectingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   error: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.red, textAlign: "center" },
   inputRow: { position: "relative" },
   inputWithToggle: { paddingRight: 46 },
