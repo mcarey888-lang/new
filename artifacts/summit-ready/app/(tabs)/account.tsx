@@ -189,14 +189,19 @@ export default function AccountScreen() {
   }
 
   async function handleDeleteAccount() {
-    Alert.alert(
-      "Delete account",
-      "This will permanently delete your Clerk account and all local data. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete account", style: "destructive", onPress: doDeleteAccount },
-      ]
-    );
+    if (Platform.OS === "web") {
+      if (!window.confirm("Permanently delete your account and all data? This cannot be undone.")) return;
+      doDeleteAccount();
+    } else {
+      Alert.alert(
+        "Delete account",
+        "This will permanently delete your account and all local data. This cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete account", style: "destructive", onPress: doDeleteAccount },
+        ]
+      );
+    }
   }
 
   async function doDeleteAccount() {
@@ -211,14 +216,18 @@ export default function AccountScreen() {
     } catch {}
     try { await Purchases.logOut(); } catch {}
     try {
-      const token = await getToken();
-      const res = await fetch(`https://${domain}/api/user/me`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? `Server error ${res.status}`);
+      if (Platform.OS === "web") {
+        await user?.delete();
+      } else {
+        const token = await getToken();
+        const res = await fetch(`https://${domain}/api/user/me`, {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(body.error ?? `Server error ${res.status}`);
+        }
       }
     } catch (err: unknown) {
       setDeletingAccount(false);
