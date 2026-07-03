@@ -17,6 +17,7 @@ import demoLoadRouter from "./demo-load";
 import mountainVerificationRouter from "./mountain-verification";
 import hillSessionRouter from "./hill-session";
 import hillVerificationAdminRouter from "./hill-verification-admin";
+import userRouter from "./user";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -45,6 +46,9 @@ router.use(trackedRoutesRouter);
 // Hill sessions and tracking data belong to a user — require auth.
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
 router.use("/hill-session", requireAuth(), hillSessionRouter);
+
+// User account management — requires auth.
+router.use(requireAuth(), userRouter);
 
 // Mountain verification and admin pages are called from the landing site which
 // has no Clerk session. They are protected by rate limiting + CORS + a

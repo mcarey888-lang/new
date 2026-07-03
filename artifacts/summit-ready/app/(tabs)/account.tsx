@@ -76,7 +76,7 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
@@ -201,8 +201,8 @@ export default function AccountScreen() {
 
   async function doDeleteAccount() {
     setDeletingAccount(true);
+    const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
       await Promise.allSettled(
         exploreHikes.map(h =>
           fetch(`https://${domain}/api/tracked-routes/${h.id}`, { method: "DELETE" })
@@ -211,9 +211,22 @@ export default function AccountScreen() {
     } catch {}
     try { await Purchases.logOut(); } catch {}
     try {
-      await user?.delete();
-    } catch {}
-    await AsyncStorage.clear();
+      const token = await getToken();
+      const res = await fetch(`https://${domain}/api/user/me`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Server error ${res.status}`);
+      }
+    } catch (err: unknown) {
+      setDeletingAccount(false);
+      const msg = err instanceof Error ? err.message : "Could not delete account. Please try signing out and back in, then try again.";
+      Alert.alert("Delete failed", msg);
+      return;
+    }
+    try { await AsyncStorage.clear(); } catch {}
     setDeletingAccount(false);
     router.replace("/");
   }
