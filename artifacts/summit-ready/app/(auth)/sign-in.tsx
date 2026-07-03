@@ -114,17 +114,20 @@ export default function SignInScreen() {
     setGoogleLoading(true);
     setError(null);
     try {
-      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
         strategy: "oauth_google",
         redirectUrl: AuthSession.makeRedirectUri(),
       });
-      if (createdSessionId && ssoSetActive) {
-        await ssoSetActive({ session: createdSessionId });
+      const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+      if (sessionId && ssoSetActive) {
+        await ssoSetActive({ session: sessionId });
         router.replace("/(tabs)/dashboard" as any);
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
-      setError((e?.message as string) ?? "Google sign-in failed.");
+      const clerkMsg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+        ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message;
+      setError(clerkMsg ?? (e?.message as string) ?? "Google sign-in failed.");
     } finally {
       setGoogleLoading(false);
     }

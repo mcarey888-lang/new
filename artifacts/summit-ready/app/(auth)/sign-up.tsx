@@ -86,7 +86,7 @@ export default function SignUpScreen() {
       await signUp.verifications.verifyEmailCode({ code: verifyCode });
       if (signUp.status === "complete") {
         const { error } = await signUp.finalize();
-        if (!error) router.replace("/");
+        if (!error) router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Verification failed — please try again.");
       }
@@ -108,17 +108,20 @@ export default function SignUpScreen() {
     setGoogleLoading(true);
     setError(null);
     try {
-      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
         strategy: "oauth_google",
         redirectUrl: AuthSession.makeRedirectUri(),
       });
-      if (createdSessionId && ssoSetActive) {
-        await ssoSetActive({ session: createdSessionId });
-        router.replace("/");
+      const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+      if (sessionId && ssoSetActive) {
+        await ssoSetActive({ session: sessionId });
+        router.replace("/(tabs)/dashboard" as any);
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
-      setError((e?.message as string) ?? "Google sign-up failed.");
+      const clerkMsg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+        ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message;
+      setError(clerkMsg ?? (e?.message as string) ?? "Google sign-up failed.");
     } finally {
       setGoogleLoading(false);
     }

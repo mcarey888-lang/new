@@ -8,7 +8,7 @@ export default function AuthLayout() {
   // Never block rendering on isLoaded — doing so causes an indefinite
   // green spinner whenever Clerk initialises slowly (e.g. stale token).
   if (isLoaded && isSignedIn) {
-    return <Redirect href="/" />;
+    return <Redirect href="/(tabs)/dashboard" />;
   }
 
   return (
