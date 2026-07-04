@@ -131,12 +131,34 @@ const [emailLoading, setEmailLoading] = useState(false);
 // wrap every async auth op: setEmailLoading(true) → try/catch/finally setEmailLoading(false)
 ```
 
-## Google SSO — 30-second timeout
+## Google SSO — redirect URL + 30-second timeout
+
+**Critical**: use `Linking.createURL('/')` from `expo-linking` as the `redirectUrl`, NOT
+`AuthSession.makeRedirectUri()`. In production Expo Router Android builds,
+`makeRedirectUri()` returns a mismatched URL that causes `startSSOFlow` to silently
+return `createdSessionId: null`, leaving the user on the sign-in screen.
+
+`Linking.createURL('/')` correctly resolves the app's deep-link scheme in all
+contexts (Expo Go, dev client, standalone production).
+
+If sign-up.tsx already imports `Linking` from `react-native`, alias expo-linking:
+`import * as ExpoLinking from "expo-linking"` and use `ExpoLinking.createURL('/')`.
 
 ```typescript
+import * as Linking from "expo-linking"; // or ExpoLinking alias if Linking already in scope
+
 const timeout = setTimeout(() => { setGoogleLoading(false); setError("Timed out."); }, 30000);
 try {
-  const { createdSessionId, setActive } = await startSSOFlow({ strategy: "oauth_google", ... });
-  if (createdSessionId && setActive) { await setActive({ session: createdSessionId }); router.replace("/"); }
+  const { createdSessionId, setActive, signIn: ssoSignIn } = await startSSOFlow({
+    strategy: "oauth_google",
+    redirectUrl: Linking.createURL("/"), // NOT AuthSession.makeRedirectUri()
+  });
+  const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+  if (sessionId && setActive) {
+    await setActive({ session: sessionId });
+    router.replace("/(tabs)/dashboard" as any);
+  } else if (!sessionId) {
+    setError("Google sign-in didn't complete — please try again.");
+  }
 } finally { clearTimeout(timeout); setGoogleLoading(false); }
 ```
