@@ -72,13 +72,20 @@ export default function SignInScreen() {
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
-      const clerkMsg =
-        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
-          ?.longMessage ??
-        (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]
-          ?.message;
-      const fallback = (e?.message as string) ?? JSON.stringify(err);
-      setError(clerkMsg ?? fallback ?? "Sign-in failed — please try again.");
+      const firstClerkErr = (e?.errors as Array<{ code?: string; longMessage?: string; message?: string }>)?.[0];
+      const code = firstClerkErr?.code ?? "";
+      // Strategy mismatch means the account was created with a social provider (e.g. Google)
+      if (
+        code === "strategy_for_user_invalid" ||
+        code === "form_strategy_not_permitted" ||
+        (firstClerkErr?.message ?? "").toLowerCase().includes("strategy")
+      ) {
+        setError("This account uses Google sign-in. Tap 'Continue with Google' above.");
+      } else {
+        const clerkMsg = firstClerkErr?.longMessage ?? firstClerkErr?.message;
+        const fallback = (e?.message as string) ?? "Sign-in failed — please try again.";
+        setError(clerkMsg ?? fallback);
+      }
     } finally {
       setLoading(false);
     }
