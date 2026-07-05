@@ -1,5 +1,5 @@
 import { useSignIn, useSSO } from "@clerk/expo";
-import * as Linking from "expo-linking";
+import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -123,7 +123,7 @@ export default function SignInScreen() {
     try {
       const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
         strategy: "oauth_google",
-        redirectUrl: Linking.createURL("/"),
+        redirectUrl: AuthSession.makeRedirectUri(),
       });
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
       if (sessionId && ssoSetActive) {
