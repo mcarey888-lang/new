@@ -236,6 +236,7 @@ export default function AccountScreen() {
       return;
     }
     try { await AsyncStorage.clear(); } catch {}
+    try { await signOut(); } catch {}
     setDeletingAccount(false);
     router.replace("/");
   }

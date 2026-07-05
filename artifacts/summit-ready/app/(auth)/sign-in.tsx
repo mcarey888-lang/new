@@ -92,7 +92,10 @@ export default function SignInScreen() {
   }
 
   async function handleVerify() {
-    if (!signIn) return;
+    if (!signIn) {
+      setError("Authentication is not ready yet — please try again in a moment.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -168,7 +171,21 @@ export default function SignInScreen() {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify</Text>}
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => signIn?.mfa.sendEmailCode()} style={s.link}>
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  await signIn?.mfa.sendEmailCode();
+                } catch (err: unknown) {
+                  const e = err as Record<string, unknown>;
+                  const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+                    ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message
+                    ?? (e?.message as string)
+                    ?? "Could not resend code — please try again.";
+                  setError(msg);
+                }
+              }}
+              style={s.link}
+            >
               <Text style={s.linkText}>Resend code</Text>
             </TouchableOpacity>
           </ScrollView>

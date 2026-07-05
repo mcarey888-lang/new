@@ -54,6 +54,10 @@ export default function SignUpScreen() {
       setError("Please enter a valid email address.");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -164,7 +168,18 @@ export default function SignUpScreen() {
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => signUp?.verifications.sendEmailCode()}
+              onPress={async () => {
+                try {
+                  await signUp?.verifications.sendEmailCode();
+                } catch (err: unknown) {
+                  const e = err as Record<string, unknown>;
+                  const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+                    ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message
+                    ?? (e?.message as string)
+                    ?? "Could not resend code — please try again.";
+                  setError(msg);
+                }
+              }}
               style={s.link}
             >
               <Text style={s.linkText}>Resend code</Text>

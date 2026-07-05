@@ -20,7 +20,7 @@ import { T } from "@/constants/theme";
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { signIn, setActive } = useSignIn() as any;
+  const { signIn } = useSignIn() as any;
 
   const [step, setStep] = useState<"email" | "reset">("email");
   const [email, setEmail] = useState("");
@@ -36,11 +36,18 @@ export default function ForgotPasswordScreen() {
     if (!email) { setError("Please enter your email address."); return; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) { setError("Please enter a valid email address."); return; }
+    if (!signIn) {
+      setError("Authentication is not ready yet — please try again in a moment.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (signIn as any).create({ strategy: "reset_password_email_code", identifier: email });
+      const { error: sendErr } = await (signIn as any).sendResetPasswordEmailCode({ emailAddress: email });
+      if (sendErr) {
+        setError(sendErr.message ?? "Could not send reset email. Please try again.");
+        return;
+      }
       setStep("reset");
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Could not send reset email. Please try again.";
@@ -55,15 +62,28 @@ export default function ForgotPasswordScreen() {
     if (!newPassword) { setError("Please enter a new password."); return; }
     if (newPassword !== confirmPassword) { setError("Passwords don't match."); return; }
     if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!signIn) {
+      setError("Authentication is not ready yet — please try again in a moment.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).attemptFirstFactor({ strategy: "reset_password_email_code", code, password: newPassword });
-      if ((signIn as any).status === "complete") {
-        const { error } = await (signIn as any).finalize();
-        if (!error) router.replace("/(tabs)/dashboard" as any);
+      const { error: verifyErr } = await (signIn as any).resetPasswordEmailCode.verifyCode({ code });
+      if (verifyErr) {
+        setError(verifyErr.message ?? "Invalid code — please check and try again.");
+        return;
+      }
+      const { error: submitErr } = await (signIn as any).resetPasswordEmailCode.submitPassword({ newPassword });
+      if (submitErr) {
+        setError(submitErr.message ?? "Could not set new password — please try again.");
+        return;
+      }
+      const { error: finalizeErr } = await (signIn as any).finalize();
+      if (!finalizeErr) {
+        router.replace("/(tabs)/dashboard" as any);
       } else {
-        setError("Reset failed. Check your code and try again.");
+        setError("Password reset — please sign in with your new password.");
       }
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Reset failed. Check your code and try again.";
