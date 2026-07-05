@@ -43,11 +43,7 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     try {
-      const { error: sendErr } = await (signIn as any).sendResetPasswordEmailCode({ emailAddress: email });
-      if (sendErr) {
-        setError(sendErr.message ?? "Could not send reset email. Please try again.");
-        return;
-      }
+      await (signIn as any).create({ strategy: "reset_password_email_code", identifier: email });
       setStep("reset");
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Could not send reset email. Please try again.";
