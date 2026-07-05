@@ -65,12 +65,8 @@ function AuthBridge() {
  * timeout — whichever comes first.
  *
  * Shows a branded loading screen while waiting so the user never sees a blank
- * screen. The 30-second window covers transient server restarts (the Clerk
- * proxy at summitready.uk/api/__clerk may be briefly unavailable while the
- * server restarts; Clerk retries and usually reconnects within 5–10 s).
- *
- * When the timeout fires we also clear the Clerk token cache so the *next*
- * launch starts fresh (no stale token to validate → Clerk loads in < 1 s).
+ * screen. When the timeout fires we also clear the Clerk token cache so the
+ * next launch starts fresh (no stale token to validate → Clerk loads in < 1 s).
  *
  * The sign-in / sign-up screens independently guard their submit buttons with
  * !isLoaded so there is no race between this timeout and the auth forms.
@@ -132,9 +128,6 @@ const ls = StyleSheet.create({
 });
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-// In production the proxy routes all Clerk API calls through summitready.uk/api/__clerk
-// so Clerk never needs to reach clerk.summitready.uk directly (no DNS record needed).
-const clerkProxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
   return (
@@ -181,7 +174,7 @@ export default function RootLayout() {
   }, [ready]);
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache} proxyUrl={clerkProxyUrl}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
       <AuthBridge />
       <ClerkLoadedOrTimeout>
         <SafeAreaProvider>
