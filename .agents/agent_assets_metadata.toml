@@ -167,3 +167,33 @@ id = "0FFO-kzI3ZYXar1VmAxQU"
 uri = "file://mountain-lookup-evaluation-2026-06-09.md"
 type = "text"
 title = "Mountain Lookup Evaluation Report — 9 June 2026"
+
+[[outputs]]
+id = "1Xp5J4DslMKew7MIl-cyJ"
+uri = "file://artifacts/summit-ready/assets/screenshots/01-dashboard.png"
+type = "image"
+title = "1 — Dashboard & Readiness Score"
+
+[[outputs]]
+id = "kV4dneRDECMkN5Xi2Hwth"
+uri = "file://artifacts/summit-ready/assets/screenshots/02-hills.png"
+type = "image"
+title = "2 — Hill Finder"
+
+[[outputs]]
+id = "12MTtpKx4ZJhZe1IB7IxX"
+uri = "file://artifacts/summit-ready/assets/screenshots/03-plan.png"
+type = "image"
+title = "3 — Training Plan"
+
+[[outputs]]
+id = "4ib0crkstwstpxI_7Z6Dd"
+uri = "file://artifacts/summit-ready/assets/screenshots/04-tracking.png"
+type = "image"
+title = "4 — Hike Tracking"
+
+[[outputs]]
+id = "aDFTZ_a4MXok2BhFmHari"
+uri = "file://artifacts/summit-ready/assets/screenshots/05-goal-setup.png"
+type = "image"
+title = "5 — Goal Setup"

@@ -13,6 +13,7 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
     "@replit/revenuecat-sdk": "^4.2.0"
   }
 }
