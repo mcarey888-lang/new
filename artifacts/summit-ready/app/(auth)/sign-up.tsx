@@ -117,12 +117,11 @@ export default function SignUpScreen() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
-      console.log("SSO RESULT:", { sessionId, hasSetActive: !!ssoSetActive, ssoSignInStatus: (ssoSignIn as any)?.status, ssoSignInErrors: (ssoSignIn as any)?.errors });
       if (sessionId && ssoSetActive) {
         await ssoSetActive({ session: sessionId });
         router.replace("/(tabs)/dashboard" as any);
       } else {
-        setError("Google sign-in didn't complete — please try again.");
+        setError(`Google sign-in didn't complete. [debug: sessionId=${sessionId ?? "none"}, hasSetActive=${!!ssoSetActive}, status=${(ssoSignIn as any)?.status ?? "n/a"}]`);
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
