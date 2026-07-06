@@ -129,10 +129,11 @@ export default function SignInScreen() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+      console.log("SSO RESULT:", { sessionId, hasSetActive: !!ssoSetActive, ssoSignInStatus: (ssoSignIn as any)?.status, ssoSignInErrors: (ssoSignIn as any)?.errors });
       if (sessionId && ssoSetActive) {
         await ssoSetActive({ session: sessionId });
         router.replace("/(tabs)/dashboard" as any);
-      } else if (!sessionId) {
+      } else {
         setError("Google sign-in didn't complete — please try again.");
       }
     } catch (err: unknown) {
