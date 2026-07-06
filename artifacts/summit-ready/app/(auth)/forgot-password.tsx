@@ -70,7 +70,7 @@ export default function ForgotPasswordScreen() {
         setError(verifyErr.message ?? "Invalid code — please check and try again.");
         return;
       }
-      const { error: submitErr } = await (signIn as any).resetPasswordEmailCode.submitPassword({ newPassword });
+      const { error: submitErr } = await (signIn as any).resetPasswordEmailCode.submitPassword({ password: newPassword });
       if (submitErr) {
         setError(submitErr.message ?? "Could not set new password — please try again.");
         return;
