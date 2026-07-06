@@ -197,3 +197,33 @@ id = "aDFTZ_a4MXok2BhFmHari"
 uri = "file://artifacts/summit-ready/assets/screenshots/05-goal-setup.png"
 type = "image"
 title = "5 — Goal Setup"
+
+[[outputs]]
+id = "5g3GwHxy6HoxugrPYeXP5"
+uri = "file://artifacts/summit-ready/assets/screenshots/01-prepare.png"
+type = "image"
+title = "1 — Prepare For Any Mountain"
+
+[[outputs]]
+id = "Wpt5bFcUYCqACeKmWjzR5"
+uri = "file://artifacts/summit-ready/assets/screenshots/02-plan.png"
+type = "image"
+title = "2 — Get Your Personalised Training Plan"
+
+[[outputs]]
+id = "vyxV_oJMqPQJ-9eaR55R-"
+uri = "file://artifacts/summit-ready/assets/screenshots/03-hills.png"
+type = "image"
+title = "3 — Train Using Local Hills"
+
+[[outputs]]
+id = "oqTYFRZPs21UobuzMvjHQ"
+uri = "file://artifacts/summit-ready/assets/screenshots/04-progress.png"
+type = "image"
+title = "4 — Track Your Progress"
+
+[[outputs]]
+id = "nW7G7fEmZrYLo0pFoUSzh"
+uri = "file://artifacts/summit-ready/assets/screenshots/05-adventure.png"
+type = "image"
+title = "5 — Built For Your Next Adventure"

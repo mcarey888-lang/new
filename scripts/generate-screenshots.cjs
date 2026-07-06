@@ -1,21 +1,30 @@
 #!/usr/bin/env node
+/**
+ * SummitReady App Store screenshots — 1290 × 2796 px (iPhone 6.7")
+ * Style: large marketing headline (white + green), iPhone mockup, mountain backgrounds
+ */
 const { createCanvas } = require("@napi-rs/canvas");
 const fs = require("fs");
 const path = require("path");
 
-const W = 1320;
-const H = 2868;
-
-const T = {
-  bg: "#060D1B", card: "#0F1D30", surface: "#142236",
-  green: "#3ECF75", orange: "#FF9030", blue: "#4A9FF5",
-  purple: "#9B7FD4", red: "#FF4444",
-  text: "#F0F8FF", textMuted: "#7A9BB5", textDim: "#4A6580",
-  border: "rgba(255,255,255,0.07)",
-};
-
+const W = 1290;
+const H = 2796;
 const OUT = path.join(__dirname, "../artifacts/summit-ready/assets/screenshots");
 fs.mkdirSync(OUT, { recursive: true });
+
+// Brand colours
+const GREEN  = "#3ECF75";
+const WHITE  = "#FFFFFF";
+const DARK   = "#060D1B";
+const CARD   = "#0F1D30";
+const MUTED  = "#7A9BB5";
+const DIM    = "#4A6580";
+const ORANGE = "#FF9030";
+const BLUE   = "#4A9FF5";
+const PURPLE = "#9B7FD4";
+const BORDER = "rgba(255,255,255,0.08)";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function rr(ctx, x, y, w, h, r, fill, stroke, sw = 2) {
   r = Math.min(r, w / 2, h / 2);
@@ -26,52 +35,344 @@ function rr(ctx, x, y, w, h, r, fill, stroke, sw = 2) {
   ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
   ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (fill)   { ctx.fillStyle   = fill;  ctx.fill(); }
   if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke(); }
 }
 
-function lbl(ctx, text, x, y, color, size, align = "left", weight = "normal") {
+function txt(ctx, text, x, y, color, size, align = "left", weight = "normal") {
   ctx.textAlign = align; ctx.fillStyle = color;
   ctx.font = `${weight} ${size}px sans-serif`;
   ctx.fillText(text, x, y); ctx.textAlign = "left";
 }
 
-function drawBg(ctx) {
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#060D1B"); g.addColorStop(0.5, "#0A1628"); g.addColorStop(1, "#060E1C");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-}
-
-function drawStatusBar(ctx) {
-  ctx.fillStyle = T.text; ctx.font = "bold 42px sans-serif"; ctx.fillText("9:41", 70, 90);
-  ctx.textAlign = "right"; ctx.fillStyle = T.textMuted; ctx.font = "36px sans-serif";
-  ctx.fillText("LTE  WiFi  100%", W - 70, 90); ctx.textAlign = "left";
-  rr(ctx, W / 2 - 80, 18, 160, 36, 18, "rgba(0,0,0,0.55)");
-}
-
-function drawHdr(ctx, line1, line2) {
-  ctx.textAlign = "center";
-  ctx.fillStyle = T.green; ctx.font = "bold 74px sans-serif"; ctx.fillText(line1, W / 2, 210);
-  if (line2) { ctx.fillStyle = T.text; ctx.font = "50px sans-serif"; ctx.fillText(line2, W / 2, 290); }
-  ctx.textAlign = "left";
-}
-
-function arcPct(ctx, cx, cy, r, pct, color, lw = 24) {
+function arcPct(ctx, cx, cy, r, pct, color, lw = 20) {
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = lw; ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = lw; ctx.stroke();
   ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
   ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.stroke();
 }
 
-function tabBar(ctx) {
-  const tb = H - 160;
-  rr(ctx, 0, tb, W, 160, 0, "rgba(6,13,27,0.96)");
-  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, tb); ctx.lineTo(W, tb); ctx.stroke();
-  ["Home", "Hills", "Plan", "Log", "Profile"].forEach((t, i) => {
-    const x = W / 5 * i + W / 10; const a = i === 0;
-    lbl(ctx, t, x, H - 44, a ? T.green : T.textDim, 30, "center", a ? "bold" : "normal");
+// Dark gradient background
+function darkBg(ctx, topColor = "#060D1B", botColor = "#040A14") {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, topColor); g.addColorStop(1, botColor);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+// Mountain silhouette (drawn with bezier curves)
+function drawMountainSilhouette(ctx, y, color = "rgba(62,207,117,0.06)") {
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, y + 400);
+  ctx.bezierCurveTo(150, y + 200, 250, y + 100, 380, y + 60);
+  ctx.bezierCurveTo(450, y + 30, 500, y, 580, y + 20);
+  ctx.bezierCurveTo(650, y + 40, 680, y + 80, 740, y + 60);
+  ctx.bezierCurveTo(800, y + 40, 840, y + 10, 900, y + 30);
+  ctx.bezierCurveTo(960, y + 50, 1000, y + 120, 1060, y + 140);
+  ctx.bezierCurveTo(1120, y + 160, 1180, y + 200, 1290, y + 350);
+  ctx.lineTo(1290, H);
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+}
+
+// SummitReady logo text
+function drawLogo(ctx, x, y, size = 52) {
+  // Mountain icon
+  const mx = x; const my = y - size * 0.8;
+  ctx.strokeStyle = GREEN; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(mx, my + size * 0.6);
+  ctx.lineTo(mx + size * 0.35, my + size * 0.2);
+  ctx.lineTo(mx + size * 0.55, my + size * 0.4);
+  ctx.lineTo(mx + size * 0.75, my);
+  ctx.lineTo(mx + size, my + size * 0.6);
+  ctx.stroke();
+  // Text
+  txt(ctx, "SUMMIT", x + size * 1.2, y - size * 0.3, WHITE, size * 0.75, "left", "bold");
+  txt(ctx, "READY", x + size * 1.2, y + size * 0.4, GREEN, size * 0.75, "left", "bold");
+}
+
+// ── iPhone frame with app screen inside ──────────────────────────────────────
+function drawIphone(ctx, cx, cy, iw, ih, drawScreen) {
+  const r = iw * 0.12;
+  const bw = iw * 0.015;
+
+  // Phone shadow
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = iw * 0.15;
+  ctx.shadowOffsetY = iw * 0.06;
+  rr(ctx, cx - iw / 2, cy - ih / 2, iw, ih, r, "#111827");
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  // Body
+  rr(ctx, cx - iw / 2, cy - ih / 2, iw, ih, r, "#111827", "rgba(255,255,255,0.14)", 3);
+
+  // Side buttons
+  const bh = ih * 0.08; const bx = cx + iw / 2 - bw;
+  rr(ctx, bx, cy - ih * 0.18, bw * 2, bh, bw, "#1a2234");
+  rr(ctx, cx - iw / 2 - bw, cy - ih * 0.24, bw * 2, bh * 0.55, bw, "#1a2234");
+  rr(ctx, cx - iw / 2 - bw, cy - ih * 0.14, bw * 2, bh * 0.55, bw, "#1a2234");
+
+  // Screen area
+  const pad = iw * 0.04;
+  const sx = cx - iw / 2 + pad; const sy = cy - ih / 2 + pad;
+  const sw = iw - pad * 2; const sh = ih - pad * 2;
+  const sr = r * 0.75;
+  rr(ctx, sx, sy, sw, sh, sr, DARK);
+
+  // Clip and draw screen content
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(sx + sr, sy);
+  ctx.lineTo(sx + sw - sr, sy); ctx.quadraticCurveTo(sx + sw, sy, sx + sw, sy + sr);
+  ctx.lineTo(sx + sw, sy + sh - sr); ctx.quadraticCurveTo(sx + sw, sy + sh, sx + sw - sr, sy + sh);
+  ctx.lineTo(sx + sr, sy + sh); ctx.quadraticCurveTo(sx, sy + sh, sx, sy + sh - sr);
+  ctx.lineTo(sx, sy + sr); ctx.quadraticCurveTo(sx, sy, sx + sr, sy);
+  ctx.closePath();
+  ctx.clip();
+
+  // Transform so drawScreen gets 0,0 → sw,sh coords
+  ctx.translate(sx, sy);
+  ctx.save(); drawScreen(ctx, sw, sh); ctx.restore();
+  ctx.restore();
+
+  // Dynamic island
+  const diw = iw * 0.28; const dih = iw * 0.04;
+  rr(ctx, cx - diw / 2, cy - ih / 2 + pad * 0.8, diw, dih, dih / 2, "#000000");
+
+  // Screen glass glare
+  const glare = ctx.createLinearGradient(sx, sy, sx + sw * 0.6, sy + sh * 0.3);
+  glare.addColorStop(0, "rgba(255,255,255,0.05)");
+  glare.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(sx + sr, sy); ctx.lineTo(sx + sw - sr, sy);
+  ctx.quadraticCurveTo(sx + sw, sy, sx + sw, sy + sr);
+  ctx.lineTo(sx + sw, sy + sh - sr); ctx.quadraticCurveTo(sx + sw, sy + sh, sx + sw - sr, sy + sh);
+  ctx.lineTo(sx + sr, sy + sh); ctx.quadraticCurveTo(sx, sy + sh, sx, sy + sh - sr);
+  ctx.lineTo(sx, sy + sr); ctx.quadraticCurveTo(sx, sy, sx + sr, sy);
+  ctx.closePath(); ctx.clip();
+  ctx.fillStyle = glare; ctx.fillRect(sx, sy, sw, sh);
+  ctx.restore();
+}
+
+// ── Screen content drawers ────────────────────────────────────────────────────
+
+function screenDashboard(ctx, sw, sh) {
+  ctx.fillStyle = DARK; ctx.fillRect(0, 0, sw, sh);
+  const g = ctx.createLinearGradient(0, 0, 0, sh);
+  g.addColorStop(0, "#060D1B"); g.addColorStop(1, "#040A14");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, sw, sh);
+
+  // Status bar
+  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
+  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
+  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
+  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
+
+  // Header
+  txt(ctx, "My Plan", sw / 2, sh * 0.09, WHITE, sw * 0.075, "center", "bold");
+
+  // Goal card
+  rr(ctx, sw * 0.04, sh * 0.11, sw * 0.92, sh * 0.12, sw * 0.04, "#0F1D30", BORDER);
+  ctx.fillStyle = GREEN; ctx.beginPath();
+  ctx.arc(sw * 0.14, sh * 0.17, sw * 0.05, 0, Math.PI * 2); ctx.fill();
+  txt(ctx, "K", sw * 0.14, sh * 0.175, DARK, sw * 0.065, "center", "bold");
+  txt(ctx, "Kilimanjaro", sw * 0.24, sh * 0.16, WHITE, sw * 0.06, "left", "bold");
+  txt(ctx, "5895m  Target: 20 Sep 2025", sw * 0.24, sh * 0.205, MUTED, sw * 0.042);
+
+  // Progress bar
+  txt(ctx, "WEEK 8 OF 20", sw * 0.04, sh * 0.26, MUTED, sw * 0.042, "left", "bold");
+  txt(ctx, "Build Endurance", sw * 0.04, sh * 0.30, WHITE, sw * 0.055, "left", "bold");
+  txt(ctx, "37%", sw * 0.88, sh * 0.30, GREEN, sw * 0.055, "right", "bold");
+  rr(ctx, sw * 0.04, sh * 0.335, sw * 0.92, sh * 0.014, sw * 0.007, "rgba(255,255,255,0.08)");
+  rr(ctx, sw * 0.04, sh * 0.335, sw * 0.92 * 0.37, sh * 0.014, sw * 0.007, GREEN);
+
+  // Sessions
+  const sessions = [
+    { label: "Hill Repeats", sub: "6 x 5 min", done: true },
+    { label: "Endurance Hike", sub: "16 km + 900m+", done: false },
+    { label: "Strength Session", sub: "Full Body", done: false },
+    { label: "Recovery", sub: "Easy Walk", done: false },
+  ];
+  sessions.forEach((s, i) => {
+    const sy = sh * 0.38 + i * sh * 0.12;
+    rr(ctx, sw * 0.04, sy, sw * 0.92, sh * 0.105, sw * 0.03,
+      s.done ? "rgba(62,207,117,0.07)" : "#0F1D30", s.done ? "rgba(62,207,117,0.25)" : BORDER);
+    if (s.done) {
+      ctx.beginPath(); ctx.arc(sw * 0.16, sy + sh * 0.052, sw * 0.046, 0, Math.PI * 2);
+      ctx.fillStyle = GREEN; ctx.fill();
+      txt(ctx, "+", sw * 0.16, sy + sh * 0.066, DARK, sw * 0.065, "center", "bold");
+    } else {
+      ctx.beginPath(); ctx.arc(sw * 0.16, sy + sh * 0.052, sw * 0.046, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 2; ctx.stroke();
+    }
+    txt(ctx, s.label, sw * 0.27, sy + sh * 0.044, WHITE, sw * 0.057, "left", "bold");
+    txt(ctx, s.sub, sw * 0.27, sy + sh * 0.082, MUTED, sw * 0.042);
   });
+
+  // Tab bar
+  const ty = sh * 0.9;
+  ctx.fillStyle = "rgba(6,13,27,0.97)"; ctx.fillRect(0, ty, sw, sh - ty);
+  ctx.strokeStyle = BORDER; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(sw, ty); ctx.stroke();
+  [["Plan", true], ["Sessions", false], ["Progress", false], ["Profile", false]].forEach(([t, a], i) => {
+    const x = sw / 4 * i + sw / 8;
+    txt(ctx, t, x, sh * 0.96, a ? GREEN : DIM, sw * 0.042, "center", a ? "bold" : "normal");
+  });
+}
+
+function screenHillSession(ctx, sw, sh) {
+  ctx.fillStyle = "#060D1B"; ctx.fillRect(0, 0, sw, sh);
+
+  // Status bar
+  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
+  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
+  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
+  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
+
+  txt(ctx, "Hill Session", sw / 2, sh * 0.09, WHITE, sw * 0.07, "center", "bold");
+  txt(ctx, "Workout", sw * 0.88, sh * 0.09, GREEN, sw * 0.05, "right", "bold");
+
+  // Map area
+  const mh = sh * 0.42;
+  ctx.fillStyle = "#0A1A0A"; ctx.fillRect(0, sh * 0.11, sw, mh);
+  ctx.strokeStyle = "rgba(62,207,117,0.06)"; ctx.lineWidth = 1;
+  for (let x = 0; x < sw; x += 40) { ctx.beginPath(); ctx.moveTo(x, sh * 0.11); ctx.lineTo(x, sh * 0.11 + mh); ctx.stroke(); }
+  for (let y = sh * 0.11; y < sh * 0.11 + mh; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sw, y); ctx.stroke(); }
+
+  // Route trace (oval/hill shape)
+  ctx.save();
+  ctx.translate(sw / 2, sh * 0.11 + mh / 2);
+  ctx.scale(1, 0.65);
+  ctx.beginPath(); ctx.arc(0, 0, sw * 0.3, 0, Math.PI * 2);
+  ctx.strokeStyle = GREEN; ctx.lineWidth = 5; ctx.stroke();
+  const gf = ctx.createRadialGradient(0, 0, sw * 0.1, 0, 0, sw * 0.32);
+  gf.addColorStop(0, "rgba(62,207,117,0.18)"); gf.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.fillStyle = gf; ctx.fill();
+  ctx.restore();
+
+  // Dot on route
+  ctx.beginPath(); ctx.arc(sw * 0.5 + sw * 0.3, sh * 0.11 + mh / 2, sw * 0.03, 0, Math.PI * 2);
+  ctx.fillStyle = WHITE; ctx.fill();
+  ctx.beginPath(); ctx.arc(sw * 0.5 + sw * 0.3, sh * 0.11 + mh / 2, sw * 0.018, 0, Math.PI * 2);
+  ctx.fillStyle = GREEN; ctx.fill();
+
+  // Session info
+  txt(ctx, "Repeated Ascent", sw * 0.05, sh * 0.57, WHITE, sw * 0.065, "left", "bold");
+  txt(ctx, "6 x 5 min uphill", sw * 0.05, sh * 0.61, MUTED, sw * 0.048);
+
+  // Stats row
+  const stats = [["ELEVATION GAIN", "720", "m"], ["DISTANCE", "8.4", "km"], ["TIME", "1:28:34", ""]];
+  stats.forEach(([label, val, unit], i) => {
+    const x = sw * (0.04 + i * 0.33);
+    txt(ctx, label, x, sh * 0.68, MUTED, sw * 0.034, "left", "bold");
+    txt(ctx, val, x, sh * 0.72, WHITE, sw * 0.065, "left", "bold");
+    if (unit) txt(ctx, unit, x + ctx.measureText(val).width + 4, sh * 0.72, MUTED, sw * 0.04);
+  });
+
+  // Start button
+  rr(ctx, sw * 0.06, sh * 0.77, sw * 0.88, sh * 0.08, sw * 0.04, GREEN);
+  txt(ctx, "START SESSION", sw / 2, sh * 0.82, DARK, sw * 0.062, "center", "bold");
+
+  txt(ctx, "Select a different route", sw / 2, sh * 0.88, GREEN, sw * 0.047, "center");
+
+  // Tab bar
+  const ty = sh * 0.9;
+  ctx.fillStyle = "rgba(6,13,27,0.97)"; ctx.fillRect(0, ty, sw, sh - ty);
+  ctx.strokeStyle = BORDER; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(sw, ty); ctx.stroke();
+  [["Plan", false], ["Sessions", true], ["Progress", false], ["Profile", false]].forEach(([t, a], i) => {
+    const x = sw / 4 * i + sw / 8;
+    txt(ctx, t, x, sh * 0.96, a ? GREEN : DIM, sw * 0.042, "center", a ? "bold" : "normal");
+  });
+}
+
+function screenProgress(ctx, sw, sh) {
+  ctx.fillStyle = "#060D1B"; ctx.fillRect(0, 0, sw, sh);
+
+  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
+  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
+  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
+  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
+
+  txt(ctx, "Progress", sw / 2, sh * 0.09, WHITE, sw * 0.075, "center", "bold");
+
+  // Readiness circle
+  txt(ctx, "MOUNTAIN READINESS", sw / 2, sh * 0.16, MUTED, sw * 0.044, "center", "bold");
+  arcPct(ctx, sw / 2, sh * 0.26, sw * 0.22, 0.78, GREEN, sw * 0.045);
+  txt(ctx, "78%", sw / 2, sh * 0.272, WHITE, sw * 0.11, "center", "bold");
+  txt(ctx, "On track", sw / 2, sh * 0.31, GREEN, sw * 0.048, "center");
+
+  // Stats
+  const sty = sh * 0.36;
+  txt(ctx, "This Week", sw * 0.05, sty, MUTED, sw * 0.044, "left", "bold");
+  [["12.4", "km"], ["1,250", "m+"], ["4", "Sessions"]].forEach(([v, u], i) => {
+    const x = sw * (0.05 + i * 0.32);
+    txt(ctx, v, x, sty + sh * 0.06, WHITE, sw * 0.075, "left", "bold");
+    txt(ctx, u, x, sty + sh * 0.095, MUTED, sw * 0.042);
+  });
+
+  // Chart
+  txt(ctx, "Elevation Gain", sw * 0.05, sty + sh * 0.14, WHITE, sw * 0.05, "left", "bold");
+  ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 1;
+  const chartH = sh * 0.2; const chartY = sty + sh * 0.17;
+  for (let y = chartY; y < chartY + chartH; y += chartH / 4) {
+    ctx.beginPath(); ctx.moveTo(sw * 0.05, y); ctx.lineTo(sw * 0.95, y); ctx.stroke();
+  }
+
+  const pts = [[0.05,0.8],[0.2,0.7],[0.35,0.6],[0.5,0.55],[0.6,0.4],[0.72,0.35],[0.85,0.25],[0.95,0.18]];
+  const gg = ctx.createLinearGradient(0, chartY, 0, chartY + chartH);
+  gg.addColorStop(0, "rgba(62,207,117,0.3)"); gg.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => {
+    const cx = sw * x; const cy = chartY + chartH * y;
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  });
+  ctx.lineTo(sw * 0.95, chartY + chartH); ctx.lineTo(sw * 0.05, chartY + chartH); ctx.closePath();
+  ctx.fillStyle = gg; ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => {
+    const cx = sw * x; const cy = chartY + chartH * y;
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  });
+  ctx.strokeStyle = GREEN; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.stroke();
+
+  txt(ctx, "8,750 m Total", sw * 0.05, chartY + chartH + sh * 0.04, WHITE, sw * 0.07, "left", "bold");
+
+  const months = ["MAR", "APR", "MAY", "JUN", "JUL"];
+  months.forEach((m, i) => {
+    txt(ctx, m, sw * (0.05 + i * 0.225), chartY + chartH + sh * 0.08, DIM, sw * 0.036);
+  });
+
+  const ty = sh * 0.9;
+  ctx.fillStyle = "rgba(6,13,27,0.97)"; ctx.fillRect(0, ty, sw, sh - ty);
+  ctx.strokeStyle = BORDER; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(sw, ty); ctx.stroke();
+  [["Plan", false], ["Sessions", false], ["Progress", true], ["Profile", false]].forEach(([t, a], i) => {
+    const x = sw / 4 * i + sw / 8;
+    txt(ctx, t, x, sh * 0.96, a ? GREEN : DIM, sw * 0.042, "center", a ? "bold" : "normal");
+  });
+}
+
+// ── Headline with green highlight word(s) ─────────────────────────────────────
+// words: array of {text, color}[]
+function multiColorHeadline(ctx, lines, cx, startY, size, lineH) {
+  lines.forEach((words, row) => {
+    const parts = words.map(({ text, color }) => ({ text, color, w: measureWord(ctx, text, size) }));
+    const totalW = parts.reduce((s, p) => s + p.w + size * 0.3, -size * 0.3);
+    let x = cx - totalW / 2;
+    parts.forEach(({ text, color, w }) => {
+      txt(ctx, text, x, startY + row * lineH, color, size, "left", "bold");
+      x += w + size * 0.3;
+    });
+  });
+}
+
+function measureWord(ctx, text, size) {
+  ctx.font = `bold ${size}px sans-serif`;
+  return ctx.measureText(text).width;
 }
 
 function save(canvas, name) {
@@ -80,228 +381,168 @@ function save(canvas, name) {
   console.log(`  ${name}  (${(buf.length / 1024).toFixed(0)} KB)`);
 }
 
-// ── 1. Dashboard ──────────────────────────────────────────────────────────────
+// ── 5 Screenshots ────────────────────────────────────────────────────────────
+
 function s1() {
   const canvas = createCanvas(W, H); const ctx = canvas.getContext("2d");
-  drawBg(ctx); drawStatusBar(ctx);
-  drawHdr(ctx, "Know When You're Ready", "Your summit readiness, updated daily.");
+  darkBg(ctx, "#06100F", "#010809");
 
-  const cy = 440;
-  rr(ctx, 60, cy, W - 120, 560, 28, T.card, T.border);
-  lbl(ctx, "Readiness Score", W / 2, cy + 80, T.textMuted, 38, "center");
-  arcPct(ctx, W / 2, cy + 278, 158, 0.73, T.green, 28);
-  lbl(ctx, "73", W / 2, cy + 312, T.green, 108, "center", "bold");
-  lbl(ctx, "Close to Ready", W / 2, cy + 396, T.orange, 38, "center", "bold");
-  lbl(ctx, "Ben Nevis  1,345 m  Aug 14, 2026", W / 2, cy + 456, T.textMuted, 32, "center");
-  lbl(ctx, "6 weeks to go", W / 2, cy + 504, T.textDim, 30, "center");
+  // Mountain silhouettes (layered)
+  drawMountainSilhouette(ctx, H * 0.38, "rgba(30,80,50,0.25)");
+  drawMountainSilhouette(ctx, H * 0.46, "rgba(20,60,35,0.35)");
+  drawMountainSilhouette(ctx, H * 0.54, "rgba(10,40,20,0.5)");
 
-  const sy = cy + 590;
-  rr(ctx, 60, sy, W - 120, 210, 24, T.surface, T.border);
-  [["24", "Sessions"], ["6,840 m", "Elevation"], ["8 days", "Streak"]].forEach(([v, l], i) => {
-    const cx = 60 + ((W - 120) / 3) * i + (W - 120) / 6;
-    lbl(ctx, v, cx, sy + 96, T.green, 54, "center", "bold");
-    lbl(ctx, l, cx, sy + 150, T.textMuted, 30, "center");
+  // Green glow at horizon
+  const glow = ctx.createRadialGradient(W / 2, H * 0.56, 0, W / 2, H * 0.56, W * 0.9);
+  glow.addColorStop(0, "rgba(62,207,117,0.12)"); glow.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  [[120,200],[300,80],[540,160],[720,40],[900,130],[1050,200],[200,330],[460,300],[800,280],[1100,100]].forEach(([x, y]) => {
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
   });
 
-  const wy = sy + 250;
-  lbl(ctx, "THIS WEEK", 60, wy - 18, T.textMuted, 28, "left", "bold");
-  [
-    { d: "Mon", t: "Hill Reps x4 — Latrigg", done: true },
-    { d: "Wed", t: "Treadmill 50 min", done: true },
-    { d: "Fri", t: "Long Hill — Cat Bells", done: false },
-    { d: "Sun", t: "Big Day — Helvellyn", done: false },
-  ].forEach(({ d, t, done }, i) => {
-    const ry = wy + i * 152;
-    rr(ctx, 60, ry, W - 120, 132, 20,
-      done ? "rgba(62,207,117,0.06)" : T.card,
-      done ? "rgba(62,207,117,0.22)" : T.border);
-    lbl(ctx, done ? "+" : "o", 110, ry + 82, done ? T.green : T.textDim, 46, "left", "bold");
-    lbl(ctx, t, 184, ry + 66, done ? T.text : T.textMuted, 38, "left", done ? "bold" : "normal");
-    lbl(ctx, d, 184, ry + 112, T.textDim, 28);
-    if (!done) {
-      rr(ctx, W - 226, ry + 44, 144, 48, 12, "rgba(255,144,48,0.14)", "rgba(255,144,48,0.4)");
-      lbl(ctx, "Upcoming", W - 218, ry + 74, T.orange, 28);
-    }
+  // Headline
+  const hx = W / 2; let hy = H * 0.1;
+  txt(ctx, "PREPARE FOR", hx, hy, WHITE, 110, "center", "bold"); hy += 120;
+  txt(ctx, "ANY", hx, hy, GREEN, 148, "center", "bold"); hy += 156;
+  txt(ctx, "MOUNTAIN", hx, hy, WHITE, 110, "center", "bold"); hy += 100;
+  txt(ctx, "Personalised training plans using local hills.", hx, hy, "rgba(255,255,255,0.75)", 50, "center"); hy += 58;
+  txt(ctx, "Track your progress. Arrive ready.", hx, hy, "rgba(255,255,255,0.75)", 50, "center");
+
+  // Feature icons row
+  const fy = H * 0.82;
+  const features = [["Choose Your\nMountain", "⛰"], ["Get Your\nPlan", "📋"], ["Reach Your\nSummit", "🏆"]];
+  features.forEach(([label, icon], i) => {
+    const x = W / 4 + i * W / 4;
+    txt(ctx, icon, x, fy, WHITE, 64, "center");
+    label.split("\n").forEach((l, j) => txt(ctx, l, x, fy + 80 + j * 52, "rgba(255,255,255,0.75)", 38, "center"));
   });
 
-  tabBar(ctx);
-  save(canvas, "01-dashboard.png");
+  // Dividers
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W / 4 * 1.5, fy - 20); ctx.lineTo(W / 4 * 1.5, fy + 200); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W / 4 * 2.5, fy - 20); ctx.lineTo(W / 4 * 2.5, fy + 200); ctx.stroke();
+
+  // Logo
+  drawLogo(ctx, W / 2 - 160, H * 0.96);
+
+  save(canvas, "01-prepare.png");
 }
 
-// ── 2. Hill Finder ────────────────────────────────────────────────────────────
 function s2() {
   const canvas = createCanvas(W, H); const ctx = canvas.getContext("2d");
-  drawBg(ctx); drawStatusBar(ctx);
-  drawHdr(ctx, "Find Training Hills", "Nearby climbs matched to your goal.");
+  darkBg(ctx, "#060D1B", "#030610");
 
-  rr(ctx, 60, 430, W - 120, 96, 48, T.card, T.border);
-  lbl(ctx, "Search hills near you...", 130, 492, T.textDim, 38);
+  const g2 = ctx.createRadialGradient(W * 0.15, H * 0.4, 0, W * 0.15, H * 0.4, W * 0.8);
+  g2.addColorStop(0, "rgba(62,207,117,0.08)"); g2.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-  let fx = 60;
-  ["All", "< 5 km", "> 200 m", "Saved"].forEach((f, i) => {
-    const fw = f.length * 24 + 52;
-    rr(ctx, fx, 554, fw, 68, 34, i === 0 ? "rgba(62,207,117,0.15)" : T.card, i === 0 ? "rgba(62,207,117,0.5)" : T.border);
-    lbl(ctx, f, fx + 26, 598, i === 0 ? T.green : T.textMuted, 30);
-    fx += fw + 20;
-  });
+  // Headline
+  let hy = H * 0.06;
+  txt(ctx, "GET YOUR", W / 2, hy, WHITE, 108, "center", "bold"); hy += 116;
+  txt(ctx, "PERSONALISED", W / 2, hy, WHITE, 98, "center", "bold"); hy += 110;
+  txt(ctx, "TRAINING PLAN", W / 2, hy, GREEN, 98, "center", "bold"); hy += 86;
+  txt(ctx, "Tailored to your mountain,", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center"); hy += 56;
+  txt(ctx, "your time and your fitness.", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center");
 
-  [
-    { name: "Latrigg", dist: "2.3 km", elev: "200 m", reps: "5 reps", match: 94, mc: T.green },
-    { name: "Skiddaw Little Man", dist: "4.1 km", elev: "380 m", reps: "3 reps", match: 87, mc: T.green },
-    { name: "Cat Bells", dist: "6.7 km", elev: "451 m", reps: "2 reps", match: 79, mc: T.orange },
-    { name: "Grisedale Pike", dist: "8.2 km", elev: "570 m", reps: "1 rep", match: 65, mc: T.blue },
-    { name: "Fairfield", dist: "11 km", elev: "680 m", reps: "1 rep", match: 58, mc: T.blue },
-  ].forEach(({ name, dist, elev, reps, match, mc }, i) => {
-    const hy = 650 + i * 216;
-    rr(ctx, 60, hy, W - 120, 194, 22, T.card, T.border);
-    rr(ctx, W - 238, hy + 22, 156, 54, 10, mc + "22", mc + "55");
-    lbl(ctx, `${match}% match`, W - 230, hy + 58, mc, 28, "left", "bold");
-    lbl(ctx, name, 110, hy + 74, T.text, 44, "left", "bold");
-    lbl(ctx, `${dist}  |  ${elev} gain  |  ${reps} needed`, 110, hy + 126, T.textMuted, 30);
-    arcPct(ctx, W - 100, hy + 136, 32, match / 100, mc, 10);
-  });
+  drawIphone(ctx, W / 2, H * 0.66, W * 0.72, H * 0.54, screenDashboard);
 
-  tabBar(ctx);
-  save(canvas, "02-hills.png");
+  save(canvas, "02-plan.png");
 }
 
-// ── 3. Training Plan ──────────────────────────────────────────────────────────
 function s3() {
   const canvas = createCanvas(W, H); const ctx = canvas.getContext("2d");
-  drawBg(ctx); drawStatusBar(ctx);
-  drawHdr(ctx, "Your Personal Plan", "Built for your mountain. Adapts as you train.");
+  darkBg(ctx, "#051208", "#020908");
 
-  const pw = (W - 120 - 36) / 4;
-  [["Base", T.green, false], ["Build", T.blue, true], ["Peak", T.orange, false], ["Taper", T.purple, false]].forEach(([n, c, a], i) => {
-    const px = 60 + i * (pw + 12);
-    rr(ctx, px, 430, pw, 110, 14, a ? c + "22" : T.card, a ? c : T.border, a ? 3 : 2);
-    lbl(ctx, n, px + pw / 2, 492, a ? c : T.textMuted, 34, "center", "bold");
-    lbl(ctx, ["Wk 1-4", "Wk 5-8", "Wk 9-11", "Wk 12"][i], px + pw / 2, 526, a ? c : T.textDim, 24, "center");
-  });
+  const g3 = ctx.createRadialGradient(W * 0.8, H * 0.45, 0, W * 0.8, H * 0.45, W * 0.9);
+  g3.addColorStop(0, "rgba(62,207,117,0.1)"); g3.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
 
-  lbl(ctx, "WEEK 6 - BUILD PHASE", 60, 582, T.blue, 32, "left", "bold");
+  let hy = H * 0.06;
+  txt(ctx, "TRAIN USING", W / 2, hy, WHITE, 108, "center", "bold"); hy += 116;
+  txt(ctx, "LOCAL HILLS", W / 2, hy, GREEN, 108, "center", "bold"); hy += 90;
+  txt(ctx, "Turn everyday hills into", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center"); hy += 56;
+  txt(ctx, "powerful mountain preparation.", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center");
 
-  [
-    { d: "Mon", t: "Hill Reps x4", s: "Latrigg  200 m", c: T.green, done: true },
-    { d: "Tue", t: "Rest Day", s: "Active recovery", c: T.textDim, done: true },
-    { d: "Wed", t: "Treadmill 50 min", s: "10% incline  4.5 km/h", c: T.blue, done: true },
-    { d: "Thu", t: "Stepper 35 min", s: "Glutes and calves", c: T.blue, done: false, today: true },
-    { d: "Fri", t: "Long Hill", s: "Cat Bells  451 m", c: T.orange, done: false },
-    { d: "Sat", t: "Rest Day", s: "Recovery walk optional", c: T.textDim, done: false },
-    { d: "Sun", t: "Big Day", s: "Helvellyn  950 m target", c: T.orange, done: false },
-  ].forEach(({ d, t, s, c, done, today }, i) => {
-    const ry = 612 + i * 148;
-    rr(ctx, 60, ry, W - 120, 128, 18,
-      today ? c + "15" : done ? "rgba(62,207,117,0.05)" : T.card,
-      today ? c : done ? "rgba(62,207,117,0.2)" : T.border, today ? 3 : 2);
-    lbl(ctx, d, 110, ry + 50, today ? c : done ? T.green : T.textMuted, 28, "left", "bold");
-    lbl(ctx, t, 210, ry + 56, done || today ? T.text : T.textMuted, 38, "left", done || today ? "bold" : "normal");
-    lbl(ctx, s, 210, ry + 102, T.textDim, 28);
-    if (today) {
-      rr(ctx, W - 228, ry + 40, 146, 50, 10, c + "22", c + "44");
-      lbl(ctx, "Today", W - 220, ry + 72, c, 30, "left", "bold");
-    } else if (done) {
-      lbl(ctx, "+", W - 100, ry + 74, T.green, 56, "center", "bold");
-    }
-  });
+  drawIphone(ctx, W / 2, H * 0.66, W * 0.72, H * 0.54, screenHillSession);
 
-  tabBar(ctx);
-  save(canvas, "03-plan.png");
+  save(canvas, "03-hills.png");
 }
 
-// ── 4. Hike Tracking ─────────────────────────────────────────────────────────
 function s4() {
   const canvas = createCanvas(W, H); const ctx = canvas.getContext("2d");
-  drawBg(ctx); drawStatusBar(ctx);
-  drawHdr(ctx, "Track Every Ascent", "Live elevation, distance and time on the mountain.");
+  darkBg(ctx, "#060D1B", "#030610");
 
-  const my = 430; const mh = 660;
-  ctx.fillStyle = "#080F1E"; ctx.fillRect(0, my, W, mh);
-  ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 2;
-  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, my); ctx.lineTo(x, my + mh); ctx.stroke(); }
-  for (let y = my; y < my + mh; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  const g4 = ctx.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, W);
+  g4.addColorStop(0, "rgba(62,207,117,0.07)"); g4.addColorStop(1, "rgba(62,207,117,0)");
+  ctx.fillStyle = g4; ctx.fillRect(0, 0, W, H);
 
-  const pts = [[120,my+600],[260,my+520],[400,my+450],[540,my+370],[660,my+290],[780,my+230],[900,my+190],[1020,my+162],[1140,my+140],[1240,my+128]];
+  let hy = H * 0.06;
+  txt(ctx, "TRACK YOUR", W / 2, hy, WHITE, 108, "center", "bold"); hy += 116;
+  txt(ctx, "PROGRESS", W / 2, hy, GREEN, 120, "center", "bold"); hy += 100;
+  txt(ctx, "Monitor your training, elevation", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center"); hy += 56;
+  txt(ctx, "gain and mountain readiness.", W / 2, hy, "rgba(255,255,255,0.7)", 48, "center");
 
-  const grd = ctx.createLinearGradient(0, my + 128, 0, my + mh);
-  grd.addColorStop(0, "rgba(62,207,117,0.28)"); grd.addColorStop(1, "rgba(62,207,117,0)");
-  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-  pts.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
-  ctx.lineTo(pts[pts.length-1][0], my+mh); ctx.lineTo(pts[0][0], my+mh); ctx.closePath();
-  ctx.fillStyle = grd; ctx.fill();
+  drawIphone(ctx, W / 2, H * 0.66, W * 0.72, H * 0.54, screenProgress);
 
-  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-  pts.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
-  ctx.strokeStyle = T.green; ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke();
-
-  const [lx, ly] = pts[pts.length - 1];
-  ctx.beginPath(); ctx.arc(lx, ly, 20, 0, Math.PI * 2); ctx.fillStyle = T.green; ctx.fill();
-  ctx.beginPath(); ctx.arc(lx, ly, 10, 0, Math.PI * 2); ctx.fillStyle = "#080F1E"; ctx.fill();
-
-  const st = my + mh + 28; const sw = (W - 120 - 40) / 3;
-  [["284 m", "Elevation", T.green], ["3.2 km", "Distance", T.blue], ["1h 12m", "Duration", T.orange]].forEach(([v, l, c], i) => {
-    const sx = 60 + i * (sw + 20);
-    rr(ctx, sx, st, sw, 196, 20, T.card, T.border);
-    lbl(ctx, v, sx + sw / 2, st + 94, c, 50, "center", "bold");
-    lbl(ctx, l, sx + sw / 2, st + 148, T.text, 28, "center");
-  });
-
-  const py = st + 226;
-  rr(ctx, 60, py, W - 120, 126, 20, T.card, T.border);
-  lbl(ctx, "Current pace", 110, py + 50, T.textMuted, 32);
-  lbl(ctx, "22 min/km  Target: 20-25 min/km", 110, py + 100, T.text, 36, "left", "bold");
-
-  const by = py + 166;
-  rr(ctx, 60, by, W - 120, 136, 68, "rgba(255,68,68,0.12)", "rgba(255,68,68,0.4)");
-  lbl(ctx, "End Session", W / 2, by + 80, T.red, 48, "center", "bold");
-
-  tabBar(ctx);
-  save(canvas, "04-tracking.png");
+  save(canvas, "04-progress.png");
 }
 
-// ── 5. Goal Setup ─────────────────────────────────────────────────────────────
 function s5() {
   const canvas = createCanvas(W, H); const ctx = canvas.getContext("2d");
-  drawBg(ctx); drawStatusBar(ctx);
-  drawHdr(ctx, "Pick Your Mountain", "We build your training plan automatically.");
 
-  rr(ctx, 60, 430, W - 120, 320, 28, T.card, T.border);
-  lbl(ctx, "Your Goal Mountain", 110, 494, T.textMuted, 34);
-  lbl(ctx, "Ben Nevis", 110, 572, T.text, 72, "left", "bold");
-  lbl(ctx, "Scotland  1,345 m  Grade: Moderate", 110, 626, T.textMuted, 32);
+  // Light blue/sky gradient background
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#D6EAF8"); bg.addColorStop(0.4, "#AED6F1"); bg.addColorStop(1, "#85C1E9");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-  let tx = 110;
-  ["12 weeks", "Aug 14, 2026", "2 people"].forEach(tag => {
-    const tw = tag.length * 22 + 52;
-    rr(ctx, tx, 664, tw, 62, 31, "rgba(62,207,117,0.12)", "rgba(62,207,117,0.4)");
-    lbl(ctx, tag, tx + 26, 704, T.green, 28); tx += tw + 20;
+  // Mountain silhouette (darker blue)
+  drawMountainSilhouette(ctx, H * 0.35, "rgba(52,120,170,0.3)");
+  drawMountainSilhouette(ctx, H * 0.43, "rgba(40,100,150,0.4)");
+
+  // Headline (dark text on light bg)
+  let hy = H * 0.07;
+  txt(ctx, "BUILT FOR", W / 2, hy, "#0A2540", 108, "center", "bold"); hy += 116;
+  txt(ctx, "YOUR NEXT", W / 2, hy, "#0A2540", 108, "center", "bold"); hy += 116;
+  txt(ctx, "ADVENTURE", W / 2, hy, GREEN, 108, "center", "bold"); hy += 90;
+  txt(ctx, "From Kilimanjaro to Mont Blanc and beyond.", W / 2, hy, "#1a4060", 44, "center"); hy += 54;
+  txt(ctx, "We'll help you get there.", W / 2, hy, "#1a4060", 44, "center");
+
+  // Mountain cards
+  const mountains = [
+    { name: "KILIMANJARO", elev: "5895m" },
+    { name: "MONT BLANC", elev: "4808m" },
+    { name: "EVEREST BASE CAMP", elev: "5364m" },
+    { name: "BEN NEVIS", elev: "1345m" },
+    { name: "AND THOUSANDS MORE MOUNTAINS", elev: "" },
+  ];
+  mountains.forEach(({ name, elev }, i) => {
+    const cy = H * 0.52 + i * 170;
+    rr(ctx, W * 0.1, cy, W * 0.8, 148, 18, "rgba(255,255,255,0.5)", "rgba(255,255,255,0.7)");
+    // Mountain icon
+    ctx.strokeStyle = "#0A2540"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const ix = W * 0.14; const iy = cy + 44;
+    ctx.beginPath(); ctx.moveTo(ix, iy + 60); ctx.lineTo(ix + 36, iy + 10); ctx.lineTo(ix + 60, iy + 40); ctx.lineTo(ix + 80, iy); ctx.lineTo(ix + 106, iy + 60); ctx.stroke();
+    txt(ctx, name, W * 0.28, cy + 64, "#0A2540", 44, "left", "bold");
+    if (elev) txt(ctx, elev, W * 0.28, cy + 108, "#2a5070", 36);
   });
 
-  lbl(ctx, "YOUR 12-WEEK PLAN", 60, 800, T.textMuted, 28, "left", "bold");
+  // SummitReady logo (dark version for light bg)
+  ctx.strokeStyle = "#0A4020"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const lx = W / 2 - 170; const ly = H * 0.97;
+  const ls = 56;
+  ctx.beginPath();
+  ctx.moveTo(lx, ly - ls * 0.4); ctx.lineTo(lx + ls * 0.38, ly - ls * 0.8);
+  ctx.lineTo(lx + ls * 0.58, ly - ls * 0.55); ctx.lineTo(lx + ls * 0.78, ly - ls);
+  ctx.lineTo(lx + ls, ly - ls * 0.4); ctx.stroke();
+  txt(ctx, "SUMMIT", lx + ls * 1.25, ly - ls * 0.35, "#0A2540", ls * 0.7, "left", "bold");
+  txt(ctx, "READY", lx + ls * 1.25, ly + ls * 0.36, GREEN, ls * 0.7, "left", "bold");
 
-  [
-    ["Base Phase", "Weeks 1-4", "Build aerobic fitness with hill reps and steady cardio", T.green],
-    ["Build Phase", "Weeks 5-8", "Increase elevation gain and tackle harder hills", T.blue],
-    ["Peak Phase", "Weeks 9-11", "Long hill days and full summit simulations", T.orange],
-    ["Taper Phase", "Week 12", "Rest, recover and arrive fresh on summit day", T.purple],
-  ].forEach(([phase, weeks, desc, c], i) => {
-    const ry = 830 + i * 212;
-    rr(ctx, 60, ry, W - 120, 190, 22, T.card, c + "44");
-    ctx.fillStyle = c;
-    ctx.fillRect(60, ry + 16, 6, 158);
-    lbl(ctx, phase, 100, ry + 74, T.text, 42, "left", "bold");
-    lbl(ctx, weeks, 100, ry + 120, c, 30);
-    lbl(ctx, desc, 100, ry + 162, T.textMuted, 28);
-  });
-
-  const bny = 830 + 4 * 212 + 24;
-  rr(ctx, 60, bny, W - 120, 136, 22, "rgba(62,207,117,0.1)", "rgba(62,207,117,0.35)");
-  lbl(ctx, "Plan adapts automatically as you log sessions", W / 2, bny + 80, T.green, 36, "center", "bold");
-
-  tabBar(ctx);
-  save(canvas, "05-goal-setup.png");
+  save(canvas, "05-adventure.png");
 }
 
-console.log("Generating 5 App Store screenshots at 1320 x 2868 px...");
+console.log("Generating 5 App Store screenshots at 1290 x 2796 px...");
 s1(); s2(); s3(); s4(); s5();
-console.log("Done. Files saved to artifacts/summit-ready/assets/screenshots/");
+console.log("Done — artifacts/summit-ready/assets/screenshots/");
