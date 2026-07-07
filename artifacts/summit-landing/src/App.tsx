@@ -444,7 +444,7 @@ function BetaTesters() {
               <Smartphone className="w-5 h-5 text-primary" />
             </div>
             <h3 className="font-bold text-white text-lg">iOS &amp; Android</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">Install directly from TestFlight (iOS) or Google Play closed testing (Android). No sideloading needed.</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">Install directly from TestFlight (iOS) or Google Play (Android). No sideloading needed.</p>
           </div>
           <div className="bg-white/3 border border-white/8 rounded-2xl p-7 flex flex-col gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
