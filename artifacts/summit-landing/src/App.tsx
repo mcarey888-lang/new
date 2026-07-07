@@ -50,20 +50,17 @@ function Hero() {
             </div>
           </a>
 
-          <div className="relative transition-all hover:scale-105">
-            <div className="flex items-center gap-3 bg-black border border-white/20 text-white/50 font-semibold rounded-2xl px-6 py-4 shadow-[0_0_25px_rgba(0,0,0,0.5)] min-w-[200px] justify-center cursor-not-allowed select-none">
+          <a href="https://play.google.com/store/apps/details?id=uk.summitready.app" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105 active:scale-95">
+            <div className="flex items-center gap-3 bg-black border border-white/20 text-white font-semibold rounded-2xl px-6 py-4 shadow-[0_0_25px_rgba(0,0,0,0.5)] min-w-[200px] justify-center">
               <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
               </svg>
               <div className="text-left">
-                <div className="text-xs leading-none mb-0.5 text-white/40">Get it on</div>
+                <div className="text-xs leading-none mb-0.5 text-white/70">Get it on</div>
                 <div className="text-base leading-none">Google Play</div>
               </div>
             </div>
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
-              Coming soon
-            </span>
-          </div>
+          </a>
         </div>
 
         <div className="w-full max-w-2xl">
@@ -398,11 +395,8 @@ function GetStarted() {
             </span>
           </div>
 
-          <div className="relative">
-            <div
-              aria-disabled="true"
-              className="flex items-center gap-3 bg-white/40 text-black/50 font-semibold rounded-2xl px-6 py-4 shadow-lg min-w-[200px] justify-center cursor-not-allowed select-none"
-            >
+          <a href="https://play.google.com/store/apps/details?id=uk.summitready.app" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105 active:scale-95">
+            <div className="flex items-center gap-3 bg-white/40 text-black font-semibold rounded-2xl px-6 py-4 shadow-lg min-w-[200px] justify-center">
               <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
               </svg>
@@ -411,10 +405,7 @@ function GetStarted() {
                 <div className="text-base leading-none">Google Play</div>
               </div>
             </div>
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
-              Coming soon
-            </span>
-          </div>
+          </a>
         </div>
 
         <p className="text-sm text-muted-foreground">Free to download · Premium plan available</p>
