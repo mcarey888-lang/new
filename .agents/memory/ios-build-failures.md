@@ -16,6 +16,25 @@ Having both causes `react_native_post_install` to crash with a Ruby exception in
 - RN 0.70+ configures Hermes automatically — does not need `use_frameworks!`
 - RevenueCat iOS SDK also ships as binary XCFramework
 
+## Third issue — the REAL root cause of all 5+ failures
+
+`@clerk/expo 3.5.0+` changed `ClerkExpo.podspec` to use `spm_dependency()` for
+`ClerkKit`/`ClerkKitUI`, with an explicit `raise 'ClerkExpo requires React Native 0.75 or newer'`.
+Expo SDK 54 = RN 0.73.x — `spm.rb` has `spm_dependency` defined but crashes on
+`package_product_dependencies for nil:NilClass`.
+
+**Fix:** Pin `@clerk/expo` to exactly `"3.4.7"` (no caret).
+
+**Boundary:**
+- 3.4.7: standard CocoaPods only → ✓ works
+- 3.5.0: spm_dependency() introduced → ✗ crashes
+- 3.7.0: identical SPM podspec to 3.6.5 → ✗ crashes (3.7.0 did NOT fix this)
+
+**Long-term:** Upgrade to Expo SDK 55+ (RN 0.75) to properly support SPM and unblock @clerk/expo ≥ 3.5.
+
+Note: `ClerkExpo.podspec` is bundled INSIDE the `@clerk/expo` npm package at `ios/ClerkExpo.podspec`.
+You cannot override it with an extraPods registry pin — it's a local path pod. Must change the npm version.
+
 ## Secondary issue found (also fixed)
 
 `expo-build-properties` version should match Expo SDK:
