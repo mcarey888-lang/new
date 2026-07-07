@@ -3,18 +3,22 @@ name: iOS pod install failures — useFrameworks + New Architecture
 description: Root causes and fixes for recurring pod install failures on Expo/RN iOS builds.
 ---
 
-## The core incompatibility
+## CORRECTED: useFrameworks: "static" IS required
 
-`newArchEnabled: true` (in `app.json`) + `useFrameworks: "static"` (in `expo-build-properties` iOS config) are **mutually exclusive** in React Native 0.73+.
+Earlier diagnosis was wrong. The last known-successful iOS build log explicitly showed
+"Framework build type is static framework". All failing builds show "static library" instead.
 
-Having both causes `react_native_post_install` to crash with a Ruby exception inside CocoaPods post-install. The build log shows a stack trace ending at `Podfile:56:in 'react_native_post_install'` and `pod install exited with non-zero code: 1`.
+`useFrameworks: "static"` in expo-build-properties sets `use_frameworks! :linkage => :static`
+in the Podfile, producing static frameworks (.framework). Without it, CocoaPods uses static
+libraries (.a) — a different linking mode that breaks Clerk's native modules.
 
-**Fix:** Remove `useFrameworks: "static"` from the `expo-build-properties` iOS config in `app.json`.
+**The original pod install crashes (builds #19–23) were NOT caused by useFrameworks:static.**
+They were caused by `expo-build-properties ^56.0.16` (wrong version for SDK 54) generating
+incompatible Podfile hooks. Once expo-build-properties was corrected to `~1.0.10`, 
+`useFrameworks: "static"` + `newArchEnabled: true` works fine together in RN 0.73+.
 
-**Why `useFrameworks: static` is NOT needed:**
-- Clerk v3 (@clerk/expo ≥ 3.x) ships as an XCFramework binary — does not require `use_frameworks!`
-- RN 0.70+ configures Hermes automatically — does not need `use_frameworks!`
-- RevenueCat iOS SDK also ships as binary XCFramework
+**Current state:** `useFrameworks: "static"` restored in app.json `expo-build-properties` ios block.
+Build #26: `3ef76954-203e-4d07-869c-32db190bed87`
 
 ## Third issue — @clerk/expo 3.5.0+ uses spm_dependency() in podspec
 

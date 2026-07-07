@@ -83,7 +83,9 @@
               ]
             }
           },
-          "ios": {}
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ],
       [
