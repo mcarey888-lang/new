@@ -16,37 +16,51 @@ Having both causes `react_native_post_install` to crash with a Ruby exception in
 - RN 0.70+ configures Hermes automatically — does not need `use_frameworks!`
 - RevenueCat iOS SDK also ships as binary XCFramework
 
-## Third issue — the REAL root cause of all 5+ failures
+## Third issue — @clerk/expo 3.5.0+ uses spm_dependency() in podspec
 
 `@clerk/expo 3.5.0+` changed `ClerkExpo.podspec` to use `spm_dependency()` for
 `ClerkKit`/`ClerkKitUI`, with an explicit `raise 'ClerkExpo requires React Native 0.75 or newer'`.
-Expo SDK 54 = RN 0.73.x — `spm.rb` has `spm_dependency` defined but crashes on
-`package_product_dependencies for nil:NilClass`.
+Expo SDK 54 = RN 0.73.x — crashes at pod install.
 
-**Fix:** Pin `@clerk/expo` to exactly `"3.4.7"` (no caret).
+- 3.5.0+: spm_dependency() in podspec → ✗ pod install crashes
+- 3.7.0: identical SPM podspec → ✗ same crash
 
-**Boundary:**
-- 3.4.7: standard CocoaPods only → ✓ works
-- 3.5.0: spm_dependency() introduced → ✗ crashes
-- 3.7.0: identical SPM podspec to 3.6.5 → ✗ crashes (3.7.0 did NOT fix this)
+## Fourth issue — @clerk/expo 3.3.1 and 3.4.7 inject Swift importing ClerkKit (no SPM)
+
+3.3.1 and 3.4.7 have no SPM in podspec (pod install passes), BUT the config plugin
+injects `ClerkNativeBridge.swift` into the app target, which `import ClerkKit` — unavailable
+because no SPM was set up. Result: Xcode compile error "no such module ClerkKit".
+
+## @clerk/expo 3.3.0 — correct version (build #25)
+
+3.3.0's `app.plugin.js` does three things on iOS:
+1. **Adds SPM at Xcode project level** via `withXcodeProject` — `XCRemoteSwiftPackageReference`
+   for `https://github.com/clerk/clerk-ios.git @ 1.0.0`. CocoaPods never sees it; Xcode resolves natively.
+2. **Injects `ClerkViewFactory.swift`** into app target (imports ClerkKit — now available via #1).
+3. **Runs `xcodebuild -resolvePackageDependencies`** in a Podfile `at_exit` hook.
+
+Pod install passes (no spm_dependency() in podspec). Xcode resolves clerk-ios SPM natively.
+
+**WARNING:** Earlier tarball inspection was wrong — it looked at `build/plugins/withClerkExpo.js`
+instead of the actual `app.plugin.js` at the package root. Always check `app.plugin.js`.
+
+## Version boundary table (verified against installed packages)
+
+| Version | Pod install | Plugin injects | SPM how | Xcode |
+|---------|-------------|----------------|---------|-------|
+| **3.3.0** | ✓ | ClerkViewFactory.swift + SPM via xcodeproj | withXcodeProject | Expected ✓ |
+| 3.3.1 | ✓ | ClerkNativeBridge.swift (no SPM) | none | ✗ no such module |
+| 3.4.7 | ✓ | ClerkNativeBridge.swift (no SPM) | none | ✗ no such module |
+| 3.5.0+ | ✗ crash | — | spm_dependency() in podspec | — |
+
+Current pin: `"3.3.0"` exact. Build #25: `2d5ef770-3ba7-44b0-8be0-14d33a0f0a21`
 
 **Long-term:** Upgrade to Expo SDK 55+ (RN 0.75) to properly support SPM and unblock @clerk/expo ≥ 3.5.
 
-Note: `ClerkExpo.podspec` is bundled INSIDE the `@clerk/expo` npm package at `ios/ClerkExpo.podspec`.
-You cannot override it with an extraPods registry pin — it's a local path pod. Must change the npm version.
+## Other notes
 
-## Secondary issue found (also fixed)
-
-`expo-build-properties` version should match Expo SDK:
-- SDK 54 → `~0.14.0`  
-- SDK 55 → `~55.0.x`
-- SDK 56 → `~56.0.x`
-
-Having `^56.0.x` with SDK 54 generates incompatible Podfile hooks for RN 0.81.x.
-
-## Dead packages that were removed
-
-- `expo-glass-effect ~0.1.4` — pre-release broken podspec, never imported
-- `expo-av ^16.0.8` — never imported, redundant with `expo-audio`
-
-`react-native-worklets` must stay — required peer dep for `react-native-reanimated 4.x` and `react-native-keyboard-controller`.
+- `ClerkExpo.podspec` is a LOCAL PATH pod inside the npm package — cannot override with extraPods.
+- `expo-build-properties` SDK 54 → `~0.14.0`; SDK 55 → `~55.0.x`; SDK 56 → `~56.0.x`.
+- `EAS_NO_VCS=1` prefix required for all eas commands.
+- Dead packages removed earlier: `expo-glass-effect ~0.1.4`, `expo-av ^16.0.8`.
+- `react-native-worklets` must stay — required peer for `react-native-reanimated 4.x`.
