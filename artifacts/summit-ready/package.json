@@ -62,7 +62,7 @@
   "dependencies": {
     "@react-native-community/slider": "^5.2.0",
     "expo-audio": "^1.1.1",
-    "expo-build-properties": "^56.0.16",
+    "expo-build-properties": "~0.14.0",
     "expo-task-manager": "~14.0.9",
     "lucide-react-native": "^1.14.0",
     "react-native-maps": "1.14.0",
