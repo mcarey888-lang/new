@@ -9,3 +9,6 @@
 - [Hill verification DB build step](hill-verification-db-build.md) — After adding new tables to lib/db/src/schema, must run `cd lib/db && pnpm exec tsc --build` before API server typecheck; `pnpm run typecheck:libs` at root fails due to pre-existing integrations-openai-ai-server errors blocking all libs.
 - [Clerk dummy resources root cause](clerk-dummy-resources.md) — "undefined is not a function" on auth screens: dummy `signUp/signIn = {}` objects; guard needs `isLoaded && typeof method === 'function'`, not just `!signUp`.
 - [iOS pod install failures](ios-build-failures.md) — newArchEnabled:true + useFrameworks:static are mutually exclusive in RN 0.73+; expo-build-properties must match SDK version (~0.14.0 for SDK 54).
+- [withTimeout generic inference with any](withtimeout-any-inference.md) — generic timeout wrapper around an any-typed Clerk call infers T as unknown; cast result `as any` at each call site.
+- [Expo dev domain preview routing quirk](expo-dev-domain-preview-quirk.md) — screenshotting Expo artifact root can render the wrong artifact; verify via curling the local Metro port instead.
+- [App Store screenshot fake status bar](app-store-screenshot-status-bar.md) — never draw simulated "9:41"/WiFi-text status bars in marketing screenshot generators; triggers Apple 2.3.10 rejection.

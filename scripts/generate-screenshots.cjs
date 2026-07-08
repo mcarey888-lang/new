@@ -164,13 +164,9 @@ function screenDashboard(ctx, sw, sh) {
   g.addColorStop(0, "#060D1B"); g.addColorStop(1, "#040A14");
   ctx.fillStyle = g; ctx.fillRect(0, 0, sw, sh);
 
-  // Status bar
-  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
-  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
-  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
-  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
-
-  // Header
+  // Header (no simulated status bar — App Store Connect's Media Manager
+  // frames the real iOS status bar automatically; drawing our own risks
+  // non-iOS chrome, which is exactly what triggered the 2.3.10 rejection)
   txt(ctx, "My Plan", sw / 2, sh * 0.09, WHITE, sw * 0.075, "center", "bold");
 
   // Goal card
@@ -225,12 +221,7 @@ function screenDashboard(ctx, sw, sh) {
 function screenHillSession(ctx, sw, sh) {
   ctx.fillStyle = "#060D1B"; ctx.fillRect(0, 0, sw, sh);
 
-  // Status bar
-  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
-  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
-  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
-  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
-
+  // No simulated status bar — see note in screenDashboard().
   txt(ctx, "Hill Session", sw / 2, sh * 0.09, WHITE, sw * 0.07, "center", "bold");
   txt(ctx, "Workout", sw * 0.88, sh * 0.09, GREEN, sw * 0.05, "right", "bold");
 
@@ -291,11 +282,7 @@ function screenHillSession(ctx, sw, sh) {
 function screenProgress(ctx, sw, sh) {
   ctx.fillStyle = "#060D1B"; ctx.fillRect(0, 0, sw, sh);
 
-  ctx.fillStyle = WHITE; ctx.font = `bold ${sw * 0.06}px sans-serif`;
-  ctx.fillText("9:41", sw * 0.06, sh * 0.05);
-  ctx.textAlign = "right"; ctx.fillStyle = MUTED; ctx.font = `${sw * 0.05}px sans-serif`;
-  ctx.fillText("WiFi 100%", sw * 0.96, sh * 0.05); ctx.textAlign = "left";
-
+  // No simulated status bar — see note in screenDashboard().
   txt(ctx, "Progress", sw / 2, sh * 0.09, WHITE, sw * 0.075, "center", "bold");
 
   // Readiness circle

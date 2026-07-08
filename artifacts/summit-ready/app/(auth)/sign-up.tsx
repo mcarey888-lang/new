@@ -1,5 +1,5 @@
-import { useSignUp, useSSO } from "@clerk/expo";
-import * as AuthSession from "expo-auth-session";
+import { useAuth, useSignUp, useSSO } from "@clerk/expo";
+import * as ExpoLinking from "expo-linking";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { withTimeout } from "@/utils/withTimeout";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,6 +28,7 @@ export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signUp } = useSignUp() as any;
+  const { isLoaded: clerkLoaded } = useAuth();
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState("");
@@ -45,8 +47,8 @@ export default function SignUpScreen() {
   }, []);
 
   async function handleSignUp() {
-    if (!signUp) {
-      setError("Authentication is not ready yet — please try again in a moment.");
+    if (!clerkLoaded || typeof signUp?.password !== "function") {
+      setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,12 +63,15 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { error: createErr } = await signUp.password({ emailAddress: email, password });
+      const { error: createErr } = await withTimeout(
+        signUp.password({ emailAddress: email, password }),
+        20000,
+      ) as any;
       if (createErr) {
         setError(createErr.message ?? "Sign-up failed — please try again.");
         return;
       }
-      await signUp.verifications.sendEmailCode();
+      await withTimeout(signUp.verifications.sendEmailCode(), 20000);
       setNeedsVerification(true);
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
@@ -83,13 +88,16 @@ export default function SignUpScreen() {
   }
 
   async function handleVerify() {
-    if (!signUp) return;
+    if (!clerkLoaded || typeof signUp?.verifications?.verifyEmailCode !== "function") {
+      setError("Authentication service is still loading — please wait a moment and try again.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await signUp.verifications.verifyEmailCode({ code: verifyCode });
+      await withTimeout(signUp.verifications.verifyEmailCode({ code: verifyCode }), 20000);
       if (signUp.status === "complete") {
-        const { error } = await signUp.finalize();
+        const { error } = await withTimeout(signUp.finalize(), 20000) as any;
         if (!error) router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Verification failed — please try again.");
@@ -112,16 +120,20 @@ export default function SignUpScreen() {
     setGoogleLoading(true);
     setError(null);
     try {
+      // No timeout here: the user is interacting with an on-screen browser
+      // (Google's account picker / password / 2FA), which can legitimately
+      // take longer than any fixed timeout. It can't hang silently — the
+      // user can see and dismiss the browser themselves.
       const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
         strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri(),
+        redirectUrl: ExpoLinking.createURL("/"),
       });
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
       if (sessionId && ssoSetActive) {
-        await ssoSetActive({ session: sessionId });
+        await withTimeout(ssoSetActive({ session: sessionId }), 20000);
         router.replace("/(tabs)/dashboard" as any);
       } else {
-        setError(`Google sign-in didn't complete. [debug: sessionId=${sessionId ?? "none"}, hasSetActive=${!!ssoSetActive}, status=${(ssoSignIn as any)?.status ?? "n/a"}]`);
+        setError("Google sign-in didn't complete — please try again.");
       }
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
@@ -170,7 +182,7 @@ export default function SignUpScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  await signUp?.verifications.sendEmailCode();
+                  await withTimeout(signUp?.verifications.sendEmailCode(), 20000);
                 } catch (err: unknown) {
                   const e = err as Record<string, unknown>;
                   const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage

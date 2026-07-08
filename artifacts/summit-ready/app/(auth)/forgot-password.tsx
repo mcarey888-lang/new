@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/expo";
+import { useAuth, useSignIn } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
@@ -16,11 +16,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { withTimeout } from "@/utils/withTimeout";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signIn } = useSignIn() as any;
+  const { isLoaded: clerkLoaded } = useAuth();
 
   const [step, setStep] = useState<"email" | "reset">("email");
   const [email, setEmail] = useState("");
@@ -36,14 +38,17 @@ export default function ForgotPasswordScreen() {
     if (!email) { setError("Please enter your email address."); return; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) { setError("Please enter a valid email address."); return; }
-    if (!signIn) {
-      setError("Authentication is not ready yet — please try again in a moment.");
+    if (!clerkLoaded || typeof signIn?.create !== "function") {
+      setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).create({ strategy: "reset_password_email_code", identifier: email });
+      await withTimeout(
+        (signIn as any).create({ strategy: "reset_password_email_code", identifier: email }),
+        20000,
+      );
       setStep("reset");
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Could not send reset email. Please try again.";
@@ -58,24 +63,30 @@ export default function ForgotPasswordScreen() {
     if (!newPassword) { setError("Please enter a new password."); return; }
     if (newPassword !== confirmPassword) { setError("Passwords don't match."); return; }
     if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (!signIn) {
-      setError("Authentication is not ready yet — please try again in a moment.");
+    if (!clerkLoaded || typeof signIn?.resetPasswordEmailCode?.verifyCode !== "function") {
+      setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      const { error: verifyErr } = await (signIn as any).resetPasswordEmailCode.verifyCode({ code });
+      const { error: verifyErr } = await withTimeout(
+        (signIn as any).resetPasswordEmailCode.verifyCode({ code }),
+        20000,
+      ) as any;
       if (verifyErr) {
         setError(verifyErr.message ?? "Invalid code — please check and try again.");
         return;
       }
-      const { error: submitErr } = await (signIn as any).resetPasswordEmailCode.submitPassword({ password: newPassword });
+      const { error: submitErr } = await withTimeout(
+        (signIn as any).resetPasswordEmailCode.submitPassword({ password: newPassword }),
+        20000,
+      ) as any;
       if (submitErr) {
         setError(submitErr.message ?? "Could not set new password — please try again.");
         return;
       }
-      const { error: finalizeErr } = await (signIn as any).finalize();
+      const { error: finalizeErr } = await withTimeout((signIn as any).finalize(), 20000) as any;
       if (!finalizeErr) {
         router.replace("/(tabs)/dashboard" as any);
       } else {
