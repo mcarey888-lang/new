@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Session, ExploreHike, TrainingWeek, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import {
   TrainingSeed,
   SESSION_TYPES,
@@ -338,6 +339,7 @@ const EXERCISE_CHOICES: {
 ];
 
 export default function LogScreen() {
+  useScreenView("log");
   const insets = useSafeAreaInsets();
   const { sessions, deleteSession, updateSession, exploreHikes, deleteExploreHike, trainingPlan } = useApp();
   const [modalOpen, setModalOpen] = useState(false);

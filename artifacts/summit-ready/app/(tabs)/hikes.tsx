@@ -26,6 +26,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import { useApp, type ExploreHike } from "@/context/AppContext";
 import { LogHikeModal } from "@/components/LogHikeModal";
 
@@ -180,6 +181,7 @@ const cc = StyleSheet.create({
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function HikesScreen() {
+  useScreenView("hikes");
   const insets = useSafeAreaInsets();
   const {
     exploreHikes, deleteExploreHike,

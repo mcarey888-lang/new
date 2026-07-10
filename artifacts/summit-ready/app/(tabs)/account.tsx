@@ -25,6 +25,7 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
@@ -73,6 +74,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 }
 
 export default function AccountScreen() {
+  useScreenView("account");
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();

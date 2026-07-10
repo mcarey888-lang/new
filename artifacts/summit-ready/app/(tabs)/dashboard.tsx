@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
+import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
 import { ProgressRing } from "@/components/ProgressRing";
 import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet, getPeakExperienceState } from "@/utils/readinessScore";
@@ -440,6 +441,7 @@ function AlpineCard({
 }
 
 export default function DashboardScreen() {
+  useScreenView("dashboard");
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes } = useApp();
   const { isSubscribed } = useSubscription();
@@ -559,6 +561,15 @@ export default function DashboardScreen() {
     return () => { abortRef.current?.abort(); };
   }, []);
 
+  // Fire once per dashboard mount (not on every readiness score recalculation)
+  const readinessViewLoggedRef = useRef(false);
+  useEffect(() => {
+    if (!readinessViewLoggedRef.current) {
+      readinessViewLoggedRef.current = true;
+      void logReadinessScoreViewed({ readiness_score: readinessScore });
+    }
+  }, [readinessScore]);
+
   const handleAsk = useCallback(async () => {
     const q = askText.trim();
     if (!q || askLoading) return;
@@ -585,6 +596,7 @@ export default function DashboardScreen() {
       });
       const data = await res.json() as { answer?: string; error?: string };
       setAskAnswer(data.answer ?? data.error ?? "Couldn't get an answer.");
+      void logAiCoachUsed({ interaction_type: "ask" });
     } catch {
       setAskAnswer("Couldn't reach your coach. Check your connection.");
     } finally {

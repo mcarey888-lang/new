@@ -19,6 +19,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
+import { logReadinessTestCompleted, useScreenView } from "@/lib/analytics";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -709,6 +710,7 @@ function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionnaireScreen() {
+  useScreenView("questionnaire");
   const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState(0);
@@ -803,6 +805,7 @@ export default function QuestionnaireScreen() {
       await AsyncStorage.removeItem(PENDING_PAST_HIKES_KEY);
     }
     pendingParams.current = { score, mountain: mountainName.trim() };
+    void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
     setShowBaselineModal(true);
   }
 

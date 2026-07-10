@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { T, PHASE_COLOR } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 
@@ -1162,6 +1163,7 @@ function WeekCard({
 }
 
 export default function PlanScreen() {
+  useScreenView("plan");
   const insets = useSafeAreaInsets();
   const {
     summitGoal,

@@ -33,6 +33,7 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -478,6 +479,10 @@ export default function HikeTrackingScreen() {
     statusRef.current = "tracking";
     setStatus("tracking");
 
+    if (hillMeta.sessionKey) {
+      void logHillSessionStarted({ hill_name: hillMeta.hillName ?? undefined });
+    }
+
     // Timestamp-based timer — survives OS throttling of JS intervals
     trackStartMsRef.current  = Date.now();
     totalPausedMsRef.current = 0;
@@ -688,6 +693,7 @@ export default function HikeTrackingScreen() {
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
         trackPoints: trackPoints.current,
       });
+      void logHikeTracked({ distance_km: distKm, elevation_gain: elevGain, duration_min: Math.round(elapsedSecs / 60) });
 
       // 2 ── Optionally log to the plan session log
       if (addToPlan && trainingPlan && trainingPlan.length > 0) {
@@ -764,6 +770,11 @@ export default function HikeTrackingScreen() {
             }),
           });
         } catch { /* best-effort — hike was already saved locally */ }
+        void logHillSessionCompleted({
+          hill_name: hillMeta.hillName ?? undefined,
+          elevation_gain: elevGain,
+          source: "gps_tracked",
+        });
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

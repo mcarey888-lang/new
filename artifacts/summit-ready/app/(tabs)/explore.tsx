@@ -22,6 +22,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type ExploreHike } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 
 // ── Achievements ─────────────────────────────────────────────────────────────
 
@@ -214,6 +215,7 @@ const ac = StyleSheet.create({
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function ExploreScreen() {
+  useScreenView("explore");
   const insets = useSafeAreaInsets();
   const { exploreHikes } = useApp();
 

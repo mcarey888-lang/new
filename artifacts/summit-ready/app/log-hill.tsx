@@ -28,6 +28,7 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
+import { logHillSessionCompleted } from "@/lib/analytics";
 
 const FREE_HILLS_LIMIT = 3;
 const SUGGESTED_COUNT = 3;
@@ -126,6 +127,7 @@ export default function LogHillScreen() {
         reps,
       });
       const hillName = logTarget.name;
+      void logHillSessionCompleted({ hill_name: hillName, elevation_gain: elevGain, reps, source: "manual" });
       setLoggedHill(hillName);
       closeLogModal();
       setTimeout(() => setLoggedHill(null), 3000);

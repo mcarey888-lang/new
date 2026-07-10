@@ -26,6 +26,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type Session, type ExploreHike, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { logWorkoutCompleted } from "@/lib/analytics";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type FilterTab = "all" | "training" | "hikes";
@@ -321,7 +322,13 @@ export default function SessionsScreen() {
                 session={item.data}
                 index={i}
                 onDelete={() => deleteSession(item.data.id)}
-                onToggle={() => updateSession(item.data.id, { completed: !item.data.completed })}
+                onToggle={() => {
+                  const willComplete = !item.data.completed;
+                  updateSession(item.data.id, { completed: willComplete });
+                  if (willComplete) {
+                    void logWorkoutCompleted({ workout_type: item.data.type, week_number: item.data.weekNumber });
+                  }
+                }}
               />
             ) : (
               <HikeCard

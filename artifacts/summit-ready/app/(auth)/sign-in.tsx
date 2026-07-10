@@ -20,10 +20,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { withTimeout } from "@/utils/withTimeout";
+import { logLogin, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
+  useScreenView("sign_in");
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signIn } = useSignIn() as any;
@@ -68,7 +70,10 @@ export default function SignInScreen() {
       }
       if (signIn.status === "complete") {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) router.replace("/(tabs)/dashboard" as any);
+        if (!error) {
+          void logLogin("email");
+          router.replace("/(tabs)/dashboard" as any);
+        }
       } else if (signIn.status === "needs_second_factor") {
         await withTimeout(signIn.mfa.sendEmailCode(), 20000);
         setNeedsMFA(true);
@@ -107,7 +112,10 @@ export default function SignInScreen() {
       await withTimeout(signIn.mfa.verifyEmailCode({ code: verifyCode }), 20000);
       if (signIn.status === "complete") {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) router.replace("/(tabs)/dashboard" as any);
+        if (!error) {
+          void logLogin("email_mfa");
+          router.replace("/(tabs)/dashboard" as any);
+        }
       } else {
         setError("Verification failed — please try again.");
       }
@@ -140,6 +148,7 @@ export default function SignInScreen() {
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
       if (sessionId && ssoSetActive) {
         await withTimeout(ssoSetActive({ session: sessionId }), 20000);
+        void logLogin("google");
         router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Google sign-in didn't complete — please try again.");

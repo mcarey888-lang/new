@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
+import { logTrainingPlanGenerated, logReadinessScoreImproved } from "@/lib/analytics";
 import type { Trail } from "@/constants/trailData";
 
 export interface AlpineRequirement {
@@ -589,6 +590,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(COMPLETED_GOALS_KEY, JSON.stringify(updatedHistory));
     }
     const plan = generatePlan(goal);
+    void logTrainingPlanGenerated({ mountain_name: goal.mountainName, weeks: plan.length });
     // Consume any past hikes saved during the "Catch me up" onboarding step
     const _pendingStr = await AsyncStorage.getItem(PENDING_PAST_HIKES_KEY);
     const _pendingHikes: PastHike[] = _pendingStr ? (JSON.parse(_pendingStr) as PastHike[]) : [];
@@ -675,6 +677,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Update the summit target WITHOUT archiving the old goal or clearing sessions.
     // Existing logged sessions are preserved — only the plan is regenerated.
     const plan = generatePlan(goal);
+    void logTrainingPlanGenerated({ mountain_name: goal.mountainName, weeks: plan.length });
     setSummitGoalState(goal);
     setTrainingPlan(plan);
     // Reset plan-tracking state (old tick-marks don't map to the new plan)
@@ -759,6 +762,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (summitGoal) {
       score = calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes });
       setReadinessScore(score);
+      if (score > oldScore) {
+        void logReadinessScoreImproved({ readiness_score: score, previous_score: oldScore });
+      }
       // Show a why-didn't-my-score-improve popup for completed sessions
       if (session.completed && score <= oldScore) {
         const insight = diagnoseScoreStagnation(summitGoal, updated, exploreHikes, oldScore, score);
@@ -864,6 +870,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (summitGoal) {
       score = calculateReadiness(summitGoal, trainingPlan, sessions, { sessionReps, assignedHills, completedGoals, exploreHikes: updated });
       setReadinessScore(score);
+      if (score > oldScore) {
+        void logReadinessScoreImproved({ readiness_score: score, previous_score: oldScore });
+      }
       if (score <= oldScore) {
         const insight = diagnoseScoreStagnation(summitGoal, sessions, updated, oldScore, score);
         if (insight) setScoreStagnation(insight);

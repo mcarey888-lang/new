@@ -18,6 +18,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "@/lib/revenuecat";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 
 const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   { icon: MapPin,      title: "Personalised summit training",      desc: "Plans built entirely around your mountain, date, and fitness" },
@@ -65,6 +66,7 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
 }
 
 export default function PaywallScreen() {
+  useScreenView("paywall");
   const insets = useSafeAreaInsets();
   const { offerings, purchase, restore, isPurchasing, isRestoring, offeringsLoading, offeringsError, refetchOfferings } = useSubscription();
   const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string }>();

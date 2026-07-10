@@ -61,6 +61,8 @@
   },
   "dependencies": {
     "@react-native-community/slider": "^5.2.0",
+    "@react-native-firebase/analytics": "25.1.0",
+    "@react-native-firebase/app": "25.1.0",
     "expo-audio": "^1.1.1",
     "expo-build-properties": "~1.0.10",
     "expo-task-manager": "~14.0.9",

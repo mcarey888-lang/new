@@ -24,6 +24,7 @@ import { useApp, NearbyHill, ExploreHike, Session } from "@/context/AppContext";
 import { useChallenges } from "@/context/ChallengesContext";
 import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 
 const GRADE_COLOR: Record<string, string> = {
   "Easy": T.green,
@@ -93,6 +94,7 @@ function HikeDetailSheet({ hike, onClose }: { hike: ExploreHike; onClose: () => 
 }
 
 export default function MyHillsScreen() {
+  useScreenView("hills");
   const insets = useSafeAreaInsets();
   const { myHills, removeFromMyHills, addSession, summitGoal, sessions, exploreHikes, deleteExploreHike } = useApp();
   const { activeChallenges } = useChallenges();

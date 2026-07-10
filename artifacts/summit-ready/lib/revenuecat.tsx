@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import { logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -84,6 +85,15 @@ function useSubscriptionContext() {
     },
     onSuccess: (customerInfo) => {
       queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
+      const entitlement = customerInfo.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER];
+      if (entitlement) {
+        const plan = entitlement.productIdentifier;
+        if (entitlement.periodType === "TRIAL" || entitlement.periodType === "INTRO") {
+          void logTrialStarted({ plan });
+        } else {
+          void logSubscriptionStarted({ plan });
+        }
+      }
     },
   });
 

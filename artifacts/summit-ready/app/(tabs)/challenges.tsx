@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CheckCircle, ChevronRight, Lock, Trophy, Zap } from "lucide-react-native";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, type ChallengeTemplate } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
@@ -126,6 +127,7 @@ const cc = StyleSheet.create({
 });
 
 export default function ChallengesScreen() {
+  useScreenView("challenges");
   const insets = useSafeAreaInsets();
   const { activeChallenges, getProgress } = useChallenges();
   const { isSubscribed } = useSubscription();

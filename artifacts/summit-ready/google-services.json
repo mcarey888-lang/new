@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "425086594731",
+    "project_id": "summit-ready",
+    "storage_bucket": "summit-ready.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425086594731:android:cd083997c9f1505cb151ee",
+        "android_client_info": {
+          "package_name": "uk.summitready.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "425086594731-u7j236aqs25ge9vb7o5e6pu8nt2v48sg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBa8-9ouORh6p2Q12qTlNcTyyF3oz7WhWI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "425086594731-u7j236aqs25ge9vb7o5e6pu8nt2v48sg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -15,6 +15,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 
 const FREE_FEATURES = [
   "1 summit goal",
@@ -36,6 +37,7 @@ const PRO_FEATURES = [
 ];
 
 export default function SubscriptionScreen() {
+  useScreenView("subscription");
   const insets = useSafeAreaInsets();
   const { customerInfo, isSubscribed, restore, isRestoring } = useSubscription();
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);

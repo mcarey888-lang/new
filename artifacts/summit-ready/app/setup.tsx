@@ -21,6 +21,7 @@ import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SummitGoal, NearbyHill, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { logMountainSelected, useScreenView } from "@/lib/analytics";
 import {
   assessTime, TimeAssessment,
   deriveFitnessFromSliders,
@@ -103,6 +104,7 @@ const LOCATIONS = [
 ];
 
 export default function SetupScreen() {
+  useScreenView("setup");
   const insets = useSafeAreaInsets();
   const { setSummitGoal, changeSummit, summitGoal } = useApp();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
@@ -417,6 +419,7 @@ export default function SetupScreen() {
     } else {
       await setSummitGoal(newGoal);
     }
+    void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
     setSaving(false);
     router.replace("/(tabs)/dashboard");
   }

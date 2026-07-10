@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp, NearbyHill } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { useScreenView } from "@/lib/analytics";
 import { useSubscription } from "@/lib/revenuecat";
 
 const FREE_HILLS_LIMIT = 3;
@@ -64,6 +65,7 @@ function sortHills(hills: NearbyHill[], by: SortKey): NearbyHill[] {
 }
 
 export default function TrackScreen() {
+  useScreenView("trails");
   const insets = useSafeAreaInsets();
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,

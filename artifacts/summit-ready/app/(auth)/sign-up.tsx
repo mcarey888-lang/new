@@ -21,10 +21,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { withTimeout } from "@/utils/withTimeout";
+import { logSignUp, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
+  useScreenView("sign_up");
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signUp } = useSignUp() as any;
@@ -98,7 +100,10 @@ export default function SignUpScreen() {
       await withTimeout(signUp.verifications.verifyEmailCode({ code: verifyCode }), 20000);
       if (signUp.status === "complete") {
         const { error } = await withTimeout(signUp.finalize(), 20000) as any;
-        if (!error) router.replace("/(tabs)/dashboard" as any);
+        if (!error) {
+          void logSignUp("email");
+          router.replace("/(tabs)/dashboard" as any);
+        }
       } else {
         setError("Verification failed — please try again.");
       }
@@ -131,6 +136,7 @@ export default function SignUpScreen() {
       const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
       if (sessionId && ssoSetActive) {
         await withTimeout(ssoSetActive({ session: sessionId }), 20000);
+        void logSignUp("google");
         router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Google sign-in didn't complete — please try again.");

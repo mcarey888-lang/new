@@ -25,6 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CheckCircle, Share2, Trophy, Zap } from "lucide-react-native";
 import { T } from "@/constants/theme";
+import { logChallengeCompleted } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
 import { ConfettiCelebration } from "@/components/ConfettiCelebration";
@@ -113,6 +114,7 @@ export default function ChallengeCompleteScreen() {
         setIsCelebrating(true);
         setShowConfetti(true);
         AsyncStorage.setItem(key, "1");
+        void logChallengeCompleted({ challenge_id: id });
         try {
           await setAudioModeAsync({ playsInSilentMode: true });
           player = createAudioPlayer(require("../assets/sounds/challenge_complete.mp3"));

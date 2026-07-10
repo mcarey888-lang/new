@@ -23,6 +23,7 @@ import {
   MoreHorizontal, Mountain, TrendingUp, Zap,
 } from "lucide-react-native";
 import { T } from "@/constants/theme";
+import { logChallengeStarted } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
 import { useChallenges, type ChallengeActivity } from "@/context/ChallengesContext";
 import { useApp } from "@/context/AppContext";
@@ -630,6 +631,7 @@ export default function ChallengeDetailScreen() {
   function handleStart() {
     if (locked) { router.push("/paywall"); return; }
     startChallenge(c!.id);
+    void logChallengeStarted({ challenge_id: c!.id });
   }
 
   async function handleLog(entries: Omit<ChallengeActivity, "id" | "createdAt">[]) {
