@@ -39,6 +39,7 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -151,6 +152,36 @@ export default function SignUpScreen() {
     }
   }, [startSSOFlow]);
 
+  const handleApple = useCallback(async () => {
+    setAppleLoading(true);
+    setError(null);
+    try {
+      // No timeout here: the user is interacting with an on-screen browser
+      // (Apple's account picker / password / 2FA), which can legitimately
+      // take longer than any fixed timeout. It can't hang silently — the
+      // user can see and dismiss the browser themselves.
+      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
+        strategy: "oauth_apple",
+        redirectUrl: ExpoLinking.createURL("/"),
+      });
+      const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+      if (sessionId && ssoSetActive) {
+        await withTimeout(ssoSetActive({ session: sessionId }), 20000);
+        void logSignUp("apple");
+        router.replace("/(tabs)/dashboard" as any);
+      } else {
+        setError("Apple sign-in didn't complete — please try again.");
+      }
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const clerkMsg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+        ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message;
+      setError(clerkMsg ?? (e?.message as string) ?? "Apple sign-up failed.");
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [startSSOFlow]);
+
   if (needsVerification) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -223,10 +254,24 @@ export default function SignUpScreen() {
           <Text style={s.title}>Create your account</Text>
           <Text style={s.subtitle}>Join SummitReady and start your mountain journey</Text>
 
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              style={s.appleBtn}
+              onPress={handleApple}
+              disabled={loading || googleLoading || appleLoading}
+              activeOpacity={0.85}
+            >
+              {appleLoading
+                ? <ActivityIndicator color="#fff" />
+                : <><Text style={s.appleIcon}></Text><Text style={s.appleText}>Continue with Apple</Text></>
+              }
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={s.googleBtn}
             onPress={handleGoogle}
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || appleLoading}
             activeOpacity={0.85}
           >
             {googleLoading
@@ -282,7 +327,7 @@ export default function SignUpScreen() {
           <TouchableOpacity
             style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
             onPress={handleSignUp}
-            disabled={loading || googleLoading || !email || !password}
+            disabled={loading || googleLoading || appleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
@@ -324,6 +369,12 @@ const s = StyleSheet.create({
   logo: { width: 220, height: 88 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", marginBottom: 8 },
+  appleBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "#000", borderRadius: 14, paddingVertical: 14,
+  },
+  appleIcon: { fontSize: 18, color: "#fff" },
+  appleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
   googleBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 14,

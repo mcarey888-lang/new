@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "uk.summitready.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "SummitReady uses your location to find hiking trails and hills near you so we can build your personalised mountain training plan.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SummitReady tracks your location in the background so your hike continues recording accurately when your screen is locked.",

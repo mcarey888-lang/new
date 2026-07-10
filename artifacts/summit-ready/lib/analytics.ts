@@ -72,12 +72,12 @@ export function logAppOpen(): Promise<void> {
 }
 
 /** A new account was created. */
-export function logSignUp(method: "email" | "google"): Promise<void> {
+export function logSignUp(method: "email" | "google" | "apple"): Promise<void> {
   return logAnalyticsEvent("sign_up", { method });
 }
 
 /** An existing user signed in. */
-export function logLogin(method: "email" | "email_mfa" | "google"): Promise<void> {
+export function logLogin(method: "email" | "email_mfa" | "google" | "apple"): Promise<void> {
   return logAnalyticsEvent("login", { method });
 }
 

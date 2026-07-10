@@ -38,6 +38,7 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [needsMFA, setNeedsMFA] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -84,13 +85,13 @@ export default function SignInScreen() {
       const e = err as Record<string, unknown>;
       const firstClerkErr = (e?.errors as Array<{ code?: string; longMessage?: string; message?: string }>)?.[0];
       const code = firstClerkErr?.code ?? "";
-      // Strategy mismatch means the account was created with a social provider (e.g. Google)
+      // Strategy mismatch means the account was created with a social provider (e.g. Google or Apple)
       if (
         code === "strategy_for_user_invalid" ||
         code === "form_strategy_not_permitted" ||
         (firstClerkErr?.message ?? "").toLowerCase().includes("strategy")
       ) {
-        setError("This account uses Google sign-in. Tap 'Continue with Google' above.");
+        setError("This account uses Google or Apple sign-in. Tap the button above to continue.");
       } else {
         const clerkMsg = firstClerkErr?.longMessage ?? firstClerkErr?.message;
         const fallback = (e?.message as string) ?? "Sign-in failed — please try again.";
@@ -163,6 +164,36 @@ export default function SignInScreen() {
     }
   }, [startSSOFlow]);
 
+  const handleApple = useCallback(async () => {
+    setAppleLoading(true);
+    setError(null);
+    try {
+      // No timeout here: the user is interacting with an on-screen browser
+      // (Apple's account picker / password / 2FA), which can legitimately
+      // take longer than any fixed timeout. It can't hang silently — the
+      // user can see and dismiss the browser themselves.
+      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
+        strategy: "oauth_apple",
+        redirectUrl: ExpoLinking.createURL("/"),
+      });
+      const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
+      if (sessionId && ssoSetActive) {
+        await withTimeout(ssoSetActive({ session: sessionId }), 20000);
+        void logLogin("apple");
+        router.replace("/(tabs)/dashboard" as any);
+      } else {
+        setError("Apple sign-in didn't complete — please try again.");
+      }
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const clerkMsg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
+        ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message;
+      setError(clerkMsg ?? (e?.message as string) ?? "Apple sign-in failed.");
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [startSSOFlow]);
+
   if (needsMFA) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -227,10 +258,24 @@ export default function SignInScreen() {
           <Text style={s.title}>Welcome back</Text>
           <Text style={s.subtitle}>Sign in to continue your training</Text>
 
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              style={s.appleBtn}
+              onPress={handleApple}
+              disabled={loading || googleLoading || appleLoading}
+              activeOpacity={0.85}
+            >
+              {appleLoading
+                ? <ActivityIndicator color="#fff" />
+                : <><Text style={s.appleIcon}></Text><Text style={s.appleText}>Continue with Apple</Text></>
+              }
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={s.googleBtn}
             onPress={handleGoogle}
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || appleLoading}
             activeOpacity={0.85}
           >
             {googleLoading
@@ -286,7 +331,7 @@ export default function SignInScreen() {
           <TouchableOpacity
             style={[s.primaryBtn, (!email || !password) && { opacity: 0.5 }]}
             onPress={handleSignIn}
-            disabled={loading || googleLoading || !email || !password}
+            disabled={loading || googleLoading || appleLoading || !email || !password}
             activeOpacity={0.85}
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.btnGrad}>
@@ -323,6 +368,12 @@ const s = StyleSheet.create({
   logo: { width: 220, height: 88 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", marginBottom: 8 },
+  appleBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "#000", borderRadius: 14, paddingVertical: 14,
+  },
+  appleIcon: { fontSize: 18, color: "#fff" },
+  appleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
   googleBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 14,
