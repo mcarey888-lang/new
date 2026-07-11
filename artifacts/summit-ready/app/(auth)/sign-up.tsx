@@ -1,4 +1,5 @@
-import { useAuth, useSignUp, useSSO } from "@clerk/expo";
+import { useAuth, useSignIn, useSignUp, useSSO } from "@clerk/expo";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as ExpoLinking from "expo-linking";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -28,6 +29,8 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignUpScreen() {
   useScreenView("sign_up");
   const insets = useSafeAreaInsets();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { signIn } = useSignIn() as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signUp } = useSignUp() as any;
   const { isLoaded: clerkLoaded } = useAuth();
@@ -156,23 +159,50 @@ export default function SignUpScreen() {
     setAppleLoading(true);
     setError(null);
     try {
-      // No timeout here: the user is interacting with an on-screen browser
-      // (Apple's account picker / password / 2FA), which can legitimately
-      // take longer than any fixed timeout. It can't hang silently — the
-      // user can see and dismiss the browser themselves.
-      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn } = await startSSOFlow({
-        strategy: "oauth_apple",
-        redirectUrl: ExpoLinking.createURL("/"),
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
       });
-      const sessionId = createdSessionId ?? (ssoSignIn?.createdSessionId as string | null | undefined);
-      if (sessionId && ssoSetActive) {
-        await withTimeout(ssoSetActive({ session: sessionId }), 20000);
-        void logSignUp("apple");
-        router.replace("/(tabs)/dashboard" as any);
+      const { identityToken } = credential;
+      if (!identityToken) {
+        setError("Apple sign-in failed — no identity token received.");
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await withTimeout(
+        signIn.create({ strategy: "oauth_token_apple", token: identityToken }),
+        20000,
+      ) as any;
+      if (result.status === "complete") {
+        // Existing Clerk account — sign in directly
+        const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
+        if (!finalizeErr) {
+          void logSignUp("apple");
+          router.replace("/(tabs)/dashboard" as any);
+        }
+      } else if (result.status === "needs_transfer") {
+        // No Clerk account yet — create a new one via transfer
+        const signUpResult = await withTimeout(
+          signUp.create({ transfer: true }),
+          20000,
+        ) as any;
+        if (signUpResult.status === "complete") {
+          const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
+          if (!finalizeErr) {
+            void logSignUp("apple");
+            router.replace("/(tabs)/dashboard" as any);
+          }
+        } else {
+          setError("Apple sign-up didn't complete — please try again.");
+        }
       } else {
-        setError("Apple sign-in didn't complete — please try again.");
+        setError("Apple sign-up didn't complete — please try again.");
       }
     } catch (err: unknown) {
+      // User cancelled the native Apple prompt — don't show an error
+      if ((err as Record<string, unknown>)?.code === "ERR_REQUEST_CANCELED") return;
       const e = err as Record<string, unknown>;
       const clerkMsg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
         ?? (e?.errors as Array<{ message?: string }>)?.[0]?.message;
@@ -180,7 +210,7 @@ export default function SignUpScreen() {
     } finally {
       setAppleLoading(false);
     }
-  }, [startSSOFlow]);
+  }, [signIn, signUp]);
 
   if (needsVerification) {
     return (
@@ -255,17 +285,15 @@ export default function SignUpScreen() {
           <Text style={s.subtitle}>Join SummitReady and start your mountain journey</Text>
 
           {Platform.OS === "ios" && (
-            <TouchableOpacity
-              style={s.appleBtn}
-              onPress={handleApple}
-              disabled={loading || googleLoading || appleLoading}
-              activeOpacity={0.85}
-            >
-              {appleLoading
-                ? <ActivityIndicator color="#fff" />
-                : <><Text style={s.appleIcon}></Text><Text style={s.appleText}>Continue with Apple</Text></>
-              }
-            </TouchableOpacity>
+            appleLoading
+              ? <View style={s.appleBtnLoading}><ActivityIndicator color="#fff" /></View>
+              : <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={14}
+                  style={s.appleBtn}
+                  onPress={handleApple}
+                />
           )}
 
           <TouchableOpacity
@@ -369,12 +397,8 @@ const s = StyleSheet.create({
   logo: { width: 220, height: 88 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", marginBottom: 8 },
-  appleBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "#000", borderRadius: 14, paddingVertical: 14,
-  },
-  appleIcon: { fontSize: 18, color: "#fff" },
-  appleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  appleBtn: { height: 52 },
+  appleBtnLoading: { height: 52, backgroundColor: "#000", borderRadius: 14, alignItems: "center", justifyContent: "center" },
   googleBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
     backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingVertical: 14,
