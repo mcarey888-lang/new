@@ -13,4 +13,5 @@
 - [Expo dev domain preview routing quirk](expo-dev-domain-preview-quirk.md) — screenshotting Expo artifact root can render the wrong artifact; verify via curling the local Metro port instead.
 - [App Store screenshot fake status bar](app-store-screenshot-status-bar.md) — never draw simulated "9:41"/WiFi-text status bars in marketing screenshot generators; triggers Apple 2.3.10 rejection.
 - [EAS build detached monitoring](eas-build-detached-monitoring.md) — use setsid+disown+</dev/null to launch `eas build`, then poll `eas build:view <id> --json` for status instead of trusting local stdout.
-- [Sign in with Apple via Clerk on Expo](clerk-apple-signin-expo.md) — reuse web-based startSSOFlow (no native module); app.json `usesAppleSignIn` still required for App Store guideline 4.8.
+- [Sign in with Apple via Clerk on Expo](clerk-apple-signin-expo.md) — native expo-apple-authentication + signIn.create(oauth_token_apple); needs_transfer for new accounts; do NOT upgrade @clerk/expo past 3.3.0.
+- [Firebase iOS plist required for prebuild](firebase-ios-plist-required.md) — @react-native-firebase/app plugin requires ios.googleServicesFile even for Android-only setups; placeholder plist unblocks build.
