@@ -106,6 +106,7 @@
         }
       ],
       "./plugins/removeMediaPlaybackPermission.js",
+      "./plugins/allowNonModularIncludes.js",
       "@react-native-firebase/app",
       "@react-native-firebase/analytics"
     ],
