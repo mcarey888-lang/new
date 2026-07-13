@@ -15,4 +15,5 @@
 - [EAS build detached monitoring](eas-build-detached-monitoring.md) — use setsid+disown+</dev/null to launch `eas build`, then poll `eas build:view <id> --json` for status instead of trusting local stdout.
 - [Sign in with Apple via Clerk on Expo](clerk-apple-signin-expo.md) — native expo-apple-authentication + signIn.create(oauth_token_apple); needs_transfer for new accounts; do NOT upgrade @clerk/expo past 3.3.0.
 - [Firebase iOS plist required for prebuild](firebase-ios-plist-required.md) — @react-native-firebase/app plugin requires ios.googleServicesFile even for Android-only setups; placeholder plist unblocks build.
+- [Firebase GOOGLE_APP_ID format crash](firebase-google-app-id-format.md) — GOOGLE_APP_ID must match `1:\d+:ios:[0-9a-fA-F]+`; non-hex suffix (e.g. "placeholder-not-configured") throws NSException at launch via FIRApp.configure() before JS starts.
 - [Firebase RNFB non-modular headers fix](firebase-rnfb-defines-module.md) — DEFINES_MODULE=NO for RNFB* targets in post_install; ALLOW_NON_MODULAR and -Wno flags both fail in Xcode 15 + RN 0.81.5.
