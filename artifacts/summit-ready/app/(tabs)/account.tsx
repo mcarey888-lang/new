@@ -1,6 +1,7 @@
 import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useRef, useEffect } from "react";
@@ -81,6 +82,7 @@ export default function AccountScreen() {
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const queryClient = useQueryClient();
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const achievementsY = useRef<number>(0);
@@ -154,7 +156,7 @@ export default function AccountScreen() {
     } else {
       Alert.alert(
         "Sign out",
-        "Your training data stays on this device.",
+        "Are you sure you want to sign out?",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Sign out", style: "destructive", onPress: doSignOut },
@@ -165,6 +167,8 @@ export default function AccountScreen() {
 
   async function doSignOut() {
     try { await Purchases.logOut(); } catch {}
+    try { await AsyncStorage.clear(); } catch {}
+    queryClient.clear();
     await signOut();
     router.replace("/");
   }
