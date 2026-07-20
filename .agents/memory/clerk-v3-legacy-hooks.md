@@ -75,11 +75,11 @@ if (!isLoaded) { /* show spinner */ }
 | `signIn.create({ identifier, password })` | `signIn.password({ emailAddress, password })` |
 | `signIn.prepareSecondFactor({ strategy: "email_code" })` | `signIn.mfa.sendEmailCode()` |
 | `signIn.attemptSecondFactor({ strategy: "email_code", code })` | `signIn.mfa.verifyEmailCode({ code })` |
-| `signUp.create({ emailAddress, password })` | `signUp.password({ emailAddress, password })` |
 | `signUp.prepareEmailAddressVerification({ strategy: "email_code" })` | `signUp.verifications.sendEmailCode()` |
 | `signUp.attemptEmailAddressVerification({ code })` | `signUp.verifications.verifyEmailCode({ code })` |
 
-NOTE: `signIn.create()` appears to still work at runtime (user confirmed sign-in works) but the v3 canonical method is `signIn.password()`. `signUp.create()` / `prepareEmailAddressVerification()` do NOT exist.
+NOTE: `signIn.create()` appears to still work at runtime but the v3 canonical method is `signIn.password()`. `signIn.attemptFirstFactor` does NOT exist in v3 — confirmed real-device crash "undefined is not a function".
+NOTE: `signUp.create({ emailAddress, password })` IS a valid typed method in SignUpResource (line 49 of @clerk/shared@4.22.1 signUp.d.ts) — do NOT revert this. `signUp.password()` does NOT appear in the type definition. `prepareEmailAddressVerification()` does NOT exist (use `signUp.verifications.sendEmailCode()` instead).
 
 ```typescript
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

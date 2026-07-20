@@ -64,14 +64,8 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      // Step 1: create the sign-in attempt (logs sign_in.created in Clerk)
       await withTimeout(
-        signIn.create({ identifier: email.trim() }),
-        20000,
-      );
-      // Step 2: submit password as the first factor (logs sign_in.completed or sign_in.password.failed)
-      await withTimeout(
-        signIn.attemptFirstFactor({ strategy: "password", password }),
+        signIn.password({ emailAddress: email.trim(), password }),
         20000,
       );
       if (signIn.status === "complete") {
