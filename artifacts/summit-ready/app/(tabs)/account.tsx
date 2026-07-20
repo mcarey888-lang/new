@@ -169,7 +169,7 @@ export default function AccountScreen() {
     try { await Purchases.logOut(); } catch {}
     try { await AsyncStorage.clear(); } catch {}
     queryClient.clear();
-    await signOut();
+    try { await signOut(); } catch {}
     router.replace("/");
   }
 

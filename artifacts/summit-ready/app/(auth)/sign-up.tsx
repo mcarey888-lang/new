@@ -53,7 +53,7 @@ export default function SignUpScreen() {
   }, []);
 
   async function handleSignUp() {
-    if (!clerkLoaded || typeof signUp?.password !== "function") {
+    if (!clerkLoaded || typeof signUp?.create !== "function") {
       setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
@@ -69,14 +69,10 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { error: createErr } = await withTimeout(
-        signUp.password({ emailAddress: email, password }),
+      await withTimeout(
+        signUp.create({ emailAddress: email.trim(), password }),
         20000,
-      ) as any;
-      if (createErr) {
-        setError(createErr.message ?? "Sign-up failed — please try again.");
-        return;
-      }
+      );
       await withTimeout(signUp.verifications.sendEmailCode(), 20000);
       setNeedsVerification(true);
     } catch (err: unknown) {
@@ -249,7 +245,7 @@ export default function SignUpScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  await withTimeout(signUp?.verifications.sendEmailCode(), 20000);
+                  await withTimeout(signUp?.verifications?.sendEmailCode(), 20000);
                 } catch (err: unknown) {
                   const e = err as Record<string, unknown>;
                   const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage
