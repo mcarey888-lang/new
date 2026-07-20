@@ -167,7 +167,13 @@ export default function AccountScreen() {
 
   async function doSignOut() {
     try { await Purchases.logOut(); } catch {}
-    try { await AsyncStorage.clear(); } catch {}
+    if (userId) {
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const userKeys = allKeys.filter(k => k.endsWith(`_${userId}`));
+        if (userKeys.length > 0) await AsyncStorage.multiRemove(userKeys);
+      } catch {}
+    }
     queryClient.clear();
     try { await signOut(); } catch {}
     router.replace("/");
@@ -241,7 +247,13 @@ export default function AccountScreen() {
       Alert.alert("Delete failed", msg);
       return;
     }
-    try { await AsyncStorage.clear(); } catch {}
+    if (userId) {
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const userKeys = allKeys.filter(k => k.endsWith(`_${userId}`));
+        if (userKeys.length > 0) await AsyncStorage.multiRemove(userKeys);
+      } catch {}
+    }
     try { await signOut(); } catch {}
     setDeletingAccount(false);
     router.replace("/");

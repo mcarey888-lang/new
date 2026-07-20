@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
@@ -98,6 +99,7 @@ function PulsingTrophy({ emoji, color, isCelebrating }: { emoji: string; color: 
 export default function ChallengeCompleteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
   const { getActiveChallenge } = useChallenges();
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -107,9 +109,18 @@ export default function ChallengeCompleteScreen() {
 
   useEffect(() => {
     if (!id) return;
-    const key = CELEBRATION_KEY_PREFIX + id;
+    const flatKey = CELEBRATION_KEY_PREFIX + id;
+    const key = userId ? `${CELEBRATION_KEY_PREFIX}${id}_${userId}` : flatKey;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
     AsyncStorage.getItem(key).then(async (val) => {
+      if (!val && key !== flatKey) {
+        const flatVal = await AsyncStorage.getItem(flatKey);
+        if (flatVal) {
+          await AsyncStorage.setItem(key, flatVal);
+          await AsyncStorage.removeItem(flatKey);
+          return;
+        }
+      }
       if (!val) {
         setIsCelebrating(true);
         setShowConfetti(true);
@@ -126,7 +137,7 @@ export default function ChallengeCompleteScreen() {
       }
     });
     return () => { player?.remove(); };
-  }, [id]);
+  }, [id, userId]);
 
   if (!c || !ac) {
     return (

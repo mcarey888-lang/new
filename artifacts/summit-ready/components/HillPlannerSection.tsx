@@ -29,6 +29,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react-native";
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { T } from "@/constants/theme";
 import { useApp, type NearbyHill } from "@/context/AppContext";
@@ -38,7 +39,7 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
-const LOC_KEY = "summitready_hikes_location";
+const _FLAT_LOC_KEY = "summitready_hikes_location";
 
 export interface PlannedHillEntry {
   hill: NearbyHill;
@@ -157,6 +158,8 @@ const fb = StyleSheet.create({
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function HillPlannerSection({ targetValue, metric, color, currentProgress = 0, onLog, onPlannedChange, logTriggerRef }: Props) {
+  const { userId } = useAuth();
+  const LOC_KEY = userId ? `summitready_hikes_location_${userId}` : _FLAT_LOC_KEY;
   const { myHills } = useApp();
   const [location, setLocation] = useState("");
   const [search, setSearch]     = useState("");
@@ -172,7 +175,17 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
 
   // Pre-fill location from Hills cache
   useEffect(() => {
-    AsyncStorage.getItem(LOC_KEY).then(v => { if (v) setLocation(v); });
+    (async () => {
+      let v = await AsyncStorage.getItem(LOC_KEY);
+      if (!v && userId) {
+        v = await AsyncStorage.getItem(_FLAT_LOC_KEY);
+        if (v) {
+          await AsyncStorage.setItem(LOC_KEY, v);
+          await AsyncStorage.removeItem(_FLAT_LOC_KEY);
+        }
+      }
+      if (v) setLocation(v);
+    })();
   }, []);
 
   const totalPlannedElev = planned.reduce((s, p) => s + p.hill.elevation * p.reps, 0);

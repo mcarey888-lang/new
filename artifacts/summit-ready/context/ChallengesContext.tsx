@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
@@ -45,9 +46,12 @@ const ChallengesContext = createContext<ChallengesState>({
   clearChallenges: async () => {},
 });
 
-const CHALLENGES_KEY = "summitready_challenges";
+const _FLAT_CHALLENGES_KEY = "summitready_challenges";
 
 export function ChallengesProvider({ children }: { children: React.ReactNode }) {
+  const { userId } = useAuth();
+  const _uid = userId ?? "";
+  const CHALLENGES_KEY = _uid ? `summitready_challenges_${_uid}` : _FLAT_CHALLENGES_KEY;
   const [activeChallenges, setActiveChallenges] = useState<ActiveChallenge[]>([]);
   const { addSession, logExploreHike, appMode } = useApp();
 
@@ -56,13 +60,22 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => { latestRef.current = activeChallenges; }, [activeChallenges]);
 
   useEffect(() => {
-    AsyncStorage.getItem(CHALLENGES_KEY).then(raw => {
+    (async () => {
+      let raw = await AsyncStorage.getItem(CHALLENGES_KEY);
+      if (!raw && _uid) {
+        const flatData = await AsyncStorage.getItem(_FLAT_CHALLENGES_KEY);
+        if (flatData) {
+          await AsyncStorage.setItem(CHALLENGES_KEY, flatData);
+          await AsyncStorage.removeItem(_FLAT_CHALLENGES_KEY);
+          raw = flatData;
+        }
+      }
       if (raw) {
         const parsed = JSON.parse(raw) as ActiveChallenge[];
         setActiveChallenges(parsed);
         latestRef.current = parsed;
       }
-    });
+    })();
   }, []);
 
   async function persist(updated: ActiveChallenge[]) {

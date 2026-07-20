@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react-native";
 import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, CheckCircle, Clock, AlertTriangle, XCircle, SlidersHorizontal, Info, TrendingUp, Heart, Flag, ChevronLeft, ChevronRight, Activity, Link, MapPin, Wrench, Map, Navigation, Repeat } from "lucide-react-native";
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -106,6 +107,7 @@ const LOCATIONS = [
 export default function SetupScreen() {
   useScreenView("setup");
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
   const { setSummitGoal, changeSummit, summitGoal } = useApp();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isChangeMode = mode === "change";
@@ -166,7 +168,20 @@ export default function SetupScreen() {
 
   // Read questionnaire answers and pre-fill fields
   useEffect(() => {
-    AsyncStorage.getItem("summitready_questionnaire_data").then(raw => {
+    const _qKey = userId ? `summitready_questionnaire_data_${userId}` : "summitready_questionnaire_data";
+    const _getQuizData = async () => {
+      const v = await AsyncStorage.getItem(_qKey);
+      if (!v && userId) {
+        const flat = await AsyncStorage.getItem("summitready_questionnaire_data");
+        if (flat) {
+          await AsyncStorage.setItem(_qKey, flat);
+          await AsyncStorage.removeItem("summitready_questionnaire_data");
+          return flat;
+        }
+      }
+      return v;
+    };
+    _getQuizData().then(raw => {
       if (!raw) return;
       try {
         const data = JSON.parse(raw) as {

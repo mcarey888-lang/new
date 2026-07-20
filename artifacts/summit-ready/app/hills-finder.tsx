@@ -19,6 +19,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -39,9 +40,9 @@ import { T } from "@/constants/theme";
 import type { NearbyHill } from "@/context/AppContext";
 import { LogHikeModal } from "@/components/LogHikeModal";
 
-const LOCATION_KEY = "summitready_hikes_location";
-const RADIUS_KEY   = "summitready_hikes_radius";
-const HILLS_KEY    = "summitready_hikes_results";
+const _FLAT_LOCATION_KEY = "summitready_hikes_location";
+const _FLAT_RADIUS_KEY   = "summitready_hikes_radius";
+const _FLAT_HILLS_KEY    = "summitready_hikes_results";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -192,6 +193,11 @@ function HillCard({
 
 export default function HillsFinderScreen() {
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
+  const _uid = userId ?? "";
+  const LOCATION_KEY = _uid ? `summitready_hikes_location_${_uid}` : _FLAT_LOCATION_KEY;
+  const RADIUS_KEY   = _uid ? `summitready_hikes_radius_${_uid}`   : _FLAT_RADIUS_KEY;
+  const HILLS_KEY    = _uid ? `summitready_hikes_results_${_uid}`  : _FLAT_HILLS_KEY;
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
   const [minElevIdx, setMinElevIdx] = useState(0);
@@ -210,17 +216,32 @@ export default function HillsFinderScreen() {
   const [prefillName, setPrefillName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(LOCATION_KEY),
-      AsyncStorage.getItem(RADIUS_KEY),
-      AsyncStorage.getItem(HILLS_KEY),
-    ]).then(([loc, rad, saved]) => {
+    (async () => {
+      let [loc, rad, saved] = await Promise.all([
+        AsyncStorage.getItem(LOCATION_KEY),
+        AsyncStorage.getItem(RADIUS_KEY),
+        AsyncStorage.getItem(HILLS_KEY),
+      ]);
+      if (_uid && !loc && !rad && !saved) {
+        const [flatLoc, flatRad, flatSaved] = await Promise.all([
+          AsyncStorage.getItem(_FLAT_LOCATION_KEY),
+          AsyncStorage.getItem(_FLAT_RADIUS_KEY),
+          AsyncStorage.getItem(_FLAT_HILLS_KEY),
+        ]);
+        const toSet: [string, string][] = [];
+        const toRemove: string[] = [];
+        if (flatLoc) { loc = flatLoc; toSet.push([LOCATION_KEY, flatLoc]); toRemove.push(_FLAT_LOCATION_KEY); }
+        if (flatRad) { rad = flatRad; toSet.push([RADIUS_KEY, flatRad]); toRemove.push(_FLAT_RADIUS_KEY); }
+        if (flatSaved) { saved = flatSaved; toSet.push([HILLS_KEY, flatSaved]); toRemove.push(_FLAT_HILLS_KEY); }
+        if (toSet.length > 0) await AsyncStorage.multiSet(toSet);
+        if (toRemove.length > 0) await AsyncStorage.multiRemove(toRemove);
+      }
       if (loc) setLocation(loc);
       if (rad) setRadius(Number(rad));
       if (saved) {
         try { setHills(JSON.parse(saved) as NearbyHill[]); } catch {}
       }
-    });
+    })();
   }, []);
 
   const fetchHills = useCallback(async (loc?: string, rad?: number, minElev?: number) => {

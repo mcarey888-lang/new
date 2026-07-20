@@ -7,7 +7,6 @@ import {
 } from "@expo-google-fonts/inter";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef, useState } from "react";
@@ -41,54 +40,11 @@ setBaseUrl(`https://${apiDomain}`);
 
 const queryClient = new QueryClient();
 
-const LAST_USER_KEY = "summitready_last_user_id";
-
 /**
- * Detects a user switch on cold start and clears all locally cached training
- * data before AppProvider mounts and reads from AsyncStorage.
- *
- * Scenario: app was force-quit while User A was signed in (doSignOut never
- * ran). User B then opens the app and signs in. Without this guard, AppProvider
- * would load User A's summit goal / sessions / plan into memory and display
- * them to User B.
- *
- * How it works:
- *  1. Blocks rendering children until the one-time async check completes.
- *  2. Reads the last stored userId; if it differs from the current Clerk
- *     userId, wipes AsyncStorage and the React Query cache.
- *  3. Stores the current userId so future launches can detect any switch.
- *
- * Must be placed inside ClerkProvider (needs useAuth) and outside AppProvider
- * (must run before AppProvider reads storage).
+ * Per-user AsyncStorage namespacing makes user-switch data isolation
+ * automatic, so no blocking pre-check is needed here.
  */
 function UserSwitchGuard({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, userId } = useAuth();
-  const [ready, setReady] = useState(false);
-  const checked = useRef(false);
-
-  useEffect(() => {
-    if (checked.current) return;
-    checked.current = true;
-
-    (async () => {
-      if (isSignedIn && userId) {
-        try {
-          const stored = await AsyncStorage.getItem(LAST_USER_KEY);
-          if (stored && stored !== userId) {
-            await AsyncStorage.clear();
-            queryClient.clear();
-          }
-          await AsyncStorage.setItem(LAST_USER_KEY, userId);
-        } catch {}
-      }
-      setReady(true);
-    })();
-  // Intentional: one-time check on mount. isSignedIn/userId are already
-  // resolved by ClerkLoadedOrTimeout before this component renders.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (!ready) return null;
   return <>{children}</>;
 }
 

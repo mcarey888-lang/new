@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -267,27 +268,27 @@ const AppContext = createContext<AppState>({
   clearScoreStagnation: () => {},
 });
 
-const GOAL_KEY = "summitready_goal";
-const SESSIONS_KEY = "summitready_sessions";
-const PLAN_KEY = "summitready_plan";
-const HILLS_KEY = "summitready_nearby_hills";
-const COMPLETED_KEY = "summitready_completed_plan_sessions";
-const ASSIGNED_KEY = "summitready_assigned_hills";
-const ADJUST_NOTE_KEY = "summitready_adjust_note";
-const SUBMITTED_KEY = "summitready_submitted_plan_sessions";
-const HILLS_IN_PLAN_KEY = "summitready_hills_in_plan";
-const REPS_KEY = "summitready_session_reps";
-const EFFORTS_KEY = "summitready_session_efforts";
-const HAS_VIEWED_PLAN_KEY = "summitready_has_viewed_plan";
-const ACHIEVEMENTS_KEY = "summitready_achievements";
-const COMPLETED_GOALS_KEY = "summitready_completed_goals";
-const APP_MODE_KEY = "summitready_app_mode";
-const EXPLORE_HIKES_KEY = "summitready_explore_hikes";
-const SAVED_TRAILS_KEY = "summitready_saved_trails";
-const COMPLETED_TRAILS_KEY = "summitready_completed_trails";
-const CUSTOM_ROUTES_KEY = "summitready_custom_routes";
-const MY_HILLS_KEY = "summitready_my_hills";
-const EXCLUDED_HILLS_KEY = "summitready_excluded_my_hills";
+const _FLAT_GOAL_KEY             = "summitready_goal";
+const _FLAT_SESSIONS_KEY         = "summitready_sessions";
+const _FLAT_PLAN_KEY             = "summitready_plan";
+const _FLAT_HILLS_KEY            = "summitready_nearby_hills";
+const _FLAT_COMPLETED_KEY        = "summitready_completed_plan_sessions";
+const _FLAT_ASSIGNED_KEY         = "summitready_assigned_hills";
+const _FLAT_ADJUST_NOTE_KEY      = "summitready_adjust_note";
+const _FLAT_SUBMITTED_KEY        = "summitready_submitted_plan_sessions";
+const _FLAT_HILLS_IN_PLAN_KEY    = "summitready_hills_in_plan";
+const _FLAT_REPS_KEY             = "summitready_session_reps";
+const _FLAT_EFFORTS_KEY          = "summitready_session_efforts";
+const _FLAT_HAS_VIEWED_PLAN_KEY  = "summitready_has_viewed_plan";
+const _FLAT_ACHIEVEMENTS_KEY     = "summitready_achievements";
+const _FLAT_COMPLETED_GOALS_KEY  = "summitready_completed_goals";
+const _FLAT_APP_MODE_KEY         = "summitready_app_mode";
+const _FLAT_EXPLORE_HIKES_KEY    = "summitready_explore_hikes";
+const _FLAT_SAVED_TRAILS_KEY     = "summitready_saved_trails";
+const _FLAT_COMPLETED_TRAILS_KEY = "summitready_completed_trails";
+const _FLAT_CUSTOM_ROUTES_KEY    = "summitready_custom_routes";
+const _FLAT_MY_HILLS_KEY         = "summitready_my_hills";
+const _FLAT_EXCLUDED_HILLS_KEY   = "summitready_excluded_my_hills";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -369,6 +370,30 @@ const DEMO_SESSIONS: Session[] = [
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { userId } = useAuth();
+  const _uid = userId ?? "";
+  const GOAL_KEY             = _uid ? `summitready_goal_${_uid}`                    : _FLAT_GOAL_KEY;
+  const SESSIONS_KEY         = _uid ? `summitready_sessions_${_uid}`                : _FLAT_SESSIONS_KEY;
+  const PLAN_KEY             = _uid ? `summitready_plan_${_uid}`                    : _FLAT_PLAN_KEY;
+  const HILLS_KEY            = _uid ? `summitready_nearby_hills_${_uid}`            : _FLAT_HILLS_KEY;
+  const COMPLETED_KEY        = _uid ? `summitready_completed_plan_sessions_${_uid}` : _FLAT_COMPLETED_KEY;
+  const ASSIGNED_KEY         = _uid ? `summitready_assigned_hills_${_uid}`          : _FLAT_ASSIGNED_KEY;
+  const ADJUST_NOTE_KEY      = _uid ? `summitready_adjust_note_${_uid}`             : _FLAT_ADJUST_NOTE_KEY;
+  const SUBMITTED_KEY        = _uid ? `summitready_submitted_plan_sessions_${_uid}` : _FLAT_SUBMITTED_KEY;
+  const HILLS_IN_PLAN_KEY    = _uid ? `summitready_hills_in_plan_${_uid}`           : _FLAT_HILLS_IN_PLAN_KEY;
+  const REPS_KEY             = _uid ? `summitready_session_reps_${_uid}`            : _FLAT_REPS_KEY;
+  const EFFORTS_KEY          = _uid ? `summitready_session_efforts_${_uid}`         : _FLAT_EFFORTS_KEY;
+  const HAS_VIEWED_PLAN_KEY  = _uid ? `summitready_has_viewed_plan_${_uid}`         : _FLAT_HAS_VIEWED_PLAN_KEY;
+  const ACHIEVEMENTS_KEY     = _uid ? `summitready_achievements_${_uid}`            : _FLAT_ACHIEVEMENTS_KEY;
+  const COMPLETED_GOALS_KEY  = _uid ? `summitready_completed_goals_${_uid}`         : _FLAT_COMPLETED_GOALS_KEY;
+  const APP_MODE_KEY         = _uid ? `summitready_app_mode_${_uid}`                : _FLAT_APP_MODE_KEY;
+  const EXPLORE_HIKES_KEY    = _uid ? `summitready_explore_hikes_${_uid}`           : _FLAT_EXPLORE_HIKES_KEY;
+  const SAVED_TRAILS_KEY     = _uid ? `summitready_saved_trails_${_uid}`            : _FLAT_SAVED_TRAILS_KEY;
+  const COMPLETED_TRAILS_KEY = _uid ? `summitready_completed_trails_${_uid}`        : _FLAT_COMPLETED_TRAILS_KEY;
+  const CUSTOM_ROUTES_KEY    = _uid ? `summitready_custom_routes_${_uid}`           : _FLAT_CUSTOM_ROUTES_KEY;
+  const MY_HILLS_KEY         = _uid ? `summitready_my_hills_${_uid}`                : _FLAT_MY_HILLS_KEY;
+  const EXCLUDED_HILLS_KEY   = _uid ? `summitready_excluded_my_hills_${_uid}`       : _FLAT_EXCLUDED_HILLS_KEY;
+  const _PENDING_KEY         = _uid ? `${PENDING_PAST_HIKES_KEY}_${_uid}`           : PENDING_PAST_HIKES_KEY;
   const [loadKey, setLoadKey] = useState(0);
   const [summitGoal, setSummitGoalState] = useState<SummitGoal | null>(null);
   const [trainingPlan, setTrainingPlan] = useState<TrainingWeek[]>([]);
@@ -429,6 +454,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setIsLoading(true);
       try {
+        // One-time migration: copy flat-key data to per-user namespaced keys
+        if (_uid) {
+          const namespacedGoal = await AsyncStorage.getItem(GOAL_KEY);
+          if (!namespacedGoal) {
+            const flatKeys = [
+              _FLAT_GOAL_KEY, _FLAT_SESSIONS_KEY, _FLAT_PLAN_KEY, _FLAT_HILLS_KEY,
+              _FLAT_COMPLETED_KEY, _FLAT_ASSIGNED_KEY, _FLAT_ADJUST_NOTE_KEY, _FLAT_SUBMITTED_KEY,
+              _FLAT_HILLS_IN_PLAN_KEY, _FLAT_REPS_KEY, _FLAT_EFFORTS_KEY, _FLAT_HAS_VIEWED_PLAN_KEY,
+              _FLAT_ACHIEVEMENTS_KEY, _FLAT_COMPLETED_GOALS_KEY, _FLAT_APP_MODE_KEY, _FLAT_EXPLORE_HIKES_KEY,
+              _FLAT_SAVED_TRAILS_KEY, _FLAT_COMPLETED_TRAILS_KEY, _FLAT_CUSTOM_ROUTES_KEY,
+              _FLAT_MY_HILLS_KEY, _FLAT_EXCLUDED_HILLS_KEY, PENDING_PAST_HIKES_KEY,
+            ];
+            const flatPairs = await AsyncStorage.multiGet(flatKeys);
+            const toSet: [string, string][] = [];
+            const toRemove: string[] = [];
+            for (const [flatKey, value] of flatPairs) {
+              if (value !== null) {
+                toSet.push([`${flatKey}_${_uid}`, value]);
+                toRemove.push(flatKey);
+              }
+            }
+            if (toSet.length > 0) {
+              await AsyncStorage.multiSet(toSet);
+              await AsyncStorage.multiRemove(toRemove);
+            }
+          }
+        }
+
         const pairs = await AsyncStorage.multiGet([
           GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY,
         ]);
@@ -570,7 +623,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadKey]);
+  }, [loadKey, _uid]);
 
   const setSummitGoal = useCallback(async (goal: SummitGoal) => {
     // Archive the outgoing goal + its training stats before wiping
@@ -592,7 +645,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const plan = generatePlan(goal);
     void logTrainingPlanGenerated({ mountain_name: goal.mountainName, weeks: plan.length });
     // Consume any past hikes saved during the "Catch me up" onboarding step
-    const _pendingStr = await AsyncStorage.getItem(PENDING_PAST_HIKES_KEY);
+    const _pendingStr = await AsyncStorage.getItem(_PENDING_KEY);
     const _pendingHikes: PastHike[] = _pendingStr ? (JSON.parse(_pendingStr) as PastHike[]) : [];
     const initialSessions: Session[] = _pendingHikes.map((hike, idx) => {
       const d = new Date();
@@ -646,7 +699,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExcludedFromMyHills([]);
     // Clear pending key and mark past-hike trails completed
     if (_pendingStr) {
-      await AsyncStorage.removeItem(PENDING_PAST_HIKES_KEY);
+      await AsyncStorage.removeItem(_PENDING_KEY);
       const newTrailIds = _pendingHikes
         .filter(h => h.trailId && !completedTrailIds.includes(h.trailId))
         .map(h => h.trailId!);

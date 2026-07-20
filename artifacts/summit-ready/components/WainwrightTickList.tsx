@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,6 +27,8 @@ interface Props {
 }
 
 export function WainwrightTickList({ challengeId, color, isActive }: Props) {
+  const { userId } = useAuth();
+  const storageKey = userId ? `${WAINWRIGHT_STORAGE_KEY}_${userId}` : WAINWRIGHT_STORAGE_KEY;
   const { logActivityOnly, getActiveChallenge } = useChallenges();
   const [tickedIds, setTickedIds] = useState<Set<string>>(new Set());
   const [expandedBooks, setExpandedBooks] = useState<Set<number>>(new Set());
@@ -33,10 +36,19 @@ export function WainwrightTickList({ challengeId, color, isActive }: Props) {
   const [ticking, setTicking] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    AsyncStorage.getItem(WAINWRIGHT_STORAGE_KEY).then(raw => {
+    (async () => {
+      let raw = await AsyncStorage.getItem(storageKey);
+      if (!raw && userId) {
+        const flatData = await AsyncStorage.getItem(WAINWRIGHT_STORAGE_KEY);
+        if (flatData) {
+          await AsyncStorage.setItem(storageKey, flatData);
+          await AsyncStorage.removeItem(WAINWRIGHT_STORAGE_KEY);
+          raw = flatData;
+        }
+      }
       if (raw) setTickedIds(new Set(JSON.parse(raw) as string[]));
       setLoading(false);
-    });
+    })();
   }, []);
 
   const bookFells = useMemo(() => {
@@ -60,7 +72,7 @@ export function WainwrightTickList({ challengeId, color, isActive }: Props) {
       const next = new Set(tickedIds);
       next.add(fell.id);
       setTickedIds(next);
-      await AsyncStorage.setItem(WAINWRIGHT_STORAGE_KEY, JSON.stringify([...next]));
+      await AsyncStorage.setItem(storageKey, JSON.stringify([...next]));
       const ac = getActiveChallenge(challengeId);
       if (ac && !ac.completed) {
         await logActivityOnly({

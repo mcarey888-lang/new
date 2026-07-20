@@ -1,4 +1,5 @@
 import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X } from "lucide-react-native";
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
@@ -712,6 +713,7 @@ function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {
 export default function QuestionnaireScreen() {
   useScreenView("questionnaire");
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
 
   const [step, setStep] = useState(0);
   const [animKey, setAnimKey] = useState(0);
@@ -784,7 +786,9 @@ export default function QuestionnaireScreen() {
     const fitnessLevelStr = deriveFitnessLevel(fitnessLevel);
     const hillDays = Math.max(1, Math.round(trainingDays * 0.4));
 
-    await AsyncStorage.setItem(QUIZ_KEY, JSON.stringify({
+    const _quizKey = userId ? `${QUIZ_KEY}_${userId}` : QUIZ_KEY;
+    const _pendingKey = userId ? `${PENDING_PAST_HIKES_KEY}_${userId}` : PENDING_PAST_HIKES_KEY;
+    await AsyncStorage.setItem(_quizKey, JSON.stringify({
       mountainName: mountainName.trim(),
       fitnessBaseline: score,
       fitnessLevel: fitnessLevelStr,
@@ -800,9 +804,9 @@ export default function QuestionnaireScreen() {
     }));
 
     if (pastHikes.length > 0) {
-      await AsyncStorage.setItem(PENDING_PAST_HIKES_KEY, JSON.stringify(pastHikes));
+      await AsyncStorage.setItem(_pendingKey, JSON.stringify(pastHikes));
     } else {
-      await AsyncStorage.removeItem(PENDING_PAST_HIKES_KEY);
+      await AsyncStorage.removeItem(_pendingKey);
     }
     pendingParams.current = { score, mountain: mountainName.trim() };
     void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
