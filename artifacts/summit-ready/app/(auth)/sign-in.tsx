@@ -52,7 +52,7 @@ export default function SignInScreen() {
   }, []);
 
   async function handleSignIn() {
-    if (!clerkLoaded || typeof signIn?.password !== "function") {
+    if (!clerkLoaded || typeof signIn?.create !== "function") {
       setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
@@ -64,14 +64,16 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { error: signInErr } = await withTimeout(
-        signIn.password({ emailAddress: email, password }),
+      // Step 1: create the sign-in attempt (logs sign_in.created in Clerk)
+      await withTimeout(
+        signIn.create({ identifier: email.trim() }),
         20000,
-      ) as any;
-      if (signInErr) {
-        setError(signInErr.message ?? "Sign-in failed — please try again.");
-        return;
-      }
+      );
+      // Step 2: submit password as the first factor (logs sign_in.completed or sign_in.password.failed)
+      await withTimeout(
+        signIn.attemptFirstFactor({ strategy: "password", password }),
+        20000,
+      );
       if (signIn.status === "complete") {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!error) {
