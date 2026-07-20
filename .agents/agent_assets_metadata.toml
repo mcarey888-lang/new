@@ -232,10 +232,10 @@ title = "5 — Built For Your Next Adventure"
 id = "6T4v1ecj5mxfzBzqzlOV7"
 uri = "file://screenshots/paywall-iphone.jpg"
 type = "image"
-title = "Paywall — above the fold (390×844)"
+title = "Paywall — above the fold (correct prices + legal links)"
 
 [[outputs]]
 id = "NHeikGf4XGS5iMdfM59ba"
 uri = "file://screenshots/paywall-iphone-full.jpg"
 type = "image"
-title = "Paywall — full scroll (all content)"
+title = "Paywall — full scroll (legal footer visible at bottom)"

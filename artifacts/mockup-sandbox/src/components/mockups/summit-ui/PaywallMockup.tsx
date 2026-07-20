@@ -109,7 +109,7 @@ export default function PaywallMockup() {
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: MUTED }}>Monthly</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: plan === 'monthly' ? G : WHITE }}>£3.99</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: plan === 'monthly' ? G : WHITE }}>£9.99</span>
               <span style={{ fontSize: 11, color: DIM }}>per month</span>
             </button>
 
@@ -132,7 +132,7 @@ export default function PaywallMockup() {
                 <span style={{ fontSize: 9, fontWeight: 700, color: G, letterSpacing: 0.5 }}>BEST VALUE</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: MUTED }}>Annual</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: plan === 'annual' ? G : WHITE }}>£29.99</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: plan === 'annual' ? G : WHITE }}>£69.99</span>
               <span style={{ fontSize: 11, color: DIM }}>per year</span>
             </button>
           </div>
@@ -183,11 +183,22 @@ export default function PaywallMockup() {
         </div>
 
         {/* Legal footer */}
-        <p style={{
-          fontSize: 10, color: DIM, textAlign: 'center', lineHeight: 1.5, margin: 0,
-        }}>
-          Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <p style={{ fontSize: 10, color: DIM, textAlign: 'center', lineHeight: 1.5, margin: 0 }}>
+            Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <a href="https://summitready.uk/privacy" target="_blank" rel="noreferrer"
+              style={{ fontSize: 11, fontWeight: 600, color: MUTED, textDecoration: 'underline' }}>
+              Privacy Policy
+            </a>
+            <span style={{ fontSize: 11, color: DIM }}>·</span>
+            <a href="https://summitready.uk/terms" target="_blank" rel="noreferrer"
+              style={{ fontSize: 11, fontWeight: 600, color: MUTED, textDecoration: 'underline' }}>
+              Terms of Use
+            </a>
+          </div>
+        </div>
 
       </div>
     </div>

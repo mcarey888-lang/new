@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -340,6 +341,21 @@ export default function PaywallScreen() {
           );
           })}
         </Animated.View>
+
+        <View style={styles.legalSection}>
+          <Text style={styles.legalNote}>
+            Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.
+          </Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/privacy")} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalSep}>·</Text>
+            <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/terms")} activeOpacity={0.7}>
+              <Text style={styles.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
       <ConfirmModal
@@ -459,6 +475,11 @@ const styles = StyleSheet.create({
   retryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange },
   restoreBtn: { paddingVertical: 6 },
   restoreText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textDecorationLine: "underline" },
+  legalSection: { gap: 10, alignItems: "center" },
+  legalNote: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 15 },
+  legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
+  legalLink: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted, textDecorationLine: "underline" },
+  legalSep: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
 
   scoreCard: {
     flexDirection: "row", alignItems: "center", gap: 16,
