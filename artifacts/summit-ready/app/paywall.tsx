@@ -344,7 +344,9 @@ export default function PaywallScreen() {
 
         <View style={styles.legalSection}>
           <Text style={styles.legalNote}>
-            Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.
+            {Platform.OS === "android"
+              ? "Payment will be charged to your Google Play account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your Google Play account settings."
+              : "Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings."}
           </Text>
           <View style={styles.legalLinks}>
             <TouchableOpacity onPress={() => Linking.openURL("https://summitready.uk/privacy")} activeOpacity={0.7}>
