@@ -227,3 +227,15 @@ id = "nW7G7fEmZrYLo0pFoUSzh"
 uri = "file://artifacts/summit-ready/assets/screenshots/05-adventure.png"
 type = "image"
 title = "5 — Built For Your Next Adventure"
+
+[[outputs]]
+id = "6T4v1ecj5mxfzBzqzlOV7"
+uri = "file://screenshots/paywall-iphone.jpg"
+type = "image"
+title = "Paywall — above the fold (390×844)"
+
+[[outputs]]
+id = "NHeikGf4XGS5iMdfM59ba"
+uri = "file://screenshots/paywall-iphone-full.jpg"
+type = "image"
+title = "Paywall — full scroll (all content)"
