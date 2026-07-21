@@ -72,8 +72,27 @@ export function ChallengesProvider({ children }: { children: React.ReactNode }) 
       }
       if (raw) {
         const parsed = JSON.parse(raw) as ActiveChallenge[];
-        setActiveChallenges(parsed);
-        latestRef.current = parsed;
+        const corrected = parsed.map(ac => {
+          const template = getChallenge(ac.challengeId);
+          if (!template) return ac;
+          const total = ac.activities.reduce((sum, a) => {
+            if (template.metric === "hikes") return sum + 1;
+            return sum + a.elevationGain;
+          }, 0);
+          const shouldBeCompleted = total >= template.targetValue;
+          if (ac.completed === shouldBeCompleted) return ac;
+          return {
+            ...ac,
+            completed: shouldBeCompleted,
+            completedAt: shouldBeCompleted ? (ac.completedAt ?? new Date().toISOString()) : null,
+          };
+        });
+        const anyChanged = corrected.some((c, i) => c !== parsed[i]);
+        if (anyChanged) {
+          await AsyncStorage.setItem(CHALLENGES_KEY, JSON.stringify(corrected));
+        }
+        setActiveChallenges(corrected);
+        latestRef.current = corrected;
       }
     })();
   }, []);

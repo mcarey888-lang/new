@@ -566,8 +566,8 @@ export const CHALLENGES: ChallengeTemplate[] = [
     description:
       "Every one of Alfred Wainwright's 214 Lake District fells — from the gentle Latrigg to the dramatic Striding Edge of Helvellyn. Around 35,000m of total ascent across ~540km of some of England's finest mountain terrain. No time limit. This one might take years.",
     tagline: "214 Lake District fells. The ultimate tick list.",
-    metric: "elevation",
-    targetValue: 35000,
+    metric: "hikes",
+    targetValue: 214,
     difficulty: "Expedition",
     durationDays: null,
     mountain: "Lake District",
