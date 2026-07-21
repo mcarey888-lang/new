@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
+import { Lock } from "lucide-react-native";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -18,6 +19,7 @@ interface ProgressRingProps {
   trackColor?: string;
   label?: string;
   sublabel?: string;
+  hideScore?: boolean;
 }
 
 export function ProgressRing({
@@ -28,23 +30,27 @@ export function ProgressRing({
   trackColor = "rgba(255,255,255,0.06)",
   label,
   sublabel,
+  hideScore = false,
 }: ProgressRingProps) {
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
-  const progress = useSharedValue(score / 100);
+
+  const displayScore = hideScore ? 40 : score;
+  const progress = useSharedValue(displayScore / 100);
 
   useEffect(() => {
-    progress.value = withTiming(score / 100, {
+    progress.value = withTiming(displayScore / 100, {
       duration: 1400,
       easing: Easing.out(Easing.cubic),
     });
-  }, [score]);
+  }, [displayScore]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - progress.value),
   }));
 
   const getColor = () => {
+    if (hideScore) return "rgba(255,255,255,0.18)";
     if (score >= 70) return "#3ECF75";
     if (score >= 40) return "#FF9500";
     return "#FF4444";
@@ -60,7 +66,6 @@ export function ProgressRing({
             <Stop offset="100%" stopColor={ringColor} stopOpacity="0.7" />
           </SvgGradient>
         </Defs>
-        {/* Track */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -69,7 +74,6 @@ export function ProgressRing({
           stroke={trackColor}
           strokeWidth={strokeWidth}
         />
-        {/* Progress */}
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
@@ -83,21 +87,30 @@ export function ProgressRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={{ alignItems: "center", gap: 2 }}>
-        <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: ringColor, lineHeight: 42 }}>
-          {score}
-        </Text>
-        {label && (
-          <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.45)", letterSpacing: 1.4, textTransform: "uppercase" }}>
-            {label}
+      {hideScore ? (
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <Lock size={Math.round(size * 0.18)} color="rgba(255,255,255,0.35)" />
+          <Text style={{ fontSize: Math.round(size * 0.24), fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.25)", lineHeight: Math.round(size * 0.28) }}>
+            ?
           </Text>
-        )}
-        {sublabel && (
-          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#fff", marginTop: 2 }}>
-            {sublabel}
+        </View>
+      ) : (
+        <View style={{ alignItems: "center", gap: 2 }}>
+          <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: ringColor, lineHeight: 42 }}>
+            {score}
           </Text>
-        )}
-      </View>
+          {label && (
+            <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.45)", letterSpacing: 1.4, textTransform: "uppercase" }}>
+              {label}
+            </Text>
+          )}
+          {sublabel && (
+            <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#fff", marginTop: 2 }}>
+              {sublabel}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }

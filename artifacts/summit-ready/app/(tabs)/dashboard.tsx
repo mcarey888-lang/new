@@ -904,21 +904,18 @@ export default function DashboardScreen() {
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.readinessInner}>
-              {/* Score ring — ring fills to real score; number is blurred above 40 for free users */}
-              <View>
-                <ProgressRing score={readinessScore} size={148} strokeWidth={11} />
-                {!isSubscribed && readinessScore > 40 && (
-                  <TouchableOpacity
-                    onPress={() => router.push("/paywall")}
-                    activeOpacity={0.85}
-                    style={styles.ringLockOverlay}
-                  >
-                    <BlurView intensity={28} style={StyleSheet.absoluteFill} />
-                    <Lock size={20} color={T.green} />
-                    <Text style={styles.ringLockText}>Unlock score</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              {/* Score ring — number hidden for free users with score > 40 */}
+              <TouchableOpacity
+                onPress={!isSubscribed && readinessScore > 40 ? () => router.push("/paywall") : undefined}
+                activeOpacity={!isSubscribed && readinessScore > 40 ? 0.85 : 1}
+              >
+                <ProgressRing
+                  score={readinessScore}
+                  size={148}
+                  strokeWidth={11}
+                  hideScore={!isSubscribed && readinessScore > 40}
+                />
+              </TouchableOpacity>
               <View style={styles.readinessMeta}>
                 <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
                 {!isSubscribed && readinessScore > 40 ? (
@@ -1457,15 +1454,6 @@ const styles = StyleSheet.create({
   },
   warningText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   warningDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  ringLockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 74,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  ringLockText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.green },
   ringUpgradeBtn: {
     paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: 10, backgroundColor: T.greenDim,
