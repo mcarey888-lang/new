@@ -167,13 +167,6 @@ export default function AccountScreen() {
 
   async function doSignOut() {
     try { await Purchases.logOut(); } catch {}
-    if (userId) {
-      try {
-        const allKeys = await AsyncStorage.getAllKeys();
-        const userKeys = allKeys.filter(k => k.endsWith(`_${userId}`));
-        if (userKeys.length > 0) await AsyncStorage.multiRemove(userKeys);
-      } catch {}
-    }
     queryClient.clear();
     try { await signOut(); } catch {}
     router.replace("/");
