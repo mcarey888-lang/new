@@ -1,0 +1,60 @@
+★ eas-cli@21.0.3 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+Using EAS CLI without version control system is not recommended, use this mode only if you know what you are doing.
+
+⚠️ Detected that your app uses Expo Go for development, this is not recommended when building production apps.
+Learn more: https://expo.fyi/why-not-build-expo-go-for-production
+To suppress this warning, set EAS_BUILD_NO_EXPO_GO_WARNING=true.
+
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "production" environment on EAS.
+Environment variables loaded from the "production" build profile "env" configuration: EAS_BUILD_NO_EXPO_GO_WARNING, EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY, EXPO_PUBLIC_REVENUECAT_TEST_API_KEY, EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, EXPO_PUBLIC_DOMAIN.
+
+- Incrementing buildNumber from 54 to 55.
+✔ Incremented buildNumber from 54 to 55.
+
+You've used 100% of your included build credits for this month.
+Additional usage beyond your limit will be charged at pay-as-you-go rates. See usage in billing.: https://expo.dev/accounts/careyappss-organization/settings/billing
+
+✔ Using remote iOS credentials (Expo server)
+
+Distribution Certificate is not validated for non-interactive builds.
+Skipping Provisioning Profile validation on Apple Servers because we aren't authenticated.
+
+Project Credentials Configuration
+
+Project                   @careyappss-organization/summitready
+Bundle Identifier         uk.summitready.app
+                          
+App Store Configuration   
+                          
+Distribution Certificate  
+Serial Number             53B1F0C2B794E404A6660D18DC6B9412
+Expiration Date           Sat, 29 May 2027 20:01:33 UTC
+Apple Team                NTARBBDHKC (Marc carey (Individual))
+Updated                   1 month ago
+                          
+Provisioning Profile      
+Developer Portal ID       K2S62ZVX2V
+Status                    active
+Expiration                Sat, 29 May 2027 20:01:33 UTC
+Apple Team                NTARBBDHKC (Marc carey (Individual))
+Updated                   11 days ago
+                          
+All credentials are ready to build @careyappss-organization/summitready (uk.summitready.app)
+
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+- Compressing project files
+- Uploading to EAS Build (0 / 17.8 MB)
+✔ Uploaded to EAS 
+- Computing project fingerprint
+✔ Computed project fingerprint
+
+See logs: https://expo.dev/accounts/careyappss-organization/projects/summitready/builds/61a877e7-c197-4b05-8fad-4a75c17a95db
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+- Waiting for build to complete.
