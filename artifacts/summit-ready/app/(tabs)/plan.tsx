@@ -1060,22 +1060,33 @@ function WeekCard({
 
                     {canPickHill && (() => {
                       // Priority 1 — manually assigned hill (user picked it from the picker)
-                      // Priority 2 — parse per-climb data from the AI-generated session description
-                      //              e.g. "Tor Hill (145m per climb × 1 rep = 145m)"
+                      // Priority 2 — parse per-climb data from the session description
+                      //   Format A (Hill Repeats): "145m per climb × 2 reps = 290m"
+                      //   Format B (Big Day Out):  "Tor Hill: 2 repeats of 145m = 290m"
                       // Priority 3 — generic heuristic: divide targetElevation by 4
-                      const descMatch = !assignedHill
-                        ? (s.description ?? "").match(/(\d+)m per climb\s*[×x]\s*(\d+)\s*rep/i)
+                      const desc = s.description ?? "";
+                      // Format A: elevation is group 1, reps is group 2
+                      const matchA = !assignedHill
+                        ? desc.match(/(\d+)m per climb\s*[×x]\s*(\d+)\s*rep/i)
+                        : null;
+                      // Format B: reps is group 1, elevation is group 2
+                      const matchB = (!assignedHill && !matchA)
+                        ? desc.match(/(\d+)\s+repeats?\s+of\s+(\d+)m/i)
                         : null;
                       const elevPerRep = assignedHill
                         ? assignedHill.elevation
-                        : descMatch
-                          ? parseInt(descMatch[1], 10)
-                          : Math.max(50, Math.round(s.targetElevation / 4));
+                        : matchA
+                          ? parseInt(matchA[1], 10)
+                          : matchB
+                            ? parseInt(matchB[2], 10)
+                            : Math.max(50, Math.round(s.targetElevation / 4));
                       const targetReps = assignedHill
                         ? assignedHill.repeats
-                        : descMatch
-                          ? parseInt(descMatch[2], 10)
-                          : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
+                        : matchA
+                          ? parseInt(matchA[2], 10)
+                          : matchB
+                            ? parseInt(matchB[1], 10)
+                            : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
                       return (
                         <>
                           <HillActionCard
