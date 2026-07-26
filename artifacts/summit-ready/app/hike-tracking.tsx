@@ -131,7 +131,10 @@ const ALTITUDE_NOISE_THRESHOLD = 1;
 const GPS_MAX_ACCURACY_M = 25;   // reject fixes noisier than 25 m horizontal accuracy
 const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountainside
 const HIKE_LOCATION_TASK = "hike-location-task";
-const BG_POINTS_KEY = "hike_bg_points";
+const BG_POINTS_KEY      = "hike_bg_points";
+// Persisted across app kills — lets the hike screen be restored if the OS
+// terminates the app while tracking (screen off, memory pressure, etc.)
+const ACTIVE_HIKE_KEY    = "summitready_active_hike_session";
 
 const LOCATION_UPDATES_CONFIG: Location.LocationTaskOptions = {
   accuracy: Location.Accuracy.BestForNavigation,
@@ -206,6 +209,7 @@ export default function HikeTrackingScreen() {
     estimatedTotalGain?: string;
     referenceRouteId?: string;
     referenceRouteName?: string;
+    restore?: string;           // "1" when app was killed mid-hike and we're restoring
   }>();
   const hillMeta = {
     sessionKey:          params.hillSessionKey    ?? null,
@@ -258,7 +262,8 @@ export default function HikeTrackingScreen() {
   const trackStartMsRef  = useRef<number>(0);
   const totalPausedMsRef = useRef<number>(0);
   const pauseStartMsRef  = useRef<number>(0);
-  const pauseTogglingRef = useRef(false);        // guard against rapid double-tap
+  const pauseTogglingRef  = useRef(false);        // guard against rapid double-tap
+  const restoreAttempted  = useRef(false);        // prevent double-fire of restore effect
 
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
@@ -458,6 +463,136 @@ export default function HikeTrackingScreen() {
     return () => clearInterval(id);
   }, [status, syncBgPoints]);
 
+  // ── Persist active hike session to disk (survives app kills) ─────────────
+  // Saved every 15 s while tracking/paused so the session can be restored
+  // if the OS terminates the process (screen off, memory pressure, etc.).
+  const saveActiveSession = useCallback(async () => {
+    if (statusRef.current !== "tracking" && statusRef.current !== "paused") return;
+    try {
+      const session = {
+        routeName,
+        trackStartMs: trackStartMsRef.current,
+        // If currently paused, include the elapsed pause so restoration is accurate
+        totalPausedMs:
+          totalPausedMsRef.current +
+          (statusRef.current === "paused" && pauseStartMsRef.current > 0
+            ? Date.now() - pauseStartMsRef.current
+            : 0),
+        hillMeta: {
+          sessionKey:          hillMeta.sessionKey,
+          hillName:            hillMeta.hillName,
+          targetReps:          hillMeta.targetReps,
+          estimatedGainPerRep: hillMeta.estimatedGainPerRep,
+          estimatedTotalGain:  hillMeta.estimatedTotalGain,
+        },
+        savedAt: Date.now(),
+      };
+      await AsyncStorage.setItem(ACTIVE_HIKE_KEY, JSON.stringify(session));
+    } catch { /* ignore — non-critical */ }
+  }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
+      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain]);
+
+  useEffect(() => {
+    if (status !== "tracking" && status !== "paused") return;
+    void saveActiveSession(); // snapshot immediately on status change
+    const id = setInterval(saveActiveSession, 15_000);
+    return () => clearInterval(id);
+  }, [status, saveActiveSession]);
+
+  // ── Restore hike session after OS killed the app mid-hike ────────────────
+  // Triggered when index.tsx detects a saved session and navigates here with
+  // restore="1".  Reads the persisted metadata + the background GPS points
+  // already buffered in BG_POINTS_KEY, then resumes tracking seamlessly.
+  useEffect(() => {
+    if (params.restore !== "1" || restoreAttempted.current) return;
+    restoreAttempted.current = true;
+
+    async function doRestore() {
+      try {
+        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
+        if (!raw) return;
+        const session = JSON.parse(raw);
+        const ageMs = Date.now() - (session.savedAt ?? 0);
+        if (ageMs > 24 * 60 * 60 * 1000) {
+          // Stale — discard and let the user start fresh
+          await AsyncStorage.removeItem(ACTIVE_HIKE_KEY);
+          return;
+        }
+
+        // Restore timer refs so elapsed time and syncBgPoints are accurate
+        trackStartMsRef.current  = session.trackStartMs;
+        totalPausedMsRef.current = session.totalPausedMs;
+        pauseStartMsRef.current  = 0;
+
+        // Restore route name (may differ from hillName for custom-named routes)
+        if (session.routeName) setRouteName(session.routeName);
+        setNameLocked(true);
+
+        // Set tracking status (required before syncBgPoints will run)
+        statusRef.current = "tracking";
+        setStatus("tracking");
+
+        // Re-start the timestamp-based timer
+        timerRef.current = setInterval(() => {
+          const elapsed = Math.floor(
+            (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
+          );
+          setElapsedSecs(Math.max(0, elapsed));
+        }, 1000);
+
+        // Replay all GPS points the background task buffered while the app was
+        // killed — this recovers distance, elevation gain/loss, and track shape
+        await syncBgPoints();
+
+        // Re-start GPS watchers so tracking continues going forward
+        if (Platform.OS !== "web") {
+          await Location.requestBackgroundPermissionsAsync().catch(() => {});
+          try {
+            const isRunning = await Location.hasStartedLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => false);
+            if (isRunning) await Location.stopLocationUpdatesAsync(HIKE_LOCATION_TASK).catch(() => {});
+            await Location.startLocationUpdatesAsync(HIKE_LOCATION_TASK, LOCATION_UPDATES_CONFIG);
+          } catch { /* background task unavailable — fg watcher handles it */ }
+
+          try {
+            const fgSub = await Location.watchPositionAsync(
+              { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000 },
+              (loc) => {
+                if (statusRef.current !== "tracking") return;
+                const { latitude, longitude, altitude, speed, accuracy } = loc.coords;
+                const pts = trackPoints.current;
+                if (!isPlausiblePoint(latitude, longitude, loc.timestamp, accuracy, pts)) return;
+                if (speed != null && speed >= 0) setCurrentSpeedKmh(speed * 3.6);
+                if (altitude != null) {
+                  setCurrentAltM(altitude);
+                  if (lastAltRef.current !== null) {
+                    const delta = altitude - lastAltRef.current;
+                    if (Math.abs(delta) >= ALTITUDE_NOISE_THRESHOLD) {
+                      if (delta > 0) setElevGainM(g => g + delta);
+                      else           setElevLossM(l => l + Math.abs(delta));
+                      lastAltRef.current = altitude;
+                    }
+                  } else {
+                    lastAltRef.current = altitude;
+                  }
+                }
+                if (pts.length > 0) {
+                  const prev = pts[pts.length - 1];
+                  const d = haversineKm(prev.lat, prev.lon, latitude, longitude);
+                  if (d > 0.003) setDistanceKm(km => km + d);
+                }
+                pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
+                sendPointToMap(latitude, longitude);
+              },
+            );
+            locationSubRef.current = fgSub;
+          } catch { /* foreground watch unavailable */ }
+        }
+      } catch { /* ignore — fall back to normal idle state */ }
+    }
+
+    doRestore();
+  }, [syncBgPoints, sendPointToMap]);
+
   // ── Auto-expand drawer when tracking starts ───────────────────────────────
   useEffect(() => {
     if (status === "tracking") setDrawerOpen(true);
@@ -487,6 +622,9 @@ export default function HikeTrackingScreen() {
     trackStartMsRef.current  = Date.now();
     totalPausedMsRef.current = 0;
     await AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
+
+    // Persist session metadata so it can be restored if the OS kills the app
+    await saveActiveSession();
 
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor(
@@ -555,7 +693,7 @@ export default function HikeTrackingScreen() {
       );
       locationSubRef.current = fgSub;
     } catch { /* foreground watch unavailable */ }
-  }, [routeName, sendPointToMap]);
+  }, [routeName, sendPointToMap, saveActiveSession]);
 
   const pauseTracking = useCallback(() => {
     if (pauseTogglingRef.current) return;
@@ -665,6 +803,8 @@ export default function HikeTrackingScreen() {
         .catch(() => {});
     }
     AsyncStorage.removeItem(BG_POINTS_KEY).catch(() => {});
+    // Clear the persisted session — hike finished cleanly, nothing to restore
+    AsyncStorage.removeItem(ACTIVE_HIKE_KEY).catch(() => {});
   }, [syncBgPoints]);
 
   const handleStopPress = useCallback(() => {

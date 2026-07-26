@@ -1,4 +1,5 @@
 import { useAuth } from "@clerk/expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Compass, MapPin, TrendingUp, Activity, Loader } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -56,8 +57,35 @@ export default function LandingScreen() {
   useEffect(() => {
     if (!authLoaded || isLoading) return;
     if (!isSignedIn) return;
-    // Everyone lands on the unified dashboard — it handles the no-goal state itself
-    router.replace("/(tabs)/dashboard");
+    // Check whether the user was mid-hike when the app was killed.
+    // If so, route back to the tracking screen instead of the dashboard.
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("summitready_active_hike_session");
+        if (raw) {
+          const session = JSON.parse(raw);
+          const ageMs = Date.now() - (session.savedAt ?? 0);
+          if (ageMs < 24 * 60 * 60 * 1000) {
+            // Recent session — send the user back to the hike screen to restore it
+            router.replace({
+              pathname: "/hike-tracking",
+              params: {
+                restore: "1",
+                ...(session.hillMeta?.sessionKey    && { hillSessionKey:        session.hillMeta.sessionKey }),
+                ...(session.hillMeta?.hillName      && { hillName:              session.hillMeta.hillName }),
+                ...(session.hillMeta?.targetReps    != null && { targetReps:         String(session.hillMeta.targetReps) }),
+                ...(session.hillMeta?.estimatedGainPerRep != null && { estimatedGainPerRep: String(session.hillMeta.estimatedGainPerRep) }),
+                ...(session.hillMeta?.estimatedTotalGain  != null && { estimatedTotalGain:  String(session.hillMeta.estimatedTotalGain) }),
+              },
+            } as any);
+            return;
+          }
+          // Stale session (> 24 h old) — discard and go to dashboard
+          await AsyncStorage.removeItem("summitready_active_hike_session");
+        }
+      } catch { /* ignore — fall through to dashboard */ }
+      router.replace("/(tabs)/dashboard");
+    })();
   }, [authLoaded, isSignedIn, isLoading]);
 
   if (isLoading || demoLoading) {
