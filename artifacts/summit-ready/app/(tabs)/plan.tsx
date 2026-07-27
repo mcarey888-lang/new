@@ -2446,7 +2446,10 @@ const styles = StyleSheet.create({
 
 const dashStyles = StyleSheet.create({
   hero: {
-    height: 340, width: "100%", justifyContent: "flex-end",
+    height: 340,
+    width: Dimensions.get("window").width,
+    marginHorizontal: -18,
+    justifyContent: "flex-end",
     marginBottom: 12,
   },
   heroFallback: {
