@@ -163,7 +163,7 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
 }
 
 function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {
-  const hill = hills[0];
+  const hill = hills.length > 0 ? hills[weekNum % hills.length] : undefined;
   const isEasy = goal.difficulty === "Easy";
   const hillDur = isEasy ? "45–60 min" : "60–90 min";
 
@@ -203,7 +203,7 @@ function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goa
 function createBigDaySession(targetElev: number, goal: SummitGoal, hills: TrainingWeek["hills"], weekNum: number): PlanSession {
   const isEasy = goal.difficulty === "Easy";
   const bigTarget = Math.round(targetElev * 0.75);
-  const hill = hills[0];
+  const hill = hills.length > 0 ? hills[(weekNum + 1) % hills.length] : undefined;
 
   let hillDetail: string;
   let actualTarget = bigTarget;
@@ -252,8 +252,8 @@ function createTaperEasyWalkSession(targetElev: number): PlanSession {
   };
 }
 
-function createTaperLightHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal): PlanSession {
-  const hill = hills[0];
+function createTaperLightHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {
+  const hill = hills.length > 0 ? hills[weekNum % hills.length] : undefined;
   if (!hill) {
     return {
       type: "hill",
@@ -286,7 +286,7 @@ function createSessions(weekElev: number, weekNum: number, goal: SummitGoal, hil
   // Taper week 1: 1 light hill + 1–2 easy walks, no big day
   if (taperPos === 1) {
     const out: PlanSession[] = [
-      createTaperLightHillSession(weekElev, hills, goal),
+      createTaperLightHillSession(weekElev, hills, goal, weekNum),
       createTaperEasyWalkSession(Math.round(weekElev * 0.4)),
     ];
     const requestedDays = Math.max(2, goal.trainingDaysPerWeek ?? 4);

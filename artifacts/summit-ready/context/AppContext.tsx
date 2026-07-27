@@ -160,6 +160,7 @@ interface AppState {
   submittedPlanSessions: Record<string, boolean>;
   sessionReps: Record<string, number>;
   sessionEfforts: Record<string, 1 | 2 | 3 | 4 | 5>;
+  sessionDayOverrides: Record<string, number>;
   hasViewedPlan: boolean;
   setSummitGoal: (goal: SummitGoal) => Promise<void>;
   changeSummit: (goal: SummitGoal) => Promise<void>;
@@ -182,6 +183,7 @@ interface AppState {
   updateGoalLocation: (location: string) => Promise<void>;
   setSessionReps: (key: string, reps: number) => Promise<void>;
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
+  setSessionDayOverride: (weekNum: number, sessionIdx: number, dow: number) => Promise<void>;
   updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
@@ -224,6 +226,7 @@ const AppContext = createContext<AppState>({
   submittedPlanSessions: {},
   sessionReps: {},
   sessionEfforts: {},
+  sessionDayOverrides: {},
   hasViewedPlan: false,
   setSummitGoal: async () => {},
   changeSummit: async () => {},
@@ -246,6 +249,7 @@ const AppContext = createContext<AppState>({
   updateGoalLocation: async () => {},
   setSessionReps: async () => {},
   setSessionEffort: async () => {},
+  setSessionDayOverride: async () => {},
   updatePlanSession: async () => {},
   markPlanViewed: async () => {},
   unlockedAchievements: [],
@@ -292,6 +296,7 @@ const _FLAT_COMPLETED_TRAILS_KEY = "summitready_completed_trails";
 const _FLAT_CUSTOM_ROUTES_KEY    = "summitready_custom_routes";
 const _FLAT_MY_HILLS_KEY         = "summitready_my_hills";
 const _FLAT_EXCLUDED_HILLS_KEY   = "summitready_excluded_my_hills";
+const _FLAT_DAY_OVERRIDES_KEY    = "summitready_session_day_overrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -395,7 +400,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const COMPLETED_TRAILS_KEY = _uid ? `summitready_completed_trails_${_uid}`        : _FLAT_COMPLETED_TRAILS_KEY;
   const CUSTOM_ROUTES_KEY    = _uid ? `summitready_custom_routes_${_uid}`           : _FLAT_CUSTOM_ROUTES_KEY;
   const MY_HILLS_KEY         = _uid ? `summitready_my_hills_${_uid}`                : _FLAT_MY_HILLS_KEY;
-  const EXCLUDED_HILLS_KEY   = _uid ? `summitready_excluded_my_hills_${_uid}`       : _FLAT_EXCLUDED_HILLS_KEY;
+  const EXCLUDED_HILLS_KEY      = _uid ? `summitready_excluded_my_hills_${_uid}`          : _FLAT_EXCLUDED_HILLS_KEY;
+  const DAY_OVERRIDES_KEY       = _uid ? `summitready_session_day_overrides_${_uid}`      : _FLAT_DAY_OVERRIDES_KEY;
   const _PENDING_KEY         = _uid ? `${PENDING_PAST_HIKES_KEY}_${_uid}`           : PENDING_PAST_HIKES_KEY;
   const [loadKey, setLoadKey] = useState(0);
   const [summitGoal, setSummitGoalState] = useState<SummitGoal | null>(null);
@@ -418,6 +424,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [excludedFromMyHills, setExcludedFromMyHills] = useState<string[]>([]);
   const [sessionReps, setSessionRepsState] = useState<Record<string, number>>({});
   const [sessionEfforts, setSessionEffortsState] = useState<Record<string, 1 | 2 | 3 | 4 | 5>>({});
+  const [sessionDayOverrides, setSessionDayOverridesState] = useState<Record<string, number>>({});
   const [hasViewedPlan, setHasViewedPlan] = useState(false);
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
@@ -441,6 +448,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHillsInPlan([]);
     setSessionRepsState({});
     setSessionEffortsState({});
+    setSessionDayOverridesState({});
     setHasViewedPlan(false);
     setUnlockedAchievements([]);
     setNewlyUnlocked([]);
@@ -595,6 +603,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (excludedHillsStr) setExcludedFromMyHills(JSON.parse(excludedHillsStr));
           if (repsStr) setSessionRepsState(JSON.parse(repsStr));
           if (effortsStr) setSessionEffortsState(JSON.parse(effortsStr));
+          // Day assignment overrides stored separately (added after initial multiGet was frozen)
+          const dayOverridesStr = await AsyncStorage.getItem(DAY_OVERRIDES_KEY);
+          if (dayOverridesStr) setSessionDayOverridesState(JSON.parse(dayOverridesStr));
           if (hasViewedPlanStr === "true") setHasViewedPlan(true);
           if (achievementsStr) setUnlockedAchievements(JSON.parse(achievementsStr));
           if (completedGoalsStr) setCompletedGoals(JSON.parse(completedGoalsStr));
@@ -1292,6 +1303,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(EFFORTS_KEY, JSON.stringify(updated));
   }, [sessionEfforts]);
 
+  const setSessionDayOverride = useCallback(async (weekNum: number, sessionIdx: number, dow: number) => {
+    const key = `${weekNum}-${sessionIdx}`;
+    const updated = { ...sessionDayOverrides, [key]: dow };
+    setSessionDayOverridesState(updated);
+    await AsyncStorage.setItem(DAY_OVERRIDES_KEY, JSON.stringify(updated));
+  }, [sessionDayOverrides, DAY_OVERRIDES_KEY]);
+
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
@@ -1384,7 +1402,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasViewedPlan, markPlanViewed,
       setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan, seedPastActivity,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, updatePlanSession,
+      submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
       appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,

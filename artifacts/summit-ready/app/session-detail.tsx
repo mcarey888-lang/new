@@ -17,7 +17,8 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp } from "@/context/AppContext";
+import { useApp, type NearbyHill } from "@/context/AppContext";
+import { HillPickerModal } from "@/components/HillPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -199,6 +200,8 @@ export default function SessionDetailScreen() {
     trainingPlan, summitGoal,
     completedPlanSessions, submittedPlanSessions,
     assignedHills, sessionReps,
+    nearbyHills, addToNearbyHills,
+    assignHillToSession, updatePlanSession,
     togglePlanSession, setSessionReps, submitWeekSessions,
   } = useApp();
   const { isSubscribed } = useSubscription();
@@ -214,6 +217,13 @@ export default function SessionDetailScreen() {
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
   const [saving, setSaving] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [hillPickerOpen, setHillPickerOpen] = useState(false);
+
+  const handleHillSelect = useCallback(async (hill: NearbyHill) => {
+    setHillPickerOpen(false);
+    await assignHillToSession(weekNum, sessionIdx, hill);
+    await updatePlanSession(weekNum, sessionIdx, { targetElevation: hill.repeats * hill.elevation });
+  }, [weekNum, sessionIdx, assignHillToSession, updatePlanSession]);
 
   // Derived hill metadata (same logic as existing HillActionCard)
   const elevPerRep = assignedHill
@@ -391,18 +401,39 @@ export default function SessionDetailScreen() {
             )}
           </View>
 
-          {/* Assigned hill */}
-          {assignedHill && (
-            <View style={s.hillRow}>
-              <Text style={s.hillEmoji}>{assignedHill.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={s.hillName}>{assignedHill.name}</Text>
-                <Text style={s.hillSub}>
-                  {assignedHill.distance}km away · {assignedHill.surface} · {assignedHill.grade} grade
-                </Text>
+          {/* Assigned hill + hill picker trigger */}
+          {(session.type === "hill" || session.type === "bigDay") && (
+            assignedHill ? (
+              <View style={s.hillRow}>
+                <Text style={s.hillEmoji}>{assignedHill.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.hillName}>{assignedHill.name}</Text>
+                  <Text style={s.hillSub}>
+                    {assignedHill.distance}km away · {assignedHill.surface} · {assignedHill.grade} grade
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setHillPickerOpen(true)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>Change</Text>
+                </TouchableOpacity>
               </View>
-              <MapPin size={13} color={T.textMuted} />
-            </View>
+            ) : (
+              <TouchableOpacity
+                style={[s.hillRow, { paddingHorizontal: 14 }]}
+                onPress={() => setHillPickerOpen(true)}
+                activeOpacity={0.8}
+              >
+                <Mountain size={15} color={T.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.hillName, { color: T.textMuted }]}>No hill assigned</Text>
+                  <Text style={s.hillSub}>Tap to assign a training hill</Text>
+                </View>
+                <ChevronRight size={14} color={T.textMuted} />
+              </TouchableOpacity>
+            )
           )}
 
           {/* Description / coaching */}
@@ -597,6 +628,16 @@ export default function SessionDetailScreen() {
           )}
         </Animated.View>
       </ScrollView>
+
+      {/* Hill picker modal */}
+      <HillPickerModal
+        visible={hillPickerOpen}
+        hills={nearbyHills}
+        location={summitGoal?.location ?? ""}
+        onSelect={handleHillSelect}
+        onSearchAdd={addToNearbyHills}
+        onClose={() => setHillPickerOpen(false)}
+      />
     </View>
   );
 }

@@ -24,6 +24,7 @@ import { T, PHASE_COLOR } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
+import { DayStrip } from "@/components/DayStrip";
 
 const PLAN_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -1053,6 +1054,8 @@ export default function PlanScreen() {
     readinessScore,
     sessions,
     exploreHikes,
+    sessionDayOverrides,
+    setSessionDayOverride,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -1320,6 +1323,14 @@ export default function PlanScreen() {
         {currentWeek && (
           <View style={dashStyles.thisWeekCard}>
             <Text style={dashStyles.thisWeekLabel}>THIS WEEK — {currentWeek.phase.toUpperCase()} PHASE</Text>
+            <DayStrip
+              weekNum={currentWeek.weekNumber}
+              sessions={currentWeek.sessions}
+              completedPlanSessions={completedPlanSessions}
+              availableDays={summitGoal.availableDays}
+              sessionDayOverrides={sessionDayOverrides}
+              onReassign={(sIdx, dow) => setSessionDayOverride(currentWeek.weekNumber, sIdx, dow)}
+            />
             {currentWeek.sessions.map((s, i) => {
               const key = `${currentWeek.weekNumber}-${i}`;
               const isDone = !!completedPlanSessions[key];

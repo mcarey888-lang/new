@@ -1,33 +1,48 @@
 ---
 name: Plan tab redesign — Expedition Dashboard
-description: Architecture of the redesigned Plan tab and session-detail screen; patterns to maintain for future work.
+description: Training Plan redesign state: Levels 1-3 + fix status.
 ---
 
-## The redesign
+## Completed work (TypeScript-clean, all implemented)
 
-The Plan tab (`app/(tabs)/plan.tsx`) is a single unified ScrollView with three zones:
-1. **Expedition Dashboard** — mountain `ImageBackground` hero + phase chip + progress bar; stats row (readiness / elevation trained / days to go); TODAY'S FOCUS featured session card; THIS WEEK tappable session list.
-2. **Full Plan** — all `WeekCard` accordions. Session rows inside are now simplified tappable chips (checkbox for quick-complete + type icon + label + duration + pencil/swap icons + ↑elevation + chevron).
-3. Modals/pickers unchanged.
+### Level 1 — Expedition Dashboard (`app/(tabs)/plan.tsx`)
+- Hero image, phase chip, progress bar, stats row, TODAY'S FOCUS card, THIS WEEK list
+- Dashboard section uses `dashStyles` stylesheet; WeekCard sessions are tappable chips → `session-detail`
+- DayStrip now wired inside the THIS WEEK card (see Level 2 below)
 
-## WeekCard props — what was removed
+### Level 2 — Compact editable day strip (`components/DayStrip.tsx`)
+- Mon–Sun columns rendered above the session chip list in the THIS WEEK card
+- Session type icons with completion state (check/colour/dot)
+- Tap a session dot → select it; tap any empty day → place it there (or tap the reassign row day buttons)
+- Overrides persisted in AppContext as `sessionDayOverrides: Record<string, number>` keyed `"${weekNum}-${sessionIdx}"`
+- `setSessionDayOverride(weekNum, sessionIdx, dow)` callback in AppContext, stored with AsyncStorage key `summitready_session_day_overrides{_uid}`
+- Uses `assignSessionsToDays()` from `utils/dayAssignment.ts` for auto-assignment baseline
 
-`assignedHills`, `nearbyHills`, `sessionReps`, `summitGoal`, `onAssignHill`, `onSetReps` were **removed** from WeekCard's props. `onSessionPress: (sessionIdx: number) => void` was **added**. Inline trackers (GymTracker, HillActionCard, RepStepper, FlightsLogger, ElevationLogger) are no longer rendered inside WeekCard — they live in `session-detail.tsx` only.
+### Level 3 — Workout Detail screen (`app/session-detail.tsx`)
+- Hero image, phase/week/type chips, stats row, coaching notes
+- GPS CTA (hill/bigDay only), manual-complete toggle, inline trackers (RepLog, MeterLog), submit-week
+- "Change hill" button on assigned-hill row; "Assign hill" prompt when none set
+- HillPickerModal imported from `components/HillPickerModal.tsx` (shared component)
 
-**Why:** The session detail lives at Level 3 (session-detail screen). WeekCard is Level 2 — compact chips that navigate there.
+### Shared components created
+- `components/HillPickerModal.tsx` — full picker with search, online lookup, section labels
+- `components/DayStrip.tsx` — 7-day strip with reassign interaction
 
-## session-detail screen
+### Fix: Hill rotation (`utils/planGenerator.ts`)
+- `createHillSession` → `hills[weekNum % hills.length]`
+- `createBigDaySession` → `hills[(weekNum + 1) % hills.length]`
+- `createTaperLightHillSession` → added `weekNum` param; `hills[weekNum % hills.length]`; call site in `createSessions` updated
 
-`app/session-detail.tsx` — reads `weekNum` and `sessionIdx` from Expo Router params. Renders full session detail with GPS CTA, manual completion with inline trackers, and submit-week button.
+### Fix: GPS-to-plan completion (`app/hike-tracking.tsx`)
+- `handleSave` parses `hillMeta.sessionKey`, calls `togglePlanSession` if not already completed
 
-## availableDays pattern
+### Other features
+- `questionnaire.tsx` — StepAvailableDays (step 7) for picking training days
+- `setup.tsx` — day-preference chip picker
+- `context/AppContext.tsx` — `availableDays?: number[]` on SummitGoal
 
-`availableDays?: number[]` is an additive-only field on `SummitGoal`. Pure client-side — no backend changes. Day-picker UI exists in both `setup.tsx` (edit flow) and `questionnaire.tsx` (step 7, `StepAvailableDays` component). Cap is `trainingDays`. Graceful fallback for users without it.
-
-## PlanScreen useApp() destructuring
-
-As of this redesign, `assignedHills` and `sessionReps` are **not** destructured in PlanScreen (they were only forwarded to WeekCard). Still needed: `nearbyHills` (HillPickerModal), `sessionEfforts` + `setSessionEffort` (Edit modal), `assignHillToSession` (hill picker callback), `setSessionReps` (kept in context but removed from PlanScreen).
-
-## Theme note
-
-`T.blueDim` exists in `constants/theme.ts` as `rgba(74,159,245,0.12)` — confirmed.
+## Key invariants
+- `availableDays` is optional; existing users without it fall back gracefully in `assignSessionsToDays`
+- Do not touch plan generation math (elevation targets, rep counts, phase structure)
+- Pre-existing `hooks/useColors.ts` TS2352 error — always ignore
+- plan.tsx still has its own inline HillPickerModal function (unused but harmless); session-detail imports from the shared component file
