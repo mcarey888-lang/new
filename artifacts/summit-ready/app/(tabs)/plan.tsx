@@ -2446,7 +2446,7 @@ const styles = StyleSheet.create({
 
 const dashStyles = StyleSheet.create({
   hero: {
-    height: 340,
+    height: 270,
     width: Dimensions.get("window").width,
     marginHorizontal: -18,
     justifyContent: "flex-end",
