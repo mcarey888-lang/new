@@ -1366,10 +1366,17 @@ export default function PlanScreen() {
           : "outdoor trail walking hiking fitness nature")
       : null)
     ?? summitGoal.mountainName;
-  const isMissionTreadmill = selectedSession?.gymExercise === "treadmill"
-    || (!selectedSession?.gymExercise && _missionCardioText.includes("treadmill"));
-  const missionImageSource = isMissionTreadmill
-    ? require("@/assets/images/exercise-treadmill.png")
+  const _missionGymEx = selectedSession?.gymExercise
+    ?? (!selectedSession?.gymExercise && _missionCardioText.includes("treadmill") ? "treadmill"
+      : !selectedSession?.gymExercise && (_missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster")) ? "stepper"
+      : undefined);
+  const missionImageSource =
+      _missionGymEx === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
+    : _missionGymEx === "stepper"         ? require("@/assets/images/exercise-stepper.png")
+    : _missionGymEx === "box-steps"       ? require("@/assets/images/exercise-box-steps.png")
+    : _missionGymEx === "weighted-stairs" ? require("@/assets/images/exercise-weighted-stairs.png")
+    : _missionGymEx === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
+    : _missionGymEx === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : { uri: `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200` };
 
   // Upcoming this week: rest of the week's sessions (not the selected one)

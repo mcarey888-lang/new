@@ -318,11 +318,15 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  // Local asset overrides take priority; fall back to the API for everything else
+  // Local asset overrides take priority; fall back to the API for hill/stair sessions
   const heroImageSource: ImageSourcePropType | null = !imageError
-    ? inferredGymExercise === "treadmill"
-      ? require("@/assets/images/exercise-treadmill.png")
-      : heroSubject
+    ? inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
+    : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
+    : inferredGymExercise === "box-steps"       ? require("@/assets/images/exercise-box-steps.png")
+    : inferredGymExercise === "weighted-stairs" ? require("@/assets/images/exercise-weighted-stairs.png")
+    : inferredGymExercise === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
+    : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
+    : heroSubject
       ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400` }
       : null
     : null;
