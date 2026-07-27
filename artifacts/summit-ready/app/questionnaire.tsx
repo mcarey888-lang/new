@@ -490,7 +490,7 @@ type SelectedQHike = PastHike & { key: string };
 
 type SearchResult = { name: string; elevationGain: number; distance: number; emoji: string };
 
-function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: (hikes: PastHike[]) => void }) {
+function StepCatchMeUp({ setPastHikes, mountainName }: { pastHikes: PastHike[]; setPastHikes: (hikes: PastHike[]) => void; mountainName: string }) {
   const [selected, setSelected] = React.useState<SelectedQHike[]>([]);
   const [query, setQuery] = React.useState("");
   const [searching, setSearching] = React.useState(false);
@@ -510,23 +510,23 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
     setSearching(true);
     searchDebounce.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/mountain-lookup`, {
+        const res = await fetch(`${API_BASE}/hills-unified`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: trimmed }),
+          body: JSON.stringify({ hillName: trimmed, location: mountainName || undefined }),
         });
         if (!res.ok) throw new Error("lookup failed");
-        const data = await res.json();
-        const firstRoute = data.routes?.[0];
-        if (firstRoute?.elevationGain) {
+        const data = await res.json() as { hill?: { name: string; elevation: number; distance: number; emoji?: string } };
+        const hill = data.hill;
+        if (hill?.elevation) {
           setSearchResult({
-            name: trimmed,
-            elevationGain: firstRoute.elevationGain,
-            distance: firstRoute.distance ?? Math.round(firstRoute.elevationGain / 80),
-            emoji: "⛰️",
+            name: hill.name,
+            elevationGain: hill.elevation,
+            distance: hill.distance ?? Math.round(hill.elevation / 80),
+            emoji: hill.emoji ?? "⛰️",
           });
         } else {
-          setSearchError("No data found — check the spelling or try a nearby village name.");
+          setSearchError("No data found — check the spelling or try a different name.");
         }
       } catch {
         setSearchError("Couldn't reach lookup — check your connection and try again.");
@@ -535,7 +535,7 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
       }
     }, 700);
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
-  }, [query]);
+  }, [query, mountainName]);
 
   function addResult(result: SearchResult) {
     const alreadyAdded = selected.some(s => s.name.toLowerCase() === result.name.toLowerCase());
@@ -917,7 +917,7 @@ export default function QuestionnaireScreen() {
             {step === 5 && <StepCardio running={running} setRunning={setRunning} strength={strength} setStrength={setStrength} />}
             {step === 6 && <StepPlan trainingDays={trainingDays} setTrainingDays={setTrainingDays} equipment={equipment} toggleEquipment={toggleEquipment} location={location} setLocation={setLocation} />}
             {step === 7 && <StepAvailableDays trainingDays={trainingDays} availableDays={availableDays} setAvailableDays={setAvailableDays} />}
-            {step === 8 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} />}
+            {step === 8 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} mountainName={mountainName} />}
           </Animated.View>
         </ScrollView>
 
