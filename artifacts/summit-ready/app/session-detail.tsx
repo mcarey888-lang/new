@@ -243,12 +243,12 @@ export default function SessionDetailScreen() {
     setExercisePickerOpen(false);
     const targetElev = session?.targetElevation ?? 0;
     if (gymEx === "treadmill") {
-      // At 10% incline: 1 km = 100 m elevation gain
+      // At 10–15% incline: 1 km ≈ 100 m elevation gain
       const distKm = Math.max(0.5, Math.round((targetElev / 100) * 10) / 10);
       await updatePlanSession(weekNum, sessionIdx, {
         gymExercise: "treadmill",
         targetDistanceKm: distKm,
-        inclinePct: 10,
+        inclinePct: 12,
       });
     } else if (gymEx === "stepper") {
       // ~3 m per floor
@@ -258,7 +258,8 @@ export default function SessionDetailScreen() {
         targetFloors: floors,
       });
     } else {
-      await updatePlanSession(weekNum, sessionIdx, { gymExercise: "outdoor" });
+      // box-steps, weighted-stairs, elliptical, outdoor — elevation-based, no extra metric
+      await updatePlanSession(weekNum, sessionIdx, { gymExercise: gymEx });
     }
   }, [weekNum, sessionIdx, session?.targetElevation, updatePlanSession]);
 
@@ -276,24 +277,32 @@ export default function SessionDetailScreen() {
   const pc = PHASE_COLOR[week?.phase ?? "Base"] ?? T.green;
   const tc = session ? typeColor(session.type) : T.blue;
 
-  // Infer gym subtype (mirrors plan.tsx logic) — computed before hero so we can use it for the image
+  // Infer gym subtype — computed before hero so we can use it for the image
   const gymText = `${session?.label ?? ""} ${session?.description ?? ""}`.toLowerCase();
-  const inferredGymExercise: "treadmill" | "stepper" | null =
-    session?.gymExercise === "treadmill" || session?.gymExercise === "stepper"
+  const inferredGymExercise: GymExercise | null =
+    session?.gymExercise
       ? session.gymExercise
       : gymText.includes("treadmill")
       ? "treadmill"
       : gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster")
       ? "stepper"
+      : gymText.includes("elliptical")
+      ? "elliptical"
       : null;
   const isStairRepeat  = gymText.includes("stair") || gymText.includes("stair repeat") || gymText.includes("flights");
-  const isOutdoorCardio = session?.gymExercise === "outdoor" || (!inferredGymExercise && !isStairRepeat && session?.type === "cardio");
+  const isOutdoorCardio = inferredGymExercise === "outdoor"
+    || inferredGymExercise === "box-steps"
+    || inferredGymExercise === "weighted-stairs"
+    || (!inferredGymExercise && !isStairRepeat && session?.type === "cardio");
 
   // Hero image: exercise-specific keyword for cardio; hill/mountain name for hill sessions
   const heroSubject = session?.type === "cardio"
-    ? inferredGymExercise === "treadmill" ? "incline treadmill training gym workout"
-      : inferredGymExercise === "stepper" ? "stair stepper machine gym climbing"
-      : isStairRepeat ? "outdoor stair climbing exercise training"
+    ? inferredGymExercise === "treadmill"       ? "incline treadmill training gym workout"
+      : inferredGymExercise === "stepper"         ? "stair stepper machine gym climbing"
+      : inferredGymExercise === "box-steps"       ? "box step ups exercise training gym"
+      : inferredGymExercise === "weighted-stairs" ? "weighted hiking backpack stair training"
+      : inferredGymExercise === "elliptical"      ? "elliptical machine gym cardio training"
+      : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
   const heroImageUri = !imageError && heroSubject
@@ -499,19 +508,25 @@ export default function SessionDetailScreen() {
           {session.type === "cardio" && !isStairRepeat && (
             <View style={s.hillRow}>
               <Text style={s.hillEmoji}>
-                {inferredGymExercise === "treadmill" ? "🏃"
-                  : inferredGymExercise === "stepper" ? "🪜"
+                {inferredGymExercise === "treadmill"       ? "🏃"
+                  : inferredGymExercise === "stepper"         ? "🪜"
+                  : inferredGymExercise === "box-steps"       ? "📦"
+                  : inferredGymExercise === "weighted-stairs" ? "🎒"
+                  : inferredGymExercise === "elliptical"      ? "🔄"
                   : "🌿"}
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={s.hillName}>
-                  {inferredGymExercise === "treadmill" ? "Incline Treadmill"
-                    : inferredGymExercise === "stepper" ? "Stair Stepper"
+                  {inferredGymExercise === "treadmill"       ? "Incline Treadmill"
+                    : inferredGymExercise === "stepper"         ? "Stepper Machine"
+                    : inferredGymExercise === "box-steps"       ? "Box Step-Ups"
+                    : inferredGymExercise === "weighted-stairs" ? "Weighted Stairs"
+                    : inferredGymExercise === "elliptical"      ? "Elliptical (High Resistance)"
                     : "Outdoor Walk / Run"}
                 </Text>
                 <Text style={s.hillSub}>
                   {inferredGymExercise === "treadmill"
-                    ? `${session.targetDistanceKm ?? "?"}km @ ${session.inclinePct ?? 10}% incline`
+                    ? `${session.targetDistanceKm ?? "?"}km @ ${session.inclinePct ?? 12}% incline`
                     : inferredGymExercise === "stepper"
                     ? `${session.targetFloors ?? "?"} floors`
                     : `${session.targetElevation}m elevation gain`}
@@ -755,7 +770,7 @@ export default function SessionDetailScreen() {
       {/* Exercise picker modal */}
       <ExercisePickerModal
         visible={exercisePickerOpen}
-        current={inferredGymExercise ?? (isOutdoorCardio ? "outdoor" : null)}
+        current={inferredGymExercise}
         onSelect={handleExerciseSelect}
         onClose={() => setExercisePickerOpen(false)}
       />

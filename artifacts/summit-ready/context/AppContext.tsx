@@ -64,7 +64,7 @@ export interface PlanSession {
   description: string;
   targetElevation: number;
   duration: string;
-  gymExercise?: "treadmill" | "stepper" | "outdoor";
+  gymExercise?: "treadmill" | "stepper" | "outdoor" | "box-steps" | "weighted-stairs" | "elliptical";
   targetDistanceKm?: number;
   targetFloors?: number;
   targetFlights?: number;
