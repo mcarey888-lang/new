@@ -1286,8 +1286,13 @@ export default function PlanScreen() {
   const selectedSessionKey = viewedWeek && selectedSessionIdx !== undefined
     ? `${viewedWeek.weekNumber}-${selectedSessionIdx}` : "";
   const selectedIsDone = selectedSessionKey ? !!completedPlanSessions[selectedSessionKey] : false;
+  // Prefer explicit assignment; fall back to the plan generator's hill for this week
   const selectedHill = viewedWeek && selectedSessionIdx !== undefined
-    ? assignedHills[`${viewedWeek.weekNumber}-${selectedSessionIdx}`] : undefined;
+    ? (assignedHills[`${viewedWeek.weekNumber}-${selectedSessionIdx}`]
+        ?? (selectedSession?.type !== "cardio" && viewedWeek.hills[0]
+            ? { ...viewedWeek.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" }
+            : undefined))
+    : undefined;
   const missionImageSubject = selectedHill?.name ?? (selectedSession?.type !== "cardio" ? selectedSession?.label : null) ?? summitGoal.mountainName;
   const missionImageUri = `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200`;
 
@@ -1502,12 +1507,24 @@ export default function PlanScreen() {
                 <Text style={[dashStyles.missionLabel, selectedIsDone && { color: T.green }]}>
                   {selectedIsDone ? "✓ COMPLETED" : "TODAY'S MISSION"}
                 </Text>
-                {viewedWeek?.isCurrentWeek && selectedDow === new Date().getDay() && (
-                  <View style={dashStyles.missionSuggestedBadge}>
-                    <Zap size={10} color={T.orange} />
-                    <Text style={dashStyles.missionSuggestedText}>Suggested</Text>
-                  </View>
-                )}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {viewedWeek?.isCurrentWeek && selectedDow === new Date().getDay() && (
+                    <View style={dashStyles.missionSuggestedBadge}>
+                      <Zap size={10} color={T.orange} />
+                      <Text style={dashStyles.missionSuggestedText}>Suggested</Text>
+                    </View>
+                  )}
+                  {(selectedSession.type === "hill" || selectedSession.type === "bigDay") && viewedWeek && selectedSessionIdx !== undefined && (
+                    <TouchableOpacity
+                      onPress={() => openHillPicker(viewedWeek.weekNumber, selectedSessionIdx)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={dashStyles.missionSwapBtn}
+                    >
+                      <Mountain size={14} color={T.textMuted} />
+                      <Text style={dashStyles.missionSwapText}>Change hill</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               {/* Content row: thumbnail + info */}
@@ -2497,6 +2514,15 @@ const dashStyles = StyleSheet.create({
   missionSwipeHint: {
     fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim,
     textAlign: "center", letterSpacing: 0.3,
+  },
+  missionSwapBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 9, backgroundColor: T.surface,
+    borderWidth: 1, borderColor: T.border,
+  },
+  missionSwapText: {
+    fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted,
   },
 
   // ── Upcoming This Week ───────────────────────────────────────────────────

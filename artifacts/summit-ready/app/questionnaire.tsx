@@ -1,4 +1,4 @@
-import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X } from "lucide-react-native";
+import { Check, MapPin, Minus, Plus, ArrowLeft, Zap, ArrowRight, TrendingUp, X, Search, Mountain } from "lucide-react-native";
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PENDING_PAST_HIKES_KEY, type PastHike } from "@/context/AppContext";
@@ -488,25 +488,27 @@ function getCatchMonthChips() {
 
 type SelectedQHike = PastHike & { key: string };
 
+type SearchResult = { name: string; elevationGain: number; distance: number; emoji: string };
+
 function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: (hikes: PastHike[]) => void }) {
   const [selected, setSelected] = React.useState<SelectedQHike[]>([]);
-  const [showCustom, setShowCustom] = React.useState(false);
-  const [customName, setCustomName] = React.useState("");
-  const [customElev, setCustomElev] = React.useState("");
-  const [lookupLoading, setLookupLoading] = React.useState(false);
-  const [lookupFound, setLookupFound] = React.useState(false);
-  const lookupDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [query, setQuery] = React.useState("");
+  const [searching, setSearching] = React.useState(false);
+  const [searchResult, setSearchResult] = React.useState<SearchResult | null>(null);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const searchDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const monthChips = React.useMemo(() => getCatchMonthChips(), []);
 
   React.useEffect(() => { setPastHikes(selected); }, [selected, setPastHikes]);
 
   React.useEffect(() => {
-    if (lookupDebounce.current) clearTimeout(lookupDebounce.current);
-    setLookupFound(false);
-    const trimmed = customName.trim();
-    if (trimmed.length < 3) { setLookupLoading(false); return; }
-    setLookupLoading(true);
-    lookupDebounce.current = setTimeout(async () => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    setSearchResult(null);
+    setSearchError(null);
+    const trimmed = query.trim();
+    if (trimmed.length < 3) { setSearching(false); return; }
+    setSearching(true);
+    searchDebounce.current = setTimeout(async () => {
       try {
         const res = await fetch(`${API_BASE}/mountain-lookup`, {
           method: "POST",
@@ -517,54 +519,49 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
         const data = await res.json();
         const firstRoute = data.routes?.[0];
         if (firstRoute?.elevationGain) {
-          setCustomElev(String(firstRoute.elevationGain));
-          setLookupFound(true);
+          setSearchResult({
+            name: trimmed,
+            elevationGain: firstRoute.elevationGain,
+            distance: firstRoute.distance ?? Math.round(firstRoute.elevationGain / 80),
+            emoji: "⛰️",
+          });
+        } else {
+          setSearchError("No data found — check the spelling or try a nearby village name.");
         }
       } catch {
-        // silent — user fills in manually
+        setSearchError("Couldn't reach lookup — check your connection and try again.");
       } finally {
-        setLookupLoading(false);
+        setSearching(false);
       }
-    }, 800);
-    return () => { if (lookupDebounce.current) clearTimeout(lookupDebounce.current); };
-  }, [customName]);
+    }, 700);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [query]);
 
-  function togglePeak(peak: typeof POPULAR_PEAKS_Q[number]) {
-    setSelected(prev => {
-      const exists = prev.find(s => s.key === peak.id);
-      if (exists) return prev.filter(s => s.key !== peak.id);
-      return [...prev, {
-        key: peak.id, trailId: peak.id, name: peak.name,
-        elevationGain: peak.elevationGain, distance: peak.distance,
-        monthsAgo: 1, emoji: peak.emoji,
-      }];
-    });
+  function addResult(result: SearchResult) {
+    const alreadyAdded = selected.some(s => s.name.toLowerCase() === result.name.toLowerCase());
+    if (alreadyAdded) return;
+    const key = `search_${Date.now()}`;
+    setSelected(prev => [...prev, {
+      key, name: result.name, elevationGain: result.elevationGain,
+      distance: result.distance, monthsAgo: 1, emoji: result.emoji,
+    }]);
+    setQuery("");
+    setSearchResult(null);
+    setSearchError(null);
   }
 
   function setMonth(key: string, monthsAgo: number) {
     setSelected(prev => prev.map(s => s.key === key ? { ...s, monthsAgo } : s));
   }
 
-  function addCustom() {
-    const name = customName.trim();
-    const elev = parseInt(customElev.trim(), 10);
-    if (!name || !elev || isNaN(elev) || elev <= 0) return;
-    const key = `custom_${Date.now()}`;
-    setSelected(prev => [...prev, {
-      key, name, elevationGain: elev,
-      distance: Math.round(elev / 80), monthsAgo: 1, emoji: "⛰️",
-    }]);
-    setCustomName(""); setCustomElev(""); setShowCustom(false);
-    setLookupFound(false);
-  }
-
   return (
     <View style={s.stepWrap}>
       <Text style={s.stepTitle}>Already been training?</Text>
       <Text style={s.stepSub}>
-        Tick any hills you've done in the last 6 months — they'll boost your readiness score. This step is optional.
+        Search any hill or mountain you've climbed in the last 6 months — it'll boost your readiness score. This step is optional.
       </Text>
 
+      {/* Selected summits */}
       {selected.length > 0 && (
         <View style={s.catchSelectedBox}>
           <Text style={s.catchSectionLabel}>YOUR RECENT SUMMITS</Text>
@@ -572,8 +569,11 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
             <View key={item.key} style={s.catchSelectedItem}>
               <View style={s.catchSelectedTop}>
                 <Text style={{ fontSize: 18 }}>{item.emoji ?? "⛰️"}</Text>
-                <Text style={s.catchSelectedName}>{item.name}</Text>
-                <TouchableOpacity onPress={() => setSelected(p => p.filter(x => x.key !== item.key))} hitSlop={10} style={{ marginLeft: "auto" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.catchSelectedName}>{item.name}</Text>
+                  <Text style={s.catchPeakMeta}>{item.elevationGain}m gain</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelected(p => p.filter(x => x.key !== item.key))} hitSlop={10}>
                   <X size={15} color={T.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -599,83 +599,65 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
         </View>
       )}
 
-      <Text style={s.catchSectionLabel}>POPULAR UK PEAKS</Text>
-      {POPULAR_PEAKS_Q.map(peak => {
-        const isSel = selected.some(x => x.key === peak.id);
-        return (
-          <TouchableOpacity
-            key={peak.id}
-            onPress={() => togglePeak(peak)}
-            style={[s.catchPeakCard, isSel && s.catchPeakCardSel]}
-            activeOpacity={0.8}
-          >
-            <Text style={{ fontSize: 22 }}>{peak.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.catchPeakName, isSel && { color: T.green }]}>{peak.name}</Text>
-              <Text style={s.catchPeakMeta}>{peak.location} · {peak.elevationGain}m gain</Text>
-            </View>
-            <View style={[s.catchPeakCheck, isSel && s.catchPeakCheckSel]}>
-              {isSel && <Check size={11} color="#fff" />}
-            </View>
+      {/* Search bar */}
+      <View style={s.catchSearchRow}>
+        <Search size={15} color={T.textMuted} style={{ marginLeft: 13 }} />
+        <TextInput
+          style={s.catchSearchInput}
+          value={query}
+          onChangeText={v => { setQuery(v); setSearchResult(null); setSearchError(null); }}
+          placeholder="Search any hill or mountain…"
+          placeholderTextColor={T.textDim}
+          returnKeyType="search"
+          autoCorrect={false}
+        />
+        {searching && <ActivityIndicator size="small" color={T.green} style={{ marginRight: 12 }} />}
+        {!searching && query.length > 0 && (
+          <TouchableOpacity onPress={() => { setQuery(""); setSearchResult(null); setSearchError(null); }} style={{ paddingRight: 12 }} hitSlop={8}>
+            <X size={14} color={T.textMuted} />
           </TouchableOpacity>
-        );
-      })}
+        )}
+      </View>
 
-      {!showCustom ? (
-        <TouchableOpacity onPress={() => setShowCustom(true)} style={s.catchCustomBtn} activeOpacity={0.75}>
-          <Plus size={14} color={T.green} />
-          <Text style={s.catchCustomBtnText}>Add custom hill</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={s.catchCustomForm}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <Text style={s.catchPeakName}>Custom hill</Text>
-            <TouchableOpacity onPress={() => { setShowCustom(false); setCustomName(""); setCustomElev(""); setLookupFound(false); }} hitSlop={8}>
-              <X size={16} color={T.textMuted} />
-            </TouchableOpacity>
+      {/* Hint when query is too short */}
+      {query.trim().length > 0 && query.trim().length < 3 && (
+        <Text style={s.catchLookupHint}>Keep typing to search…</Text>
+      )}
+
+      {/* Search result */}
+      {searchResult && (
+        <TouchableOpacity
+          style={s.catchResultCard}
+          onPress={() => addResult(searchResult)}
+          activeOpacity={0.8}
+        >
+          <View style={s.catchResultIcon}>
+            <Mountain size={18} color={T.green} />
           </View>
-
-          {/* Name input with AI lookup indicator */}
-          <View style={s.catchCustomNameWrap}>
-            <TextInput
-              style={[s.locationInput, { flex: 1 }]}
-              placeholder="Hill or mountain name"
-              placeholderTextColor={T.textDim}
-              value={customName}
-              onChangeText={v => { setCustomName(v); setLookupFound(false); }}
-              autoFocus
-              returnKeyType="next"
-            />
-            {lookupLoading && (
-              <ActivityIndicator size="small" color={T.green} style={s.catchLookupIcon} />
-            )}
-            {!lookupLoading && lookupFound && (
-              <View style={s.catchLookupBadge}>
-                <Check size={11} color={T.green} />
-              </View>
-            )}
+          <View style={{ flex: 1 }}>
+            <Text style={s.catchPeakName}>{searchResult.name}</Text>
+            <Text style={s.catchPeakMeta}>{searchResult.elevationGain}m gain · ~{searchResult.distance}km</Text>
           </View>
-
-          {lookupFound && (
-            <Text style={s.catchLookupHint}>Elevation auto-filled — edit if needed</Text>
-          )}
-          {!lookupFound && lookupLoading && (
-            <Text style={s.catchLookupHint}>Looking up elevation…</Text>
-          )}
-
-          <TextInput
-            style={[s.locationInput, { marginTop: 8 }]}
-            placeholder="Elevation gain in metres"
-            placeholderTextColor={T.textDim}
-            value={customElev}
-            onChangeText={setCustomElev}
-            keyboardType="number-pad"
-            returnKeyType="done"
-          />
-          <TouchableOpacity onPress={addCustom} style={[s.catchCustomBtn, { marginTop: 8, justifyContent: "center" }]} activeOpacity={0.8}>
+          <View style={s.catchResultAddBtn}>
             <Plus size={14} color={T.green} />
-            <Text style={s.catchCustomBtnText}>Add hill</Text>
-          </TouchableOpacity>
+            <Text style={s.catchResultAddText}>Add</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Error */}
+      {searchError && !searching && (
+        <Text style={s.catchSearchError}>{searchError}</Text>
+      )}
+
+      {/* Empty state when nothing typed */}
+      {query.trim().length === 0 && selected.length === 0 && (
+        <View style={s.catchEmptyHint}>
+          <Mountain size={32} color={T.textDim} />
+          <Text style={s.catchEmptyTitle}>Search for your hills</Text>
+          <Text style={s.catchEmptyBody}>
+            Type any hill, peak, or mountain name above — we'll look up the elevation gain automatically.
+          </Text>
         </View>
       )}
     </View>
@@ -1227,5 +1209,51 @@ const s = StyleSheet.create({
   catchLookupHint: {
     fontSize: 11, fontFamily: "Inter_400Regular",
     color: T.green, marginTop: 4, marginBottom: 2,
+  },
+
+  // ── Search-first hill lookup ──────────────────────────────────────────────
+  catchSearchRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: T.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: T.blue + "40",
+    height: 50, marginBottom: 10, gap: 8,
+  },
+  catchSearchInput: {
+    flex: 1, height: 50, fontSize: 14,
+    fontFamily: "Inter_400Regular", color: T.white,
+  },
+  catchResultCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.greenDim, borderRadius: 14,
+    borderWidth: 1.5, borderColor: T.green + "50",
+    padding: 14, marginBottom: 8,
+  },
+  catchResultIcon: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: T.green + "18",
+    alignItems: "center", justifyContent: "center",
+  },
+  catchResultAddBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, backgroundColor: T.green + "20",
+    borderWidth: 1, borderColor: T.green + "40",
+  },
+  catchResultAddText: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green,
+  },
+  catchSearchError: {
+    fontSize: 12, fontFamily: "Inter_400Regular", color: T.orange,
+    marginBottom: 8, paddingHorizontal: 4,
+  },
+  catchEmptyHint: {
+    alignItems: "center", paddingVertical: 32, gap: 10,
+  },
+  catchEmptyTitle: {
+    fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.textMuted,
+  },
+  catchEmptyBody: {
+    fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim,
+    textAlign: "center", lineHeight: 19, paddingHorizontal: 8,
   },
 });

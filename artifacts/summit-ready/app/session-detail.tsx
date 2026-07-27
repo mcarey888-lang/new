@@ -212,7 +212,11 @@ export default function SessionDetailScreen() {
 
   const isDone      = !!completedPlanSessions[sessionKey];
   const isSubmitted = !!submittedPlanSessions[sessionKey];
-  const assignedHill = assignedHills[sessionKey];
+  // Fall back to the plan-generator's hill (week.hills[0]) when no explicit assignment exists
+  const planHill = (session?.type !== "cardio" && week?.hills[0])
+    ? { ...week.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" } as NearbyHill
+    : null;
+  const assignedHill: NearbyHill | null = assignedHills[sessionKey] ?? planHill ?? null;
 
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
   const [saving, setSaving] = useState(false);
