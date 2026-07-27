@@ -57,7 +57,7 @@ interface HillDetail {
   summitLng?: number;
 }
 
-import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch } from "@/utils/openMaps";
+import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch, openMapsForHill } from "@/utils/openMaps";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -241,10 +241,15 @@ export default function HillDetailScreen() {
                 style={styles.mapActionBtn}
                 onPress={() => {
                   if (detail?.summitLat && detail?.summitLng) {
+                    // Prefer AI-enriched summit pin when available
                     openMapPin(detail.summitLat, detail.summitLng, name ?? "");
+                  } else if (hillLat && hillLng) {
+                    // Fall back to the hill's own Overpass/terrain coordinates
+                    openMapPin(hillLat, hillLng, name ?? "");
                   } else {
-                    // Name search is more reliable than AI-generated coordinates
-                    openMapSearch(name ?? "");
+                    // Last resort: name search with location context to avoid
+                    // common-name ambiguity (e.g. "Bull Hill" exists in the US)
+                    openMapsForHill(null, null, name ?? "", false, location);
                   }
                 }}
                 activeOpacity={0.8}
