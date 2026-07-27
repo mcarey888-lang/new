@@ -1,13 +1,15 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind, Mountain } from "lucide-react-native";
+import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, ChevronLeft, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind, Mountain, Play } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   ImageBackground,
   Modal,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -24,7 +26,7 @@ import { T, PHASE_COLOR } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
-import { DayStrip } from "@/components/DayStrip";
+import { assignSessionsToDays, DAY_SHORT, DAY_FULL } from "@/utils/dayAssignment";
 
 const PLAN_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -1056,6 +1058,7 @@ export default function PlanScreen() {
     sessionEfforts,
     togglePlanSession,
     assignHillToSession,
+    assignedHills,
     planAdjustNote,
     submitWeekSessions,
     setSessionReps,
@@ -1081,6 +1084,23 @@ export default function PlanScreen() {
   );
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
+
+  // Mission dashboard navigation state
+  const [viewedWeekNum, setViewedWeekNum] = useState<number>(currentWeek?.weekNumber ?? 1);
+  const [selectedDow, setSelectedDow] = useState<number>(new Date().getDay());
+  // Swipe ref pattern: keeps advanceDay fresh without recreating PanResponder
+  const missionSwipeRef = useRef<(dir: 1 | -1) => void>(() => {});
+  const missionPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5,
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx < -50) missionSwipeRef.current(1);
+        else if (dx > 50) missionSwipeRef.current(-1);
+      },
+    })
+  ).current;
 
   // Edit session modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -1186,6 +1206,14 @@ export default function PlanScreen() {
     setSwapTarget(null);
   }
 
+  // Sync viewed week to current week once plan loads
+  useEffect(() => {
+    if (currentWeek && viewedWeekNum <= 1) {
+      setViewedWeekNum(currentWeek.weekNumber);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWeek?.weekNumber]);
+
   if (!summitGoal || trainingPlan.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
@@ -1230,6 +1258,73 @@ export default function PlanScreen() {
   const heroImageUri = !heroImageError
     ? `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}`
     : null;
+
+  // ── Elevation Bank ─────────────────────────────────────────────────────────
+  const elevationMultiplier = summitGoal.elevationGain > 0
+    ? totalElevTrained / summitGoal.elevationGain : 0;
+  const summitDisplayName = summitGoal.mountainName.split(/[\s,]+/)[0];
+  const elevBankLabel = totalElevTrained >= 1000
+    ? `${(totalElevTrained / 1000).toFixed(1)}k m`
+    : `${Math.round(totalElevTrained)} m`;
+
+  // ── Mission Dashboard — viewed week & day-session mapping ──────────────────
+  const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const; // Mon → Sun
+  const viewedWeek = trainingPlan.find(w => w.weekNumber === viewedWeekNum) ?? trainingPlan[0];
+  const viewedAutoAssigned = viewedWeek
+    ? assignSessionsToDays(viewedWeek.sessions.length, summitGoal.availableDays)
+    : [];
+  const viewedDowToSession: Record<number, number> = {};
+  for (const { sessionIdx, dayOfWeek } of viewedAutoAssigned) {
+    const key = `${viewedWeek?.weekNumber}-${sessionIdx}`;
+    const dow = sessionDayOverrides[key] !== undefined ? sessionDayOverrides[key] : dayOfWeek;
+    if (dow !== null && viewedDowToSession[dow] === undefined) {
+      viewedDowToSession[dow] = sessionIdx;
+    }
+  }
+  const selectedSessionIdx = viewedDowToSession[selectedDow];
+  const selectedSession = selectedSessionIdx !== undefined ? viewedWeek?.sessions[selectedSessionIdx] : undefined;
+  const selectedSessionKey = viewedWeek && selectedSessionIdx !== undefined
+    ? `${viewedWeek.weekNumber}-${selectedSessionIdx}` : "";
+  const selectedIsDone = selectedSessionKey ? !!completedPlanSessions[selectedSessionKey] : false;
+  const selectedHill = viewedWeek && selectedSessionIdx !== undefined
+    ? assignedHills[`${viewedWeek.weekNumber}-${selectedSessionIdx}`] : undefined;
+  const missionImageSubject = selectedHill?.name ?? (selectedSession?.type !== "cardio" ? selectedSession?.label : null) ?? summitGoal.mountainName;
+  const missionImageUri = `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200`;
+
+  // Upcoming this week: rest of the week's sessions (not the selected one)
+  const upcomingSessions = viewedWeek
+    ? viewedWeek.sessions
+        .map((s, idx) => {
+          const auto = viewedAutoAssigned.find(a => a.sessionIdx === idx);
+          const overrideKey = `${viewedWeek.weekNumber}-${idx}`;
+          const dow = sessionDayOverrides[overrideKey] !== undefined
+            ? sessionDayOverrides[overrideKey]
+            : (auto?.dayOfWeek ?? null);
+          return { session: s, sessionIdx: idx, dow };
+        })
+        .filter(({ sessionIdx }) => sessionIdx !== selectedSessionIdx)
+        .sort((a, b) => {
+          const da = a.dow ?? 99;
+          const db = b.dow ?? 99;
+          return da - db;
+        })
+    : [];
+
+  // Keep swipe callback fresh
+  missionSwipeRef.current = (dir: 1 | -1) => {
+    const currentDowIdx = DISPLAY_ORDER.indexOf(selectedDow as typeof DISPLAY_ORDER[number]);
+    if (currentDowIdx === -1) return;
+    const nextDowIdx = currentDowIdx + dir;
+    if (nextDowIdx >= 0 && nextDowIdx < DISPLAY_ORDER.length) {
+      setSelectedDow(DISPLAY_ORDER[nextDowIdx]);
+    } else if (nextDowIdx >= DISPLAY_ORDER.length) {
+      const nextW = trainingPlan.find(w => w.weekNumber === viewedWeekNum + 1);
+      if (nextW) { setViewedWeekNum(viewedWeekNum + 1); setSelectedDow(DISPLAY_ORDER[0]); }
+    } else {
+      const prevW = trainingPlan.find(w => w.weekNumber === viewedWeekNum - 1);
+      if (prevW) { setViewedWeekNum(viewedWeekNum - 1); setSelectedDow(DISPLAY_ORDER[DISPLAY_ORDER.length - 1]); }
+    }
+  };
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -1280,99 +1375,295 @@ export default function PlanScreen() {
           </LinearGradient>
         )}
 
-        {/* Stats row */}
+        {/* ── 2-CELL STATS ROW: Readiness + Elevation Bank ─────────── */}
         <View style={dashStyles.statsRow}>
-          <View style={dashStyles.statCell}>
-            <Text style={[dashStyles.statVal, { color: readinessColor }]}>{readinessScore}</Text>
-            <Text style={dashStyles.statLbl}>Readiness</Text>
+          {/* Left: Readiness */}
+          <View style={[dashStyles.statCell, { paddingVertical: 16 }]}>
+            <Text style={[dashStyles.statVal, { color: readinessColor, fontSize: 32 }]}>{readinessScore}%</Text>
+            <Text style={dashStyles.statLbl}>YOUR PROGRESS</Text>
+            <Text style={[dashStyles.statLbl, { color: readinessColor, fontFamily: "Inter_600SemiBold", marginTop: 1 }]}>Ready</Text>
           </View>
-          <View style={[dashStyles.statCell, dashStyles.statMid]}>
-            <Text style={[dashStyles.statVal, { color: T.orange }]}>
-              {totalElevTrained >= 1000
-                ? `${(totalElevTrained / 1000).toFixed(1)}k m`
-                : `${Math.round(totalElevTrained)} m`}
-            </Text>
-            <Text style={dashStyles.statLbl}>↑ Trained</Text>
-          </View>
-          <View style={dashStyles.statCell}>
-            <Text style={[dashStyles.statVal, daysToSummit > 0 && daysToSummit < 30 ? { color: T.orange } : {}]}>
-              {daysToSummit > 0 ? daysToSummit : "—"}
-            </Text>
-            <Text style={dashStyles.statLbl}>Days to go</Text>
+          {/* Right: Elevation Bank */}
+          <View style={[dashStyles.statCell, { borderLeftWidth: 1, borderColor: T.border, paddingVertical: 16 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Mountain size={16} color={T.orange} />
+              <Text style={[dashStyles.statVal, { color: T.white, fontSize: 26 }]}>{elevBankLabel}</Text>
+            </View>
+            {elevationMultiplier > 0 && (
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green, marginTop: 2 }}>
+                {elevationMultiplier.toFixed(1)}× {summitDisplayName}s
+              </Text>
+            )}
+            <Text style={dashStyles.statLbl}>ELEVATION BANK</Text>
           </View>
         </View>
 
-        {/* Featured next session card */}
-        {nextSession && (
-          <TouchableOpacity
-            style={dashStyles.nextCard}
-            activeOpacity={0.85}
-            onPress={() => router.push({
-              pathname: "/session-detail",
-              params: { weekNum: String(nextSession.weekNum), sessionIdx: String(nextSession.sessionIdx) },
-            })}
-          >
-            <LinearGradient colors={[pc + "10", "transparent"]} style={StyleSheet.absoluteFill} />
-            <View style={[dashStyles.focusTag, { backgroundColor: pc + "20", borderColor: pc + "40" }]}>
-              <Text style={[dashStyles.focusTagText, { color: pc }]}>TODAY'S FOCUS</Text>
+        {/* ── WEEK CALENDAR STRIP ──────────────────────────────────────── */}
+        <View style={dashStyles.calCard}>
+          {/* Calendar header: ← Week N · Phase → [edit] */}
+          <View style={dashStyles.calHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                const prev = trainingPlan.find(w => w.weekNumber === viewedWeekNum - 1);
+                if (prev) { setViewedWeekNum(viewedWeekNum - 1); setSelectedDow(new Date().getDay()); }
+              }}
+              style={[dashStyles.calNavBtn, viewedWeekNum <= 1 && { opacity: 0.25 }]}
+              disabled={viewedWeekNum <= 1}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronLeft size={16} color={T.white} />
+            </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <Text style={dashStyles.calWeekLabel}>
+                Week {viewedWeekNum}
+                {viewedWeek?.isCurrentWeek ? " · Current" : ""}
+              </Text>
+              <Text style={dashStyles.calPhaseLabel}>{viewedWeek?.phase ?? ""} Phase</Text>
             </View>
-            <Text style={dashStyles.nextTitle}>{nextSession.session.label}</Text>
-            <View style={dashStyles.nextMeta}>
-              <Text style={dashStyles.nextDur}>{nextSession.session.duration}</Text>
-              {nextSession.session.targetElevation > 0 && (
-                <>
-                  <Text style={dashStyles.nextDot}>·</Text>
-                  <Text style={[dashStyles.nextElev, { color: T.orange }]}>↑{nextSession.session.targetElevation}m</Text>
-                </>
-              )}
-            </View>
-            <ChevronRight size={16} color={T.textDim} style={{ position: "absolute", right: 16, top: 0, bottom: 0, alignSelf: "center" }} />
-          </TouchableOpacity>
-        )}
+            <TouchableOpacity
+              onPress={() => {
+                if (selectedSessionIdx !== undefined && viewedWeek) {
+                  openEditSession(viewedWeek.weekNumber, selectedSessionIdx);
+                }
+              }}
+              style={[dashStyles.calNavBtn, selectedSessionIdx === undefined && { opacity: 0.3 }]}
+              disabled={selectedSessionIdx === undefined}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Pencil size={13} color={T.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                const next = trainingPlan.find(w => w.weekNumber === viewedWeekNum + 1);
+                if (next) { setViewedWeekNum(viewedWeekNum + 1); setSelectedDow(new Date().getDay()); }
+              }}
+              style={[dashStyles.calNavBtn, viewedWeekNum >= trainingPlan.length && { opacity: 0.25 }]}
+              disabled={viewedWeekNum >= trainingPlan.length}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronRight size={16} color={T.white} />
+            </TouchableOpacity>
+          </View>
 
-        {/* This week's sessions */}
-        {currentWeek && (
-          <View style={dashStyles.thisWeekCard}>
-            <Text style={dashStyles.thisWeekLabel}>THIS WEEK — {currentWeek.phase.toUpperCase()} PHASE</Text>
-            <DayStrip
-              weekNum={currentWeek.weekNumber}
-              sessions={currentWeek.sessions}
-              completedPlanSessions={completedPlanSessions}
-              availableDays={summitGoal.availableDays}
-              sessionDayOverrides={sessionDayOverrides}
-              onReassign={(sIdx, dow) => setSessionDayOverride(currentWeek.weekNumber, sIdx, dow)}
-            />
-            {currentWeek.sessions.map((s, i) => {
-              const key = `${currentWeek.weekNumber}-${i}`;
-              const isDone = !!completedPlanSessions[key];
-              const tc = s.type === "bigDay" ? T.orange : s.type === "cardio" ? T.blue : T.green;
+          {/* Day columns Mon → Sun */}
+          <View style={dashStyles.calDays}>
+            {DISPLAY_ORDER.map(dow => {
+              const sIdx = viewedDowToSession[dow];
+              const session = sIdx !== undefined ? viewedWeek?.sessions[sIdx] : undefined;
+              const isDone = sIdx !== undefined && !!completedPlanSessions[`${viewedWeek?.weekNumber}-${sIdx}`];
+              const isSelected = dow === selectedDow;
+              const isToday = viewedWeek?.isCurrentWeek && dow === new Date().getDay();
+              const tc = session?.type === "bigDay" ? T.orange : session?.type === "cardio" ? T.blue : T.green;
+              const shortTypeLabel = session
+                ? (session.type === "hill" ? "Hill" : session.type === "bigDay" ? "Big Day" : "Cardio")
+                : "Rest";
               return (
                 <TouchableOpacity
-                  key={i}
-                  style={[dashStyles.twRow, isDone && dashStyles.twRowDone]}
+                  key={dow}
+                  style={dashStyles.calDayCol}
+                  onPress={() => setSelectedDow(dow)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[dashStyles.calDayLabel, isToday && { color: T.green }]}>
+                    {DAY_SHORT[dow]}
+                  </Text>
+                  <View style={[
+                    dashStyles.calDayPill,
+                    session && { backgroundColor: tc + "18" },
+                    isDone && { backgroundColor: T.greenDim },
+                    isSelected && { borderColor: T.green, borderWidth: 2 },
+                    isToday && !isSelected && { borderColor: T.green + "60", borderWidth: 1 },
+                  ]}>
+                    {session ? (
+                      isDone
+                        ? <Check size={13} color={T.green} strokeWidth={3} />
+                        : session.type === "hill"   ? <TrendingUp size={13} color={tc} />
+                        : session.type === "bigDay" ? <Flag size={13} color={tc} />
+                        : <Activity size={13} color={tc} />
+                    ) : (
+                      <View style={dashStyles.calRestDot} />
+                    )}
+                  </View>
+                  <Text style={[dashStyles.calDayType, session && { color: tc }, isDone && { color: T.green }]} numberOfLines={1}>
+                    {shortTypeLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── TODAY'S MISSION card (swipeable) ──────────────────────────── */}
+        <View {...missionPanResponder.panHandlers}>
+          {selectedSession ? (
+            <View style={[dashStyles.missionCard, selectedIsDone && dashStyles.missionCardDone]}>
+              <LinearGradient
+                colors={selectedIsDone ? [T.greenDim, "transparent"] : [pc + "0C", "transparent"]}
+                style={StyleSheet.absoluteFill}
+              />
+
+              {/* Header row */}
+              <View style={dashStyles.missionHeaderRow}>
+                <Text style={[dashStyles.missionLabel, selectedIsDone && { color: T.green }]}>
+                  {selectedIsDone ? "✓ COMPLETED" : "TODAY'S MISSION"}
+                </Text>
+                {viewedWeek?.isCurrentWeek && selectedDow === new Date().getDay() && (
+                  <View style={dashStyles.missionSuggestedBadge}>
+                    <Zap size={10} color={T.orange} />
+                    <Text style={dashStyles.missionSuggestedText}>Suggested</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Content row: thumbnail + info */}
+              <View style={dashStyles.missionContent}>
+                <Image
+                  source={{ uri: missionImageUri }}
+                  style={dashStyles.missionThumb}
+                  resizeMode="cover"
+                />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={dashStyles.missionTitle} numberOfLines={2}>{selectedSession.label}</Text>
+                  {selectedHill ? (
+                    <Text style={dashStyles.missionSub} numberOfLines={1}>
+                      {selectedHill.emoji} {selectedHill.name}
+                    </Text>
+                  ) : (
+                    <Text style={dashStyles.missionSub} numberOfLines={1}>
+                      {selectedSession.type === "hill" ? "Hill session" : selectedSession.type === "bigDay" ? "Big day" : "Cardio"}
+                    </Text>
+                  )}
+                  {/* Stats chips */}
+                  <View style={dashStyles.missionChips}>
+                    {selectedSession.targetElevation > 0 && (
+                      <View style={dashStyles.missionChip}>
+                        <TrendingUp size={11} color={T.orange} />
+                        <Text style={[dashStyles.missionChipVal, { color: T.orange }]}>{selectedSession.targetElevation}m</Text>
+                        <Text style={dashStyles.missionChipLbl}>GAIN</Text>
+                      </View>
+                    )}
+                    {(selectedSession.type === "hill" || selectedSession.type === "bigDay") && viewedWeek?.hills[0]?.repeats && (
+                      <View style={dashStyles.missionChip}>
+                        <RefreshCw size={11} color={T.blue} />
+                        <Text style={[dashStyles.missionChipVal, { color: T.blue }]}>{viewedWeek.hills[0].repeats}</Text>
+                        <Text style={dashStyles.missionChipLbl}>REPS</Text>
+                      </View>
+                    )}
+                    <View style={dashStyles.missionChip}>
+                      <Calendar size={11} color={T.textMuted} />
+                      <Text style={[dashStyles.missionChipVal, { color: T.white }]}>{selectedSession.duration}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Description */}
+              {selectedSession.description ? (
+                <Text style={dashStyles.missionDesc} numberOfLines={3}>{selectedSession.description}</Text>
+              ) : null}
+
+              {/* Action buttons */}
+              <View style={dashStyles.missionBtns}>
+                <TouchableOpacity
+                  style={dashStyles.missionStartBtn}
                   activeOpacity={0.85}
-                  onPress={() => router.push({
+                  onPress={() => {
+                    if (!viewedWeek) return;
+                    if (selectedSession.type === "hill" || selectedSession.type === "bigDay") {
+                      router.push({
+                        pathname: "/hike-tracking",
+                        params: {
+                          hillSessionKey: selectedSessionKey,
+                          hillName: selectedHill?.name ?? selectedSession.label,
+                          targetReps: String(viewedWeek.hills[0]?.repeats ?? 2),
+                          estimatedGainPerRep: String(selectedHill?.elevation ?? Math.round((selectedSession.targetElevation || 0) / Math.max(1, viewedWeek.hills[0]?.repeats ?? 2))),
+                          estimatedTotalGain: String(selectedSession.targetElevation ?? 0),
+                        },
+                      });
+                    } else {
+                      router.push({
+                        pathname: "/session-detail",
+                        params: { weekNum: String(viewedWeek.weekNumber), sessionIdx: String(selectedSessionIdx) },
+                      });
+                    }
+                  }}
+                >
+                  <LinearGradient colors={["#3ECF75", "#2AB860"]} style={dashStyles.missionStartInner}>
+                    <Play size={14} color="#fff" fill="#fff" />
+                    <Text style={dashStyles.missionStartText}>Start Mission</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={dashStyles.missionViewBtn}
+                  activeOpacity={0.8}
+                  onPress={() => viewedWeek && router.push({
                     pathname: "/session-detail",
-                    params: { weekNum: String(currentWeek.weekNumber), sessionIdx: String(i) },
+                    params: { weekNum: String(viewedWeek.weekNumber), sessionIdx: String(selectedSessionIdx) },
                   })}
                 >
-                  <View style={[dashStyles.twTypeTag, { backgroundColor: tc + "20" }]}>
-                    {s.type === "cardio" ? <Activity size={12} color={tc} /> :
-                     s.type === "hill"   ? <TrendingUp size={12} color={tc} /> :
-                                           <Flag size={12} color={tc} />}
+                  <Text style={dashStyles.missionViewText}>View Details</Text>
+                  <ChevronRight size={14} color={T.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Swipe hint */}
+              <Text style={dashStyles.missionSwipeHint}>← swipe to change day →</Text>
+            </View>
+          ) : (
+            <View style={dashStyles.missionCard}>
+              <View style={{ alignItems: "center", paddingVertical: 20, gap: 8 }}>
+                <Heart size={28} color={T.textMuted} />
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: T.white }}>Rest Day</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center" }}>
+                  Recovery is training. Let your body adapt.
+                </Text>
+              </View>
+              <Text style={dashStyles.missionSwipeHint}>← swipe to change day →</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── UPCOMING THIS WEEK ────────────────────────────────────────── */}
+        {upcomingSessions.length > 0 && (
+          <View style={dashStyles.upcomingSection}>
+            <Text style={dashStyles.upcomingLabel}>UPCOMING THIS WEEK</Text>
+            {upcomingSessions.map(({ session, sessionIdx, dow }) => {
+              const isDone = !!completedPlanSessions[`${viewedWeek?.weekNumber}-${sessionIdx}`];
+              const tc = session.type === "bigDay" ? T.orange : session.type === "cardio" ? T.blue : T.green;
+              const hillForSession = viewedWeek ? assignedHills[`${viewedWeek.weekNumber}-${sessionIdx}`] : undefined;
+              const subtitle = hillForSession
+                ? `${hillForSession.name} · ${session.duration}`
+                : session.duration;
+              const dayLabel = dow !== null ? DAY_FULL[dow] : "Unscheduled";
+              return (
+                <TouchableOpacity
+                  key={sessionIdx}
+                  style={[dashStyles.upcomingRow, isDone && dashStyles.upcomingRowDone]}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (viewedWeek) {
+                      setSelectedDow(dow ?? selectedDow);
+                      router.push({
+                        pathname: "/session-detail",
+                        params: { weekNum: String(viewedWeek.weekNumber), sessionIdx: String(sessionIdx) },
+                      });
+                    }
+                  }}
+                >
+                  <View style={[dashStyles.upcomingIcon, { backgroundColor: tc + "20" }]}>
+                    {isDone ? <Check size={14} color={T.green} strokeWidth={3} /> :
+                     session.type === "hill"   ? <TrendingUp size={14} color={tc} /> :
+                     session.type === "bigDay" ? <Flag size={14} color={tc} /> :
+                                                 <Activity size={14} color={tc} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[dashStyles.twName, isDone && { color: T.textMuted, textDecorationLine: "line-through" }]} numberOfLines={1}>
-                      {s.label}
+                    <Text style={[dashStyles.upcomingName, isDone && { color: T.textMuted, textDecorationLine: "line-through" }]} numberOfLines={1}>
+                      {session.label}
                     </Text>
-                    <Text style={dashStyles.twDur}>{s.duration}</Text>
+                    <Text style={dashStyles.upcomingSub} numberOfLines={1}>{subtitle}</Text>
                   </View>
-                  {s.targetElevation > 0 && (
-                    <Text style={[dashStyles.twElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
-                  )}
-                  {isDone
-                    ? <CheckCircle size={16} color={T.green} />
-                    : <ChevronRight size={14} color={T.textDim} />}
+                  <Text style={[dashStyles.upcomingDay, isDone && { color: T.green }]}>{dayLabel}</Text>
+                  <ChevronRight size={14} color={T.textDim} />
                 </TouchableOpacity>
               );
             })}
@@ -2089,27 +2380,156 @@ const dashStyles = StyleSheet.create({
   nextDot: { fontSize: 12, color: T.textDim },
   nextElev: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
-  thisWeekCard: {
-    backgroundColor: T.card, borderRadius: 16,
+  // ── Week Calendar Strip ───────────────────────────────────────────────────
+  calCard: {
+    backgroundColor: T.card, borderRadius: 18,
     borderWidth: 1, borderColor: T.border,
-    padding: 14, gap: 8, marginBottom: 12,
+    padding: 14, marginBottom: 12,
   },
-  thisWeekLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
-    letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4,
+  calHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14,
   },
-  twRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingVertical: 10, paddingHorizontal: 12,
-    backgroundColor: T.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: T.border,
-  },
-  twRowDone: { backgroundColor: T.greenDim, borderColor: T.green + "30" },
-  twTypeTag: {
-    width: 28, height: 28, borderRadius: 8,
+  calNavBtn: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
-  twName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
-  twDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  twElev: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  calWeekLabel: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  calPhaseLabel: {
+    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1,
+  },
+  calDays: {
+    flexDirection: "row", justifyContent: "space-between",
+  },
+  calDayCol: {
+    flex: 1, alignItems: "center", gap: 4,
+  },
+  calDayLabel: {
+    fontSize: 9, fontFamily: "Inter_700Bold",
+    color: T.textDim, textTransform: "uppercase", letterSpacing: 0.3,
+  },
+  calDayPill: {
+    width: 36, height: 36, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
+  },
+  calRestDot: {
+    width: 5, height: 5, borderRadius: 2.5, backgroundColor: T.border,
+  },
+  calDayType: {
+    fontSize: 8, fontFamily: "Inter_500Medium",
+    color: T.textDim, textAlign: "center",
+  },
+
+  // ── Mission Card ─────────────────────────────────────────────────────────
+  missionCard: {
+    backgroundColor: T.card, borderRadius: 18,
+    borderWidth: 1, borderColor: T.border,
+    padding: 16, marginBottom: 12, overflow: "hidden", gap: 12,
+  },
+  missionCardDone: { borderColor: T.green + "40" },
+  missionHeaderRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  missionLabel: {
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    color: T.green, letterSpacing: 1.3, textTransform: "uppercase",
+  },
+  missionSuggestedBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, backgroundColor: T.orangeDim,
+    borderWidth: 1, borderColor: T.orange + "40",
+  },
+  missionSuggestedText: {
+    fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.orange,
+  },
+  missionContent: {
+    flexDirection: "row", gap: 12, alignItems: "flex-start",
+  },
+  missionThumb: {
+    width: 96, height: 96, borderRadius: 12,
+    backgroundColor: T.surface,
+  },
+  missionTitle: {
+    fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 22,
+  },
+  missionSub: {
+    fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted,
+  },
+  missionChips: {
+    flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 2,
+  },
+  missionChip: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: T.surface, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 4,
+    borderWidth: 1, borderColor: T.border,
+  },
+  missionChipVal: {
+    fontSize: 12, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  missionChipLbl: {
+    fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim,
+    textTransform: "uppercase", letterSpacing: 0.4,
+  },
+  missionDesc: {
+    fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19,
+  },
+  missionBtns: {
+    flexDirection: "row", gap: 10,
+  },
+  missionStartBtn: {
+    flex: 1.4, borderRadius: 14, overflow: "hidden",
+  },
+  missionStartInner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 7, paddingVertical: 13,
+  },
+  missionStartText: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff",
+  },
+  missionViewBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 4, paddingVertical: 13, borderRadius: 14,
+    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
+  },
+  missionViewText: {
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted,
+  },
+  missionSwipeHint: {
+    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim,
+    textAlign: "center", letterSpacing: 0.3,
+  },
+
+  // ── Upcoming This Week ───────────────────────────────────────────────────
+  upcomingSection: {
+    marginBottom: 16, gap: 6,
+  },
+  upcomingLabel: {
+    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
+    letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 4,
+  },
+  upcomingRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: T.card, borderRadius: 14,
+    borderWidth: 1, borderColor: T.border,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  upcomingRowDone: { backgroundColor: T.greenDim, borderColor: T.green + "25" },
+  upcomingIcon: {
+    width: 38, height: 38, borderRadius: 11,
+    alignItems: "center", justifyContent: "center",
+  },
+  upcomingName: {
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white,
+  },
+  upcomingSub: {
+    fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1,
+  },
+  upcomingDay: {
+    fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted,
+  },
 });
