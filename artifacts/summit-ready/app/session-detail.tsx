@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
   ImageBackground,
+  type ImageSourcePropType,
   Platform,
   ScrollView,
   StyleSheet,
@@ -305,8 +306,13 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  const heroImageUri = !imageError && heroSubject
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400`
+  // Local asset overrides take priority; fall back to the API for everything else
+  const heroImageSource: ImageSourcePropType | null = !imageError
+    ? inferredGymExercise === "treadmill"
+      ? require("@/assets/images/exercise-treadmill.png")
+      : heroSubject
+      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400` }
+      : null
     : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
@@ -372,9 +378,9 @@ export default function SessionDetailScreen() {
       >
         {/* ── Hero ──────────────────────────────────────────────────────── */}
         <View style={s.heroWrap}>
-          {heroImageUri ? (
+          {heroImageSource ? (
             <ImageBackground
-              source={{ uri: heroImageUri }}
+              source={heroImageSource}
               style={s.heroImg}
               resizeMode="cover"
               onError={() => setImageError(true)}

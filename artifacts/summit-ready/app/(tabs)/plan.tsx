@@ -1366,7 +1366,11 @@ export default function PlanScreen() {
           : "outdoor trail walking hiking fitness nature")
       : null)
     ?? summitGoal.mountainName;
-  const missionImageUri = `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200`;
+  const isMissionTreadmill = selectedSession?.gymExercise === "treadmill"
+    || (!selectedSession?.gymExercise && _missionCardioText.includes("treadmill"));
+  const missionImageSource = isMissionTreadmill
+    ? require("@/assets/images/exercise-treadmill.png")
+    : { uri: `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200` };
 
   // Upcoming this week: rest of the week's sessions (not the selected one)
   const upcomingSessions = viewedWeek
@@ -1602,7 +1606,7 @@ export default function PlanScreen() {
               {/* Content row: thumbnail + info */}
               <View style={dashStyles.missionContent}>
                 <Image
-                  source={{ uri: missionImageUri }}
+                  source={missionImageSource}
                   style={dashStyles.missionThumb}
                   resizeMode="cover"
                 />
