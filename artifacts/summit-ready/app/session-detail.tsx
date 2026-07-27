@@ -242,7 +242,7 @@ export default function SessionDetailScreen() {
 
   const EXERCISE_LABEL: Record<GymExercise, string> = {
     "treadmill":       "Incline Treadmill",
-    "stepper":         "Stepper Machine",
+    "stepper":         "Stairmaster",
     "box-steps":       "Box Step-Ups",
     "weighted-stairs": "Weighted Stairs",
     "elliptical":      "Elliptical (High Resistance)",
@@ -402,7 +402,8 @@ export default function SessionDetailScreen() {
               onError={() => setImageError(true)}
             >
               <LinearGradient
-                colors={["transparent", "rgba(6,13,27,0.6)", T.bg]}
+                colors={["transparent", "transparent", "rgba(6,13,27,0.55)", T.bg]}
+                locations={[0, 0.45, 0.72, 1]}
                 style={StyleSheet.absoluteFill}
               />
               {/* Back button */}

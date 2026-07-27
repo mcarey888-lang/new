@@ -41,7 +41,7 @@ const EXERCISES: ExerciseOption[] = [
   },
   {
     key: "stepper",
-    label: "Stepper Machine",
+    label: "Stairmaster",
     subtitle: "Step machine for leg drive and cardio",
     iconBg: T.orange,
     Icon: Layers,
