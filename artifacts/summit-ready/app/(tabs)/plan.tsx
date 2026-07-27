@@ -1332,7 +1332,7 @@ export default function PlanScreen() {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: Platform.OS === "web" ? 56 : insets.top + 16,
+            paddingTop: 0,
             paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120,
           },
         ]}
@@ -1346,8 +1346,8 @@ export default function PlanScreen() {
             resizeMode="cover"
             onError={() => setHeroImageError(true)}
           >
-            <LinearGradient colors={["transparent", "rgba(6,13,27,0.7)", T.bg]} style={StyleSheet.absoluteFill} />
-            <View style={dashStyles.heroContent}>
+            <LinearGradient colors={["transparent", "rgba(6,13,27,0.75)", T.bg]} style={StyleSheet.absoluteFill} />
+            <View style={[dashStyles.heroContent, { paddingTop: Platform.OS === "web" ? 56 : insets.top + 12 }]}>
               <View style={[dashStyles.phaseChip, { borderColor: pc + "60" }]}>
                 <Text style={[dashStyles.phaseText, { color: pc }]}>
                   {currentWeek ? `${currentWeek.phase} Phase · Wk ${currentWeek.weekNumber}/${totalWeeks}` : "Training Plan"}
@@ -1389,11 +1389,6 @@ export default function PlanScreen() {
               <Mountain size={16} color={T.orange} />
               <Text style={[dashStyles.statVal, { color: T.white, fontSize: 26 }]}>{elevBankLabel}</Text>
             </View>
-            {elevationMultiplier > 0 && (
-              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green, marginTop: 2 }}>
-                {elevationMultiplier.toFixed(1)}× {summitDisplayName}s
-              </Text>
-            )}
             <Text style={dashStyles.statLbl}>ELEVATION BANK</Text>
           </View>
         </View>
@@ -2315,14 +2310,14 @@ const styles = StyleSheet.create({
 
 const dashStyles = StyleSheet.create({
   hero: {
-    height: 230, width: "100%", justifyContent: "flex-end",
-    borderRadius: 20, overflow: "hidden", marginBottom: 12,
+    height: 340, width: "100%", justifyContent: "flex-end",
+    marginBottom: 12,
   },
   heroFallback: {
     borderRadius: 20, padding: 20, paddingBottom: 18,
     justifyContent: "flex-end", marginBottom: 12,
   },
-  heroContent: { padding: 16 },
+  heroContent: { padding: 16, paddingTop: 16 },
   phaseChip: {
     alignSelf: "flex-start", flexDirection: "row",
     paddingHorizontal: 10, paddingVertical: 5,
