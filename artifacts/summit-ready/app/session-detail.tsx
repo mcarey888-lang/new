@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp, type NearbyHill } from "@/context/AppContext";
 import { HillPickerModal } from "@/components/HillPickerModal";
+import { ExercisePickerModal, type GymExercise } from "@/components/ExercisePickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -222,6 +223,7 @@ export default function SessionDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
 
   const handleHillSelect = useCallback(async (hill: NearbyHill) => {
     setHillPickerOpen(false);
@@ -232,6 +234,29 @@ export default function SessionDetailScreen() {
     await assignHillToSession(weekNum, sessionIdx, adjustedHill);
     await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation });
   }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
+
+  const handleExerciseSelect = useCallback(async (gymEx: GymExercise) => {
+    setExercisePickerOpen(false);
+    const targetElev = session?.targetElevation ?? 0;
+    if (gymEx === "treadmill") {
+      // At 10% incline: 1 km = 100 m elevation gain
+      const distKm = Math.max(0.5, Math.round((targetElev / 100) * 10) / 10);
+      await updatePlanSession(weekNum, sessionIdx, {
+        gymExercise: "treadmill",
+        targetDistanceKm: distKm,
+        inclinePct: 10,
+      });
+    } else if (gymEx === "stepper") {
+      // ~3 m per floor
+      const floors = Math.max(5, Math.round(targetElev / 3));
+      await updatePlanSession(weekNum, sessionIdx, {
+        gymExercise: "stepper",
+        targetFloors: floors,
+      });
+    } else {
+      await updatePlanSession(weekNum, sessionIdx, { gymExercise: "outdoor" });
+    }
+  }, [weekNum, sessionIdx, session?.targetElevation, updatePlanSession]);
 
   // Derived hill metadata (same logic as existing HillActionCard)
   const elevPerRep = assignedHill
@@ -244,20 +269,10 @@ export default function SessionDetailScreen() {
     : (week?.hills[0]?.repeats ?? 2);
   const estimatedTotalGain = session?.targetElevation ?? 0;
 
-  // Hero image: assigned hill name → session label → summit name
-  const heroSubject =
-    assignedHill?.name ??
-    (session?.type !== "cardio" ? session?.label : null) ??
-    summitGoal?.mountainName ??
-    "";
-  const heroImageUri = !imageError && heroSubject
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400`
-    : null;
-
   const pc = PHASE_COLOR[week?.phase ?? "Base"] ?? T.green;
   const tc = session ? typeColor(session.type) : T.blue;
 
-  // Infer gym subtype (mirrors plan.tsx logic)
+  // Infer gym subtype (mirrors plan.tsx logic) — computed before hero so we can use it for the image
   const gymText = `${session?.label ?? ""} ${session?.description ?? ""}`.toLowerCase();
   const inferredGymExercise: "treadmill" | "stepper" | null =
     session?.gymExercise === "treadmill" || session?.gymExercise === "stepper"
@@ -269,6 +284,17 @@ export default function SessionDetailScreen() {
       : null;
   const isStairRepeat  = gymText.includes("stair") || gymText.includes("stair repeat") || gymText.includes("flights");
   const isOutdoorCardio = session?.gymExercise === "outdoor" || (!inferredGymExercise && !isStairRepeat && session?.type === "cardio");
+
+  // Hero image: exercise-specific keyword for cardio; hill/mountain name for hill sessions
+  const heroSubject = session?.type === "cardio"
+    ? inferredGymExercise === "treadmill" ? "incline treadmill training gym workout"
+      : inferredGymExercise === "stepper" ? "stair stepper machine gym climbing"
+      : isStairRepeat ? "outdoor stair climbing exercise training"
+      : "outdoor trail walking hiking fitness nature"
+    : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
+  const heroImageUri = !imageError && heroSubject
+    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400`
+    : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
 
@@ -442,6 +468,38 @@ export default function SessionDetailScreen() {
                 <ChevronRight size={14} color={T.textMuted} />
               </TouchableOpacity>
             )
+          )}
+
+          {/* Exercise type row (cardio sessions) + swap button */}
+          {session.type === "cardio" && !isStairRepeat && (
+            <View style={s.hillRow}>
+              <Text style={s.hillEmoji}>
+                {inferredGymExercise === "treadmill" ? "🏃"
+                  : inferredGymExercise === "stepper" ? "🪜"
+                  : "🌿"}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.hillName}>
+                  {inferredGymExercise === "treadmill" ? "Incline Treadmill"
+                    : inferredGymExercise === "stepper" ? "Stair Stepper"
+                    : "Outdoor Walk / Run"}
+                </Text>
+                <Text style={s.hillSub}>
+                  {inferredGymExercise === "treadmill"
+                    ? `${session.targetDistanceKm ?? "?"}km @ ${session.inclinePct ?? 10}% incline`
+                    : inferredGymExercise === "stepper"
+                    ? `${session.targetFloors ?? "?"} floors`
+                    : `${session.targetElevation}m elevation gain`}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setExercisePickerOpen(true)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>Change</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Description / coaching */}
@@ -645,6 +703,14 @@ export default function SessionDetailScreen() {
         onSelect={handleHillSelect}
         onSearchAdd={addToNearbyHills}
         onClose={() => setHillPickerOpen(false)}
+      />
+
+      {/* Exercise picker modal */}
+      <ExercisePickerModal
+        visible={exercisePickerOpen}
+        current={inferredGymExercise ?? (isOutdoorCardio ? "outdoor" : null)}
+        onSelect={handleExerciseSelect}
+        onClose={() => setExercisePickerOpen(false)}
       />
     </View>
   );

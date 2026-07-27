@@ -1297,7 +1297,21 @@ export default function PlanScreen() {
             ? { ...viewedWeek.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" }
             : undefined))
     : undefined;
-  const missionImageSubject = selectedHill?.name ?? (selectedSession?.type !== "cardio" ? selectedSession?.label : null) ?? summitGoal.mountainName;
+  const _missionCardioText = selectedSession
+    ? `${selectedSession.label} ${selectedSession.description ?? ""}`.toLowerCase()
+    : "";
+  const missionImageSubject = selectedHill?.name
+    ?? (selectedSession?.type !== "cardio" ? selectedSession?.label : null)
+    ?? (selectedSession?.type === "cardio"
+      ? (selectedSession.gymExercise === "treadmill" || _missionCardioText.includes("treadmill")
+          ? "incline treadmill training gym workout"
+          : selectedSession.gymExercise === "stepper" || _missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster")
+          ? "stair stepper machine gym climbing"
+          : _missionCardioText.includes("stair") || _missionCardioText.includes("flights")
+          ? "outdoor stair climbing exercise training"
+          : "outdoor trail walking hiking fitness nature")
+      : null)
+    ?? summitGoal.mountainName;
   const missionImageUri = `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200`;
 
   // Upcoming this week: rest of the week's sessions (not the selected one)
