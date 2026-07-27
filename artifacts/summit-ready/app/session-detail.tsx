@@ -240,13 +240,24 @@ export default function SessionDetailScreen() {
     await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation });
   }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
 
+  const EXERCISE_LABEL: Record<GymExercise, string> = {
+    "treadmill":       "Incline Treadmill",
+    "stepper":         "Stepper Machine",
+    "box-steps":       "Box Step-Ups",
+    "weighted-stairs": "Weighted Stairs",
+    "elliptical":      "Elliptical (High Resistance)",
+    "outdoor":         "Outdoor Cardio",
+  };
+
   const handleExerciseSelect = useCallback(async (gymEx: GymExercise) => {
     setExercisePickerOpen(false);
     const targetElev = session?.targetElevation ?? 0;
+    const label = EXERCISE_LABEL[gymEx];
     if (gymEx === "treadmill") {
       // At 10–15% incline: 1 km ≈ 100 m elevation gain
       const distKm = Math.max(0.5, Math.round((targetElev / 100) * 10) / 10);
       await updatePlanSession(weekNum, sessionIdx, {
+        label,
         gymExercise: "treadmill",
         targetDistanceKm: distKm,
         inclinePct: 12,
@@ -255,12 +266,13 @@ export default function SessionDetailScreen() {
       // ~3 m per floor
       const floors = Math.max(5, Math.round(targetElev / 3));
       await updatePlanSession(weekNum, sessionIdx, {
+        label,
         gymExercise: "stepper",
         targetFloors: floors,
       });
     } else {
       // box-steps, weighted-stairs, elliptical, outdoor — elevation-based, no extra metric
-      await updatePlanSession(weekNum, sessionIdx, { gymExercise: gymEx });
+      await updatePlanSession(weekNum, sessionIdx, { label, gymExercise: gymEx });
     }
   }, [weekNum, sessionIdx, session?.targetElevation, updatePlanSession]);
 
