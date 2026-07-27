@@ -36,9 +36,9 @@ import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 
-const MASCOT = Platform.OS === "ios"
-  ? require("@/assets/mascot.webp")
-  : require("@/assets/mascot.gif");
+// Animated WebP supports transparency on all platforms via expo-image.
+// GIF on Android fills transparent pixels with black, so we never use it.
+const MASCOT = require("@/assets/mascot.webp");
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -255,7 +255,7 @@ function AlpineGuide({ tone: _tone, flush }: { tone?: "positive" | "warning" | "
         { width: 72, height: 72 },
         flush && { marginLeft: -16, marginTop: -16, marginBottom: -16 },
       ]}
-      contentFit="cover"
+      contentFit="contain"
     />
   );
 }
