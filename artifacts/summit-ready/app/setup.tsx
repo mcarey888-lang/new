@@ -160,6 +160,8 @@ export default function SetupScreen() {
   // Questionnaire pre-fill baseline (overrides chip-derived value if set)
   const [prefillBaseline, setPrefillBaseline] = useState<number | null>(null);
   const [planStartMode, setPlanStartMode] = useState<"optimal" | "full">("optimal");
+  /** Which specific days of the week the user wants to train (0=Sun … 6=Sat). Optional. */
+  const [availableDays, setAvailableDays] = useState<number[]>([]);
 
   // Ensure hillDays never exceeds trainingDays - 1
   useEffect(() => {
@@ -254,6 +256,7 @@ export default function SetupScreen() {
     if (summitGoal.preferredHills?.length) setPreferredHills(summitGoal.preferredHills);
     if (summitGoal.planStartMode) setPlanStartMode(summitGoal.planStartMode);
     if (typeof summitGoal.fitnessBaseline === "number") setPrefillBaseline(summitGoal.fitnessBaseline);
+    if (summitGoal.availableDays?.length) setAvailableDays(summitGoal.availableDays);
   // Only run once on mount when isChangeMode is true
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChangeMode]);
@@ -428,6 +431,7 @@ export default function SetupScreen() {
       preferredHills: preferredHills.length > 0 ? preferredHills : undefined,
       fitnessBaseline,
       planStartMode,
+      availableDays: availableDays.length > 0 ? availableDays : undefined,
     };
     if (isChangeMode) {
       await changeSummit(newGoal);
@@ -946,6 +950,45 @@ export default function SetupScreen() {
                   <Flag size={13} color={T.orange} />
                   <Text style={styles.summaryText}>1 big day — long hike or extended hill session</Text>
                 </View>
+              )}
+            </View>
+
+            {/* Preferred training days (optional) */}
+            <View style={{ marginTop: 18 }}>
+              <Text style={styles.fLabel}>Preferred training days</Text>
+              <Text style={styles.fieldHint}>Optional — pick up to {trainingDays} days and we'll schedule sessions on them.</Text>
+              <View style={styles.chipRow}>
+                {(
+                  [
+                    { label: "Mon", value: 1 }, { label: "Tue", value: 2 },
+                    { label: "Wed", value: 3 }, { label: "Thu", value: 4 },
+                    { label: "Fri", value: 5 }, { label: "Sat", value: 6 },
+                    { label: "Sun", value: 0 },
+                  ] as const
+                ).map(({ label, value }) => {
+                  const selected = availableDays.includes(value);
+                  const disabled = !selected && availableDays.length >= trainingDays;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      activeOpacity={0.7}
+                      disabled={disabled}
+                      onPress={() => {
+                        if (selected) {
+                          setAvailableDays(availableDays.filter(d => d !== value));
+                        } else if (availableDays.length < trainingDays) {
+                          setAvailableDays([...availableDays, value]);
+                        }
+                      }}
+                      style={[styles.chip, selected && styles.chipActive, disabled && { opacity: 0.38 }]}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {availableDays.length > 0 && (
+                <Text style={styles.fieldHint}>{availableDays.length} / {trainingDays} days selected.</Text>
               )}
             </View>
           </Section>

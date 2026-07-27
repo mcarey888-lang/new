@@ -18,3 +18,4 @@
 - [Firebase iOS plist required for prebuild](firebase-ios-plist-required.md) — @react-native-firebase/app plugin requires ios.googleServicesFile even for Android-only setups; placeholder plist unblocks build.
 - [Firebase GOOGLE_APP_ID format crash](firebase-google-app-id-format.md) — GOOGLE_APP_ID must match `1:\d+:ios:[0-9a-fA-F]+`; non-hex suffix (e.g. "placeholder-not-configured") throws NSException at launch via FIRApp.configure() before JS starts.
 - [Firebase RNFB non-modular headers fix](firebase-rnfb-defines-module.md) — DEFINES_MODULE=NO for RNFB* targets in post_install; ALLOW_NON_MODULAR and -Wno flags both fail in Xcode 15 + RN 0.81.5.
+- [Plan tab redesign — Expedition Dashboard](plan-tab-redesign.md) — WeekCard sessions are tappable chips to session-detail; Plan tab has hero dashboard above Full Plan accordion; availableDays optional in SummitGoal.

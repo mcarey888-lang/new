@@ -49,6 +49,9 @@ export interface SummitGoal {
   equipment: Array<"gym" | "weights" | "bands" | "none">;
   trainingDaysPerWeek: number;
   hillDaysPerWeek: number;
+  /** Which specific days of the week the user trains. 0=Sunday, 1=Monday, …, 6=Saturday.
+   *  Optional — existing users without this field continue to work with graceful fallback. */
+  availableDays?: number[];
   preferredHills?: NearbyHill[];
   fitnessBaseline?: number;
   planStartMode?: "optimal" | "full";

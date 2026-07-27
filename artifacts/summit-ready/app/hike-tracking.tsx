@@ -198,7 +198,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
-  const { appMode, addSession, logExploreHike, trainingPlan } = useApp();
+  const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions } = useApp();
 
   // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
   const params = useLocalSearchParams<{
@@ -834,6 +834,22 @@ export default function HikeTrackingScreen() {
         trackPoints: trackPoints.current,
       });
       void logHikeTracked({ distance_km: distKm, elevation_gain: elevGain, duration_min: Math.round(elapsedSecs / 60) });
+
+      // Close the GPS gap: if this hike was launched from a plan session,
+      // automatically tick it as complete so the user doesn't have to go back manually.
+      if (hillMeta.sessionKey) {
+        const parts = hillMeta.sessionKey.split("-");
+        if (parts.length >= 2) {
+          const _weekNum    = parseInt(parts[0], 10);
+          const _sessionIdx = parseInt(parts[1], 10);
+          if (
+            !isNaN(_weekNum) && !isNaN(_sessionIdx) &&
+            !completedPlanSessions[hillMeta.sessionKey]
+          ) {
+            await togglePlanSession(_weekNum, _sessionIdx);
+          }
+        }
+      }
 
       // 2 ── Optionally log to the plan session log
       if (addToPlan && trainingPlan && trainingPlan.length > 0) {

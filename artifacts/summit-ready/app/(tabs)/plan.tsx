@@ -2,10 +2,11 @@ import type { LucideIcon } from "lucide-react-native";
 import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  ImageBackground,
   Modal,
   Platform,
   ScrollView,
@@ -806,34 +807,24 @@ function WeekCard({
   onToggle,
   index,
   completedPlanSessions,
-  assignedHills,
-  nearbyHills,
   submittedPlanSessions,
-  sessionReps,
-  summitGoal,
   onToggleSession,
-  onAssignHill,
   onSubmitWeek,
-  onSetReps,
   onEditSession,
   onSwapExercise,
+  onSessionPress,
 }: {
   week: TrainingWeek;
   isExpanded: boolean;
   onToggle: () => void;
   index: number;
   completedPlanSessions: Record<string, boolean>;
-  assignedHills: Record<string, NearbyHill>;
-  nearbyHills: NearbyHill[];
   submittedPlanSessions: Record<string, boolean>;
-  sessionReps: Record<string, number>;
-  summitGoal: import("@/context/AppContext").SummitGoal | null;
   onToggleSession: (weekNum: number, sessionIdx: number) => void;
-  onAssignHill: (weekNum: number, sessionIdx: number) => void;
   onSubmitWeek: (weekNum: number) => void;
-  onSetReps: (key: string, reps: number) => void;
   onEditSession: (weekNum: number, sessionIdx: number) => void;
   onSwapExercise: (weekNum: number, sessionIdx: number, label: string) => void;
+  onSessionPress: (sessionIdx: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
@@ -930,200 +921,68 @@ function WeekCard({
               const sessionKey = `${week.weekNumber}-${i}`;
               const isDone = !!completedPlanSessions[sessionKey];
               const isSubmitted = !!submittedPlanSessions[sessionKey];
-              const assignedHill = assignedHills[sessionKey];
-              const canPickHill = s.type === "hill" || s.type === "bigDay";
-              // Infer gym exercise from label/description as a fallback for sessions
-              // where the stored gymExercise field is missing (e.g. AI-adjusted sessions).
-              const gymText = `${s.label ?? ""} ${s.description ?? ""}`.toLowerCase();
-              const inferredGymExercise: "treadmill" | "stepper" | undefined =
-                s.gymExercise === "treadmill" || s.gymExercise === "stepper"
-                  ? s.gymExercise
-                  : gymText.includes("treadmill")
-                  ? "treadmill"
-                  : gymText.includes("stepper") || gymText.includes("step machine") || gymText.includes("stairmaster")
-                  ? "stepper"
-                  : s.type === "cardio"
-                  ? "treadmill"
-                  : undefined;
-              const sessionMidDur = parseDurationMidpoint(s.duration ?? "30–40 min");
-              const effectiveTargetKm =
-                s.targetDistanceKm && s.targetDistanceKm > 0
-                  ? s.targetDistanceKm
-                  : inferredGymExercise === "treadmill"
-                  ? Math.max(0.5, Math.round((sessionMidDur / 60) * 4.5 * 10) / 10)
-                  : undefined;
-              const effectiveTargetFloors =
-                s.targetFloors && s.targetFloors > 0
-                  ? s.targetFloors
-                  : inferredGymExercise === "stepper"
-                  ? Math.max(10, Math.round(sessionMidDur * 3))
-                  : undefined;
-              const isGymCardio = s.type === "cardio" && (inferredGymExercise === "treadmill" || inferredGymExercise === "stepper");
-
+              const tc = s.type === "bigDay" ? T.orange : s.type === "cardio" ? T.blue : T.green;
               return (
-                <View
+                <TouchableOpacity
                   key={i}
-                  style={[
-                    styles.sessionRow,
-                    isDone && styles.sessionRowDone,
-                  ]}
+                  style={[styles.sessionRow, isDone && styles.sessionRowDone, { alignItems: "center" }]}
+                  onPress={() => onSessionPress(i)}
+                  activeOpacity={0.85}
                 >
                   <TouchableOpacity
-                    onPress={() => onToggleSession(week.weekNumber, i)}
+                    onPress={() => { if (!isSubmitted) onToggleSession(week.weekNumber, i); }}
                     style={[styles.checkbox, isDone && styles.checkboxDone]}
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    disabled={isSubmitted}
                   >
                     {isDone && <Check size={15} color="#fff" />}
                   </TouchableOpacity>
 
                   <View style={[
                     styles.sessionIcon,
-                    { backgroundColor: s.type === "bigDay" ? T.orangeDim : T.greenDim },
+                    { backgroundColor: s.type === "bigDay" ? T.orangeDim : s.type === "cardio" ? T.blueDim : T.greenDim },
                     isDone && { opacity: 0.5 },
                   ]}>
-                    {s.type === "cardio" ? <Heart size={14} color={T.green} /> : s.type === "hill" ? <TrendingUp size={14} color={T.green} /> : <Flag size={14} color={T.orange} />}
+                    {s.type === "cardio" ? <Activity size={14} color={tc} /> :
+                     s.type === "hill"   ? <TrendingUp size={14} color={tc} /> :
+                                           <Flag size={14} color={tc} />}
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={[styles.sessionLabel, isDone && styles.sessionLabelDone]}>{s.label}</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+                      <Text style={[styles.sessionLabel, isDone && styles.sessionLabelDone, { flex: 1 }]} numberOfLines={1}>{s.label}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={styles.sessionDur}>{s.duration}</Text>
                         <TouchableOpacity
                           onPress={() => onEditSession(week.weekNumber, i)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           activeOpacity={0.7}
                         >
-                          <Pencil size={13} color={T.textMuted} />
+                          <Pencil size={12} color={T.textDim} />
                         </TouchableOpacity>
+                        {s.type === "cardio" && (
+                          <TouchableOpacity
+                            onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            activeOpacity={0.7}
+                          >
+                            <RefreshCw size={12} color={T.textDim} />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
-
-                    <Text style={[styles.sessionDesc, isDone && { opacity: 0.5 }]}>{s.description}</Text>
-
-                    <View style={styles.sessionFooter}>
-                      {isGymCardio ? (
-                        <Text style={[styles.sessionElev, { color: T.blue }]}>
-                          {inferredGymExercise === "treadmill"
-                            ? `${(effectiveTargetKm ?? 0).toFixed(1)}km @ ${s.inclinePct ?? 10}% incline`
-                            : `${effectiveTargetFloors ?? 0} floors target`}
-                        </Text>
-                      ) : s.targetFlights !== undefined ? (
-                        <Text style={[styles.sessionElev, { color: T.orange }]}>{s.targetFlights} flights target</Text>
-                      ) : (
-                        <Text style={[styles.sessionElev, { color: T.orange }]}>~{s.targetElevation}m gain</Text>
-                      )}
-                      {s.type === "cardio" ? (
-                        <TouchableOpacity
-                          onPress={() => onSwapExercise(week.weekNumber, i, s.label)}
-                          style={styles.swapBtn}
-                          activeOpacity={0.7}
-                        >
-                          <RefreshCw size={11} color={T.blue} />
-                          <Text style={styles.swapBtnText}>Swap exercise</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-
-                    {isGymCardio && s.gymExercise !== "outdoor" && (
-                      <GymTracker
-                        sessionKey={sessionKey}
-                        gymExercise={inferredGymExercise as "treadmill" | "stepper"}
-                        targetKm={effectiveTargetKm}
-                        targetFloors={effectiveTargetFloors}
-                        inclinePct={s.inclinePct}
-                        sessionReps={sessionReps}
-                        isDone={isSubmitted}
-                        onSet={onSetReps}
-                      />
+                    {s.targetElevation > 0 && (
+                      <Text style={[styles.sessionElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
                     )}
-
-                    {s.type === "cardio" && !isGymCardio && s.targetFlights !== undefined && (
-                      <FlightsLogger
-                        sessionKey={sessionKey}
-                        targetFlights={s.targetFlights}
-                        sessionReps={sessionReps}
-                        isDone={isSubmitted}
-                        onSet={onSetReps}
-                      />
-                    )}
-                    {s.type === "cardio" && !isGymCardio && s.targetFlights === undefined && s.targetElevation > 0 && (
-                      <ElevationLogger
-                        sessionKey={sessionKey}
-                        targetElevation={s.targetElevation}
-                        sessionReps={sessionReps}
-                        isDone={isSubmitted}
-                        onSet={onSetReps}
-                      />
-                    )}
-
-                    {canPickHill && (() => {
-                      // Priority 1 — manually assigned hill (user picked it from the picker)
-                      // Priority 2 — parse per-climb data from the session description
-                      //   Format A (Hill Repeats): "145m per climb × 2 reps = 290m"
-                      //   Format B (Big Day Out):  "Tor Hill: 2 repeats of 145m = 290m"
-                      // Priority 3 — generic heuristic: divide targetElevation by 4
-                      const desc = s.description ?? "";
-                      // Format A: elevation is group 1, reps is group 2
-                      const matchA = !assignedHill
-                        ? desc.match(/(\d+)m per climb\s*[×x]\s*(\d+)\s*rep/i)
-                        : null;
-                      // Format B: reps is group 1, elevation is group 2
-                      const matchB = (!assignedHill && !matchA)
-                        ? desc.match(/(\d+)\s+repeats?\s+of\s+(\d+)m/i)
-                        : null;
-                      const elevPerRep = assignedHill
-                        ? assignedHill.elevation
-                        : matchA
-                          ? parseInt(matchA[1], 10)
-                          : matchB
-                            ? parseInt(matchB[2], 10)
-                            : Math.max(50, Math.round(s.targetElevation / 4));
-                      const targetReps = assignedHill
-                        ? assignedHill.repeats
-                        : matchA
-                          ? parseInt(matchA[2], 10)
-                          : matchB
-                            ? parseInt(matchB[1], 10)
-                            : Math.max(1, Math.ceil(s.targetElevation / elevPerRep));
-                      return (
-                        <>
-                          <HillActionCard
-                            sessionKey={sessionKey}
-                            assignedHill={assignedHill}
-                            elevPerRep={elevPerRep}
-                            targetReps={targetReps}
-                            estimatedTotalGain={s.targetElevation}
-                            isDone={isDone}
-                            isSubmitted={isSubmitted}
-                            onMarkComplete={() => onToggleSession(week.weekNumber, i)}
-                            onTrack={() =>
-                              router.push({
-                                pathname: "/hike-tracking",
-                                params: {
-                                  hillSessionKey: sessionKey,
-                                  hillName: assignedHill?.name ?? s.label ?? "",
-                                  targetReps: String(targetReps),
-                                  estimatedGainPerRep: String(elevPerRep),
-                                  estimatedTotalGain: String(Math.round(s.targetElevation)),
-                                },
-                              })
-                            }
-                          />
-                          <RepStepper
-                            sessionKey={sessionKey}
-                            targetReps={targetReps}
-                            elevPerRep={elevPerRep}
-                            sessionReps={sessionReps}
-                            isDone={isSubmitted}
-                            onSet={onSetReps}
-                          />
-                        </>
-                      );
-                    })()}
                   </View>
-                </View>
+
+                  {isSubmitted ? (
+                    <CheckCircle size={15} color={T.green} />
+                  ) : (
+                    <ChevronRight size={15} color={T.textDim} />
+                  )}
+                </TouchableOpacity>
               );
             })}
 
@@ -1180,10 +1039,8 @@ export default function PlanScreen() {
     summitGoal,
     trainingPlan,
     completedPlanSessions,
-    assignedHills,
     nearbyHills,
     submittedPlanSessions,
-    sessionReps,
     sessionEfforts,
     togglePlanSession,
     assignHillToSession,
@@ -1193,6 +1050,9 @@ export default function PlanScreen() {
     setSessionEffort,
     updatePlanSession,
     addToNearbyHills,
+    readinessScore,
+    sessions,
+    exploreHikes,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -1201,6 +1061,7 @@ export default function PlanScreen() {
 
   const { isSubscribed } = useSubscription();
   const currentWeek = getCurrentWeek(trainingPlan);
+  const [heroImageError, setHeroImageError] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(
     new Set(currentWeek ? [currentWeek.weekNumber] : [])
   );
@@ -1331,6 +1192,30 @@ export default function PlanScreen() {
   const totalWeeks = trainingPlan.length;
   const weeksLeft = trainingPlan.filter(w => new Date(w.endDate) >= new Date()).length;
   const phases = [...new Set(trainingPlan.map(w => w.phase))];
+  const weeksCompleted = trainingPlan.filter(w => new Date(w.endDate) < new Date()).length;
+  const progressPct = totalWeeks > 0 ? Math.min(100, (weeksCompleted / totalWeeks) * 100) : 0;
+  const pc = PHASE_COLOR[currentWeek?.phase ?? "Base"] ?? T.green;
+  const readinessColor = readinessScore >= 70 ? T.green : readinessScore >= 40 ? T.orange : "#EF4444";
+  const totalElevTrained =
+    sessions.reduce((sum, s) => sum + (s.elevationGain || 0), 0) +
+    exploreHikes.reduce((sum, h) => sum + (h.elevationGain || 0), 0);
+  const daysToSummit = Math.ceil(
+    (new Date(summitGoal.summitDate + "T12:00:00").getTime() - Date.now()) / 86400000
+  );
+  const nextSession = currentWeek
+    ? (() => {
+        for (let i = 0; i < currentWeek.sessions.length; i++) {
+          const key = `${currentWeek.weekNumber}-${i}`;
+          if (!completedPlanSessions[key]) {
+            return { session: currentWeek.sessions[i], weekNum: currentWeek.weekNumber, sessionIdx: i };
+          }
+        }
+        return null;
+      })()
+    : null;
+  const heroImageUri = !heroImageError
+    ? `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}`
+    : null;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -1344,9 +1229,138 @@ export default function PlanScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── EXPEDITION DASHBOARD ──────────────────────────────────── */}
+        {heroImageUri ? (
+          <ImageBackground
+            source={{ uri: heroImageUri }}
+            style={dashStyles.hero}
+            resizeMode="cover"
+            onError={() => setHeroImageError(true)}
+          >
+            <LinearGradient colors={["transparent", "rgba(6,13,27,0.7)", T.bg]} style={StyleSheet.absoluteFill} />
+            <View style={dashStyles.heroContent}>
+              <View style={[dashStyles.phaseChip, { borderColor: pc + "60" }]}>
+                <Text style={[dashStyles.phaseText, { color: pc }]}>
+                  {currentWeek ? `${currentWeek.phase} Phase · Wk ${currentWeek.weekNumber}/${totalWeeks}` : "Training Plan"}
+                </Text>
+              </View>
+              <Text style={dashStyles.summitName}>{summitGoal.mountainName}</Text>
+              <View style={dashStyles.progressTrack}>
+                <View style={[dashStyles.progressFill, { width: `${progressPct}%` as any }]} />
+              </View>
+              <Text style={dashStyles.progressLabel}>{weeksCompleted} of {totalWeeks} weeks complete</Text>
+            </View>
+          </ImageBackground>
+        ) : (
+          <LinearGradient colors={[pc + "28", "transparent"]} style={dashStyles.heroFallback}>
+            <View style={[dashStyles.phaseChip, { borderColor: pc + "60", backgroundColor: "transparent" }]}>
+              <Text style={[dashStyles.phaseText, { color: pc }]}>
+                {currentWeek ? `${currentWeek.phase} Phase · Wk ${currentWeek.weekNumber}/${totalWeeks}` : "Training Plan"}
+              </Text>
+            </View>
+            <Text style={dashStyles.summitName}>{summitGoal.mountainName}</Text>
+            <View style={dashStyles.progressTrack}>
+              <View style={[dashStyles.progressFill, { width: `${progressPct}%` as any }]} />
+            </View>
+            <Text style={dashStyles.progressLabel}>{weeksCompleted} of {totalWeeks} weeks complete</Text>
+          </LinearGradient>
+        )}
+
+        {/* Stats row */}
+        <View style={dashStyles.statsRow}>
+          <View style={dashStyles.statCell}>
+            <Text style={[dashStyles.statVal, { color: readinessColor }]}>{readinessScore}</Text>
+            <Text style={dashStyles.statLbl}>Readiness</Text>
+          </View>
+          <View style={[dashStyles.statCell, dashStyles.statMid]}>
+            <Text style={[dashStyles.statVal, { color: T.orange }]}>
+              {totalElevTrained >= 1000
+                ? `${(totalElevTrained / 1000).toFixed(1)}k m`
+                : `${Math.round(totalElevTrained)} m`}
+            </Text>
+            <Text style={dashStyles.statLbl}>↑ Trained</Text>
+          </View>
+          <View style={dashStyles.statCell}>
+            <Text style={[dashStyles.statVal, daysToSummit > 0 && daysToSummit < 30 ? { color: T.orange } : {}]}>
+              {daysToSummit > 0 ? daysToSummit : "—"}
+            </Text>
+            <Text style={dashStyles.statLbl}>Days to go</Text>
+          </View>
+        </View>
+
+        {/* Featured next session card */}
+        {nextSession && (
+          <TouchableOpacity
+            style={dashStyles.nextCard}
+            activeOpacity={0.85}
+            onPress={() => router.push({
+              pathname: "/session-detail",
+              params: { weekNum: String(nextSession.weekNum), sessionIdx: String(nextSession.sessionIdx) },
+            })}
+          >
+            <LinearGradient colors={[pc + "10", "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={[dashStyles.focusTag, { backgroundColor: pc + "20", borderColor: pc + "40" }]}>
+              <Text style={[dashStyles.focusTagText, { color: pc }]}>TODAY'S FOCUS</Text>
+            </View>
+            <Text style={dashStyles.nextTitle}>{nextSession.session.label}</Text>
+            <View style={dashStyles.nextMeta}>
+              <Text style={dashStyles.nextDur}>{nextSession.session.duration}</Text>
+              {nextSession.session.targetElevation > 0 && (
+                <>
+                  <Text style={dashStyles.nextDot}>·</Text>
+                  <Text style={[dashStyles.nextElev, { color: T.orange }]}>↑{nextSession.session.targetElevation}m</Text>
+                </>
+              )}
+            </View>
+            <ChevronRight size={16} color={T.textDim} style={{ position: "absolute", right: 16, top: 0, bottom: 0, alignSelf: "center" }} />
+          </TouchableOpacity>
+        )}
+
+        {/* This week's sessions */}
+        {currentWeek && (
+          <View style={dashStyles.thisWeekCard}>
+            <Text style={dashStyles.thisWeekLabel}>THIS WEEK — {currentWeek.phase.toUpperCase()} PHASE</Text>
+            {currentWeek.sessions.map((s, i) => {
+              const key = `${currentWeek.weekNumber}-${i}`;
+              const isDone = !!completedPlanSessions[key];
+              const tc = s.type === "bigDay" ? T.orange : s.type === "cardio" ? T.blue : T.green;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[dashStyles.twRow, isDone && dashStyles.twRowDone]}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({
+                    pathname: "/session-detail",
+                    params: { weekNum: String(currentWeek.weekNumber), sessionIdx: String(i) },
+                  })}
+                >
+                  <View style={[dashStyles.twTypeTag, { backgroundColor: tc + "20" }]}>
+                    {s.type === "cardio" ? <Activity size={12} color={tc} /> :
+                     s.type === "hill"   ? <TrendingUp size={12} color={tc} /> :
+                                           <Flag size={12} color={tc} />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[dashStyles.twName, isDone && { color: T.textMuted, textDecorationLine: "line-through" }]} numberOfLines={1}>
+                      {s.label}
+                    </Text>
+                    <Text style={dashStyles.twDur}>{s.duration}</Text>
+                  </View>
+                  {s.targetElevation > 0 && (
+                    <Text style={[dashStyles.twElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
+                  )}
+                  {isDone
+                    ? <CheckCircle size={16} color={T.green} />
+                    : <ChevronRight size={14} color={T.textDim} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* ── FULL PLAN ────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(0).duration(500)} style={styles.header}>
           <View>
-            <Text style={styles.title}>Training Plan</Text>
+            <Text style={styles.title}>Full Plan</Text>
             <Text style={styles.subtitle}>{totalWeeks} weeks · {weeksLeft} remaining</Text>
           </View>
         </Animated.View>
@@ -1420,17 +1434,15 @@ export default function PlanScreen() {
               onToggle={() => toggle(week.weekNumber)}
               index={i}
               completedPlanSessions={completedPlanSessions}
-              assignedHills={assignedHills}
-              nearbyHills={nearbyHills}
               submittedPlanSessions={submittedPlanSessions}
-              sessionReps={sessionReps}
-              summitGoal={summitGoal}
               onToggleSession={togglePlanSession}
-              onAssignHill={openHillPicker}
               onSubmitWeek={handleSubmitWeek}
-              onSetReps={setSessionReps}
               onEditSession={openEditSession}
               onSwapExercise={openSwapExercise}
+              onSessionPress={(sessionIdx) => router.push({
+                pathname: "/session-detail",
+                params: { weekNum: String(week.weekNumber), sessionIdx: String(sessionIdx) },
+              })}
             />
           );
         })}
@@ -1985,4 +1997,96 @@ const styles = StyleSheet.create({
     borderColor: T.green + "30",
   },
   submittedBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
+});
+
+const dashStyles = StyleSheet.create({
+  hero: {
+    height: 230, width: "100%", justifyContent: "flex-end",
+    borderRadius: 20, overflow: "hidden", marginBottom: 12,
+  },
+  heroFallback: {
+    borderRadius: 20, padding: 20, paddingBottom: 18,
+    justifyContent: "flex-end", marginBottom: 12,
+  },
+  heroContent: { padding: 16 },
+  phaseChip: {
+    alignSelf: "flex-start", flexDirection: "row",
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 12, borderWidth: 1,
+    backgroundColor: "rgba(6,13,27,0.55)",
+    marginBottom: 8,
+  },
+  phaseText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  summitName: {
+    fontSize: 26, fontFamily: "Inter_700Bold", color: T.white,
+    marginBottom: 12, lineHeight: 30,
+  },
+  progressTrack: {
+    height: 4, backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 2, overflow: "hidden", marginBottom: 5,
+  },
+  progressFill: { height: "100%", backgroundColor: T.green, borderRadius: 2 },
+  progressLabel: {
+    fontSize: 11, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.5)",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.border,
+    marginBottom: 12, overflow: "hidden",
+  },
+  statCell: { flex: 1, paddingVertical: 14, alignItems: "center", gap: 4 },
+  statMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: T.border },
+  statVal: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
+  statLbl: {
+    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted,
+    textTransform: "uppercase", letterSpacing: 0.4, textAlign: "center",
+  },
+
+  nextCard: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.border,
+    padding: 16, marginBottom: 12, overflow: "hidden",
+  },
+  focusTag: {
+    alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, borderWidth: 1, marginBottom: 8,
+  },
+  focusTagText: {
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2, textTransform: "uppercase",
+  },
+  nextTitle: {
+    fontSize: 17, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 6,
+  },
+  nextMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  nextDur: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  nextDot: { fontSize: 12, color: T.textDim },
+  nextElev: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  thisWeekCard: {
+    backgroundColor: T.card, borderRadius: 16,
+    borderWidth: 1, borderColor: T.border,
+    padding: 14, gap: 8, marginBottom: 12,
+  },
+  thisWeekLabel: {
+    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
+    letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4,
+  },
+  twRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: T.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: T.border,
+  },
+  twRowDone: { backgroundColor: T.greenDim, borderColor: T.green + "30" },
+  twTypeTag: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+  },
+  twName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
+  twDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  twElev: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 });

@@ -27,7 +27,7 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   : "/api";
 
 export const QUIZ_KEY = "summitready_questionnaire_data";
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 const LOCATIONS = [
   // English cities & large towns
@@ -682,6 +682,76 @@ function StepCatchMeUp({ setPastHikes }: { pastHikes: PastHike[]; setPastHikes: 
   );
 }
 
+// ─── StepAvailableDays ────────────────────────────────────────────────────────
+
+const WEEK_DAYS = [
+  { label: "Mon", value: 1 }, { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 }, { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 }, { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+] as const;
+
+function StepAvailableDays({
+  trainingDays, availableDays, setAvailableDays,
+}: {
+  trainingDays: number;
+  availableDays: number[];
+  setAvailableDays: (v: number[]) => void;
+}) {
+  function toggle(day: number) {
+    if (availableDays.includes(day)) {
+      setAvailableDays(availableDays.filter(d => d !== day));
+    } else if (availableDays.length < trainingDays) {
+      setAvailableDays([...availableDays, day]);
+    }
+  }
+  return (
+    <View style={s.stepWrap}>
+      <Text style={s.stepTitle}>Which days do you train?</Text>
+      <Text style={s.stepSub}>
+        Pick up to {trainingDays} day{trainingDays !== 1 ? "s" : ""} and we'll pin your sessions to them. Skip this if you're flexible — sessions will be listed without fixed days.
+      </Text>
+      <View style={adStyles.grid}>
+        {WEEK_DAYS.map(({ label, value }) => {
+          const selected = availableDays.includes(value);
+          const disabled = !selected && availableDays.length >= trainingDays;
+          return (
+            <TouchableOpacity
+              key={value}
+              onPress={() => toggle(value)}
+              activeOpacity={0.75}
+              disabled={disabled}
+              style={[adStyles.dayBtn, selected && adStyles.dayBtnActive, disabled && adStyles.dayBtnDim]}
+            >
+              <Text style={[adStyles.dayLabel, selected && adStyles.dayLabelActive]}>{label}</Text>
+              {selected && <Check size={10} color={T.green} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={[s.stepSub, { marginTop: -8, fontSize: 12 }]}>
+        {availableDays.length === 0
+          ? "No days selected — sessions will be flexible."
+          : `${availableDays.length} of ${trainingDays} training days selected.`}
+      </Text>
+    </View>
+  );
+}
+
+const adStyles = StyleSheet.create({
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
+  dayBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 18, paddingVertical: 13,
+    borderRadius: 14, borderWidth: 1.5, borderColor: T.border,
+    backgroundColor: T.card,
+  },
+  dayBtnActive: { borderColor: T.green + "70", backgroundColor: T.greenDim },
+  dayBtnDim: { opacity: 0.38 },
+  dayLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  dayLabelActive: { color: T.green },
+});
+
 // ─── Score calculation ────────────────────────────────────────────────────────
 
 function calcScore(
@@ -733,6 +803,7 @@ export default function QuestionnaireScreen() {
   const [equipment, setEquipment] = useState<Equipment[]>(["none"]);
   const [location, setLocation] = useState("");
   const [pastHikes, setPastHikes] = useState<PastHike[]>([]);
+  const [availableDays, setAvailableDays] = useState<number[]>([]);
 
   function toggleEquipment(val: Equipment) {
     if (val === "none") {
@@ -758,7 +829,8 @@ export default function QuestionnaireScreen() {
       case 4: return uphillFreq > 0 && summitHistory > 0;
       case 5: return running > 0 && strength > 0;
       case 6: return location.trim().length >= 2;
-      case 7: return true;
+      case 7: return true; // availableDays is optional
+      case 8: return true; // past hikes optional
       default: return false;
     }
   };
@@ -796,6 +868,7 @@ export default function QuestionnaireScreen() {
       hillDays,
       equipment,
       location: location.trim(),
+      availableDays: availableDays.length > 0 ? availableDays : undefined,
       rawFitnessLevel: fitnessLevel,
       rawExerciseFreq: exerciseFreq,
       rawElevation: elevation,
@@ -861,7 +934,8 @@ export default function QuestionnaireScreen() {
             {step === 4 && <StepUphill uphillFreq={uphillFreq} setUphillFreq={setUphillFreq} summitHistory={summitHistory} setSummitHistory={setSummitHistory} />}
             {step === 5 && <StepCardio running={running} setRunning={setRunning} strength={strength} setStrength={setStrength} />}
             {step === 6 && <StepPlan trainingDays={trainingDays} setTrainingDays={setTrainingDays} equipment={equipment} toggleEquipment={toggleEquipment} location={location} setLocation={setLocation} />}
-            {step === 7 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} />}
+            {step === 7 && <StepAvailableDays trainingDays={trainingDays} availableDays={availableDays} setAvailableDays={setAvailableDays} />}
+            {step === 8 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} />}
           </Animated.View>
         </ScrollView>
 
