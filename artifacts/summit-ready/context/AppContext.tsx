@@ -184,6 +184,7 @@ interface AppState {
   setSessionReps: (key: string, reps: number) => Promise<void>;
   setSessionEffort: (key: string, effort: 1 | 2 | 3 | 4 | 5) => Promise<void>;
   setSessionDayOverride: (weekNum: number, sessionIdx: number, dow: number) => Promise<void>;
+  clearSessionDayOverride: (weekNum: number, sessionIdx: number) => Promise<void>;
   updatePlanSession: (weekNum: number, sessionIdx: number, updates: Partial<Pick<PlanSession, "type" | "label" | "description" | "duration" | "targetElevation" | "gymExercise" | "targetDistanceKm" | "targetFloors" | "inclinePct">>) => Promise<void>;
   markPlanViewed: () => Promise<void>;
   unlockedAchievements: string[];
@@ -250,6 +251,7 @@ const AppContext = createContext<AppState>({
   setSessionReps: async () => {},
   setSessionEffort: async () => {},
   setSessionDayOverride: async () => {},
+  clearSessionDayOverride: async () => {},
   updatePlanSession: async () => {},
   markPlanViewed: async () => {},
   unlockedAchievements: [],
@@ -1310,6 +1312,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(DAY_OVERRIDES_KEY, JSON.stringify(updated));
   }, [sessionDayOverrides, DAY_OVERRIDES_KEY]);
 
+  const clearSessionDayOverride = useCallback(async (weekNum: number, sessionIdx: number) => {
+    const key = `${weekNum}-${sessionIdx}`;
+    const { [key]: _removed, ...rest } = sessionDayOverrides;
+    setSessionDayOverridesState(rest);
+    await AsyncStorage.setItem(DAY_OVERRIDES_KEY, JSON.stringify(rest));
+  }, [sessionDayOverrides, DAY_OVERRIDES_KEY]);
+
   const updatePlanSession = useCallback(async (
     weekNum: number,
     sessionIdx: number,
@@ -1402,7 +1411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasViewedPlan, markPlanViewed,
       setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan, seedPastActivity,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
-      submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, updatePlanSession,
+      submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,
       completedGoals,
       appMode, exploreHikes, setAppMode, logExploreHike, deleteExploreHike,

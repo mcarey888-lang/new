@@ -1,5 +1,5 @@
 import {
-  Activity, ArrowLeft, Check, CheckCircle, ChevronRight, Flag,
+  Activity, ArrowLeft, Calendar, Check, CheckCircle, ChevronRight, Flag,
   Globe, MapPin, Minus, Mountain, Plus, TrendingUp, Zap,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,7 +20,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type NearbyHill } from "@/context/AppContext";
 import { HillPickerModal } from "@/components/HillPickerModal";
 import { ExercisePickerModal, type GymExercise } from "@/components/ExercisePickerModal";
+import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
+import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 
@@ -204,6 +206,7 @@ export default function SessionDetailScreen() {
     nearbyHills, addToNearbyHills,
     assignHillToSession, updatePlanSession,
     togglePlanSession, setSessionReps, submitWeekSessions,
+    sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride,
   } = useApp();
   const { isSubscribed } = useSubscription();
 
@@ -224,6 +227,7 @@ export default function SessionDetailScreen() {
   const [imageError, setImageError] = useState(false);
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [dayPickerOpen, setDayPickerOpen] = useState(false);
 
   const handleHillSelect = useCallback(async (hill: NearbyHill) => {
     setHillPickerOpen(false);
@@ -297,6 +301,27 @@ export default function SessionDetailScreen() {
     : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
+
+  // Day scheduling derived values
+  const autoAssignedDow: number | null = week
+    ? (assignSessionsToDays(week.sessions.length, summitGoal?.availableDays).find(a => a.sessionIdx === sessionIdx)?.dayOfWeek ?? null)
+    : null;
+  const sessionDow: number | null = sessionDayOverrides[sessionKey] !== undefined
+    ? sessionDayOverrides[sessionKey]
+    : autoAssignedDow;
+  const hasDayOverride = sessionDayOverrides[sessionKey] !== undefined;
+  const occupiedDows: Partial<Record<number, OccupiedDay>> = {};
+  if (week) {
+    const _weekAuto = assignSessionsToDays(week.sessions.length, summitGoal?.availableDays);
+    week.sessions.forEach((s, i) => {
+      if (i === sessionIdx) return;
+      const k = `${weekNum}-${i}`;
+      const dow = sessionDayOverrides[k] !== undefined
+        ? sessionDayOverrides[k]
+        : (_weekAuto.find(a => a.sessionIdx === i)?.dayOfWeek ?? null);
+      if (dow !== null) occupiedDows[dow] = { label: s.label, type: s.type };
+    });
+  }
 
   // Submit the week after manual completion
   const handleSubmitWeek = useCallback(async () => {
@@ -501,6 +526,28 @@ export default function SessionDetailScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          {/* Day scheduling row */}
+          <View style={s.hillRow}>
+            <Calendar size={18} color={sessionDow !== null ? T.blue : T.textDim} style={{ marginHorizontal: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.hillName, sessionDow === null && { color: T.textMuted }]}>
+                {sessionDow !== null ? DAY_FULL[sessionDow] : "Unscheduled"}
+              </Text>
+              <Text style={s.hillSub}>
+                {sessionDow !== null ? "Tap to move to a different day" : "Tap to plan which day you'll do this"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setDayPickerOpen(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>
+                {sessionDow !== null ? "Change" : "Schedule"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Description / coaching */}
           {session.description ? (
@@ -711,6 +758,26 @@ export default function SessionDetailScreen() {
         current={inferredGymExercise ?? (isOutdoorCardio ? "outdoor" : null)}
         onSelect={handleExerciseSelect}
         onClose={() => setExercisePickerOpen(false)}
+      />
+
+      {/* Day picker modal */}
+      <DayPickerModal
+        visible={dayPickerOpen}
+        sessionLabel={session.label}
+        weekStartDate={week.startDate}
+        currentDow={sessionDow}
+        occupiedDows={occupiedDows}
+        preferredDows={summitGoal?.availableDays ?? []}
+        hasOverride={hasDayOverride}
+        onSelect={async (dow) => {
+          setDayPickerOpen(false);
+          await setSessionDayOverride(weekNum, sessionIdx, dow);
+        }}
+        onClear={async () => {
+          setDayPickerOpen(false);
+          await clearSessionDayOverride(weekNum, sessionIdx);
+        }}
+        onClose={() => setDayPickerOpen(false)}
       />
     </View>
   );

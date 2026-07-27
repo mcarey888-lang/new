@@ -22,6 +22,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
+import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -811,11 +812,14 @@ function WeekCard({
   index,
   completedPlanSessions,
   submittedPlanSessions,
+  sessionDayOverrides,
+  autoAssignedDows,
   onToggleSession,
   onSubmitWeek,
   onEditSession,
   onSwapExercise,
   onChangeHill,
+  onScheduleSession,
   onSessionPress,
 }: {
   week: TrainingWeek;
@@ -824,11 +828,14 @@ function WeekCard({
   index: number;
   completedPlanSessions: Record<string, boolean>;
   submittedPlanSessions: Record<string, boolean>;
+  sessionDayOverrides: Record<string, number>;
+  autoAssignedDows: (number | null)[];
   onToggleSession: (weekNum: number, sessionIdx: number) => void;
   onSubmitWeek: (weekNum: number) => void;
   onEditSession: (weekNum: number, sessionIdx: number) => void;
   onSwapExercise: (weekNum: number, sessionIdx: number, label: string) => void;
   onChangeHill: (weekNum: number, sessionIdx: number) => void;
+  onScheduleSession: (weekNum: number, sessionIdx: number) => void;
   onSessionPress: (sessionIdx: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
@@ -927,6 +934,9 @@ function WeekCard({
               const isDone = !!completedPlanSessions[sessionKey];
               const isSubmitted = !!submittedPlanSessions[sessionKey];
               const tc = s.type === "bigDay" ? T.orange : s.type === "cardio" ? T.blue : T.green;
+              const sessionDow: number | null = sessionDayOverrides[sessionKey] !== undefined
+                ? sessionDayOverrides[sessionKey]
+                : (autoAssignedDows[i] ?? null);
               return (
                 <TouchableOpacity
                   key={i}
@@ -984,11 +994,23 @@ function WeekCard({
                             <Mountain size={12} color={T.textDim} />
                           </TouchableOpacity>
                         )}
+                        <TouchableOpacity
+                          onPress={() => onScheduleSession(week.weekNumber, i)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Calendar size={12} color={sessionDow !== null ? T.blue : T.textDim} />
+                        </TouchableOpacity>
                       </View>
                     </View>
-                    {s.targetElevation > 0 && (
-                      <Text style={[styles.sessionElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
-                    )}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {s.targetElevation > 0 && (
+                        <Text style={[styles.sessionElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
+                      )}
+                      <Text style={[styles.sessionElev, { color: sessionDow !== null ? T.blue : T.textDim }]}>
+                        {sessionDow !== null ? DAY_SHORT[sessionDow] : "Unscheduled"}
+                      </Text>
+                    </View>
                   </View>
 
                   {isSubmitted ? (
@@ -1070,6 +1092,7 @@ export default function PlanScreen() {
     exploreHikes,
     sessionDayOverrides,
     setSessionDayOverride,
+    clearSessionDayOverride,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -1084,6 +1107,7 @@ export default function PlanScreen() {
   );
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
+  const [dayPickerFor, setDayPickerFor] = useState<{ weekNum: number; sessionIdx: number } | null>(null);
 
   // Mission dashboard navigation state
   const [viewedWeekNum, setViewedWeekNum] = useState<number>(currentWeek?.weekNumber ?? 1);
@@ -1285,6 +1309,36 @@ export default function PlanScreen() {
       viewedDowToSession[dow] = sessionIdx;
     }
   }
+
+  // ── Day Picker modal computed props ────────────────────────────────────────
+  const dayPickerWeek = dayPickerFor
+    ? trainingPlan.find(w => w.weekNumber === dayPickerFor.weekNum) ?? null
+    : null;
+  const _dayPickerAuto = dayPickerWeek
+    ? assignSessionsToDays(dayPickerWeek.sessions.length, summitGoal.availableDays)
+    : [];
+  const dayPickerCurrentDow: number | null = dayPickerFor
+    ? (sessionDayOverrides[`${dayPickerFor.weekNum}-${dayPickerFor.sessionIdx}`]
+       ?? _dayPickerAuto.find(a => a.sessionIdx === dayPickerFor.sessionIdx)?.dayOfWeek
+       ?? null)
+    : null;
+  const dayPickerHasOverride = dayPickerFor
+    ? sessionDayOverrides[`${dayPickerFor.weekNum}-${dayPickerFor.sessionIdx}`] !== undefined
+    : false;
+  const dayPickerOccupied: Partial<Record<number, OccupiedDay>> = {};
+  if (dayPickerFor && dayPickerWeek) {
+    dayPickerWeek.sessions.forEach((s, i) => {
+      if (i === dayPickerFor.sessionIdx) return;
+      const key = `${dayPickerFor.weekNum}-${i}`;
+      const dow = sessionDayOverrides[key] !== undefined
+        ? sessionDayOverrides[key]
+        : (_dayPickerAuto.find(a => a.sessionIdx === i)?.dayOfWeek ?? null);
+      if (dow !== null) dayPickerOccupied[dow] = { label: s.label, type: s.type };
+    });
+  }
+  const dayPickerLabel = dayPickerFor && dayPickerWeek
+    ? (dayPickerWeek.sessions[dayPickerFor.sessionIdx]?.label ?? "")
+    : "";
   const selectedSessionIdx = viewedDowToSession[selectedDow];
   const selectedSession = selectedSessionIdx !== undefined ? viewedWeek?.sessions[selectedSessionIdx] : undefined;
   const selectedSessionKey = viewedWeek && selectedSessionIdx !== undefined
@@ -1692,7 +1746,21 @@ export default function PlanScreen() {
                     </Text>
                     <Text style={dashStyles.upcomingSub} numberOfLines={1}>{subtitle}</Text>
                   </View>
-                  <Text style={[dashStyles.upcomingDay, isDone && { color: T.green }]}>{dayLabel}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (viewedWeek && !isDone) setDayPickerFor({ weekNum: viewedWeek.weekNumber, sessionIdx });
+                    }}
+                    activeOpacity={isDone ? 1 : 0.7}
+                    style={[
+                      dashStyles.dayScheduleBtn,
+                      !isDone && dow === null && dashStyles.dayScheduleBtnUnscheduled,
+                    ]}
+                  >
+                    <Calendar size={11} color={isDone ? T.green : T.blue} />
+                    <Text style={[dashStyles.upcomingDay, isDone && { color: T.green }, !isDone && { color: T.blue }]}>
+                      {dayLabel}
+                    </Text>
+                  </TouchableOpacity>
                   <ChevronRight size={14} color={T.textDim} />
                 </TouchableOpacity>
               );
@@ -1783,6 +1851,9 @@ export default function PlanScreen() {
               onEditSession={openEditSession}
               onSwapExercise={openSwapExercise}
               onChangeHill={openHillPicker}
+              onScheduleSession={(weekNum, sessionIdx) => setDayPickerFor({ weekNum, sessionIdx })}
+              sessionDayOverrides={sessionDayOverrides}
+              autoAssignedDows={assignSessionsToDays(week.sessions.length, summitGoal.availableDays).map(a => a.dayOfWeek)}
               onSessionPress={(sessionIdx) => router.push({
                 pathname: "/session-detail",
                 params: { weekNum: String(week.weekNumber), sessionIdx: String(sessionIdx) },
@@ -1792,6 +1863,25 @@ export default function PlanScreen() {
         })}
       </ScrollView>
 
+
+      <DayPickerModal
+        visible={dayPickerFor !== null}
+        sessionLabel={dayPickerLabel}
+        weekStartDate={dayPickerWeek?.startDate}
+        currentDow={dayPickerCurrentDow}
+        occupiedDows={dayPickerOccupied}
+        preferredDows={summitGoal.availableDays ?? []}
+        hasOverride={dayPickerHasOverride}
+        onSelect={async (dow) => {
+          if (dayPickerFor) await setSessionDayOverride(dayPickerFor.weekNum, dayPickerFor.sessionIdx, dow);
+          setDayPickerFor(null);
+        }}
+        onClear={async () => {
+          if (dayPickerFor) await clearSessionDayOverride(dayPickerFor.weekNum, dayPickerFor.sessionIdx);
+          setDayPickerFor(null);
+        }}
+        onClose={() => setDayPickerFor(null)}
+      />
 
       <HillPickerModal
         visible={hillPickerOpen}
@@ -2570,5 +2660,14 @@ const dashStyles = StyleSheet.create({
   },
   upcomingDay: {
     fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted,
+  },
+  dayScheduleBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 8, paddingVertical: 5,
+    borderRadius: 8,
+  },
+  dayScheduleBtnUnscheduled: {
+    backgroundColor: T.blue + "15",
+    borderWidth: 1, borderColor: T.blue + "30",
   },
 });
