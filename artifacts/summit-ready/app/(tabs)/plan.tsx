@@ -1127,12 +1127,16 @@ export default function PlanScreen() {
 
   function handleHillSelect(hill: NearbyHill) {
     if (activeSession) {
-      assignHillToSession(activeSession.weekNum, activeSession.sessionIdx, hill);
-      // Sync the session label and elevation to match the newly chosen hill
-      const newTargetElevation = hill.elevation * hill.repeats;
+      const week = trainingPlan.find(w => w.weekNumber === activeSession.weekNum);
+      const session = week?.sessions[activeSession.sessionIdx];
+      // Fit reps to keep total gain close to the session's target, not the hill's default
+      const sessionTarget = session?.targetElevation ?? hill.elevation * hill.repeats;
+      const adjustedReps = Math.max(1, Math.round(sessionTarget / Math.max(1, hill.elevation)));
+      const adjustedHill: NearbyHill = { ...hill, repeats: adjustedReps, totalElevation: adjustedReps * hill.elevation };
+      assignHillToSession(activeSession.weekNum, activeSession.sessionIdx, adjustedHill);
       updatePlanSession(activeSession.weekNum, activeSession.sessionIdx, {
         label: `Hill Repeats — ${hill.name}`,
-        targetElevation: newTargetElevation,
+        targetElevation: adjustedHill.totalElevation,
       });
     }
     setHillPickerOpen(false);

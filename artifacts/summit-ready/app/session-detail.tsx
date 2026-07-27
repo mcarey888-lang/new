@@ -225,9 +225,13 @@ export default function SessionDetailScreen() {
 
   const handleHillSelect = useCallback(async (hill: NearbyHill) => {
     setHillPickerOpen(false);
-    await assignHillToSession(weekNum, sessionIdx, hill);
-    await updatePlanSession(weekNum, sessionIdx, { targetElevation: hill.repeats * hill.elevation });
-  }, [weekNum, sessionIdx, assignHillToSession, updatePlanSession]);
+    // Recalculate reps to keep total gain near the session's target, not the hill's default
+    const sessionTarget = session?.targetElevation ?? hill.elevation * hill.repeats;
+    const adjustedReps = Math.max(1, Math.round(sessionTarget / Math.max(1, hill.elevation)));
+    const adjustedHill: NearbyHill = { ...hill, repeats: adjustedReps, totalElevation: adjustedReps * hill.elevation };
+    await assignHillToSession(weekNum, sessionIdx, adjustedHill);
+    await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation });
+  }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
 
   // Derived hill metadata (same logic as existing HillActionCard)
   const elevPerRep = assignedHill
