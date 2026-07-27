@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind } from "lucide-react-native";
+import { Flag, Minus, Plus, Check, Search, X, Globe, AlertCircle, MapPin, ChevronDown, ChevronUp, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind, Mountain } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo } from "react";
@@ -813,6 +813,7 @@ function WeekCard({
   onSubmitWeek,
   onEditSession,
   onSwapExercise,
+  onChangeHill,
   onSessionPress,
 }: {
   week: TrainingWeek;
@@ -825,6 +826,7 @@ function WeekCard({
   onSubmitWeek: (weekNum: number) => void;
   onEditSession: (weekNum: number, sessionIdx: number) => void;
   onSwapExercise: (weekNum: number, sessionIdx: number, label: string) => void;
+  onChangeHill: (weekNum: number, sessionIdx: number) => void;
   onSessionPress: (sessionIdx: number) => void;
 }) {
   const pc = PHASE_COLOR[week.phase] ?? T.green;
@@ -969,6 +971,15 @@ function WeekCard({
                             activeOpacity={0.7}
                           >
                             <RefreshCw size={12} color={T.textDim} />
+                          </TouchableOpacity>
+                        )}
+                        {(s.type === "hill" || s.type === "bigDay") && (
+                          <TouchableOpacity
+                            onPress={() => onChangeHill(week.weekNumber, i)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            activeOpacity={0.7}
+                          >
+                            <Mountain size={12} color={T.textDim} />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1450,6 +1461,7 @@ export default function PlanScreen() {
               onSubmitWeek={handleSubmitWeek}
               onEditSession={openEditSession}
               onSwapExercise={openSwapExercise}
+              onChangeHill={openHillPicker}
               onSessionPress={(sessionIdx) => router.push({
                 pathname: "/session-detail",
                 params: { weekNum: String(week.weekNumber), sessionIdx: String(sessionIdx) },
