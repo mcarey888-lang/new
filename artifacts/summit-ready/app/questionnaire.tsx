@@ -463,18 +463,6 @@ function StepPlan({
 
 // ─── Step 7: Catch me up ─────────────────────────────────────────────────────
 
-const POPULAR_PEAKS_Q = [
-  { id: "h001", name: "Ben Nevis",    location: "Scotland",        elevationGain: 1340, distance: 17.4, emoji: "🏔️" },
-  { id: "h002", name: "Snowdon",      location: "Wales",           elevationGain: 900,  distance: 11.5, emoji: "🏔️" },
-  { id: "h003", name: "Scafell Pike", location: "Lake District",   elevationGain: 950,  distance: 13.8, emoji: "🏔️" },
-  { id: "h004", name: "Helvellyn",    location: "Lake District",   elevationGain: 760,  distance: 14.4, emoji: "⛰️" },
-  { id: "h006", name: "Pen y Fan",    location: "Brecon Beacons",  elevationGain: 420,  distance: 9.8,  emoji: "🏔️" },
-  { id: "h007", name: "Kinder Scout", location: "Peak District",   elevationGain: 490,  distance: 14.2, emoji: "🌫️" },
-  { id: "h009", name: "Ingleborough", location: "Yorkshire Dales", elevationGain: 460,  distance: 12.6, emoji: "⛰️" },
-  { id: "h010", name: "Whernside",    location: "Yorkshire Dales", elevationGain: 455,  distance: 12.4, emoji: "🌾" },
-  { id: "h012", name: "Ben Lomond",   location: "Scotland",        elevationGain: 1010, distance: 12.0, emoji: "🏔️" },
-] as const;
-
 function getCatchMonthChips() {
   return Array.from({ length: 6 }, (_, i) => {
     const d = new Date();

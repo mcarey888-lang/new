@@ -249,10 +249,20 @@ export default function SessionDetailScreen() {
     "outdoor":         "Outdoor Cardio",
   };
 
+  const EXERCISE_DESCRIPTION: Record<GymExercise, string> = {
+    "treadmill":       "Set the treadmill to 12% incline and maintain a brisk walking pace. Keep your heels down and drive through your glutes — the same movement as ascending a real hill. Focus on steady breathing throughout.",
+    "stepper":         "Set the stairmaster to a steady, sustainable pace you can hold for the full session. Step through your whole foot to engage your glutes and calves. This directly simulates the leg drive needed on summit day.",
+    "box-steps":       "Perform alternating step-ups onto a box or bench at roughly hip height. Add a loaded backpack if available. Control each step down — the eccentric phase builds the quad strength you need for long descents.",
+    "weighted-stairs": "Climb stairs with a loaded pack or weight vest. Maintain an upright posture and a steady rhythm — this is the closest gym simulation to carrying kit on summit day.",
+    "elliptical":      "Set the resistance high enough that talking is difficult. Maintain an upright posture and push through your heels. Sustained high-resistance effort builds the aerobic capacity you need on the hill.",
+    "outdoor":         "Head outside for a brisk walk, jog, or hike on any available elevation. Focus on time on feet at a conversational pace. Consistency outdoors is the best training for mountain days.",
+  };
+
   const handleExerciseSelect = useCallback(async (gymEx: GymExercise) => {
     setExercisePickerOpen(false);
     const targetElev = session?.targetElevation ?? 0;
     const label = EXERCISE_LABEL[gymEx];
+    const description = EXERCISE_DESCRIPTION[gymEx];
     if (gymEx === "treadmill") {
       // At 10–15% incline: 1 km ≈ 100 m elevation gain
       const distKm = Math.max(0.5, Math.round((targetElev / 100) * 10) / 10);
@@ -261,6 +271,7 @@ export default function SessionDetailScreen() {
         gymExercise: "treadmill",
         targetDistanceKm: distKm,
         inclinePct: 12,
+        description,
       });
     } else if (gymEx === "stepper") {
       // ~3 m per floor
@@ -269,10 +280,11 @@ export default function SessionDetailScreen() {
         label,
         gymExercise: "stepper",
         targetFloors: floors,
+        description,
       });
     } else {
       // box-steps, weighted-stairs, elliptical, outdoor — elevation-based, no extra metric
-      await updatePlanSession(weekNum, sessionIdx, { label, gymExercise: gymEx });
+      await updatePlanSession(weekNum, sessionIdx, { label, gymExercise: gymEx, description });
     }
   }, [weekNum, sessionIdx, session?.targetElevation, updatePlanSession]);
 
