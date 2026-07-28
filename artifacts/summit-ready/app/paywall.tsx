@@ -70,11 +70,12 @@ export default function PaywallScreen() {
   useScreenView("paywall");
   const insets = useSafeAreaInsets();
   const { offerings, purchase, restore, isPurchasing, isRestoring, offeringsLoading, offeringsError, refetchOfferings } = useSubscription();
-  const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string }>();
+  const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string; mode?: string }>();
 
   const fromQuestionnaire = params.fromQuestionnaire === "true";
   const quizScore = params.score ? parseInt(params.score, 10) : null;
   const quizMountain = params.mountain ?? null;
+  const quizMode = params.mode ?? null;
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState<any>(null);
@@ -100,7 +101,7 @@ export default function PaywallScreen() {
     try {
       await purchase(selectedPkg);
       if (fromQuestionnaire) {
-        router.replace("/setup");
+        router.replace(quizMode === "virtual" ? { pathname: "/setup", params: { mode: "virtual" } } : "/setup");
       } else {
         router.back();
       }
@@ -121,7 +122,7 @@ export default function PaywallScreen() {
         setTimeout(() => {
           setRestoreSuccess(false);
           if (fromQuestionnaire) {
-            router.replace("/setup");
+            router.replace(quizMode === "virtual" ? { pathname: "/setup", params: { mode: "virtual" } } : "/setup");
           } else {
             router.back();
           }

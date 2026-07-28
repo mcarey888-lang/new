@@ -111,6 +111,9 @@ export default function SetupScreen() {
   const { setSummitGoal, changeSummit, summitGoal } = useApp();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isChangeMode = mode === "change";
+  // Track whether we arrived from a Virtual questionnaire so we can set
+  // mode:"virtual" on the goal and route to the correct home screen.
+  const [virtualMode, setVirtualMode] = React.useState(mode === "virtual");
 
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
@@ -199,7 +202,9 @@ export default function SetupScreen() {
           rawElevation?: number;
           rawRunning?: number;
           rawUphillFreq?: number;
+          mode?: "expedition" | "virtual";
         };
+        if (data.mode === "virtual") setVirtualMode(true);
         if (data.mountainName) {
           skipLookupRef.current = true;
           setName(data.mountainName);
@@ -432,6 +437,9 @@ export default function SetupScreen() {
       fitnessBaseline,
       planStartMode,
       availableDays: availableDays.length > 0 ? availableDays : undefined,
+      // Preserve the mode that was set during the questionnaire flow.
+      // Virtual users keep mode:"virtual"; expedition users get undefined (treated as expedition everywhere).
+      ...(virtualMode ? { mode: "virtual" as const } : {}),
     };
     if (isChangeMode) {
       await changeSummit(newGoal);
@@ -440,7 +448,8 @@ export default function SetupScreen() {
     }
     void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
     setSaving(false);
-    router.replace("/(tabs)/dashboard");
+    // Virtual users land on their own home screen; expedition users land on dashboard.
+    router.replace(virtualMode ? "/(tabs)/v-home" : "/(tabs)/dashboard");
   }
 
   const inp = (field: string) => [styles.input, errors[field] ? { borderColor: T.red + "80" } : null];
