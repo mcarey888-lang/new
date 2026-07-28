@@ -9,11 +9,14 @@
     "seed-trails": "tsx ./src/seed-trails-overpass.ts",
     "seed-popular-hills": "tsx ./src/seed-popular-hills.ts",
     "seed-routes": "tsx ./src/seed-routes.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "import:virtual:dry": "tsx ./src/import-virtual-expedition.ts --dry-run",
+    "import:virtual": "tsx ./src/import-virtual-expedition.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "catalog:",

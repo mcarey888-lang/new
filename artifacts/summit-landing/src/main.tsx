@@ -27,6 +27,7 @@ import NotFound from "./pages/not-found";
 import ReadinessCheck from "./pages/ReadinessCheck";
 import MountainVerification from "./pages/admin/MountainVerification";
 import HillVerification from "./pages/admin/HillVerification";
+import VirtualExpeditionPreview from "./pages/internal/VirtualExpeditionPreview";
 import "./index.css";
 
 import { ThemeProvider } from "./lib/ThemeContext";
@@ -68,6 +69,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/screenshot-helper" element={<ScreenshotHelper />} />
       <Route path="/admin/mountain-verification" element={<MountainVerification />} />
       <Route path="/admin/hill-verification" element={<HillVerification />} />
+      <Route path="/internal/virtual-expedition" element={<VirtualExpeditionPreview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>
