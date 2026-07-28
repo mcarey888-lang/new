@@ -895,77 +895,151 @@ export default function DashboardScreen() {
           </Animated.View>
         )}
 
-        {/* Readiness Hero Card */}
-        <Animated.View entering={FadeInDown.delay(80).duration(500)}>
-          <View style={styles.readinessCard}>
-            <LinearGradient
-              colors={[statusColor + "10", "transparent"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.readinessInner}>
-              {/* Score ring — number hidden for free users with score > 40 */}
-              <TouchableOpacity
-                onPress={!isSubscribed && readinessScore > 40 ? () => router.push("/paywall") : undefined}
-                activeOpacity={!isSubscribed && readinessScore > 40 ? 0.85 : 1}
-              >
-                <ProgressRing
-                  score={readinessScore}
-                  size={148}
-                  strokeWidth={11}
-                  hideScore={!isSubscribed && readinessScore > 40}
-                />
-              </TouchableOpacity>
-              <View style={styles.readinessMeta}>
-                <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
-                {!isSubscribed && readinessScore > 40 ? (
-                  <>
-                    <TouchableOpacity
-                      onPress={() => router.push("/paywall")}
-                      style={[styles.statusPill, { backgroundColor: T.greenDim }]}
-                      activeOpacity={0.8}
-                    >
-                      <Lock size={11} color={T.green} />
-                      <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.trackingMsg}>Score above 40 — upgrade to track progress</Text>
-                    <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.8} style={styles.ringUpgradeBtn}>
-                      <Text style={styles.ringUpgradeBtnText}>See your full score →</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
-                      <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                      <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-                    </View>
-                    <Text style={styles.trackingMsg}>{trackingMsg}</Text>
-                    {peakState.superseded && (
-                      <View style={styles.provenBadge}>
-                        <Trophy size={11} color={T.green} />
-                        <Text style={styles.provenBadgeText}>Been there, done harder</Text>
+        {/* Readiness Hero Card — Expedition mode */}
+        {(summitGoal.mode ?? "expedition") === "expedition" && (
+          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+            <View style={styles.readinessCard}>
+              <LinearGradient
+                colors={[statusColor + "10", "transparent"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.readinessInner}>
+                {/* Score ring — number hidden for free users with score > 40 */}
+                <TouchableOpacity
+                  onPress={!isSubscribed && readinessScore > 40 ? () => router.push("/paywall") : undefined}
+                  activeOpacity={!isSubscribed && readinessScore > 40 ? 0.85 : 1}
+                >
+                  <ProgressRing
+                    score={readinessScore}
+                    size={148}
+                    strokeWidth={11}
+                    hideScore={!isSubscribed && readinessScore > 40}
+                  />
+                </TouchableOpacity>
+                <View style={styles.readinessMeta}>
+                  <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
+                  {!isSubscribed && readinessScore > 40 ? (
+                    <>
+                      <TouchableOpacity
+                        onPress={() => router.push("/paywall")}
+                        style={[styles.statusPill, { backgroundColor: T.greenDim }]}
+                        activeOpacity={0.8}
+                      >
+                        <Lock size={11} color={T.green} />
+                        <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.trackingMsg}>Score above 40 — upgrade to track progress</Text>
+                      <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.8} style={styles.ringUpgradeBtn}>
+                        <Text style={styles.ringUpgradeBtnText}>See your full score →</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
                       </View>
-                    )}
-                    <Text style={styles.daysText}>
-                      {days > 0 ? `${days} days until summit` : "Summit day!"}
-                    </Text>
-                  </>
-                )}
-                <View style={styles.difficultyRow}>
-                  <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                    <Flag size={11} color={T.textMuted} />
-                    <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
-                  </View>
-                  <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                    <Zap size={11} color={T.textMuted} />
-                    <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
+                      <Text style={styles.trackingMsg}>{trackingMsg}</Text>
+                      {peakState.superseded && (
+                        <View style={styles.provenBadge}>
+                          <Trophy size={11} color={T.green} />
+                          <Text style={styles.provenBadgeText}>Been there, done harder</Text>
+                        </View>
+                      )}
+                      <Text style={styles.daysText}>
+                        {days > 0 ? `${days} days until summit` : "Summit day!"}
+                      </Text>
+                    </>
+                  )}
+                  <View style={styles.difficultyRow}>
+                    <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
+                      <Flag size={11} color={T.textMuted} />
+                      <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
+                    </View>
+                    <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
+                      <Zap size={11} color={T.textMuted} />
+                      <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        )}
+
+        {/* Simulation Score Card — Virtual mode */}
+        {summitGoal.mode === "virtual" && (
+          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+            <View style={styles.readinessCard}>
+              {(() => {
+                const simScore = summitGoal.simulationScore ?? 0;
+                const hasScore = !!summitGoal.simulationScore && !!summitGoal.targetMountain;
+                const simColor = simScore >= 80 ? T.green : simScore >= 60 ? T.blue : simScore >= 40 ? T.orange : T.red;
+                const simLabel = simScore >= 80 ? "Excellent match" : simScore >= 60 ? "Good match" : simScore >= 40 ? "Partial match" : hasScore ? "Weak match" : "Not yet scored";
+                return (
+                  <>
+                    <LinearGradient
+                      colors={[hasScore ? simColor + "10" : T.blue + "10", "transparent"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.readinessInner}>
+                      <TouchableOpacity
+                        onPress={() => router.push("/(tabs)/plan")}
+                        activeOpacity={0.85}
+                      >
+                        <ProgressRing
+                          score={hasScore ? simScore : 0}
+                          size={148}
+                          strokeWidth={11}
+                          hideScore={false}
+                        />
+                      </TouchableOpacity>
+                      <View style={styles.readinessMeta}>
+                        <Text style={styles.areYouReadyLabel}>Simulation score</Text>
+                        <View style={[styles.statusPill, { backgroundColor: hasScore ? simColor + "20" : T.surface }]}>
+                          {hasScore
+                            ? <View style={[styles.statusDot, { backgroundColor: simColor }]} />
+                            : <BarChart2 size={11} color={T.textMuted} />
+                          }
+                          <Text style={[styles.statusText, { color: hasScore ? simColor : T.textMuted }]}>
+                            {simLabel}
+                          </Text>
+                        </View>
+                        {hasScore ? (
+                          <>
+                            <Text style={styles.trackingMsg} numberOfLines={2}>
+                              {summitGoal.targetMountain!.name}
+                            </Text>
+                            <Text style={styles.daysText}>
+                              {summitGoal.targetMountain!.summitElevation}m · {summitGoal.targetMountain!.country}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text style={[styles.trackingMsg, { color: T.textMuted, fontSize: 12 }]}>
+                            Go to the Plan tab to set up your Virtual Expedition
+                          </Text>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => router.push("/(tabs)/plan")}
+                          activeOpacity={0.8}
+                          style={styles.ringUpgradeBtn}
+                        >
+                          <Text style={styles.ringUpgradeBtnText}>
+                            {hasScore ? "View expedition →" : "Set up expedition →"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+          </Animated.View>
+        )}
 
         {/* Stats Strip */}
         <Animated.View entering={FadeInDown.delay(110).duration(500)}>
