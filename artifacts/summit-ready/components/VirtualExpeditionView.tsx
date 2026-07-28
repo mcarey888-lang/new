@@ -83,13 +83,15 @@ interface VirtualExpeditionViewProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: VirtualExpeditionViewProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const hasCachedData =
     !!summitGoal.simulationScore &&
     !!summitGoal.targetMountain &&
     !!summitGoal.simulationScoreBreakdown;
+
+  // Start in loading state when there is no cached data so the spinner renders
+  // immediately on the first frame, before useEffect fires the fetch.
+  const [loading, setLoading] = useState(!hasCachedData);
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchExpedition(force = false) {
     if (!force && hasCachedData) return;
