@@ -21,6 +21,11 @@ import {
   StyleSheet,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+
+// Same pattern used by every other screen in the app
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Mountain, Footprints, Zap, Leaf, BarChart2,
@@ -212,21 +217,21 @@ export function VirtualMountainCard({
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <View style={s.heroWrap}>
 
-        {/* Background: real image or category gradient */}
-        {bundle.heroImage ? (
-          <ExpoImage
-            source={bundle.heroImage}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-        ) : (
-          <LinearGradient
-            colors={cat.heroGrad}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-        )}
+        {/* Category gradient always sits behind the photo as a fallback */}
+        <LinearGradient
+          colors={cat.heroGrad}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+
+        {/* Remote mountain photo — fetched via /api/mountain-image (Wikipedia / Mapbox) */}
+        <ExpoImage
+          source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(bundle.goalMountain)}&width=800&height=340` }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={400}
+        />
 
         {/* Bottom scrim for name legibility */}
         <LinearGradient

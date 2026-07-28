@@ -42,12 +42,6 @@ export interface VirtualBundle {
   contextBadge: string;
   /** Label shown in the first stat badge (route type) — e.g. "Alpine", "Trek", "Mountain" */
   routeTypeLabel: string;
-  /**
-   * Optional hero image — pass a require() result when a mountain photo is available.
-   * Falls back to the category gradient when absent.
-   * e.g. heroImage: require("@/assets/images/mountains/mont-blanc.jpg")
-   */
-  heroImage?: number;
 }
 
 export const VIRTUAL_BUNDLES: VirtualBundle[] = [
