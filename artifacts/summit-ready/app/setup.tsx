@@ -720,8 +720,8 @@ export default function SetupScreen() {
               {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
 
-            {/* Time assessment banner — updates live as date/difficulty/fitness change */}
-            {timeAssessment && !errors.date && (() => {
+            {/* Time assessment banner — expedition only */}
+            {!virtualMode && timeAssessment && !errors.date && (() => {
               const ta = timeAssessment;
               const cfg = {
                 good:        { icon: CheckCircle,   bg: T.greenDim,   border: T.green + "40",  text: T.green,   title: ta.message },
@@ -761,8 +761,8 @@ export default function SetupScreen() {
               );
             })()}
 
-            {/* Plan duration choice — shown when user has significantly more time than needed */}
-            {timeAssessment && !errors.date && timeAssessment.status === "good" && timeAssessment.weeksAvailable > timeAssessment.recommendedWeeks + 2 && (() => {
+            {/* Plan duration choice — expedition only */}
+            {!virtualMode && timeAssessment && !errors.date && timeAssessment.status === "good" && timeAssessment.weeksAvailable > timeAssessment.recommendedWeeks + 2 && (() => {
               const ta = timeAssessment;
               const summitMs = new Date(date + "T12:00:00").getTime();
               const optimalStartMs = summitMs - ta.recommendedWeeks * 7 * 24 * 60 * 60 * 1000;
@@ -867,7 +867,7 @@ export default function SetupScreen() {
           </Section>
 
           {/* Equipment */}
-          <Section label="Available Equipment" icon={Wrench}>
+          {!virtualMode && <Section label="Available Equipment" icon={Wrench}>
             <Text style={styles.sectionDesc}>
               Select everything you have access to — your plan will be tailored around what's available.
             </Text>
@@ -897,10 +897,9 @@ export default function SetupScreen() {
                 );
               })}
             </View>
-          </Section>
+          </Section>}
 
-          {/* Training Schedule */}
-          <Section label="Training Schedule" icon={Calendar}>
+          {!virtualMode && <Section label="Training Schedule" icon={Calendar}>
             <Text style={styles.sectionDesc}>
               How many days per week can you commit to training? We'll build the plan around your availability.
             </Text>
@@ -1000,7 +999,7 @@ export default function SetupScreen() {
                 <Text style={styles.fieldHint}>{availableDays.length} / {trainingDays} days selected.</Text>
               )}
             </View>
-          </Section>
+          </Section>}
 
           {/* Location + Hill Picker */}
           <Section label="Your Location" icon={Map}>
