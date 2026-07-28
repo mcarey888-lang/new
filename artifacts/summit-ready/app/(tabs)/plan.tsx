@@ -1568,7 +1568,7 @@ export default function PlanScreen() {
           <View style={[dashStyles.statCell, { paddingVertical: 16 }]}>
             <Text style={[dashStyles.statVal, { color: readinessColor, fontSize: 32 }]}>{readinessScore}%</Text>
             <Text style={dashStyles.statLbl}>YOUR PROGRESS</Text>
-            <Text style={[dashStyles.statLbl, { color: readinessColor, fontFamily: "Inter_600SemiBold", marginTop: 1 }]}>Ready</Text>
+            <Text style={[dashStyles.statLbl, { color: readinessColor, fontFamily: "Inter_600SemiBold", marginTop: 1 }]}>{readinessScore >= 70 ? "Ready" : readinessScore >= 40 ? "Close" : "Not Ready"}</Text>
           </View>
           {/* Right: Elevation Bank */}
           <View style={[dashStyles.statCell, { borderLeftWidth: 1, borderColor: T.border, paddingVertical: 16 }]}>
