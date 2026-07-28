@@ -441,7 +441,7 @@ export default function SessionDetailScreen() {
               </TouchableOpacity>
             </ImageBackground>
           ) : (
-            <LinearGradient colors={[pc + "30", T.bg]} style={s.heroImg}>
+            <LinearGradient colors={["transparent", T.bg + "B3"]} style={s.heroImg}>
               <TouchableOpacity
                 onPress={() => router.back()}
                 style={[s.backBtn, { top: Platform.OS === "web" ? 20 : insets.top + 8 }]}
