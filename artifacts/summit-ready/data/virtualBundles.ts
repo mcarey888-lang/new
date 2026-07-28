@@ -9,6 +9,8 @@
  * The rest require a subscription.
  */
 
+export type BundleCategory = "Alpine" | "Trek" | "Technical" | "Classic";
+
 export interface VirtualBundle {
   id: string;
   free: boolean;
@@ -23,11 +25,21 @@ export interface VirtualBundle {
   exampleHills: string[];
   tagline: string;
   emoji: string;
+  /** Small flag emoji shown next to mountain name */
+  flag: string;
   difficulty: "Easy" | "Moderate" | "Hard" | "Alpine";
   /** Approximate summit ASL — used for the card only, real figure comes from API */
   summitElevation: number;
   totalElevationGain: number;
   estimatedDays: 1 | 2;
+  /** Card category — drives accent colour throughout the card */
+  category: BundleCategory;
+  /** Human-readable typical duration for this objective */
+  duration: string;
+  /** Country / region string shown in the subtitle */
+  country: string;
+  /** Contextual 4th badge */
+  contextBadge: string;
 }
 
 export const VIRTUAL_BUNDLES: VirtualBundle[] = [
@@ -39,13 +51,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Snowdonia",
     regionDisplay: "Snowdonia",
     regionCountry: "Wales",
-    exampleHills: ["Snowdon", "Glyder Fawr"],
-    tagline: "Africa's roof, from the mountains of Wales",
-    emoji: "🌍",
+    exampleHills: ["Snowdon", "Glyder Fawr", "Tryfan"],
+    tagline: "Every step to the roof of Africa demands unshakeable mental endurance — exactly the kind you forge on dark, rainy Welsh mornings.",
+    emoji: "🏔️",
+    flag: "🇹🇿",
     difficulty: "Hard",
     summitElevation: 5895,
     totalElevationGain: 1245,
     estimatedDays: 2,
+    category: "Trek",
+    duration: "7–8 Days",
+    country: "Tanzania",
+    contextBadge: "High Altitude",
   },
   {
     id: "mont-blanc-lake-district",
@@ -54,13 +71,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Lake District",
     regionDisplay: "Lake District",
     regionCountry: "England",
-    exampleHills: ["Helvellyn", "Scafell Pike"],
-    tagline: "The Alps, distilled into a Lake District weekend",
-    emoji: "🇫🇷",
+    exampleHills: ["Helvellyn", "Scafell Pike", "Great Gable"],
+    tagline: "The roof of the Alps rewards those who dare to summit after summit. The Lake District fells are your proving ground.",
+    emoji: "⛰️",
+    flag: "🇫🇷",
     difficulty: "Alpine",
     summitElevation: 4808,
     totalElevationGain: 1500,
     estimatedDays: 2,
+    category: "Alpine",
+    duration: "2–3 Days",
+    country: "France / Italy",
+    contextBadge: "High Altitude",
   },
   {
     id: "ben-nevis-brecon-beacons",
@@ -69,13 +91,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Brecon Beacons",
     regionDisplay: "Brecon Beacons",
     regionCountry: "Wales",
-    exampleHills: ["Pen y Fan", "Fan y Big"],
-    tagline: "Scotland's highest, prepared on the Beacons",
+    exampleHills: ["Pen y Fan", "Fan y Big", "Corn Du"],
+    tagline: "Britain's highest is the perfect first big mountain adventure. Every Brecon Beacons ridge brings you one step closer.",
     emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
     difficulty: "Hard",
     summitElevation: 1345,
     totalElevationGain: 1345,
     estimatedDays: 1,
+    category: "Classic",
+    duration: "1 Day",
+    country: "Scotland",
+    contextBadge: "Great for Beginners",
   },
 
   // ── PREMIUM ─────────────────────────────────────────────────────────────────
@@ -87,12 +114,17 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     regionDisplay: "Peak District",
     regionCountry: "England",
     exampleHills: ["Kinder Scout", "Bleaklow", "Mam Tor"],
-    tagline: "The world's most iconic trek, on home turf",
+    tagline: "EBC rewards relentless willpower across 14 grinding days at altitude. Your Peak District miles are building exactly that resilience.",
     emoji: "🏔️",
+    flag: "🇳🇵",
     difficulty: "Hard",
     summitElevation: 5364,
     totalElevationGain: 3700,
     estimatedDays: 2,
+    category: "Trek",
+    duration: "14 Days",
+    country: "Nepal",
+    contextBadge: "High Altitude",
   },
   {
     id: "matterhorn-yorkshire-dales",
@@ -101,13 +133,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Yorkshire Dales",
     regionDisplay: "Yorkshire Dales",
     regionCountry: "England",
-    exampleHills: ["Whernside", "Ingleborough"],
-    tagline: "The iconic pyramid, mirrored in the Three Peaks",
-    emoji: "🇨🇭",
+    exampleHills: ["Whernside", "Ingleborough", "Pen-y-Ghent"],
+    tagline: "The Matterhorn's near-vertical ridges demand precise, calm technical movement. There is no room for hesitation at 4,478m.",
+    emoji: "🗻",
+    flag: "🇨🇭",
     difficulty: "Alpine",
     summitElevation: 4478,
     totalElevationGain: 1220,
     estimatedDays: 2,
+    category: "Technical",
+    duration: "2 Days",
+    country: "Switzerland",
+    contextBadge: "Technical",
   },
   {
     id: "aconcagua-scottish-highlands",
@@ -116,13 +153,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Cairngorms",
     regionDisplay: "Scottish Highlands",
     regionCountry: "Scotland",
-    exampleHills: ["Cairn Gorm", "Ben Macdui"],
-    tagline: "South America's summit, trained in the Cairngorms",
-    emoji: "🇦🇷",
+    exampleHills: ["Cairn Gorm", "Ben Macdui", "Braeriach"],
+    tagline: "At 6,962m, Aconcagua's altitude is the real challenge. Scotland's exposed plateau teaches you the relentless conditions you'll face.",
+    emoji: "⛰️",
+    flag: "🇦🇷",
     difficulty: "Alpine",
     summitElevation: 6962,
     totalElevationGain: 3000,
     estimatedDays: 2,
+    category: "Alpine",
+    duration: "20 Days",
+    country: "Argentina",
+    contextBadge: "High Altitude",
   },
   {
     id: "elbrus-cairngorms",
@@ -131,13 +173,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Cairngorms",
     regionDisplay: "Cairngorms",
     regionCountry: "Scotland",
-    exampleHills: ["Ben Macdui", "Braeriach"],
-    tagline: "Europe's highest, prepared in Scotland's plateau",
-    emoji: "🇷🇺",
+    exampleHills: ["Ben Macdui", "Braeriach", "Cairn Toul"],
+    tagline: "Europe's highest peak rewards the patient, resilient climber who has spent long hours on cold, windswept ridges.",
+    emoji: "⛰️",
+    flag: "🇷🇺",
     difficulty: "Alpine",
     summitElevation: 5642,
     totalElevationGain: 2200,
     estimatedDays: 2,
+    category: "Alpine",
+    duration: "8 Days",
+    country: "Russia",
+    contextBadge: "High Altitude",
   },
   {
     id: "fuji-north-york-moors",
@@ -146,13 +193,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "North York Moors",
     regionDisplay: "North York Moors",
     regionCountry: "England",
-    exampleHills: ["Urra Moor", "Round Hill"],
-    tagline: "Japan's sacred volcano, trained on Yorkshire moors",
+    exampleHills: ["Urra Moor", "Round Hill", "Cringle Moor"],
+    tagline: "Japan's sacred volcano is a bucket-list icon any fit hiker can conquer. This is where your bigger ambitions begin.",
     emoji: "🗻",
+    flag: "🇯🇵",
     difficulty: "Moderate",
     summitElevation: 3776,
     totalElevationGain: 1450,
     estimatedDays: 1,
+    category: "Classic",
+    duration: "1–2 Days",
+    country: "Japan",
+    contextBadge: "Iconic Summit",
   },
   {
     id: "snowdon-dartmoor",
@@ -161,13 +213,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Dartmoor",
     regionDisplay: "Dartmoor",
     regionCountry: "England",
-    exampleHills: ["High Willhays", "Yes Tor"],
-    tagline: "Wales's crown, trained on Devon's high moor",
+    exampleHills: ["High Willhays", "Yes Tor", "Brown Willy"],
+    tagline: "Wales's crown is an achievable adventure for any determined hill-goer. Your Dartmoor miles will get you there comfortably.",
     emoji: "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+    flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
     difficulty: "Moderate",
     summitElevation: 1085,
     totalElevationGain: 700,
     estimatedDays: 1,
+    category: "Classic",
+    duration: "1 Day",
+    country: "Wales",
+    contextBadge: "Great for Beginners",
   },
   {
     id: "denali-lake-district",
@@ -177,12 +234,17 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     regionDisplay: "Lake District",
     regionCountry: "England",
     exampleHills: ["Scafell Pike", "Helvellyn", "Great Gable"],
-    tagline: "North America's roof, spread across the fells",
-    emoji: "🇺🇸",
+    tagline: "Denali is a serious, multi-week mountaineering objective. It requires elite fitness, precise technique, and absolute commitment.",
+    emoji: "⛰️",
+    flag: "🇺🇸",
     difficulty: "Alpine",
     summitElevation: 6190,
     totalElevationGain: 3000,
     estimatedDays: 2,
+    category: "Technical",
+    duration: "21 Days",
+    country: "Alaska, USA",
+    contextBadge: "Technical",
   },
   {
     id: "tour-du-mont-blanc-cotswolds",
@@ -191,13 +253,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "Malvern Hills",
     regionDisplay: "Malvern Hills",
     regionCountry: "England",
-    exampleHills: ["Worcestershire Beacon", "Herefordshire Beacon"],
-    tagline: "Europe's greatest trail, pieced together locally",
+    exampleHills: ["Worcestershire Beacon", "Herefordshire Beacon", "North Hill"],
+    tagline: "165km around the Alps tests your mind as much as your legs. Your local days are building the deep, quiet endurance you'll need.",
     emoji: "🥾",
+    flag: "🇫🇷",
     difficulty: "Hard",
     summitElevation: 2500,
     totalElevationGain: 3300,
     estimatedDays: 2,
+    category: "Trek",
+    duration: "11 Days",
+    country: "France / Italy / Switzerland",
+    contextBadge: "Multi-Day",
   },
   {
     id: "grand-canyon-south-downs",
@@ -206,13 +273,18 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     region: "South Downs",
     regionDisplay: "South Downs",
     regionCountry: "England",
-    exampleHills: ["Ditchling Beacon", "Devil's Dyke"],
-    tagline: "The canyon's epic descent and climb, on chalk downs",
-    emoji: "🇺🇸",
+    exampleHills: ["Ditchling Beacon", "Devil's Dyke", "Chanctonbury Ring"],
+    tagline: "Rim to Rim is a lesson in pacing, heat management, and pure stubbornness. The South Downs are your engine room.",
+    emoji: "🏜️",
+    flag: "🇺🇸",
     difficulty: "Hard",
     summitElevation: 2480,
     totalElevationGain: 1500,
     estimatedDays: 2,
+    category: "Trek",
+    duration: "3 Days",
+    country: "Arizona, USA",
+    contextBadge: "Desert Terrain",
   },
 ];
 

@@ -12,7 +12,9 @@ import {
   Mountain, Search, MapPin, ChevronRight, Lock,
   ArrowLeft, RefreshCw, CheckCircle, Plus, Compass,
   ChevronDown, ChevronUp, Info, AlertTriangle, Star,
+  SlidersHorizontal, LayoutGrid, LayoutList,
 } from "lucide-react-native";
+import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -113,6 +115,9 @@ export default function VirtualScreen() {
 
   // upsell nudge
   const [upsellVisible, setUpsellVisible] = useState(false);
+
+  // grid / list toggle (visual state — single-column list is default)
+  const [gridView, setGridView] = useState(false);
 
   const { patchGoal } = useApp();
 
@@ -572,23 +577,61 @@ export default function VirtualScreen() {
   }
 
   // ── Browse view (default) ────────────────────────────────────────────────────
-  const freeBundles    = VIRTUAL_BUNDLES.filter(b => b.free);
-  const premiumBundles = VIRTUAL_BUNDLES.filter(b => !b.free);
+
+  /** Derive per-bundle progress from the active virtual goal */
+  function bundleProgress(bundle: VirtualBundle) {
+    const isActive =
+      summitGoal?.mode === "virtual" &&
+      summitGoal.mountainName?.toLowerCase() === bundle.goalMountain.toLowerCase();
+
+    if (!isActive || !summitGoal?.targetMountain) {
+      return { progressPct: 0, elevationGained: 0, equivalentHills: bundle.exampleHills };
+    }
+    const gained = summitGoal.virtualHikeProgress?.elevationGained ?? 0;
+    const goal   = summitGoal.targetMountain.totalElevationGain || bundle.totalElevationGain;
+    const pct    = goal > 0 ? Math.min(100, Math.round((gained / goal) * 100)) : 0;
+    const hills  = summitGoal.virtualHills?.map(h => h.name) ?? bundle.exampleHills;
+    return { progressPct: pct, elevationGained: gained, equivalentHills: hills };
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
-        {/* Header */}
-        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        {/* ── Page header ─────────────────────────────────────────────────── */}
+        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 6 }}>
           <ExpoImage source={require("@/assets/images/logo.gif")} style={{ width: 140, height: 56, alignSelf: "center" }} contentFit="contain" />
-          <Text style={s.heroTitle}>Virtual Mode</Text>
-          <Text style={s.heroSub}>Pick a famous mountain. We find the local hills that replicate its effort.</Text>
+          {/* Title row */}
+          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 4 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={s.heroTitle}>Virtual Mountains</Text>
+              <Text style={s.heroSub}>Train for the world's greatest adventures on your local hills</Text>
+            </View>
+            {/* Filter + grid toggle */}
+            <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+              <TouchableOpacity
+                style={s.headerIconBtn}
+                activeOpacity={0.75}
+                onPress={() => {/* filter: coming soon */}}
+              >
+                <SlidersHorizontal size={15} color={T.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.headerIconBtn, gridView && { borderColor: T.blue + "50", backgroundColor: T.blueDim }]}
+                activeOpacity={0.75}
+                onPress={() => setGridView(v => !v)}
+              >
+                {gridView
+                  ? <LayoutList size={15} color={T.blue} />
+                  : <LayoutGrid size={15} color={T.textMuted} />}
+              </TouchableOpacity>
+            </View>
+          </View>
         </Animated.View>
 
-        {/* Active goal banner */}
+        {/* ── Active goal banner ───────────────────────────────────────────── */}
         {isVirtualGoalActive && summitGoal?.targetMountain && (
-          <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+          <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: 16, marginBottom: 14 }}>
             <TouchableOpacity onPress={() => setView("progress")} activeOpacity={0.85} style={s.activeGoalBanner}>
               <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={{ flex: 1 }}>
@@ -599,7 +642,8 @@ export default function VirtualScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
                     <CheckCircle size={11} color={T.green} />
                     <Text style={{ fontSize: 11, color: T.green, fontFamily: "Inter_500Medium" }}>
-                      {summitGoal.virtualHikeProgress!.hikesLogged} {summitGoal.virtualHikeProgress!.hikesLogged === 1 ? "hike" : "hikes"} logged
+                      {summitGoal.virtualHikeProgress!.hikesLogged}{" "}
+                      {summitGoal.virtualHikeProgress!.hikesLogged === 1 ? "hike" : "hikes"} logged
                     </Text>
                   </View>
                 )}
@@ -612,7 +656,7 @@ export default function VirtualScreen() {
           </Animated.View>
         )}
 
-        {/* Error banner */}
+        {/* ── Error banner ─────────────────────────────────────────────────── */}
         {fetchError && (
           <View style={[s.errorBanner, { marginHorizontal: 16, marginBottom: 12 }]}>
             <AlertTriangle size={13} color={T.orange} />
@@ -620,7 +664,7 @@ export default function VirtualScreen() {
           </View>
         )}
 
-        {/* Custom search */}
+        {/* ── Custom search ────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 20 }}>
           <Text style={s.sectionTitle}>CUSTOM SEARCH</Text>
           <View style={s.searchCard}>
@@ -660,37 +704,68 @@ export default function VirtualScreen() {
           </View>
         </Animated.View>
 
-        {/* Free bundles */}
+        {/* ── Mountain cards ───────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <Text style={s.sectionTitle}>FREE BUNDLES</Text>
-            <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "40" }}>
-              <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: T.green }}>3 FREE</Text>
-            </View>
-          </View>
-          {freeBundles.map((bundle, idx) => (
-            <Animated.View key={bundle.id} entering={FadeInDown.delay(80 + idx * 40).duration(400)}>
-              <BundleCard bundle={bundle} locked={false} onPress={() => handleBundleTap(bundle)} />
-            </Animated.View>
-          ))}
+          {VIRTUAL_BUNDLES.map((bundle, idx) => {
+            const locked = !bundle.free && !isSubscribed;
+            const prog = bundleProgress(bundle);
+            return (
+              <Animated.View key={bundle.id} entering={FadeInDown.delay(80 + idx * 30).duration(400)}>
+                <VirtualMountainCard
+                  bundle={bundle}
+                  locked={locked}
+                  onPress={() => handleBundleTap(bundle)}
+                  progressPct={prog.progressPct}
+                  elevationGained={prog.elevationGained}
+                  equivalentHills={prog.equivalentHills}
+                />
+              </Animated.View>
+            );
+          })}
         </View>
 
-        {/* Premium bundles */}
-        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <Text style={s.sectionTitle}>MORE MOUNTAINS</Text>
-            {!isSubscribed && (
-              <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: T.orangeDim, borderWidth: 1, borderColor: T.orange + "40" }}>
-                <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: T.orange }}>PREMIUM</Text>
+        {/* ── Legend bar ───────────────────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
+          <View style={s.legendBar}>
+            {/* Difficulty guide */}
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={s.legendTitle}>DIFFICULTY GUIDE</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { label: "Easy",     color: T.green },
+                  { label: "Moderate", color: T.blue },
+                  { label: "Hard",     color: T.orange },
+                  { label: "Expert",   color: T.red },
+                ].map(({ label, color }) => (
+                  <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+                    <Text style={s.legendItem}>{label}</Text>
+                  </View>
+                ))}
               </View>
-            )}
+            </View>
+            {/* Separator */}
+            <View style={{ width: 1, alignSelf: "stretch", backgroundColor: "rgba(255,255,255,0.07)" }} />
+            {/* Route types */}
+            <View style={{ gap: 6 }}>
+              <Text style={s.legendTitle}>ROUTE TYPES</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { label: "Trek",      color: "#FF9030" },
+                  { label: "Alpine",    color: "#3ECF75" },
+                  { label: "Technical", color: "#9B7FD4" },
+                  { label: "Classic",   color: "#20CFCF" },
+                ].map(({ label, color }) => (
+                  <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: color }} />
+                    <Text style={s.legendItem}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
-          {premiumBundles.map((bundle, idx) => (
-            <Animated.View key={bundle.id} entering={FadeInDown.delay(200 + idx * 30).duration(400)}>
-              <BundleCard bundle={bundle} locked={!isSubscribed} onPress={() => handleBundleTap(bundle)} />
-            </Animated.View>
-          ))}
         </View>
+
       </ScrollView>
 
       {/* Upsell modal */}
@@ -728,48 +803,7 @@ export default function VirtualScreen() {
   );
 }
 
-// ── Bundle card ────────────────────────────────────────────────────────────────
-
-function BundleCard({ bundle, locked, onPress }: { bundle: VirtualBundle; locked: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={locked ? 0.65 : 0.85} style={[s.bundleCard, locked && { opacity: 0.7 }]}>
-      <LinearGradient colors={locked ? ["rgba(255,255,255,0.03)", "transparent"] : [T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {/* Emoji badge */}
-        <View style={[s.bundleEmoji, { backgroundColor: locked ? "rgba(255,255,255,0.06)" : T.greenDim }]}>
-          <Text style={{ fontSize: 26 }}>{bundle.emoji}</Text>
-        </View>
-        {/* Text */}
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <Text style={s.bundleMountainName}>{bundle.goalMountain}</Text>
-            <View style={[s.badge, { backgroundColor: diffColor(bundle.difficulty) + "22", borderColor: diffColor(bundle.difficulty) + "40" }]}>
-              <Text style={[s.badgeText, { color: diffColor(bundle.difficulty) }]}>{bundle.difficulty}</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-            <MapPin size={9} color={T.textDim} />
-            <Text style={s.bundleRegion}>{bundle.regionDisplay}, {bundle.regionCountry}</Text>
-          </View>
-          <Text style={s.bundleTagline}>{bundle.tagline}</Text>
-          <Text style={s.bundleHills}>e.g. {bundle.exampleHills.slice(0, 2).join(" + ")}</Text>
-        </View>
-        {/* Stats / lock */}
-        <View style={{ alignItems: "flex-end", gap: 4 }}>
-          {locked ? (
-            <View style={s.lockBadge}>
-              <Lock size={11} color={T.orange} />
-            </View>
-          ) : (
-            <ChevronRight size={16} color={T.textDim} />
-          )}
-          <Text style={s.bundleSummit}>{bundle.summitElevation.toLocaleString()}m</Text>
-          <Text style={s.bundleSummitLabel}>summit</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
+// BundleCard removed — replaced by VirtualMountainCard component
 
 // ── Mini components ────────────────────────────────────────────────────────────
 
@@ -795,8 +829,34 @@ function HillStat({ value, label }: { value: string; label: string }) {
 
 const s = StyleSheet.create({
   // Header
-  heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center", marginTop: 8 },
-  heroSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19, marginTop: 4 },
+  heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
+  heroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17, marginTop: 3 },
+
+  // Page header buttons
+  headerIconBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    alignItems: "center", justifyContent: "center",
+  },
+
+  // Legend bar
+  legendBar: {
+    backgroundColor: "#0F1D30",
+    borderRadius: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    padding: 14,
+    flexDirection: "row",
+    gap: 16,
+    alignItems: "flex-start",
+  },
+  legendTitle: {
+    fontSize: 8, fontFamily: "Inter_700Bold", color: T.textDim,
+    letterSpacing: 0.9, textTransform: "uppercase",
+  },
+  legendItem: {
+    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted,
+  },
 
   // Active goal banner
   activeGoalBanner: {
