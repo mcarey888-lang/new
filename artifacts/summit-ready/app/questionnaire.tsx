@@ -34,7 +34,7 @@ const EXPEDITION_FLOW = [
 ] as const;
 
 const VIRTUAL_FLOW = [
-  "mountain", "location", "fitness-light", "catchup",
+  "mountain", "location", "catchup",
 ] as const;
 
 type ExpeditionStepId = typeof EXPEDITION_FLOW[number];
@@ -873,97 +873,6 @@ function StepLocationOnly({
   );
 }
 
-// ─── Virtual-only step: light fitness ────────────────────────────────────────
-
-function StepFitnessLight({
-  fitnessLevel,
-  setFitnessLevel,
-  trainingDays,
-  setTrainingDays,
-  equipment,
-  toggleEquipment,
-}: {
-  fitnessLevel: number;
-  setFitnessLevel: (v: number) => void;
-  trainingDays: number;
-  setTrainingDays: (v: number) => void;
-  equipment: Equipment[];
-  toggleEquipment: (v: Equipment) => void;
-}) {
-  const fitnessOpts = [
-    { icon: "🌱", label: "Just starting out", sub: "New to regular exercise or returning after a long break" },
-    { icon: "⚡", label: "Generally active", sub: "I exercise regularly but not intensely — walks, gym, occasional runs" },
-    { icon: "🔥", label: "Fit and active", sub: "I train consistently, feel strong, and recover well" },
-    { icon: "🏆", label: "Athlete level", sub: "High-performance fitness — serious sport, adventure racing or similar" },
-  ];
-  const EQUIP_OPTS: { value: Equipment; label: string; icon: string }[] = [
-    { value: "gym",     label: "Gym membership",  icon: "🏋️" },
-    { value: "weights", label: "Home weights",     icon: "💪" },
-    { value: "bands",   label: "Resistance bands", icon: "🔗" },
-    { value: "none",    label: "No equipment",     icon: "🥾" },
-  ];
-
-  return (
-    <View style={s.stepWrap}>
-      <Text style={s.stepTitle}>A few quick questions</Text>
-      <Text style={s.stepSub}>Optional — helps us suggest the right session difficulty. Skip if you're not sure.</Text>
-
-      <QGroup label="How would you describe your fitness?">
-        <View style={s.optionList}>
-          {fitnessOpts.map((o, i) => (
-            <OptionCard
-              key={o.label}
-              icon={o.icon} label={o.label} sub={o.sub}
-              selected={fitnessLevel === i + 1}
-              onPress={() => setFitnessLevel(fitnessLevel === i + 1 ? 0 : i + 1)}
-            />
-          ))}
-        </View>
-      </QGroup>
-
-      <QGroup label="Training days per week you can commit to">
-        <View style={s.stepperRow}>
-          <TouchableOpacity
-            onPress={() => setTrainingDays(Math.max(2, trainingDays - 1))}
-            style={s.stepperBtn} activeOpacity={0.7}
-          >
-            <Minus size={18} color={T.white} />
-          </TouchableOpacity>
-          <View style={s.stepperVal}>
-            <Text style={s.stepperNum}>{trainingDays}</Text>
-            <Text style={s.stepperLbl}>days / week</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => setTrainingDays(Math.min(6, trainingDays + 1))}
-            style={s.stepperBtn} activeOpacity={0.7}
-          >
-            <Plus size={18} color={T.white} />
-          </TouchableOpacity>
-        </View>
-      </QGroup>
-
-      <QGroup label="What equipment do you have access to?">
-        <View style={s.chipRow}>
-          {EQUIP_OPTS.map(opt => {
-            const active = equipment.includes(opt.value);
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                onPress={() => toggleEquipment(opt.value)}
-                activeOpacity={0.75}
-                style={[s.chip, active && { backgroundColor: T.green + "20", borderColor: T.green + "70" }]}
-              >
-                <Text style={s.chipEmoji}>{opt.icon}</Text>
-                <Text style={[s.chipText, active && { color: T.green }]}>{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </QGroup>
-    </View>
-  );
-}
-
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionnaireScreen() {
@@ -1038,7 +947,6 @@ export default function QuestionnaireScreen() {
       case "days":          return true; // optional
       case "catchup":       return true; // optional
       case "location":      return location.trim().length >= 2;
-      case "fitness-light": return true; // optional
       default:              return false;
     }
   };
@@ -1105,17 +1013,18 @@ export default function QuestionnaireScreen() {
 
   // ── Virtual completion (no calcScore, no baseline modal) ────────────────
   async function handleVirtualComplete() {
-    const fitnessLevelStr = deriveFitnessLevel(fitnessLevel);
-    const hillDays = Math.max(1, Math.round(trainingDays * 0.4));
+    // Virtual flow has no fitness/plan step — use safe fixed defaults so
+    // any downstream code that reads these fields still gets sensible values.
+    const hillDays = 2; // Sat + Sun weekend pairing
 
     const _quizKey = userId ? `${QUIZ_KEY}_${userId}` : QUIZ_KEY;
     const _pendingKey = userId ? `${PENDING_PAST_HIKES_KEY}_${userId}` : PENDING_PAST_HIKES_KEY;
     await AsyncStorage.setItem(_quizKey, JSON.stringify({
       mountainName: mountainName.trim(),
-      fitnessLevel: fitnessLevelStr,
-      trainingDays,
+      fitnessLevel: "intermediate",
+      trainingDays: 4,
       hillDays,
-      equipment,
+      equipment: ["none"],
       location: location.trim(),
       availableDays: availableDays.length > 0 ? availableDays : undefined,
       mode: "virtual",
@@ -1239,16 +1148,6 @@ export default function QuestionnaireScreen() {
             )}
             {currentStep === "location" && (
               <StepLocationOnly location={location} setLocation={setLocation} />
-            )}
-            {currentStep === "fitness-light" && (
-              <StepFitnessLight
-                fitnessLevel={fitnessLevel}
-                setFitnessLevel={setFitnessLevel}
-                trainingDays={trainingDays}
-                setTrainingDays={setTrainingDays}
-                equipment={equipment}
-                toggleEquipment={toggleEquipment}
-              />
             )}
             {currentStep === "catchup" && mode === "virtual" && (
               <StepCatchMeUp
