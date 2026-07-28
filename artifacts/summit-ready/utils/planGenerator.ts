@@ -120,7 +120,7 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
       },
     ];
     const o = opts[variant % opts.length];
-    return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, duration: dur };
+    return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, gymExercise: "outdoor" as const, duration: dur };
   }
 
   // No equipment — walks, runs, stairs.
@@ -159,7 +159,7 @@ function createEquipmentCardioSession(targetElev: number, weekNum: number, goal:
     },
   ];
   const o = opts[variant % opts.length];
-  return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, ...(o.targetFlights !== undefined ? { targetFlights: o.targetFlights } : {}), duration: dur };
+  return { type: "cardio", label: o.label, description: o.description, targetElevation: o.targetElevation, gymExercise: "outdoor" as const, ...(o.targetFlights !== undefined ? { targetFlights: o.targetFlights } : {}), duration: dur };
 }
 
 function createHillSession(targetElev: number, hills: TrainingWeek["hills"], goal: SummitGoal, weekNum: number): PlanSession {

@@ -1163,8 +1163,14 @@ export default function PlanScreen() {
       : null)
     ?? summitGoal.mountainName;
   const _missionGymEx = selectedSession?.gymExercise
-    ?? (!selectedSession?.gymExercise && _missionCardioText.includes("treadmill") ? "treadmill"
-      : !selectedSession?.gymExercise && (_missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster")) ? "stepper"
+    ?? (_missionCardioText.includes("treadmill") ? "treadmill"
+      : _missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster") ? "stepper"
+      : _missionCardioText.includes("elliptical") ? "elliptical"
+      : (_missionCardioText.includes("stair") && !_missionCardioText.includes("stairmaster"))
+        || _missionCardioText.includes("flights")
+        || _missionCardioText.includes("uphill")
+        || _missionCardioText.includes("brisk walk") ? "outdoor"
+      : selectedSession?.type === "cardio" ? "outdoor"
       : undefined);
   const missionImageSource =
       _missionGymEx === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")

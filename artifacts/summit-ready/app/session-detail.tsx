@@ -313,6 +313,13 @@ export default function SessionDetailScreen() {
       ? "stepper"
       : gymText.includes("elliptical")
       ? "elliptical"
+      : (gymText.includes("stair") && !gymText.includes("stairmaster"))
+        || gymText.includes("flights")
+        || gymText.includes("uphill")
+        || gymText.includes("brisk walk")
+      ? "outdoor"
+      : session?.type === "cardio"
+      ? "outdoor"
       : null;
   // Only treat as a "stair repeat" session when no explicit exercise type is set,
   // and the text isn't just "stairmaster" (which maps to the stepper gymExercise).
