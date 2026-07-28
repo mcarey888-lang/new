@@ -40,6 +40,10 @@ export const HillSchema = z.object({
   routeType: z.enum(["hill", "circular", "out-and-back"]).nullish(),
   routeDistance: z.number().nullish(),
   estimatedTime: z.string().nullish(),
+  /** Summit elevation in metres ASL — from OSM ele tag or OpenTopoData radial sampling.
+   *  Only present on hills that came through the Overpass pipeline; absent on DB-cached hits.
+   *  Used by virtual-expedition altitude scoring to avoid re-querying topo at AI lat/lng. */
+  summitElevationASL: z.number().positive().optional(),
 });
 
 export type Hill = z.infer<typeof HillSchema>;
@@ -648,6 +652,10 @@ export async function osmPeaksToHills(
       routeType: "hill",
       routeDistance: null,
       estimatedTime: null,
+      // Store the authoritative summit ASL (OSM ele tag preferred, topo fallback).
+      // This comes from a real surveyed/satellite source at the correct OSM peak position,
+      // not from AI-guessed lat/lng, so altitude scoring stays accurate.
+      summitElevationASL: Math.round(summitElev),
     });
   }
 

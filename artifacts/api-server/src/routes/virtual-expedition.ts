@@ -358,19 +358,20 @@ router.post("/virtual-expedition", async (req, res) => {
       }
     }
 
-    // ── Fetch summit elevations ASL for altitude dimension ────────────────────
-    // The Hill type stores elevation GAIN, not summit ASL — we query OpenTopoData
-    // for each recommended summit's lat/lng to get the real altitude figure.
-    const summitPoints = recommendedHills
-      .filter(h => h.lat && h.lng)
-      .map(h => ({ lat: h.lat!, lng: h.lng! }));
-
-    const rawElevs = summitPoints.length > 0 ? await fetchTopoElevations(summitPoints) : [];
+    // ── Summit elevations ASL for altitude dimension ──────────────────────────
+    // Prefer summitElevationASL threaded from osmPeaksToHills — it uses the real
+    // OSM ele tag (surveyor-tagged) at the correct OSM peak position, so it is
+    // immune to AI-hallucinated lat/lng.  Only fall back to a fresh topo query
+    // for hills that came via the AI fallback path and have no summitElevationASL.
+    const missingASL = recommendedHills.filter(h => !h.summitElevationASL && h.lat && h.lng);
+    const topoPoints = missingASL.map(h => ({ lat: h.lat!, lng: h.lng! }));
+    const topoResults = topoPoints.length > 0 ? await fetchTopoElevations(topoPoints) : [];
 
     const summitElevsASL: Array<number | null> = recommendedHills.map(h => {
+      if (h.summitElevationASL) return h.summitElevationASL;
       if (!h.lat || !h.lng) return null;
-      const idx = summitPoints.findIndex(p => p.lat === h.lat && p.lng === h.lng);
-      return idx >= 0 ? (rawElevs[idx] ?? null) : null;
+      const idx = missingASL.findIndex(m => m.name === h.name);
+      return idx >= 0 ? (topoResults[idx] ?? null) : null;
     });
 
     // ── Step 4: Physical Simulation Score ─────────────────────────────────────
