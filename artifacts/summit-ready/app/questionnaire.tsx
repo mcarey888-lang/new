@@ -27,7 +27,19 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   : "/api";
 
 export const QUIZ_KEY = "summitready_questionnaire_data";
-const TOTAL_STEPS = 9;
+
+// ─── Step-flow definitions ────────────────────────────────────────────────────
+const EXPEDITION_FLOW = [
+  "mountain", "fitness", "exercise", "hiking", "uphill", "cardio", "plan", "days", "catchup",
+] as const;
+
+const VIRTUAL_FLOW = [
+  "mountain", "location", "fitness-light", "catchup",
+] as const;
+
+type ExpeditionStepId = typeof EXPEDITION_FLOW[number];
+type VirtualStepId   = typeof VIRTUAL_FLOW[number];
+type StepId = ExpeditionStepId | VirtualStepId;
 
 const LOCATIONS = [
   // English cities & large towns
@@ -182,7 +194,17 @@ function QGroup({ label, children }: { label: string; children: React.ReactNode 
 
 // ─── Step screens ─────────────────────────────────────────────────────────────
 
-function StepMountain({ mountainName, setMountainName }: { mountainName: string; setMountainName: (v: string) => void }) {
+function StepMountain({
+  mountainName,
+  setMountainName,
+  title = "What's your summit goal?",
+  subtitle = "We'll build your entire readiness assessment around this mountain.",
+}: {
+  mountainName: string;
+  setMountainName: (v: string) => void;
+  title?: string;
+  subtitle?: string;
+}) {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const suggestions = mountainName.trim().length >= 2
@@ -196,8 +218,8 @@ function StepMountain({ mountainName, setMountainName }: { mountainName: string;
 
   return (
     <View style={s.stepWrap}>
-      <Text style={s.stepTitle}>What's your summit goal?</Text>
-      <Text style={s.stepSub}>We'll build your entire readiness assessment around this mountain.</Text>
+      <Text style={s.stepTitle}>{title}</Text>
+      <Text style={s.stepSub}>{subtitle}</Text>
       <View style={s.mountainInputWrap}>
         <MapPin size={18} color={T.green} style={s.mountainIcon} />
         <TextInput
@@ -478,7 +500,16 @@ type SelectedQHike = PastHike & { key: string };
 
 type SearchResult = { name: string; elevationGain: number; distance: number; emoji: string };
 
-function StepCatchMeUp({ setPastHikes, mountainName }: { pastHikes: PastHike[]; setPastHikes: (hikes: PastHike[]) => void; mountainName: string }) {
+function StepCatchMeUp({
+  setPastHikes,
+  mountainName,
+  subtitle = "Search any hill or mountain you've climbed in the last 6 months — it'll boost your readiness score. This step is optional.",
+}: {
+  pastHikes: PastHike[];
+  setPastHikes: (hikes: PastHike[]) => void;
+  mountainName: string;
+  subtitle?: string;
+}) {
   const [selected, setSelected] = React.useState<SelectedQHike[]>([]);
   const [query, setQuery] = React.useState("");
   const [searching, setSearching] = React.useState(false);
@@ -545,9 +576,7 @@ function StepCatchMeUp({ setPastHikes, mountainName }: { pastHikes: PastHike[]; 
   return (
     <View style={s.stepWrap}>
       <Text style={s.stepTitle}>Already been training?</Text>
-      <Text style={s.stepSub}>
-        Search any hill or mountain you've climbed in the last 6 months — it'll boost your readiness score. This step is optional.
-      </Text>
+      <Text style={s.stepSub}>{subtitle}</Text>
 
       {/* Selected summits */}
       {selected.length > 0 && (
@@ -748,6 +777,193 @@ function deriveFitnessLevel(level: number): "Beginner" | "Average" | "Strong" {
   return "Strong";
 }
 
+// ─── Mode picker (shown before questionnaire flow) ────────────────────────────
+
+function ModePicker({
+  onSelect,
+}: {
+  onSelect: (mode: "expedition" | "virtual") => void;
+}) {
+  return (
+    <View style={s.stepWrap}>
+      <Text style={s.stepTitle}>How would you like to use Summit Ready?</Text>
+      <Text style={s.stepSub}>Choose your path — you can change this later from your profile.</Text>
+      <View style={s.optionList}>
+        <TouchableOpacity
+          style={[s.optionCard, s.modeCard]}
+          activeOpacity={0.82}
+          onPress={() => onSelect("expedition")}
+        >
+          <View style={[s.optionIconBox, { backgroundColor: T.green + "25" }]}>
+            <Text style={s.optionEmoji}>🏔️</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.optionLabel}>Expedition Training</Text>
+            <Text style={s.optionSub}>I'm preparing for a real mountain.</Text>
+          </View>
+          <ArrowRight size={18} color={T.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.optionCard, s.modeCard]}
+          activeOpacity={0.82}
+          onPress={() => onSelect("virtual")}
+        >
+          <View style={[s.optionIconBox, { backgroundColor: T.blue + "25" }]}>
+            <Text style={s.optionEmoji}>🗺️</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.optionLabel}>Virtual Expeditions</Text>
+            <Text style={s.optionSub}>Experience the world's greatest mountains using your local hills.</Text>
+          </View>
+          <ArrowRight size={18} color={T.textMuted} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Virtual-only step: location ─────────────────────────────────────────────
+
+function StepLocationOnly({
+  location,
+  setLocation,
+}: {
+  location: string;
+  setLocation: (v: string) => void;
+}) {
+  const [showLocSuggestions, setShowLocSuggestions] = useState(false);
+  const locSuggestions = location.trim().length >= 2
+    ? LOCATIONS.filter(l => l.toLowerCase().includes(location.toLowerCase())).slice(0, 6)
+    : [];
+
+  return (
+    <View style={s.stepWrap}>
+      <Text style={s.stepTitle}>Where are you based?</Text>
+      <Text style={s.stepSub}>We'll find local hills near you that match your target mountain's profile.</Text>
+      <TextInput
+        style={s.locationInput}
+        value={location}
+        onChangeText={v => { setLocation(v); setShowLocSuggestions(true); }}
+        onFocus={() => setShowLocSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowLocSuggestions(false), 200)}
+        placeholder="City, town or postcode"
+        placeholderTextColor={T.textDim}
+        autoCorrect={false}
+        autoFocus
+        returnKeyType="done"
+      />
+      {showLocSuggestions && locSuggestions.length > 0 && (
+        <View style={s.suggestionsCard}>
+          {locSuggestions.map((name, i) => (
+            <TouchableOpacity
+              key={name}
+              style={[s.suggestionRow, i < locSuggestions.length - 1 && s.suggestionBorder]}
+              onPress={() => { setLocation(name); setShowLocSuggestions(false); }}
+              activeOpacity={0.7}
+            >
+              <MapPin size={13} color={T.textMuted} />
+              <Text style={s.suggestionText}>{name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      <Text style={s.fieldHint}>We'll use this to find the best simulation hills near you.</Text>
+    </View>
+  );
+}
+
+// ─── Virtual-only step: light fitness ────────────────────────────────────────
+
+function StepFitnessLight({
+  fitnessLevel,
+  setFitnessLevel,
+  trainingDays,
+  setTrainingDays,
+  equipment,
+  toggleEquipment,
+}: {
+  fitnessLevel: number;
+  setFitnessLevel: (v: number) => void;
+  trainingDays: number;
+  setTrainingDays: (v: number) => void;
+  equipment: Equipment[];
+  toggleEquipment: (v: Equipment) => void;
+}) {
+  const fitnessOpts = [
+    { icon: "🌱", label: "Just starting out", sub: "New to regular exercise or returning after a long break" },
+    { icon: "⚡", label: "Generally active", sub: "I exercise regularly but not intensely — walks, gym, occasional runs" },
+    { icon: "🔥", label: "Fit and active", sub: "I train consistently, feel strong, and recover well" },
+    { icon: "🏆", label: "Athlete level", sub: "High-performance fitness — serious sport, adventure racing or similar" },
+  ];
+  const EQUIP_OPTS: { value: Equipment; label: string; icon: string }[] = [
+    { value: "gym",     label: "Gym membership",  icon: "🏋️" },
+    { value: "weights", label: "Home weights",     icon: "💪" },
+    { value: "bands",   label: "Resistance bands", icon: "🔗" },
+    { value: "none",    label: "No equipment",     icon: "🥾" },
+  ];
+
+  return (
+    <View style={s.stepWrap}>
+      <Text style={s.stepTitle}>A few quick questions</Text>
+      <Text style={s.stepSub}>Optional — helps us suggest the right session difficulty. Skip if you're not sure.</Text>
+
+      <QGroup label="How would you describe your fitness?">
+        <View style={s.optionList}>
+          {fitnessOpts.map((o, i) => (
+            <OptionCard
+              key={o.label}
+              icon={o.icon} label={o.label} sub={o.sub}
+              selected={fitnessLevel === i + 1}
+              onPress={() => setFitnessLevel(fitnessLevel === i + 1 ? 0 : i + 1)}
+            />
+          ))}
+        </View>
+      </QGroup>
+
+      <QGroup label="Training days per week you can commit to">
+        <View style={s.stepperRow}>
+          <TouchableOpacity
+            onPress={() => setTrainingDays(Math.max(2, trainingDays - 1))}
+            style={s.stepperBtn} activeOpacity={0.7}
+          >
+            <Minus size={18} color={T.white} />
+          </TouchableOpacity>
+          <View style={s.stepperVal}>
+            <Text style={s.stepperNum}>{trainingDays}</Text>
+            <Text style={s.stepperLbl}>days / week</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setTrainingDays(Math.min(6, trainingDays + 1))}
+            style={s.stepperBtn} activeOpacity={0.7}
+          >
+            <Plus size={18} color={T.white} />
+          </TouchableOpacity>
+        </View>
+      </QGroup>
+
+      <QGroup label="What equipment do you have access to?">
+        <View style={s.chipRow}>
+          {EQUIP_OPTS.map(opt => {
+            const active = equipment.includes(opt.value);
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => toggleEquipment(opt.value)}
+                activeOpacity={0.75}
+                style={[s.chip, active && { backgroundColor: T.green + "20", borderColor: T.green + "70" }]}
+              >
+                <Text style={s.chipEmoji}>{opt.icon}</Text>
+                <Text style={[s.chipText, active && { color: T.green }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </QGroup>
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionnaireScreen() {
@@ -755,8 +971,20 @@ export default function QuestionnaireScreen() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
 
-  const [step, setStep] = useState(0);
+  // ── Mode selection (shown before entering either flow) ──────────────────
+  const [mode, setMode] = useState<"expedition" | "virtual" | null>(null);
+
+  // ── Step navigation ─────────────────────────────────────────────────────
+  const [stepIndex, setStepIndex] = useState(0);
   const [animKey, setAnimKey] = useState(0);
+
+  const steps: readonly StepId[] = mode === "virtual" ? VIRTUAL_FLOW : EXPEDITION_FLOW;
+  const TOTAL_STEPS = steps.length;
+  const currentStep = steps[stepIndex];
+  const progress = (stepIndex + 1) / TOTAL_STEPS;
+  const isLast = stepIndex === TOTAL_STEPS - 1;
+
+  // ── Shared state ────────────────────────────────────────────────────────
   const [showBaselineModal, setShowBaselineModal] = useState(false);
   const pendingParams = useRef<{ score: number; mountain: string } | null>(null);
 
@@ -790,39 +1018,57 @@ export default function QuestionnaireScreen() {
     }
   }
 
+  // ── Mode selection handler ──────────────────────────────────────────────
+  function selectMode(selected: "expedition" | "virtual") {
+    setMode(selected);
+    setStepIndex(0);
+    setAnimKey(k => k + 1);
+  }
+
+  // ── Gate logic (switches on string step ID) ─────────────────────────────
   const canAdvance = (): boolean => {
-    switch (step) {
-      case 0: return mountainName.trim().length >= 2;
-      case 1: return fitnessLevel > 0;
-      case 2: return exerciseFreq > 0;
-      case 3: return elevation > 0 && hikeDuration > 0;
-      case 4: return uphillFreq > 0 && summitHistory > 0;
-      case 5: return running > 0 && strength > 0;
-      case 6: return location.trim().length >= 2;
-      case 7: return true; // availableDays is optional
-      case 8: return true; // past hikes optional
-      default: return false;
+    switch (currentStep) {
+      case "mountain":      return mountainName.trim().length >= 2;
+      case "fitness":       return fitnessLevel > 0;
+      case "exercise":      return exerciseFreq > 0;
+      case "hiking":        return elevation > 0 && hikeDuration > 0;
+      case "uphill":        return uphillFreq > 0 && summitHistory > 0;
+      case "cardio":        return running > 0 && strength > 0;
+      case "plan":          return location.trim().length >= 2;
+      case "days":          return true; // optional
+      case "catchup":       return true; // optional
+      case "location":      return location.trim().length >= 2;
+      case "fitness-light": return true; // optional
+      default:              return false;
     }
   };
 
   function advance() {
-    if (step < TOTAL_STEPS - 1) {
+    if (stepIndex < TOTAL_STEPS - 1) {
       setAnimKey(k => k + 1);
-      setStep(s => s + 1);
+      setStepIndex(i => i + 1);
     } else {
-      handleComplete();
+      if (mode === "virtual") {
+        void handleVirtualComplete();
+      } else {
+        void handleComplete();
+      }
     }
   }
 
   function goBack() {
-    if (step === 0) {
-      router.back();
+    if (stepIndex === 0) {
+      // Return to mode picker
+      setMode(null);
+      setStepIndex(0);
+      setAnimKey(k => k + 1);
     } else {
       setAnimKey(k => k + 1);
-      setStep(s => s - 1);
+      setStepIndex(i => i - 1);
     }
   }
 
+  // ── Expedition completion ───────────────────────────────────────────────
   async function handleComplete() {
     const score = calcScore(fitnessLevel, exerciseFreq, elevation, hikeDuration, uphillFreq, summitHistory, running, strength);
     const fitnessLevelStr = deriveFitnessLevel(fitnessLevel);
@@ -844,6 +1090,7 @@ export default function QuestionnaireScreen() {
       rawElevation: elevation,
       rawRunning: running,
       rawUphillFreq: uphillFreq,
+      mode: "expedition",
     }));
 
     if (pastHikes.length > 0) {
@@ -854,6 +1101,40 @@ export default function QuestionnaireScreen() {
     pendingParams.current = { score, mountain: mountainName.trim() };
     void logReadinessTestCompleted({ readiness_score: score, fitness_level: fitnessLevelStr });
     setShowBaselineModal(true);
+  }
+
+  // ── Virtual completion (no calcScore, no baseline modal) ────────────────
+  async function handleVirtualComplete() {
+    const fitnessLevelStr = deriveFitnessLevel(fitnessLevel);
+    const hillDays = Math.max(1, Math.round(trainingDays * 0.4));
+
+    const _quizKey = userId ? `${QUIZ_KEY}_${userId}` : QUIZ_KEY;
+    const _pendingKey = userId ? `${PENDING_PAST_HIKES_KEY}_${userId}` : PENDING_PAST_HIKES_KEY;
+    await AsyncStorage.setItem(_quizKey, JSON.stringify({
+      mountainName: mountainName.trim(),
+      fitnessLevel: fitnessLevelStr,
+      trainingDays,
+      hillDays,
+      equipment,
+      location: location.trim(),
+      availableDays: availableDays.length > 0 ? availableDays : undefined,
+      mode: "virtual",
+    }));
+
+    if (pastHikes.length > 0) {
+      await AsyncStorage.setItem(_pendingKey, JSON.stringify(pastHikes));
+    } else {
+      await AsyncStorage.removeItem(_pendingKey);
+    }
+
+    router.push({
+      pathname: "/paywall",
+      params: {
+        mountain: mountainName.trim(),
+        fromQuestionnaire: "true",
+        mode: "virtual",
+      },
+    });
   }
 
   function navigateToPaywall() {
@@ -871,9 +1152,30 @@ export default function QuestionnaireScreen() {
     }
   }
 
-  const progress = (step + 1) / TOTAL_STEPS;
-  const isLast = step === TOTAL_STEPS - 1;
+  // ── Mode picker shown until a mode is chosen ────────────────────────────
+  if (mode === null) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <View style={[s.header, { paddingTop: Platform.OS === "web" ? 20 : insets.top + 8 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={20} color={T.white} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+        </View>
+        <ScrollView
+          contentContainerStyle={[s.scroll, { paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(320)}>
+            <ModePicker onSelect={selectMode} />
+          </Animated.View>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
 
+  // ── Questionnaire flow ──────────────────────────────────────────────────
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <KeyboardAvoidingView
@@ -888,7 +1190,7 @@ export default function QuestionnaireScreen() {
           <View style={s.progressTrack}>
             <View style={[s.progressFill, { width: `${progress * 100}%` as any }]} />
           </View>
-          <Text style={s.stepCounter}>{step + 1} / {TOTAL_STEPS}</Text>
+          <Text style={s.stepCounter}>{stepIndex + 1} / {TOTAL_STEPS}</Text>
         </View>
 
         <ScrollView
@@ -897,15 +1199,65 @@ export default function QuestionnaireScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View key={animKey} entering={FadeInDown.duration(320)}>
-            {step === 0 && <StepMountain mountainName={mountainName} setMountainName={setMountainName} />}
-            {step === 1 && <StepFitness value={fitnessLevel} setValue={setFitnessLevel} />}
-            {step === 2 && <StepExercise freq={exerciseFreq} setFreq={setExerciseFreq} />}
-            {step === 3 && <StepHiking elevation={elevation} setElevation={setElevation} hikeDuration={hikeDuration} setHikeDuration={setHikeDuration} />}
-            {step === 4 && <StepUphill uphillFreq={uphillFreq} setUphillFreq={setUphillFreq} summitHistory={summitHistory} setSummitHistory={setSummitHistory} />}
-            {step === 5 && <StepCardio running={running} setRunning={setRunning} strength={strength} setStrength={setStrength} />}
-            {step === 6 && <StepPlan trainingDays={trainingDays} setTrainingDays={setTrainingDays} equipment={equipment} toggleEquipment={toggleEquipment} location={location} setLocation={setLocation} />}
-            {step === 7 && <StepAvailableDays trainingDays={trainingDays} availableDays={availableDays} setAvailableDays={setAvailableDays} />}
-            {step === 8 && <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} mountainName={mountainName} />}
+            {/* ── Expedition steps ── */}
+            {currentStep === "mountain" && mode === "expedition" && (
+              <StepMountain mountainName={mountainName} setMountainName={setMountainName} />
+            )}
+            {currentStep === "fitness" && (
+              <StepFitness value={fitnessLevel} setValue={setFitnessLevel} />
+            )}
+            {currentStep === "exercise" && (
+              <StepExercise freq={exerciseFreq} setFreq={setExerciseFreq} />
+            )}
+            {currentStep === "hiking" && (
+              <StepHiking elevation={elevation} setElevation={setElevation} hikeDuration={hikeDuration} setHikeDuration={setHikeDuration} />
+            )}
+            {currentStep === "uphill" && (
+              <StepUphill uphillFreq={uphillFreq} setUphillFreq={setUphillFreq} summitHistory={summitHistory} setSummitHistory={setSummitHistory} />
+            )}
+            {currentStep === "cardio" && (
+              <StepCardio running={running} setRunning={setRunning} strength={strength} setStrength={setStrength} />
+            )}
+            {currentStep === "plan" && (
+              <StepPlan trainingDays={trainingDays} setTrainingDays={setTrainingDays} equipment={equipment} toggleEquipment={toggleEquipment} location={location} setLocation={setLocation} />
+            )}
+            {currentStep === "days" && (
+              <StepAvailableDays trainingDays={trainingDays} availableDays={availableDays} setAvailableDays={setAvailableDays} />
+            )}
+            {currentStep === "catchup" && mode === "expedition" && (
+              <StepCatchMeUp pastHikes={pastHikes} setPastHikes={setPastHikes} mountainName={mountainName} />
+            )}
+
+            {/* ── Virtual steps ── */}
+            {currentStep === "mountain" && mode === "virtual" && (
+              <StepMountain
+                mountainName={mountainName}
+                setMountainName={setMountainName}
+                title="Which mountain do you want to simulate?"
+                subtitle="We'll match your local hills to its elevation, terrain, and demands."
+              />
+            )}
+            {currentStep === "location" && (
+              <StepLocationOnly location={location} setLocation={setLocation} />
+            )}
+            {currentStep === "fitness-light" && (
+              <StepFitnessLight
+                fitnessLevel={fitnessLevel}
+                setFitnessLevel={setFitnessLevel}
+                trainingDays={trainingDays}
+                setTrainingDays={setTrainingDays}
+                equipment={equipment}
+                toggleEquipment={toggleEquipment}
+              />
+            )}
+            {currentStep === "catchup" && mode === "virtual" && (
+              <StepCatchMeUp
+                pastHikes={pastHikes}
+                setPastHikes={setPastHikes}
+                mountainName={mountainName}
+                subtitle="Add any real summits from the last 6 months — they'll appear in your activity history and help calibrate your simulation. Completely optional."
+              />
+            )}
           </Animated.View>
         </ScrollView>
 
@@ -919,7 +1271,9 @@ export default function QuestionnaireScreen() {
           >
             <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.nextBtnGrad}>
               <Text style={s.nextBtnText}>
-                {isLast ? "See my readiness score" : "Next"}
+                {isLast
+                  ? mode === "virtual" ? "Set up my simulation" : "See my readiness score"
+                  : "Next"}
               </Text>
               {isLast ? <Zap size={18} color="#fff" /> : <ArrowRight size={18} color="#fff" />}
             </LinearGradient>
@@ -1243,5 +1597,9 @@ const s = StyleSheet.create({
   catchEmptyBody: {
     fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim,
     textAlign: "center", lineHeight: 19, paddingHorizontal: 8,
+  },
+
+  modeCard: {
+    paddingVertical: 20,
   },
 });

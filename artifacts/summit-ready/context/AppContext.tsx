@@ -36,6 +36,28 @@ export interface CompletedGoal {
   trainingWeeks: number;
 }
 
+export interface SimulationScoreBreakdown {
+  overall: number;
+  elevation: number;
+  gradient: number;
+  duration: number;
+  altitude: number;
+  consecutiveDays: number;
+}
+
+export interface TargetMountain {
+  name: string;
+  country: string;
+  summitElevation: number;
+  totalElevationGain: number;
+  totalDistance: number;
+  estimatedDays: 1 | 2;
+  day1ElevationGain?: number;
+  day2ElevationGain?: number;
+  difficulty: "Easy" | "Moderate" | "Hard" | "Alpine";
+  altitudeExposure: "None" | "Moderate" | "High" | "Extreme";
+}
+
 export interface SummitGoal {
   mountainName: string;
   summitDate: string;
@@ -56,6 +78,16 @@ export interface SummitGoal {
   fitnessBaseline?: number;
   planStartMode?: "optimal" | "full";
   alpineProfile?: AlpineProfile;
+  /** Undefined means existing users — treated as "expedition" everywhere. */
+  mode?: "expedition" | "virtual";
+  /** Virtual Expeditions only: the target mountain being simulated. */
+  targetMountain?: TargetMountain;
+  /** Cached Physical Simulation Score (0–100). Computed once at setup, refreshed on demand. */
+  simulationScore?: number;
+  /** Per-dimension breakdown of the Physical Simulation Score. */
+  simulationScoreBreakdown?: SimulationScoreBreakdown;
+  /** Virtual mode only: drives plan length instead of summitDate. */
+  simulationDurationWeeks?: number;
 }
 
 export interface PlanSession {
