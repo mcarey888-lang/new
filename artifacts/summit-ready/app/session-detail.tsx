@@ -176,7 +176,7 @@ const trk = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   btnDim: { opacity: 0.35 },
-  val: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.textMuted, minWidth: 28, textAlign: "center" },
+  val: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.textMuted, width: 72, textAlign: "center" },
   valWhite: { color: T.white },
   valGreen: { color: T.green },
   logElev: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.orange },
