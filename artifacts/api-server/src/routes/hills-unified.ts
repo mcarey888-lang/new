@@ -11,7 +11,7 @@ function slugify(name: string): string {
 }
 
 // Normalise a UK postcode that arrives without a space ("bb44bh" → "BB4 4BH")
-function normalizeLocation(loc: string): string {
+export function normalizeLocation(loc: string): string {
   const stripped = loc.replace(/\s+/g, "").toUpperCase();
   const match = stripped.match(/^([A-Z]{1,2}[0-9][0-9A-Z]?)([0-9][A-Z]{2})$/);
   if (match) return `${match[1]} ${match[2]}`;
@@ -24,7 +24,7 @@ const gradeSchema = z
   .transform(v => v.replace(/Easy[\s\-–]+Mod/i, "Easy–Mod").trim())
   .pipe(z.enum(["Easy", "Easy–Mod", "Moderate", "Hard", "Alpine"]));
 
-const HillSchema = z.object({
+export const HillSchema = z.object({
   name: z.string(),
   elevation: z.number(),
   distance: z.number(),
@@ -42,7 +42,7 @@ const HillSchema = z.object({
   estimatedTime: z.string().nullish(),
 });
 
-type Hill = z.infer<typeof HillSchema>;
+export type Hill = z.infer<typeof HillSchema>;
 
 // ── Shared verified calibration table ────────────────────────────────────────
 // All figures researched from AllTrails, OS maps, and authoritative hiking guides.
@@ -147,7 +147,7 @@ Other rules:
 - trailheadLat/trailheadLng = GPS coordinates of the recommended public car park or trailhead start point (decimal degrees, 4 decimal places)
 - If the hill appears in the verified table above, use that exact elevation value`;
 
-const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
+export const LOOKUP_SYSTEM_PROMPT = `You are an expert on local hiking and hill training areas. Given a location and radius, return nearby hills and fells that are good for training repeats — prioritising distinct named hills over circular routes. Return ONLY valid JSON — no markdown, no explanation:
 
 {
   "hills": [
@@ -255,7 +255,7 @@ function applyKnownGain(hill: Hill): Hill {
 }
 
 // ── Haversine distance in km ──────────────────────────────────────────────────
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -272,7 +272,7 @@ const GEO_UA = "SummitReady/1.0 (hill training app)";
 interface NominatimResult { lat: string; lon: string; class: string; type: string }
 
 /** Geocode a free-text location string to lat/lng using Nominatim (OSM). */
-async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const q = encodeURIComponent(location);
     const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3`;
@@ -310,7 +310,7 @@ interface TopoResponse { results: TopoResult[] }
  * Fetch real terrain elevations for up to 100 lat/lng points in one request.
  * Returns null for each point if the API is unavailable.
  */
-async function fetchTopoElevations(
+export async function fetchTopoElevations(
   points: Array<{ lat: number; lng: number }>,
 ): Promise<Array<number | null>> {
   if (!points.length) return [];
@@ -378,7 +378,7 @@ async function applyTerrainElevation(hill: Hill): Promise<Hill> {
  * Apply terrain elevation verification to a batch of hills in parallel.
  * Runs at most 5 hills concurrently to respect OpenTopoData rate limits.
  */
-async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
+export async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
   // Batch all summit+trailhead points into a single API call (max 100 pts)
   const pairs: Array<{ summit: { lat: number; lng: number }; trail: { lat: number; lng: number } } | null> =
     hills.map(h => {
@@ -435,7 +435,7 @@ async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]> {
  * - Filters out hills where the computed distance exceeds radius * 1.4.
  * - Clamps `totalElevation` to elevation × repeats in case AI sends inconsistent values.
  */
-function validateAndCorrectHills(
+export function validateAndCorrectHills(
   hills: Hill[],
   userLat: number | null,
   userLng: number | null,
@@ -477,7 +477,7 @@ function validateAndCorrectHills(
 
 // ── OSM Overpass — global peak discovery ─────────────────────────────────────
 
-interface OSMPeak {
+export interface OSMPeak {
   id: number;
   lat: number;
   lng: number;
@@ -489,7 +489,7 @@ interface OSMPeak {
  * Query the Overpass API for named natural peaks within `radiusKm` of a point.
  * Returns an empty array on any network/parse failure so the caller can fall back.
  */
-async function fetchOSMPeaks(
+export async function fetchOSMPeaks(
   centerLat: number,
   centerLng: number,
   radiusKm: number,
@@ -565,7 +565,7 @@ function surfaceFromElevation(summitM: number): string {
  * Limits processing to MAX_PEAKS closest peaks so all points fit in a single
  * OpenTopoData request (100-point cap).
  */
-async function osmPeaksToHills(
+export async function osmPeaksToHills(
   peaks: OSMPeak[],
   userLat: number,
   userLng: number,
@@ -655,7 +655,7 @@ async function osmPeaksToHills(
 const areaCache = new Map<string, { hills: Hill[]; ts: number }>();
 const AREA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-function parseAIJson(content: string): unknown {
+export function parseAIJson(content: string): unknown {
   const cleaned = content
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")

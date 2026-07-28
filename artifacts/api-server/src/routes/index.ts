@@ -18,6 +18,7 @@ import mountainVerificationRouter from "./mountain-verification";
 import hillSessionRouter from "./hill-session";
 import hillVerificationAdminRouter from "./hill-verification-admin";
 import userRouter from "./user";
+import virtualExpeditionRouter from "./virtual-expedition";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -37,6 +38,7 @@ router.use(trailMapWebRouter);
 router.use(hikeMapWebRouter);
 router.use(seededTrailsRouter);
 router.use(demoLoadRouter);
+router.use(virtualExpeditionRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
