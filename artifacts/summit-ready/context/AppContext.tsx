@@ -257,6 +257,8 @@ interface AppState {
   clearScoreStagnation: () => void;
   /** Update individual SummitGoal fields in-place without regenerating the plan or resetting sessions. */
   patchGoal: (updates: Partial<SummitGoal>) => Promise<void>;
+  shellMode: "training" | "expedition";
+  setShellMode: (mode: "training" | "expedition") => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -325,6 +327,8 @@ const AppContext = createContext<AppState>({
   scoreStagnation: null,
   clearScoreStagnation: () => {},
   patchGoal: async () => {},
+  shellMode: "training",
+  setShellMode: async () => {},
 });
 
 const _FLAT_GOAL_KEY             = "summitready_goal";
@@ -342,6 +346,7 @@ const _FLAT_HAS_VIEWED_PLAN_KEY  = "summitready_has_viewed_plan";
 const _FLAT_ACHIEVEMENTS_KEY     = "summitready_achievements";
 const _FLAT_COMPLETED_GOALS_KEY  = "summitready_completed_goals";
 const _FLAT_APP_MODE_KEY         = "summitready_app_mode";
+const _FLAT_SHELL_MODE_KEY       = "summitready_shell_mode";
 const _FLAT_EXPLORE_HIKES_KEY    = "summitready_explore_hikes";
 const _FLAT_SAVED_TRAILS_KEY     = "summitready_saved_trails";
 const _FLAT_COMPLETED_TRAILS_KEY = "summitready_completed_trails";
@@ -447,6 +452,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const ACHIEVEMENTS_KEY     = _uid ? `summitready_achievements_${_uid}`            : _FLAT_ACHIEVEMENTS_KEY;
   const COMPLETED_GOALS_KEY  = _uid ? `summitready_completed_goals_${_uid}`         : _FLAT_COMPLETED_GOALS_KEY;
   const APP_MODE_KEY         = _uid ? `summitready_app_mode_${_uid}`                : _FLAT_APP_MODE_KEY;
+  const SHELL_MODE_KEY       = _uid ? `summitready_shell_mode_${_uid}`              : _FLAT_SHELL_MODE_KEY;
   const EXPLORE_HIKES_KEY    = _uid ? `summitready_explore_hikes_${_uid}`           : _FLAT_EXPLORE_HIKES_KEY;
   const SAVED_TRAILS_KEY     = _uid ? `summitready_saved_trails_${_uid}`            : _FLAT_SAVED_TRAILS_KEY;
   const COMPLETED_TRAILS_KEY = _uid ? `summitready_completed_trails_${_uid}`        : _FLAT_COMPLETED_TRAILS_KEY;
@@ -482,6 +488,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [newlyUnlocked, setNewlyUnlocked] = useState<string[]>([]);
   const [completedGoals, setCompletedGoals] = useState<CompletedGoal[]>([]);
   const [appMode, setAppModeState] = useState<"summit" | "explore" | null>(null);
+  const [shellMode, setShellModeState] = useState<"training" | "expedition">("training");
   const [exploreHikes, setExploreHikes] = useState<ExploreHike[]>([]);
   const [savedTrailIds, setSavedTrailIds] = useState<string[]>([]);
   const [completedTrailIds, setCompletedTrailIds] = useState<string[]>([]);
@@ -506,6 +513,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNewlyUnlocked([]);
     setCompletedGoals([]);
     setAppModeState(null);
+    setShellModeState("training");
     setExploreHikes([]);
     setSavedTrailIds([]);
     setCompletedTrailIds([]);
@@ -680,6 +688,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // No else — fresh users start from the landing page with no pre-loaded data
 
         if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
+        const shellModeStr = await AsyncStorage.getItem(SHELL_MODE_KEY);
+        if (shellModeStr === "training" || shellModeStr === "expedition") {
+          setShellModeState(shellModeStr);
+        }
         // loadedHikes already parsed and migrated above (before readiness calculation)
         if (loadedHikes.length > 0) setExploreHikes(loadedHikes);
         if (savedTrailsStr) setSavedTrailIds(JSON.parse(savedTrailsStr) as string[]);
@@ -984,6 +996,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAppModeState(mode);
     await AsyncStorage.setItem(APP_MODE_KEY, mode);
   }, []);
+
+  const setShellMode = useCallback(async (mode: "training" | "expedition") => {
+    setShellModeState(mode);
+    await AsyncStorage.setItem(SHELL_MODE_KEY, mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [SHELL_MODE_KEY]);
 
   const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
@@ -1477,6 +1495,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reloadApp,
       scoreStagnation, clearScoreStagnation,
       patchGoal,
+      shellMode, setShellMode,
     }}>
       {children}
     </AppContext.Provider>

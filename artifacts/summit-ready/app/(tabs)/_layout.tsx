@@ -2,13 +2,14 @@ import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import {
   Home, Calendar, User, Trophy, Mountain,
-  Footprints, Compass,
+  Footprints,
 } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { Alert, Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
+import { ModeTogglePill } from "@/components/ModeTogglePill";
 
 // ── Single unified tab layout for ALL users ───────────────────────────────────
 // Virtual mode no longer swaps out the entire nav — it adds one "Virtual" tab
@@ -62,6 +63,7 @@ export default function TabLayout() {
   };
 
   return (
+    <>
     <Tabs screenOptions={sharedScreenOptions}>
       {/* ── Expedition / core tabs ───────────────────────────────────────── */}
       <Tabs.Screen
@@ -121,20 +123,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Virtual tab — accessible to all users ────────────────────────── */}
-      <Tabs.Screen
-        name="virtual"
-        options={{
-          title: "Virtual",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
-              <Compass size={20} color={color} />
-            </View>
-          ),
-          tabBarActiveTintColor: T.blue,
-        }}
-      />
-
       <Tabs.Screen
         name="account"
         options={{
@@ -153,12 +141,19 @@ export default function TabLayout() {
       <Tabs.Screen name="log"     options={{ href: null }} />
       <Tabs.Screen name="hikes"   options={{ href: null }} />
 
+      {/* ── Virtual tab moved to Expedition shell — kept for deep links ──── */}
+      <Tabs.Screen name="virtual"    options={{ href: null }} />
+
       {/* ── Old virtual-mode-specific screens (kept, hidden from nav) ────── */}
       <Tabs.Screen name="v-home"     options={{ href: null }} />
       <Tabs.Screen name="v-mountain" options={{ href: null }} />
       <Tabs.Screen name="v-hills"    options={{ href: null }} />
       <Tabs.Screen name="v-progress" options={{ href: null }} />
     </Tabs>
+
+    {/* Persistent shell toggle — sits in the safe-area zone above all tabs */}
+    <ModeTogglePill />
+    </>
   );
 }
 

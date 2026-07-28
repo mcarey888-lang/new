@@ -84,6 +84,14 @@ export default function LandingScreen() {
           await AsyncStorage.removeItem("summitready_active_hike_session");
         }
       } catch { /* ignore — fall through to dashboard */ }
+      // Restore the shell the user was last in
+      try {
+        const shellRaw = await AsyncStorage.getItem("summitready_shell_mode");
+        if (shellRaw === "expedition") {
+          router.replace("/(expedition)/base-camp" as any);
+          return;
+        }
+      } catch { /* fall through */ }
       router.replace("/(tabs)/dashboard");
     })();
   }, [authLoaded, isSignedIn, isLoading]);

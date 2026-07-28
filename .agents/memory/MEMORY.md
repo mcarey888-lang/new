@@ -21,3 +21,4 @@
 - [Plan tab redesign — Expedition Dashboard](plan-tab-redesign.md) — WeekCard sessions are tappable chips to session-detail; Plan tab has hero dashboard above Full Plan accordion; availableDays optional in SummitGoal.
 - [Virtual Expeditions Stage 3 — mode toggle + UI](virtual-expeditions-stage3.md) — floating pill over hero in dashboard; patchGoal for field-only updates; VirtualExpeditionView early-return in plan.tsx; shared confirmModeSwitch util.
 - [Mountain image loading pattern](mountain-image-api.md) — always remote URI via /api/mountain-image; never require() bundled assets; gradient behind ExpoImage as instant fallback.
+- [Dual-shell navigation](dual-shell-navigation.md) — (tabs) Training + (expedition) Expedition shells; ModeTogglePill in both layouts; shellMode persisted to AsyncStorage; TargetMountain field names + ProgressRing prop name.

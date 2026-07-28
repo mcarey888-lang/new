@@ -144,7 +144,8 @@ function RootLayoutNav() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="setup" options={{ headerShown: false, presentation: "card" }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)"       options={{ headerShown: false }} />
+      <Stack.Screen name="(expedition)" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="subscription" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hill-detail" options={{ headerShown: false, presentation: "card" }} />
