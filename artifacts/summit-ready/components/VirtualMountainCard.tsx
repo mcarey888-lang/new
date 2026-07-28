@@ -1,10 +1,16 @@
 /**
- * VirtualMountainCard
+ * VirtualMountainCard — matches the designer mockup exactly.
  *
- * Full 9-element mountain card for the Virtual Mountains browse list.
- * Each category (Alpine / Trek / Technical / Classic) has its own accent
- * colour used consistently throughout: hero gradient, progress ring,
- * chips, bottom bar.
+ * Structure (top → bottom):
+ *  1. Hero section: real image (or category gradient) with overlaid name / flag / subtitle
+ *  2. Body: tagline row (left) + animated progress ring (right)
+ *  3. Stats row: icon-labelled badges — route type, difficulty, duration, optional 4th
+ *  4. Divider
+ *  5. Data row: "Your Equivalent Hills" chips + "Total Elevation" block
+ *  6. Thin bottom progress bar (accent-coloured)
+ *
+ * Each category (Alpine / Trek / Technical / Classic) has its own accent colour used
+ * consistently throughout the card.
  */
 
 import React, { useEffect } from "react";
@@ -14,8 +20,12 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mountain, Lock } from "lucide-react-native";
+import {
+  Mountain, Footprints, Zap, Leaf, BarChart2,
+  Clock, Star, Sun, Calendar, Lock,
+} from "lucide-react-native";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useAnimatedProps,
@@ -32,37 +42,32 @@ const CATEGORY: Record<BundleCategory, {
   accent: string;
   dim: string;
   heroGrad: readonly [string, string, string];
-  label: string;
 }> = {
   Alpine: {
     accent: "#3ECF75",
     dim:    "rgba(62,207,117,0.14)",
     heroGrad: ["#061A0E", "#0D3020", "#071509"],
-    label: "Alpine",
   },
   Trek: {
     accent: "#FF9030",
     dim:    "rgba(255,144,48,0.14)",
     heroGrad: ["#1E0C04", "#341808", "#1A0A04"],
-    label: "Trek",
   },
   Technical: {
     accent: "#9B7FD4",
     dim:    "rgba(155,127,212,0.14)",
     heroGrad: ["#0E0820", "#1C1038", "#100A28"],
-    label: "Technical",
   },
   Classic: {
     accent: "#20CFCF",
     dim:    "rgba(32,207,207,0.14)",
     heroGrad: ["#041616", "#0A2E2E", "#051818"],
-    label: "Classic",
   },
 };
 
-// ── Difficulty tier ────────────────────────────────────────────────────────────
+// ── Difficulty ─────────────────────────────────────────────────────────────────
 
-function diffTier(d: VirtualBundle["difficulty"]): { label: string; color: string } {
+function diffDisplay(d: VirtualBundle["difficulty"]): { label: string; color: string } {
   switch (d) {
     case "Easy":     return { label: "Easy",     color: "#3ECF75" };
     case "Moderate": return { label: "Moderate", color: "#4A9FF5" };
@@ -71,20 +76,33 @@ function diffTier(d: VirtualBundle["difficulty"]): { label: string; color: strin
   }
 }
 
-// ── Animated SVG ring ──────────────────────────────────────────────────────────
+// ── Route-type icon per label ──────────────────────────────────────────────────
+
+function RouteTypeIcon({ label, size, color }: { label: string; size: number; color: string }) {
+  if (label === "Trek" || label === "Trail") return <Footprints size={size} color={color} />;
+  if (label === "Technical")                 return <Zap         size={size} color={color} />;
+  return                                            <Mountain    size={size} color={color} />;
+}
+
+// ── Context-badge icon ─────────────────────────────────────────────────────────
+
+function ContextIcon({ badge, size, color }: { badge: string; size: number; color: string }) {
+  const b = badge.toLowerCase();
+  if (b.includes("altitude"))   return <Mountain  size={size} color={color} />;
+  if (b.includes("technical"))  return <Zap       size={size} color={color} />;
+  if (b.includes("beginner"))   return <Leaf      size={size} color={color} />;
+  if (b.includes("iconic"))     return <Star      size={size} color={color} />;
+  if (b.includes("desert"))     return <Sun       size={size} color={color} />;
+  if (b.includes("multi"))      return <Calendar  size={size} color={color} />;
+  return                               <Mountain  size={size} color={color} />;
+}
+
+// ── Animated progress ring ─────────────────────────────────────────────────────
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function MiniRing({
-  pct,
-  size,
-  strokeWidth,
-  accent,
-}: {
-  pct: number;
-  size: number;
-  strokeWidth: number;
-  accent: string;
+function MiniRing({ pct, size, strokeWidth, accent }: {
+  pct: number; size: number; strokeWidth: number; accent: string;
 }) {
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
@@ -106,15 +124,11 @@ function MiniRing({
       <Svg width={size} height={size} style={{ position: "absolute" }}>
         <Circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none"
-          stroke="rgba(255,255,255,0.07)"
-          strokeWidth={strokeWidth}
+          fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={strokeWidth}
         />
         <AnimatedCircle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none"
-          stroke={accent}
-          strokeWidth={strokeWidth}
+          fill="none" stroke={accent} strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           animatedProps={animProps}
           strokeLinecap="round"
@@ -122,10 +136,10 @@ function MiniRing({
         />
       </Svg>
       <View style={{ alignItems: "center", gap: 1 }}>
-        <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: accent, lineHeight: 18 }}>
+        <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: accent, lineHeight: 19 }}>
           {pct}%
         </Text>
-        <Text style={{ fontSize: 6, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.35)", letterSpacing: 0.8, textTransform: "uppercase" }}>
+        <Text style={{ fontSize: 6, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.38)", letterSpacing: 0.8, textTransform: "uppercase" }}>
           COMPLETE
         </Text>
       </View>
@@ -133,11 +147,18 @@ function MiniRing({
   );
 }
 
-// ── Small stat badge ───────────────────────────────────────────────────────────
+// ── Stat badge ─────────────────────────────────────────────────────────────────
 
-function StatBadge({ label, color, bg }: { label: string; color: string; bg: string }) {
+function StatBadge({
+  icon, label, color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+}) {
   return (
-    <View style={[s.statBadge, { backgroundColor: bg, borderColor: color + "40" }]}>
+    <View style={[s.statBadge, { borderColor: color + "35" }]}>
+      {icon}
       <Text style={[s.statBadgeText, { color }]}>{label}</Text>
     </View>
   );
@@ -147,8 +168,8 @@ function StatBadge({ label, color, bg }: { label: string; color: string; bg: str
 
 function HillChip({ name, accent }: { name: string; accent: string }) {
   return (
-    <View style={[s.hillChip, { backgroundColor: accent + "18", borderColor: accent + "35" }]}>
-      <Text style={[s.hillChipText, { color: accent }]} numberOfLines={1}>{name}</Text>
+    <View style={[s.chip, { backgroundColor: accent + "18", borderColor: accent + "40" }]}>
+      <Text style={[s.chipText, { color: accent }]} numberOfLines={1}>{name}</Text>
     </View>
   );
 }
@@ -159,11 +180,8 @@ export interface VirtualMountainCardProps {
   bundle: VirtualBundle;
   locked: boolean;
   onPress: () => void;
-  /** 0-100 percentage of elevation goal achieved (from active virtual goal) */
   progressPct: number;
-  /** Metres of elevation gained so far */
   elevationGained: number;
-  /** Real matched hill names (use exampleHills if no API result yet) */
   equivalentHills: string[];
 }
 
@@ -179,113 +197,135 @@ export function VirtualMountainCard({
 }: VirtualMountainCardProps) {
   const cat    = CATEGORY[bundle.category];
   const accent = cat.accent;
-  const diff   = diffTier(bundle.difficulty);
+  const diff   = diffDisplay(bundle.difficulty);
 
-  // Chip overflow: show up to 3 hills + "+N more" chip
-  const MAX_CHIPS = 3;
-  const visibleHills = equivalentHills.slice(0, MAX_CHIPS);
-  const overflow     = equivalentHills.length - MAX_CHIPS;
+  const MAX_CHIPS  = 3;
+  const visible    = equivalentHills.slice(0, MAX_CHIPS);
+  const overflow   = equivalentHills.length - MAX_CHIPS;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={locked ? 0.6 : 0.88}
-      style={[s.card, locked && { opacity: 0.65 }]}
+      style={[s.card, { borderColor: accent + "28" }, locked && { opacity: 0.62 }]}
     >
-      {/* ── Hero section ──────────────────────────────────────────────────── */}
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <View style={s.heroWrap}>
+
+        {/* Background: real image or category gradient */}
+        {bundle.heroImage ? (
+          <ExpoImage
+            source={bundle.heroImage}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+        ) : (
+          <LinearGradient
+            colors={cat.heroGrad}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        )}
+
+        {/* Bottom scrim for name legibility */}
         <LinearGradient
-          colors={cat.heroGrad}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={["transparent", "rgba(8,18,32,0.75)", "#0A1628"]}
+          style={s.heroScrim}
+          locations={[0, 0.5, 1]}
         />
+
         {/* Category badge — top-left */}
         <View style={[s.catBadge, { backgroundColor: accent + "22", borderColor: accent + "55" }]}>
-          <Text style={[s.catBadgeText, { color: accent }]}>{cat.label.toUpperCase()}</Text>
+          <Text style={[s.catBadgeText, { color: accent }]}>
+            {bundle.category.toUpperCase()}
+          </Text>
         </View>
 
         {/* Lock overlay */}
         {locked && (
           <View style={s.lockOverlay}>
             <View style={s.lockCircle}>
-              <Lock size={18} color="rgba(255,255,255,0.7)" />
+              <Lock size={20} color="rgba(255,255,255,0.7)" />
             </View>
           </View>
         )}
 
-        {/* Large mountain emoji — centred */}
-        <View style={s.heroEmoji}>
-          <Text style={{ fontSize: 52, lineHeight: 60 }}>{bundle.emoji}</Text>
+        {/* Mountain name + flag + subtitle — overlaid bottom-left */}
+        <View style={s.heroNameBlock}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={s.heroName}>{bundle.goalMountain}</Text>
+            <Text style={{ fontSize: 20 }}>{bundle.flag}</Text>
+          </View>
+          <Text style={s.heroSub}>
+            {bundle.summitElevation.toLocaleString()}m · {bundle.country}
+          </Text>
         </View>
-
-        {/* Gradient scrim at bottom of hero for text legibility */}
-        <LinearGradient
-          colors={["transparent", "#0A1628"]}
-          style={s.heroScrim}
-        />
       </View>
 
-      {/* ── Card body ─────────────────────────────────────────────────────── */}
+      {/* ── Body ──────────────────────────────────────────────────────────── */}
       <View style={s.body}>
-        {/* Name row + progress ring */}
-        <View style={s.nameRow}>
-          {/* Left: name / subtitle / tagline / stats */}
-          <View style={{ flex: 1, gap: 4 }}>
-            {/* Flag + mountain name */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <Text style={{ fontSize: 16 }}>{bundle.flag}</Text>
-              <Text style={s.mountainName} numberOfLines={2}>{bundle.goalMountain}</Text>
-            </View>
-            {/* Subtitle */}
-            <Text style={s.mountainSub}>
-              {bundle.summitElevation.toLocaleString()}m · {bundle.country}
-            </Text>
-            {/* Tagline */}
-            <Text style={s.tagline} numberOfLines={3}>{bundle.tagline}</Text>
-            {/* Quick stats */}
-            <View style={s.statsRow}>
-              <StatBadge label={diff.label}       color={diff.color}           bg={diff.color + "18"} />
-              <StatBadge label={bundle.duration}  color={T.textMuted}          bg="rgba(255,255,255,0.05)" />
-              <StatBadge label={bundle.contextBadge} color={accent}            bg={accent + "14"} />
-            </View>
-          </View>
 
-          {/* Right: progress ring */}
-          <View style={s.ringWrap}>
-            <MiniRing pct={progressPct} size={72} strokeWidth={5} accent={accent} />
+        {/* Tagline row + progress ring */}
+        <View style={s.taglineRow}>
+          <Text style={s.tagline} numberOfLines={3}>
+            {bundle.tagline}
+          </Text>
+          {/* Ring with dark circle bg */}
+          <View style={[s.ringBg, { borderColor: accent + "20" }]}>
+            <MiniRing pct={progressPct} size={78} strokeWidth={5} accent={accent} />
           </View>
+        </View>
+
+        {/* Stats row */}
+        <View style={s.statsRow}>
+          <StatBadge
+            icon={<RouteTypeIcon label={bundle.routeTypeLabel} size={11} color={T.textMuted} />}
+            label={bundle.routeTypeLabel}
+            color={T.textMuted}
+          />
+          <StatBadge
+            icon={<BarChart2 size={11} color={diff.color} />}
+            label={diff.label}
+            color={diff.color}
+          />
+          <StatBadge
+            icon={<Clock size={11} color={T.textMuted} />}
+            label={bundle.duration}
+            color={T.textMuted}
+          />
+          {bundle.contextBadge ? (
+            <StatBadge
+              icon={<ContextIcon badge={bundle.contextBadge} size={11} color={accent} />}
+              label={bundle.contextBadge}
+              color={accent}
+            />
+          ) : null}
         </View>
 
         {/* Divider */}
         <View style={s.divider} />
 
-        {/* Hills + elevation row */}
+        {/* Hills + elevation */}
         <View style={s.dataRow}>
-          {/* Equivalent hills */}
           <View style={{ flex: 1, gap: 5 }}>
             <Text style={s.dataLabel}>YOUR EQUIVALENT HILLS</Text>
             <View style={s.chipsRow}>
-              {visibleHills.map(h => (
-                <HillChip key={h} name={h} accent={accent} />
-              ))}
+              {visible.map(h => <HillChip key={h} name={h} accent={accent} />)}
               {overflow > 0 && (
                 <HillChip name={`+${overflow} more`} accent={T.textMuted} />
               )}
             </View>
           </View>
 
-          {/* Total elevation */}
-          <View style={s.elevBlock}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 3 }}>
+          <View style={{ alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               <Mountain size={9} color={accent} />
-              <Text style={s.dataLabel}>ELEVATION</Text>
+              <Text style={s.dataLabel}>TOTAL ELEVATION</Text>
             </View>
-            <Text style={[s.elevGained, { color: accent }]}>
+            <Text style={[s.elevGained, { color: T.white }]}>
               {elevationGained.toLocaleString()}m
-            </Text>
-            <Text style={s.elevGoal}>
-              / {bundle.totalElevationGain.toLocaleString()}m
+              <Text style={s.elevGoal}> / {bundle.totalElevationGain.toLocaleString()}m</Text>
             </Text>
           </View>
         </View>
@@ -293,15 +333,10 @@ export function VirtualMountainCard({
 
       {/* ── Bottom progress bar ────────────────────────────────────────────── */}
       <View style={s.barTrack}>
-        <View
-          style={[
-            s.barFill,
-            {
-              width: `${Math.min(100, progressPct)}%` as `${number}%`,
-              backgroundColor: accent,
-            },
-          ]}
-        />
+        <View style={[s.barFill, {
+          width: `${Math.min(100, progressPct)}%` as `${number}%`,
+          backgroundColor: accent,
+        }]} />
       </View>
     </TouchableOpacity>
   );
@@ -311,35 +346,26 @@ export function VirtualMountainCard({
 
 const s = StyleSheet.create({
   card: {
-    backgroundColor: "#0D1E30",
+    backgroundColor: "#0A1525",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     overflow: "hidden",
     marginBottom: 14,
   },
 
   // Hero
   heroWrap: {
-    height: 128,
+    height: 168,
     overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroEmoji: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
   },
   heroScrim: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
-    height: 50,
+    height: 88,
   },
   catBadge: {
     position: "absolute",
-    top: 10,
-    left: 12,
+    top: 12, left: 12,
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 8,
@@ -353,20 +379,36 @@ const s = StyleSheet.create({
   },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 3,
   },
   lockCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    width: 46, height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(0,0,0,0.55)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  heroNameBlock: {
+    position: "absolute",
+    bottom: 10, left: 14, right: 100,
+    gap: 2,
+    zIndex: 2,
+  },
+  heroName: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+    lineHeight: 28,
+  },
+  heroSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.65)",
   },
 
   // Body
@@ -375,53 +417,53 @@ const s = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     gap: 10,
+    backgroundColor: "#0A1525",
   },
-  nameRow: {
+
+  // Tagline row + ring
+  taglineRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 10,
-  },
-  mountainName: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: T.white,
-    flex: 1,
-  },
-  mountainSub: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: T.textMuted,
-    marginTop: -2,
+    minHeight: 78,
   },
   tagline: {
-    fontSize: 12,
+    flex: 1,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: T.textDim,
-    lineHeight: 17,
+    color: T.textMuted,
+    lineHeight: 19,
   },
+  ringBg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#060E1C",
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  // Stats
   statsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 5,
-    marginTop: 2,
+    gap: 6,
   },
   statBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   statBadgeText: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-
-  // Ring
-  ringWrap: {
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: 2,
-    flexShrink: 0,
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
 
   // Divider
@@ -440,42 +482,37 @@ const s = StyleSheet.create({
     fontSize: 8,
     fontFamily: "Inter_700Bold",
     color: T.textDim,
-    letterSpacing: 0.9,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
+    gap: 5,
   },
-  hillChip: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+  chip: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
   },
-  hillChipText: {
-    fontSize: 10,
+  chipText: {
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
-  elevBlock: {
-    alignItems: "flex-end",
-    flexShrink: 0,
-    minWidth: 80,
-  },
   elevGained: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
-    lineHeight: 18,
+    lineHeight: 20,
+    marginTop: 2,
   },
   elevGoal: {
-    fontSize: 10,
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: T.textDim,
-    marginTop: 1,
   },
 
-  // Progress bar
+  // Bottom bar
   barTrack: {
     height: 3,
     backgroundColor: "rgba(255,255,255,0.05)",

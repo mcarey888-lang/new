@@ -40,6 +40,14 @@ export interface VirtualBundle {
   country: string;
   /** Contextual 4th badge */
   contextBadge: string;
+  /** Label shown in the first stat badge (route type) — e.g. "Alpine", "Trek", "Mountain" */
+  routeTypeLabel: string;
+  /**
+   * Optional hero image — pass a require() result when a mountain photo is available.
+   * Falls back to the category gradient when absent.
+   * e.g. heroImage: require("@/assets/images/mountains/mont-blanc.jpg")
+   */
+  heroImage?: number;
 }
 
 export const VIRTUAL_BUNDLES: VirtualBundle[] = [
@@ -63,6 +71,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "7–8 Days",
     country: "Tanzania",
     contextBadge: "High Altitude",
+    routeTypeLabel: "Trek",
   },
   {
     id: "mont-blanc-lake-district",
@@ -83,6 +92,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "2–3 Days",
     country: "France / Italy",
     contextBadge: "High Altitude",
+    routeTypeLabel: "Alpine",
   },
   {
     id: "ben-nevis-brecon-beacons",
@@ -103,6 +113,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "1 Day",
     country: "Scotland",
     contextBadge: "Great for Beginners",
+    routeTypeLabel: "Mountain",
   },
 
   // ── PREMIUM ─────────────────────────────────────────────────────────────────
@@ -125,6 +136,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "14 Days",
     country: "Nepal",
     contextBadge: "High Altitude",
+    routeTypeLabel: "Trek",
   },
   {
     id: "matterhorn-yorkshire-dales",
@@ -145,6 +157,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "2 Days",
     country: "Switzerland",
     contextBadge: "Technical",
+    routeTypeLabel: "Alpine",
   },
   {
     id: "aconcagua-scottish-highlands",
@@ -165,6 +178,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "20 Days",
     country: "Argentina",
     contextBadge: "High Altitude",
+    routeTypeLabel: "Alpine",
   },
   {
     id: "elbrus-cairngorms",
@@ -185,6 +199,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "8 Days",
     country: "Russia",
     contextBadge: "High Altitude",
+    routeTypeLabel: "Alpine",
   },
   {
     id: "fuji-north-york-moors",
@@ -205,6 +220,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "1–2 Days",
     country: "Japan",
     contextBadge: "Iconic Summit",
+    routeTypeLabel: "Mountain",
   },
   {
     id: "snowdon-dartmoor",
@@ -225,6 +241,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "1 Day",
     country: "Wales",
     contextBadge: "Great for Beginners",
+    routeTypeLabel: "Mountain",
   },
   {
     id: "denali-lake-district",
@@ -245,6 +262,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "21 Days",
     country: "Alaska, USA",
     contextBadge: "Technical",
+    routeTypeLabel: "Alpine",
   },
   {
     id: "tour-du-mont-blanc-cotswolds",
@@ -265,6 +283,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "11 Days",
     country: "France / Italy / Switzerland",
     contextBadge: "Multi-Day",
+    routeTypeLabel: "Trek",
   },
   {
     id: "grand-canyon-south-downs",
@@ -285,6 +304,7 @@ export const VIRTUAL_BUNDLES: VirtualBundle[] = [
     duration: "3 Days",
     country: "Arizona, USA",
     contextBadge: "Desert Terrain",
+    routeTypeLabel: "Trail",
   },
 ];
 
