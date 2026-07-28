@@ -491,7 +491,7 @@ export default function SetupScreen() {
           )}
 
           {/* Fitness Assessment — slider quiz */}
-          {!isChangeMode && <Section label="Your Fitness" icon={Zap}>
+          {!isChangeMode && !virtualMode && <Section label="Your Fitness" icon={Zap}>
             <Text style={styles.sectionDesc}>
               Slide each to where you honestly sit — this shapes your entire plan.
             </Text>
