@@ -236,8 +236,12 @@ export default function SessionDetailScreen() {
     const sessionTarget = session?.targetElevation ?? hill.elevation * hill.repeats;
     const adjustedReps = Math.max(1, Math.round(sessionTarget / Math.max(1, hill.elevation)));
     const adjustedHill: NearbyHill = { ...hill, repeats: adjustedReps, totalElevation: adjustedReps * hill.elevation };
+    const description =
+      `Head to ${adjustedHill.name} (${adjustedHill.elevation}m gain per rep). ` +
+      `Complete ${adjustedReps} rep${adjustedReps !== 1 ? "s" : ""} for a total of ${adjustedHill.totalElevation}m elevation gain. ` +
+      `Focus on a steady pace on the ascent and controlled steps on the descent to build the leg strength you'll need on summit day.`;
     await assignHillToSession(weekNum, sessionIdx, adjustedHill);
-    await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation });
+    await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation, description });
   }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
 
   const EXERCISE_LABEL: Record<GymExercise, string> = {
