@@ -18,7 +18,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withSpring,
+  withSequence,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
@@ -864,6 +872,264 @@ function WeekCard({
   );
 }
 
+// ── Week Celebration Overlay ──────────────────────────────────────────────────
+const CELEBRATION_PARTICLES = [
+  { emoji: "🎉", xPct: 0.12 },
+  { emoji: "🏔️", xPct: 0.28 },
+  { emoji: "✨", xPct: 0.48 },
+  { emoji: "🌟", xPct: 0.65 },
+  { emoji: "💪", xPct: 0.80 },
+  { emoji: "⛰️", xPct: 0.95 },
+];
+
+function WeekCelebrationOverlay({
+  visible,
+  weekNum,
+  hasNextWeek,
+  onDismiss,
+  onViewNextWeek,
+}: {
+  visible: boolean;
+  weekNum: number;
+  hasNextWeek: boolean;
+  onDismiss: () => void;
+  onViewNextWeek: () => void;
+}) {
+  const cardW = width - 32;
+
+  // Banner entrance
+  const bannerScale = useSharedValue(0.88);
+  const bannerOpacity = useSharedValue(0);
+
+  // 6 particle pairs (y + opacity) — fixed count so hook rules are respected
+  const p0y = useSharedValue(0); const p0o = useSharedValue(0);
+  const p1y = useSharedValue(0); const p1o = useSharedValue(0);
+  const p2y = useSharedValue(0); const p2o = useSharedValue(0);
+  const p3y = useSharedValue(0); const p3o = useSharedValue(0);
+  const p4y = useSharedValue(0); const p4o = useSharedValue(0);
+  const p5y = useSharedValue(0); const p5o = useSharedValue(0);
+
+  const particleYs = [p0y, p1y, p2y, p3y, p4y, p5y];
+  const particleOs = [p0o, p1o, p2o, p3o, p4o, p5o];
+
+  const bannerStyle = useAnimatedStyle(() => ({
+    opacity: bannerOpacity.value,
+    transform: [{ scale: bannerScale.value }],
+  }));
+  const p0Style = useAnimatedStyle(() => ({ opacity: p0o.value, transform: [{ translateY: p0y.value }] }));
+  const p1Style = useAnimatedStyle(() => ({ opacity: p1o.value, transform: [{ translateY: p1y.value }] }));
+  const p2Style = useAnimatedStyle(() => ({ opacity: p2o.value, transform: [{ translateY: p2y.value }] }));
+  const p3Style = useAnimatedStyle(() => ({ opacity: p3o.value, transform: [{ translateY: p3y.value }] }));
+  const p4Style = useAnimatedStyle(() => ({ opacity: p4o.value, transform: [{ translateY: p4y.value }] }));
+  const p5Style = useAnimatedStyle(() => ({ opacity: p5o.value, transform: [{ translateY: p5y.value }] }));
+  const particleStyles = [p0Style, p1Style, p2Style, p3Style, p4Style, p5Style];
+
+  useEffect(() => {
+    if (visible) {
+      // Animate banner in
+      bannerScale.value = withSpring(1, { damping: 14, stiffness: 160 });
+      bannerOpacity.value = withTiming(1, { duration: 320 });
+
+      // Launch particles with staggered delays
+      const delays = [0, 80, 40, 160, 100, 220];
+      particleYs.forEach((py, i) => {
+        const po = particleOs[i];
+        const d = delays[i];
+        py.value = 0;
+        po.value = 0;
+        py.value = withDelay(d, withTiming(-160, { duration: 1500 }));
+        po.value = withDelay(
+          d,
+          withSequence(
+            withTiming(1, { duration: 180 }),
+            withDelay(700, withTiming(0, { duration: 620 }))
+          )
+        );
+      });
+    } else {
+      bannerScale.value = withTiming(0.92, { duration: 180 });
+      bannerOpacity.value = withTiming(0, { duration: 180 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View style={[celebStyles.card, bannerStyle]}>
+      {/* Green glow gradient */}
+      <LinearGradient
+        colors={["rgba(62,207,117,0.18)", "rgba(62,207,117,0.04)"]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Floating emoji particles */}
+      <View style={celebStyles.particleContainer} pointerEvents="none">
+        {CELEBRATION_PARTICLES.map((p, i) => (
+          <Animated.Text
+            key={i}
+            style={[
+              celebStyles.particle,
+              { left: cardW * p.xPct - 12 },
+              particleStyles[i],
+            ]}
+          >
+            {p.emoji}
+          </Animated.Text>
+        ))}
+      </View>
+
+      {/* Header */}
+      <View style={celebStyles.headerRow}>
+        <View style={celebStyles.weekBadge}>
+          <Text style={celebStyles.weekBadgeText}>WEEK {weekNum}</Text>
+        </View>
+      </View>
+
+      {/* Title */}
+      <Text style={celebStyles.title}>Week Complete! 🎉</Text>
+      <Text style={celebStyles.subtitle}>
+        All sessions done — outstanding work. Keep the momentum going!
+      </Text>
+
+      {/* Completion pip row */}
+      <View style={celebStyles.pipRow}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <View key={i} style={celebStyles.pip} />
+        ))}
+      </View>
+
+      {/* CTAs */}
+      <View style={celebStyles.btnRow}>
+        {hasNextWeek && (
+          <TouchableOpacity
+            style={celebStyles.nextWeekBtn}
+            activeOpacity={0.85}
+            onPress={onViewNextWeek}
+          >
+            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={celebStyles.nextWeekInner}>
+              <Text style={celebStyles.nextWeekText}>View Next Week</Text>
+              <ChevronRight size={15} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[celebStyles.dismissBtn, !hasNextWeek && { flex: 1 }]}
+          activeOpacity={0.7}
+          onPress={onDismiss}
+        >
+          <Text style={celebStyles.dismissText}>Dismiss</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+}
+
+const celebStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: T.green + "55",
+    backgroundColor: T.card,
+    padding: 20,
+    overflow: "hidden",
+    gap: 12,
+  },
+  particleContainer: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    height: 180,
+    pointerEvents: "none",
+  } as any,
+  particle: {
+    position: "absolute",
+    fontSize: 22,
+    bottom: 0,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weekBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: T.greenDim,
+    borderWidth: 1,
+    borderColor: T.green + "50",
+  },
+  weekBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: T.green,
+    letterSpacing: 1.1,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: T.white,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+    lineHeight: 20,
+  },
+  pipRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginVertical: 4,
+  },
+  pip: {
+    width: 28,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: T.green,
+    opacity: 0.8,
+  },
+  btnRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  nextWeekBtn: {
+    flex: 1.5,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  nextWeekInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+  },
+  nextWeekText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  dismissBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  dismissText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: T.textMuted,
+  },
+});
+
 export default function PlanScreen() {
   useScreenView("plan");
   const insets = useSafeAreaInsets();
@@ -908,6 +1174,10 @@ export default function PlanScreen() {
   // Mission dashboard navigation state
   const [viewedWeekNum, setViewedWeekNum] = useState<number>(currentWeek?.weekNumber ?? 1);
   const [selectedDow, setSelectedDow] = useState<number>(new Date().getDay());
+
+  // Week completion celebration
+  const [showWeekCelebration, setShowWeekCelebration] = useState(false);
+  const [celebratedWeeks, setCelebratedWeeks] = useState<Set<number>>(new Set());
   // Swipe ref pattern: keeps advanceDay fresh without recreating PanResponder
   const missionSwipeRef = useRef<(dir: 1 | -1) => void>(() => {});
   const missionPanResponder = useRef(
@@ -1037,6 +1307,33 @@ export default function PlanScreen() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWeek?.weekNumber]);
+
+  // Detect week completion and trigger celebration
+  const viewedWeekForEffect = trainingPlan.find(w => w.weekNumber === viewedWeekNum);
+  const isViewedWeekCompleteSig = viewedWeekForEffect
+    ? viewedWeekForEffect.sessions.every((_, i) =>
+        !!completedPlanSessions[`${viewedWeekNum}-${i}`]
+      )
+    : false;
+
+  useEffect(() => {
+    if (
+      isViewedWeekCompleteSig &&
+      viewedWeekForEffect &&
+      viewedWeekForEffect.sessions.length > 0 &&
+      !celebratedWeeks.has(viewedWeekNum)
+    ) {
+      setShowWeekCelebration(true);
+      setCelebratedWeeks(prev => new Set([...prev, viewedWeekNum]));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isViewedWeekCompleteSig, viewedWeekNum]);
+
+  // Hide celebration when user navigates to a different week
+  useEffect(() => {
+    setShowWeekCelebration(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewedWeekNum]);
 
   if (!summitGoal || trainingPlan.length === 0) {
     return (
@@ -1377,6 +1674,22 @@ export default function PlanScreen() {
             })}
           </View>
         </View>
+
+        {/* ── WEEK CELEBRATION ──────────────────────────────────────────── */}
+        <WeekCelebrationOverlay
+          visible={showWeekCelebration}
+          weekNum={viewedWeekNum}
+          hasNextWeek={!!trainingPlan.find(w => w.weekNumber === viewedWeekNum + 1)}
+          onDismiss={() => setShowWeekCelebration(false)}
+          onViewNextWeek={() => {
+            const nextW = trainingPlan.find(w => w.weekNumber === viewedWeekNum + 1);
+            if (nextW) {
+              setViewedWeekNum(viewedWeekNum + 1);
+              setSelectedDow(new Date().getDay());
+            }
+            setShowWeekCelebration(false);
+          }}
+        />
 
         {/* ── TODAY'S MISSION card (swipeable) ──────────────────────────── */}
         <View {...missionPanResponder.panHandlers}>
