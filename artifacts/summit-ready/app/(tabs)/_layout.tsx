@@ -1,8 +1,8 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import {
-  Home, Calendar, User, Map, Trophy, Mountain,
-  Footprints, Compass, TrendingUp, MapPin,
+  Home, Calendar, User, Trophy, Mountain,
+  Footprints, Compass,
 } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { Alert, Platform, StyleSheet, View } from "react-native";
@@ -10,20 +10,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 
-// ── All tab-screen names in the (tabs) directory ─────────────────────────────
-// Every file must be listed in BOTH tab sets (visible or hidden via href:null)
-// so Expo Router doesn't emit "unmatched route" warnings.
-
-const EXPEDITION_ONLY = ["plan", "challenges", "trails", "hills"] as const;
-const VIRTUAL_ONLY    = ["v-home", "v-mountain", "v-hills", "v-progress"] as const;
-const SHARED          = ["dashboard", "account", "explore", "log", "hikes"] as const;
+// ── Single unified tab layout for ALL users ───────────────────────────────────
+// Virtual mode no longer swaps out the entire nav — it adds one "Virtual" tab
+// alongside the existing expedition tabs.  The old v-home / v-mountain /
+// v-hills / v-progress screens are kept as files but hidden via href:null.
 
 export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
-  const { scoreStagnation, clearScoreStagnation, summitGoal } = useApp();
-  const isVirtual = summitGoal?.mode === "virtual";
+  const { scoreStagnation, clearScoreStagnation } = useApp();
 
   // Show "why didn't my score improve?" popup whenever a session or hike
   // is logged and the readiness score stays the same or drops.
@@ -65,89 +61,9 @@ export default function TabLayout() {
     },
   };
 
-  // ── Virtual mode tabs ──────────────────────────────────────────────────────
-  if (isVirtual) {
-    return (
-      <Tabs key="virtual" screenOptions={sharedScreenOptions}>
-        {/* ── Virtual-specific tabs ── */}
-        <Tabs.Screen
-          name="v-home"
-          options={{
-            title: "Home",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
-                <Home size={20} color={color} />
-              </View>
-            ),
-            tabBarActiveTintColor: T.blue,
-          }}
-        />
-        <Tabs.Screen
-          name="v-mountain"
-          options={{
-            title: "My Mountain",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
-                <Mountain size={20} color={color} />
-              </View>
-            ),
-            tabBarActiveTintColor: T.blue,
-          }}
-        />
-        <Tabs.Screen
-          name="v-hills"
-          options={{
-            title: "Local Hills",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.greenDim }] : styles.iconWrap}>
-                <Compass size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="v-progress"
-          options={{
-            title: "My Journey",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.purpleDim }] : styles.iconWrap}>
-                <TrendingUp size={20} color={color} />
-              </View>
-            ),
-            tabBarActiveTintColor: T.purple,
-          }}
-        />
-        <Tabs.Screen
-          name="account"
-          options={{
-            title: "Profile",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
-                <User size={20} color={color} />
-              </View>
-            ),
-            tabBarActiveTintColor: T.blue,
-          }}
-        />
-
-        {/* ── Expedition-only screens hidden in Virtual mode ── */}
-        <Tabs.Screen name="dashboard"   options={{ href: null }} />
-        <Tabs.Screen name="plan"        options={{ href: null }} />
-        <Tabs.Screen name="challenges"  options={{ href: null }} />
-        <Tabs.Screen name="trails"      options={{ href: null }} />
-        <Tabs.Screen name="hills"       options={{ href: null }} />
-
-        {/* ── Always-hidden screens ── */}
-        <Tabs.Screen name="explore"     options={{ href: null }} />
-        <Tabs.Screen name="log"         options={{ href: null }} />
-        <Tabs.Screen name="hikes"       options={{ href: null }} />
-      </Tabs>
-    );
-  }
-
-  // ── Expedition / Training mode tabs (default) ──────────────────────────────
   return (
-    <Tabs key="expedition" screenOptions={sharedScreenOptions}>
+    <Tabs screenOptions={sharedScreenOptions}>
+      {/* ── Expedition / core tabs ───────────────────────────────────────── */}
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -170,17 +86,12 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* Explore tab hidden — its content lives in Home and Hills */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
-
-      {/* ── Shared tabs ── */}
       <Tabs.Screen
         name="challenges"
         options={{
           title: "Challenges",
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.orangeDim ?? "rgba(245,158,11,0.15)" }] : styles.iconWrap}>
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.orangeDim }] : styles.iconWrap}>
               <Trophy size={20} color={color} />
             </View>
           ),
@@ -198,8 +109,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="log"   options={{ href: null }} />
-      <Tabs.Screen name="hikes" options={{ href: null }} />
       <Tabs.Screen
         name="hills"
         options={{
@@ -211,6 +120,21 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* ── Virtual tab — accessible to all users ────────────────────────── */}
+      <Tabs.Screen
+        name="virtual"
+        options={{
+          title: "Virtual",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? [styles.activeIconWrap, { backgroundColor: T.blueDim }] : styles.iconWrap}>
+              <Compass size={20} color={color} />
+            </View>
+          ),
+          tabBarActiveTintColor: T.blue,
+        }}
+      />
+
       <Tabs.Screen
         name="account"
         options={{
@@ -224,7 +148,12 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Virtual-only screens hidden in Expedition mode ── */}
+      {/* ── Always-hidden utility screens ───────────────────────────────── */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="log"     options={{ href: null }} />
+      <Tabs.Screen name="hikes"   options={{ href: null }} />
+
+      {/* ── Old virtual-mode-specific screens (kept, hidden from nav) ────── */}
       <Tabs.Screen name="v-home"     options={{ href: null }} />
       <Tabs.Screen name="v-mountain" options={{ href: null }} />
       <Tabs.Screen name="v-hills"    options={{ href: null }} />

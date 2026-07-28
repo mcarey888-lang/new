@@ -92,6 +92,15 @@ export interface SummitGoal {
   simulationDurationWeeks?: number;
   /** Virtual mode only: cached recommended training hills from the last /virtual-expedition call. */
   virtualHills?: NearbyHill[];
+  /**
+   * Virtual mode only: real outdoor hike progress logged by the user toward
+   * their goal mountain's combined elevation and distance demands.
+   */
+  virtualHikeProgress?: {
+    elevationGained: number;  // metres accumulated across logged hikes
+    distanceCovered: number;  // km accumulated across logged hikes
+    hikesLogged: number;      // total count of logged hikes
+  };
 }
 
 export interface PlanSession {
