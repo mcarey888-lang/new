@@ -69,18 +69,19 @@ Yorkshire Dales / South Pennines:
 
 Lake District:
   Skiddaw          summit 931m | Latrigg/Gale Road car park ~280m    → elevation = 651
-  Helvellyn        summit 950m | Swirls car park ~210m               → elevation = 741
+  Helvellyn        summit 950m | Swirls/Glenridding car park ~190m   → elevation = 760
   Blencathra       summit 868m | Scales car park ~250m               → elevation = 618
   Catbells         summit 451m | Hawse End car park ~80m             → elevation = 371
   Great Gable      summit 899m | Wasdale Head car park ~75m          → elevation = 824
-  Scafell Pike     summit 978m | Wasdale Head car park ~75m          → elevation = 900
+  Scafell Pike     summit 978m | Wasdale Head car park ~75m          → elevation = 903
   Coniston Old Man summit 803m | Coniston car park ~55m              → elevation = 748
 
 Wales:
   Pen y Fan        summit 886m | Pont ar Daf car park ~440m          → elevation = 446
   Corn Du          summit 873m | Pont ar Daf car park ~440m          → elevation = 433
   Cribyn           summit 795m | Pont ar Daf car park ~440m          → elevation = 355
-  Snowdon (Pyg)    summit 1085m| Pen-y-Pass car park ~359m          → elevation = 726
+  Snowdon          summit 1085m| Llanberis car park ~105m           → elevation = 980  ← DEFAULT (Llanberis Path, most popular)
+  Snowdon (Pyg)    summit 1085m| Pen-y-Pass car park ~359m          → elevation = 726  ← Pyg Track / Miners' Track only
   Snowdon (Llan.)  summit 1085m| Llanberis car park ~105m           → elevation = 980
   Cadair Idris     summit 893m | Ty Nant car park ~200m              → elevation = 693
   Sugar Loaf       summit 596m | car park ~350m                      → elevation = 246
@@ -211,14 +212,16 @@ const KNOWN_GAINS: Record<string, number> = {
   // Lake District
   "skiddaw": 651, "helvellyn": 760, "helvellyn-via-striding-edge": 760,
   "blencathra": 640, "blencathra-via-sharp-edge": 640,
-  "catbells": 451, "great-gable": 870, "scafell-pike": 950,
+  "catbells": 451, "great-gable": 870, "scafell-pike": 903,
   "sca-fell-scafell-pike-loop": 1150, "sca-fell": 910,
   "coniston-old-man": 748, "fairfield": 640, "st-sunday-crag": 700,
   "red-screes": 625, "high-street": 680,
   // Wales
   "pen-y-fan": 446, "pen-y-fan-south-ridge": 420,
   "corn-du": 433, "cribyn": 355,
-  "snowdon": 726, "snowdon-via-pyg-track": 900, "snowdon-via-rhyd-ddu": 870,
+  // Snowdon: default = Llanberis Path (most popular, ~980m); Pyg/Miners' Track from Pen-y-Pass = 726m
+  "snowdon": 980, "snowdon-via-pyg-track": 726, "snowdon-via-rhyd-ddu": 870,
+  "snowdon-llanberis-path": 980, "snowdon-via-llanberis-path": 980, "snowdon-miners-track": 726,
   "cadair-idris": 693,
   "tryfan": 617, "tryfan-north-ridge": 680,
   "glyder-fawr": 740, "glyder-fach": 720, "y-garn": 584,
