@@ -47,6 +47,11 @@ const REJECT_PATTERNS = [
   /coat.of.arms/i, /\bflag\b/i, /\blogo\b/i, /\bbadge\b/i, /heraldic/i,
   /\bmap\b/i,   /\bdiagram\b/i, /\bchart\b/i, /\bicon\b/i, /\bsign\b/i,
   /\bperson\b/i, /\bpeople\b/i, /\bportrait\b/i,
+  // Topographic / elevation diagrams — Wikipedia lead images for famous peaks
+  // often show prominence or isolation charts rather than actual photographs.
+  /prominence/i, /isolation/i, /topograph/i, /\btopo\b/i,
+  /elevation.profile/i, /elevation.chart/i, /relief.map/i,
+  /\bprofile\b/i, /\bsketch\b/i, /\bschematic/i,
 ];
 
 /**
@@ -221,9 +226,12 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
     getWikipediaData(name),
   ]);
 
+  // Commons is tried first: it uses explicit "mountain landscape" queries and
+  // avoids the prominence/isolation diagrams that Wikipedia often sets as its
+  // lead article image for famous peaks (e.g. Everest, Mont Blanc).
   const thumbUrl =
-    (wikiData.status   === "fulfilled" ? wikiData.value.thumbUrl : null) ??
-    (commonsUrl.status === "fulfilled" ? commonsUrl.value : null);
+    (commonsUrl.status === "fulfilled" ? commonsUrl.value : null) ??
+    (wikiData.status   === "fulfilled" ? wikiData.value.thumbUrl : null);
 
   const coord =
     wikiData.status === "fulfilled" ? wikiData.value.coord : null;
