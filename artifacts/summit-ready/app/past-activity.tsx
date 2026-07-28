@@ -1,9 +1,10 @@
-import { ArrowLeft, Check, Plus, X } from "lucide-react-native";
+import { ArrowLeft, Check, Plus, X, Search, AlertCircle, TrendingUp } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -17,19 +18,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
-import { useApp, type PastHike } from "@/context/AppContext";
-
-const POPULAR_PEAKS = [
-  { id: "h001", name: "Ben Nevis",      location: "Scotland",        elevationGain: 1340, distance: 17.4, emoji: "🏔️" },
-  { id: "h002", name: "Snowdon",        location: "Wales",           elevationGain: 900,  distance: 11.5, emoji: "🏔️" },
-  { id: "h003", name: "Scafell Pike",   location: "Lake District",   elevationGain: 950,  distance: 13.8, emoji: "🏔️" },
-  { id: "h004", name: "Helvellyn",      location: "Lake District",   elevationGain: 760,  distance: 14.4, emoji: "⛰️" },
-  { id: "h006", name: "Pen y Fan",      location: "Brecon Beacons",  elevationGain: 420,  distance: 9.8,  emoji: "🏔️" },
-  { id: "h007", name: "Kinder Scout",   location: "Peak District",   elevationGain: 490,  distance: 14.2, emoji: "🌫️" },
-  { id: "h009", name: "Ingleborough",   location: "Yorkshire Dales", elevationGain: 460,  distance: 12.6, emoji: "⛰️" },
-  { id: "h010", name: "Whernside",      location: "Yorkshire Dales", elevationGain: 455,  distance: 12.4, emoji: "🌾" },
-  { id: "h012", name: "Ben Lomond",     location: "Scotland",        elevationGain: 1010, distance: 12.0, emoji: "🏔️" },
-] as const;
+import { useApp, type PastHike, type NearbyHill } from "@/context/AppContext";
 
 type SelectedHike = PastHike & { key: string };
 
@@ -46,7 +35,7 @@ function getMonthChips() {
 
 export default function PastActivityScreen() {
   const insets = useSafeAreaInsets();
-  const { seedPastActivity } = useApp();
+  const { seedPastActivity, summitGoal } = useApp();
 
   const [selected, setSelected] = useState<SelectedHike[]>([]);
   const [showCustom, setShowCustom] = useState(false);
@@ -54,19 +43,59 @@ export default function PastActivityScreen() {
   const [customElev, setCustomElev] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Search state
+  const [searchText, setSearchText] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState<NearbyHill | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchInputRef = useRef<TextInput>(null);
+
   const monthChips = getMonthChips();
 
-  function togglePeak(peak: typeof POPULAR_PEAKS[number]) {
+  async function handleHillSearch() {
+    const query = searchText.trim();
+    if (query.length < 2) return;
+    setSearchLoading(true);
+    setSearchResult(null);
+    setSearchError(null);
+    try {
+      const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+        : "/api";
+      const res = await fetch(`${API_BASE}/hills-unified`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hillName: query, location: summitGoal?.location ?? "" }),
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const data = await res.json() as { hill: NearbyHill };
+      setSearchResult(data.hill);
+    } catch {
+      setSearchError("Couldn't find that hill — try a different name or spelling.");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function addSearchResult() {
+    if (!searchResult) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelected(prev => {
-      const exists = prev.find(s => s.key === peak.id);
-      if (exists) return prev.filter(s => s.key !== peak.id);
-      return [...prev, {
-        key: peak.id, trailId: peak.id, name: peak.name,
-        elevationGain: peak.elevationGain, distance: peak.distance,
-        monthsAgo: 1, emoji: peak.emoji,
-      }];
-    });
+    const key = `search_${searchResult.name}_${Date.now()}`;
+    const alreadyAdded = selected.some(s => s.key.startsWith(`search_${searchResult.name}`));
+    if (alreadyAdded) return;
+    const elevGain = searchResult.elevation;
+    setSelected(prev => [...prev, {
+      key,
+      name: searchResult.name,
+      elevationGain: elevGain,
+      distance: Math.round(elevGain / 80),
+      monthsAgo: 1,
+      emoji: searchResult.emoji ?? "⛰️",
+    }]);
+    // Clear search so user can search another
+    setSearchText("");
+    setSearchResult(null);
+    setSearchError(null);
   }
 
   function setMonth(key: string, monthsAgo: number) {
@@ -122,7 +151,7 @@ export default function PastActivityScreen() {
           <Animated.View entering={FadeInDown.duration(300)} style={s.intro}>
             <Text style={s.title}>Already been training?</Text>
             <Text style={s.subtitle}>
-              Add any recent summits — they'll show in your completed log and give your readiness score a head start.
+              Search for any hills or mountains you've already done — they'll show in your completed log and give your readiness score a head start.
             </Text>
           </Animated.View>
 
@@ -167,43 +196,94 @@ export default function PastActivityScreen() {
             </Animated.View>
           )}
 
-          {/* Popular peaks */}
+          {/* Search hills */}
           <Animated.View entering={FadeInDown.delay(80).duration(300)}>
-            <Text style={[s.sectionLabel, { marginTop: selected.length > 0 ? 4 : 0 }]}>POPULAR UK PEAKS</Text>
-            {POPULAR_PEAKS.map((peak, i) => {
-              const isSelected = selected.some(s => s.key === peak.id);
-              return (
-                <Animated.View key={peak.id} entering={FadeInDown.delay(i * 25).duration(220)}>
-                  <TouchableOpacity
-                    onPress={() => togglePeak(peak)}
-                    style={[s.peakCard, isSelected && s.peakCardSelected]}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={s.peakEmoji}>{peak.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.peakName, isSelected && { color: T.green }]}>{peak.name}</Text>
-                      <Text style={s.peakMeta}>{peak.location} · {peak.elevationGain}m</Text>
+            <Text style={[s.sectionLabel, { marginTop: selected.length > 0 ? 4 : 0 }]}>SEARCH HILLS</Text>
+            <View style={s.searchCard}>
+              <View style={s.searchRow}>
+                <TextInput
+                  ref={searchInputRef}
+                  style={s.searchInput}
+                  value={searchText}
+                  onChangeText={t => { setSearchText(t); setSearchResult(null); setSearchError(null); }}
+                  placeholder="e.g. Ben Nevis, Snowdon, Scafell Pike…"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={handleHillSearch}
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  onPress={handleHillSearch}
+                  disabled={searchLoading || searchText.trim().length < 2}
+                  style={[s.searchBtn, (searchLoading || searchText.trim().length < 2) && { opacity: 0.45 }]}
+                  activeOpacity={0.75}
+                >
+                  {searchLoading
+                    ? <ActivityIndicator size="small" color={T.white} />
+                    : <Search size={16} color={T.white} />}
+                </TouchableOpacity>
+              </View>
+
+              {searchError && (
+                <View style={s.searchErrRow}>
+                  <AlertCircle size={13} color={T.red} />
+                  <Text style={s.searchErrText}>{searchError}</Text>
+                </View>
+              )}
+
+              {searchResult && (() => {
+                const alreadyAdded = selected.some(sel => sel.key.startsWith(`search_${searchResult.name}`));
+                return (
+                  <Animated.View entering={FadeInDown.duration(200)} style={s.resultCard}>
+                    <LinearGradient colors={[T.green + "10", "transparent"]} style={StyleSheet.absoluteFill} />
+                    <View style={s.resultTop}>
+                      <Text style={s.resultEmoji}>{searchResult.emoji ?? "⛰️"}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.resultName}>{searchResult.name}</Text>
+                        <Text style={s.resultSub}>{searchResult.surface}</Text>
+                      </View>
                     </View>
-                    <View style={[s.peakCheck, isSelected && s.peakCheckActive]}>
-                      {isSelected && <Check size={11} color="#fff" />}
+                    <View style={s.resultStats}>
+                      <View style={s.resultStat}>
+                        <TrendingUp size={12} color={T.orange} />
+                        <Text style={s.resultStatVal}>{searchResult.elevation}m</Text>
+                        <Text style={s.resultStatLbl}>gain</Text>
+                      </View>
+                      <View style={s.resultStat}>
+                        <Text style={s.resultStatLbl}>Grade:</Text>
+                        <Text style={s.resultStatVal}>{searchResult.grade}</Text>
+                      </View>
                     </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
+                    <TouchableOpacity
+                      onPress={addSearchResult}
+                      disabled={alreadyAdded}
+                      style={[s.addResultBtn, alreadyAdded && s.addResultBtnDone]}
+                      activeOpacity={0.75}
+                    >
+                      {alreadyAdded
+                        ? <Check size={14} color={T.green} />
+                        : <Plus size={14} color={T.green} />}
+                      <Text style={[s.addResultBtnText, alreadyAdded && { color: T.green }]}>
+                        {alreadyAdded ? "Added!" : "Add as past summit"}
+                      </Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })()}
+            </View>
           </Animated.View>
 
-          {/* Custom hill */}
-          <Animated.View entering={FadeInDown.delay(250).duration(300)} style={{ marginTop: 8 }}>
+          {/* Can't find it — custom entry */}
+          <Animated.View entering={FadeInDown.delay(140).duration(300)} style={{ marginTop: 8 }}>
             {!showCustom ? (
               <TouchableOpacity onPress={() => setShowCustom(true)} style={s.customBtn} activeOpacity={0.75}>
-                <Plus size={15} color={T.green} />
-                <Text style={s.customBtnText}>Add a different hill</Text>
+                <Plus size={15} color={T.textMuted} />
+                <Text style={s.customBtnText}>Can't find it? Add manually</Text>
               </TouchableOpacity>
             ) : (
               <View style={s.customForm}>
                 <View style={s.customFormHeader}>
-                  <Text style={s.customFormTitle}>Custom hill</Text>
+                  <Text style={s.customFormTitle}>Add manually</Text>
                   <TouchableOpacity onPress={() => setShowCustom(false)} hitSlop={8}>
                     <X size={18} color={T.textMuted} />
                   </TouchableOpacity>
@@ -298,28 +378,52 @@ const s = StyleSheet.create({
   monthChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
   monthChipTextActive: { color: T.green },
 
-  peakCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 14,
-    borderWidth: 1, borderColor: T.border,
-    padding: 12, marginBottom: 6,
+  // Search
+  searchCard: {
+    backgroundColor: T.card, borderRadius: 18, borderWidth: 1,
+    borderColor: T.border, overflow: "hidden", marginBottom: 8,
+    paddingHorizontal: 14, paddingVertical: 14, gap: 10,
   },
-  peakCardSelected: { borderColor: T.green + "60", borderWidth: 1.5 },
-  peakEmoji: { fontSize: 24 },
-  peakName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.white },
-  peakMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  peakCheck: {
-    width: 22, height: 22, borderRadius: 11,
-    borderWidth: 1.5, borderColor: T.border,
-    alignItems: "center", justifyContent: "center",
+  searchRow: { flexDirection: "row", gap: 8 },
+  searchInput: {
+    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.white,
+    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    paddingHorizontal: 14, paddingVertical: 10,
   },
-  peakCheckActive: { backgroundColor: T.green, borderColor: T.green },
+  searchBtn: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: T.green, alignItems: "center", justifyContent: "center",
+  },
+  searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  searchErrText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, flex: 1 },
 
+  // Result card
+  resultCard: {
+    borderRadius: 14, borderWidth: 1, borderColor: T.green + "40",
+    overflow: "hidden", padding: 12, gap: 10,
+  },
+  resultTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  resultEmoji: { fontSize: 26 },
+  resultName: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  resultSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  resultStats: { flexDirection: "row", gap: 18 },
+  resultStat: { flexDirection: "row", alignItems: "center", gap: 5 },
+  resultStatVal: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
+  resultStatLbl: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  addResultBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    paddingVertical: 10, borderRadius: 12,
+    borderWidth: 1, borderColor: T.green + "50", backgroundColor: T.greenDim,
+  },
+  addResultBtnDone: { backgroundColor: T.green + "10", borderColor: T.green + "30" },
+  addResultBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
+
+  // Custom
   customBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingVertical: 14, paddingHorizontal: 4,
   },
-  customBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.green },
+  customBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.textMuted },
 
   customForm: {
     backgroundColor: T.card, borderRadius: 16,
