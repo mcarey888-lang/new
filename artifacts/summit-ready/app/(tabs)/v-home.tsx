@@ -239,7 +239,7 @@ export default function VirtualHomeScreen() {
             {hills.slice(0, 2).map((hill, idx) => (
               <TouchableOpacity
                 key={hill.name}
-                onPress={() => router.push("/(tabs)/v-hills")}
+                onPress={() => router.push("/(tabs)/virtual")}
                 activeOpacity={0.8}
                 style={s.hillPreviewCard}
               >
@@ -274,7 +274,7 @@ export default function VirtualHomeScreen() {
           <Animated.View entering={FadeInDown.delay(180).duration(500)} style={{ paddingHorizontal: 16, marginTop: 10 }}>
             <Text style={s.sectionTitle}>YOUR DREAM SUMMIT</Text>
             <TouchableOpacity
-              onPress={() => router.push("/(tabs)/v-mountain")}
+              onPress={() => router.push("/(tabs)/virtual")}
               activeOpacity={0.8}
               style={s.mountainPreviewCard}
             >

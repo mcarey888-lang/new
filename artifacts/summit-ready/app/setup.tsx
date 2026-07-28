@@ -449,7 +449,7 @@ export default function SetupScreen() {
     void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
     setSaving(false);
     // Virtual users land on their own home screen; expedition users land on dashboard.
-    router.replace(virtualMode ? "/(tabs)/v-home" : "/(tabs)/dashboard");
+    router.replace(virtualMode ? "/(tabs)/virtual" : "/(tabs)/dashboard");
   }
 
   const inp = (field: string) => [styles.input, errors[field] ? { borderColor: T.red + "80" } : null];

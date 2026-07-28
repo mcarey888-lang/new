@@ -131,7 +131,7 @@ export default function VirtualMountainScreen() {
                 Visit the Home tab to load your expedition data.
               </Text>
               <TouchableOpacity
-                onPress={() => router.push("/(tabs)/v-home")}
+                onPress={() => router.push("/(tabs)/virtual")}
                 style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 11, backgroundColor: T.blue }}
               >
                 <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }}>Go to Home</Text>
@@ -205,7 +205,7 @@ export default function VirtualMountainScreen() {
               {/* ── CTA to local hills ──────────────────────────────────────── */}
               <Animated.View entering={FadeInDown.delay(200).duration(400)}>
                 <TouchableOpacity
-                  onPress={() => router.push("/(tabs)/v-hills")}
+                  onPress={() => router.push("/(tabs)/virtual")}
                   activeOpacity={0.8}
                   style={s.hillsCta}
                 >

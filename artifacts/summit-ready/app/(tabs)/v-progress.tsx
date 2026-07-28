@@ -130,7 +130,7 @@ export default function VirtualProgressScreen() {
             Visit the Home tab to load your expedition match and start tracking your journey to {summitGoal.mountainName}.
           </Text>
           <TouchableOpacity
-            onPress={() => router.push("/(tabs)/v-home")}
+            onPress={() => router.push("/(tabs)/virtual")}
             style={{ paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: T.blue }}
           >
             <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Go to Home</Text>
