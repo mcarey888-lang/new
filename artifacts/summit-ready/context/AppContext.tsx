@@ -56,6 +56,8 @@ export interface TargetMountain {
   day2ElevationGain?: number;
   difficulty: "Easy" | "Moderate" | "Hard" | "Alpine";
   altitudeExposure: "None" | "Moderate" | "High" | "Extreme";
+  /** Narrative description of the standard route, from GPT-4o mountain profile. */
+  notes?: string | null;
 }
 
 export interface SummitGoal {
@@ -88,6 +90,8 @@ export interface SummitGoal {
   simulationScoreBreakdown?: SimulationScoreBreakdown;
   /** Virtual mode only: drives plan length instead of summitDate. */
   simulationDurationWeeks?: number;
+  /** Virtual mode only: cached recommended training hills from the last /virtual-expedition call. */
+  virtualHills?: NearbyHill[];
 }
 
 export interface PlanSession {
@@ -132,6 +136,8 @@ export interface NearbyHill {
   routeType?: "hill" | "circular" | "out-and-back";
   routeDistance?: number;
   estimatedTime?: string;
+  /** Summit elevation in metres ASL, threaded from OSM ele tag by the hills pipeline. */
+  summitElevationASL?: number;
 }
 
 export interface Session {
@@ -240,6 +246,8 @@ interface AppState {
   reloadApp: () => Promise<void>;
   scoreStagnation: ScoreInsight | null;
   clearScoreStagnation: () => void;
+  /** Update individual SummitGoal fields in-place without regenerating the plan or resetting sessions. */
+  patchGoal: (updates: Partial<SummitGoal>) => Promise<void>;
 }
 
 const AppContext = createContext<AppState>({
@@ -307,6 +315,7 @@ const AppContext = createContext<AppState>({
   reloadApp: async () => {},
   scoreStagnation: null,
   clearScoreStagnation: () => {},
+  patchGoal: async () => {},
 });
 
 const _FLAT_GOAL_KEY             = "summitready_goal";
@@ -826,6 +835,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const clearNewlyUnlocked = useCallback(() => {
     setNewlyUnlocked([]);
   }, []);
+
+  const patchGoal = useCallback(async (updates: Partial<SummitGoal>) => {
+    if (!summitGoal) return;
+    const updated = { ...summitGoal, ...updates };
+    setSummitGoalState(updated);
+    await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updated));
+  }, [summitGoal]);
 
   const checkAndNotifyAchievements = useCallback(async (
     updatedSessions: Session[],
@@ -1451,6 +1467,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveTrail, unsaveTrail, completeTrail, uncompleteTrail, addCustomRoute, deleteCustomRoute,
       reloadApp,
       scoreStagnation, clearScoreStagnation,
+      patchGoal,
     }}>
       {children}
     </AppContext.Provider>

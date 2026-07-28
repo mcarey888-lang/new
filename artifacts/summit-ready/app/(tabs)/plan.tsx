@@ -30,6 +30,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
+import { VirtualExpeditionView } from "@/components/VirtualExpeditionView";
 import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { HillPickerModal } from "@/components/HillPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
@@ -1155,6 +1156,7 @@ export default function PlanScreen() {
     sessionDayOverrides,
     setSessionDayOverride,
     clearSessionDayOverride,
+    patchGoal,
   } = useApp();
 
   async function handleSubmitWeek(weekNum: number) {
@@ -1335,7 +1337,35 @@ export default function PlanScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewedWeekNum]);
 
-  if (!summitGoal || trainingPlan.length === 0) {
+  if (!summitGoal) {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
+          <Calendar size={28} color={T.blue} />
+        </View>
+        <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
+        <TouchableOpacity
+          onPress={() => router.push("/setup")}
+          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: T.green }}
+        >
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Set up my summit</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ── Virtual Expedition mode: show the simulation dashboard ──────────────────
+  if (summitGoal.mode === "virtual") {
+    return (
+      <VirtualExpeditionView
+        summitGoal={summitGoal}
+        patchGoal={patchGoal}
+        insets={insets}
+      />
+    );
+  }
+
+  if (trainingPlan.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
         <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>

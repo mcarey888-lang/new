@@ -26,6 +26,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { confirmModeSwitch } from "@/utils/modeSwitch";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
@@ -443,7 +444,7 @@ function AlpineCard({
 export default function DashboardScreen() {
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, setSummitGoal } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -818,7 +819,7 @@ export default function DashboardScreen() {
         <MountainHero
           mountainName={summitGoal.mountainName}
           summitDate={summitGoal.summitDate}
-          topInset={Platform.OS === "web" ? 20 : insets.top}
+          topInset={Platform.OS === "web" ? 20 : insets.top + 44}
           onEdit={() => router.push("/setup")}
           isSubscribed={isSubscribed}
           hasViewedPlan={hasViewedPlan}
@@ -1310,6 +1311,42 @@ export default function DashboardScreen() {
         </Animated.View>
 
       </ScrollView>
+
+      {/* ── Floating mode toggle — sits over the hero, doesn't scroll ── */}
+      {summitGoal && (
+        <View
+          style={{
+            position: "absolute",
+            top: Platform.OS === "web" ? 16 : insets.top + 8,
+            left: 0, right: 0,
+            alignItems: "center",
+            zIndex: 20,
+            pointerEvents: "box-none",
+          } as any}
+        >
+          <View style={modeToggleStyles.pill}>
+            {(["expedition", "virtual"] as const).map(m => {
+              const isActive = (summitGoal.mode ?? "expedition") === m;
+              return (
+                <TouchableOpacity
+                  key={m}
+                  style={[modeToggleStyles.seg, isActive && modeToggleStyles.segActive]}
+                  onPress={() => {
+                    if (!isActive) {
+                      confirmModeSwitch(m, summitGoal, trainingPlan, setSummitGoal);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[modeToggleStyles.segText, isActive && modeToggleStyles.segTextActive]}>
+                    {m === "expedition" ? "Expedition" : "Virtual"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {newlyUnlocked.length > 0 && (
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
@@ -2007,5 +2044,33 @@ const homeStyles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: T.blue,
+  },
+});
+
+const modeToggleStyles = StyleSheet.create({
+  pill: {
+    flexDirection: "row",
+    backgroundColor: "rgba(6,13,27,0.78)",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+    padding: 3,
+  },
+  seg: {
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 19,
+  },
+  segActive: {
+    backgroundColor: T.green,
+  },
+  segText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.65)",
+  },
+  segTextActive: {
+    color: T.bg,
+    fontFamily: "Inter_700Bold",
   },
 });

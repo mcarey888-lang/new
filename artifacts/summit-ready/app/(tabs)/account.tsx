@@ -22,6 +22,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import Purchases from "react-native-purchases";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type CompletedGoal } from "@/context/AppContext";
+import { confirmModeSwitch } from "@/utils/modeSwitch";
 import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { useSubscription } from "@/lib/revenuecat";
@@ -77,7 +78,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   useScreenView("account");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
+  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals, setSummitGoal } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -446,6 +447,34 @@ export default function AccountScreen() {
                 <Text style={styles.changeSummitText}>Change</Text>
               </View>
             </TouchableOpacity>
+          )}
+
+          {/* ── Training mode toggle ────────────────────────────────── */}
+          {summitGoal && (
+            <View style={styles.modeRow}>
+              <Text style={styles.modeRowLabel}>Training mode</Text>
+              <View style={styles.modePill}>
+                {(["expedition", "virtual"] as const).map(m => {
+                  const isActive = (summitGoal.mode ?? "expedition") === m;
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.modeSeg, isActive && styles.modeSegActive]}
+                      onPress={() => {
+                        if (!isActive) {
+                          confirmModeSwitch(m, summitGoal, trainingPlan, setSummitGoal);
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.modeSegText, isActive && styles.modeSegTextActive]}>
+                        {m === "expedition" ? "Expedition" : "Virtual"}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           )}
         </Animated.View>
 
@@ -951,6 +980,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 5,
   },
   changeSummitText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+
+  modeRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: 8, paddingHorizontal: 2,
+  },
+  modeRowLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
+  modePill: {
+    flexDirection: "row",
+    backgroundColor: T.surface,
+    borderRadius: 18, borderWidth: 1, borderColor: T.border,
+    padding: 3,
+  },
+  modeSeg: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 15,
+  },
+  modeSegActive: { backgroundColor: T.green },
+  modeSegText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  modeSegTextActive: { color: T.bg, fontFamily: "Inter_700Bold" },
 
   actionList: { gap: 8 },
   actionRow: {
