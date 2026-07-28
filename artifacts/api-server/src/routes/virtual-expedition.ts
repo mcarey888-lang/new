@@ -42,7 +42,13 @@ const TargetMountainProfileSchema = z.object({
   summitElevation: z.number().positive(),
   totalElevationGain: z.number().positive(),
   totalDistance: z.number().positive(),
-  estimatedDays: z.union([z.literal(1), z.literal(2)]),
+  // AI may return realistic trek lengths (e.g. 7 for EBC). Clamp to 1 or 2
+  // for our weekend-pairing logic: 1 = single-day summit, 2 = two-day outing.
+  estimatedDays: z
+    .number()
+    .int()
+    .positive()
+    .transform(d => (d >= 2 ? 2 : 1) as 1 | 2),
   day1ElevationGain: z.number().positive().optional().nullable(),
   day2ElevationGain: z.number().positive().optional().nullable(),
   maxDailyElevation: z.number().positive(),
