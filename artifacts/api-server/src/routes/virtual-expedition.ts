@@ -223,13 +223,21 @@ function hillWithReps(hill: Hill, targetGain: number): Hill {
   return { ...hill, repeats: reps, totalElevation: Math.round(hill.elevation * reps) };
 }
 
-/** Find the hill whose elevation (gain) is closest to targetGain. */
+/**
+ * Pick the hill that results in the fewest reps to reach targetGain.
+ * Tie-break: prefer the hill with higher per-rep gain (overshoots less and
+ * gives the most natural single ascent).  This avoids picking a small hill
+ * that forces many repetitions when a taller one nearby would need far fewer.
+ */
 function nearestMatch(hills: Hill[], targetGain: number, exclude?: string): Hill {
   return [...hills]
     .filter(h => !exclude || h.name !== exclude)
-    .sort((a, b) =>
-      Math.abs(a.elevation - targetGain) - Math.abs(b.elevation - targetGain),
-    )[0];
+    .sort((a, b) => {
+      const repsA = Math.ceil(targetGain / Math.max(1, a.elevation));
+      const repsB = Math.ceil(targetGain / Math.max(1, b.elevation));
+      if (repsA !== repsB) return repsA - repsB;          // fewer reps wins
+      return b.elevation - a.elevation;                    // taller hill wins ties
+    })[0];
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
