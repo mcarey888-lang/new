@@ -18,7 +18,7 @@ const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoading, reloadApp } = useApp();
+  const { isLoading, reloadApp, shellMode } = useApp();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
@@ -84,14 +84,15 @@ export default function LandingScreen() {
           await AsyncStorage.removeItem("summitready_active_hike_session");
         }
       } catch { /* ignore — fall through to dashboard */ }
-      // Restore the shell the user was last in
-      try {
-        const shellRaw = await AsyncStorage.getItem("summitready_shell_mode");
-        if (shellRaw === "expedition") {
-          router.replace("/(expedition)/base-camp" as any);
-          return;
-        }
-      } catch { /* fall through */ }
+      // Restore the shell the user was last in.
+      // Use the already-loaded shellMode from AppContext rather than re-reading
+      // AsyncStorage — by the time isLoading=false the context value is correct,
+      // and a direct storage read can race against the per-user key written by
+      // AppContext, causing the pill and the routed screen to disagree.
+      if (shellMode === "expedition") {
+        router.replace("/(expedition)/base-camp" as any);
+        return;
+      }
       router.replace("/(tabs)/dashboard");
     })();
   }, [authLoaded, isSignedIn, isLoading]);
