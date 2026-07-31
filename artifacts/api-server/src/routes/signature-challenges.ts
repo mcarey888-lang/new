@@ -22,6 +22,67 @@ import { eq, and, ilike, or, sql } from "drizzle-orm";
 
 export const signatureChallengesRouter = Router();
 
+// ── Mountain fame ranking ─────────────────────────────────────────────────────
+// Lower number = more famous. Mountains not listed default to 999.
+const MOUNTAIN_FAME_RANK: Record<string, number> = {
+  "Mount Everest": 1,
+  "K2": 2,
+  "Kangchenjunga": 3,
+  "Matterhorn": 4,
+  "Mont Blanc": 5,
+  "Kilimanjaro": 6,
+  "Eiger": 7,
+  "Aconcagua": 8,
+  "Annapurna I": 9,
+  "Nanga Parbat": 10,
+  "Lhotse": 11,
+  "Makalu": 12,
+  "Cho Oyu": 13,
+  "Dhaulagiri I": 14,
+  "Manaslu": 15,
+  "Broad Peak": 16,
+  "Gasherbrum I": 17,
+  "Gasherbrum II": 18,
+  "Shishapangma": 19,
+  "Ama Dablam": 20,
+  "Everest Base Camp": 21,
+  "Denali": 22,
+  "Elbrus": 23,
+  "Mount Fuji": 24,
+  "Vinson Massif": 25,
+  "Puncak Jaya / Carstensz Pyramid": 26,
+  "Mount Rainier": 27,
+  "Mount Kenya - Batian": 28,
+  "Mount Kenya - Point Lenana": 29,
+  "Jungfrau": 30,
+  "Mönch": 31,
+  "Piz Bernina": 32,
+  "Grossglockner": 33,
+  "Gran Paradiso": 34,
+  "Ojos del Salado": 35,
+  "Mount Olympus - Mytikas": 36,
+  "Mount Toubkal": 37,
+  "Mount Whitney": 38,
+  "Mount Shasta": 39,
+  "Mount Kinabalu": 40,
+  "Triglav": 41,
+  "Teide": 42,
+  "Mount Etna": 43,
+  "Ben Nevis": 44,
+  "Snowdon / Yr Wyddfa": 45,
+  "Helvellyn": 46,
+  "Scafell Pike": 47,
+  "Mount Kosciuszko": 48,
+  "Rysy": 49,
+  "Carrauntoohil": 50,
+};
+
+function byFame(a: { targetMountainName: string }, b: { targetMountainName: string }) {
+  const ra = MOUNTAIN_FAME_RANK[a.targetMountainName] ?? 999;
+  const rb = MOUNTAIN_FAME_RANK[b.targetMountainName] ?? 999;
+  return ra - rb;
+}
+
 // ── helper ────────────────────────────────────────────────────────────────────
 async function getStagesAndLimitations(challengeId: string) {
   const [stages, limitations] = await Promise.all([
@@ -68,11 +129,11 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
       conditions.push(eq(signatureChallenges.mountainSlug, mountain));
     }
 
-    const rows = await db
+    const rows = (await db
       .select()
       .from(signatureChallenges)
       .where(and(...conditions))
-      .orderBy(signatureChallenges.featured, signatureChallenges.challengeId);
+    ).sort(byFame);
 
     if (withStages === "true") {
       const enriched = await Promise.all(
@@ -94,7 +155,7 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
 // ── GET /api/sx/featured ─────────────────────────────────────────────────────
 signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
   try {
-    const rows = await db
+    const rows = (await db
       .select()
       .from(signatureChallenges)
       .where(
@@ -103,7 +164,7 @@ signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
           eq(signatureChallenges.featured, true)
         )
       )
-      .orderBy(signatureChallenges.adventureScore);
+    ).sort(byFame);
 
     return res.json({ challenges: rows, total: rows.length });
   } catch (err) {
