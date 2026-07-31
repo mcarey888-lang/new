@@ -20,6 +20,7 @@ import hillVerificationAdminRouter from "./hill-verification-admin";
 import userRouter from "./user";
 import virtualExpeditionRouter from "./virtual-expedition";
 import virtualExpeditionEngineRouter from "./virtual-expedition-engine";
+import { signatureChallengesRouter } from "./signature-challenges";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -41,6 +42,7 @@ router.use(seededTrailsRouter);
 router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
 router.use(virtualExpeditionEngineRouter);
+router.use("/api/sx", signatureChallengesRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +

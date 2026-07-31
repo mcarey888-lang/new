@@ -65,6 +65,47 @@ interface ExpeditionResult {
   } | null;
 }
 
+interface SigStage {
+  stageOrder: number;
+  routeName: string;
+  region: string | null;
+  distanceKm: number | null;
+  ascentM: number | null;
+  estimatedHours: number | null;
+  difficulty: string | null;
+  dnaContribution: string | null;
+  whySelected: string | null;
+}
+
+interface SigChallenge {
+  challengeId: string;
+  challengeName: string;
+  targetMountainName: string;
+  targetRoute: string | null;
+  recommendedDays: number;
+  dnaMatchScore: number | null;
+  adventureScore: number | null;
+  totalAscentM: number | null;
+  totalDistanceKm: number | null;
+  estimatedHours: number | null;
+  difficulty: string | null;
+  routeDnaFocus: string | null;
+  summary: string | null;
+  regions: string | null;
+  featured: boolean;
+  stages: SigStage[];
+  limitations: string[];
+}
+
+/** Normalise a mountain name to its slug (matches the API's toMountainSlug). */
+function toMountainSlug(name: string): string {
+  return name.toLowerCase()
+    .replace(/[àáâãäå]/g, "a").replace(/[èéêë]/g, "e")
+    .replace(/[ìíîï]/g, "i").replace(/[òóôõöø]/g, "o")
+    .replace(/[ùúûü]/g, "u").replace(/[ñ]/g, "n")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 type ViewMode = "browse" | "results" | "progress";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -137,6 +178,11 @@ export default function VirtualScreen() {
   // grid / list toggle (visual state — single-column list is default)
   const [gridView, setGridView] = useState(false);
 
+  // signature challenge (loaded alongside expedition results)
+  const [sigChallenge, setSigChallenge] = useState<SigChallenge | null>(null);
+  const [sigLoading, setSigLoading] = useState(false);
+  const [sigExpanded, setSigExpanded] = useState(false);
+
   const { patchGoal } = useApp();
 
   const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
@@ -168,11 +214,37 @@ export default function VirtualScreen() {
       const body = await res.json() as ExpeditionResult & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
       setResults(body);
+      void fetchSigChallenge(mountain); // non-blocking — enhances results view
       setView("results");
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Couldn't load expedition data.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // ── Fetch signature challenge ────────────────────────────────────────────────
+  async function fetchSigChallenge(mountainName: string) {
+    setSigChallenge(null);
+    setSigLoading(true);
+    setSigExpanded(false);
+    try {
+      const slug = toMountainSlug(mountainName);
+      const res = await fetch(`${API_BASE}/sx/challenges/for-mountain/${slug}`);
+      if (!res.ok) return;
+      const body = await res.json() as { challenges: SigChallenge[] };
+      if (body.challenges && body.challenges.length > 0) {
+        const sorted = [...body.challenges].sort((a, b) => {
+          if (a.featured && !b.featured) return -1;
+          if (b.featured && !a.featured) return 1;
+          return (b.adventureScore ?? 0) - (a.adventureScore ?? 0);
+        });
+        setSigChallenge(sorted[0] ?? null);
+      }
+    } catch {
+      // fail silently — signature challenge is an enhancement, not required
+    } finally {
+      setSigLoading(false);
     }
   }
 
@@ -427,6 +499,134 @@ export default function VirtualScreen() {
               </Animated.View>
             )}
           </Animated.View>
+
+          {/* ── Signature Challenge card ────────────────────────────────────── */}
+          {(sigLoading || sigChallenge) && (
+            <Animated.View entering={FadeInDown.delay(50).duration(380)}>
+              <View style={s.sigCard}>
+                <LinearGradient colors={["#1a0e2e", "transparent"]} style={StyleSheet.absoluteFill} />
+
+                {/* Header row */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <View style={s.sigBadge}>
+                    <Star size={10} color={T.purple} fill={T.purple} />
+                    <Text style={s.sigBadgeText}>SIGNATURE ADVENTURE</Text>
+                  </View>
+                  {sigChallenge && (
+                    <View style={[s.sigBadge, { backgroundColor: diffColor(sigChallenge.difficulty ?? "") + "22", borderColor: diffColor(sigChallenge.difficulty ?? "") + "44" }]}>
+                      <Text style={[s.sigBadgeText, { color: diffColor(sigChallenge.difficulty ?? "") }]}>{sigChallenge.difficulty}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {sigLoading && !sigChallenge ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 }}>
+                    <ActivityIndicator size="small" color={T.purple} />
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim }}>Finding curated adventure…</Text>
+                  </View>
+                ) : sigChallenge ? (
+                  <>
+                    <Text style={s.sigTitle}>{sigChallenge.challengeName}</Text>
+                    {sigChallenge.targetRoute ? (
+                      <Text style={s.sigRoute}>{sigChallenge.targetRoute}</Text>
+                    ) : null}
+
+                    {/* Scores row */}
+                    <View style={{ flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 10 }}>
+                      {sigChallenge.dnaMatchScore != null && (
+                        <View style={{ alignItems: "center" }}>
+                          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: scoreColor(sigChallenge.dnaMatchScore) }}>{sigChallenge.dnaMatchScore}%</Text>
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim }}>DNA Match</Text>
+                        </View>
+                      )}
+                      {sigChallenge.adventureScore != null && (
+                        <View style={{ alignItems: "center" }}>
+                          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: T.orange }}>{sigChallenge.adventureScore}%</Text>
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim }}>Adventure</Text>
+                        </View>
+                      )}
+                      {sigChallenge.totalAscentM != null && (
+                        <View style={{ alignItems: "center" }}>
+                          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: T.green }}>{sigChallenge.totalAscentM.toLocaleString()}m</Text>
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim }}>Total Ascent</Text>
+                        </View>
+                      )}
+                      {sigChallenge.estimatedHours != null && (
+                        <View style={{ alignItems: "center" }}>
+                          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: T.blue }}>{sigChallenge.estimatedHours}h</Text>
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim }}>Est. Time</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Summary */}
+                    {sigChallenge.summary ? (
+                      <Text style={s.sigSummary} numberOfLines={sigExpanded ? undefined : 3}>{sigChallenge.summary}</Text>
+                    ) : null}
+
+                    {/* Stage cards */}
+                    {sigChallenge.stages.map((stage) => (
+                      <View key={stage.stageOrder} style={s.sigStage}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                          <View style={s.sigDayBubble}>
+                            <Text style={s.sigDayBubbleText}>
+                              {stage.stageOrder === 1 ? "Sat" : "Sun"}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.sigStageName}>{stage.routeName}</Text>
+                            {stage.region ? <Text style={s.sigStageMeta}>{stage.region}</Text> : null}
+                            <View style={{ flexDirection: "row", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+                              {stage.distanceKm != null && <Text style={s.sigStatPill}>{stage.distanceKm}km</Text>}
+                              {stage.ascentM != null && <Text style={s.sigStatPill}>▲ {stage.ascentM}m</Text>}
+                              {stage.estimatedHours != null && <Text style={s.sigStatPill}>~{stage.estimatedHours}h</Text>}
+                            </View>
+                            {sigExpanded && stage.whySelected ? (
+                              <Text style={[s.sigStageMeta, { marginTop: 4, color: T.textDim, fontStyle: "italic" }]}>{stage.whySelected}</Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+
+                    {/* Expand / collapse */}
+                    <TouchableOpacity
+                      onPress={() => setSigExpanded(v => !v)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8, alignSelf: "center" }}
+                      activeOpacity={0.7}
+                    >
+                      {sigExpanded ? <ChevronUp size={13} color={T.textDim} /> : <ChevronDown size={13} color={T.textDim} />}
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim }}>
+                        {sigExpanded ? "Show less" : "Why these routes?"}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Limitations */}
+                    {sigExpanded && sigChallenge.limitations.length > 0 && (
+                      <View style={s.sigLimitations}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                          <Info size={11} color={T.orange} />
+                          <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.orange }}>LIMITATIONS</Text>
+                        </View>
+                        {sigChallenge.limitations.map((lim, i) => (
+                          <Text key={i} style={s.sigLimitationText}>• {lim}</Text>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : null}
+              </View>
+            </Animated.View>
+          )}
+
+          {/* ── Nearby equivalent hills (AI-found) ──────────────────────────── */}
+          {hills.length > 0 && (
+            <View style={{ gap: 0 }}>
+              <Text style={[s.sectionTitle, { paddingHorizontal: 4, marginBottom: 6, fontSize: 11, color: T.textMuted }]}>
+                NEARBY TRAINING HILLS
+              </Text>
+            </View>
+          )}
 
           {/* Hills */}
           {hills.map((hill, idx) => (
@@ -1058,6 +1258,44 @@ const s = StyleSheet.create({
   mountainIconWrap: { width: 40, height: 40, borderRadius: 11, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
   mountainTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
   mountainSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  // Signature challenge card
+  sigCard: {
+    backgroundColor: "#120D20", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.25)",
+    padding: 14, gap: 0, overflow: "hidden",
+  },
+  sigBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
+    alignSelf: "flex-start",
+  },
+  sigBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 1, textTransform: "uppercase" },
+  sigTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 2 },
+  sigRoute: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.purple, marginBottom: 4 },
+  sigSummary: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18, marginBottom: 10 },
+  sigStage: {
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 10,
+    padding: 10, marginBottom: 6, marginTop: 4,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+  },
+  sigDayBubble: {
+    width: 36, height: 36, borderRadius: 9,
+    backgroundColor: T.purple + "22",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: T.purple + "44",
+  },
+  sigDayBubbleText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.purple },
+  sigStageName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  sigStageMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  sigStatPill: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, backgroundColor: "#142236", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  sigLimitations: {
+    backgroundColor: T.orange + "0F", borderRadius: 10, padding: 10, marginTop: 10,
+    borderWidth: 1, borderColor: T.orange + "30",
+  },
+  sigLimitationText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 16, marginTop: 2 },
 
   // Hills
   hillCard: {
