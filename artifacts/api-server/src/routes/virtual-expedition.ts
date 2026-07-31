@@ -368,14 +368,16 @@ function formatHillsForPrompt(hills: Hill[]): string {
  * Returns null on failure — caller falls back to the legacy calculator.
  */
 async function buildMiniExpedition(
-  hills:   Hill[],
-  profile: TargetMountainProfile,
+  hills:                Hill[],
+  profile:              TargetMountainProfile,
+  difficultyPreference: string | null = null,
 ): Promise<MiniExpedition | null> {
   const userMsg = [
     `Target mountain: ${profile.name} (${profile.country})`,
     `Difficulty: ${profile.difficulty} | Altitude exposure: ${profile.altitudeExposure}`,
     `Estimated days on mountain: ${profile.estimatedDays}`,
     `Character notes: ${profile.notes}`,
+    difficultyPreference ? `User's preferred difficulty: ${difficultyPreference} — weight route selection toward this level.` : "",
     ``,
     `Route DNA — what makes this mountain special:`,
     formatDna(profile.routeDna),
@@ -385,7 +387,7 @@ async function buildMiniExpedition(
     ``,
     `Design a ${profile.estimatedDays === 1 ? "single-day" : "1–2 day"} mini expedition.`,
     `Remember: variety over repetition. The user should want to do this adventure, not just complete the elevation.`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   const completion = await openai.chat.completions.create({
     model:                 "gpt-4o",
@@ -533,11 +535,17 @@ router.post("/virtual-expedition", async (req, res) => {
     targetMountain?: string;
     userLocation?:   string;
     radius?:         number;
+    /** Override the mountain's natural day count (1 = single day, 2 = weekend). */
+    daysOverride?:   1 | 2;
+    /** Preferred difficulty filter hint passed to the expedition builder ("Easy"|"Moderate"|"Hard"). */
+    difficultyPreference?: string;
   };
 
-  const targetMountain = body.targetMountain?.trim() ?? "";
-  const userLocation   = normalizeLocation((body.userLocation ?? "").trim());
-  const radiusKm       = Math.min(100, Math.max(5, Number(body.radius) || 30));
+  const targetMountain     = body.targetMountain?.trim() ?? "";
+  const userLocation       = normalizeLocation((body.userLocation ?? "").trim());
+  const radiusKm           = Math.min(100, Math.max(5, Number(body.radius) || 30));
+  const daysOverride       = body.daysOverride === 1 || body.daysOverride === 2 ? body.daysOverride : null;
+  const difficultyPreference = typeof body.difficultyPreference === "string" ? body.difficultyPreference : null;
 
   if (targetMountain.length < 2) {
     res.status(400).json({ error: "targetMountain is required (min 2 characters)" });
@@ -632,9 +640,13 @@ router.post("/virtual-expedition", async (req, res) => {
 
     // ── Step 3: Expedition builder (AI mountain guide) ────────────────────────
     //
-    //  Primary path: GPT designs a mini expedition by Route DNA character match.
-    //  Fallback:     legacy elevation calculator (fewest reps) — used only if
-    //                the AI expedition builder fails or returns unusable output.
+    //  Apply any user overrides to the profile before building.
+    //  daysOverride lets users force 1-day or 2-day structure regardless of
+    //  the mountain's natural schedule.
+
+    const effectiveProfile: TargetMountainProfile = daysOverride
+      ? { ...targetProfile, estimatedDays: daysOverride }
+      : targetProfile;
 
     let recommendedHills: Hill[];
     let expedition: MiniExpedition | null = null;
@@ -642,29 +654,29 @@ router.post("/virtual-expedition", async (req, res) => {
     let usingAiExpedition = false;
 
     try {
-      expedition = await buildMiniExpedition(localHills, targetProfile);
+      expedition = await buildMiniExpedition(localHills, effectiveProfile, difficultyPreference);
     } catch { /* fall through to calculator */ }
 
     if (expedition) {
       const rawHills   = resolveExpeditionHills(expedition, localHills);
-      recommendedHills = distributeRepsForElevation(rawHills, targetProfile.totalElevationGain);
+      recommendedHills = distributeRepsForElevation(rawHills, effectiveProfile.totalElevationGain);
       usingAiExpedition = true;
 
       // Synthesise weekendPairing for score compat (2+ hills → treat as weekend pairing)
-      if (recommendedHills.length >= 2 && targetProfile.estimatedDays === 2) {
+      if (recommendedHills.length >= 2 && effectiveProfile.estimatedDays === 2) {
         weekendPairing = {
           saturday: recommendedHills[0],
           sunday:   recommendedHills[1],
         };
       }
     } else {
-      // Legacy fallback
-      if (targetProfile.estimatedDays === 1) {
-        const best = nearestMatch(localHills, targetProfile.totalElevationGain);
-        recommendedHills = [hillWithReps(best, targetProfile.totalElevationGain)];
+      // Legacy fallback — uses effectiveProfile so daysOverride is respected
+      if (effectiveProfile.estimatedDays === 1) {
+        const best = nearestMatch(localHills, effectiveProfile.totalElevationGain);
+        recommendedHills = [hillWithReps(best, effectiveProfile.totalElevationGain)];
       } else {
-        const day1Target = targetProfile.day1ElevationGain ?? Math.round(targetProfile.totalElevationGain * 0.55);
-        const day2Target = targetProfile.day2ElevationGain ?? (targetProfile.totalElevationGain - day1Target);
+        const day1Target = effectiveProfile.day1ElevationGain ?? Math.round(effectiveProfile.totalElevationGain * 0.55);
+        const day2Target = effectiveProfile.day2ElevationGain ?? (effectiveProfile.totalElevationGain - day1Target);
         const hillA      = nearestMatch(localHills, day1Target);
         const hillB      = nearestMatch(localHills, day2Target, hillA?.name);
         if (hillA && hillB) {
@@ -673,8 +685,8 @@ router.post("/virtual-expedition", async (req, res) => {
           weekendPairing   = { saturday, sunday };
           recommendedHills = [saturday, sunday];
         } else {
-          const best = nearestMatch(localHills, targetProfile.totalElevationGain);
-          recommendedHills = [hillWithReps(best, targetProfile.totalElevationGain)];
+          const best = nearestMatch(localHills, effectiveProfile.totalElevationGain);
+          recommendedHills = [hillWithReps(best, effectiveProfile.totalElevationGain)];
         }
       }
     }
@@ -695,14 +707,12 @@ router.post("/virtual-expedition", async (req, res) => {
     const physicalScore = computePhysicalScore(
       recommendedHills,
       summitElevsASL,
-      targetProfile,
-      !!weekendPairing || targetProfile.estimatedDays === 1,
+      effectiveProfile,
+      !!weekendPairing || effectiveProfile.estimatedDays === 1,
     );
 
     const adventureScore = expedition?.adventureScore ?? 0;
     const dnaMatchScore  = expedition?.dnaMatchScore  ?? physicalScore.overall;
-
-    // Primary score exposed to the client is the DNA match (most meaningful)
     const simulationScore = dnaMatchScore;
 
     // Resolve alternatives (only if AI expedition succeeded)
@@ -725,11 +735,8 @@ router.post("/virtual-expedition", async (req, res) => {
       : null;
 
     res.json({
-      targetProfile: {
-        ...targetProfile,
-        // Shape expected by AppContext.TargetMountain
-        notes: targetProfile.notes,
-      },
+      // Return effectiveProfile so the UI reflects any daysOverride applied
+      targetProfile:   effectiveProfile,
       expedition:      expeditionPlan,
       recommendedHills,
       ...(weekendPairing ? { weekendPairing } : {}),
@@ -742,7 +749,7 @@ router.post("/virtual-expedition", async (req, res) => {
         adventureScore,
         dnaMatchScore,
       },
-      _meta: { usingAiExpedition },
+      _meta: { usingAiExpedition, daysOverrideApplied: !!daysOverride },
     });
 
   } catch (err) {

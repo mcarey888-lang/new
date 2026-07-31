@@ -51,10 +51,18 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ExpeditionResult {
-  targetProfile: TargetMountain & { notes?: string | null };
+  targetProfile:    TargetMountain & { notes?: string | null };
   recommendedHills: NearbyHill[];
-  simulationScore: number;
-  scoreBreakdown: SimulationScoreBreakdown;
+  simulationScore:  number;
+  adventureScore?:  number;
+  dnaMatchScore?:   number;
+  scoreBreakdown:   SimulationScoreBreakdown;
+  expedition?: {
+    title: string; concept: string;
+    days: Array<{ label: string; title: string; focus: string; routes: Array<{ name: string; why: string }> }>;
+    alternatives: Record<string, string[]>;
+    adventureScore: number; dnaMatchScore: number; dnaMatchNotes: string;
+  } | null;
 }
 
 type ViewMode = "browse" | "results" | "progress";
@@ -98,6 +106,16 @@ export default function VirtualScreen() {
   const [searchMountain, setSearchMountain] = useState("");
   const [searchRegion, setSearchRegion] = useState("");
 
+  // ── Customisation state ──────────────────────────────────────────────────────
+  /** Radius in km for the hill search — shown as chips in both browse + results. */
+  const [searchRadius, setSearchRadius] = useState<number>(30);
+  /** Override the mountain's natural day count (null = use mountain's default). */
+  const [customDays, setCustomDays] = useState<1 | 2 | null>(null);
+  /** Whether the customise panel is expanded in the results view. */
+  const [customOpen, setCustomOpen] = useState(false);
+  /** Editable location shown inside the results customise panel. */
+  const [customLocation, setCustomLocation] = useState("");
+
   // fetch state
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -127,7 +145,12 @@ export default function VirtualScreen() {
   const isVirtualGoalActive = summitGoal?.mode === "virtual";
 
   // ── Fetch expedition ─────────────────────────────────────────────────────────
-  async function fetchExpedition(mountain: string, region: string) {
+  async function fetchExpedition(
+    mountain:     string,
+    region:       string,
+    radius        = searchRadius,
+    daysOverride?: 1 | 2,
+  ) {
     setLoading(true);
     setFetchError(null);
     setResults(null);
@@ -135,7 +158,12 @@ export default function VirtualScreen() {
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetMountain: mountain, userLocation: region, radius: 40 }),
+        body: JSON.stringify({
+          targetMountain: mountain,
+          userLocation:   region,
+          radius,
+          ...(daysOverride ? { daysOverride } : {}),
+        }),
       });
       const body = await res.json() as ExpeditionResult & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
@@ -156,7 +184,8 @@ export default function VirtualScreen() {
     }
     setActiveBundle(bundle);
     setActiveSearch(null);
-    void fetchExpedition(bundle.goalMountain, bundle.region);
+    setCustomLocation(bundle.region);
+    void fetchExpedition(bundle.goalMountain, bundle.region, searchRadius, customDays ?? undefined);
   }
 
   // ── Custom search ────────────────────────────────────────────────────────────
@@ -164,14 +193,24 @@ export default function VirtualScreen() {
     if (searchMountain.trim().length < 2 || searchRegion.trim().length < 2) return;
     setActiveBundle(null);
     setActiveSearch({ mountain: searchMountain.trim(), region: searchRegion.trim() });
-    void fetchExpedition(searchMountain.trim(), searchRegion.trim());
+    setCustomLocation(searchRegion.trim());
+    void fetchExpedition(searchMountain.trim(), searchRegion.trim(), searchRadius, customDays ?? undefined);
+  }
+
+  // ── Regenerate with custom params ────────────────────────────────────────────
+  function handleRegenerate() {
+    const mountain = activeBundle?.goalMountain ?? activeSearch?.mountain;
+    const region   = customLocation.trim() || activeBundle?.region || activeSearch?.region;
+    if (!mountain || !region) return;
+    setCustomOpen(false);
+    void fetchExpedition(mountain, region, searchRadius, customDays ?? undefined);
   }
 
   // ── Set as goal ──────────────────────────────────────────────────────────────
   async function handleSetGoal() {
     if (!results) return;
     const mountainName = activeBundle?.goalMountain ?? activeSearch?.mountain ?? results.targetProfile.name;
-    const location = activeBundle?.region ?? activeSearch?.region ?? "";
+    const location = customLocation.trim() || activeBundle?.region ?? activeSearch?.region ?? "";
 
     const newGoal: SummitGoal = {
       mountainName,
@@ -182,15 +221,16 @@ export default function VirtualScreen() {
       difficulty: results.targetProfile.difficulty,
       fitnessLevel: summitGoal?.fitnessLevel ?? "Average",
       location,
-      maxRadius: 40,
+      maxRadius: searchRadius,
       equipment: summitGoal?.equipment ?? ["none"],
       trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
       hillDaysPerWeek: summitGoal?.hillDaysPerWeek ?? 2,
       mode: "virtual",
       targetMountain: results.targetProfile,
       virtualHills: results.recommendedHills,
-      simulationScore: results.simulationScore,
+      simulationScore: results.dnaMatchScore ?? results.simulationScore,
       simulationScoreBreakdown: results.scoreBreakdown,
+      expeditionPlan: results.expedition ?? null,
     };
     await setSummitGoal(newGoal);
     setView("progress");
@@ -295,17 +335,97 @@ export default function VirtualScreen() {
             </View>
           </Animated.View>
 
-          {/* Region */}
+          {/* Region + customise bar */}
           <Animated.View entering={FadeInDown.delay(40).duration(350)}>
-            <View style={[s.card, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
+            <TouchableOpacity
+              style={[s.card, { flexDirection: "row", alignItems: "center", gap: 10 }]}
+              activeOpacity={0.8}
+              onPress={() => setCustomOpen(v => !v)}
+            >
               <MapPin size={14} color={T.green} />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: T.text, flex: 1 }}>
-                Equivalent hills in{" "}
-                <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>
-                  {activeBundle?.regionDisplay ?? activeSearch?.region}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: T.text }}>
+                  Equivalent hills in{" "}
+                  <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>
+                    {customLocation || activeBundle?.regionDisplay || activeSearch?.region}
+                  </Text>
                 </Text>
-              </Text>
-            </View>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>
+                  {searchRadius}km radius · {tp.estimatedDays === 1 ? "1 day" : "2 days"}{customDays ? " (custom)" : ""}
+                </Text>
+              </View>
+              <View style={s.customisePill}>
+                <SlidersHorizontal size={11} color={T.blue} />
+                <Text style={s.customisePillText}>Edit</Text>
+                {customOpen ? <ChevronUp size={11} color={T.blue} /> : <ChevronDown size={11} color={T.blue} />}
+              </View>
+            </TouchableOpacity>
+
+            {/* Customise panel */}
+            {customOpen && (
+              <Animated.View entering={FadeInDown.duration(220)} style={s.customisePanel}>
+                {/* Location */}
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Hiking location</Text>
+                <View style={s.searchRow}>
+                  <MapPin size={13} color={T.green} />
+                  <TextInput
+                    style={[s.searchInput, { flex: 1 }]}
+                    value={customLocation}
+                    onChangeText={setCustomLocation}
+                    placeholder="e.g. Lake District"
+                    placeholderTextColor={T.textDim}
+                    returnKeyType="done"
+                  />
+                </View>
+
+                {/* Radius */}
+                <Text style={[s.inputLabel, { marginTop: 14, marginBottom: 6 }]}>Search radius</Text>
+                <View style={s.chipRow}>
+                  {[15, 30, 50, 80].map(r => (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setSearchRadius(r)}
+                      style={[s.chip, searchRadius === r && s.chipActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Days */}
+                <Text style={[s.inputLabel, { marginTop: 14, marginBottom: 6 }]}>Duration</Text>
+                <View style={s.chipRow}>
+                  {([
+                    { label: "Mountain default", value: null },
+                    { label: "1 day",            value: 1 as const },
+                    { label: "2 days",            value: 2 as const },
+                  ] as Array<{ label: string; value: 1 | 2 | null }>).map(opt => {
+                    const active = customDays === opt.value;
+                    return (
+                      <TouchableOpacity
+                        key={opt.label}
+                        onPress={() => setCustomDays(opt.value)}
+                        style={[s.chip, active && { backgroundColor: T.purple + "22", borderColor: T.purple + "50" }]}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.chipText, active && { color: T.purple, fontFamily: "Inter_700Bold" }]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Regenerate */}
+                <TouchableOpacity
+                  onPress={handleRegenerate}
+                  style={s.regenerateBtn}
+                  activeOpacity={0.85}
+                >
+                  <RefreshCw size={14} color="#fff" />
+                  <Text style={s.regenerateBtnText}>Regenerate expedition</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </Animated.View>
 
           {/* Hills */}
@@ -692,6 +812,22 @@ export default function VirtualScreen() {
                 onSubmitEditing={handleSearch}
               />
             </View>
+            {/* Radius chips */}
+            <View style={{ marginTop: 12 }}>
+              <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
+              <View style={s.chipRow}>
+                {[15, 30, 50, 80].map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => setSearchRadius(r)}
+                    style={[s.chip, searchRadius === r && s.chipActive]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <TouchableOpacity
               onPress={handleSearch}
               disabled={searchMountain.trim().length < 2 || searchRegion.trim().length < 2}
@@ -974,6 +1110,34 @@ const s = StyleSheet.create({
     backgroundColor: "#142236", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
   changeGoalText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
+
+  // Customise panel
+  customisePill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: T.blueDim, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: T.blue + "40",
+  },
+  customisePillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
+  customisePanel: {
+    backgroundColor: "#0A1628", borderRadius: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    padding: 14, marginTop: 6, gap: 0,
+  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 10,
+    backgroundColor: "#142236",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  chipActive: { backgroundColor: T.blue + "22", borderColor: T.blue + "50" },
+  chipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
+  chipTextActive: { color: T.blue, fontFamily: "Inter_700Bold" },
+  regenerateBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: T.blue, borderRadius: 12, paddingVertical: 11, marginTop: 14,
+  },
+  regenerateBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
 
   // Navigation
   backRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
