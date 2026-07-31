@@ -45,6 +45,19 @@ export interface SimulationScoreBreakdown {
   consecutiveDays: number;
 }
 
+export interface RouteDna {
+  scrambling:         number; // 0-10
+  exposure:           number;
+  ridgeTravel:        number;
+  endurance:          number;
+  technicalMovement:  number;
+  navigationRequired: number;
+  steepness:          number;
+  scenicQuality:      number;
+  descentDifficulty:  number;
+  sustainedClimbing:  number;
+}
+
 export interface TargetMountain {
   name: string;
   country: string;
@@ -58,6 +71,8 @@ export interface TargetMountain {
   altitudeExposure: "None" | "Moderate" | "High" | "Extreme";
   /** Narrative description of the standard route, from GPT-4o mountain profile. */
   notes?: string | null;
+  /** Route DNA profile — character dimensions (0-10 each). Added in v2 of the expedition builder. */
+  routeDna?: RouteDna;
 }
 
 export interface SummitGoal {
@@ -92,6 +107,25 @@ export interface SummitGoal {
   simulationDurationWeeks?: number;
   /** Virtual mode only: cached recommended training hills from the last /virtual-expedition call. */
   virtualHills?: NearbyHill[];
+  /**
+   * Virtual / Expedition mode: the AI-designed mini expedition plan returned
+   * by the Mountain Guide expedition builder. Stored for display and editing.
+   * null when the legacy elevation calculator was used as fallback.
+   */
+  expeditionPlan?: {
+    title:         string;
+    concept:       string;
+    days: Array<{
+      label:  string;
+      title:  string;
+      focus:  string;
+      routes: Array<{ name: string; why: string }>;
+    }>;
+    alternatives:  Record<string, string[]>;
+    adventureScore: number;
+    dnaMatchScore:  number;
+    dnaMatchNotes:  string;
+  } | null;
   /**
    * Virtual mode only: real outdoor hike progress logged by the user toward
    * their goal mountain's combined elevation and distance demands.

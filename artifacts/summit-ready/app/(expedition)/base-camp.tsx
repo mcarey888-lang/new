@@ -50,11 +50,29 @@ function scoreLabel(score: number) {
   return "Early stages";
 }
 
+interface ExpeditionDay {
+  label:  string;
+  title:  string;
+  focus:  string;
+  routes: Array<{ name: string; why: string }>;
+}
+
 interface VirtualExpeditionResponse {
-  targetProfile: TargetMountain & { notes?: string | null };
+  targetProfile:    TargetMountain & { notes?: string | null };
   recommendedHills: NearbyHill[];
-  simulationScore: number;
-  scoreBreakdown: import("@/context/AppContext").SimulationScoreBreakdown;
+  simulationScore:  number;
+  adventureScore:   number;
+  dnaMatchScore:    number;
+  scoreBreakdown:   import("@/context/AppContext").SimulationScoreBreakdown;
+  expedition: {
+    title:         string;
+    concept:       string;
+    days:          ExpeditionDay[];
+    alternatives:  Record<string, string[]>;
+    adventureScore: number;
+    dnaMatchScore:  number;
+    dnaMatchNotes:  string;
+  } | null;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -121,9 +139,10 @@ export default function BaseCampScreen() {
       const data: VirtualExpeditionResponse = await res.json();
       await patchGoal({
         targetMountain:            data.targetProfile,
-        simulationScore:           data.simulationScore,
+        simulationScore:           data.dnaMatchScore ?? data.simulationScore,
         simulationScoreBreakdown:  data.scoreBreakdown,
         virtualHills:              data.recommendedHills,
+        expeditionPlan:            data.expedition ?? null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load expedition data.");
