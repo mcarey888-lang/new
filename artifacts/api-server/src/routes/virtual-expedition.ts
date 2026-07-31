@@ -447,6 +447,45 @@ function resolveExpeditionHills(
 }
 
 /**
+ * Post-selection elevation bridge.
+ *
+ * The AI picks routes by character (feel) not arithmetic. In lowland areas
+ * (moors, Pennines, low hills) the combined elevation of 3–5 routes at ×1
+ * can be far below the target — 241m vs 1,500m for Fuji is an 84% shortfall
+ * that's confusing and demoralising for the user.
+ *
+ * This step closes the gap *without* reverting to the old single-hill grind:
+ *  - If total gain ≥ 40 % of target: leave as-is — AI did fine.
+ *  - Otherwise: assign reps proportionally across all selected hills so that
+ *    the overall total reaches ~65 % of the target, capped at 4 reps per
+ *    hill so no single route dominates.  Bigger hills earn more reps
+ *    (higher contribution per round).
+ *
+ * The 65 % ceiling is intentional: we never claim a moorland walk replicates
+ * Fuji perfectly, but we do give the user a meaningful elevation challenge.
+ */
+function distributeRepsForElevation(hills: Hill[], targetGain: number): Hill[] {
+  if (!hills.length || targetGain <= 0) return hills;
+
+  const totalAtOne = hills.reduce((s, h) => s + h.elevation, 0);
+
+  // Already ≥ 40 % of target — character match is sufficient.
+  if (totalAtOne >= targetGain * 0.40) return hills;
+
+  // Aim for 65 % of target, capped so we don't inflate tiny moors to absurdity.
+  const aimGain    = Math.min(targetGain * 0.65, totalAtOne * 4);
+  const avgElev    = totalAtOne / hills.length;
+
+  return hills.map(h => {
+    // Proportional allocation: hills with higher gain shoulder more reps.
+    const share  = avgElev > 0 ? h.elevation / avgElev : 1;
+    const rawRep = (aimGain / totalAtOne) * share;
+    const reps   = Math.min(4, Math.max(1, Math.round(rawRep)));
+    return { ...h, repeats: reps, totalElevation: Math.round(h.elevation * reps) };
+  });
+}
+
+/**
  * Resolve alternative hill names to actual Hill objects.
  * Keeps only alternatives that fuzzy-match an available hill and
  * aren't already selected as primary routes.
@@ -607,7 +646,8 @@ router.post("/virtual-expedition", async (req, res) => {
     } catch { /* fall through to calculator */ }
 
     if (expedition) {
-      recommendedHills = resolveExpeditionHills(expedition, localHills);
+      const rawHills   = resolveExpeditionHills(expedition, localHills);
+      recommendedHills = distributeRepsForElevation(rawHills, targetProfile.totalElevationGain);
       usingAiExpedition = true;
 
       // Synthesise weekendPairing for score compat (2+ hills → treat as weekend pairing)
