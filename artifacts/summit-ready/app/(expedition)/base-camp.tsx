@@ -41,6 +41,13 @@ function scoreColor(score: number) {
   return T.red;
 }
 
+function diffColor(d: string | null) {
+  if (d === "Easy")     return T.green;
+  if (d === "Moderate") return T.blue;
+  if (d === "Hard")     return T.orange;
+  return "#FF4444";
+}
+
 function fmtElev(m: number) {
   return m >= 1000 ? `${(m / 1000).toFixed(1)}k` : `${m}`;
 }
@@ -53,6 +60,18 @@ function weeklyElevation(sessions: Session[]): number {
   return sessions
     .filter(s => new Date(s.date) >= monday)
     .reduce((sum, s) => sum + (s.elevationGain ?? 0), 0);
+}
+
+interface FeaturedChallenge {
+  challengeId: string;
+  challengeName: string;
+  targetMountainName: string;
+  difficulty: string | null;
+  recommendedDays: number;
+  adventureScore: number | null;
+  totalAscentM: number | null;
+  regions: string | null;
+  summary: string | null;
 }
 
 interface VirtualExpeditionResponse {
@@ -99,6 +118,10 @@ export default function BaseCampScreen() {
   const [error, setError]     = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
+  // Featured signature challenges — shown in empty state
+  const [featured, setFeatured] = useState<FeaturedChallenge[]>([]);
+  const [featLoading, setFeatLoading] = useState(false);
+
   const heroUri = imgError || !summitGoal
     ? null
     : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=500`;
@@ -137,6 +160,15 @@ export default function BaseCampScreen() {
 
   useEffect(() => { void fetchExpedition(); }, []); // eslint-disable-line
 
+  useEffect(() => {
+    setFeatLoading(true);
+    fetch(`${API_BASE}/sx/featured`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setFeatured(d.challenges ?? []); })
+      .catch(() => {})
+      .finally(() => setFeatLoading(false));
+  }, []);
+
   // ── Derived data ─────────────────────────────────────────────────────────────
   const myWeeklyElev = useMemo(() => weeklyElevation(sessions), [sessions]);
   const totalTrained = useMemo(
@@ -159,27 +191,110 @@ export default function BaseCampScreen() {
     return entries.map((e, i) => ({ ...e, rank: i + 1 }));
   }, [myWeeklyElev]);
 
-  // ── Empty state ───────────────────────────────────────────────────────────────
+  // ── Empty state — featured expedition library ─────────────────────────────────
   if (!summitGoal) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 18, padding: 32, marginTop: PILL_OFFSET }}>
-          <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
-            <Mountain size={36} color={T.blue} />
-          </View>
-          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" }}>
-            Choose your expedition
-          </Text>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 21 }}>
-            Browse virtual mountains and select one to start your expedition.
-          </Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: PILL_OFFSET + 20, paddingBottom: 48, paddingHorizontal: 16 }}
+        >
+          {/* Header */}
+          <Animated.View entering={FadeInDown.duration(350)} style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 6 }}>
+              Featured Expeditions
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 }}>
+              Curated UK weekend adventures that train you for the world's greatest summits
+            </Text>
+          </Animated.View>
+
+          {/* Loading */}
+          {featLoading && (
+            <View style={{ paddingVertical: 48, alignItems: "center" }}>
+              <ActivityIndicator color={T.purple} />
+            </View>
+          )}
+
+          {/* Challenge cards */}
+          {featured.map((ch, idx) => (
+            <Animated.View key={ch.challengeId} entering={FadeInDown.delay(idx * 25).duration(350)}>
+              <TouchableOpacity
+                style={s.featCard}
+                activeOpacity={0.82}
+                onPress={() => router.push("/(expedition)/mountains" as any)}
+              >
+                <LinearGradient
+                  colors={["rgba(139,92,246,0.10)", "transparent"]}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                />
+                {/* Top row */}
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <View style={s.featBadge}>
+                    <Text style={s.featBadgeText}>✦ SIGNATURE</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {ch.difficulty && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: diffColor(ch.difficulty) }} />
+                        <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: T.textMuted }}>{ch.difficulty}</Text>
+                      </View>
+                    )}
+                    <ChevronRight size={14} color={T.purple} />
+                  </View>
+                </View>
+                {/* Mountain name */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                  <Mountain size={10} color={T.textDim} />
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>{ch.targetMountainName}</Text>
+                </View>
+                {/* Challenge name */}
+                <Text style={s.featTitle}>{ch.challengeName}</Text>
+                {/* Summary */}
+                {ch.summary && (
+                  <Text style={s.featSummary} numberOfLines={2}>{ch.summary}</Text>
+                )}
+                {/* Stats */}
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  {ch.recommendedDays > 0 && (
+                    <View style={s.featStat}>
+                      <Text style={s.featStatVal}>{ch.recommendedDays}</Text>
+                      <Text style={s.featStatLbl}>days</Text>
+                    </View>
+                  )}
+                  {!!ch.totalAscentM && (
+                    <View style={s.featStat}>
+                      <Text style={s.featStatVal}>
+                        {ch.totalAscentM >= 1000 ? `${(ch.totalAscentM / 1000).toFixed(1)}k` : ch.totalAscentM}m
+                      </Text>
+                      <Text style={s.featStatLbl}>ascent</Text>
+                    </View>
+                  )}
+                  {ch.adventureScore != null && (
+                    <View style={[s.featStat, { borderColor: "rgba(139,92,246,0.3)" }]}>
+                      <Text style={[s.featStatVal, { color: T.purple }]}>{ch.adventureScore}</Text>
+                      <Text style={s.featStatLbl}>adventure</Text>
+                    </View>
+                  )}
+                  {ch.regions && (
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, alignSelf: "center", flex: 1, textAlign: "right" }} numberOfLines={1}>
+                      📍 {ch.regions}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+
+          {/* Browse all CTA */}
           <TouchableOpacity
             onPress={() => router.push("/(expedition)/mountains" as any)}
-            style={{ paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16, backgroundColor: T.blue }}
+            style={{ marginTop: 6, paddingVertical: 14, borderRadius: 14, backgroundColor: T.blue, alignItems: "center" }}
           >
-            <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Browse Mountains</Text>
+            <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Browse All Mountains</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </LinearGradient>
     );
   }
@@ -518,6 +633,28 @@ const s = StyleSheet.create({
   matchBadge: { alignItems: "center" },
   matchPct:   { fontSize: 15, fontFamily: "Inter_700Bold", color: T.green },
   matchLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim },
+
+  // Featured expedition cards (empty state)
+  featCard: {
+    backgroundColor: "#0F1628",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(139,92,246,0.2)",
+    padding: 14, marginBottom: 10, overflow: "hidden",
+  },
+  featBadge: {
+    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 5,
+    paddingHorizontal: 7, paddingVertical: 2,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
+  },
+  featBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#9B7FD4", letterSpacing: 1 },
+  featTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 21 },
+  featSummary: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16, marginTop: 4 },
+  featStat: {
+    backgroundColor: "#142236", borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5, alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+  },
+  featStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  featStatLbl: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 1 },
 
   // Error
   errorBanner: {

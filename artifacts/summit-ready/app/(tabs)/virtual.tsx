@@ -183,7 +183,23 @@ export default function VirtualScreen() {
   const [sigLoading, setSigLoading] = useState(false);
   const [sigExpanded, setSigExpanded] = useState(false);
 
+  // featured list — shown in the browse section
+  const [featuredList, setFeaturedList] = useState<Array<{
+    challengeId: string; challengeName: string; targetMountainName: string;
+    difficulty: string | null; recommendedDays: number;
+    adventureScore: number | null; totalAscentM: number | null; regions: string | null;
+  }>>([]);
+  const browseScrollRef = useRef<any>(null);
+
   const { patchGoal } = useApp();
+
+  // Fetch featured signature challenges on mount
+  React.useEffect(() => {
+    fetch(`${API_BASE}/sx/featured`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setFeaturedList(d.challenges ?? []); })
+      .catch(() => {});
+  }, []);
 
   const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
   const botPad = Platform.OS === "web" ? 120 : insets.bottom + 100;
@@ -916,7 +932,7 @@ export default function VirtualScreen() {
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
+      <ScrollView ref={browseScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 6 }}>
@@ -1039,6 +1055,62 @@ export default function VirtualScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+
+        {/* ── Signature Expeditions ────────────────────────────────────────── */}
+        {featuredList.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginBottom: 22 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+              <Text style={s.sectionTitle}>SIGNATURE EXPEDITIONS</Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 3 }}>
+                Curated UK adventures matched to iconic summits · tap to pre-fill
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 2 }}
+            >
+              {featuredList.map((ch) => (
+                <TouchableOpacity
+                  key={ch.challengeId}
+                  style={s.sigBrowseCard}
+                  activeOpacity={0.82}
+                  onPress={() => {
+                    setSearchMountain(ch.targetMountainName);
+                    browseScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }}
+                >
+                  <LinearGradient
+                    colors={["rgba(139,92,246,0.10)", "transparent"]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={s.sigBrowseBadge}>
+                    <Text style={s.sigBrowseBadgeText}>✦ SIGNATURE</Text>
+                  </View>
+                  <Text style={s.sigBrowseTitle} numberOfLines={2}>{ch.challengeName}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    <Mountain size={9} color={T.textDim} />
+                    <Text style={s.sigBrowseMtn} numberOfLines={1}>{ch.targetMountainName}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    {ch.difficulty && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: diffColor(ch.difficulty) }} />
+                        <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: T.textMuted }}>{ch.difficulty}</Text>
+                      </View>
+                    )}
+                    {ch.recommendedDays > 0 && (
+                      <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim }}>{ch.recommendedDays}d</Text>
+                    )}
+                    {ch.adventureScore != null && (
+                      <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple }}>{ch.adventureScore} adv</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
 
         {/* ── Mountain cards ───────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16 }}>
@@ -1258,6 +1330,22 @@ const s = StyleSheet.create({
   mountainIconWrap: { width: 40, height: 40, borderRadius: 11, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
   mountainTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
   mountainSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  // Signature browse cards (horizontal scroll on Mountains browse)
+  sigBrowseCard: {
+    width: 200, backgroundColor: "#120D20", borderRadius: 14,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.22)",
+    padding: 12, overflow: "hidden",
+  },
+  sigBrowseBadge: {
+    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 5,
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
+    alignSelf: "flex-start", marginBottom: 8,
+  },
+  sigBrowseBadgeText: { fontSize: 7, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 1 },
+  sigBrowseTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 17 },
+  sigBrowseMtn: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, flex: 1 },
 
   // Signature challenge card
   sigCard: {
