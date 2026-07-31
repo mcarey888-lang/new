@@ -42,7 +42,7 @@ router.use(seededTrailsRouter);
 router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
 router.use(virtualExpeditionEngineRouter);
-router.use("/api/sx", signatureChallengesRouter);
+router.use(signatureChallengesRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +

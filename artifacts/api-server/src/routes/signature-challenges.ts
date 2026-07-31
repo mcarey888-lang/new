@@ -46,7 +46,7 @@ async function getStagesAndLimitations(challengeId: string) {
 //   ?featured=true         only featured challenges
 //   ?mountain=matterhorn   filter by mountainSlug (exact)
 //   ?withStages=true       include stages in list response
-signatureChallengesRouter.get("/challenges", async (req, res) => {
+signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
   try {
     const { region, days, difficulty, featured, mountain, withStages } = req.query;
 
@@ -92,7 +92,7 @@ signatureChallengesRouter.get("/challenges", async (req, res) => {
 });
 
 // ── GET /api/sx/featured ─────────────────────────────────────────────────────
-signatureChallengesRouter.get("/featured", async (_req, res) => {
+signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
   try {
     const rows = await db
       .select()
@@ -115,7 +115,7 @@ signatureChallengesRouter.get("/featured", async (_req, res) => {
 // ── GET /api/sx/challenges/for-mountain/:slug ─────────────────────────────────
 // Primary lookup used by the Virtual Expedition flow.
 // :slug is the normalised mountain slug, e.g. "matterhorn", "k2"
-signatureChallengesRouter.get("/challenges/for-mountain/:slug", async (req, res) => {
+signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
 
@@ -150,7 +150,7 @@ signatureChallengesRouter.get("/challenges/for-mountain/:slug", async (req, res)
 });
 
 // ── GET /api/sx/challenges/:challengeId ───────────────────────────────────────
-signatureChallengesRouter.get("/challenges/:challengeId", async (req, res) => {
+signatureChallengesRouter.get("/sx/challenges/:challengeId", async (req, res) => {
   try {
     const { challengeId } = req.params;
 
