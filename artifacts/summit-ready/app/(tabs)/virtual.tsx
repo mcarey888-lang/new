@@ -210,7 +210,7 @@ export default function VirtualScreen() {
   async function handleSetGoal() {
     if (!results) return;
     const mountainName = activeBundle?.goalMountain ?? activeSearch?.mountain ?? results.targetProfile.name;
-    const location = customLocation.trim() || activeBundle?.region ?? activeSearch?.region ?? "";
+    const location = customLocation.trim() || (activeBundle?.region ?? activeSearch?.region ?? "");
 
     const newGoal: SummitGoal = {
       mountainName,
