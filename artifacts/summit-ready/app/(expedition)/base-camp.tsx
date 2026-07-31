@@ -24,6 +24,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
+import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import type { NearbyHill, SummitGoal, TargetMountain, Session } from "@/context/AppContext";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -121,6 +122,7 @@ export default function BaseCampScreen() {
   // Featured signature challenges — shown in empty state
   const [featured, setFeatured] = useState<FeaturedChallenge[]>([]);
   const [featLoading, setFeatLoading] = useState(false);
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
 
   const heroUri = imgError || !summitGoal
     ? null
@@ -222,66 +224,73 @@ export default function BaseCampScreen() {
               <TouchableOpacity
                 style={s.featCard}
                 activeOpacity={0.82}
-                onPress={() => router.push("/(expedition)/mountains" as any)}
+                onPress={() => setSelectedChallengeId(ch.challengeId)}
               >
-                <LinearGradient
-                  colors={["rgba(139,92,246,0.10)", "transparent"]}
-                  style={StyleSheet.absoluteFill}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                />
-                {/* Top row */}
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <View style={s.featBadge}>
-                    <Text style={s.featBadgeText}>✦ SIGNATURE</Text>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {/* Hero image section */}
+                <View style={s.featHero}>
+                  <ExpoImage
+                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=600&height=400` }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                  />
+                  <LinearGradient
+                    colors={["rgba(0,0,0,0.1)", "rgba(10,6,20,0.90)"]}
+                    style={StyleSheet.absoluteFill}
+                    locations={[0.25, 1]}
+                  />
+                  {/* Badge + difficulty */}
+                  <View style={{ position: "absolute", top: 10, left: 12, right: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={s.featBadge}><Text style={s.featBadgeText}>✦ SIGNATURE</Text></View>
                     {ch.difficulty && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: diffColor(ch.difficulty) }} />
-                        <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: T.textMuted }}>{ch.difficulty}</Text>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff" }}>{ch.difficulty}</Text>
+                        <ChevronRight size={12} color="rgba(255,255,255,0.7)" />
                       </View>
                     )}
-                    <ChevronRight size={14} color={T.purple} />
+                  </View>
+                  {/* Mountain + title overlay */}
+                  <View style={{ position: "absolute", bottom: 12, left: 12, right: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                      <Mountain size={10} color="rgba(255,255,255,0.45)" />
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.45)" }}>{ch.targetMountainName}</Text>
+                    </View>
+                    <Text style={s.featTitle}>{stripSuffix(ch.challengeName)}</Text>
                   </View>
                 </View>
-                {/* Mountain name */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
-                  <Mountain size={10} color={T.textDim} />
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>{ch.targetMountainName}</Text>
-                </View>
-                {/* Challenge name */}
-                <Text style={s.featTitle}>{ch.challengeName}</Text>
-                {/* Summary */}
-                {ch.summary && (
-                  <Text style={s.featSummary} numberOfLines={2}>{ch.summary}</Text>
-                )}
-                {/* Stats */}
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  {ch.recommendedDays > 0 && (
-                    <View style={s.featStat}>
-                      <Text style={s.featStatVal}>{ch.recommendedDays}</Text>
-                      <Text style={s.featStatLbl}>days</Text>
-                    </View>
+
+                {/* Body: summary + stats */}
+                <View style={s.featBody}>
+                  {ch.summary && (
+                    <Text style={s.featSummary} numberOfLines={2}>{ch.summary}</Text>
                   )}
-                  {!!ch.totalAscentM && (
-                    <View style={s.featStat}>
-                      <Text style={s.featStatVal}>
-                        {ch.totalAscentM >= 1000 ? `${(ch.totalAscentM / 1000).toFixed(1)}k` : ch.totalAscentM}m
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    {ch.recommendedDays > 0 && (
+                      <View style={s.featStat}>
+                        <Text style={s.featStatVal}>{ch.recommendedDays}</Text>
+                        <Text style={s.featStatLbl}>days</Text>
+                      </View>
+                    )}
+                    {!!ch.totalAscentM && (
+                      <View style={s.featStat}>
+                        <Text style={s.featStatVal}>
+                          {ch.totalAscentM >= 1000 ? `${(ch.totalAscentM / 1000).toFixed(1)}k` : ch.totalAscentM}m
+                        </Text>
+                        <Text style={s.featStatLbl}>ascent</Text>
+                      </View>
+                    )}
+                    {ch.adventureScore != null && (
+                      <View style={[s.featStat, { borderColor: "rgba(139,92,246,0.3)" }]}>
+                        <Text style={[s.featStatVal, { color: T.purple }]}>{ch.adventureScore}</Text>
+                        <Text style={s.featStatLbl}>adventure</Text>
+                      </View>
+                    )}
+                    {ch.regions && (
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, alignSelf: "center", flex: 1, textAlign: "right" }} numberOfLines={1}>
+                        📍 {ch.regions}
                       </Text>
-                      <Text style={s.featStatLbl}>ascent</Text>
-                    </View>
-                  )}
-                  {ch.adventureScore != null && (
-                    <View style={[s.featStat, { borderColor: "rgba(139,92,246,0.3)" }]}>
-                      <Text style={[s.featStatVal, { color: T.purple }]}>{ch.adventureScore}</Text>
-                      <Text style={s.featStatLbl}>adventure</Text>
-                    </View>
-                  )}
-                  {ch.regions && (
-                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, alignSelf: "center", flex: 1, textAlign: "right" }} numberOfLines={1}>
-                      📍 {ch.regions}
-                    </Text>
-                  )}
+                    )}
+                  </View>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -295,6 +304,11 @@ export default function BaseCampScreen() {
             <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Browse All Mountains</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <ChallengeDetailSheet
+          challengeId={selectedChallengeId}
+          onClose={() => setSelectedChallengeId(null)}
+        />
       </LinearGradient>
     );
   }
@@ -638,16 +652,18 @@ const s = StyleSheet.create({
   featCard: {
     backgroundColor: "#0F1628",
     borderRadius: 16, borderWidth: 1, borderColor: "rgba(139,92,246,0.2)",
-    padding: 14, marginBottom: 10, overflow: "hidden",
+    marginBottom: 12, overflow: "hidden",
   },
+  featHero: { height: 168, overflow: "hidden" },
+  featBody: { padding: 12 },
   featBadge: {
-    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 5,
+    backgroundColor: "rgba(139,92,246,0.25)", borderRadius: 5,
     paddingHorizontal: 7, paddingVertical: 2,
-    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.4)",
   },
-  featBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#9B7FD4", letterSpacing: 1 },
-  featTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 21 },
-  featSummary: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16, marginTop: 4 },
+  featBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#C4AAEE", letterSpacing: 1 },
+  featTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 22 },
+  featSummary: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
   featStat: {
     backgroundColor: "#142236", borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 5, alignItems: "center",

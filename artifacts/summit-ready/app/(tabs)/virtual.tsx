@@ -39,6 +39,7 @@ import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
+import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import { VIRTUAL_BUNDLES, FREE_BUNDLE_IDS, type VirtualBundle } from "@/data/virtualBundles";
 import type {
   NearbyHill, SimulationScoreBreakdown, SummitGoal, TargetMountain,
@@ -189,6 +190,7 @@ export default function VirtualScreen() {
     difficulty: string | null; recommendedDays: number;
     adventureScore: number | null; totalAscentM: number | null; regions: string | null;
   }>>([]);
+  const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
   const browseScrollRef = useRef<any>(null);
 
   const { patchGoal } = useApp();
@@ -542,7 +544,7 @@ export default function VirtualScreen() {
                   </View>
                 ) : sigChallenge ? (
                   <>
-                    <Text style={s.sigTitle}>{sigChallenge.challengeName}</Text>
+                    <Text style={s.sigTitle}>{stripSuffix(sigChallenge.challengeName)}</Text>
                     {sigChallenge.targetRoute ? (
                       <Text style={s.sigRoute}>{sigChallenge.targetRoute}</Text>
                     ) : null}
@@ -1075,36 +1077,43 @@ export default function VirtualScreen() {
                   key={ch.challengeId}
                   style={s.sigBrowseCard}
                   activeOpacity={0.82}
-                  onPress={() => {
-                    setSearchMountain(ch.targetMountainName);
-                    browseScrollRef.current?.scrollTo({ y: 0, animated: true });
-                  }}
+                  onPress={() => setSelectedFeaturedId(ch.challengeId)}
                 >
-                  <LinearGradient
-                    colors={["rgba(139,92,246,0.10)", "transparent"]}
+                  <ExpoImage
+                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=300` }}
                     style={StyleSheet.absoluteFill}
+                    contentFit="cover"
                   />
-                  <View style={s.sigBrowseBadge}>
+                  <LinearGradient
+                    colors={["rgba(0,0,0,0.05)", "rgba(10,6,20,0.93)"]}
+                    style={StyleSheet.absoluteFill}
+                    locations={[0.2, 1]}
+                  />
+                  {/* Badge */}
+                  <View style={[s.sigBrowseBadge, { position: "absolute", top: 8, left: 8 }]}>
                     <Text style={s.sigBrowseBadgeText}>✦ SIGNATURE</Text>
                   </View>
-                  <Text style={s.sigBrowseTitle} numberOfLines={2}>{ch.challengeName}</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-                    <Mountain size={9} color={T.textDim} />
-                    <Text style={s.sigBrowseMtn} numberOfLines={1}>{ch.targetMountainName}</Text>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                    {ch.difficulty && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: diffColor(ch.difficulty) }} />
-                        <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: T.textMuted }}>{ch.difficulty}</Text>
-                      </View>
-                    )}
-                    {ch.recommendedDays > 0 && (
-                      <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim }}>{ch.recommendedDays}d</Text>
-                    )}
-                    {ch.adventureScore != null && (
-                      <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple }}>{ch.adventureScore} adv</Text>
-                    )}
+                  {/* Bottom content */}
+                  <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                      <Mountain size={8} color="rgba(255,255,255,0.4)" />
+                      <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular" }} numberOfLines={1}>{ch.targetMountainName}</Text>
+                    </View>
+                    <Text style={s.sigBrowseTitle} numberOfLines={2}>{stripSuffix(ch.challengeName)}</Text>
+                    <View style={{ flexDirection: "row", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
+                      {ch.difficulty && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: diffColor(ch.difficulty) }} />
+                          <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.65)" }}>{ch.difficulty}</Text>
+                        </View>
+                      )}
+                      {ch.recommendedDays > 0 && (
+                        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)" }}>{ch.recommendedDays}d</Text>
+                      )}
+                      {ch.adventureScore != null && (
+                        <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple }}>{ch.adventureScore} adv</Text>
+                      )}
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -1207,6 +1216,11 @@ export default function VirtualScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <ChallengeDetailSheet
+        challengeId={selectedFeaturedId}
+        onClose={() => setSelectedFeaturedId(null)}
+      />
     </LinearGradient>
   );
 }
@@ -1333,18 +1347,17 @@ const s = StyleSheet.create({
 
   // Signature browse cards (horizontal scroll on Mountains browse)
   sigBrowseCard: {
-    width: 200, backgroundColor: "#120D20", borderRadius: 14,
+    width: 190, height: 178, backgroundColor: "#120D20", borderRadius: 14,
     borderWidth: 1, borderColor: "rgba(139,92,246,0.22)",
-    padding: 12, overflow: "hidden",
+    overflow: "hidden",
   },
   sigBrowseBadge: {
-    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 5,
+    backgroundColor: "rgba(139,92,246,0.28)", borderRadius: 5,
     paddingHorizontal: 6, paddingVertical: 2,
-    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
-    alignSelf: "flex-start", marginBottom: 8,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.45)",
   },
-  sigBrowseBadgeText: { fontSize: 7, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 1 },
-  sigBrowseTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 17 },
+  sigBrowseBadgeText: { fontSize: 7, fontFamily: "Inter_700Bold", color: "#C4AAEE", letterSpacing: 1 },
+  sigBrowseTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 17 },
   sigBrowseMtn: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, flex: 1 },
 
   // Signature challenge card
