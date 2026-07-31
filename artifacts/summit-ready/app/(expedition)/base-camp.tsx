@@ -308,6 +308,10 @@ export default function BaseCampScreen() {
         <ChallengeDetailSheet
           challengeId={selectedChallengeId}
           onClose={() => setSelectedChallengeId(null)}
+          onStart={(mountainName) => {
+            setSelectedChallengeId(null);
+            router.push({ pathname: "/(tabs)/virtual", params: { startMountain: mountainName } } as any);
+          }}
         />
       </LinearGradient>
     );

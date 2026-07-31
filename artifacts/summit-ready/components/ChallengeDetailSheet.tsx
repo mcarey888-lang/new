@@ -69,9 +69,11 @@ interface SigChallenge {
 interface Props {
   challengeId: string | null;
   onClose: () => void;
+  /** Called when the user taps "Start this Expedition". Receives the target mountain name. */
+  onStart?: (mountainName: string) => void;
 }
 
-export function ChallengeDetailSheet({ challengeId, onClose }: Props) {
+export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
   const insets = useSafeAreaInsets();
   const [challenge, setChallenge] = useState<SigChallenge | null>(null);
   const [loading, setLoading]     = useState(false);
@@ -360,8 +362,12 @@ export function ChallengeDetailSheet({ challengeId, onClose }: Props) {
               style={s.ctaBtn}
               activeOpacity={0.85}
               onPress={() => {
+                if (onStart && challenge) {
+                  onStart(challenge.targetMountainName);
+                } else {
+                  router.push("/(tabs)/virtual" as any);
+                }
                 onClose();
-                router.push("/(expedition)/mountains" as any);
               }}
             >
               <Mountain size={16} color="#fff" />

@@ -17,8 +17,8 @@ import {
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -194,6 +194,16 @@ export default function VirtualScreen() {
   const browseScrollRef = useRef<any>(null);
 
   const { patchGoal } = useApp();
+
+  // ── Auto-start from URL param (e.g. navigated here from base-camp) ────────────
+  const { startMountain } = useLocalSearchParams<{ startMountain?: string }>();
+  useEffect(() => {
+    if (startMountain) {
+      setSearchMountain(startMountain);
+      void fetchExpedition(startMountain, "United Kingdom", searchRadius);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startMountain]);
 
   // Fetch featured signature challenges on mount
   React.useEffect(() => {
@@ -1220,6 +1230,11 @@ export default function VirtualScreen() {
       <ChallengeDetailSheet
         challengeId={selectedFeaturedId}
         onClose={() => setSelectedFeaturedId(null)}
+        onStart={(mountainName) => {
+          setSelectedFeaturedId(null);
+          setSearchMountain(mountainName);
+          void fetchExpedition(mountainName, "United Kingdom", searchRadius);
+        }}
       />
     </LinearGradient>
   );
