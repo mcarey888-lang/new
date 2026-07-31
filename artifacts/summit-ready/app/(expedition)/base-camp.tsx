@@ -1,13 +1,13 @@
 /**
  * Base Camp — Expedition home tab.
- * Matches the reference design: full-bleed hero, progress ring,
- * Next Mission card, weekly leaderboard, community highlights,
- * and a "Suggested For You" mountain card.
+ * v2 redesign matching the reference mockup.
  */
 
+import { useUser } from "@clerk/expo";
 import {
-  Mountain, MapPin, RefreshCw, ChevronRight, AlertTriangle,
-  Trophy, Users, Flame, Target, Play, TrendingUp,
+  Mountain, Search, SlidersHorizontal, Bookmark, Heart,
+  ChevronRight, TrendingUp, Camera, Plus, Trophy, Clock,
+  MapPin, RefreshCw, AlertTriangle,
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,7 +17,7 @@ import {
   ActivityIndicator, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -25,7 +25,7 @@ import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
-import type { NearbyHill, SummitGoal, TargetMountain, Session } from "@/context/AppContext";
+import type { Session } from "@/context/AppContext";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -33,13 +33,20 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 const PILL_OFFSET = 52;
 
+const REGIONS = [
+  { name: "Snowdonia",     slug: "Snowdon",      routes: 48 },
+  { name: "Lake District", slug: "Helvellyn",    routes: 52 },
+  { name: "Scotland",      slug: "Ben Nevis",    routes: 41 },
+  { name: "Peak District", slug: "Kinder Scout", routes: 33 },
+];
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function scoreColor(score: number) {
-  if (score >= 80) return T.green;
-  if (score >= 60) return T.blue;
-  if (score >= 40) return T.orange;
-  return T.red;
+function greetingTime() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 function diffColor(d: string | null) {
@@ -49,12 +56,8 @@ function diffColor(d: string | null) {
   return "#FF4444";
 }
 
-function fmtElev(m: number) {
-  return m >= 1000 ? `${(m / 1000).toFixed(1)}k` : `${m}`;
-}
-
 function weeklyElevation(sessions: Session[]): number {
-  const now  = new Date();
+  const now    = new Date();
   const monday = new Date(now);
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   monday.setHours(0, 0, 0, 0);
@@ -62,6 +65,18 @@ function weeklyElevation(sessions: Session[]): number {
     .filter(s => new Date(s.date) >= monday)
     .reduce((sum, s) => sum + (s.elevationGain ?? 0), 0);
 }
+
+function calcTrailTime(sessions: Session[]): { hours: number; minutes: number } {
+  // Naismith's rule: 5 km/h + 10 min per 100 m ascent
+  const totalMin = sessions.reduce((sum, s) => {
+    const distKm = s.distance ?? 0;
+    const elevM  = s.elevationGain ?? 0;
+    return sum + (distKm / 5 * 60) + (elevM / 100 * 10);
+  }, 0);
+  return { hours: Math.floor(totalMin / 60), minutes: Math.round(totalMin % 60) };
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface FeaturedChallenge {
   challengeId: string;
@@ -72,96 +87,137 @@ interface FeaturedChallenge {
   adventureScore: number | null;
   totalAscentM: number | null;
   regions: string | null;
-  summary: string | null;
 }
 
-interface VirtualExpeditionResponse {
-  targetProfile:    TargetMountain & { notes?: string | null };
-  recommendedHills: NearbyHill[];
-  simulationScore:  number;
-  adventureScore:   number;
-  dnaMatchScore:    number;
-  expedition: { title: string; concept: string; days: any[]; } | null;
+interface StageData {
+  name: string;
+  region: string;
+  distance?: number;
+  elevation?: number;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function LeaderboardRow({
-  rank, name, elevation, isUser,
-}: { rank: number; name: string; elevation: number; isUser?: boolean }) {
+function StageDot({ done, active, index }: { done: boolean; active: boolean; index: number }) {
   return (
-    <View style={[s.lbRow, isUser && s.lbRowYou]}>
-      <Text style={[s.lbRank, isUser && { color: T.green }]}>{rank}</Text>
-      <View style={s.lbAvatar}>
-        <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: isUser ? T.green : T.blue }}>
-          {name.slice(0, 1)}
-        </Text>
-      </View>
-      <Text style={[s.lbName, isUser && { color: T.white, fontFamily: "Inter_700Bold" }]}>{name}</Text>
-      <Text style={[s.lbElev, isUser && { color: T.green }]}>{elevation.toLocaleString()}m</Text>
+    <View style={[
+      s.stageDot,
+      done    && s.stageDotDone,
+      active  && s.stageDotActive,
+      !done && !active && s.stageDotUpcoming,
+    ]}>
+      {done
+        ? <Text style={{ fontSize: 10, color: "#fff", fontFamily: "Inter_700Bold" }}>✓</Text>
+        : <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: active ? "#4FC3F7" : "rgba(255,255,255,0.3)" }}>
+            {index + 1}
+          </Text>
+      }
     </View>
   );
 }
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
+// ── Main screen ────────────────────────────────────────────────────────────────
 
 export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, patchGoal } = useApp();
+  const { summitGoal, sessions, patchGoal, unlockedAchievements } = useApp();
+  const { user } = useUser();
 
-  const hasCachedData =
-    !!summitGoal?.simulationScore &&
-    !!summitGoal?.targetMountain &&
-    !!summitGoal?.simulationScoreBreakdown;
+  const firstName = user?.firstName ?? "Adventurer";
 
-  const [loading, setLoading] = useState(!hasCachedData);
-  const [error, setError]     = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
-
-  // Featured signature challenges — shown in empty state
-  const [featured, setFeatured] = useState<FeaturedChallenge[]>([]);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [imgError,  setImgError]  = useState(false);
+  const [featured,  setFeatured]  = useState<FeaturedChallenge[]>([]);
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
 
-  const heroUri = imgError || !summitGoal
-    ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=500`;
+  const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
+  // ── Derived ──────────────────────────────────────────────────────────────────
+  const myWeeklyElev = useMemo(() => weeklyElevation(sessions), [sessions]);
+  const totalTrained = useMemo(() => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0), [sessions]);
+  const totalDistKm  = useMemo(() => sessions.reduce((s, sess) => s + (sess.distance ?? 0), 0), [sessions]);
+  const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
+
+  const leaderboard = useMemo(() => [
+    { name: "Alex H.",  elev: 12450, isUser: false },
+    { name: "You",      elev: myWeeklyElev, isUser: true },
+    { name: "Sarah M.", elev: 8310,  isUser: false },
+  ].sort((a, b) => b.elev - a.elev).map((e, i) => ({ ...e, rank: i + 1 })), [myWeeklyElev]);
+
+  const target    = summitGoal?.targetMountain;
+  const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const score     = summitGoal?.simulationScore ?? 0;
+  const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
+
+  // Stage timeline — prefer expeditionPlan.days, fall back to virtualHills
+  const stages: StageData[] = useMemo(() => {
+    const days = (summitGoal as any)?.expeditionPlan?.days as any[] | null | undefined;
+    if (days && days.length > 0) {
+      return days.map((d: any, i: number) => {
+        const hill = d.hills?.[0];
+        return {
+          name:      hill?.name ?? d.name ?? d.theme ?? `Stage ${i + 1}`,
+          region:    hill?.region ?? d.region ?? "",
+          distance:  hill?.distance ?? d.totalDistance,
+          elevation: hill?.elevation ?? d.totalElevation,
+        };
+      });
+    }
+    return (summitGoal?.virtualHills ?? []).slice(0, 4).map(h => ({
+      name: h.name, region: "",
+      distance: h.distance, elevation: h.elevation,
+    }));
+  }, [summitGoal]);
+
+  const completedStages = Math.max(0, Math.min(
+    Math.floor(pct / 100 * stages.length),
+    pct >= 100 ? stages.length : stages.length - 1,
+  ));
+
+  const nextHill     = summitGoal?.virtualHills?.[0];
+  const nextEst      = nextHill
+    ? `Est. ${Math.round(nextHill.distance / 5)}–${Math.round(nextHill.distance / 3)}h`
+    : "";
+  const journalUrls  = (summitGoal?.virtualHills ?? []).slice(0, 3).map(
+    h => `${API_BASE}/mountain-image?name=${encodeURIComponent(h.name)}&width=200&height=200`,
+  );
+
+  // ── Fetches ──────────────────────────────────────────────────────────────────
   async function fetchExpedition(force = false) {
     if (!summitGoal) return;
     if (!force && hasCachedData) return;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body:    JSON.stringify({
           targetMountain: summitGoal.mountainName,
           userLocation:   summitGoal.location,
           radius:         summitGoal.maxRadius ?? 30,
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? `Server error ${res.status}`);
+        const b = await res.json().catch(() => ({})) as any;
+        throw new Error(b.error ?? "Error");
       }
-      const data: VirtualExpeditionResponse = await res.json();
+      const data = await res.json();
       await patchGoal({
-        targetMountain:           data.targetProfile,
-        simulationScore:          data.dnaMatchScore ?? data.simulationScore,
-        virtualHills:             data.recommendedHills,
+        targetMountain:  data.targetProfile,
+        simulationScore: data.dnaMatchScore ?? data.simulationScore,
+        virtualHills:    data.recommendedHills,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load expedition data.");
+      setError(err instanceof Error ? err.message : "Couldn't load data.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => { void fetchExpedition(); }, []); // eslint-disable-line
-
   useEffect(() => {
     setFeatLoading(true);
     fetch(`${API_BASE}/sx/featured`)
@@ -171,138 +227,208 @@ export default function BaseCampScreen() {
       .finally(() => setFeatLoading(false));
   }, []);
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
-  const myWeeklyElev = useMemo(() => weeklyElevation(sessions), [sessions]);
-  const totalTrained = useMemo(
-    () => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0),
-    [sessions],
-  );
-  const totalDistKm = useMemo(
-    () => sessions.reduce((s, sess) => s + (sess.distance ?? 0), 0),
-    [sessions],
-  );
+  const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  // Leaderboard — user's real weekly elevation + 3 static local club members
-  const leaderboard = useMemo(() => {
-    const entries = [
-      { name: "Alex H.",  elev: 12450 },
-      { name: "You",      elev: myWeeklyElev, isUser: true },
-      { name: "Sarah M.", elev: 8310  },
-      { name: "Tom R.",   elev: 7210  },
-    ].sort((a, b) => b.elev - a.elev);
-    return entries.map((e, i) => ({ ...e, rank: i + 1 }));
-  }, [myWeeklyElev]);
-
-  // ── Empty state — featured expedition library ─────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // EMPTY STATE
+  // ────────────────────────────────────────────────────────────────────────────
   if (!summitGoal) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: PILL_OFFSET + 20, paddingBottom: 48, paddingHorizontal: 16 }}
-        >
-          {/* Header */}
-          <Animated.View entering={FadeInDown.duration(350)} style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 6 }}>
-              Featured Expeditions
-            </Text>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 }}>
-              Curated UK weekend adventures that train you for the world's greatest summits
-            </Text>
-          </Animated.View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
 
-          {/* Loading */}
-          {featLoading && (
-            <View style={{ paddingVertical: 48, alignItems: "center" }}>
-              <ActivityIndicator color={T.purple} />
+          {/* ── Hero ──────────────────────────────────────────────────────── */}
+          <View style={s.emptyHero}>
+            <ExpoImage
+              source={{ uri: `${API_BASE}/mountain-image?name=Matterhorn&width=800&height=600` }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.12)", "rgba(6,10,20,0.88)"]}
+              locations={[0, 0.42, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={{ paddingTop: PILL_OFFSET + topInset + 18, paddingHorizontal: 20, paddingBottom: 22 }}>
+              <Text style={s.emptyGreeting}>{greetingTime()}, {firstName}</Text>
+              <Text style={s.emptyHeadline}>{"Ready for your\nnext adventure?"}</Text>
+              <Text style={s.emptySubtitle}>Train local. Conquer anywhere.</Text>
             </View>
-          )}
+          </View>
 
-          {/* Challenge cards */}
-          {featured.map((ch, idx) => (
-            <Animated.View key={ch.challengeId} entering={FadeInDown.delay(idx * 25).duration(350)}>
-              <TouchableOpacity
-                style={s.featCard}
-                activeOpacity={0.82}
-                onPress={() => setSelectedChallengeId(ch.challengeId)}
-              >
-                {/* Hero image section */}
-                <View style={s.featHero}>
-                  <ExpoImage
-                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=600&height=400` }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                  />
-                  <LinearGradient
-                    colors={["rgba(0,0,0,0.1)", "rgba(10,6,20,0.90)"]}
-                    style={StyleSheet.absoluteFill}
-                    locations={[0.25, 1]}
-                  />
-                  {/* Badge + difficulty */}
-                  <View style={{ position: "absolute", top: 10, left: 12, right: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <View style={s.featBadge}><Text style={s.featBadgeText}>✦ SIGNATURE</Text></View>
-                    {ch.difficulty && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: diffColor(ch.difficulty) }} />
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff" }}>{ch.difficulty}</Text>
-                        <ChevronRight size={12} color="rgba(255,255,255,0.7)" />
+          {/* ── Search bar ─────────────────────────────────────────────────── */}
+          <TouchableOpacity
+            style={s.searchBar}
+            activeOpacity={0.8}
+            onPress={() => router.push("/(tabs)/virtual" as any)}
+          >
+            <Search size={15} color="rgba(255,255,255,0.38)" />
+            <Text style={s.searchPlaceholder}>Search mountains, routes or regions</Text>
+            <SlidersHorizontal size={15} color="rgba(255,255,255,0.38)" />
+          </TouchableOpacity>
+
+          {/* ── Suggested Signature Expeditions ───────────────────────────── */}
+          <View style={[s.sectionRow, { marginHorizontal: 16, marginTop: 22, marginBottom: 10 }]}>
+            <Text style={s.sectionLabel}>SUGGESTED SIGNATURE EXPEDITIONS</Text>
+            <TouchableOpacity onPress={() => router.push("/(expedition)/mountains" as any)}>
+              <Text style={s.viewAllLink}>View all</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 4 }}
+            style={{ marginBottom: 20 }}
+          >
+            {featLoading && (
+              <ActivityIndicator color={T.purple} style={{ paddingHorizontal: 40, paddingVertical: 30 }} />
+            )}
+            {featured.slice(0, 6).map((ch, idx) => {
+              const matchPct   = ch.adventureScore != null ? Math.min(99, Math.round(ch.adventureScore)) : null;
+              const isPopular  = idx === 0;
+              return (
+                <TouchableOpacity
+                  key={ch.challengeId}
+                  style={s.expCard}
+                  activeOpacity={0.85}
+                  onPress={() => setSelectedChallengeId(ch.challengeId)}
+                >
+                  {/* Image */}
+                  <View style={s.expCardImg}>
+                    <ExpoImage
+                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=280` }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                    <LinearGradient
+                      colors={["transparent", "rgba(10,6,20,0.55)"]}
+                      locations={[0.45, 1]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    {isPopular && (
+                      <View style={s.popularBadge}>
+                        <Text style={s.popularText}>⬡ Popular</Text>
+                      </View>
+                    )}
+                    <View style={s.bookmarkBtn}>
+                      <Bookmark size={11} color="rgba(255,255,255,0.75)" />
+                    </View>
+                    {matchPct != null && (
+                      <View style={[s.matchCircle, { borderColor: matchPct >= 80 ? T.green : T.orange }]}>
+                        <Text style={[s.matchCircleText, { color: matchPct >= 80 ? T.green : T.orange }]}>
+                          {matchPct}%
+                        </Text>
                       </View>
                     )}
                   </View>
-                  {/* Mountain + title overlay */}
-                  <View style={{ position: "absolute", bottom: 12, left: 12, right: 12 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 3 }}>
-                      <Mountain size={10} color="rgba(255,255,255,0.45)" />
-                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.45)" }}>{ch.targetMountainName}</Text>
-                    </View>
-                    <Text style={s.featTitle}>{stripSuffix(ch.challengeName)}</Text>
+                  {/* Info */}
+                  <View style={s.expCardBody}>
+                    <Text style={s.expCardTitle} numberOfLines={2}>{stripSuffix(ch.challengeName)}</Text>
+                    <Text style={s.expCardMeta}>
+                      {ch.recommendedDays} {ch.recommendedDays === 1 ? "Day" : "Days"}
+                      {ch.difficulty ? ` • ${ch.difficulty}` : ""}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* ── Leaderboard + Community Highlight ─────────────────────────── */}
+          <View style={{ flexDirection: "row", gap: 10, marginHorizontal: 16, marginBottom: 16 }}>
+            {/* Leaderboard */}
+            <View style={[s.card, { flex: 1 }]}>
+              <View style={[s.sectionRow, { marginBottom: 10 }]}>
+                <Text style={s.sectionLabel}>THIS WEEK'S{"\n"}LEADERBOARD</Text>
+                <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
+              </View>
+              {leaderboard.map(e => (
+                <View key={e.name} style={[s.lbRow, e.isUser && s.lbRowYou]}>
+                  <Text style={[s.lbRank, e.isUser && { color: T.green }]}>{e.rank}</Text>
+                  <View style={[s.lbAvatar, e.isUser && { backgroundColor: "rgba(62,207,117,0.18)" }]}>
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: e.isUser ? T.green : T.blue }}>
+                      {e.name.slice(0, 1)}
+                    </Text>
+                  </View>
+                  <Text style={[s.lbName, e.isUser && { color: T.white, fontFamily: "Inter_700Bold" }]}>{e.name}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <Text style={[s.lbElev, e.isUser && { color: T.green }]}>
+                      {e.elev > 0 ? `${e.elev.toLocaleString()}m` : "–"}
+                    </Text>
+                    <Mountain size={9} color={e.isUser ? T.green : T.textDim} />
                   </View>
                 </View>
+              ))}
+            </View>
 
-                {/* Body: summary + stats */}
-                <View style={s.featBody}>
-                  {ch.summary && (
-                    <Text style={s.featSummary} numberOfLines={2}>{ch.summary}</Text>
-                  )}
-                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    {ch.recommendedDays > 0 && (
-                      <View style={s.featStat}>
-                        <Text style={s.featStatVal}>{ch.recommendedDays}</Text>
-                        <Text style={s.featStatLbl}>days</Text>
-                      </View>
-                    )}
-                    {!!ch.totalAscentM && (
-                      <View style={s.featStat}>
-                        <Text style={s.featStatVal}>
-                          {ch.totalAscentM >= 1000 ? `${(ch.totalAscentM / 1000).toFixed(1)}k` : ch.totalAscentM}m
-                        </Text>
-                        <Text style={s.featStatLbl}>ascent</Text>
-                      </View>
-                    )}
-                    {ch.adventureScore != null && (
-                      <View style={[s.featStat, { borderColor: "rgba(139,92,246,0.3)" }]}>
-                        <Text style={[s.featStatVal, { color: T.purple }]}>{ch.adventureScore}</Text>
-                        <Text style={s.featStatLbl}>adventure</Text>
-                      </View>
-                    )}
-                    {ch.regions && (
-                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, alignSelf: "center", flex: 1, textAlign: "right" }} numberOfLines={1}>
-                        📍 {ch.regions}
-                      </Text>
-                    )}
+            {/* Community Highlight */}
+            <View style={[s.card, { width: 142 }]}>
+              <Text style={[s.sectionLabel, { marginBottom: 10 }]}>COMMUNITY{"\n"}HIGHLIGHT</Text>
+              <View style={s.communityImg}>
+                <ExpoImage
+                  source={{ uri: `${API_BASE}/mountain-image?name=Helvellyn&width=300&height=220` }}
+                  style={[StyleSheet.absoluteFill, { borderRadius: 10 }]}
+                  contentFit="cover"
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.84)"]}
+                  locations={[0.28, 1]}
+                  style={[StyleSheet.absoluteFill, { borderRadius: 10 }]}
+                />
+                <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 13 }}>
+                    Striding Edge Sunrise
+                  </Text>
+                  <Text style={{ fontSize: 8, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.52)", marginTop: 2 }}>
+                    Helvellyn, Lake District
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 }}>
+                    <Heart size={8} color={T.orange} fill={T.orange} />
+                    <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: T.orange }}>128</Text>
                   </View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* ── Popular Regions ────────────────────────────────────────────── */}
+          <View style={[s.sectionRow, { marginHorizontal: 16, marginBottom: 10 }]}>
+            <Text style={s.sectionLabel}>POPULAR REGIONS</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+            style={{ marginBottom: 20 }}
+          >
+            {REGIONS.map(r => (
+              <TouchableOpacity
+                key={r.name}
+                style={s.regionCard}
+                activeOpacity={0.85}
+                onPress={() => router.push("/(tabs)/virtual" as any)}
+              >
+                <ExpoImage
+                  source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.72)"]}
+                  locations={[0.3, 1]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" }}>{r.name}</Text>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.58)", marginTop: 1 }}>
+                    {r.routes} routes
+                  </Text>
                 </View>
               </TouchableOpacity>
-            </Animated.View>
-          ))}
+            ))}
+          </ScrollView>
 
-          {/* Browse all CTA */}
-          <TouchableOpacity
-            onPress={() => router.push("/(expedition)/mountains" as any)}
-            style={{ marginTop: 6, paddingVertical: 14, borderRadius: 14, backgroundColor: T.blue, alignItems: "center" }}
-          >
-            <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Browse All Mountains</Text>
-          </TouchableOpacity>
         </ScrollView>
 
         <ChallengeDetailSheet
@@ -317,19 +443,21 @@ export default function BaseCampScreen() {
     );
   }
 
-  const topInset   = Platform.OS === "web" ? 20 : insets.top;
-  const score      = summitGoal.simulationScore ?? 0;
-  const sc         = scoreColor(score);
-  const target     = summitGoal.targetMountain;
-  const hills      = summitGoal.virtualHills ?? [];
-  const totalGoal  = target?.totalElevationGain ?? summitGoal.elevationGain ?? 0;
-  const pct        = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
-  const nextHill   = hills[0];
+  // ────────────────────────────────────────────────────────────────────────────
+  // ACTIVE EXPEDITION STATE
+  // ────────────────────────────────────────────────────────────────────────────
+  const heroUri = imgError
+    ? null
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=600`;
 
-  // Estimated hike time for next mission (distance in km at ~3km/h on hills)
-  const nextEst = nextHill
-    ? `Est. ${Math.round(nextHill.distance / 3)}–${Math.round(nextHill.distance / 2)}h`
-    : "";
+  const expTitle = (summitGoal as any)?.expeditionPlan?.title ?? summitGoal.mountainName;
+  const expSub   = summitGoal.location
+    ? `Simulate the ${summitGoal.mountainName} in ${summitGoal.location}`
+    : target
+      ? `${target.country}  ·  ${target.summitElevation.toLocaleString()}m ASL`
+      : "";
+
+  const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -337,8 +465,9 @@ export default function BaseCampScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
       >
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <View style={s.heroWrap}>
+
+        {/* ── Hero ──────────────────────────────────────────────────────────── */}
+        <View style={s.activeHero}>
           {heroUri ? (
             <ExpoImage
               source={{ uri: heroUri }}
@@ -347,339 +476,394 @@ export default function BaseCampScreen() {
               onError={() => setImgError(true)}
             />
           ) : (
-            <LinearGradient colors={["#0E2240", "#071428", T.bg]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={["#0E2240", "#071428"]} style={StyleSheet.absoluteFill} />
           )}
-          {/* Top → transparent gradient */}
           <LinearGradient
-            colors={["rgba(0,0,0,0.55)", "transparent"]}
-            style={[StyleSheet.absoluteFill, { height: "45%" }]}
+            colors={["rgba(0,0,0,0.52)", "transparent"]}
+            style={[StyleSheet.absoluteFill, { height: "42%" as any }]}
           />
-          {/* Bottom → dark gradient */}
           <LinearGradient
-            colors={["transparent", "rgba(6,10,20,0.92)", T.bg]}
-            style={[StyleSheet.absoluteFill, { top: "42%" }]}
+            colors={["transparent", "rgba(6,10,20,0.88)", T.bg]}
+            style={[StyleSheet.absoluteFill, { top: "44%" as any }]}
           />
 
-          {/* Top row */}
-          <View style={[s.heroTopRow, { paddingTop: topInset + PILL_OFFSET + 8 }]}>
-            <View style={s.currentExpPill}>
-              <View style={s.currentExpDot} />
-              <Text style={s.currentExpText}>Current Expedition</Text>
-            </View>
-            <TouchableOpacity onPress={() => fetchExpedition(true)} style={s.refreshBtn} disabled={loading}>
-              {loading
-                ? <ActivityIndicator size="small" color={T.blue} />
-                : <RefreshCw size={15} color={T.blue} />}
-            </TouchableOpacity>
-          </View>
-
-          {/* Mountain name */}
-          <View style={s.heroNameBlock}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={s.heroMountain}>{summitGoal.mountainName}</Text>
-            </View>
-            {target && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
-                <MapPin size={11} color="rgba(255,255,255,0.5)" />
-                <Text style={s.heroSub}>
-                  {target.country}  ·  {target.summitElevation.toLocaleString()}m ASL
-                </Text>
+          <View style={[s.activeHeroContent, { paddingTop: PILL_OFFSET + topInset + 12 }]}>
+            {/* Active badge + refresh */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={s.activeBadge}>
+                <View style={s.activeBadgeDot} />
+                <Text style={s.activeBadgeText}>ACTIVE EXPEDITION</Text>
               </View>
-            )}
+              <TouchableOpacity
+                onPress={() => fetchExpedition(true)}
+                style={s.refreshBtn}
+                disabled={loading}
+              >
+                {loading
+                  ? <ActivityIndicator size="small" color={T.blue} />
+                  : <RefreshCw size={14} color={T.blue} />}
+              </TouchableOpacity>
+            </View>
+
+            {/* Title + ring row */}
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 10 }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={s.activeTitle} numberOfLines={2}>{expTitle}</Text>
+                {!!expSub && <Text style={s.activeSub} numberOfLines={2}>{expSub}</Text>}
+              </View>
+              <ProgressRing
+                size={80}
+                strokeWidth={6}
+                score={pct}
+                color={T.green}
+                label={`${pct}%`}
+                sublabel="COMPLETE"
+              />
+            </View>
           </View>
         </View>
 
-        {/* ── Expedition Progress card ──────────────────────────────────────── */}
-        <Animated.View entering={FadeInUp.delay(80).duration(420)} style={s.progressCard}>
-          <LinearGradient colors={["rgba(255,255,255,0.04)", "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.progressLabel}>EXPEDITION PROGRESS</Text>
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 4 }}>
-              <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white }}>
-                {totalTrained.toLocaleString()}m
-              </Text>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted }}>
-                / {totalGoal.toLocaleString()}m
-              </Text>
-            </View>
-            <View style={s.progBarTrack}>
-              <View style={[s.progBarFill, { width: `${pct}%` as any, backgroundColor: sc }]} />
-            </View>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 4 }}>
-              {pct}% complete · {totalDistKm.toFixed(1)}km total distance
-            </Text>
-          </View>
-          <ProgressRing size={76} strokeWidth={7} score={score} color={sc} label={`${score}`} />
-        </Animated.View>
-
-        {/* ── Next Mission card ─────────────────────────────────────────────── */}
-        {nextHill && (
-          <Animated.View entering={FadeInDown.delay(140).duration(420)} style={{ marginHorizontal: 14, marginBottom: 12 }}>
-            <View style={s.missionCard}>
-              <LinearGradient colors={["rgba(255,255,255,0.04)", "transparent"]} style={StyleSheet.absoluteFill} />
-              <Text style={s.missionLabel}>NEXT MISSION</Text>
-              <Text style={s.missionName}>{nextHill.name}</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 6, marginBottom: 14 }}>
-                <MissionStat icon={<MapPin size={12} color={T.textDim} />} value={`${nextHill.distance}km`} />
-                <MissionStat icon={<TrendingUp size={12} color={T.textDim} />} value={`${nextHill.elevation}m gain`} />
-                <MissionStat icon={<Target size={12} color={T.textDim} />} value={nextEst} />
-              </View>
-              <TouchableOpacity
-                onPress={() => router.push("/hike-tracking" as any)}
-                style={s.missionBtn}
-                activeOpacity={0.85}
-              >
-                <Play size={14} color="#fff" />
-                <Text style={s.missionBtnText}>Start Mission</Text>
-              </TouchableOpacity>
+        {/* ── Expedition Progress (stage timeline) ──────────────────────────── */}
+        {stages.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={[s.card, { marginHorizontal: 14, marginTop: 14 }]}>
+            <Text style={[s.sectionLabel, { marginBottom: 16 }]}>EXPEDITION PROGRESS</Text>
+            <View style={{ flexDirection: "row" }}>
+              {stages.map((stage, idx) => {
+                const done    = idx < completedStages;
+                const active  = idx === completedStages && pct < 100;
+                const isFirst = idx === 0;
+                const isLast  = idx === stages.length - 1;
+                return (
+                  <View key={idx} style={{ flex: 1, alignItems: "center" }}>
+                    {/* Connector line + dot row */}
+                    <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+                      <View style={[s.stageLine, { opacity: isFirst ? 0 : 1, backgroundColor: done ? T.green : "rgba(255,255,255,0.12)" }]} />
+                      <StageDot done={done} active={active} index={idx} />
+                      <View style={[s.stageLine, { opacity: isLast ? 0 : 1, backgroundColor: (done && idx < completedStages - 1) ? T.green : "rgba(255,255,255,0.12)" }]} />
+                    </View>
+                    {/* Labels */}
+                    <Text style={[s.stageLabel, done && s.stageLabelDone, active && s.stageLabelActive]} numberOfLines={2}>
+                      {stage.name}
+                    </Text>
+                    <Text style={[s.stageStatus, done && s.stageStatusDone, active && s.stageStatusActive]}>
+                      {done ? "Completed" : active ? "In Progress" : "Upcoming"}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           </Animated.View>
         )}
 
-        {/* ── Leaderboard ───────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(200).duration(420)} style={s.section}>
-          <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={s.sectionHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-              <Trophy size={14} color={T.orange} />
-              <Text style={s.sectionTitle}>LEADERBOARD</Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={s.weekChip}>This Week</Text>
-            </View>
-          </View>
-          {leaderboard.map(e => (
-            <LeaderboardRow key={e.name} rank={e.rank} name={e.name} elevation={e.elev} isUser={e.isUser} />
-          ))}
-          <TouchableOpacity style={s.viewAllBtn} activeOpacity={0.7}>
-            <Text style={s.viewAllText}>View Full Leaderboard</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* ── Community Highlights ─────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(260).duration(420)} style={s.section}>
-          <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={s.sectionHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-              <Users size={14} color={T.blue} />
-              <Text style={s.sectionTitle}>COMMUNITY HIGHLIGHTS</Text>
-            </View>
-            <Text style={s.viewAllLink}>View All</Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: 10 }}>
+        {/* ── 4-stat row ────────────────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={[s.card, { marginHorizontal: 14, marginTop: 10 }]}>
+          <View style={{ flexDirection: "row" }}>
             {[
-              { title: hills[0]?.name ?? "Tryfan North Ridge", user: "by Alex_H", likes: 124 },
-              { title: hills[1]?.name ?? "Striding Edge",      user: "by jess_M",  likes: 98  },
-            ].map((item, i) => (
-              <View key={i} style={s.communityCard}>
-                <LinearGradient
-                  colors={i === 0 ? ["#1A2D40", "#0E1E30"] : ["#1A2A2A", "#0E1E1E"]}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={s.communityThumb}>
-                  <Mountain size={20} color={i === 0 ? T.blue : T.green} />
-                </View>
-                <Text style={s.communityTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-                  <Text style={s.communityUser}>{item.user}</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Flame size={10} color={T.orange} />
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.orange }}>{item.likes}</Text>
-                  </View>
-                </View>
+              { label: "DISTANCE",       val: `${totalDistKm.toFixed(1)} km`, sub: "Total" },
+              { label: "ELEVATION GAIN", val: `${totalTrained.toLocaleString()} m`, sub: "Total" },
+              { label: "TIME ON TRAIL",  val: `${trailTime.hours}h ${String(trailTime.minutes).padStart(2, "0")}m`, sub: "Total" },
+              { label: "DAYS",           val: `${Math.min(sessions.length, stages.length)} / ${Math.max(stages.length, 1)}`, sub: "Completed" },
+            ].map((stat, i) => (
+              <View key={stat.label} style={[s.statCol, i > 0 && s.statColBorder]}>
+                <Text style={s.statLabel}>{stat.label}</Text>
+                <Text style={s.statValue}>{stat.val}</Text>
+                <Text style={s.statSub}>{stat.sub}</Text>
               </View>
             ))}
           </View>
         </Animated.View>
 
-        {/* ── Suggested For You ─────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(320).duration(420)} style={s.section}>
-          <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>SUGGESTED FOR YOU</Text>
+        {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(140).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
+          {/* Next Up */}
+          <View style={[s.card, { flex: 1 }]}>
+            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>NEXT UP</Text>
+            {nextHill ? (
+              <>
+                <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+                  <View style={s.nextHillThumb}>
+                    <ExpoImage
+                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(nextHill.name)}&width=160&height=120` }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.nextHillName} numberOfLines={2}>{nextHill.name}</Text>
+                    <Text style={s.nextHillMeta}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>{nextEst}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={s.nextHillBtn}
+                  onPress={() => router.push("/(expedition)/route" as any)}
+                >
+                  <Text style={s.nextHillBtnText}>View Route</Text>
+                  <ChevronRight size={12} color={T.blue} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={{ fontSize: 12, color: T.textDim, fontFamily: "Inter_400Regular" }}>Loading…</Text>
+            )}
           </View>
-          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: -4, marginBottom: 8 }}>
-            Based on your activity &amp; location
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/(expedition)/mountains" as any)}
-            style={s.suggestedCard}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={["#1A2A3A", "#0E1E2C"]} style={StyleSheet.absoluteFill} />
-            <View style={s.suggestedThumb}>
-              <Mountain size={22} color={T.blue} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.suggestedName}>Mont Blanc</Text>
-              <Text style={s.suggestedSub}>4,810m · France / Italy</Text>
-            </View>
-            <View style={s.matchBadge}>
-              <Text style={s.matchPct}>{score > 10 ? Math.min(95, score + 5) : 85}%</Text>
-              <Text style={s.matchLabel}>match</Text>
-            </View>
-            <ChevronRight size={16} color={T.textDim} />
-          </TouchableOpacity>
+
+          {/* Prepare for Success */}
+          <View style={[s.card, { flex: 1 }]}>
+            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>PREPARE FOR SUCCESS</Text>
+            <Text style={s.coachText} numberOfLines={5}>
+              {pct < 25
+                ? "Build your base. Focus on consistent hill sessions with good elevation gain."
+                : pct < 50
+                  ? "Good work! Keep your leg strength and hydration high for your next stage."
+                  : pct < 80
+                    ? "You're making great progress. Add longer days to sharpen your endurance."
+                    : "You're nearly there! Taper well and trust your training before the final push."}
+            </Text>
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}
+              onPress={() => router.push("/(tabs)/plan" as any)}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>View Training Plan</Text>
+              <ChevronRight size={12} color={T.blue} />
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
-        {/* Error banner */}
+        {/* ── Expedition Journal + Recent Achievements ───────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(180).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
+          {/* Journal */}
+          <View style={[s.card, { flex: 1 }]}>
+            <View style={[s.sectionRow, { marginBottom: 10 }]}>
+              <Text style={s.sectionLabel}>EXPEDITION{"\n"}JOURNAL</Text>
+              <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: "row", gap: 5 }}>
+              {journalUrls.map((uri, i) => (
+                <View key={i} style={s.journalThumb}>
+                  <ExpoImage source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                </View>
+              ))}
+              <TouchableOpacity
+                style={[s.journalThumb, s.journalAdd]}
+                onPress={() => router.push("/(expedition)/track" as any)}
+              >
+                <Plus size={16} color="rgba(255,255,255,0.5)" />
+                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+                  Add Photo
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Achievements */}
+          <View style={[s.card, { flex: 1 }]}>
+            <View style={[s.sectionRow, { marginBottom: 10 }]}>
+              <Text style={s.sectionLabel}>RECENT{"\n"}ACHIEVEMENTS</Text>
+              <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
+            </View>
+            {unlockedAchievements.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 8 }}>
+                <Trophy size={22} color="rgba(255,255,255,0.15)" />
+                <Text style={{ fontSize: 9, color: T.textDim, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" }}>
+                  Complete sessions to earn badges
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {unlockedAchievements.slice(0, 4).map((id, i) => (
+                  <View key={id} style={[s.achieveBadge, { backgroundColor: ACHIEVEMENT_COLORS[i % 4] + "22", borderColor: ACHIEVEMENT_COLORS[i % 4] + "44" }]}>
+                    <Trophy size={16} color={ACHIEVEMENT_COLORS[i % 4]} />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Error */}
         {error && (
           <View style={s.errorBanner}>
-            <AlertTriangle size={14} color={T.orange} />
+            <AlertTriangle size={13} color={T.orange} />
             <Text style={s.errorText}>{error}</Text>
           </View>
         )}
+
       </ScrollView>
     </LinearGradient>
-  );
-}
-
-// ── Mini components ────────────────────────────────────────────────────────────
-
-function MissionStat({ icon, value }: { icon: React.ReactNode; value: string }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-      {icon}
-      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted }}>{value}</Text>
-    </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Hero
-  heroWrap: { height: 310, overflow: "hidden" },
-  heroTopRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingBottom: 0,
-    justifyContent: "space-between",
+
+  // ── Empty state ──
+  emptyHero: { overflow: "hidden" },
+  emptyGreeting: { fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.65)", marginBottom: 6 },
+  emptyHeadline: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 36, marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.55)" },
+
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    marginHorizontal: 16, marginTop: 14,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12,
   },
-  currentExpPill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  searchPlaceholder: {
+    flex: 1, fontSize: 13, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.35)",
   },
-  currentExpDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
-  currentExpText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  refreshBtn: {
-    width: 34, height: 34, borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+
+  // Expedition cards (horizontal)
+  expCard: {
+    width: 155, backgroundColor: "#0F1628",
+    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+  },
+  expCardImg: { height: 116, overflow: "hidden" },
+  expCardBody: { padding: 10 },
+  expCardTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 17, marginBottom: 4 },
+  expCardMeta:  { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)" },
+
+  popularBadge: {
+    position: "absolute", top: 8, left: 8,
+    backgroundColor: "rgba(62,207,117,0.22)",
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.45)",
+    borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+  },
+  popularText: { fontSize: 8, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
+  bookmarkBtn: {
+    position: "absolute", top: 8, right: 8,
+    width: 26, height: 26, borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center", justifyContent: "center",
   },
-  heroNameBlock: { position: "absolute", bottom: 16, left: 16, right: 80 },
-  heroMountain: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 34 },
-  heroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.55)" },
-
-  // Progress card (below hero, overlaps slightly)
-  progressCard: {
-    flexDirection: "row", alignItems: "center",
-    marginHorizontal: 14, marginTop: -6, marginBottom: 12,
-    padding: 16, borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    overflow: "hidden", gap: 12,
+  matchCircle: {
+    position: "absolute", bottom: 8, right: 8,
+    width: 34, height: 34, borderRadius: 17,
+    borderWidth: 1.5, backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center", justifyContent: "center",
   },
-  progressLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2 },
-  progBarTrack: { height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 8 },
-  progBarFill:  { height: 6, borderRadius: 3 },
+  matchCircleText: { fontSize: 9, fontFamily: "Inter_700Bold" },
 
-  // Next Mission
-  missionCard: {
-    padding: 16, borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    overflow: "hidden",
+  // Leaderboard
+  lbRow: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    paddingVertical: 7,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)",
   },
-  missionLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2, marginBottom: 4 },
-  missionName:  { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white },
-  missionBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.green, borderRadius: 12, paddingVertical: 12,
+  lbRowYou: { backgroundColor: "rgba(62,207,117,0.05)", borderRadius: 8, paddingHorizontal: 4, marginHorizontal: -4 },
+  lbRank:   { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textMuted, width: 14, textAlign: "center" },
+  lbAvatar: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center",
   },
-  missionBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
-
-  // Sections
-  section: {
-    marginHorizontal: 14, marginBottom: 12,
-    padding: 14, borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    overflow: "hidden", gap: 0,
-  },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  sectionTitle: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2 },
-  weekChip: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.blue, backgroundColor: T.blueDim, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  viewAllLink: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
-  viewAllBtn: { marginTop: 12, alignItems: "center", paddingVertical: 10 },
-  viewAllText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue },
-
-  // Leaderboard rows
-  lbRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" },
-  lbRowYou: { backgroundColor: "rgba(62,207,117,0.04)", borderRadius: 8, paddingHorizontal: 6, marginHorizontal: -6 },
-  lbRank: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted, width: 18, textAlign: "center" },
-  lbAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
-  lbName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.text },
-  lbElev: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.textMuted },
+  lbName: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: T.text },
+  lbElev: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted },
 
   // Community
-  communityCard: {
-    flex: 1, borderRadius: 14, padding: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    overflow: "hidden", gap: 6,
+  communityImg: { height: 130, borderRadius: 10, overflow: "hidden" },
+
+  // Regions
+  regionCard: {
+    width: 115, height: 110, borderRadius: 13, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
-  communityThumb: {
-    width: 44, height: 44, borderRadius: 12,
+
+  // ── Active state ──
+  activeHero: { overflow: "hidden" },
+  activeHeroContent: { paddingHorizontal: 16, paddingBottom: 20 },
+  activeBadge: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    alignSelf: "flex-start",
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.45)",
+    borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5,
+    backgroundColor: "rgba(62,207,117,0.08)",
+  },
+  activeBadgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
+  activeBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.8 },
+  activeTitle: { fontSize: 32, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 37 },
+  activeSub:   { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.52)", marginTop: 4, lineHeight: 18 },
+
+  refreshBtn: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
+    alignItems: "center", justifyContent: "center",
+  },
+
+  // Stage timeline
+  stageDot: {
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+  },
+  stageDotDone:    { backgroundColor: T.green, borderColor: T.green },
+  stageDotActive:  { backgroundColor: "#0a1e38", borderColor: "#4FC3F7", borderWidth: 2 },
+  stageDotUpcoming:{ backgroundColor: "transparent", borderColor: "rgba(255,255,255,0.2)", borderWidth: 2 },
+  stageLine: { flex: 1, height: 2 },
+  stageLabel:       { fontSize: 9, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.7)", textAlign: "center", marginTop: 6, lineHeight: 12 },
+  stageLabelDone:   { color: "rgba(255,255,255,0.42)" },
+  stageLabelActive: { color: "#fff" },
+  stageStatus:       { fontSize: 8, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.32)", textAlign: "center", marginTop: 3 },
+  stageStatusDone:   { color: T.green },
+  stageStatusActive: { color: "#4FC3F7" },
+
+  // Stats row
+  statCol: { flex: 1, alignItems: "center", paddingVertical: 6 },
+  statColBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
+  statLabel: { fontSize: 7, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 0.8, textAlign: "center", marginBottom: 4 },
+  statValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" },
+  statSub:   { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 },
+
+  // Next up
+  nextHillThumb: {
+    width: 52, height: 52, borderRadius: 10, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
-  communityTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.white, lineHeight: 16 },
-  communityUser:  { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim },
+  nextHillName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 16 },
+  nextHillMeta: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 3, lineHeight: 14 },
+  nextHillBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    marginTop: 10, paddingTop: 8,
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.07)",
+  },
+  nextHillBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue },
 
-  // Suggested
-  suggestedCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    padding: 12, borderRadius: 14,
+  // Coaching
+  coachText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+
+  // Journal
+  journalThumb: {
+    flex: 1, aspectRatio: 1, borderRadius: 8, overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  journalAdd: {
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderStyle: "dashed",
+  },
+
+  // Achievements
+  achieveBadge: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  // Shared card / section
+  card: {
+    backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    overflow: "hidden",
+    borderRadius: 18, padding: 14, overflow: "hidden",
   },
-  suggestedThumb: { width: 48, height: 48, borderRadius: 13, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
-  suggestedName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  suggestedSub:  { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  matchBadge: { alignItems: "center" },
-  matchPct:   { fontSize: 15, fontFamily: "Inter_700Bold", color: T.green },
-  matchLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim },
-
-  // Featured expedition cards (empty state)
-  featCard: {
-    backgroundColor: "#0F1628",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(139,92,246,0.2)",
-    marginBottom: 12, overflow: "hidden",
-  },
-  featHero: { height: 168, overflow: "hidden" },
-  featBody: { padding: 12 },
-  featBadge: {
-    backgroundColor: "rgba(139,92,246,0.25)", borderRadius: 5,
-    paddingHorizontal: 7, paddingVertical: 2,
-    borderWidth: 1, borderColor: "rgba(139,92,246,0.4)",
-  },
-  featBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#C4AAEE", letterSpacing: 1 },
-  featTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 22 },
-  featSummary: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  featStat: {
-    backgroundColor: "#142236", borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 5, alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-  },
-  featStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
-  featStatLbl: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 1 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2 },
+  viewAllLink: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
 
   // Error
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    marginHorizontal: 14, marginBottom: 12,
+    marginHorizontal: 14, marginTop: 10,
     backgroundColor: T.orange + "12", borderRadius: 10, padding: 12,
     borderWidth: 1, borderColor: T.orange + "30",
   },
