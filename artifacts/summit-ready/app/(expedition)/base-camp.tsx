@@ -240,7 +240,7 @@ export default function BaseCampScreen() {
           {/* ── Hero ──────────────────────────────────────────────────────── */}
           <View style={s.emptyHero}>
             <ExpoImage
-              source={{ uri: `${API_BASE}/mountain-image?name=Matterhorn&width=800&height=600` }}
+              source={require("@/assets/images/hero-base-camp.png")}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
