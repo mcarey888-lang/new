@@ -493,7 +493,7 @@ export default function BaseCampScreen() {
               highestAltitude:  0,
               difficulty:       (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
               fitnessLevel:     currentGoal?.fitnessLevel ?? "Average",
-              location:         currentGoal?.location ?? "United Kingdom",
+              location:         ch.regions ?? currentGoal?.location ?? "United Kingdom",
               maxRadius:        currentGoal?.maxRadius ?? 30,
               equipment:        currentGoal?.equipment ?? ["none"],
               trainingDaysPerWeek: currentGoal?.trainingDaysPerWeek ?? 3,
@@ -521,7 +521,7 @@ export default function BaseCampScreen() {
   // AI-generated expeditionPlan.title which changes on every generation.
   const expTitle = summitGoal.mountainName;
   const expSub   = summitGoal.location
-    ? `Simulate the ${summitGoal.mountainName} in ${summitGoal.location}`
+    ? `Simulated in ${summitGoal.location}`
     : target
       ? `${target.country}  ·  ${target.summitElevation.toLocaleString()}m ASL`
       : "";
