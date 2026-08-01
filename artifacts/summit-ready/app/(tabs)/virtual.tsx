@@ -171,7 +171,7 @@ function scoreLabel(s: number) {
 export default function VirtualScreen() {
   useScreenView("virtual_tab");
   const insets = useSafeAreaInsets();
-  const { summitGoal, setSummitGoal } = useApp();
+  const { summitGoal, setSummitGoal, startExpedition, expeditions, activeExpeditionId } = useApp();
   const { isSubscribed } = useSubscription();
 
   // view state
@@ -360,27 +360,18 @@ export default function VirtualScreen() {
     const mountainName = activeBundle?.goalMountain ?? activeSearch?.mountain ?? results.targetProfile.name;
     const location = customLocation.trim() || (activeBundle?.region ?? activeSearch?.region ?? "");
 
-    const newGoal: SummitGoal = {
-      mountainName,
-      summitDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      distance: results.targetProfile.totalDistance,
-      elevationGain: results.targetProfile.totalElevationGain,
-      highestAltitude: results.targetProfile.summitElevation,
-      difficulty: results.targetProfile.difficulty,
-      fitnessLevel: summitGoal?.fitnessLevel ?? "Average",
-      location,
-      maxRadius: searchRadius,
-      equipment: summitGoal?.equipment ?? ["none"],
-      trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
-      hillDaysPerWeek: summitGoal?.hillDaysPerWeek ?? 2,
-      mode: "virtual",
-      targetMountain: results.targetProfile,
-      virtualHills: results.recommendedHills,
-      simulationScore: results.dnaMatchScore ?? results.simulationScore,
+    await startExpedition({
+      challengeName:            mountainName,
+      targetMountainName:       results.targetProfile.name ?? mountainName,
+      targetMountain:           results.targetProfile,
+      virtualHills:             results.recommendedHills,
+      simulationScore:          results.dnaMatchScore ?? results.simulationScore,
       simulationScoreBreakdown: results.scoreBreakdown,
-      expeditionPlan: results.expedition ?? null,
-    };
-    await setSummitGoal(newGoal);
+      expeditionPlan:           results.expedition ?? null,
+      location,
+      maxRadius:                searchRadius,
+      fitnessLevel:             summitGoal?.fitnessLevel ?? "Average",
+    });
     setView("progress");
   }
 
@@ -1405,23 +1396,10 @@ export default function VirtualScreen() {
               ? `${Math.floor(s.estimatedHours)}h`
               : undefined,
           }));
-          const newGoal: SummitGoal = {
-            mountainName:        challenge.challengeName,
-            summitDate:          new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                                   .toISOString().slice(0, 10),
-            distance:            challenge.totalDistanceKm ?? 0,
-            elevationGain:       challenge.totalAscentM ?? 0,
-            highestAltitude:     0,
-            difficulty:          (challenge.difficulty as SummitGoal["difficulty"]) ?? "Hard",
-            fitnessLevel:        summitGoal?.fitnessLevel ?? "Average",
-            location:            region,
-            maxRadius:           searchRadius,
-            equipment:           summitGoal?.equipment ?? ["none"],
-            trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
-            hillDaysPerWeek:     summitGoal?.hillDaysPerWeek ?? 2,
-            mode:                "virtual",
-            virtualHills:        hills,
-            simulationScore:     challenge.dnaMatchScore ?? undefined,
+          void startExpedition({
+            challengeId:        challenge.challengeId,
+            challengeName:      challenge.challengeName,
+            targetMountainName: challenge.targetMountainName,
             targetMountain: {
               name:               challenge.targetMountainName,
               country:            region,
@@ -1432,8 +1410,12 @@ export default function VirtualScreen() {
               difficulty:         (challenge.difficulty as SummitGoal["difficulty"]) ?? "Hard",
               altitudeExposure:   "None" as const,
             },
-          };
-          void setSummitGoal(newGoal).then(() => setView("progress"));
+            virtualHills:    hills,
+            simulationScore: challenge.dnaMatchScore ?? undefined,
+            location:        region,
+            maxRadius:       searchRadius,
+            fitnessLevel:    summitGoal?.fitnessLevel ?? "Average",
+          }).then(() => setView("progress"));
         }}
       />
     </LinearGradient>

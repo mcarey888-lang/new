@@ -122,7 +122,8 @@ function StageDot({ done, active, index }: { done: boolean; active: boolean; ind
 export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements } = useApp();
+  const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
+          startExpedition, expeditions, activeExpeditionId } = useApp();
   const { user } = useUser();
 
   const firstName = user?.firstName ?? "Adventurer";
@@ -210,30 +211,19 @@ export default function BaseCampScreen() {
       const data = await res.json();
 
       if (mountainOverride) {
-        // Starting a new expedition from a challenge card — build a complete goal
-        // so mode:"virtual", mountainName, and all required fields are set correctly.
-        const newGoal: SummitGoal = {
-          mountainName:     mountain,
-          summitDate:       new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          distance:         data.targetProfile?.totalDistance ?? 0,
-          elevationGain:    data.targetProfile?.totalElevationGain ?? 0,
-          highestAltitude:  data.targetProfile?.summitElevation ?? 0,
-          difficulty:       data.targetProfile?.difficulty ?? "Hard",
-          fitnessLevel:     summitGoal?.fitnessLevel ?? "Average",
-          location,
-          maxRadius:        radius,
-          equipment:        summitGoal?.equipment ?? ["none"],
-          trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
-          hillDaysPerWeek:     summitGoal?.hillDaysPerWeek ?? 2,
-          availableDays:       summitGoal?.availableDays,
-          mode:            "virtual",
-          targetMountain:  data.targetProfile,
-          virtualHills:    data.recommendedHills,
-          simulationScore: data.dnaMatchScore ?? data.simulationScore,
+        // Starting a new expedition — add to Adventure Library and make it active.
+        await startExpedition({
+          challengeName:            mountain,
+          targetMountainName:       data.targetProfile?.name ?? mountain,
+          targetMountain:           data.targetProfile,
+          virtualHills:             data.recommendedHills,
+          simulationScore:          data.dnaMatchScore ?? data.simulationScore,
           simulationScoreBreakdown: data.scoreBreakdown,
-          expeditionPlan:  data.expedition ?? null,
-        };
-        await setSummitGoal(newGoal);
+          expeditionPlan:           data.expedition ?? null,
+          location,
+          maxRadius:                radius,
+          fitnessLevel:             summitGoal?.fitnessLevel ?? "Average",
+        });
       } else {
         // Refreshing an existing expedition in-place
         await patchGoal({
@@ -485,25 +475,12 @@ export default function BaseCampScreen() {
               emoji:          "⛰️",
               estimatedTime:  s.estimatedHours ? `${Math.floor(s.estimatedHours)}h` : undefined,
             }));
-            const instantly: SummitGoal = {
-              mountainName:     ch.challengeName,
-              summitDate:       new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-              distance:         ch.totalDistanceKm ?? 0,
-              elevationGain:    ch.totalAscentM ?? 0,
-              highestAltitude:  0,
-              difficulty:       (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
-              fitnessLevel:     currentGoal?.fitnessLevel ?? "Average",
-              location:         ch.regions ?? currentGoal?.location ?? "United Kingdom",
-              maxRadius:        currentGoal?.maxRadius ?? 30,
-              equipment:        currentGoal?.equipment ?? ["none"],
-              trainingDaysPerWeek: currentGoal?.trainingDaysPerWeek ?? 3,
-              hillDaysPerWeek:     currentGoal?.hillDaysPerWeek ?? 2,
-              availableDays:       currentGoal?.availableDays,
-              mode:            "virtual",
-              virtualHills:    hills,
-              simulationScore: ch.dnaMatchScore ?? undefined,
-              // Minimal targetMountain so the hero image resolves to the real
-              // mountain name ("Matterhorn") not the challenge name ("Matterhorn Ridge").
+            // Add to Adventure Library and make active — preserves all existing progress.
+            void startExpedition({
+              challengeId:        ch.challengeId,
+              challengeName:      ch.challengeName,
+              // targetMountainName drives the hero image API — use the real peak name.
+              targetMountainName: ch.targetMountainName,
               targetMountain: {
                 name:               ch.targetMountainName,
                 country:            ch.regions?.split(/[,/]/)[0]?.trim() ?? "United Kingdom",
@@ -514,8 +491,12 @@ export default function BaseCampScreen() {
                 difficulty:         (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
                 altitudeExposure:   "None" as const,
               },
-            };
-            void setSummitGoal(instantly);
+              virtualHills:    hills,
+              simulationScore: ch.dnaMatchScore ?? undefined,
+              location:        ch.regions ?? currentGoal?.location ?? "United Kingdom",
+              maxRadius:       currentGoal?.maxRadius ?? 30,
+              fitnessLevel:    currentGoal?.fitnessLevel ?? "Average",
+            });
           }}
         />
       </LinearGradient>

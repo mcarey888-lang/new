@@ -22,3 +22,4 @@
 - [Virtual Expeditions Stage 3 — mode toggle + UI](virtual-expeditions-stage3.md) — floating pill over hero in dashboard; patchGoal for field-only updates; VirtualExpeditionView early-return in plan.tsx; shared confirmModeSwitch util.
 - [Mountain image loading pattern](mountain-image-api.md) — always remote URI via /api/mountain-image; never require() bundled assets; gradient behind ExpoImage as instant fallback.
 - [Dual-shell navigation](dual-shell-navigation.md) — (tabs) Training + (expedition) Expedition shells; ModeTogglePill in both layouts; shellMode persisted to AsyncStorage; TargetMountain field names + ProgressRing prop name.
+- [Expedition Library Architecture](expedition-library.md) — SavedExpedition library alongside summitGoal (dual-write); startExpedition never resets sessions; patchGoal auto-syncs to library; SigChallenge uses .challengeId not .id.
