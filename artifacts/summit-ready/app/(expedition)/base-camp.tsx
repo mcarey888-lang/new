@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Platform, ScrollView, StyleSheet,
+  ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
@@ -151,6 +151,7 @@ export default function BaseCampScreen() {
   const [featured,  setFeatured]  = useState<FeaturedChallenge[]>([]);
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+  const [routePickerOpen, setRoutePickerOpen] = useState(false);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -618,19 +619,15 @@ export default function BaseCampScreen() {
               />
             </View>
 
-            {/* Quick Start — launches tracking with the next incomplete route pre-selected */}
+            {/* Choose Route — opens picker so user can select any incomplete route */}
             <TouchableOpacity
               style={s.quickStartBtn}
               activeOpacity={0.85}
               onPress={() => {
                 if (completedRoutes.length > 0 && !nextHill) {
-                  // All routes done — go to the celebration screen
                   router.push("/(expedition)/expedition-complete" as any);
                 } else {
-                  router.push({
-                    pathname: "/hike-tracking" as any,
-                    params: nextHill ? { hillName: nextHill.name } : {},
-                  });
+                  setRoutePickerOpen(true);
                 }
               }}
             >
@@ -645,9 +642,7 @@ export default function BaseCampScreen() {
                 <Text style={s.quickStartText}>
                   {completedRoutes.length > 0 && !nextHill
                     ? "View Expedition Completion 🎉"
-                    : nextHill
-                      ? `Start: ${nextHill.name}`
-                      : "Quick Start Tracking"}
+                    : "Choose Route"}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -665,21 +660,31 @@ export default function BaseCampScreen() {
                 const isFirst = idx === 0;
                 const isLast  = idx === stages.length - 1;
                 return (
-                  <View key={idx} style={{ flex: 1, alignItems: "center" }}>
+                  <TouchableOpacity
+                    key={idx}
+                    style={{ flex: 1, alignItems: "center" }}
+                    activeOpacity={done ? 1 : 0.7}
+                    onPress={done ? undefined : () => {
+                      router.push({
+                        pathname: "/hike-tracking" as any,
+                        params: { hillName: stage.name },
+                      });
+                    }}
+                  >
                     {/* Connector line + dot row */}
                     <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
                       <View style={[s.stageLine, { opacity: isFirst ? 0 : 1, backgroundColor: done ? T.green : "rgba(255,255,255,0.12)" }]} />
-                      <StageDot done={done} active={active} index={idx} />
+                      <StageDot done={done} active={!done} index={idx} />
                       <View style={[s.stageLine, { opacity: isLast ? 0 : 1, backgroundColor: (done && idx < completedStages - 1) ? T.green : "rgba(255,255,255,0.12)" }]} />
                     </View>
                     {/* Labels */}
-                    <Text style={[s.stageLabel, done && s.stageLabelDone, active && s.stageLabelActive]} numberOfLines={2}>
+                    <Text style={[s.stageLabel, done && s.stageLabelDone, !done && s.stageLabelActive]} numberOfLines={2}>
                       {stage.name}
                     </Text>
-                    <Text style={[s.stageStatus, done && s.stageStatusDone, active && s.stageStatusActive]}>
-                      {done ? "Completed" : active ? "In Progress" : "Upcoming"}
+                    <Text style={[s.stageStatus, done && s.stageStatusDone, !done && s.stageStatusActive]}>
+                      {done ? "Completed" : "Available"}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -820,6 +825,70 @@ export default function BaseCampScreen() {
         )}
 
       </ScrollView>
+
+      {/* ── Route picker modal ────────────────────────────────────────────────── */}
+      <Modal
+        visible={routePickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRoutePickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={s.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setRoutePickerOpen(false)}
+        />
+        <View style={s.pickerSheet}>
+          <View style={s.pickerHandle} />
+          <Text style={s.pickerTitle}>Choose Your Route</Text>
+          <Text style={s.pickerSub}>All routes are available — climb in any order you like.</Text>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+            {stages.map((stage, idx) => {
+              const done = completedRoutes.includes(stage.name);
+              return (
+                <TouchableOpacity
+                  key={stage.name + idx}
+                  activeOpacity={done ? 1 : 0.75}
+                  onPress={done ? undefined : () => {
+                    setRoutePickerOpen(false);
+                    router.push({
+                      pathname: "/hike-tracking" as any,
+                      params: { hillName: stage.name },
+                    });
+                  }}
+                  style={[s.pickerRow, done && s.pickerRowDone]}
+                >
+                  {/* Stage number / tick */}
+                  <View style={[s.pickerBadge, done && s.pickerBadgeDone]}>
+                    <Text style={[s.pickerBadgeText, done && { color: "#fff" }]}>
+                      {done ? "✓" : idx + 1}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[s.pickerRouteName, done && s.pickerRouteNameDone]}>
+                      {stage.name}
+                    </Text>
+                    <Text style={s.pickerRouteSub}>
+                      {stage.elevation != null ? `${Math.round(stage.elevation)}m gain · ` : ""}
+                      {stage.distance?.toFixed(1) ?? "?"}km
+                    </Text>
+                  </View>
+                  {done ? (
+                    <Text style={s.pickerDoneLabel}>DONE</Text>
+                  ) : (
+                    <View style={s.pickerStartBtn}>
+                      <Play size={10} color="#fff" fill="#fff" />
+                      <Text style={s.pickerStartText}>Start</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
     </LinearGradient>
   );
 }
@@ -1016,4 +1085,63 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: T.orange + "30",
   },
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
+
+  // Route picker modal
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  pickerSheet: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: "#0F1E2E",
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderColor: "rgba(255,255,255,0.10)",
+    paddingHorizontal: 20, paddingTop: 12,
+    maxHeight: "80%",
+  },
+  pickerHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignSelf: "center", marginBottom: 16,
+  },
+  pickerTitle: {
+    fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4,
+  },
+  pickerSub: {
+    fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18,
+  },
+  pickerRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  pickerRowDone: { opacity: 0.45 },
+  pickerBadge: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.18)",
+  },
+  pickerBadgeDone: { backgroundColor: T.green, borderColor: T.green },
+  pickerBadgeText: {
+    fontSize: 12, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.6)",
+  },
+  pickerRouteName: {
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white,
+  },
+  pickerRouteNameDone: { color: "rgba(255,255,255,0.45)" },
+  pickerRouteSub: {
+    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted,
+  },
+  pickerDoneLabel: {
+    fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.8,
+  },
+  pickerStartBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: T.blue, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  pickerStartText: {
+    fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff",
+  },
 });

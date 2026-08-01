@@ -4,7 +4,7 @@
  * stage status cards, elevation summary stats, and an insight row.
  */
 
-import { Flag, TrendingUp, Trophy } from "lucide-react-native";
+import { Flag, TrendingUp, Trophy, Play } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
@@ -311,16 +311,21 @@ function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained }
 
 // ── Stage status card ─────────────────────────────────────────────────────────
 
-function StageCard({ stage, index, total, done }: {
-  stage: NearbyHill; index: number; total: number; done: boolean;
+function StageCard({ stage, index, total, done, onPress }: {
+  stage: NearbyHill; index: number; total: number; done: boolean; onPress?: () => void;
 }) {
   const isNext = !done && index === total; // 1-based: index = count of completed
   return (
-    <View style={[
-      sc.stageCard,
-      done && sc.stageCardDone,
-      isNext && sc.stageCardNext,
-    ]}>
+    <TouchableOpacity
+      onPress={done ? undefined : onPress}
+      disabled={done}
+      activeOpacity={0.75}
+      style={[
+        sc.stageCard,
+        done && sc.stageCardDone,
+        isNext && sc.stageCardNext,
+      ]}
+    >
       {/* Number badge */}
       <View style={[sc.stageBadge, done && sc.stageBadgeDone]}>
         <Text style={[sc.stageBadgeText, done && { color: "#fff" }]}>
@@ -343,7 +348,14 @@ function StageCard({ stage, index, total, done }: {
           {done ? "COMPLETED" : isNext ? "NEXT UP" : "UPCOMING"}
         </Text>
       </View>
-    </View>
+      {/* Tap-to-start indicator on available routes */}
+      {!done && (
+        <View style={sc.startRow}>
+          <Play size={9} color={T.blue} fill={T.blue} />
+          <Text style={sc.startText}>Tap to start</Text>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -522,6 +534,10 @@ export default function ExpeditionProgressScreen() {
                   index={i}
                   total={completedCount}
                   done={completedRoutes.includes(st.name)}
+                  onPress={() => router.push({
+                    pathname: "/hike-tracking" as any,
+                    params: { hillName: st.name },
+                  })}
                 />
               ))}
             </ScrollView>
@@ -687,6 +703,12 @@ const sc = StyleSheet.create({
     width: 130, padding: 12, borderRadius: 16, gap: 5,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  startRow: {
+    flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2,
+  },
+  startText: {
+    fontSize: 9, fontFamily: "Inter_500Medium", color: T.blue,
   },
   stageCardDone: {
     backgroundColor: "rgba(74,159,245,0.08)",
