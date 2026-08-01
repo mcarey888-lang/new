@@ -451,34 +451,53 @@ function resolveExpeditionHills(
 /**
  * Post-selection elevation bridge.
  *
- * The AI picks routes by character (feel) not arithmetic. The combined
- * elevation of 3–5 routes at ×1 is often well below the mountain's total
- * gain requirement — e.g. Lake District hills (~2,300m) vs Everest (3,640m)
- * — leaving users with a misleading local match score.
+ * Strategy (in priority order):
+ *  1. Add extra hills from the unused pool until we reach ≥ 90 % of the
+ *     target gain (max 8 hills total so the plan stays manageable).
+ *  2. Only if the pool is exhausted and we're still short, distribute extra
+ *     reps proportionally across all hills (cap 3 per hill — a second
+ *     ascent is fine, a five-rep grind is not).
  *
- * This step closes the gap by assigning reps proportionally:
- *  - If total gain ≥ 90 % of target: leave as-is — already close enough.
- *  - Otherwise: assign reps so the combined total reaches ~100 % of the
- *    mountain's elevation gain, capped at 6 reps per hill.  Bigger hills
- *    earn proportionally more reps (higher gain per round).
+ * If total gain is already ≥ 90 % of target, nothing changes.
  */
-function distributeRepsForElevation(hills: Hill[], targetGain: number): Hill[] {
-  if (!hills.length || targetGain <= 0) return hills;
+function bridgeElevationGap(
+  selectedHills: Hill[],
+  allHills:      Hill[],
+  targetGain:    number,
+): Hill[] {
+  if (!selectedHills.length || targetGain <= 0) return selectedHills;
 
-  const totalAtOne = hills.reduce((s, h) => s + h.elevation, 0);
+  const currentGain = () => result.reduce((s, h) => s + h.elevation * h.repeats, 0);
 
-  // Already ≥ 90 % of target — close enough, leave reps as-is.
-  if (totalAtOne >= targetGain * 0.90) return hills;
+  // Already close enough — leave as-is.
+  if (currentGain() >= targetGain * 0.90) return selectedHills;
 
-  // Aim for 100 % of target (capped so we never exceed 6× the ×1 total).
-  const aimGain = Math.min(targetGain, totalAtOne * 6);
-  const avgElev = totalAtOne / hills.length;
+  // ── Step 1: add extra hills from the unused pool ──────────────────────────
+  const result    = [...selectedHills];
+  const usedNames = new Set(result.map(h => h.name));
 
-  return hills.map(h => {
-    // Proportional allocation: hills with higher gain shoulder more reps.
+  const pool = allHills
+    .filter(h => !usedNames.has(h.name))
+    .sort((a, b) => b.elevation - a.elevation); // highest-gain first
+
+  for (const hill of pool) {
+    if (currentGain() >= targetGain * 0.90) break;
+    if (result.length >= 8) break; // keep the plan manageable
+    result.push({ ...hill, repeats: 1, totalElevation: hill.elevation });
+    usedNames.add(hill.name);
+  }
+
+  // ── Step 2: still short? distribute reps as a last resort ─────────────────
+  if (currentGain() >= targetGain * 0.90) return result;
+
+  const totalElev = result.reduce((s, h) => s + h.elevation, 0);
+  const aimGain   = Math.min(targetGain, totalElev * 3);
+  const avgElev   = totalElev / result.length;
+
+  return result.map(h => {
     const share  = avgElev > 0 ? h.elevation / avgElev : 1;
-    const rawRep = (aimGain / totalAtOne) * share;
-    const reps   = Math.min(6, Math.max(1, Math.round(rawRep)));
+    const rawRep = (aimGain / totalElev) * share;
+    const reps   = Math.min(3, Math.max(1, Math.round(rawRep)));
     return { ...h, repeats: reps, totalElevation: Math.round(h.elevation * reps) };
   });
 }
@@ -655,7 +674,7 @@ router.post("/virtual-expedition", async (req, res) => {
 
     if (expedition) {
       const rawHills   = resolveExpeditionHills(expedition, localHills);
-      recommendedHills = distributeRepsForElevation(rawHills, effectiveProfile.totalElevationGain);
+      recommendedHills = bridgeElevationGap(rawHills, localHills, effectiveProfile.totalElevationGain);
       usingAiExpedition = true;
 
       // Synthesise weekendPairing for score compat (2+ hills → treat as weekend pairing)
