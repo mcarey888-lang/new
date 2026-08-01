@@ -7,7 +7,7 @@ import { useUser } from "@clerk/expo";
 import {
   Mountain, Search, SlidersHorizontal, Bookmark, Heart,
   ChevronRight, TrendingUp, Camera, Plus, Trophy, Clock,
-  MapPin, RefreshCw, AlertTriangle,
+  MapPin, RefreshCw, AlertTriangle, Play,
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -123,7 +123,7 @@ export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
-          startExpedition, expeditions, activeExpeditionId } = useApp();
+          startExpedition, expeditions, activeExpeditionId, activeExpedition } = useApp();
   const { user } = useUser();
 
   const firstName = user?.firstName ?? "Adventurer";
@@ -176,18 +176,27 @@ export default function BaseCampScreen() {
     return [];
   }, [summitGoal]);
 
-  const completedStages = Math.max(0, Math.min(
-    Math.floor(pct / 100 * stages.length),
-    pct >= 100 ? stages.length : stages.length - 1,
-  ));
+  // Use explicit completedRoutes[] from the library for accurate stage tracking.
+  // Falls back to summitGoal.completedRoutes (migrated goals) then empty array.
+  const completedRoutes: string[] = activeExpedition?.completedRoutes
+    ?? summitGoal?.completedRoutes ?? [];
+  const completedStages = stages.filter(s => completedRoutes.includes(s.name)).length;
+  // Route-completion percentage drives the progress ring and stage dots.
+  const routePct = stages.length > 0
+    ? Math.round(completedStages / stages.length * 100)
+    : pct; // fall back to elevation-based pct when no stages loaded yet
 
-  const nextHill     = summitGoal?.virtualHills?.[0];
-  const nextEst      = nextHill
+  // Next incomplete route — first hill whose name is not yet in completedRoutes.
+  const nextHill = summitGoal?.virtualHills?.find(h => !completedRoutes.includes(h.name))
+                   ?? summitGoal?.virtualHills?.[0];
+  const nextEst  = nextHill
     ? `Est. ${Math.round(nextHill.distance / 5)}–${Math.round(nextHill.distance / 3)}h`
     : "";
   const journalUrls  = (summitGoal?.virtualHills ?? []).slice(0, 3).map(
     h => `${API_BASE}/mountain-image?name=${encodeURIComponent(h.name)}&width=200&height=200`,
   );
+  // AI expedition concept (shown below title when present)
+  const concept = (summitGoal as any)?.expeditionPlan?.concept as string | undefined;
 
   // ── Fetches ──────────────────────────────────────────────────────────────────
   async function fetchExpedition(force = false, mountainOverride?: string) {
@@ -575,16 +584,46 @@ export default function BaseCampScreen() {
               <View style={{ flex: 1, marginRight: 10 }}>
                 <Text style={s.activeTitle} numberOfLines={2}>{expTitle}</Text>
                 {!!expSub && <Text style={s.activeSub} numberOfLines={2}>{expSub}</Text>}
+                {!!concept && (
+                  <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
+                )}
               </View>
               <ProgressRing
                 size={80}
                 strokeWidth={6}
-                score={pct}
+                score={routePct}
                 color={T.green}
-                label={`${pct}%`}
+                label={`${routePct}%`}
                 sublabel="COMPLETE"
               />
             </View>
+
+            {/* Quick Start — launches tracking with the next incomplete route pre-selected */}
+            <TouchableOpacity
+              style={s.quickStartBtn}
+              activeOpacity={0.85}
+              onPress={() =>
+                router.push({
+                  pathname: "/hike-tracking" as any,
+                  params: nextHill ? { hillName: nextHill.name } : {},
+                })
+              }
+            >
+              <LinearGradient
+                colors={[T.green, "#2AB860"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.quickStartGrad}
+              >
+                <Play size={14} color="#fff" fill="#fff" />
+                <Text style={s.quickStartText}>
+                  {completedRoutes.length > 0 && !nextHill
+                    ? "Expedition Complete 🎉"
+                    : nextHill
+                      ? `Start: ${nextHill.name}`
+                      : "Quick Start Tracking"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -594,8 +633,8 @@ export default function BaseCampScreen() {
             <Text style={[s.sectionLabel, { marginBottom: 16 }]}>EXPEDITION PROGRESS</Text>
             <View style={{ flexDirection: "row" }}>
               {stages.map((stage, idx) => {
-                const done    = idx < completedStages;
-                const active  = idx === completedStages && pct < 100;
+                const done   = completedRoutes.includes(stage.name);
+                const active = !done && stages.findIndex(s => !completedRoutes.includes(s.name)) === idx;
                 const isFirst = idx === 0;
                 const isLast  = idx === stages.length - 1;
                 return (
@@ -627,7 +666,7 @@ export default function BaseCampScreen() {
               { label: "DISTANCE",       val: `${totalDistKm.toFixed(1)} km`, sub: "Total" },
               { label: "ELEVATION GAIN", val: `${totalTrained.toLocaleString()} m`, sub: "Total" },
               { label: "TIME ON TRAIL",  val: `${trailTime.hours}h ${String(trailTime.minutes).padStart(2, "0")}m`, sub: "Total" },
-              { label: "DAYS",           val: `${Math.min(sessions.length, stages.length)} / ${Math.max(stages.length, 1)}`, sub: "Completed" },
+              { label: "ROUTES",         val: `${completedRoutes.length} / ${Math.max(stages.length, 1)}`, sub: "Completed" },
             ].map((stat, i) => (
               <View key={stat.label} style={[s.statCol, i > 0 && s.statColBorder]}>
                 <Text style={s.statLabel}>{stat.label}</Text>
@@ -856,6 +895,23 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center", justifyContent: "center",
+  },
+
+  expConcept: {
+    fontSize: 13, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.54)", lineHeight: 18,
+    marginTop: 8,
+  },
+  quickStartBtn: {
+    marginTop: 14, borderRadius: 14, overflow: "hidden",
+    alignSelf: "stretch",
+  },
+  quickStartGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 14,
+  },
+  quickStartText: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff",
   },
 
   // Stage timeline

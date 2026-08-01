@@ -198,7 +198,8 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
-  const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions } = useApp();
+  const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
+          summitGoal, patchExpedition, activeExpeditionId, activeExpedition } = useApp();
 
   // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
   const params = useLocalSearchParams<{
@@ -239,6 +240,7 @@ export default function HikeTrackingScreen() {
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [confirmLeave, setConfirmLeave]   = useState(false);
   const [drawerOpen, setDrawerOpen]       = useState(true);
+  const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
 
   // ── Nearby route picker ───────────────────────────────────────────────────
   const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
@@ -934,12 +936,18 @@ export default function HikeTrackingScreen() {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Navigate to hike history so the user can see their saved route
-      router.replace("/(tabs)/hikes");
+      // In expedition mode ask "Did you complete this route?" before leaving.
+      // In training mode navigate straight to hike history as before.
+      if (summitGoal?.mode === "virtual" && activeExpeditionId) {
+        setShowExpeditionPrompt(true);
+      } else {
+        router.replace("/(tabs)/hikes");
+      }
     } catch {
       setSaving(false);
     }
-  }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan, addSession, logExploreHike]);
+  }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
+      addSession, logExploreHike, summitGoal, activeExpeditionId]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
@@ -1054,6 +1062,64 @@ export default function HikeTrackingScreen() {
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
+
+        {/* ── Expedition route completion prompt ─────────────────────────── */}
+        {showExpeditionPrompt && !!activeExpeditionId && (
+          <Modal transparent animationType="fade" visible>
+            <View style={s.promptOverlay}>
+              <Animated.View entering={FadeInUp.duration(350)} style={s.promptCard}>
+                <LinearGradient
+                  colors={["rgba(62,207,117,0.10)", "transparent"]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={s.promptEmo}>⛰️</Text>
+                <Text style={s.promptTitle}>Route completed?</Text>
+                <Text style={s.promptRoute} numberOfLines={2}>
+                  {/* Show the next incomplete expedition hill (what they should have been doing) */}
+                  {activeExpedition?.virtualHills?.find(
+                    h => !(activeExpedition.completedRoutes ?? []).includes(h.name),
+                  )?.name ?? routeName}
+                </Text>
+
+                <TouchableOpacity
+                  style={s.promptYes}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    const expId = activeExpeditionId;
+                    if (!expId) return;
+                    const nextIncomplete = activeExpedition?.virtualHills?.find(
+                      h => !(activeExpedition.completedRoutes ?? []).includes(h.name),
+                    );
+                    const toMark = nextIncomplete?.name ?? routeName;
+                    void patchExpedition(expId, {
+                      completedRoutes: [
+                        ...(activeExpedition?.completedRoutes ?? []),
+                        toMark,
+                      ],
+                    });
+                    router.replace("/(expedition)/base-camp" as any);
+                  }}
+                >
+                  <LinearGradient
+                    colors={[T.green, "#2AB860"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={s.promptYesGrad}
+                  >
+                    <Text style={s.promptYesText}>Yes — mark it complete ✓</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={s.promptNo}
+                  activeOpacity={0.7}
+                  onPress={() => router.replace("/(expedition)/base-camp" as any)}
+                >
+                  <Text style={s.promptNoText}>Not quite — back to expedition</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          </Modal>
+        )}
       </View>
     );
   }
@@ -1708,4 +1774,35 @@ const s = StyleSheet.create({
   pickerRowDistLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
   pickerDismiss: { paddingVertical: 14, alignItems: "center", marginTop: 4 },
   pickerDismissText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
+
+  // ── Expedition route completion prompt ─────────────────────────────────────
+  promptOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.72)",
+    alignItems: "center", justifyContent: "flex-end",
+    paddingBottom: 40,
+  },
+  promptCard: {
+    width: "90%", maxWidth: 400,
+    backgroundColor: "#0B1724",
+    borderRadius: 24, padding: 28,
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.20)",
+    overflow: "hidden", alignItems: "center",
+  },
+  promptEmo: { fontSize: 40, marginBottom: 12 },
+  promptTitle: {
+    fontSize: 22, fontFamily: "Inter_700Bold", color: T.white,
+    marginBottom: 6, textAlign: "center",
+  },
+  promptRoute: {
+    fontSize: 15, fontFamily: "Inter_500Medium", color: T.textMuted,
+    textAlign: "center", marginBottom: 24, lineHeight: 21,
+  },
+  promptYes: { alignSelf: "stretch", borderRadius: 14, overflow: "hidden", marginBottom: 12 },
+  promptYesGrad: {
+    paddingVertical: 16, alignItems: "center", justifyContent: "center",
+    borderRadius: 14,
+  },
+  promptYesText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  promptNo: { paddingVertical: 12, alignSelf: "stretch", alignItems: "center" },
+  promptNoText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
 });

@@ -35,6 +35,23 @@ On first load, if `expeditions[]` is absent but `summitGoal.mode === "virtual"` 
 
 `SigChallenge.challengeId` (not `.id`) — pass as `challengeId` field when calling `startExpedition`.
 
+## Base Camp "My Expedition" (task #110)
+
+- `completedRoutes` drives stage dots and progress ring (not elevation math)
+- `routePct = completedStages / stages.length * 100` — shown on ring
+- `nextHill = virtualHills.find(h => !completedRoutes.includes(h.name))` — first incomplete
+- Quick Start button on hero → `/hike-tracking?hillName=nextHill.name`
+- Expedition concept text from `(summitGoal as any)?.expeditionPlan?.concept`
+
+## Post-tracking route completion prompt (task #111)
+
+- In `hike-tracking.tsx`, after `handleSave` succeeds:
+  - If `summitGoal?.mode === "virtual" && activeExpeditionId` → show `showExpeditionPrompt` modal
+  - Else → navigate to `/(tabs)/hikes` as before
+- Modal shows next incomplete expedition hill name
+- "Yes" → `patchExpedition(id, { completedRoutes: [...existing, toMark] })` → navigate to `/(expedition)/base-camp`
+- "Not quite" → navigate to `/(expedition)/base-camp`
+
 ## Why
 
 Single summitGoal was overwritten on expedition switch, destroying progress. Library model preserves all progress; switching is safe and instant.
