@@ -23,6 +23,17 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+/**
+ * Convert a stored artwork path (/api/artwork/image/…) to a fully-qualified URL.
+ * API_BASE ends with "/api"; stored paths already start with "/api/", so strip
+ * the trailing segment to avoid doubling the prefix.
+ */
+function artworkUrl(storedPath: string | null | undefined): string | null {
+  if (!storedPath) return null;
+  const base = API_BASE.replace(/\/api$/, "");
+  return base + storedPath;
+}
+
 /** Strip common suffixes added to DB names that clutter the UI */
 export function stripSuffix(name: string) {
   return name.replace(/\s+Challenge$/i, "");
@@ -64,6 +75,11 @@ export interface SigChallenge {
   regions: string | null;
   stages: SigStage[];
   limitations: string[];
+  /** AI-generated artwork — present when approved === true */
+  heroImage?:      string | null;
+  cardImage?:      string | null;
+  thumbnailImage?: string | null;
+  approved?:       boolean;
 }
 
 interface Props {
@@ -102,8 +118,10 @@ export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
     return days[(order - 1) % days.length] ?? `Day ${order}`;
   };
 
+  // Prefer approved AI artwork; fall back to Wikimedia mountain photo
   const heroUri = !imgError && challenge
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(challenge.targetMountainName)}&width=800&height=500`
+    ? (challenge.approved && artworkUrl(challenge.heroImage)) ||
+      `${API_BASE}/mountain-image?name=${encodeURIComponent(challenge.targetMountainName)}&width=800&height=500`
     : null;
 
   return (

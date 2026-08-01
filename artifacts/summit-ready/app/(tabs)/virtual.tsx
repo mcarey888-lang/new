@@ -134,6 +134,17 @@ interface SigChallenge {
   limitations: string[];
 }
 
+/**
+ * Convert a stored artwork path (/api/artwork/image/…) to a fully-qualified URL.
+ * API_BASE ends with "/api"; stored paths already start with "/api/", so strip
+ * the trailing segment to avoid doubling the prefix.
+ */
+function artworkUrl(storedPath: string | null | undefined): string | null {
+  if (!storedPath) return null;
+  const base = API_BASE.replace(/\/api$/, "");
+  return base + storedPath;
+}
+
 /** Normalise a mountain name to its slug (matches the API's toMountainSlug). */
 function toMountainSlug(name: string): string {
   return name.toLowerCase()
@@ -232,6 +243,8 @@ export default function VirtualScreen() {
     difficulty: string | null; recommendedDays: number;
     adventureScore: number | null; totalAscentM: number | null;
     regions: string | null; featured: boolean;
+    heroImage?: string | null; cardImage?: string | null;
+    thumbnailImage?: string | null; approved?: boolean;
   }>>([]);
   const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
   const browseScrollRef = useRef<any>(null);
@@ -1220,7 +1233,10 @@ export default function VirtualScreen() {
                   {/* Thumbnail */}
                   <View style={s.popularThumb}>
                     <ExpoImage
-                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=160&height=160` }}
+                      source={{
+                        uri: (ch.approved && artworkUrl(ch.thumbnailImage ?? ch.cardImage))
+                          || `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=160&height=160`,
+                      }}
                       style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10 }}
                       contentFit="cover"
                     />

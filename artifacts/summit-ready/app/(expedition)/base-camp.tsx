@@ -77,6 +77,18 @@ function calcTrailTime(sessions: Session[]): { hours: number; minutes: number } 
   return { hours: Math.floor(totalMin / 60), minutes: Math.round(totalMin % 60) };
 }
 
+/**
+ * Convert a stored artwork path (/api/artwork/image/…) to a fully-qualified URL.
+ * Falls back to null so callers can chain a mountain-image fallback.
+ */
+function artworkUrl(storedPath: string | null | undefined): string | null {
+  if (!storedPath) return null;
+  // API_BASE ends with "/api"; stored paths start with "/api/artwork/..."
+  // Strip the trailing /api to avoid doubling the prefix.
+  const base = API_BASE.replace(/\/api$/, "");
+  return base + storedPath;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface FeaturedChallenge {
@@ -88,6 +100,11 @@ interface FeaturedChallenge {
   adventureScore: number | null;
   totalAscentM: number | null;
   regions: string | null;
+  /** AI-generated artwork paths stored as /api/artwork/image/:id/:crop */
+  heroImage?:      string | null;
+  cardImage?:      string | null;
+  thumbnailImage?: string | null;
+  approved?:       boolean;
 }
 
 interface StageData {
@@ -332,7 +349,10 @@ export default function BaseCampScreen() {
                   {/* Image */}
                   <View style={s.expCardImg}>
                     <ExpoImage
-                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=280` }}
+                      source={{
+                        uri: (ch.approved && artworkUrl(ch.cardImage ?? ch.heroImage))
+                          || `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=280`,
+                      }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
                     />
