@@ -13,7 +13,7 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
@@ -29,6 +29,12 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+function artworkUrl(storedPath: string | null | undefined): string | null {
+  if (!storedPath) return null;
+  const base = API_BASE.replace(/\/api$/, "");
+  return base + storedPath;
+}
+
 export default function ExpeditionCompleteScreen() {
   useScreenView("ExpeditionComplete");
   const insets    = useSafeAreaInsets();
@@ -40,6 +46,23 @@ export default function ExpeditionCompleteScreen() {
     sessions,
     completeExpedition,
   } = useApp();
+
+  // ── Approved artwork for the hero image ──────────────────────────────────────
+  const [heroArtwork, setHeroArtwork] = useState<string | null>(null);
+  useEffect(() => {
+    const cid = activeExpedition?.challengeId;
+    if (!cid) return;
+    fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: any) => {
+        if (!d) return;
+        const path = d.heroImage ?? d.cardImage ?? null;
+        const url  = artworkUrl(path);
+        if (url && d.approved) setHeroArtwork(url);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Snapshot stats from the session log ──────────────────────────────────────
   const totalElevationM  = Math.round(sessions.reduce((s, h) => s + (h.elevationGain ?? 0), 0));
@@ -99,10 +122,10 @@ export default function ExpeditionCompleteScreen() {
           { paddingTop: topInset + 20, paddingBottom: insets.bottom + 48 },
         ]}
       >
-        {/* Mountain hero image */}
+        {/* Mountain hero image — prefer approved AI artwork, fall back to Wikimedia */}
         <Animated.View entering={FadeIn.duration(700)} style={s.heroWrap}>
           <ExpoImage
-            source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360` }}
+            source={{ uri: heroArtwork ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360` }}
             style={s.heroImage}
             contentFit="cover"
           />

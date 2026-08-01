@@ -25,6 +25,7 @@ import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
+import { ExpeditionProgressCard } from "@/components/ExpeditionProgressCard";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 
@@ -152,6 +153,7 @@ export default function BaseCampScreen() {
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [routePickerOpen, setRoutePickerOpen] = useState(false);
+  const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -276,6 +278,21 @@ export default function BaseCampScreen() {
       .catch(() => {})
       .finally(() => setFeatLoading(false));
   }, []);
+
+  // Fetch approved artwork for the active expedition's challenge
+  useEffect(() => {
+    const cid = activeExpedition?.challengeId;
+    if (!cid) return;
+    fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: any) => {
+        if (!d) return;
+        const path = d.heroImage ?? d.cardImage ?? null;
+        const url  = artworkUrl(path);
+        if (url && d.approved) setChallengeHeroUri(url);
+      })
+      .catch(() => {});
+  }, [activeExpedition?.challengeId]); // eslint-disable-line
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
   // Snapshot before any narrowing so closures inside conditional branches
@@ -539,9 +556,12 @@ export default function BaseCampScreen() {
   // Use the real mountain name for the photo lookup; challengeName ("Matterhorn Ridge")
   // won't match — the API needs the actual peak ("Matterhorn").
   const heroMountain = target?.name ?? summitGoal.mountainName;
-  const heroUri = imgError
-    ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(heroMountain)}&width=800&height=600`;
+  // Prefer approved AI artwork; fall back to Wikimedia mountain photo.
+  const heroUri = challengeHeroUri && !imgError
+    ? challengeHeroUri
+    : imgError
+      ? null
+      : `${API_BASE}/mountain-image?name=${encodeURIComponent(heroMountain)}&width=800&height=600`;
 
   // Use mountainName (the challenge/expedition name the user chose) — not the
   // AI-generated expeditionPlan.title which changes on every generation.
@@ -649,45 +669,18 @@ export default function BaseCampScreen() {
           </View>
         </View>
 
-        {/* ── Expedition Progress (stage timeline) ──────────────────────────── */}
-        {stages.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={[s.card, { marginHorizontal: 14, marginTop: 14 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 16 }]}>EXPEDITION PROGRESS</Text>
-            <View style={{ flexDirection: "row" }}>
-              {stages.map((stage, idx) => {
-                const done   = completedRoutes.includes(stage.name);
-                const active = !done && stages.findIndex(s => !completedRoutes.includes(s.name)) === idx;
-                const isFirst = idx === 0;
-                const isLast  = idx === stages.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={{ flex: 1, alignItems: "center" }}
-                    activeOpacity={done ? 1 : 0.7}
-                    onPress={done ? undefined : () => {
-                      router.push({
-                        pathname: "/hike-tracking" as any,
-                        params: { hillName: stage.name },
-                      });
-                    }}
-                  >
-                    {/* Connector line + dot row */}
-                    <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
-                      <View style={[s.stageLine, { opacity: isFirst ? 0 : 1, backgroundColor: done ? T.green : "rgba(255,255,255,0.12)" }]} />
-                      <StageDot done={done} active={!done} index={idx} />
-                      <View style={[s.stageLine, { opacity: isLast ? 0 : 1, backgroundColor: (done && idx < completedStages - 1) ? T.green : "rgba(255,255,255,0.12)" }]} />
-                    </View>
-                    {/* Labels */}
-                    <Text style={[s.stageLabel, done && s.stageLabelDone, !done && s.stageLabelActive]} numberOfLines={2}>
-                      {stage.name}
-                    </Text>
-                    <Text style={[s.stageStatus, done && s.stageStatusDone, !done && s.stageStatusActive]}>
-                      {done ? "Completed" : "Available"}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+        {/* ── Expedition progress card (chart + stages + summary) ───────────── */}
+        {(summitGoal?.virtualHills?.length ?? 0) > 0 && (
+          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
+            <ExpeditionProgressCard
+              stages={summitGoal?.virtualHills ?? []}
+              completedRoutes={completedRoutes}
+              totalElev={totalGoal}
+              totalTrained={totalTrained}
+              onStagePress={(hillName) =>
+                router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
+              }
+            />
           </Animated.View>
         )}
 
