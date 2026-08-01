@@ -443,7 +443,7 @@ export default function BaseCampScreen() {
                 key={r.name}
                 style={s.regionCard}
                 activeOpacity={0.85}
-                onPress={() => router.push("/(expedition)/mountains" as any)}
+                onPress={() => router.push({ pathname: "/(expedition)/mountains" as any, params: { region: r.name } })}
               >
                 <ExpoImage
                   source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}

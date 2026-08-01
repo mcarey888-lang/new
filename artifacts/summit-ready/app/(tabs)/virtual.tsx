@@ -12,7 +12,7 @@ import {
   Mountain, Search, MapPin, ChevronRight, Lock,
   ArrowLeft, RefreshCw, CheckCircle, Plus, Compass,
   ChevronDown, ChevronUp, Info, AlertTriangle, Star,
-  SlidersHorizontal, LayoutGrid, LayoutList,
+  SlidersHorizontal, LayoutGrid, LayoutList, Globe, Clock,
 } from "lucide-react-native";
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { Image as ExpoImage } from "expo-image";
@@ -48,6 +48,42 @@ import type {
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
+
+// ── Region data ────────────────────────────────────────────────────────────────
+
+const FILTER_REGIONS = [
+  { name: "All Regions" },
+  { name: "Lake District" },
+  { name: "Snowdonia" },
+  { name: "Scotland" },
+  { name: "Peak District" },
+  { name: "Yorkshire Dales" },
+  { name: "Dartmoor" },
+];
+
+const BROWSE_REGIONS = [
+  { name: "Lake District", slug: "Helvellyn",    expeditions: 24 },
+  { name: "Snowdonia",     slug: "Snowdon",       expeditions: 18 },
+  { name: "Scotland",      slug: "Ben Nevis",     expeditions: 22 },
+  { name: "Peak District", slug: "Kinder Scout",  expeditions: 16 },
+];
+
+function bundleMatchesRegion(bundle: VirtualBundle, region: string): boolean {
+  if (region === "All Regions") return true;
+  if (region === "Scotland") return bundle.regionCountry === "Scotland";
+  return bundle.regionDisplay === region;
+}
+
+function challengeMatchesRegion(regions: string | null, region: string): boolean {
+  if (region === "All Regions") return true;
+  if (!regions) return false;
+  const r = regions.toLowerCase();
+  if (region === "Scotland")      return r.includes("scotland") || r.includes("highland") || r.includes("cairngorm");
+  if (region === "Snowdonia")     return r.includes("snowdonia") || r.includes("eryri") || r.includes("snowdon");
+  if (region === "Lake District") return r.includes("lake district") || r.includes("cumbria");
+  if (region === "Peak District") return r.includes("peak district") || r.includes("derbyshire");
+  return r.includes(region.toLowerCase());
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -179,6 +215,12 @@ export default function VirtualScreen() {
   // grid / list toggle (visual state — single-column list is default)
   const [gridView, setGridView] = useState(false);
 
+  // custom search expand/collapse
+  const [customSearchOpen, setCustomSearchOpen] = useState(false);
+
+  // region filter pill — can be pre-set by navigation param
+  const [selectedRegion, setSelectedRegion] = useState("All Regions");
+
   // signature challenge (loaded alongside expedition results)
   const [sigChallenge, setSigChallenge] = useState<SigChallenge | null>(null);
   const [sigLoading, setSigLoading] = useState(false);
@@ -188,7 +230,8 @@ export default function VirtualScreen() {
   const [featuredList, setFeaturedList] = useState<Array<{
     challengeId: string; challengeName: string; targetMountainName: string;
     difficulty: string | null; recommendedDays: number;
-    adventureScore: number | null; totalAscentM: number | null; regions: string | null;
+    adventureScore: number | null; totalAscentM: number | null;
+    regions: string | null; featured: boolean;
   }>>([]);
   const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
   const browseScrollRef = useRef<any>(null);
@@ -196,7 +239,7 @@ export default function VirtualScreen() {
   const { patchGoal } = useApp();
 
   // ── Auto-start from URL param (e.g. navigated here from base-camp) ────────────
-  const { startMountain } = useLocalSearchParams<{ startMountain?: string }>();
+  const { startMountain, region: regionParam } = useLocalSearchParams<{ startMountain?: string; region?: string }>();
   useEffect(() => {
     if (startMountain) {
       setSearchMountain(startMountain);
@@ -204,6 +247,11 @@ export default function VirtualScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startMountain]);
+
+  // Pre-select region pill when navigated from Base Camp
+  useEffect(() => {
+    if (regionParam) setSelectedRegion(regionParam);
+  }, [regionParam]);
 
   // Fetch featured signature challenges on mount
   React.useEffect(() => {
@@ -942,40 +990,58 @@ export default function VirtualScreen() {
     return { progressPct: pct, elevationGained: gained, equivalentHills: hills };
   }
 
+  const filteredBundles = VIRTUAL_BUNDLES.filter(b => bundleMatchesRegion(b, selectedRegion));
+  const filteredFeatured = featuredList.filter(ch => challengeMatchesRegion(ch.regions, selectedRegion));
+
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView ref={browseScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 6 }}>
+        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
           <ExpoImage source={require("@/assets/images/logo.gif")} style={{ width: 140, height: 56, alignSelf: "center" }} contentFit="contain" />
           {/* Title row */}
           <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 4 }}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={s.heroTitle}>Virtual Mountains</Text>
-              <Text style={s.heroSub}>Train for the world's greatest adventures on your local hills</Text>
+              <Text style={s.heroTitle}>Mountains</Text>
+              <Text style={s.heroSub}>Explore signature expeditions or create{"\n"}your own adventure.</Text>
             </View>
-            {/* Filter + grid toggle */}
-            <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
-              <TouchableOpacity
-                style={s.headerIconBtn}
-                activeOpacity={0.75}
-                onPress={() => {/* filter: coming soon */}}
-              >
-                <SlidersHorizontal size={15} color={T.textMuted} />
+            <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
+              <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
+                <Search size={15} color={T.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.headerIconBtn, gridView && { borderColor: T.blue + "50", backgroundColor: T.blueDim }]}
-                activeOpacity={0.75}
-                onPress={() => setGridView(v => !v)}
-              >
-                {gridView
-                  ? <LayoutList size={15} color={T.blue} />
-                  : <LayoutGrid size={15} color={T.textMuted} />}
+              <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
+                <SlidersHorizontal size={15} color={T.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
+
+        {/* ── Region filter pills ─────────────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 2 }}
+          style={{ marginBottom: 16 }}
+        >
+          {FILTER_REGIONS.map(fr => {
+            const active = selectedRegion === fr.name;
+            return (
+              <TouchableOpacity
+                key={fr.name}
+                onPress={() => setSelectedRegion(fr.name)}
+                activeOpacity={0.8}
+                style={[s.regionPill, active && s.regionPillActive]}
+              >
+                {fr.name === "All Regions"
+                  ? <Globe size={11} color={active ? "#fff" : T.textMuted} />
+                  : <Mountain size={11} color={active ? "#fff" : T.textMuted} />
+                }
+                <Text style={[s.regionPillText, active && s.regionPillTextActive]}>{fr.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* ── Active goal banner ───────────────────────────────────────────── */}
         {isVirtualGoalActive && summitGoal?.targetMountain && (
@@ -1023,117 +1089,117 @@ export default function VirtualScreen() {
           </View>
         )}
 
-        {/* ── Custom search ────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={s.sectionTitle}>CUSTOM SEARCH</Text>
-          <View style={s.searchCard}>
-            <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-            <View style={s.searchRow}>
-              <Mountain size={14} color={T.blue} />
-              <TextInput
-                style={[s.searchInput, { flex: 1 }]}
-                value={searchMountain}
-                onChangeText={setSearchMountain}
-                placeholder="Goal mountain (e.g. Mont Blanc)"
-                placeholderTextColor={T.textDim}
-                returnKeyType="next"
-              />
+        {/* ── Create Custom Route ──────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
+          <TouchableOpacity
+            style={s.createRouteCard}
+            activeOpacity={0.85}
+            onPress={() => setCustomSearchOpen(v => !v)}
+          >
+            <LinearGradient colors={["rgba(29,78,148,0.35)", "rgba(29,78,148,0.08)"]} style={StyleSheet.absoluteFill} />
+            <View style={s.createRouteIconWrap}>
+              <Plus size={18} color="#fff" />
             </View>
-            <View style={[s.searchRow, { marginTop: 10 }]}>
-              <MapPin size={14} color={T.green} />
-              <TextInput
-                style={[s.searchInput, { flex: 1 }]}
-                value={searchRegion}
-                onChangeText={setSearchRegion}
-                placeholder="Your hiking region (e.g. Lake District)"
-                placeholderTextColor={T.textDim}
-                returnKeyType="search"
-                onSubmitEditing={handleSearch}
-              />
+            <View style={{ flex: 1 }}>
+              <Text style={s.createRouteTitle}>Create Custom Route</Text>
+              <Text style={s.createRouteSub}>Choose your hills, set your goals{"\n"}and build your own expedition.</Text>
             </View>
-            {/* Radius chips */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
-              <View style={s.chipRow}>
-                {[15, 30, 50, 80].map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    onPress={() => setSearchRadius(r)}
-                    style={[s.chip, searchRadius === r && s.chipActive]}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
-                  </TouchableOpacity>
-                ))}
+            <ChevronRight size={16} color={T.blue} />
+          </TouchableOpacity>
+
+          {/* Expandable custom search */}
+          {customSearchOpen && (
+            <View style={[s.searchCard, { marginTop: 10 }]}>
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={s.searchRow}>
+                <Mountain size={14} color={T.blue} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchMountain}
+                  onChangeText={setSearchMountain}
+                  placeholder="Goal mountain (e.g. Mont Blanc)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="next"
+                />
               </View>
+              <View style={[s.searchRow, { marginTop: 10 }]}>
+                <MapPin size={14} color={T.green} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchRegion}
+                  onChangeText={setSearchRegion}
+                  placeholder="Your hiking region (e.g. Lake District)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearch}
+                />
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
+                <View style={s.chipRow}>
+                  {[15, 30, 50, 80].map(r => (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setSearchRadius(r)}
+                      style={[s.chip, searchRadius === r && s.chipActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={handleSearch}
+                disabled={searchMountain.trim().length < 2 || searchRegion.trim().length < 2}
+                style={[s.searchBtn, (searchMountain.trim().length < 2 || searchRegion.trim().length < 2) && { opacity: 0.4 }]}
+                activeOpacity={0.85}
+              >
+                <Search size={15} color="#fff" />
+                <Text style={s.searchBtnText}>Find Equivalent Hills</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={handleSearch}
-              disabled={searchMountain.trim().length < 2 || searchRegion.trim().length < 2}
-              style={[s.searchBtn, (searchMountain.trim().length < 2 || searchRegion.trim().length < 2) && { opacity: 0.4 }]}
-              activeOpacity={0.85}
-            >
-              <Search size={15} color="#fff" />
-              <Text style={s.searchBtnText}>Find Equivalent Hills</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </Animated.View>
 
-        {/* ── Signature Expeditions ────────────────────────────────────────── */}
-        {featuredList.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginBottom: 22 }}>
-            <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
-              <Text style={s.sectionTitle}>SIGNATURE EXPEDITIONS</Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 3 }}>
-                Curated UK adventures matched to iconic summits · tap to pre-fill
-              </Text>
+        {/* ── Browse by Region ────────────────────────────────────────────── */}
+        {selectedRegion === "All Regions" && (
+          <Animated.View entering={FadeInDown.delay(80).duration(400)} style={{ marginBottom: 26 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={s.sectionHeading}>Browse by Region</Text>
+              <TouchableOpacity activeOpacity={0.75}>
+                <Text style={s.viewAllText}>View all</Text>
+              </TouchableOpacity>
             </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 2 }}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
             >
-              {featuredList.map((ch) => (
+              {BROWSE_REGIONS.map(r => (
                 <TouchableOpacity
-                  key={ch.challengeId}
-                  style={s.sigBrowseCard}
-                  activeOpacity={0.82}
-                  onPress={() => setSelectedFeaturedId(ch.challengeId)}
+                  key={r.name}
+                  style={s.browseRegionCard}
+                  activeOpacity={0.85}
+                  onPress={() => setSelectedRegion(r.name)}
                 >
                   <ExpoImage
-                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=300` }}
+                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                   />
                   <LinearGradient
-                    colors={["rgba(0,0,0,0.05)", "rgba(10,6,20,0.93)"]}
+                    colors={["transparent", "rgba(0,0,0,0.82)"]}
+                    locations={[0.3, 1]}
                     style={StyleSheet.absoluteFill}
-                    locations={[0.2, 1]}
                   />
-                  {/* Badge */}
-                  <View style={[s.sigBrowseBadge, { position: "absolute", top: 8, left: 8 }]}>
-                    <Text style={s.sigBrowseBadgeText}>✦ SIGNATURE</Text>
-                  </View>
-                  {/* Bottom content */}
-                  <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 2 }}>
-                      <Mountain size={8} color="rgba(255,255,255,0.4)" />
-                      <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular" }} numberOfLines={1}>{ch.targetMountainName}</Text>
-                    </View>
-                    <Text style={s.sigBrowseTitle} numberOfLines={2}>{stripSuffix(ch.challengeName)}</Text>
-                    <View style={{ flexDirection: "row", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
-                      {ch.difficulty && (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: diffColor(ch.difficulty) }} />
-                          <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.65)" }}>{ch.difficulty}</Text>
-                        </View>
-                      )}
-                      {ch.recommendedDays > 0 && (
-                        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)" }}>{ch.recommendedDays}d</Text>
-                      )}
-                      {ch.adventureScore != null && (
-                        <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple }}>{ch.adventureScore} adv</Text>
-                      )}
+                  <View style={{ position: "absolute", bottom: 10, left: 10, right: 10 }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }}>{r.name}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 3 }}>
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.55)" }}>
+                        {r.expeditions} expeditions
+                      </Text>
+                      <ChevronRight size={10} color="rgba(255,255,255,0.4)" />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -1142,30 +1208,108 @@ export default function VirtualScreen() {
           </Animated.View>
         )}
 
-        {/* ── Mountain cards ───────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 16 }}>
-          {VIRTUAL_BUNDLES.map((bundle, idx) => {
-            const locked = !bundle.free && !isSubscribed;
-            const prog = bundleProgress(bundle);
-            return (
-              <Animated.View key={bundle.id} entering={FadeInDown.delay(80 + idx * 30).duration(400)}>
-                <VirtualMountainCard
-                  bundle={bundle}
-                  locked={locked}
-                  onPress={() => handleBundleTap(bundle)}
-                  progressPct={prog.progressPct}
-                  elevationGained={prog.elevationGained}
-                  equivalentHills={prog.equivalentHills}
-                />
-              </Animated.View>
-            );
-          })}
-        </View>
+        {/* ── Popular Expeditions ──────────────────────────────────────────── */}
+        {filteredFeatured.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginBottom: 26 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={s.sectionHeading}>Popular Expeditions</Text>
+              <TouchableOpacity activeOpacity={0.75}>
+                <Text style={s.viewAllText}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ paddingHorizontal: 16, gap: 10 }}>
+              {filteredFeatured.map(ch => (
+                <TouchableOpacity
+                  key={ch.challengeId}
+                  style={s.popularCard}
+                  activeOpacity={0.82}
+                  onPress={() => setSelectedFeaturedId(ch.challengeId)}
+                >
+                  <LinearGradient colors={["rgba(255,255,255,0.025)", "transparent"]} style={StyleSheet.absoluteFill} />
+                  {/* Thumbnail */}
+                  <View style={s.popularThumb}>
+                    <ExpoImage
+                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=160&height=160` }}
+                      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10 }}
+                      contentFit="cover"
+                    />
+                    {ch.featured && (
+                      <View style={s.featuredBadge}>
+                        <Text style={s.featuredBadgeText}>FEATURED</Text>
+                      </View>
+                    )}
+                  </View>
+                  {/* Content */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.popularTitle} numberOfLines={1}>{ch.challengeName}</Text>
+                    <Text style={s.popularSub} numberOfLines={1}>{ch.targetMountainName}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
+                      {ch.recommendedDays > 0 && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                          <Clock size={10} color={T.textMuted} />
+                          <Text style={s.popularMeta}>{ch.recommendedDays} Day{ch.recommendedDays !== 1 ? "s" : ""}</Text>
+                        </View>
+                      )}
+                      {ch.difficulty && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                          <Mountain size={10} color={T.textMuted} />
+                          <Text style={s.popularMeta}>{ch.difficulty}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  {/* Score ring */}
+                  {ch.adventureScore != null && (
+                    <View style={s.scoreBadgeWrap}>
+                      <ProgressRing
+                        score={ch.adventureScore}
+                        size={46}
+                        strokeWidth={3}
+                        color={scoreColor(ch.adventureScore)}
+                        hideScore
+                      />
+                      <Text style={[s.scoreBadgeText, { color: scoreColor(ch.adventureScore) }]}>{ch.adventureScore}%</Text>
+                    </View>
+                  )}
+                  <ChevronRight size={14} color="rgba(255,255,255,0.18)" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ── All Expeditions (bundles) ────────────────────────────────────── */}
+        {filteredBundles.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(160).duration(400)} style={{ marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <Text style={s.sectionHeading}>
+                {selectedRegion === "All Regions" ? "All Expeditions" : `${selectedRegion} Expeditions`}
+              </Text>
+            </View>
+            <View style={{ paddingHorizontal: 16 }}>
+              {filteredBundles.map((bundle, idx) => {
+                const locked = !bundle.free && !isSubscribed;
+                const prog = bundleProgress(bundle);
+                return (
+                  <Animated.View key={bundle.id} entering={FadeInDown.delay(80 + idx * 30).duration(400)}>
+                    <VirtualMountainCard
+                      bundle={bundle}
+                      locked={locked}
+                      onPress={() => handleBundleTap(bundle)}
+                      progressPct={prog.progressPct}
+                      elevationGained={prog.elevationGained}
+                      equivalentHills={prog.equivalentHills}
+                    />
+                  </Animated.View>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         {/* ── Legend bar ───────────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
           <View style={s.legendBar}>
-            {/* Difficulty guide */}
             <View style={{ flex: 1, gap: 6 }}>
               <Text style={s.legendTitle}>DIFFICULTY GUIDE</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -1182,9 +1326,7 @@ export default function VirtualScreen() {
                 ))}
               </View>
             </View>
-            {/* Separator */}
             <View style={{ width: 1, alignSelf: "stretch", backgroundColor: "rgba(255,255,255,0.07)" }} />
-            {/* Route types */}
             <View style={{ gap: 6 }}>
               <Text style={s.legendTitle}>ROUTE TYPES</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -1549,4 +1691,93 @@ const s = StyleSheet.create({
     backgroundColor: T.orange, borderRadius: 14, paddingVertical: 14,
   },
   upsellBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  // Region filter pills
+  regionPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+  },
+  regionPillActive: {
+    backgroundColor: T.blue,
+    borderColor: T.blue,
+  },
+  regionPillText: {
+    fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted,
+  },
+  regionPillTextActive: {
+    color: "#fff", fontFamily: "Inter_700Bold",
+  },
+
+  // Section headings (larger than sectionTitle)
+  sectionHeading: {
+    fontSize: 17, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  viewAllText: {
+    fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue,
+  },
+
+  // Create Custom Route card
+  createRouteCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#0D1B2E", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(29,78,148,0.4)",
+    padding: 14, overflow: "hidden",
+  },
+  createRouteIconWrap: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: T.blue,
+    alignItems: "center", justifyContent: "center",
+  },
+  createRouteTitle: {
+    fontSize: 15, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  createRouteSub: {
+    fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted,
+    lineHeight: 17, marginTop: 2,
+  },
+
+  // Browse by Region cards
+  browseRegionCard: {
+    width: 160, height: 130, borderRadius: 14,
+    overflow: "hidden", backgroundColor: "#0F1D30",
+  },
+
+  // Popular Expedition list cards
+  popularCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#0D1B2E", borderRadius: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    padding: 10, overflow: "hidden",
+  },
+  popularThumb: {
+    width: 68, height: 68, borderRadius: 10,
+    backgroundColor: "#142236", overflow: "hidden",
+  },
+  popularTitle: {
+    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+  },
+  popularSub: {
+    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2,
+  },
+  popularMeta: {
+    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim,
+  },
+  featuredBadge: {
+    position: "absolute", bottom: 4, left: 4,
+    backgroundColor: T.purple + "CC", borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 2,
+  },
+  featuredBadgeText: {
+    fontSize: 7, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.5,
+  },
+  scoreBadgeWrap: {
+    width: 46, height: 46, alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  scoreBadgeText: {
+    position: "absolute",
+    fontSize: 10, fontFamily: "Inter_700Bold",
+  },
 });
