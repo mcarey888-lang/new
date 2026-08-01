@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/artwork-admin/"
+title = "SummitReady — Artwork Admin"
+description = "Internal admin panel for the AI Artwork Pipeline. Shows all Signature Expeditions with their artwork generation status, lets the team generate, regenerate, approve, reject, preview, and bulk-produce expedition images using the /api/artwork/* backend API."
+version = "1.0.0"
+id = "artifacts/artwork-admin"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/artwork-admin/" ]
+localPort = 19461
+
+[services.development]
+run = "pnpm --filter @workspace/artwork-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/artwork-admin", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/artwork-admin/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19461"
+BASE_PATH = "/artwork-admin/"

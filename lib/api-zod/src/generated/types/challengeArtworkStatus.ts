@@ -5,9 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
 
 export interface ChallengeArtworkStatus {
   challengeId: string;
@@ -41,46 +38,4 @@ export interface ChallengeArtworkStatus {
   generationCost?: number | null;
   /** @nullable */
   lastGenerated?: string | null;
-}
-
-export interface ArtworkStatusList {
-  challenges: ChallengeArtworkStatus[];
-  total: number;
-}
-
-export interface ArtworkPrompt {
-  prompt: string;
-  hash: string;
-  challengeId: string;
-}
-
-export interface GenerateArtworkInput {
-  force?: boolean;
-}
-
-export interface ArtworkGenerateResult {
-  challengeId: string;
-  status: string;
-  /** @nullable */
-  reason?: string | null;
-  /** @nullable */
-  prompt?: string | null;
-  /** @nullable */
-  heroPath?: string | null;
-}
-
-export interface ArtworkApproveResult {
-  challengeId: string;
-  approved: boolean;
-}
-
-export interface ArtworkRejectResult {
-  challengeId: string;
-  approved: boolean;
-  status: string;
-}
-
-export interface ArtworkClearResult {
-  challengeId: string;
-  cleared: boolean;
 }

@@ -14,3 +14,100 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Get artwork status for all active challenges
+ */
+export const GetArtworkStatusResponse = zod.object({
+  challenges: zod.array(
+    zod.object({
+      challengeId: zod.string(),
+      challengeName: zod.string(),
+      targetMountainName: zod.string(),
+      regions: zod.string().nullish(),
+      difficulty: zod.string().nullish(),
+      adventureScore: zod.number().nullish(),
+      heroImage: zod.string().nullish(),
+      cardImage: zod.string().nullish(),
+      thumbnailImage: zod.string().nullish(),
+      imagePrompt: zod.string().nullish(),
+      imageVersion: zod.number().nullish(),
+      imageStatus: zod.string().nullish(),
+      approved: zod.boolean().nullish(),
+      generatedAt: zod.string().nullish(),
+      provider: zod.string().nullish(),
+      generationCost: zod.number().nullish(),
+      lastGenerated: zod.string().nullish(),
+    }),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Get the auto-built prompt for a challenge without generating
+ */
+export const GetArtworkPromptParams = zod.object({
+  challengeId: zod.coerce.string(),
+});
+
+export const GetArtworkPromptResponse = zod.object({
+  prompt: zod.string(),
+  hash: zod.string(),
+  challengeId: zod.string(),
+});
+
+/**
+ * @summary Generate artwork for a single challenge
+ */
+export const GenerateArtworkParams = zod.object({
+  challengeId: zod.coerce.string(),
+});
+
+export const GenerateArtworkBody = zod.object({
+  force: zod.boolean().optional(),
+});
+
+export const GenerateArtworkResponse = zod.object({
+  challengeId: zod.string(),
+  status: zod.string(),
+  reason: zod.string().nullish(),
+  prompt: zod.string().nullish(),
+  heroPath: zod.string().nullish(),
+});
+
+/**
+ * @summary Approve artwork for a challenge
+ */
+export const ApproveArtworkParams = zod.object({
+  challengeId: zod.coerce.string(),
+});
+
+export const ApproveArtworkResponse = zod.object({
+  challengeId: zod.string(),
+  approved: zod.boolean(),
+});
+
+/**
+ * @summary Reject artwork for a challenge
+ */
+export const RejectArtworkParams = zod.object({
+  challengeId: zod.coerce.string(),
+});
+
+export const RejectArtworkResponse = zod.object({
+  challengeId: zod.string(),
+  approved: zod.boolean(),
+  status: zod.string(),
+});
+
+/**
+ * @summary Clear all artwork for a challenge
+ */
+export const ClearArtworkParams = zod.object({
+  challengeId: zod.coerce.string(),
+});
+
+export const ClearArtworkResponse = zod.object({
+  challengeId: zod.string(),
+  cleared: zod.boolean(),
+});

@@ -6,4 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./artworkApproveResult";
+export * from "./artworkClearResult";
+export * from "./artworkGenerateResult";
+export * from "./artworkPrompt";
+export * from "./artworkRejectResult";
+export * from "./artworkStatusList";
+export * from "./challengeArtworkStatus";
+export * from "./generateArtworkInput";
 export * from "./healthStatus";

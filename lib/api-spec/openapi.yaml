@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: artwork
+    description: AI Artwork Pipeline operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,125 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /artwork/status:
+    get:
+      operationId: getArtworkStatus
+      tags: [artwork]
+      summary: Get artwork status for all active challenges
+      responses:
+        "200":
+          description: List of challenge artwork statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkStatusList"
+
+  /artwork/prompt/{challengeId}:
+    get:
+      operationId: getArtworkPrompt
+      tags: [artwork]
+      summary: Get the auto-built prompt for a challenge without generating
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The auto-built prompt and hash
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkPrompt"
+        "404":
+          description: Challenge not found
+
+  /artwork/generate/{challengeId}:
+    post:
+      operationId: generateArtwork
+      tags: [artwork]
+      summary: Generate artwork for a single challenge
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateArtworkInput"
+      responses:
+        "200":
+          description: Generation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkGenerateResult"
+        "500":
+          description: Generation failed
+
+  /artwork/approve/{challengeId}:
+    post:
+      operationId: approveArtwork
+      tags: [artwork]
+      summary: Approve artwork for a challenge
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkApproveResult"
+
+  /artwork/reject/{challengeId}:
+    post:
+      operationId: rejectArtwork
+      tags: [artwork]
+      summary: Reject artwork for a challenge
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkRejectResult"
+
+  /artwork/{challengeId}:
+    delete:
+      operationId: clearArtwork
+      tags: [artwork]
+      summary: Clear all artwork for a challenge
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkClearResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +155,116 @@ components:
       required:
         - status
 
+    ChallengeArtworkStatus:
+      type: object
+      required:
+        - challengeId
+        - challengeName
+        - targetMountainName
+      properties:
+        challengeId:
+          type: string
+        challengeName:
+          type: string
+        targetMountainName:
+          type: string
+        regions:
+          type: ["string", "null"]
+        difficulty:
+          type: ["string", "null"]
+        adventureScore:
+          type: ["number", "null"]
+        heroImage:
+          type: ["string", "null"]
+        cardImage:
+          type: ["string", "null"]
+        thumbnailImage:
+          type: ["string", "null"]
+        imagePrompt:
+          type: ["string", "null"]
+        imageVersion:
+          type: ["integer", "null"]
+        imageStatus:
+          type: ["string", "null"]
+        approved:
+          type: ["boolean", "null"]
+        generatedAt:
+          type: ["string", "null"]
+        provider:
+          type: ["string", "null"]
+        generationCost:
+          type: ["number", "null"]
+        lastGenerated:
+          type: ["string", "null"]
+
+    ArtworkStatusList:
+      type: object
+      required: [challenges, total]
+      properties:
+        challenges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChallengeArtworkStatus"
+        total:
+          type: integer
+
+    ArtworkPrompt:
+      type: object
+      required: [prompt, hash, challengeId]
+      properties:
+        prompt:
+          type: string
+        hash:
+          type: string
+        challengeId:
+          type: string
+
+    GenerateArtworkInput:
+      type: object
+      properties:
+        force:
+          type: boolean
+
+    ArtworkGenerateResult:
+      type: object
+      required: [challengeId, status]
+      properties:
+        challengeId:
+          type: string
+        status:
+          type: string
+        reason:
+          type: ["string", "null"]
+        prompt:
+          type: ["string", "null"]
+        heroPath:
+          type: ["string", "null"]
+
+    ArtworkApproveResult:
+      type: object
+      required: [challengeId, approved]
+      properties:
+        challengeId:
+          type: string
+        approved:
+          type: boolean
+
+    ArtworkRejectResult:
+      type: object
+      required: [challengeId, approved, status]
+      properties:
+        challengeId:
+          type: string
+        approved:
+          type: boolean
+        status:
+          type: string
+
+    ArtworkClearResult:
+      type: object
+      required: [challengeId, cleared]
+      properties:
+        challengeId:
+          type: string
+        cleared:
+          type: boolean

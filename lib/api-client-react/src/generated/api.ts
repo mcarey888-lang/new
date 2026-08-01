@@ -5,18 +5,30 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ArtworkApproveResult,
+  ArtworkClearResult,
+  ArtworkGenerateResult,
+  ArtworkPrompt,
+  ArtworkRejectResult,
+  ArtworkStatusList,
+  GenerateArtworkInput,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +111,509 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get artwork status for all active challenges
+ */
+export const getGetArtworkStatusUrl = () => {
+  return `/api/artwork/status`;
+};
+
+export const getArtworkStatus = async (
+  options?: RequestInit,
+): Promise<ArtworkStatusList> => {
+  return customFetch<ArtworkStatusList>(getGetArtworkStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetArtworkStatusQueryKey = () => {
+  return [`/api/artwork/status`] as const;
+};
+
+export const getGetArtworkStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getArtworkStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getArtworkStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetArtworkStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getArtworkStatus>>
+  > = ({ signal }) => getArtworkStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getArtworkStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetArtworkStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getArtworkStatus>>
+>;
+export type GetArtworkStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get artwork status for all active challenges
+ */
+
+export function useGetArtworkStatus<
+  TData = Awaited<ReturnType<typeof getArtworkStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getArtworkStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetArtworkStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the auto-built prompt for a challenge without generating
+ */
+export const getGetArtworkPromptUrl = (challengeId: string) => {
+  return `/api/artwork/prompt/${challengeId}`;
+};
+
+export const getArtworkPrompt = async (
+  challengeId: string,
+  options?: RequestInit,
+): Promise<ArtworkPrompt> => {
+  return customFetch<ArtworkPrompt>(getGetArtworkPromptUrl(challengeId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetArtworkPromptQueryKey = (challengeId: string) => {
+  return [`/api/artwork/prompt/${challengeId}`] as const;
+};
+
+export const getGetArtworkPromptQueryOptions = <
+  TData = Awaited<ReturnType<typeof getArtworkPrompt>>,
+  TError = ErrorType<void>,
+>(
+  challengeId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getArtworkPrompt>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetArtworkPromptQueryKey(challengeId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getArtworkPrompt>>
+  > = ({ signal }) =>
+    getArtworkPrompt(challengeId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!challengeId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getArtworkPrompt>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetArtworkPromptQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getArtworkPrompt>>
+>;
+export type GetArtworkPromptQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the auto-built prompt for a challenge without generating
+ */
+
+export function useGetArtworkPrompt<
+  TData = Awaited<ReturnType<typeof getArtworkPrompt>>,
+  TError = ErrorType<void>,
+>(
+  challengeId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getArtworkPrompt>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetArtworkPromptQueryOptions(challengeId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate artwork for a single challenge
+ */
+export const getGenerateArtworkUrl = (challengeId: string) => {
+  return `/api/artwork/generate/${challengeId}`;
+};
+
+export const generateArtwork = async (
+  challengeId: string,
+  generateArtworkInput?: GenerateArtworkInput,
+  options?: RequestInit,
+): Promise<ArtworkGenerateResult> => {
+  return customFetch<ArtworkGenerateResult>(
+    getGenerateArtworkUrl(challengeId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(generateArtworkInput),
+    },
+  );
+};
+
+export const getGenerateArtworkMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateArtwork>>,
+    TError,
+    { challengeId: string; data: BodyType<GenerateArtworkInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateArtwork>>,
+  TError,
+  { challengeId: string; data: BodyType<GenerateArtworkInput> },
+  TContext
+> => {
+  const mutationKey = ["generateArtwork"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateArtwork>>,
+    { challengeId: string; data: BodyType<GenerateArtworkInput> }
+  > = (props) => {
+    const { challengeId, data } = props ?? {};
+
+    return generateArtwork(challengeId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateArtworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateArtwork>>
+>;
+export type GenerateArtworkMutationBody = BodyType<GenerateArtworkInput>;
+export type GenerateArtworkMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate artwork for a single challenge
+ */
+export const useGenerateArtwork = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateArtwork>>,
+    TError,
+    { challengeId: string; data: BodyType<GenerateArtworkInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateArtwork>>,
+  TError,
+  { challengeId: string; data: BodyType<GenerateArtworkInput> },
+  TContext
+> => {
+  return useMutation(getGenerateArtworkMutationOptions(options));
+};
+
+/**
+ * @summary Approve artwork for a challenge
+ */
+export const getApproveArtworkUrl = (challengeId: string) => {
+  return `/api/artwork/approve/${challengeId}`;
+};
+
+export const approveArtwork = async (
+  challengeId: string,
+  options?: RequestInit,
+): Promise<ArtworkApproveResult> => {
+  return customFetch<ArtworkApproveResult>(getApproveArtworkUrl(challengeId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getApproveArtworkMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  const mutationKey = ["approveArtwork"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveArtwork>>,
+    { challengeId: string }
+  > = (props) => {
+    const { challengeId } = props ?? {};
+
+    return approveArtwork(challengeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveArtworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveArtwork>>
+>;
+
+export type ApproveArtworkMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Approve artwork for a challenge
+ */
+export const useApproveArtwork = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  return useMutation(getApproveArtworkMutationOptions(options));
+};
+
+/**
+ * @summary Reject artwork for a challenge
+ */
+export const getRejectArtworkUrl = (challengeId: string) => {
+  return `/api/artwork/reject/${challengeId}`;
+};
+
+export const rejectArtwork = async (
+  challengeId: string,
+  options?: RequestInit,
+): Promise<ArtworkRejectResult> => {
+  return customFetch<ArtworkRejectResult>(getRejectArtworkUrl(challengeId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRejectArtworkMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejectArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  const mutationKey = ["rejectArtwork"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejectArtwork>>,
+    { challengeId: string }
+  > = (props) => {
+    const { challengeId } = props ?? {};
+
+    return rejectArtwork(challengeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejectArtworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejectArtwork>>
+>;
+
+export type RejectArtworkMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reject artwork for a challenge
+ */
+export const useRejectArtwork = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  return useMutation(getRejectArtworkMutationOptions(options));
+};
+
+/**
+ * @summary Clear all artwork for a challenge
+ */
+export const getClearArtworkUrl = (challengeId: string) => {
+  return `/api/artwork/${challengeId}`;
+};
+
+export const clearArtwork = async (
+  challengeId: string,
+  options?: RequestInit,
+): Promise<ArtworkClearResult> => {
+  return customFetch<ArtworkClearResult>(getClearArtworkUrl(challengeId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getClearArtworkMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  const mutationKey = ["clearArtwork"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearArtwork>>,
+    { challengeId: string }
+  > = (props) => {
+    const { challengeId } = props ?? {};
+
+    return clearArtwork(challengeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearArtworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearArtwork>>
+>;
+
+export type ClearArtworkMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Clear all artwork for a challenge
+ */
+export const useClearArtwork = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearArtwork>>,
+    TError,
+    { challengeId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clearArtwork>>,
+  TError,
+  { challengeId: string },
+  TContext
+> => {
+  return useMutation(getClearArtworkMutationOptions(options));
+};

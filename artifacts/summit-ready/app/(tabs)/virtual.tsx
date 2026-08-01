@@ -1242,7 +1242,9 @@ export default function VirtualScreen() {
                   {/* Content */}
                   <View style={{ flex: 1 }}>
                     <Text style={s.popularTitle} numberOfLines={1}>{ch.challengeName}</Text>
-                    <Text style={s.popularSub} numberOfLines={1}>{ch.targetMountainName}</Text>
+                    <Text style={s.popularSub} numberOfLines={1}>
+                      {ch.targetMountainName}{ch.regions ? ` · ${ch.regions.split(",")[0].trim()}` : ""}
+                    </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
                       {ch.recommendedDays > 0 && (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
