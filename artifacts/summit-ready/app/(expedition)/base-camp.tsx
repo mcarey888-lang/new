@@ -502,6 +502,18 @@ export default function BaseCampScreen() {
               mode:            "virtual",
               virtualHills:    hills,
               simulationScore: ch.dnaMatchScore ?? 80,
+              // Minimal targetMountain so the hero image resolves to the real
+              // mountain name ("Matterhorn") not the challenge name ("Matterhorn Ridge").
+              targetMountain: {
+                name:               ch.targetMountainName,
+                country:            ch.regions?.split(/[,/]/)[0]?.trim() ?? "United Kingdom",
+                summitElevation:    0,
+                totalElevationGain: ch.totalAscentM ?? 0,
+                totalDistance:      ch.totalDistanceKm ?? 0,
+                estimatedDays:      (Math.min(2, Math.max(1, ch.recommendedDays)) as 1 | 2),
+                difficulty:         (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
+                altitudeExposure:   "None" as const,
+              },
             };
             void setSummitGoal(instantly);
           }}
@@ -513,9 +525,12 @@ export default function BaseCampScreen() {
   // ────────────────────────────────────────────────────────────────────────────
   // ACTIVE EXPEDITION STATE
   // ────────────────────────────────────────────────────────────────────────────
+  // Use the real mountain name for the photo lookup; challengeName ("Matterhorn Ridge")
+  // won't match — the API needs the actual peak ("Matterhorn").
+  const heroMountain = target?.name ?? summitGoal.mountainName;
   const heroUri = imgError
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=600`;
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(heroMountain)}&width=800&height=600`;
 
   // Use mountainName (the challenge/expedition name the user chose) — not the
   // AI-generated expeditionPlan.title which changes on every generation.
