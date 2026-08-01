@@ -239,3 +239,10 @@ id = "NHeikGf4XGS5iMdfM59ba"
 uri = "file://screenshots/paywall-iphone-full.jpg"
 type = "image"
 title = "Paywall — full scroll (legal footer visible at bottom)"
+
+[[outputs]]
+id = "Aodnq49N-HQvwyCqg6JrR"
+uri = "file://attached_assets/expedition-mode-audit.md"
+type = "text"
+title = "Expedition Mode — Audit & Implementation Plan"
+description = "Full audit of the current Expedition Mode implementation, screen flow, state diagram, navigation diagram, and phased implementation plan."
