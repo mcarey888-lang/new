@@ -602,22 +602,29 @@ export default function BaseCampScreen() {
             <TouchableOpacity
               style={s.quickStartBtn}
               activeOpacity={0.85}
-              onPress={() =>
-                router.push({
-                  pathname: "/hike-tracking" as any,
-                  params: nextHill ? { hillName: nextHill.name } : {},
-                })
-              }
+              onPress={() => {
+                if (completedRoutes.length > 0 && !nextHill) {
+                  // All routes done — go to the celebration screen
+                  router.push("/(expedition)/expedition-complete" as any);
+                } else {
+                  router.push({
+                    pathname: "/hike-tracking" as any,
+                    params: nextHill ? { hillName: nextHill.name } : {},
+                  });
+                }
+              }}
             >
               <LinearGradient
-                colors={[T.green, "#2AB860"]}
+                colors={completedRoutes.length > 0 && !nextHill
+                  ? ["#7C3AED", "#5B21B6"]
+                  : [T.green, "#2AB860"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.quickStartGrad}
               >
                 <Play size={14} color="#fff" fill="#fff" />
                 <Text style={s.quickStartText}>
                   {completedRoutes.length > 0 && !nextHill
-                    ? "Expedition Complete 🎉"
+                    ? "View Expedition Completion 🎉"
                     : nextHill
                       ? `Start: ${nextHill.name}`
                       : "Quick Start Tracking"}

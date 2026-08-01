@@ -1091,13 +1091,18 @@ export default function HikeTrackingScreen() {
                       h => !(activeExpedition.completedRoutes ?? []).includes(h.name),
                     );
                     const toMark = nextIncomplete?.name ?? routeName;
-                    void patchExpedition(expId, {
-                      completedRoutes: [
-                        ...(activeExpedition?.completedRoutes ?? []),
-                        toMark,
-                      ],
-                    });
-                    router.replace("/(expedition)/base-camp" as any);
+                    const newCompleted = [
+                      ...(activeExpedition?.completedRoutes ?? []),
+                      toMark,
+                    ];
+                    void patchExpedition(expId, { completedRoutes: newCompleted });
+                    const totalRoutes = activeExpedition?.virtualHills?.length ?? 0;
+                    const isFinished  = totalRoutes > 0 && newCompleted.length >= totalRoutes;
+                    router.replace(
+                      (isFinished
+                        ? "/(expedition)/expedition-complete"
+                        : "/(expedition)/base-camp") as any
+                    );
                   }}
                 >
                   <LinearGradient

@@ -120,6 +120,11 @@ export default function ExpeditionLayout() {
             ),
           }}
         />
+        {/* Hidden from tab bar — navigated to programmatically on expedition completion */}
+        <Tabs.Screen
+          name="expedition-complete"
+          options={{ href: null }}
+        />
       </Tabs>
 
       {/* Persistent shell toggle — sits in the safe-area zone above all tabs */}
