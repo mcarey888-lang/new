@@ -501,7 +501,7 @@ export default function BaseCampScreen() {
               availableDays:       currentGoal?.availableDays,
               mode:            "virtual",
               virtualHills:    hills,
-              simulationScore: ch.dnaMatchScore ?? 80,
+              simulationScore: ch.dnaMatchScore ?? undefined,
               // Minimal targetMountain so the hero image resolves to the real
               // mountain name ("Matterhorn") not the challenge name ("Matterhorn Ridge").
               targetMountain: {

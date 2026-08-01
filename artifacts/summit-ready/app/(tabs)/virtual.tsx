@@ -996,9 +996,20 @@ export default function VirtualScreen() {
                   </View>
                 )}
               </View>
-              <View style={{ alignItems: "center", gap: 4 }}>
-                <ProgressRing score={summitGoal.simulationScore ?? 0} size={44} strokeWidth={4} color={scoreColor(summitGoal.simulationScore ?? 0)} />
-                <ChevronRight size={14} color={T.blue} />
+              <View style={{ alignItems: "center", gap: 2 }}>
+                {summitGoal.simulationScore != null ? (
+                  <View style={{ alignItems: "center" }}>
+                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: scoreColor(summitGoal.simulationScore) }}>
+                      {summitGoal.simulationScore}
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 }}>
+                      MATCH
+                    </Text>
+                  </View>
+                ) : (
+                  <ChevronRight size={18} color={T.blue} />
+                )}
+                {summitGoal.simulationScore != null && <ChevronRight size={12} color={T.blue} />}
               </View>
             </TouchableOpacity>
           </Animated.View>
