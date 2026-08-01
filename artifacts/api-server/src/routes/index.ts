@@ -21,6 +21,7 @@ import userRouter from "./user";
 import virtualExpeditionRouter from "./virtual-expedition";
 import virtualExpeditionEngineRouter from "./virtual-expedition-engine";
 import { signatureChallengesRouter } from "./signature-challenges";
+import { artworkRouter } from "./artwork";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -43,6 +44,7 @@ router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
 router.use(virtualExpeditionEngineRouter);
 router.use(signatureChallengesRouter);
+router.use("/artwork", artworkRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +

@@ -35,12 +35,27 @@ export const signatureChallenges = pgTable("signature_challenges", {
   featured:           boolean("featured").notNull().default(false),
   dataConfidence:     text("data_confidence").notNull().default("Curated"),
   status:             text("status").notNull().default("active"),
+
+  // ── AI Artwork fields ──────────────────────────────────────────────────────
+  heroImage:          text("hero_image"),                            // serving path for 16:9 hero crop
+  cardImage:          text("card_image"),                            // serving path for 4:5 card crop
+  thumbnailImage:     text("thumbnail_image"),                       // serving path for 1:1 thumbnail
+  imagePrompt:        text("image_prompt"),                          // auto-built prompt that was sent to AI
+  imageVersion:       smallint("image_version").default(0),          // increments on each regeneration
+  imageStatus:        text("image_status").default("pending"),       // pending|generating|generated|approved|rejected|failed
+  approved:           boolean("approved").default(false),            // admin-approved for live use
+  generatedAt:        timestamp("generated_at", { withTimezone: true }),
+  provider:           text("provider"),                              // e.g. "openai-gpt-image-1"
+  generationCost:     real("generation_cost"),                       // USD, from API usage
+  lastGenerated:      timestamp("last_generated", { withTimezone: true }),
+
   createdAt:          timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:          timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   check("chk_sig_challenges_status", sql`${t.status} IN ('active','draft','hidden')`),
   check("chk_sig_challenges_dna",    sql`${t.dnaMatchScore}  IS NULL OR (${t.dnaMatchScore}  BETWEEN 0 AND 100)`),
   check("chk_sig_challenges_adv",    sql`${t.adventureScore} IS NULL OR (${t.adventureScore} BETWEEN 0 AND 100)`),
+  check("chk_sig_challenges_img_status", sql`${t.imageStatus} IN ('pending','generating','generated','approved','rejected','failed')`),
 ]);
 
 // ── Challenge Stages ─────────────────────────────────────────────────────────

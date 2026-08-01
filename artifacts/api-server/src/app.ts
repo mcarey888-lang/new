@@ -84,6 +84,8 @@ app.use("/api/trail-start",                  aiLimiter);
 app.use("/api/mountain-verification-test",   aiLimiter);
 app.use("/api/admin",                        aiLimiter);
 app.use("/api/virtual-expedition",           aiLimiter);
+app.use("/api/artwork/generate",             aiLimiter);
+app.use("/api/artwork/bulk",                 aiLimiter);
 
 // ── Clerk auth — parses JWT from Authorization header for all routes ──────────
 // requireAuth() is applied per-router in routes/index.ts for protected routes.
