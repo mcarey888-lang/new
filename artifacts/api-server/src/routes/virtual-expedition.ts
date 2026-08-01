@@ -451,38 +451,34 @@ function resolveExpeditionHills(
 /**
  * Post-selection elevation bridge.
  *
- * The AI picks routes by character (feel) not arithmetic. In lowland areas
- * (moors, Pennines, low hills) the combined elevation of 3–5 routes at ×1
- * can be far below the target — 241m vs 1,500m for Fuji is an 84% shortfall
- * that's confusing and demoralising for the user.
+ * The AI picks routes by character (feel) not arithmetic. The combined
+ * elevation of 3–5 routes at ×1 is often well below the mountain's total
+ * gain requirement — e.g. Lake District hills (~2,300m) vs Everest (3,640m)
+ * — leaving users with a misleading local match score.
  *
- * This step closes the gap *without* reverting to the old single-hill grind:
- *  - If total gain ≥ 40 % of target: leave as-is — AI did fine.
- *  - Otherwise: assign reps proportionally across all selected hills so that
- *    the overall total reaches ~65 % of the target, capped at 4 reps per
- *    hill so no single route dominates.  Bigger hills earn more reps
- *    (higher contribution per round).
- *
- * The 65 % ceiling is intentional: we never claim a moorland walk replicates
- * Fuji perfectly, but we do give the user a meaningful elevation challenge.
+ * This step closes the gap by assigning reps proportionally:
+ *  - If total gain ≥ 90 % of target: leave as-is — already close enough.
+ *  - Otherwise: assign reps so the combined total reaches ~100 % of the
+ *    mountain's elevation gain, capped at 6 reps per hill.  Bigger hills
+ *    earn proportionally more reps (higher gain per round).
  */
 function distributeRepsForElevation(hills: Hill[], targetGain: number): Hill[] {
   if (!hills.length || targetGain <= 0) return hills;
 
   const totalAtOne = hills.reduce((s, h) => s + h.elevation, 0);
 
-  // Already ≥ 40 % of target — character match is sufficient.
-  if (totalAtOne >= targetGain * 0.40) return hills;
+  // Already ≥ 90 % of target — close enough, leave reps as-is.
+  if (totalAtOne >= targetGain * 0.90) return hills;
 
-  // Aim for 65 % of target, capped so we don't inflate tiny moors to absurdity.
-  const aimGain    = Math.min(targetGain * 0.65, totalAtOne * 4);
-  const avgElev    = totalAtOne / hills.length;
+  // Aim for 100 % of target (capped so we never exceed 6× the ×1 total).
+  const aimGain = Math.min(targetGain, totalAtOne * 6);
+  const avgElev = totalAtOne / hills.length;
 
   return hills.map(h => {
     // Proportional allocation: hills with higher gain shoulder more reps.
     const share  = avgElev > 0 ? h.elevation / avgElev : 1;
     const rawRep = (aimGain / totalAtOne) * share;
-    const reps   = Math.min(4, Math.max(1, Math.round(rawRep)));
+    const reps   = Math.min(6, Math.max(1, Math.round(rawRep)));
     return { ...h, repeats: reps, totalElevation: Math.round(h.elevation * reps) };
   });
 }
