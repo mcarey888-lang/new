@@ -25,7 +25,7 @@ import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
-import type { Session } from "@/context/AppContext";
+import type { Session, SummitGoal } from "@/context/AppContext";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -121,7 +121,7 @@ function StageDot({ done, active, index }: { done: boolean; active: boolean; ind
 export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, patchGoal, unlockedAchievements } = useApp();
+  const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements } = useApp();
   const { user } = useUser();
 
   const firstName = user?.firstName ?? "Adventurer";
@@ -187,30 +187,59 @@ export default function BaseCampScreen() {
 
   // ── Fetches ──────────────────────────────────────────────────────────────────
   async function fetchExpedition(force = false, mountainOverride?: string) {
-    if (!summitGoal) return;
+    // Allow starting fresh from a challenge card even without an existing goal
+    if (!summitGoal && !mountainOverride) return;
     if (!force && !mountainOverride && hasCachedData) return;
     setLoading(true); setError(null);
     try {
-      const mountain = mountainOverride ?? summitGoal.mountainName;
+      const mountain = mountainOverride ?? summitGoal!.mountainName;
+      const location = summitGoal?.location ?? "United Kingdom";
+      const radius   = summitGoal?.maxRadius ?? 30;
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          targetMountain: mountain,
-          userLocation:   summitGoal.location,
-          radius:         summitGoal.maxRadius ?? 30,
-        }),
+        body:    JSON.stringify({ targetMountain: mountain, userLocation: location, radius }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({})) as any;
         throw new Error(b.error ?? "Error");
       }
       const data = await res.json();
-      await patchGoal({
-        targetMountain:  data.targetProfile,
-        simulationScore: data.dnaMatchScore ?? data.simulationScore,
-        virtualHills:    data.recommendedHills,
-      });
+
+      if (mountainOverride) {
+        // Starting a new expedition from a challenge card — build a complete goal
+        // so mode:"virtual", mountainName, and all required fields are set correctly.
+        const newGoal: SummitGoal = {
+          mountainName:     mountain,
+          summitDate:       new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          distance:         data.targetProfile?.totalDistance ?? 0,
+          elevationGain:    data.targetProfile?.totalElevationGain ?? 0,
+          highestAltitude:  data.targetProfile?.summitElevation ?? 0,
+          difficulty:       data.targetProfile?.difficulty ?? "Hard",
+          fitnessLevel:     summitGoal?.fitnessLevel ?? "Average",
+          location,
+          maxRadius:        radius,
+          equipment:        summitGoal?.equipment ?? ["none"],
+          trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
+          hillDaysPerWeek:     summitGoal?.hillDaysPerWeek ?? 2,
+          availableDays:       summitGoal?.availableDays,
+          mode:            "virtual",
+          targetMountain:  data.targetProfile,
+          virtualHills:    data.recommendedHills,
+          simulationScore: data.dnaMatchScore ?? data.simulationScore,
+          simulationScoreBreakdown: data.scoreBreakdown,
+          expeditionPlan:  data.expedition ?? null,
+        };
+        await setSummitGoal(newGoal);
+      } else {
+        // Refreshing an existing expedition in-place
+        await patchGoal({
+          targetMountain:  data.targetProfile,
+          simulationScore: data.dnaMatchScore ?? data.simulationScore,
+          virtualHills:    data.recommendedHills,
+          expeditionPlan:  data.expedition ?? null,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load data.");
     } finally {
