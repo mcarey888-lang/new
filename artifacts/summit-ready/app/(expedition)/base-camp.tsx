@@ -186,16 +186,17 @@ export default function BaseCampScreen() {
   );
 
   // ── Fetches ──────────────────────────────────────────────────────────────────
-  async function fetchExpedition(force = false) {
+  async function fetchExpedition(force = false, mountainOverride?: string) {
     if (!summitGoal) return;
-    if (!force && hasCachedData) return;
+    if (!force && !mountainOverride && hasCachedData) return;
     setLoading(true); setError(null);
     try {
+      const mountain = mountainOverride ?? summitGoal.mountainName;
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          targetMountain: summitGoal.mountainName,
+          targetMountain: mountain,
           userLocation:   summitGoal.location,
           radius:         summitGoal.maxRadius ?? 30,
         }),
@@ -260,7 +261,7 @@ export default function BaseCampScreen() {
           <TouchableOpacity
             style={s.searchBar}
             activeOpacity={0.8}
-            onPress={() => router.push("/(tabs)/virtual" as any)}
+            onPress={() => router.push("/(expedition)/mountains" as any)}
           >
             <Search size={15} color="rgba(255,255,255,0.38)" />
             <Text style={s.searchPlaceholder}>Search mountains, routes or regions</Text>
@@ -407,7 +408,7 @@ export default function BaseCampScreen() {
                 key={r.name}
                 style={s.regionCard}
                 activeOpacity={0.85}
-                onPress={() => router.push("/(tabs)/virtual" as any)}
+                onPress={() => router.push("/(expedition)/mountains" as any)}
               >
                 <ExpoImage
                   source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
@@ -436,7 +437,7 @@ export default function BaseCampScreen() {
           onClose={() => setSelectedChallengeId(null)}
           onStart={(mountainName) => {
             setSelectedChallengeId(null);
-            router.push({ pathname: "/(tabs)/virtual", params: { startMountain: mountainName } } as any);
+            void fetchExpedition(true, mountainName);
           }}
         />
       </LinearGradient>
