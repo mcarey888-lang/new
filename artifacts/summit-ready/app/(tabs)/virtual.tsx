@@ -243,7 +243,7 @@ export default function VirtualScreen() {
   useEffect(() => {
     if (startMountain) {
       setSearchMountain(startMountain);
-      void fetchExpedition(startMountain, "United Kingdom", searchRadius);
+      void fetchExpedition(startMountain, regionParam ?? summitGoal?.location ?? "United Kingdom", searchRadius);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startMountain]);
@@ -1387,8 +1387,53 @@ export default function VirtualScreen() {
         onClose={() => setSelectedFeaturedId(null)}
         onStart={(challenge) => {
           setSelectedFeaturedId(null);
-          setSearchMountain(challenge.targetMountainName);
-          void fetchExpedition(challenge.targetMountainName, "United Kingdom", searchRadius);
+          // Commit directly to the challenge's pre-built stages —
+          // no need to search for new hills since they are already defined.
+          const region = challenge.regions?.split(/[,/]/)[0]?.trim()
+            ?? summitGoal?.location
+            ?? "United Kingdom";
+          const hills: NearbyHill[] = challenge.stages.map(s => ({
+            name:           s.routeName,
+            elevation:      s.ascentM ?? 0,
+            distance:       s.distanceKm ?? 0,
+            repeats:        1,
+            totalElevation: s.ascentM ?? 0,
+            surface:        "mixed",
+            grade:          s.difficulty ?? "Hard",
+            emoji:          "⛰️",
+            estimatedTime:  s.estimatedHours
+              ? `${Math.floor(s.estimatedHours)}h`
+              : undefined,
+          }));
+          const newGoal: SummitGoal = {
+            mountainName:        challenge.challengeName,
+            summitDate:          new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                                   .toISOString().slice(0, 10),
+            distance:            challenge.totalDistanceKm ?? 0,
+            elevationGain:       challenge.totalAscentM ?? 0,
+            highestAltitude:     0,
+            difficulty:          (challenge.difficulty as SummitGoal["difficulty"]) ?? "Hard",
+            fitnessLevel:        summitGoal?.fitnessLevel ?? "Average",
+            location:            region,
+            maxRadius:           searchRadius,
+            equipment:           summitGoal?.equipment ?? ["none"],
+            trainingDaysPerWeek: summitGoal?.trainingDaysPerWeek ?? 3,
+            hillDaysPerWeek:     summitGoal?.hillDaysPerWeek ?? 2,
+            mode:                "virtual",
+            virtualHills:        hills,
+            simulationScore:     challenge.dnaMatchScore ?? undefined,
+            targetMountain: {
+              name:               challenge.targetMountainName,
+              country:            region,
+              summitElevation:    0,
+              totalElevationGain: challenge.totalAscentM ?? 0,
+              totalDistance:      challenge.totalDistanceKm ?? 0,
+              estimatedDays:      Math.min(2, Math.max(1, challenge.recommendedDays)) as 1 | 2,
+              difficulty:         (challenge.difficulty as SummitGoal["difficulty"]) ?? "Hard",
+              altitudeExposure:   "None" as const,
+            },
+          };
+          void setSummitGoal(newGoal).then(() => setView("progress"));
         }}
       />
     </LinearGradient>
