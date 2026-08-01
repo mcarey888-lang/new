@@ -1230,10 +1230,10 @@ export default function VirtualScreen() {
       <ChallengeDetailSheet
         challengeId={selectedFeaturedId}
         onClose={() => setSelectedFeaturedId(null)}
-        onStart={(mountainName) => {
+        onStart={(challenge) => {
           setSelectedFeaturedId(null);
-          setSearchMountain(mountainName);
-          void fetchExpedition(mountainName, "United Kingdom", searchRadius);
+          setSearchMountain(challenge.targetMountainName);
+          void fetchExpedition(challenge.targetMountainName, "United Kingdom", searchRadius);
         }}
       />
     </LinearGradient>

@@ -25,7 +25,8 @@ import { T } from "@/constants/theme";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
-import type { Session, SummitGoal } from "@/context/AppContext";
+import type { SigChallenge } from "@/components/ChallengeDetailSheet";
+import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -152,24 +153,26 @@ export default function BaseCampScreen() {
   const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
-  // Stage timeline — prefer expeditionPlan.days, fall back to virtualHills
+  // Stage timeline — use virtualHills as named hill checkpoints (the actual
+  // places the user will train), falling back to expeditionPlan day titles.
   const stages: StageData[] = useMemo(() => {
+    const hills = summitGoal?.virtualHills;
+    if (hills && hills.length > 0) {
+      return hills.map(h => ({
+        name: h.name, region: "",
+        distance: h.distance, elevation: h.elevation,
+      }));
+    }
     const days = (summitGoal as any)?.expeditionPlan?.days as any[] | null | undefined;
     if (days && days.length > 0) {
-      return days.map((d: any, i: number) => {
-        const hill = d.hills?.[0];
-        return {
-          name:      hill?.name ?? d.name ?? d.theme ?? `Stage ${i + 1}`,
-          region:    hill?.region ?? d.region ?? "",
-          distance:  hill?.distance ?? d.totalDistance,
-          elevation: hill?.elevation ?? d.totalElevation,
-        };
-      });
+      return days.map((d: any, i: number) => ({
+        name:      d.routes?.[0]?.name ?? d.title ?? `Stage ${i + 1}`,
+        region:    "",
+        distance:  undefined,
+        elevation: undefined,
+      }));
     }
-    return (summitGoal?.virtualHills ?? []).slice(0, 4).map(h => ({
-      name: h.name, region: "",
-      distance: h.distance, elevation: h.elevation,
-    }));
+    return [];
   }, [summitGoal]);
 
   const completedStages = Math.max(0, Math.min(
@@ -258,6 +261,9 @@ export default function BaseCampScreen() {
   }, []);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
+  // Snapshot before any narrowing so closures inside conditional branches
+  // can still read the (possibly-null) goal without TypeScript complaining.
+  const currentGoal: SummitGoal | null = summitGoal;
 
   // ────────────────────────────────────────────────────────────────────────────
   // EMPTY STATE
@@ -464,9 +470,40 @@ export default function BaseCampScreen() {
         <ChallengeDetailSheet
           challengeId={selectedChallengeId}
           onClose={() => setSelectedChallengeId(null)}
-          onStart={(mountainName) => {
+          onStart={(ch: SigChallenge) => {
             setSelectedChallengeId(null);
-            void fetchExpedition(true, mountainName);
+            // Build the goal IMMEDIATELY from challenge data so the active state
+            // renders instantly with no API round-trip.
+            const hills: NearbyHill[] = ch.stages.map(s => ({
+              name:           s.routeName,
+              elevation:      s.ascentM ?? 0,
+              distance:       s.distanceKm ?? 0,
+              repeats:        1,
+              totalElevation: s.ascentM ?? 0,
+              surface:        "mixed",
+              grade:          s.difficulty ?? "Hard",
+              emoji:          "⛰️",
+              estimatedTime:  s.estimatedHours ? `${Math.floor(s.estimatedHours)}h` : undefined,
+            }));
+            const instantly: SummitGoal = {
+              mountainName:     ch.challengeName,
+              summitDate:       new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+              distance:         ch.totalDistanceKm ?? 0,
+              elevationGain:    ch.totalAscentM ?? 0,
+              highestAltitude:  0,
+              difficulty:       (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
+              fitnessLevel:     currentGoal?.fitnessLevel ?? "Average",
+              location:         currentGoal?.location ?? "United Kingdom",
+              maxRadius:        currentGoal?.maxRadius ?? 30,
+              equipment:        currentGoal?.equipment ?? ["none"],
+              trainingDaysPerWeek: currentGoal?.trainingDaysPerWeek ?? 3,
+              hillDaysPerWeek:     currentGoal?.hillDaysPerWeek ?? 2,
+              availableDays:       currentGoal?.availableDays,
+              mode:            "virtual",
+              virtualHills:    hills,
+              simulationScore: ch.dnaMatchScore ?? 80,
+            };
+            void setSummitGoal(instantly);
           }}
         />
       </LinearGradient>
@@ -480,7 +517,9 @@ export default function BaseCampScreen() {
     ? null
     : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=600`;
 
-  const expTitle = (summitGoal as any)?.expeditionPlan?.title ?? summitGoal.mountainName;
+  // Use mountainName (the challenge/expedition name the user chose) — not the
+  // AI-generated expeditionPlan.title which changes on every generation.
+  const expTitle = summitGoal.mountainName;
   const expSub   = summitGoal.location
     ? `Simulate the ${summitGoal.mountainName} in ${summitGoal.location}`
     : target

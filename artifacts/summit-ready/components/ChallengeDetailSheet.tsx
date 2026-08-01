@@ -47,7 +47,7 @@ interface SigStage {
   whySelected: string | null;
 }
 
-interface SigChallenge {
+export interface SigChallenge {
   challengeId: string;
   challengeName: string;
   targetMountainName: string;
@@ -69,8 +69,8 @@ interface SigChallenge {
 interface Props {
   challengeId: string | null;
   onClose: () => void;
-  /** Called when the user taps "Start this Expedition". Receives the target mountain name. */
-  onStart?: (mountainName: string) => void;
+  /** Called when the user taps "Start this Expedition". Receives the full challenge object. */
+  onStart?: (challenge: SigChallenge) => void;
 }
 
 export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
@@ -363,7 +363,7 @@ export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
               activeOpacity={0.85}
               onPress={() => {
                 if (onStart && challenge) {
-                  onStart(challenge.targetMountainName);
+                  onStart(challenge);
                 } else {
                   router.push("/(tabs)/virtual" as any);
                 }
