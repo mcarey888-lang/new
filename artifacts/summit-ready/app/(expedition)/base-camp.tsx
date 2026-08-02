@@ -148,12 +148,15 @@ export default function BaseCampScreen() {
 
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [imgError,  setImgError]  = useState(false);
   const [featured,  setFeatured]  = useState<FeaturedChallenge[]>([]);
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [routePickerOpen, setRoutePickerOpen] = useState(false);
   const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
+  // Keep artwork + fallback errors separate so artwork failure silently
+  // falls back to the Wikimedia mountain photo rather than going blank.
+  const [artworkError,  setArtworkError]  = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -557,10 +560,11 @@ export default function BaseCampScreen() {
   // Use the real mountain name for the photo lookup; challengeName ("Matterhorn Ridge")
   // won't match — the API needs the actual peak ("Matterhorn").
   const heroMountain = target?.name ?? summitGoal.mountainName;
-  // Prefer approved AI artwork; fall back to Wikimedia mountain photo.
-  const heroUri = challengeHeroUri && !imgError
+  // Prefer approved AI artwork; silently fall back to Wikimedia photo on any
+  // artwork error, rather than going blank.
+  const heroUri = (challengeHeroUri && !artworkError)
     ? challengeHeroUri
-    : imgError
+    : fallbackError
       ? null
       : `${API_BASE}/mountain-image?name=${encodeURIComponent(heroMountain)}&width=800&height=600`;
 
@@ -589,7 +593,15 @@ export default function BaseCampScreen() {
               source={{ uri: heroUri }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              onError={() => setImgError(true)}
+              onError={() => {
+                // If the artwork URL failed, fall back to the mountain photo.
+                // If even the fallback failed, go blank (gradient).
+                if (challengeHeroUri && !artworkError) {
+                  setArtworkError(true);
+                } else {
+                  setFallbackError(true);
+                }
+              }}
             />
           ) : (
             <LinearGradient colors={["#0E2240", "#071428"]} style={StyleSheet.absoluteFill} />
@@ -624,8 +636,16 @@ export default function BaseCampScreen() {
             {/* Title + ring row */}
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 10 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={s.activeTitle} numberOfLines={2}>{expTitle}</Text>
-                {!!expSub && <Text style={s.activeSub} numberOfLines={2}>{expSub}</Text>}
+                <Text
+                  style={[
+                    s.activeTitle,
+                    expTitle.length > 22 && { fontSize: 26, lineHeight: 31 },
+                    expTitle.length > 32 && { fontSize: 22, lineHeight: 27 },
+                  ]}
+                >
+                  {expTitle}
+                </Text>
+                {!!expSub && <Text style={s.activeSub}>{expSub}</Text>}
                 {!!concept && (
                   <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
                 )}

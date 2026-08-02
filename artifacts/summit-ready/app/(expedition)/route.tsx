@@ -98,18 +98,42 @@ function SectionRow({
 export default function RouteScreen() {
   useScreenView("expedition_route");
   const insets = useSafeAreaInsets();
-  const { summitGoal } = useApp();
-  const [activeTab, setActiveTab] = useState<TabKey>("route");
-  const [imgError, setImgError] = useState(false);
+  const { summitGoal, activeExpedition } = useApp();
+  const [activeTab,    setActiveTab]    = useState<TabKey>("route");
+  const [artworkError,  setArtworkError]  = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
+  const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
 
   const target  = summitGoal?.targetMountain;
   const hills   = summitGoal?.virtualHills ?? [];
   const plan    = (summitGoal as any)?.expeditionPlan as { title?: string; concept?: string; days?: any[] } | null | undefined;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  const heroUri = imgError || !summitGoal
+  // Fetch approved AI artwork for the active challenge
+  React.useEffect(() => {
+    const cid = activeExpedition?.challengeId;
+    if (!cid) return;
+    fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: any) => {
+        if (!d) return;
+        const ch   = d.challenge ?? d;
+        const path = ch.heroImage ?? ch.cardImage ?? null;
+        if (path && ch.approved) {
+          const base = API_BASE.replace(/\/api$/, "");
+          setChallengeHeroUri(base + path);
+        }
+      })
+      .catch(() => {});
+  }, [activeExpedition?.challengeId]); // eslint-disable-line
+
+  const heroUri = !summitGoal
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=400`;
+    : (challengeHeroUri && !artworkError)
+      ? challengeHeroUri
+      : fallbackError
+        ? null
+        : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=400`;
 
   // Build section list — prefer AI expedition plan, fall back to virtual hills
   const routeSections = (() => {
@@ -179,7 +203,13 @@ export default function RouteScreen() {
               source={{ uri: heroUri }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              onError={() => setImgError(true)}
+              onError={() => {
+                if (challengeHeroUri && !artworkError) {
+                  setArtworkError(true);
+                } else {
+                  setFallbackError(true);
+                }
+              }}
             />
           ) : (
             <LinearGradient colors={["#0E2240", "#071428", T.bg]} style={StyleSheet.absoluteFill} />
