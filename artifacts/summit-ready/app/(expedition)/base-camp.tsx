@@ -287,9 +287,10 @@ export default function BaseCampScreen() {
       .then(r => r.ok ? r.json() : null)
       .then((d: any) => {
         if (!d) return;
-        const path = d.heroImage ?? d.cardImage ?? null;
+        const ch   = d.challenge ?? d;           // endpoint wraps under { challenge: ... }
+        const path = ch.heroImage ?? ch.cardImage ?? null;
         const url  = artworkUrl(path);
-        if (url && d.approved) setChallengeHeroUri(url);
+        if (url && ch.approved) setChallengeHeroUri(url);
       })
       .catch(() => {});
   }, [activeExpedition?.challengeId]); // eslint-disable-line

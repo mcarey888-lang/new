@@ -56,9 +56,10 @@ export default function ExpeditionCompleteScreen() {
       .then(r => r.ok ? r.json() : null)
       .then((d: any) => {
         if (!d) return;
-        const path = d.heroImage ?? d.cardImage ?? null;
+        const ch   = d.challenge ?? d;           // endpoint wraps under { challenge: ... }
+        const path = ch.heroImage ?? ch.cardImage ?? null;
         const url  = artworkUrl(path);
-        if (url && d.approved) setHeroArtwork(url);
+        if (url && ch.approved) setHeroArtwork(url);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
