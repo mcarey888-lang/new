@@ -98,9 +98,7 @@ export default function ExpeditionCompleteScreen() {
   // ── Stats grid ───────────────────────────────────────────────────────────────
   const statsGrid = [
     {
-      val:   totalElevationM >= 1000
-               ? `${(totalElevationM / 1000).toFixed(1)}k`
-               : `${totalElevationM}`,
+      val:   totalElevationM.toLocaleString(),
       unit:  "m",
       label: "ELEVATION",
     },

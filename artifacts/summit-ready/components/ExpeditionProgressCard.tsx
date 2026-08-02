@@ -35,7 +35,7 @@ const PH = CHART_H - P.top - P.bottom;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function fmtM(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(1)}k` : `${Math.round(m)}`;
+  return Math.round(m).toLocaleString();
 }
 function clip(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
