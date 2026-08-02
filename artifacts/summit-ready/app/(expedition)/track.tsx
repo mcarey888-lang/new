@@ -11,13 +11,39 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const ACTIVE_HIKE_KEY = "summitready_active_hike_session";
+
+function useActiveHike() {
+  const [activeHike, setActiveHike] = useState<{ routeName: string; trackStartMs: number } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function check() {
+      try {
+        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
+        if (!raw || !mounted) return;
+        const session = JSON.parse(raw);
+        const ageMs = Date.now() - (session.savedAt ?? 0);
+        if (ageMs < 24 * 60 * 60 * 1000) setActiveHike(session);
+      } catch { /* ignore */ }
+    }
+    check();
+    // Re-check each time the screen comes into focus
+    const id = setInterval(check, 3000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
+
+  return activeHike;
+}
 
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
@@ -49,6 +75,7 @@ export default function TrackScreen() {
   useScreenView("expedition_track");
   const insets = useSafeAreaInsets();
   const { sessions, summitGoal } = useApp();
+  const activeHike = useActiveHike();
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -90,6 +117,28 @@ export default function TrackScreen() {
             <Activity size={18} color={T.textMuted} />
           </View>
         </View>
+
+        {/* ── Resume active tracking banner ────────────────────────────────── */}
+        {activeHike && (
+          <Animated.View entering={FadeInDown.delay(30).duration(350)} style={{ marginHorizontal: 14, marginBottom: 12 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/hike-tracking" as any)}
+              style={s.resumeBanner}
+              activeOpacity={0.88}
+            >
+              <LinearGradient
+                colors={["rgba(62,207,117,0.18)", "rgba(62,207,117,0.08)"]}
+                style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+              />
+              <View style={s.resumeDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.resumeTitle}>Tracking active</Text>
+                <Text style={s.resumeSub} numberOfLines={1}>{activeHike.routeName || "Hike in progress"}</Text>
+              </View>
+              <ChevronRight size={18} color={T.green} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* ── Lifetime stats big card ───────────────────────────────────────── */}
         <Animated.View entering={FadeInUp.delay(60).duration(420)} style={s.statsCard}>
@@ -315,4 +364,19 @@ const s = StyleSheet.create({
   },
   miniStatVal: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
   miniStatLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+
+  resumeBanner: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderRadius: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.30)",
+    backgroundColor: "rgba(62,207,117,0.06)",
+  },
+  resumeDot: {
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: T.green,
+    shadowColor: T.green, shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 },
+  },
+  resumeTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green },
+  resumeSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
 });

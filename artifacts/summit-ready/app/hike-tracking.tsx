@@ -238,7 +238,6 @@ export default function HikeTrackingScreen() {
   const [saving, setSaving]               = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
-  const [confirmLeave, setConfirmLeave]   = useState(false);
   const [drawerOpen, setDrawerOpen]       = useState(true);
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
 
@@ -266,6 +265,7 @@ export default function HikeTrackingScreen() {
   const pauseStartMsRef  = useRef<number>(0);
   const pauseTogglingRef  = useRef(false);        // guard against rapid double-tap
   const restoreAttempted  = useRef(false);        // prevent double-fire of restore effect
+  const backgroundedRef   = useRef(false);        // true when user navigated away while tracking
 
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
@@ -322,8 +322,12 @@ export default function HikeTrackingScreen() {
   }, []);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────
+  // If the user navigated away while tracking (backgroundedRef = true) we
+  // intentionally leave the background location task and timer running so
+  // tracking continues in the background and can be resumed on return.
   useEffect(() => {
     return () => {
+      if (backgroundedRef.current) return; // tracking continues — don't tear down
       timerRef.current && clearInterval(timerRef.current);
       safeRemoveSub(locationSubRef.current);
       if (Platform.OS !== "web") {
@@ -501,12 +505,12 @@ export default function HikeTrackingScreen() {
     return () => clearInterval(id);
   }, [status, saveActiveSession]);
 
-  // ── Restore hike session after OS killed the app mid-hike ────────────────
-  // Triggered when index.tsx detects a saved session and navigates here with
-  // restore="1".  Reads the persisted metadata + the background GPS points
-  // already buffered in BG_POINTS_KEY, then resumes tracking seamlessly.
+  // ── Restore hike session on mount ────────────────────────────────────────
+  // Fires when: (a) app was killed mid-hike (params.restore="1"), or
+  // (b) user navigated away while tracking and returned to this screen.
+  // Reads persisted metadata + background GPS points and resumes seamlessly.
   useEffect(() => {
-    if (params.restore !== "1" || restoreAttempted.current) return;
+    if (restoreAttempted.current) return;
     restoreAttempted.current = true;
 
     async function doRestore() {
@@ -1170,8 +1174,10 @@ export default function HikeTrackingScreen() {
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           onPress={() => {
-            if (isTracking || isPaused) setConfirmLeave(true);
-            else router.back();
+            if (isTracking || isPaused) {
+              backgroundedRef.current = true; // keep bg task alive
+            }
+            router.back();
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
@@ -1391,21 +1397,6 @@ export default function HikeTrackingScreen() {
           )}
           <TouchableOpacity style={s.confirmCancel} onPress={() => { setConfirmFinish(false); setDrawerOpen(true); }} activeOpacity={0.7}>
             <Text style={s.confirmCancelText}>Keep Going</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
-      {/* ── Leave-while-tracking confirm sheet ── */}
-      {confirmLeave && (
-        <Animated.View entering={FadeInUp.duration(250)} style={[s.confirmSheet, { paddingBottom: insets.bottom + 20 }]}>
-          <View style={s.confirmHandle} />
-          <Text style={s.confirmTitle}>Leave tracking?</Text>
-          <Text style={s.confirmSub}>Your hike progress will be lost and nothing will be saved.</Text>
-          <TouchableOpacity style={s.confirmDestructive} onPress={() => { setConfirmLeave(false); router.back(); }} activeOpacity={0.85}>
-            <Text style={s.confirmDestructiveText}>Leave & Discard</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.confirmCancel} onPress={() => setConfirmLeave(false)} activeOpacity={0.7}>
-            <Text style={s.confirmCancelText}>Stay</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
