@@ -62,10 +62,10 @@ const FILTER_REGIONS = [
 ];
 
 const BROWSE_REGIONS = [
-  { name: "Lake District", slug: "Helvellyn",    expeditions: 24 },
-  { name: "Snowdonia",     slug: "Snowdon",       expeditions: 18 },
-  { name: "Scotland",      slug: "Ben Nevis",     expeditions: 22 },
-  { name: "Peak District", slug: "Kinder Scout",  expeditions: 16 },
+  { name: "Lake District", slug: "Helvellyn",    expeditions: 24, challengeId: "SIG052" },
+  { name: "Snowdonia",     slug: "Snowdon",       expeditions: 18, challengeId: "SIG053" },
+  { name: "Scotland",      slug: "Ben Nevis",     expeditions: 22, challengeId: "SIG051" },
+  { name: "Peak District", slug: "Kinder Scout",  expeditions: 16, challengeId: "SIG060" },
 ];
 
 function bundleMatchesRegion(bundle: VirtualBundle, region: string): boolean {
@@ -1180,7 +1180,13 @@ export default function VirtualScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
             >
-              {BROWSE_REGIONS.map(r => (
+              {BROWSE_REGIONS.map(r => {
+                const featCh = featuredList.find(f => f.challengeId === r.challengeId && f.approved);
+                const artPath = featCh?.thumbnailImage ?? featCh?.cardImage ?? null;
+                const regionImgUri = artPath
+                  ? artworkUrl(artPath)
+                  : `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160`;
+                return (
                 <TouchableOpacity
                   key={r.name}
                   style={s.browseRegionCard}
@@ -1188,7 +1194,7 @@ export default function VirtualScreen() {
                   onPress={() => setSelectedRegion(r.name)}
                 >
                   <ExpoImage
-                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
+                    source={{ uri: regionImgUri ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                   />
@@ -1207,7 +1213,8 @@ export default function VirtualScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </ScrollView>
           </Animated.View>
         )}
