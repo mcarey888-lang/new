@@ -28,12 +28,12 @@ function ln(t: number, p0: Pt, p1: Pt): Pt {
 
 type SegFn = (t: number) => Pt;
 
-// Segments derived directly from ROUTE_PATH (MountainProgress.tsx)
-// First segment is the horizontal lead-in that extends the route off the left edge.
+// Segments derived directly from ROUTE_PATH (MountainProgress.tsx).
+// Upper portion terminates at the actual mountain peak (262, 85) rather than the SVG corner.
 const SEGS: SegFn[] = [
-  // Lead-in: extends the route start to the left of the card edge
+  // Lead-in: extends the route start off the left edge for a softer entry
   t => ln(t, {x:-10,y:268},    {x:2,y:268}),
-  // Main ridge path
+  // Lower ridge
   t => cb(t, {x:2,y:268},      {x:17.8333,y:267.834}, {x:51,y:266.7},        {x:57,y:263.5}),
   t => cb(t, {x:57,y:263.5},   {x:63,y:260.3},        {x:71.1667,y:252.167}, {x:74.5,y:248.5}),
   t => ln(t, {x:74.5,y:248.5}, {x:88.5,y:236}),
@@ -51,19 +51,8 @@ const SEGS: SegFn[] = [
   t => ln(t, {x:213,y:144},    {x:220,y:137}),
   t => cb(t, {x:220,y:137},    {x:222.167,y:133.5},   {x:227.1,y:126.2},    {x:229.5,y:125}),
   t => cb(t, {x:229.5,y:125},  {x:231.9,y:123.8},     {x:237,y:122.834},    {x:241.5,y:122.5}),
-  t => ln(t, {x:241.5,y:122.5},{x:246.5,y:116}),
-  t => ln(t, {x:246.5,y:116},  {x:255.5,y:107.5}),
-  t => cb(t, {x:255.5,y:107.5},{x:258.167,y:105.667}, {x:264,y:101.6},      {x:267,y:100}),
-  t => ln(t, {x:267,y:100},    {x:279,y:91}),
-  t => cb(t, {x:279,y:91},     {x:280.5,y:89.334},    {x:283.9,y:85.8},     {x:285.5,y:84}),
-  t => cb(t, {x:285.5,y:84},   {x:287.1,y:82.2},      {x:289.667,y:79.834}, {x:290.5,y:79}),
-  t => ln(t, {x:290.5,y:79},   {x:296,y:72.5}),
-  t => ln(t, {x:296,y:72.5},   {x:307,y:56.5}),
-  t => ln(t, {x:307,y:56.5},   {x:316.5,y:45}),
-  t => cb(t, {x:316.5,y:45},   {x:320.833,y:38.5},    {x:329.8,y:25.2},     {x:331,y:23}),
-  t => ln(t, {x:331,y:23},     {x:342,y:12.5}),
-  t => ln(t, {x:342,y:12.5},   {x:347,y:7.5}),
-  t => cb(t, {x:347,y:7.5},    {x:350.667,y:5.167},   {x:357.5,y:2},        {x:357.5,y:2}),
+  // Final summit approach — curves to the actual mountain peak at (262, 85)
+  t => cb(t, {x:241.5,y:122.5},{x:249,y:111},          {x:257,y:97},          {x:262,y:85}),
 ];
 
 // ── Build arc-length table (300 steps per segment ≈ 9 300 raw points) ────────

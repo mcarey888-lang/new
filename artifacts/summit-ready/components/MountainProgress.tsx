@@ -66,14 +66,15 @@ interface Props {
   style?: ViewStyle;
 }
 
-// SVG coordinate space — viewBox includes top padding for summit flag
+// SVG coordinate space
 const VB_W  = 360;
 const VB_H  = 270;
 const VB_X  = 0;
-const VB_Y  = -10; // 10 units headroom above y=0 for summit flag
-const VB_HT = VB_H - VB_Y; // total viewBox height = 280
+const VB_Y  = 0;
+const VB_HT = VB_H; // 270
 
-// The full route path — starts with horizontal lead-in from x=-10 for a softer entry
+// Route path — lead-in from x=-10, then follows the ridge to the mountain peak at (262, 85).
+// The peak at (262, 85) = 72.8% across, 31.5% down — matches the actual summit in mountain-bg.png.
 const ROUTE_PATH =
   "M-10 268 L2 268" +
   "C17.8333 267.834 51 266.7 57 263.5C63 260.3 71.1667 252.167 74.5 248.5" +
@@ -81,10 +82,7 @@ const ROUTE_PATH =
   "C124.7 196.3 129.5 197.5 138.5 194L147 189.5L156.5 187L169.5 177.5" +
   "L176.5 170.5L184 161.5C187.833 161.834 196.5 161.8 200.5 159" +
   "C204.5 156.2 210.5 147.834 213 144L220 137C222.167 133.5 227.1 126.2 229.5 125" +
-  "C231.9 123.8 237 122.834 241.5 122.5L246.5 116L255.5 107.5" +
-  "C258.167 105.667 264 101.6 267 100L279 91C280.5 89.334 283.9 85.8 285.5 84" +
-  "C287.1 82.2 289.667 79.834 290.5 79L296 72.5L307 56.5L316.5 45" +
-  "C320.833 38.5 329.8 25.2 331 23L342 12.5L347 7.5C350.667 5.167 357.5 2 357.5 2";
+  "C231.9 123.8 237 122.834 241.5 122.5C249 111 257 97 262 85";
 
 // ── Stage marker — clean numbered circle with leader line ──────────────────
 
@@ -195,8 +193,8 @@ export default function MountainProgress({
   style,
 }: Props) {
   const [width, setWidth] = useState(0);
-  // Mountain is 30% taller than a basic 3:4 aspect fill for dramatic presence
-  const height = width > 0 ? Math.round(width * (VB_H / VB_W) * 1.30) : 0;
+  // Mountain is nearly 2× taller than a basic aspect fill — dominant and immersive
+  const height = width > 0 ? Math.round(width * (VB_H / VB_W) * 1.90) : 0;
 
   const progressSv = useSharedValue(0);
   const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });
