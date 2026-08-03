@@ -12,7 +12,7 @@ import {
 import { useUser } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
@@ -25,6 +25,7 @@ import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
+import { DevToolsModal } from "@/components/DevToolsModal";
 
 const PILL_OFFSET = 52;
 
@@ -46,6 +47,9 @@ function fmtElev(m: number): string {
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
+const DEV_TAPS = 5;
+const DEV_WINDOW = 2000;
+
 export default function ExpeditionProfileScreen() {
   useScreenView("expedition_profile");
   const insets = useSafeAreaInsets();
@@ -54,6 +58,22 @@ export default function ExpeditionProfileScreen() {
   const {
     sessions, completedGoals, summitGoal, unlockedAchievements,
   } = useApp();
+
+  const [devModalVisible, setDevModalVisible] = useState(false);
+  const tapCount = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTitlePress() {
+    if (!__DEV__) return;
+    tapCount.current += 1;
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    if (tapCount.current >= DEV_TAPS) {
+      tapCount.current = 0;
+      setDevModalVisible(true);
+      return;
+    }
+    tapTimer.current = setTimeout(() => { tapCount.current = 0; }, DEV_WINDOW);
+  }
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -101,7 +121,9 @@ export default function ExpeditionProfileScreen() {
       >
         {/* ── Header row ────────────────────────────────────────────────────── */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: topInset + PILL_OFFSET + 8, marginBottom: 20 }}>
-          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white }}>Profile</Text>
+          <TouchableOpacity onPress={handleTitlePress} activeOpacity={1}>
+            <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white }}>Profile</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/(tabs)/account" as any)}
             style={s.settingsBtn}
@@ -268,6 +290,13 @@ export default function ExpeditionProfileScreen() {
           <ChevronRight size={15} color={T.textDim} />
         </TouchableOpacity>
       </ScrollView>
+
+      {__DEV__ && (
+        <DevToolsModal
+          visible={devModalVisible}
+          onClose={() => setDevModalVisible(false)}
+        />
+      )}
     </LinearGradient>
   );
 }
