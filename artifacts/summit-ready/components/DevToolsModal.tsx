@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { router } from "expo-router";
 import { T } from "@/constants/theme";
 import { DEV_PROFILES, loadDevProfile, type DevProfile } from "@/utils/devProfiles";
 import { useApp } from "@/context/AppContext";
@@ -73,6 +74,12 @@ export function DevToolsModal({ visible, onClose }: Props) {
         </ScrollView>
 
         <View style={s.footer}>
+          <TouchableOpacity
+            style={s.demoBtn}
+            onPress={() => { onClose(); router.push("/mountain-demo"); }}
+          >
+            <Text style={s.demoBtnText}>🏔  Mountain Progress Demo</Text>
+          </TouchableOpacity>
           <Text style={s.footerNote}>Dev tools only — hidden from regular users</Text>
           <TouchableOpacity onPress={onClose} style={s.closeBtn}>
             <Text style={s.closeBtnText}>Close</Text>
@@ -188,5 +195,20 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: T.textMuted,
+  },
+  demoBtn: {
+    alignSelf: "stretch",
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+  },
+  demoBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: T.text,
   },
 });
