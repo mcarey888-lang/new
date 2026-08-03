@@ -26,10 +26,14 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, {
   Circle,
+  Defs,
   Line,
+  LinearGradient as SvgLinearGradient,
   Path,
+  Stop,
   Text as SvgText,
 } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
 
 import {
   ROUTE_XS,
@@ -62,12 +66,17 @@ interface Props {
   style?: ViewStyle;
 }
 
-// SVG coordinate space
-const VB_W = 360;
-const VB_H = 270;
+// SVG coordinate space — viewBox includes top padding for summit flag
+const VB_W  = 360;
+const VB_H  = 270;
+const VB_X  = 0;
+const VB_Y  = -10; // 10 units headroom above y=0 for summit flag
+const VB_HT = VB_H - VB_Y; // total viewBox height = 280
 
+// The full route path — starts with horizontal lead-in from x=-10 for a softer entry
 const ROUTE_PATH =
-  "M2 268C17.8333 267.834 51 266.7 57 263.5C63 260.3 71.1667 252.167 74.5 248.5" +
+  "M-10 268 L2 268" +
+  "C17.8333 267.834 51 266.7 57 263.5C63 260.3 71.1667 252.167 74.5 248.5" +
   "L88.5 236L100 221.5L110.5 204.5C111.333 202.667 114.3 198.7 119.5 197.5" +
   "C124.7 196.3 129.5 197.5 138.5 194L147 189.5L156.5 187L169.5 177.5" +
   "L176.5 170.5L184 161.5C187.833 161.834 196.5 161.8 200.5 159" +
@@ -77,7 +86,7 @@ const ROUTE_PATH =
   "C287.1 82.2 289.667 79.834 290.5 79L296 72.5L307 56.5L316.5 45" +
   "C320.833 38.5 329.8 25.2 331 23L342 12.5L347 7.5C350.667 5.167 357.5 2 357.5 2";
 
-// ── Stage marker — numbered circle only, no text labels on the mountain ──────
+// ── Stage marker — clean numbered circle with leader line ──────────────────
 
 function StageMarker({
   fraction,
@@ -88,16 +97,15 @@ function StageMarker({
   fraction: number;
   stageIndex: number;
   stage: ExpeditionStage;
-  currentProgress: number;
   flipLabel: boolean;
 }) {
   const pt     = getPointAtFraction(fraction);
   const done   = stage.status === "completed";
   const active = stage.status === "active";
-  const opacity = done || active ? 1 : 0.50;
-  const color   = done ? "#3ECF75" : active ? "#8FE8B4" : "rgba(255,255,255,0.55)";
+  const opacity = done || active ? 1 : 0.45;
+  const color   = done ? "#3ECF75" : active ? "#9AEFBE" : "rgba(255,255,255,0.50)";
 
-  const LEAD = 15;
+  const LEAD = 16;
   const numX = flipLabel ? pt.x + LEAD : pt.x - LEAD;
 
   return (
@@ -105,31 +113,74 @@ function StageMarker({
       {/* Leader line from path point to badge */}
       <Line
         x1={pt.x} y1={pt.y} x2={numX} y2={pt.y}
-        stroke={color} strokeWidth={0.8} opacity={opacity}
+        stroke={color} strokeWidth={1.0} opacity={opacity}
+        strokeDasharray={done ? undefined : [2, 2]}
       />
       {/* Dot on the route */}
       <Circle
-        cx={pt.x} cy={pt.y} r={2.8}
-        fill={done ? "#3ECF75" : "rgba(255,255,255,0.50)"}
+        cx={pt.x} cy={pt.y} r={3}
+        fill={done ? "#3ECF75" : active ? "rgba(154,239,190,0.6)" : "rgba(255,255,255,0.45)"}
         opacity={opacity}
       />
+      {/* Badge background glow for completed */}
+      {done && (
+        <Circle
+          cx={numX} cy={pt.y} r={9}
+          fill="rgba(62,207,117,0.12)"
+          opacity={1}
+        />
+      )}
       {/* Number badge */}
       <Circle
-        cx={numX} cy={pt.y} r={6}
-        fill={done ? "rgba(62,207,117,0.22)" : "rgba(8,16,38,0.92)"}
-        stroke={color} strokeWidth={1.0}
+        cx={numX} cy={pt.y} r={7}
+        fill={done ? "rgba(62,207,117,0.20)" : active ? "rgba(8,18,44,0.95)" : "rgba(8,16,38,0.85)"}
+        stroke={color} strokeWidth={done ? 1.2 : 1.0}
         opacity={opacity}
       />
       <SvgText
-        x={numX} y={pt.y + 2.4}
+        x={numX} y={pt.y + 2.5}
         textAnchor="middle"
         fill={color}
-        fontSize={5.5}
+        fontSize={6}
         fontFamily="Inter_700Bold"
         opacity={opacity}
       >
-        {stageIndex + 1}
+        {done ? "✓" : stageIndex + 1}
       </SvgText>
+    </>
+  );
+}
+
+// ── Summit flag icon — planted flag at the peak ───────────────────────────
+
+function SummitFlag({ reached }: { reached: boolean }) {
+  const tip = getPointAtFraction(1.0);
+  // Position the flag slightly inside the canvas
+  const px = Math.min(tip.x - 1, VB_W - 10);
+  const py = tip.y + 1; // anchor just below the path terminus
+
+  const flagColor  = reached ? "#FFD700" : "rgba(255,255,255,0.82)";
+  const glowColor  = reached ? "rgba(255,215,0,0.28)" : "rgba(255,255,255,0.08)";
+  const poleTop    = py - 9; // pole extends up into the viewBox top-padding headroom
+
+  return (
+    <>
+      {/* Glow aura */}
+      <Circle cx={px} cy={py} r={reached ? 10 : 7} fill={glowColor} />
+      {/* Flag pole */}
+      <Line
+        x1={px} y1={py}
+        x2={px} y2={poleTop}
+        stroke={flagColor} strokeWidth={1.4} strokeLinecap="round"
+      />
+      {/* Triangular flag pointing left */}
+      <Path
+        d={`M${px} ${poleTop} L${px - 7} ${poleTop + 3} L${px} ${poleTop + 6} Z`}
+        fill={flagColor}
+        opacity={0.95}
+      />
+      {/* Stake dot at base */}
+      <Circle cx={px} cy={py + 1.5} r={2.5} fill={flagColor} opacity={0.9} />
     </>
   );
 }
@@ -144,7 +195,8 @@ export default function MountainProgress({
   style,
 }: Props) {
   const [width, setWidth] = useState(0);
-  const height = width > 0 ? Math.round(width * (VB_H / VB_W)) : 0;
+  // Mountain is 30% taller than a basic 3:4 aspect fill for dramatic presence
+  const height = width > 0 ? Math.round(width * (VB_H / VB_W) * 1.30) : 0;
 
   const progressSv = useSharedValue(0);
   const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });
@@ -158,14 +210,12 @@ export default function MountainProgress({
   useEffect(() => {
     pulse.value = withRepeat(
       withSequence(
-        withTiming(1.7, { duration: 1000, easing: Easing.out(Easing.quad) }),
-        withTiming(1.0, { duration: 800,  easing: Easing.in(Easing.quad) }),
+        withTiming(1.65, { duration: 1100, easing: Easing.out(Easing.quad) }),
+        withTiming(1.0,  { duration: 900,  easing: Easing.in(Easing.quad) }),
       ),
       -1, false,
     );
   }, [pulse]);
-
-  const summitGlow = useSharedValue(0);
 
   useEffect(() => {
     if (targetElevationGain <= 0) return;
@@ -173,17 +223,13 @@ export default function MountainProgress({
     progressSv.value = withTiming(next, { duration: 500, easing: Easing.out(Easing.cubic) });
     if (next >= 1 && !summitFiredRef.current) {
       summitFiredRef.current = true;
-      summitGlow.value = withSequence(
-        withTiming(1, { duration: 250 }),
-        withTiming(0, { duration: 700 }),
-      );
       onSummitReached?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentElevationGain, targetElevationGain]);
 
   const updateMarker = useCallback((frac: number) => {
-    const capped = Math.min(frac, 0.97);
+    const capped = Math.min(frac, 0.985);
     const idx = Math.max(0, Math.min(1000, Math.round(capped * 1000)));
     setMarkerPos({ x: ROUTE_XS[idx], y: ROUTE_YS[idx] });
   }, []);
@@ -193,6 +239,7 @@ export default function MountainProgress({
     (val) => runOnJS(updateMarker)(val),
   );
 
+  // Completed (green) route — progressively revealed
   const dashOuterProps = useAnimatedProps(() => ({
     strokeDashoffset: TOTAL_PATH_LENGTH * (1 - progressSv.value),
   }));
@@ -202,11 +249,13 @@ export default function MountainProgress({
   const dashCoreProps = useAnimatedProps(() => ({
     strokeDashoffset: TOTAL_PATH_LENGTH * (1 - progressSv.value),
   }));
+  // Animated halo pulse
   const haloProps = useAnimatedProps(() => ({
-    r:       7 * pulse.value,
-    opacity: Math.max(0, 0.3 / pulse.value),
+    r:       9 * pulse.value,
+    opacity: Math.max(0, 0.32 / pulse.value),
   }));
 
+  // Stage fractions
   const totalElev = stages.length > 0
     ? stages.reduce((s, st) => s + st.elevationGain, 0)
     : targetElevationGain;
@@ -221,70 +270,104 @@ export default function MountainProgress({
     ? Math.min(currentElevationGain / targetElevationGain, 1)
     : 0;
 
-  const summitPt = getPointAtFraction(0.994);
-
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
   }, []);
 
-  // ── Progress bubble values ──────────────────────────────────────────────────
+  // Progress bubble
   const bubbleElev = currentElevationGain >= 1000
     ? `${(currentElevationGain / 1000).toFixed(1)}km`
     : `${Math.round(currentElevationGain)}m`;
   const bubblePct  = `${Math.round(currentProgress * 100)}%`;
 
+  const viewBox = `${VB_X} ${VB_Y} ${VB_W} ${VB_HT}`;
+
   return (
     <View style={[styles.container, style]} onLayout={onLayout}>
       {width > 0 && height > 0 && (
         <>
-          {/* Layer 1 — Mountain artwork */}
+          {/* Layer 1 — Mountain artwork (stretches to fill) */}
           <Image
             source={MOUNTAIN_BG}
             style={{ width, height }}
             resizeMode="stretch"
           />
 
-          {/* Layer 2 — SVG route overlay */}
+          {/* Layer 2 — Gradient fade: bottom blends into card bg, sides soften */}
+          <LinearGradient
+            colors={["transparent", "rgba(6,10,22,0.55)", "rgba(5,10,20,0.92)"]}
+            locations={[0.40, 0.72, 1.0]}
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
+          />
+          {/* Left-edge fade */}
+          <LinearGradient
+            colors={["rgba(5,10,20,0.70)", "transparent"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 0.12, y: 0.5 }}
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
+          />
+
+          {/* Layer 3 — SVG route overlay */}
           <Svg
-            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            viewBox={viewBox}
             width={width}
             height={height}
             style={StyleSheet.absoluteFill}
           >
-            {/* Background dashed route */}
+            <Defs>
+              {/* Gradient for unfinished dashed route — fades out towards summit */}
+              <SvgLinearGradient id="dashFade" x1="0" y1="1" x2="1" y2="0">
+                <Stop offset="0"   stopColor="white" stopOpacity="0.22" />
+                <Stop offset="0.6" stopColor="white" stopOpacity="0.18" />
+                <Stop offset="1"   stopColor="white" stopOpacity="0.08" />
+              </SvgLinearGradient>
+            </Defs>
+
+            {/* Background dashed route — subdued so completed route is primary focus */}
             <Path
               d={ROUTE_PATH}
-              stroke="white"
-              strokeWidth={1.8}
-              strokeOpacity={0.38}
-              strokeDasharray={[7, 5]}
+              stroke="url(#dashFade)"
+              strokeWidth={1.6}
+              strokeDasharray={[5, 7]}
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"
             />
 
-            {/* Outer glow */}
+            {/* Completed route — outer glow */}
             <AnimatedPath
-              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={10}
-              strokeOpacity={0.10} strokeLinecap="round" strokeLinejoin="round"
+              d={ROUTE_PATH}
+              stroke="#3ECF75"
+              strokeWidth={14}
+              strokeOpacity={0.13}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashOuterProps}
             />
 
-            {/* Inner glow */}
+            {/* Completed route — inner glow */}
             <AnimatedPath
-              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={5}
-              strokeOpacity={0.25} strokeLinecap="round" strokeLinejoin="round"
+              d={ROUTE_PATH}
+              stroke="#3ECF75"
+              strokeWidth={6}
+              strokeOpacity={0.32}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashInnerProps}
             />
 
-            {/* Solid core */}
+            {/* Completed route — solid core */}
             <AnimatedPath
-              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={2.2}
-              strokeOpacity={1} strokeLinecap="round" strokeLinejoin="round"
+              d={ROUTE_PATH}
+              stroke="#3ECF75"
+              strokeWidth={2.4}
+              strokeOpacity={1}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashCoreProps}
@@ -297,55 +380,55 @@ export default function MountainProgress({
                 fraction={stageFractions[i]}
                 stageIndex={i}
                 stage={stage}
-                currentProgress={currentProgress}
                 flipLabel={i % 2 === 1}
               />
             ))}
 
-            {/* Summit */}
-            <Circle
-              cx={summitPt.x} cy={summitPt.y}
-              r={currentProgress >= 0.99 ? 5 : 3.5}
-              fill={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.15)"}
-              stroke={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.45)"}
-              strokeWidth={1.2}
-            />
-            <SvgText
-              x={summitPt.x - 5} y={summitPt.y - 7}
-              textAnchor="end"
-              fill={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.45)"}
-              fontSize={6} fontFamily="Inter_700Bold"
-            >
-              SUMMIT
-            </SvgText>
+            {/* Summit flag */}
+            <SummitFlag reached={currentProgress >= 0.99} />
 
-            {/* Progress marker */}
+            {/* Progress marker — focal point of the animation */}
             {currentProgress > 0.002 && (
               <>
+                {/* Animated outer pulse halo */}
                 <AnimatedCircle
                   cx={markerPos.x} cy={markerPos.y}
-                  fill="rgba(62,207,117,0.20)" stroke="none"
+                  fill="rgba(62,207,117,0.18)" stroke="none"
                   animatedProps={haloProps}
                 />
-                <Circle cx={markerPos.x} cy={markerPos.y} r={5.5}
-                  fill="rgba(62,207,117,0.30)" stroke="none" />
-                <Circle cx={markerPos.x} cy={markerPos.y} r={4}
-                  fill="#3ECF75" stroke="none" />
-                <Circle cx={markerPos.x} cy={markerPos.y} r={1.8}
-                  fill="white" stroke="none" />
+                {/* Soft inner glow */}
+                <Circle
+                  cx={markerPos.x} cy={markerPos.y} r={8}
+                  fill="rgba(62,207,117,0.22)" stroke="none"
+                />
+                {/* Mid ring */}
+                <Circle
+                  cx={markerPos.x} cy={markerPos.y} r={5.5}
+                  fill="rgba(62,207,117,0.40)" stroke="none"
+                />
+                {/* Solid core */}
+                <Circle
+                  cx={markerPos.x} cy={markerPos.y} r={4}
+                  fill="#3ECF75" stroke="none"
+                />
+                {/* Centre white dot */}
+                <Circle
+                  cx={markerPos.x} cy={markerPos.y} r={1.8}
+                  fill="white" stroke="none"
+                />
               </>
             )}
           </Svg>
 
-          {/* Layer 3 — Floating progress bubble (RN View for easy styling) */}
+          {/* Layer 4 — Floating progress bubble */}
           {currentProgress > 0.003 && (
             <View
               pointerEvents="none"
               style={[
                 styles.bubble,
                 {
-                  left: Math.max(4, Math.min(width - 68, markerPos.x / VB_W * width - 30)),
-                  top:  Math.max(4, markerPos.y / VB_H * height - 54),
+                  left: Math.max(4, Math.min(width - 72, markerPos.x / VB_W * width - 32)),
+                  top:  Math.max(4, markerPos.y / VB_HT * height - 56),
                 },
               ]}
             >
@@ -363,28 +446,28 @@ const styles = StyleSheet.create({
   container: {
     overflow:        "hidden",
     borderRadius:    16,
-    backgroundColor: "#050D1A",
+    backgroundColor: "#050A14",
   },
   bubble: {
-    position:        "absolute",
-    backgroundColor: "rgba(6,12,28,0.92)",
-    borderRadius:    9,
-    borderWidth:     1,
-    borderColor:     "rgba(62,207,117,0.55)",
-    paddingHorizontal: 10,
-    paddingVertical:   5,
-    alignItems:      "center",
-    minWidth:        54,
+    position:          "absolute",
+    backgroundColor:   "rgba(4,10,24,0.94)",
+    borderRadius:       10,
+    borderWidth:        1,
+    borderColor:       "rgba(62,207,117,0.60)",
+    paddingHorizontal:  11,
+    paddingVertical:     6,
+    alignItems:        "center",
+    minWidth:           58,
   },
   bubbleElev: {
-    fontSize:    13,
-    fontFamily:  "Inter_700Bold",
-    color:       "#3ECF75",
+    fontSize:   14,
+    fontFamily: "Inter_700Bold",
+    color:      "#3ECF75",
   },
   bubblePct: {
-    fontSize:    10,
-    fontFamily:  "Inter_400Regular",
-    color:       "rgba(255,255,255,0.65)",
+    fontSize:   10,
+    fontFamily: "Inter_400Regular",
+    color:      "rgba(255,255,255,0.60)",
     marginTop:   1,
   },
 });
