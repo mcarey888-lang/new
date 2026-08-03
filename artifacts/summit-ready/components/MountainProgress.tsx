@@ -296,8 +296,15 @@ export default function MountainProgress({
   const bubbleElev = `${Math.round(currentElevationGain)}m`;
   const bubblePct  = `${Math.round(currentProgress * 100)}%`;
 
+  // Container must have an explicit height — all children are position:absolute
+  // so the View has no intrinsic height from its children.
+  const containerHeight = height > 0 ? height : undefined;
+
   return (
-    <View style={[styles.container, style]} onLayout={onLayout}>
+    <View
+      style={[styles.container, { height: containerHeight }, style]}
+      onLayout={onLayout}
+    >
       {width > 0 && height > 0 && (
         <>
           {/* Layer 1 — Mountain artwork, positioned so its summit pixel aligns
