@@ -69,12 +69,12 @@ interface Props {
 // ── Mountain image geometry (from pixel analysis of mountain-bg.png, 860×800) ──
 // The transform is calculated so the image summit aligns exactly with the SVG
 // path endpoint, and the ridgeline runs directly beneath the route path.
-const IMG_W           = 860;
-const IMG_H           = 800;
-const IMG_RIDGE_COL   = 171;  // leftmost visible ridge column (pixel analysis)
-const IMG_PEAK_COL    = 717;  // summit column
-const IMG_PEAK_ROW    = 253;  // summit row
-const RIDGE_SPAN_FRAC = (IMG_PEAK_COL - IMG_RIDGE_COL) / IMG_W; // 0.6349
+const IMG_W           = 430;
+const IMG_H           = 400;
+const IMG_RIDGE_COL   = 86;   // leftmost visible ridge column (pixel analysis)
+const IMG_PEAK_COL    = 358;  // summit column
+const IMG_PEAK_ROW    = 127;  // summit row
+const RIDGE_SPAN_FRAC = (IMG_PEAK_COL - IMG_RIDGE_COL) / IMG_W; // 0.6326
 
 // SVG coordinate space
 const VB_W = 360;
