@@ -18,6 +18,7 @@ import { Calendar, ChevronRight, Flag, Mountain, TrendingUp, Trophy } from "luci
 
 import MountainProgress, { ExpeditionStage } from "@/components/MountainProgress";
 import { T } from "@/constants/theme";
+import { getPointAtFraction } from "@/utils/mountainPath";
 import type { NearbyHill } from "@/context/AppContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -82,12 +83,16 @@ export function ExpeditionMountainProgress({
   }
 
   // ── Y-axis labels ─────────────────────────────────────────────────────────
-  const yLabels = useMemo(() => [
-    { label: fmtElev(targetElevation),          pct: 0.04 },
-    { label: fmtElev(targetElevation * 0.66),   pct: 0.34 },
-    { label: fmtElev(targetElevation * 0.33),   pct: 0.62 },
-    { label: "0m",                               pct: 0.88 },
-  ], [targetElevation]);
+  // Positions are derived from actual SVG path y-coordinates so labels sit
+  // exactly at the summit, two thirds, one third, and base of the mountain.
+  const yLabels = useMemo(() => {
+    const fracs  = [1.0, 0.66, 0.33, 0.0] as const;
+    const elevs  = [targetElevation, targetElevation * 0.66, targetElevation * 0.33, 0];
+    return fracs.map((t, i) => ({
+      label: fmtElev(elevs[i]),
+      pct:   getPointAtFraction(t).y / VB_H,
+    }));
+  }, [targetElevation]);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const hp = highestPoint > 0 ? highestPoint : targetElevation;
