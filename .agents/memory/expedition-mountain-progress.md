@@ -1,18 +1,51 @@
 ---
 name: ExpeditionMountainProgress component
-description: Production expedition centrepiece — MountainProgress SVG route + layout details, path alignment rules.
+description: Production expedition centrepiece — MountainProgress SVG route + analytically derived image positioning.
 ---
 
-**Rule:** Stage markers are numbered circles only (no SVG text labels on mountain); progress bubble follows marker via RN View overlay.
+## Image positioning — analytical approach
 
-**Path alignment:** The ROUTE_PATH in `MountainProgress.tsx` and the SEGS array in `mountainPath.ts` must always be identical — they are the visual path and the arc-length lookup table for the animated marker respectively. If they diverge, the green marker will not follow the drawn line.
+The mountain image (mountain-bg.png, 860×800) is positioned by **pure maths from pixel analysis**, not manual scaling. Never adjust the height multiplier or offset by eye — recalculate instead.
 
-**Summit coordinate:** The route endpoint (and therefore the summit flag position) must correspond to the actual mountain peak in `mountain-bg.png` (860×800). The peak is at approximately 73% across and 31.5% from the top of the image — SVG coordinate (262, 85) in the 360×270 viewBox. Do NOT use the top-right corner (357.5, 2) — that is blank sky, not the summit.
+### Key constants (from `identify` + Python brightness scan)
+```
+IMG_W = 860, IMG_H = 800
+IMG_RIDGE_COL  = 171   // leftmost visible ridge column
+IMG_PEAK_COL   = 717   // summit column
+IMG_PEAK_ROW   = 253   // summit row
+RIDGE_SPAN_FRAC = (717 - 171) / 860 = 0.6349
+```
 
-**Mountain size:** height multiplier is 1.90× the base 3:4 aspect ratio (i.e. `width × 0.75 × 1.9 = width × 1.425`). Anything below 1.7× looks too small and the mountain fails to dominate the card.
+### SVG path endpoint (must stay in sync with ROUTE_PATH + SEGS)
+```
+SUMMIT_SVG_X = 262
+SUMMIT_SVG_Y = 85
+```
 
-**Elevation units:** always metres (never km) throughout `MountainProgress.tsx`, `ExpeditionMountainProgress.tsx`, and `base-camp.tsx`.
+### Derived transform (given component `width` in px)
+```js
+imgW   = (SUMMIT_SVG_X / VB_W) * width / RIDGE_SPAN_FRAC   // 1.1463 × width
+imgH   = imgW * (IMG_H / IMG_W)                             // natural aspect ratio
+height = imgH * (1 - IMG_PEAK_ROW/IMG_H) / (1 - SUMMIT_SVG_Y/VB_H)  // ≈ 1.064 × width
+imgLeft = -(IMG_RIDGE_COL / IMG_W) * imgW                  // ≈ -0.228 × width
+imgTop  = (SUMMIT_SVG_Y/VB_H)*height - (IMG_PEAK_ROW/IMG_H)*imgH    // ≈ 0
+```
 
-**Why:** The route was originally traced to end at the SVG top-right corner (357.5, 2) — matching the image's absolute edge, not the visual summit. This caused the progress line to appear to float above the mountain. Corrected by redesigning the upper path segment to terminate at the actual peak.
+**Why:** This guarantees (a) ridge left aligns with x=0, (b) the summit pixel aligns exactly with the SVG path endpoint (262,85), and (c) the mountain base fills the component bottom. No guesswork.
 
-**How to apply:** Any future path changes must update BOTH `ROUTE_PATH` (in `MountainProgress.tsx`) AND `SEGS` (in `mountainPath.ts`) in lockstep. The last segment in SEGS is `cb((241.5,122.5),(249,111),(257,97),(262,85))` — the summit approach.
+## Route path rules
+
+- **ROUTE_PATH** (in `MountainProgress.tsx`) and **SEGS** (in `mountainPath.ts`) must be kept identical — visual path and arc-length lookup table.
+- Path endpoint: (262, 85) — the actual mountain summit at 83.4% across, 31.6% down in the image.
+- Path starts at M-10,268 (horizontal lead-in, clipped by overflow:hidden).
+
+## Stage markers
+
+Numbered circles only (no SVG text labels on mountain). Leader lines use dashes for upcoming stages. Completed stages show ✓. Summit badge is a planted flag at `getPointAtFraction(1.0)`.
+
+## What NOT to do
+
+- Do not hardcode a height multiplier (e.g. `1.3×`, `1.9×`). Use the analytical formula.
+- Do not manually adjust `imgLeft` or `imgTop`. They are mathematically derived.
+- Do not attempt web preview — Reanimated + SVG is native only.
+- Do not re-run the pixel analysis without updating ALL five constants consistently.

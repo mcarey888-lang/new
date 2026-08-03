@@ -66,15 +66,25 @@ interface Props {
   style?: ViewStyle;
 }
 
-// SVG coordinate space
-const VB_W  = 360;
-const VB_H  = 270;
-const VB_X  = 0;
-const VB_Y  = 0;
-const VB_HT = VB_H; // 270
+// ── Mountain image geometry (from pixel analysis of mountain-bg.png, 860×800) ──
+// The transform is calculated so the image summit aligns exactly with the SVG
+// path endpoint, and the ridgeline runs directly beneath the route path.
+const IMG_W           = 860;
+const IMG_H           = 800;
+const IMG_RIDGE_COL   = 171;  // leftmost visible ridge column (pixel analysis)
+const IMG_PEAK_COL    = 717;  // summit column
+const IMG_PEAK_ROW    = 253;  // summit row
+const RIDGE_SPAN_FRAC = (IMG_PEAK_COL - IMG_RIDGE_COL) / IMG_W; // 0.6349
 
-// Route path — lead-in from x=-10, then follows the ridge to the mountain peak at (262, 85).
-// The peak at (262, 85) = 72.8% across, 31.5% down — matches the actual summit in mountain-bg.png.
+// SVG coordinate space
+const VB_W = 360;
+const VB_H = 270;
+
+// ROUTE_PATH endpoint — must stay in sync with mountainPath.ts SEGS
+const SUMMIT_SVG_X = 262;
+const SUMMIT_SVG_Y = 85;
+
+// Route path — lead-in from x=-10, follows the ridge to the actual mountain peak.
 const ROUTE_PATH =
   "M-10 268 L2 268" +
   "C17.8333 267.834 51 266.7 57 263.5C63 260.3 71.1667 252.167 74.5 248.5" +
@@ -193,8 +203,18 @@ export default function MountainProgress({
   style,
 }: Props) {
   const [width, setWidth] = useState(0);
-  // Mountain is nearly 2× taller than a basic aspect fill — dominant and immersive
-  const height = width > 0 ? Math.round(width * (VB_H / VB_W) * 1.90) : 0;
+
+  // ── Mathematically derived image layout ────────────────────────────────────
+  // Scale so ridge-to-peak span maps to SVG x=0 → x=SUMMIT_SVG_X.
+  // Component height is set so the image base reaches the component bottom.
+  // All values are pure functions of `width` — no manual tuning needed.
+  const imgW   = width > 0 ? (SUMMIT_SVG_X / VB_W) * width / RIDGE_SPAN_FRAC : 0;
+  const imgH   = imgW * (IMG_H / IMG_W);                       // natural aspect ratio
+  const height = imgH > 0
+    ? imgH * (1 - IMG_PEAK_ROW / IMG_H) / (1 - SUMMIT_SVG_Y / VB_H)
+    : 0;
+  const imgLeft = -(IMG_RIDGE_COL / IMG_W) * imgW;             // ridge aligns with x=0
+  const imgTop  = (SUMMIT_SVG_Y / VB_H) * height - (IMG_PEAK_ROW / IMG_H) * imgH;
 
   const progressSv = useSharedValue(0);
   const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });
@@ -276,16 +296,22 @@ export default function MountainProgress({
   const bubbleElev = `${Math.round(currentElevationGain)}m`;
   const bubblePct  = `${Math.round(currentProgress * 100)}%`;
 
-  const viewBox = `${VB_X} ${VB_Y} ${VB_W} ${VB_HT}`;
-
   return (
     <View style={[styles.container, style]} onLayout={onLayout}>
       {width > 0 && height > 0 && (
         <>
-          {/* Layer 1 — Mountain artwork (stretches to fill) */}
+          {/* Layer 1 — Mountain artwork, positioned so its summit pixel aligns
+              exactly with the SVG path endpoint. Transform derived analytically
+              from pixel analysis of mountain-bg.png (860×800). */}
           <Image
             source={MOUNTAIN_BG}
-            style={{ width, height }}
+            style={{
+              position:  "absolute",
+              width:     imgW,
+              height:    imgH,
+              left:      imgLeft,
+              top:       imgTop,
+            }}
             resizeMode="stretch"
           />
 
@@ -305,7 +331,7 @@ export default function MountainProgress({
 
           {/* Layer 3 — SVG route overlay */}
           <Svg
-            viewBox={viewBox}
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
             width={width}
             height={height}
             style={StyleSheet.absoluteFill}
@@ -424,7 +450,7 @@ export default function MountainProgress({
                 styles.bubble,
                 {
                   left: Math.max(4, Math.min(width - 72, markerPos.x / VB_W * width - 32)),
-                  top:  Math.max(4, markerPos.y / VB_HT * height - 56),
+                  top:  Math.max(4, markerPos.y / VB_H * height - 56),
                 },
               ]}
             >
