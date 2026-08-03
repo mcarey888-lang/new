@@ -467,13 +467,13 @@ function bridgeElevationGap(
 ): Hill[] {
   if (!selectedHills.length || targetGain <= 0) return selectedHills;
 
+  // ── Step 1: add extra hills from the unused pool ──────────────────────────
+  const result    = [...selectedHills];
+
   const currentGain = () => result.reduce((s, h) => s + h.elevation * h.repeats, 0);
 
   // Already close enough — leave as-is.
   if (currentGain() >= targetGain * 0.90) return selectedHills;
-
-  // ── Step 1: add extra hills from the unused pool ──────────────────────────
-  const result    = [...selectedHills];
   const usedNames = new Set(result.map(h => h.name));
 
   const pool = allHills

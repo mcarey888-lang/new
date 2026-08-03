@@ -13,7 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, LayoutChangeEvent, StyleSheet, View, ViewStyle } from "react-native";
+import { Image, LayoutChangeEvent, StyleSheet, Text, View, ViewStyle } from "react-native";
 import Animated, {
   Easing,
   runOnJS,
@@ -38,7 +38,6 @@ import {
   getPointAtFraction,
 } from "@/utils/mountainPath";
 
-// Hoist asset require to module level so Metro can bundle it statically
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const MOUNTAIN_BG = require("@/assets/images/mountain-bg.png");
 
@@ -63,7 +62,7 @@ interface Props {
   style?: ViewStyle;
 }
 
-// SVG coordinate space (matches master-route.svg viewBox)
+// SVG coordinate space
 const VB_W = 360;
 const VB_H = 270;
 
@@ -78,13 +77,12 @@ const ROUTE_PATH =
   "C287.1 82.2 289.667 79.834 290.5 79L296 72.5L307 56.5L316.5 45" +
   "C320.833 38.5 329.8 25.2 331 23L342 12.5L347 7.5C350.667 5.167 357.5 2 357.5 2";
 
-// ── Stage marker ─────────────────────────────────────────────────────────────
+// ── Stage marker — numbered circle only, no text labels on the mountain ──────
 
 function StageMarker({
   fraction,
   stageIndex,
   stage,
-  currentProgress,
   flipLabel,
 }: {
   fraction: number;
@@ -93,51 +91,44 @@ function StageMarker({
   currentProgress: number;
   flipLabel: boolean;
 }) {
-  const pt      = getPointAtFraction(fraction);
-  const done    = stage.status === "completed";
-  const active  = stage.status === "active";
-  const opacity = done || active ? 1 : 0.4;
-  const color   = done ? "#3ECF75" : active ? "#8FE8B4" : "rgba(255,255,255,0.6)";
+  const pt     = getPointAtFraction(fraction);
+  const done   = stage.status === "completed";
+  const active = stage.status === "active";
+  const opacity = done || active ? 1 : 0.50;
+  const color   = done ? "#3ECF75" : active ? "#8FE8B4" : "rgba(255,255,255,0.55)";
 
-  const LABEL_OFFSET = 18;
-  const labelX = flipLabel ? pt.x + LABEL_OFFSET : pt.x - LABEL_OFFSET;
-  const anchor = flipLabel ? "start" : "end";
+  const LEAD = 15;
+  const numX = flipLabel ? pt.x + LEAD : pt.x - LEAD;
 
   return (
     <>
+      {/* Leader line from path point to badge */}
       <Line
-        x1={pt.x} y1={pt.y}
-        x2={labelX} y2={pt.y}
-        stroke={color}
-        strokeWidth={0.6}
+        x1={pt.x} y1={pt.y} x2={numX} y2={pt.y}
+        stroke={color} strokeWidth={0.8} opacity={opacity}
+      />
+      {/* Dot on the route */}
+      <Circle
+        cx={pt.x} cy={pt.y} r={2.8}
+        fill={done ? "#3ECF75" : "rgba(255,255,255,0.50)"}
         opacity={opacity}
       />
+      {/* Number badge */}
       <Circle
-        cx={pt.x} cy={pt.y} r={2.2}
-        fill={done ? "#3ECF75" : "rgba(255,255,255,0.4)"}
+        cx={numX} cy={pt.y} r={6}
+        fill={done ? "rgba(62,207,117,0.22)" : "rgba(8,16,38,0.92)"}
+        stroke={color} strokeWidth={1.0}
         opacity={opacity}
       />
       <SvgText
-        x={labelX + (flipLabel ? 2 : -2)}
-        y={pt.y - 2}
-        textAnchor={anchor}
+        x={numX} y={pt.y + 2.4}
+        textAnchor="middle"
         fill={color}
-        fontSize={6.5}
+        fontSize={5.5}
         fontFamily="Inter_700Bold"
         opacity={opacity}
       >
-        {`S${stageIndex + 1} · ${stage.name}`}
-      </SvgText>
-      <SvgText
-        x={labelX + (flipLabel ? 2 : -2)}
-        y={pt.y + 6}
-        textAnchor={anchor}
-        fill={color}
-        fontSize={6}
-        fontFamily="Inter_400Regular"
-        opacity={opacity}
-      >
-        {`▲ ${stage.elevationGain.toLocaleString()}m`}
+        {stageIndex + 1}
       </SvgText>
     </>
   );
@@ -155,19 +146,14 @@ export default function MountainProgress({
   const [width, setWidth] = useState(0);
   const height = width > 0 ? Math.round(width * (VB_H / VB_W)) : 0;
 
-  // Shared progress value [0, 1]
   const progressSv = useSharedValue(0);
-
-  // Marker position updated on the JS thread
   const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });
-
-  // Summit reached guard
   const summitFiredRef = useRef(false);
+
   if (targetElevationGain > 0 && currentElevationGain / targetElevationGain < 0.99) {
-    summitFiredRef.current = false; // reset if user steps back (demo slider)
+    summitFiredRef.current = false;
   }
 
-  // Pulsing halo
   const pulse = useSharedValue(1);
   useEffect(() => {
     pulse.value = withRepeat(
@@ -175,22 +161,16 @@ export default function MountainProgress({
         withTiming(1.7, { duration: 1000, easing: Easing.out(Easing.quad) }),
         withTiming(1.0, { duration: 800,  easing: Easing.in(Easing.quad) }),
       ),
-      -1,
-      false,
+      -1, false,
     );
   }, [pulse]);
 
-  // Summit glow flash
   const summitGlow = useSharedValue(0);
 
-  // Animate to new progress whenever elevation input changes
   useEffect(() => {
     if (targetElevationGain <= 0) return;
     const next = Math.min(currentElevationGain / targetElevationGain, 1);
-    progressSv.value = withTiming(next, {
-      duration: 500,
-      easing: Easing.out(Easing.cubic),
-    });
+    progressSv.value = withTiming(next, { duration: 500, easing: Easing.out(Easing.cubic) });
     if (next >= 1 && !summitFiredRef.current) {
       summitFiredRef.current = true;
       summitGlow.value = withSequence(
@@ -202,7 +182,6 @@ export default function MountainProgress({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentElevationGain, targetElevationGain]);
 
-  // Sync marker position to JS state
   const updateMarker = useCallback((frac: number) => {
     const capped = Math.min(frac, 0.97);
     const idx = Math.max(0, Math.min(1000, Math.round(capped * 1000)));
@@ -214,7 +193,6 @@ export default function MountainProgress({
     (val) => runOnJS(updateMarker)(val),
   );
 
-  // Animated props for the three progress path layers
   const dashOuterProps = useAnimatedProps(() => ({
     strokeDashoffset: TOTAL_PATH_LENGTH * (1 - progressSv.value),
   }));
@@ -224,14 +202,11 @@ export default function MountainProgress({
   const dashCoreProps = useAnimatedProps(() => ({
     strokeDashoffset: TOTAL_PATH_LENGTH * (1 - progressSv.value),
   }));
-
-  // Marker pulse halo
   const haloProps = useAnimatedProps(() => ({
     r:       7 * pulse.value,
     opacity: Math.max(0, 0.3 / pulse.value),
   }));
 
-  // ── Stage fractions ───────────────────────────────────────────────────────
   const totalElev = stages.length > 0
     ? stages.reduce((s, st) => s + st.elevationGain, 0)
     : targetElevationGain;
@@ -252,11 +227,17 @@ export default function MountainProgress({
     setWidth(e.nativeEvent.layout.width);
   }, []);
 
+  // ── Progress bubble values ──────────────────────────────────────────────────
+  const bubbleElev = currentElevationGain >= 1000
+    ? `${(currentElevationGain / 1000).toFixed(1)}km`
+    : `${Math.round(currentElevationGain)}m`;
+  const bubblePct  = `${Math.round(currentProgress * 100)}%`;
+
   return (
     <View style={[styles.container, style]} onLayout={onLayout}>
       {width > 0 && height > 0 && (
         <>
-          {/* Layer 1 — Static mountain artwork */}
+          {/* Layer 1 — Mountain artwork */}
           <Image
             source={MOUNTAIN_BG}
             style={{ width, height }}
@@ -270,7 +251,7 @@ export default function MountainProgress({
             height={height}
             style={StyleSheet.absoluteFill}
           >
-            {/* Background dashed route – full expedition always visible */}
+            {/* Background dashed route */}
             <Path
               d={ROUTE_PATH}
               stroke="white"
@@ -282,40 +263,28 @@ export default function MountainProgress({
               fill="none"
             />
 
-            {/* Progress – outer glow */}
+            {/* Outer glow */}
             <AnimatedPath
-              d={ROUTE_PATH}
-              stroke="#3ECF75"
-              strokeWidth={10}
-              strokeOpacity={0.10}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={10}
+              strokeOpacity={0.10} strokeLinecap="round" strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashOuterProps}
             />
 
-            {/* Progress – soft inner glow */}
+            {/* Inner glow */}
             <AnimatedPath
-              d={ROUTE_PATH}
-              stroke="#3ECF75"
-              strokeWidth={5}
-              strokeOpacity={0.25}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={5}
+              strokeOpacity={0.25} strokeLinecap="round" strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashInnerProps}
             />
 
-            {/* Progress – solid core */}
+            {/* Solid core */}
             <AnimatedPath
-              d={ROUTE_PATH}
-              stroke="#3ECF75"
-              strokeWidth={2.2}
-              strokeOpacity={1}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d={ROUTE_PATH} stroke="#3ECF75" strokeWidth={2.2}
+              strokeOpacity={1} strokeLinecap="round" strokeLinejoin="round"
               fill="none"
               strokeDasharray={[TOTAL_PATH_LENGTH, TOTAL_PATH_LENGTH]}
               animatedProps={dashCoreProps}
@@ -333,64 +302,57 @@ export default function MountainProgress({
               />
             ))}
 
-            {/* Summit marker */}
+            {/* Summit */}
             <Circle
-              cx={summitPt.x}
-              cy={summitPt.y}
+              cx={summitPt.x} cy={summitPt.y}
               r={currentProgress >= 0.99 ? 5 : 3.5}
               fill={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.15)"}
               stroke={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.45)"}
               strokeWidth={1.2}
             />
             <SvgText
-              x={summitPt.x - 6}
-              y={summitPt.y - 8}
+              x={summitPt.x - 5} y={summitPt.y - 7}
               textAnchor="end"
-              fill={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.35)"}
-              fontSize={6.5}
-              fontFamily="Inter_700Bold"
+              fill={currentProgress >= 0.99 ? "#FFD700" : "rgba(255,255,255,0.45)"}
+              fontSize={6} fontFamily="Inter_700Bold"
             >
               SUMMIT
             </SvgText>
 
-            {/* Progress marker — only render once tracking has begun */}
+            {/* Progress marker */}
             {currentProgress > 0.002 && (
               <>
-                {/* Outer pulse halo */}
                 <AnimatedCircle
-                  cx={markerPos.x}
-                  cy={markerPos.y}
-                  fill="rgba(62,207,117,0.20)"
-                  stroke="none"
+                  cx={markerPos.x} cy={markerPos.y}
+                  fill="rgba(62,207,117,0.20)" stroke="none"
                   animatedProps={haloProps}
                 />
-                {/* Mid glow ring */}
-                <Circle
-                  cx={markerPos.x}
-                  cy={markerPos.y}
-                  r={5.5}
-                  fill="rgba(62,207,117,0.30)"
-                  stroke="none"
-                />
-                {/* Core */}
-                <Circle
-                  cx={markerPos.x}
-                  cy={markerPos.y}
-                  r={4}
-                  fill="#3ECF75"
-                  stroke="none"
-                />
-                {/* White centre */}
-                <Circle
-                  cx={markerPos.x}
-                  cy={markerPos.y}
-                  r={1.8}
-                  fill="white"
-                  stroke="none"
-                />
+                <Circle cx={markerPos.x} cy={markerPos.y} r={5.5}
+                  fill="rgba(62,207,117,0.30)" stroke="none" />
+                <Circle cx={markerPos.x} cy={markerPos.y} r={4}
+                  fill="#3ECF75" stroke="none" />
+                <Circle cx={markerPos.x} cy={markerPos.y} r={1.8}
+                  fill="white" stroke="none" />
               </>
             )}
           </Svg>
+
+          {/* Layer 3 — Floating progress bubble (RN View for easy styling) */}
+          {currentProgress > 0.003 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.bubble,
+                {
+                  left: Math.max(4, Math.min(width - 68, markerPos.x / VB_W * width - 30)),
+                  top:  Math.max(4, markerPos.y / VB_H * height - 54),
+                },
+              ]}
+            >
+              <Text style={styles.bubbleElev}>{bubbleElev}</Text>
+              <Text style={styles.bubblePct}>{bubblePct}</Text>
+            </View>
+          )}
         </>
       )}
     </View>
@@ -402,5 +364,27 @@ const styles = StyleSheet.create({
     overflow:        "hidden",
     borderRadius:    16,
     backgroundColor: "#050D1A",
+  },
+  bubble: {
+    position:        "absolute",
+    backgroundColor: "rgba(6,12,28,0.92)",
+    borderRadius:    9,
+    borderWidth:     1,
+    borderColor:     "rgba(62,207,117,0.55)",
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    alignItems:      "center",
+    minWidth:        54,
+  },
+  bubbleElev: {
+    fontSize:    13,
+    fontFamily:  "Inter_700Bold",
+    color:       "#3ECF75",
+  },
+  bubblePct: {
+    fontSize:    10,
+    fontFamily:  "Inter_400Regular",
+    color:       "rgba(255,255,255,0.65)",
+    marginTop:   1,
   },
 });

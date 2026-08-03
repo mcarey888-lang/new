@@ -23,3 +23,5 @@
 - [Mountain image loading pattern](mountain-image-api.md) — always remote URI via /api/mountain-image; never require() bundled assets; gradient behind ExpoImage as instant fallback.
 - [Dual-shell navigation](dual-shell-navigation.md) — (tabs) Training + (expedition) Expedition shells; ModeTogglePill in both layouts; shellMode persisted to AsyncStorage; TargetMountain field names + ProgressRing prop name.
 - [Expedition Library Architecture](expedition-library.md) — SavedExpedition library alongside summitGoal (dual-write); startExpedition never resets sessions; patchGoal auto-syncs to library; SigChallenge uses .challengeId not .id.
+- [MountainProgress — native only](mountain-progress-native-only.md) — component is native-only; never attempt .web.tsx variants or web preview; Platform.OS inline splits also break the Reanimated+SVG stack.
+- [ExpeditionMountainProgress component](expedition-mountain-progress.md) — wraps MountainProgress as the production expedition centrepiece; stage markers are numbered circles only (no SVG text labels on mountain); progress bubble follows marker via RN View overlay.

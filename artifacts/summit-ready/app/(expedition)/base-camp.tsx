@@ -22,10 +22,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
-import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
-import { ExpeditionProgressCard } from "@/components/ExpeditionProgressCard";
+import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 
@@ -633,7 +632,7 @@ export default function BaseCampScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Title + ring row */}
+            {/* Title + progress row */}
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 10 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
                 <Text
@@ -650,14 +649,18 @@ export default function BaseCampScreen() {
                   <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
                 )}
               </View>
-              <ProgressRing
-                size={80}
-                strokeWidth={6}
-                score={routePct}
-                color={T.green}
-                label={`${routePct}%`}
-                sublabel="COMPLETE"
-              />
+              {/* Overall progress — elevation-based */}
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", letterSpacing: 0.5, marginBottom: 2 }}>
+                  OVERALL PROGRESS
+                </Text>
+                <Text style={{ fontSize: 42, fontFamily: "Inter_700Bold", color: pct > 0 ? T.green : "rgba(255,255,255,0.85)", lineHeight: 46 }}>
+                  {pct}%
+                </Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", marginTop: 1 }}>
+                  {totalTrained.toLocaleString()}m of {totalGoal >= 1000 ? `${(totalGoal / 1000).toFixed(1)}km` : `${totalGoal}m`}
+                </Text>
+              </View>
             </View>
 
             {/* Choose Route — opens picker so user can select any incomplete route */}
@@ -690,37 +693,27 @@ export default function BaseCampScreen() {
           </View>
         </View>
 
-        {/* ── Expedition progress card (chart + stages + summary) ───────────── */}
-        {(summitGoal?.virtualHills?.length ?? 0) > 0 && (
-          <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
-            <ExpeditionProgressCard
-              stages={summitGoal?.virtualHills ?? []}
-              completedRoutes={completedRoutes}
-              totalElev={totalGoal}
-              totalTrained={totalTrained}
-              onStagePress={(hillName) =>
-                router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
+        {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
+        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
+          <ExpeditionMountainProgress
+            targetElevation={totalGoal}
+            currentElevation={totalTrained}
+            stages={summitGoal.virtualHills ?? []}
+            completedRoutes={completedRoutes}
+            days={target?.estimatedDays ?? 1}
+            highestPoint={target?.summitElevation ?? 0}
+            allDone={completedRoutes.length > 0 && !nextHill}
+            onStagePress={(hillName) =>
+              router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
+            }
+            onCtaPress={() => {
+              if (completedRoutes.length > 0 && !nextHill) {
+                router.push("/(expedition)/expedition-complete" as any);
+              } else {
+                setRoutePickerOpen(true);
               }
-            />
-          </Animated.View>
-        )}
-
-        {/* ── 4-stat row ────────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={[s.card, { marginHorizontal: 14, marginTop: 10 }]}>
-          <View style={{ flexDirection: "row" }}>
-            {[
-              { label: "DISTANCE",       val: `${totalDistKm.toFixed(1)} km`, sub: "Total" },
-              { label: "ELEVATION GAIN", val: `${totalTrained.toLocaleString()} m`, sub: "Total" },
-              { label: "TIME ON TRAIL",  val: `${trailTime.hours}h ${String(trailTime.minutes).padStart(2, "0")}m`, sub: "Total" },
-              { label: "ROUTES",         val: `${completedRoutes.length} / ${Math.max(stages.length, 1)}`, sub: "Completed" },
-            ].map((stat, i) => (
-              <View key={stat.label} style={[s.statCol, i > 0 && s.statColBorder]}>
-                <Text style={s.statLabel}>{stat.label}</Text>
-                <Text style={s.statValue}>{stat.val}</Text>
-                <Text style={s.statSub}>{stat.sub}</Text>
-              </View>
-            ))}
-          </View>
+            }}
+          />
         </Animated.View>
 
         {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}
