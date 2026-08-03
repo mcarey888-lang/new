@@ -73,80 +73,66 @@ const ROUTE_PATH =
   "C124.7 196.3 129.5 197.5 138.5 194L147 189.5L156.5 187L169.5 177.5" +
   "L176.5 170.5L184 161.5C187.833 161.834 196.5 161.8 200.5 159" +
   "C204.5 156.2 210.5 147.834 213 144L220 137C222.167 133.5 227.1 126.2 229.5 125" +
-  "C232.5 123.5 235.5 121 236 117.5C236.4 114.7 238.833 111.334 240 110" +
-  "H248C252 111.667 260.5 114.5 262.5 112.5C265 110 272.5 104 274 100.5" +
-  "C275.5 97.0004 278.5 91.0004 282.5 89.5004C286.5 88.0004 297 79.0004 299 77.5004" +
-  "C301 76.0004 307 62.5004 310.5 60.5004C314 58.5004 323 56.5004 325 53.5004" +
-  "C327 50.5004 341.5 31.5004 343 29.0004C344.2 27.0004 350 16.3337 357.5 2.0004";
+  "C231.9 123.8 237 122.834 241.5 122.5L246.5 116L255.5 107.5" +
+  "C258.167 105.667 264 101.6 267 100L279 91C280.5 89.334 283.9 85.8 285.5 84" +
+  "C287.1 82.2 289.667 79.834 290.5 79L296 72.5L307 56.5L316.5 45" +
+  "C320.833 38.5 329.8 25.2 331 23L342 12.5L347 7.5C350.667 5.167 357.5 2 357.5 2";
 
 // ── Stage marker ─────────────────────────────────────────────────────────────
 
-interface StageMarkerProps {
+function StageMarker({
+  fraction,
+  stageIndex,
+  stage,
+  currentProgress,
+  flipLabel,
+}: {
   fraction: number;
   stageIndex: number;
   stage: ExpeditionStage;
   currentProgress: number;
   flipLabel: boolean;
-}
+}) {
+  const pt      = getPointAtFraction(fraction);
+  const done    = stage.status === "completed";
+  const active  = stage.status === "active";
+  const opacity = done || active ? 1 : 0.4;
+  const color   = done ? "#3ECF75" : active ? "#8FE8B4" : "rgba(255,255,255,0.6)";
 
-function StageMarker({ fraction, stageIndex, stage, currentProgress, flipLabel }: StageMarkerProps) {
-  const pt       = getPointAtFraction(fraction);
-  const done     = currentProgress >= fraction;
-  const active   = !done && currentProgress >= fraction - 0.06;
-  const dotColor = done ? "#3ECF75" : active ? "#60A5FA" : "rgba(255,255,255,0.6)";
-  const opacity  = done ? 1 : active ? 0.85 : 0.5;
-
-  // Label sits 22 SVG units above the path point (clamped so it stays in frame)
-  const labelY   = Math.max(pt.y - 22, 6);
-  const textX    = flipLabel ? pt.x + 8 : pt.x - 8;
-  const anchor   = flipLabel ? "start" : "end";
+  const LABEL_OFFSET = 18;
+  const labelX = flipLabel ? pt.x + LABEL_OFFSET : pt.x - LABEL_OFFSET;
+  const anchor = flipLabel ? "start" : "end";
 
   return (
     <>
-      {/* Connector line */}
       <Line
-        x1={pt.x} y1={pt.y - 1}
-        x2={pt.x} y2={labelY + 5}
-        stroke={dotColor}
-        strokeWidth={0.7}
-        strokeOpacity={opacity}
-      />
-
-      {/* Stage dot */}
-      <Circle
-        cx={pt.x} cy={labelY}
-        r={done || active ? 4.5 : 3.5}
-        fill={done ? "#3ECF75" : active ? "rgba(96,165,250,0.25)" : "transparent"}
-        stroke={dotColor}
-        strokeWidth={1.2}
+        x1={pt.x} y1={pt.y}
+        x2={labelX} y2={pt.y}
+        stroke={color}
+        strokeWidth={0.6}
         opacity={opacity}
       />
-
-      {/* Labels */}
+      <Circle
+        cx={pt.x} cy={pt.y} r={2.2}
+        fill={done ? "#3ECF75" : "rgba(255,255,255,0.4)"}
+        opacity={opacity}
+      />
       <SvgText
-        x={textX} y={labelY - 14}
+        x={labelX + (flipLabel ? 2 : -2)}
+        y={pt.y - 2}
         textAnchor={anchor}
-        fill={done ? "#3ECF75" : "rgba(255,255,255,0.9)"}
+        fill={color}
         fontSize={6.5}
         fontFamily="Inter_700Bold"
         opacity={opacity}
       >
-        {`S${stageIndex + 1}`}
+        {`S${stageIndex + 1} · ${stage.name}`}
       </SvgText>
       <SvgText
-        x={textX} y={labelY - 6}
+        x={labelX + (flipLabel ? 2 : -2)}
+        y={pt.y + 6}
         textAnchor={anchor}
-        fill="white"
-        fontSize={7}
-        fontFamily="Inter_600SemiBold"
-        opacity={opacity}
-      >
-        {stage.name}
-      </SvgText>
-      <SvgText
-        x={textX} y={labelY + 2}
-        textAnchor={anchor}
-        fill={done ? "#3ECF75" : "rgba(255,255,255,0.55)"}
+        fill={color}
         fontSize={6}
         fontFamily="Inter_400Regular"
         opacity={opacity}

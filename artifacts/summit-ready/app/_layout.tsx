@@ -159,6 +159,7 @@ function RootLayoutNav() {
       <Stack.Screen name="hike-tracking" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="challenge-detail" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="challenge-complete" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="mountain-demo" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }
