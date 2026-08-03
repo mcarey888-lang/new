@@ -658,7 +658,7 @@ export default function BaseCampScreen() {
                   {pct}%
                 </Text>
                 <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", marginTop: 1 }}>
-                  {totalTrained.toLocaleString()}m of {totalGoal >= 1000 ? `${(totalGoal / 1000).toFixed(1)}km` : `${totalGoal}m`}
+                  {totalTrained.toLocaleString()}m of {totalGoal.toLocaleString()}m
                 </Text>
               </View>
             </View>

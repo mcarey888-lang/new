@@ -275,9 +275,7 @@ export default function MountainProgress({
   }, []);
 
   // Progress bubble
-  const bubbleElev = currentElevationGain >= 1000
-    ? `${(currentElevationGain / 1000).toFixed(1)}km`
-    : `${Math.round(currentElevationGain)}m`;
+  const bubbleElev = `${Math.round(currentElevationGain)}m`;
   const bubblePct  = `${Math.round(currentProgress * 100)}%`;
 
   const viewBox = `${VB_X} ${VB_Y} ${VB_W} ${VB_HT}`;

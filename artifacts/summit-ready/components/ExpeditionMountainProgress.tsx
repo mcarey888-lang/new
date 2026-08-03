@@ -38,7 +38,7 @@ interface Props {
 
 function fmtElev(m: number): string {
   if (m <= 0) return "0m";
-  return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${Math.round(m)}m`;
+  return `${Math.round(m).toLocaleString()}m`;
 }
 
 const VB_H = 270;
