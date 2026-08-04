@@ -1,28 +1,39 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // CinematicPrototype.tsx
 //
-// Expedition completion cinematic — camera zoom into the mountain.
+// Expedition completion cinematic — camera push-in to the mountain summit.
 //
 // Phases:
-//   idle       → normal expedition screen, transforms at 1/0
-//   pausing    → 300 ms pause after trigger (let summit marker animate)
-//   zooming    → 1800 ms smooth camera move, mountain becomes focal point
+//   idle       → normal expedition screen
+//   pausing    → 380 ms pause after trigger
+//   zooming    → 1800 ms push-in, summit becomes focal point
 //   holding    → 250 ms perfect stillness — the handoff frame
-//   ready      → onCinematicReady fired; stays frozen here until dismissed
-//   dismissing → 800 ms smooth zoom-out back to normal
+//   ready      → onCinematicReady fired; frozen until dismissed
+//   dismissing → 800 ms zoom-out back to normal
+//
+// Transform model:
+//   The animated layer uses [translateX(Tx), translateY(Ty), scale(S)].
+//   React Native applies these right-to-left: scale first, then translate.
+//
+//   After scale S around screen centre (W/2, H/2), the summit anchor moves to:
+//     (W/2 + S·(anchorX − W/2),  H/2 + S·(anchorY − H/2))
+//   We want it at (targetX, targetY), so:
+//     Tx = targetX − W/2 − S·(anchorX − W/2)
+//     Ty = targetY − H/2 − S·(anchorY − H/2)
+//
+// Summit anchor (DEV — tune with debug crosses):
+//   SUMMIT_ANCHOR_X / SUMMIT_ANCHOR_Y  — fraction of the mountain image component
+//   TARGET_NORM_X / TARGET_NORM_Y      — where anchor should land on screen (0–1)
+//
+// Debug overlay (DEV ONLY — remove before shipping):
+//   GREEN cross → raw summit anchor in screen coords
+//   RED cross   → camera target (where anchor will land)
 //
 // Handoff contract:
-//   onCinematicReady()   fired when the mountain fills the screen.
-//                        Later: Higgsfield playback begins here.
-//   onDismiss()          fired when the zoom-out is complete and the
-//                        expedition screen is fully restored.
-//                        Later: called after Higgsfield + user presses Continue.
+//   onCinematicReady()   fired when camera holds on summit. Higgsfield starts here.
+//   onDismiss()          fired when zoom-out completes. Called after Continue press.
 //
-// Dismiss can be triggered two ways:
-//   1. Parent sets active=false (from ready or holding phase)
-//   2. DEV ONLY: "Restore expedition" button inside the component
-//
-// To remove: delete this file + grep [DEV ONLY] in base-camp.tsx.
+// To remove: delete this file + grep "DEV ONLY" in base-camp.tsx.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from "react";
@@ -42,31 +53,49 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DEV ONLY — Summit anchor tuning constants.
+// These are fractions of the mountain image component (the ref'd View, not the
+// whole Base Camp card). Use the GREEN/RED debug crosses to dial these in.
+// Once the correct values are decided, bake them in and remove the comment.
+
+/** Fraction across the mountain image component where the visual summit sits. */
+const SUMMIT_ANCHOR_X = 0.82;
+/** Fraction down the mountain image component where the visual summit sits. */
+const SUMMIT_ANCHOR_Y = 0.18;
+
+/** Horizontal fraction of screen where the anchor should land (0 = left, 1 = right). */
+const TARGET_NORM_X = 0.72;
+/** Vertical fraction of screen where the anchor should land (0 = top, 1 = bottom). */
+const TARGET_NORM_Y = 0.28;
+// END DEV ONLY ──────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 type Phase = "idle" | "pausing" | "zooming" | "holding" | "ready" | "dismissing";
 
 interface CinematicPrototypeProps {
-  /** Set true to begin the cinematic sequence. Set false to trigger zoom-out. */
+  /** Set true to begin the cinematic. Set false to trigger zoom-out. */
   active: boolean;
-  /** Ref on the mountain progress card — measured for zoom targeting. */
+  /**
+   * Ref on the mountain image component — measured for summit anchor maths.
+   * Should be placed on the MountainProgress view, NOT the whole expedition card.
+   */
   mountainRef: React.RefObject<View | null>;
   /**
-   * Called when the mountain fills the screen and the 250 ms hold is done.
-   * This is the handoff point — Higgsfield begins here.
-   * The app remains frozen at this zoom level until dismissed.
+   * Called when the camera holds on the summit (250 ms after zoom completes).
+   * Future: begin Higgsfield playback here.
    */
   onCinematicReady: () => void;
   /**
-   * Called when the zoom-out is complete and the expedition screen is restored.
-   * Later: triggered after Higgsfield + completion overlay + user presses Continue.
+   * Called when the zoom-out completes and the expedition screen is restored.
+   * Future: called after Higgsfield + user presses Continue.
    */
   onDismiss: () => void;
 
-  // DEV ONLY ─────────────────────────────────────────────────────────────────
-  // Remove this prop when the correct zoom level has been decided.
-  /** Override scale (3–6). When undefined, uses auto-fill based on card height. */
+  // DEV ONLY ────────────────────────────────────────────────────────────────
+  /** Override scale (3–6). When undefined, auto-fills the card to screen height. */
   devZoomScale?: number;
-  // END DEV ONLY ──────────────────────────────────────────────────────────────
+  // END DEV ONLY ─────────────────────────────────────────────────────────────
 
   children: React.ReactNode;
 }
@@ -78,125 +107,112 @@ export function CinematicPrototype({
   mountainRef,
   onCinematicReady,
   onDismiss,
-  devZoomScale,     // DEV ONLY
+  devZoomScale,
   children,
 }: CinematicPrototypeProps) {
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
-  // GPU-accelerated transform shared values — the only things that animate
-  const scaleVal     = useSharedValue(1);
-  const translateVal = useSharedValue(0);
+  // Three GPU-accelerated values — the only things that animate
+  const scaleVal      = useSharedValue(1);
+  const translateXVal = useSharedValue(0);
+  const translateYVal = useSharedValue(0);
 
-  // Phase tracking via ref (no re-renders on transition)
   const phaseRef = useRef<Phase>("idle");
 
-  // Stable callback refs — prevents stale-closure issues with runOnJS
+  // Stable callback refs — avoids stale closures via runOnJS
   const onCinematicReadyRef = useRef(onCinematicReady);
   const onDismissRef        = useRef(onDismiss);
   useEffect(() => { onCinematicReadyRef.current = onCinematicReady; }, [onCinematicReady]);
   useEffect(() => { onDismissRef.current        = onDismiss; },        [onDismiss]);
 
-  // DEV ONLY: controls visibility of the "Restore expedition" button
+  // DEV ONLY
   const [devRestoreVisible, setDevRestoreVisible] = useState(false);
+  const [devDebugInfo, setDevDebugInfo] = useState<{
+    anchorX: number; anchorY: number;
+    targetX: number; targetY: number;
+  } | null>(null);
   // END DEV ONLY
 
-  // ── Internal dismiss sequence ─────────────────────────────────────────────
+  // ── Internal helpers ──────────────────────────────────────────────────────
 
   function handleDismissComplete() {
-    phaseRef.current = "idle";
-    // Shared values are already at 1/0 from the animation — these are safety resets
-    scaleVal.value     = 1;
-    translateVal.value = 0;
+    phaseRef.current    = "idle";
+    scaleVal.value      = 1;
+    translateXVal.value = 0;
+    translateYVal.value = 0;
     onDismissRef.current();
   }
 
   function dismiss() {
-    if (
-      phaseRef.current !== "ready" &&
-      phaseRef.current !== "holding"
-    ) return;
-
+    if (phaseRef.current !== "ready" && phaseRef.current !== "holding") return;
     phaseRef.current = "dismissing";
 
     // DEV ONLY
     setDevRestoreVisible(false);
+    setDevDebugInfo(null);
     // END DEV ONLY
 
-    translateVal.value = withTiming(0, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-    scaleVal.value = withTiming(1, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    }, () => {
-      runOnJS(handleDismissComplete)();
-    });
+    const opts = { duration: 800, easing: Easing.out(Easing.cubic) } as const;
+    translateXVal.value = withTiming(0, opts);
+    translateYVal.value = withTiming(0, opts);
+    scaleVal.value = withTiming(1, opts, () => runOnJS(handleDismissComplete)());
   }
-
-  // ── Zoom-in sequence ──────────────────────────────────────────────────────
 
   function handleZoomComplete() {
     phaseRef.current = "holding";
-    // Phase 4: 250 ms of perfect stillness — the handoff frame
     setTimeout(() => {
-      if (phaseRef.current !== "holding") return; // guard: may have been dismissed
+      if (phaseRef.current !== "holding") return;
       phaseRef.current = "ready";
-      // DEV ONLY
-      setDevRestoreVisible(true);
-      // END DEV ONLY
+      setDevRestoreVisible(true); // DEV ONLY
       onCinematicReadyRef.current();
     }, 250);
   }
 
-  // ── Respond to active changes ─────────────────────────────────────────────
+  // ── Main effect — responds to active ─────────────────────────────────────
 
   useEffect(() => {
-    // ── active → true: begin cinematic ──────────────────────────────────────
     if (active) {
-      if (phaseRef.current !== "idle") return; // already running
+      if (phaseRef.current !== "idle") return;
       phaseRef.current = "pausing";
 
-      // 300 ms pause (summit marker animates) + 80 ms render settle
       const timer = setTimeout(() => {
         mountainRef.current?.measure(
-          (_x, _y, _w, cardH, _pageX, pageY) => {
-            // ── Transform maths ───────────────────────────────────────────
-            // Transform order: [translateY(T), scale(S)]
-            // React Native applies this right-to-left: scale first, then translate.
-            //
-            // After scale S (around element centre = screen centre H/2):
-            //   mountain centre Y → H/2 + S×(mY − H/2)
-            //
-            // We want the mountain centred on screen, so:
-            //   H/2 + S×(mY − H/2) + T = H/2
-            //   T = −S×(mY − H/2) = S×(H/2 − mY)
-            //
-            // The S multiplier is the critical fix — without it, scale appears
-            // tiny while translateY does almost all the apparent work.
-            const mY = pageY + cardH / 2; // mountain card centre in screen coords
+          (_x, _y, cardW, cardH, pageX, pageY) => {
+            // ── Summit anchor in screen coords ──────────────────────────────
+            // Expressed as fractions of the mountain image component.
+            // Tune SUMMIT_ANCHOR_X / SUMMIT_ANCHOR_Y at the top of this file.
+            // Use the GREEN debug cross to verify anchor placement.
+            const anchorScreenX = pageX + cardW * SUMMIT_ANCHOR_X;
+            const anchorScreenY = pageY + cardH * SUMMIT_ANCHOR_Y;
 
-            // DEV ONLY: honour override scale if provided
+            // ── Camera target ───────────────────────────────────────────────
+            // Where the anchor should land after the zoom.
+            // Tune TARGET_NORM_X / TARGET_NORM_Y at the top of this file.
+            // Use the RED debug cross to verify target placement.
+            const targetX = width  * TARGET_NORM_X;
+            const targetY = height * TARGET_NORM_Y;
+
+            // DEV ONLY — render debug crosses
+            setDevDebugInfo({ anchorX: anchorScreenX, anchorY: anchorScreenY, targetX, targetY });
+
+            // ── Scale ───────────────────────────────────────────────────────
+            // Auto fills the card height to the screen. Dev picker overrides.
             const autoS = (height / cardH) * 0.94;
             const S     = devZoomScale ?? autoS;
-            // END DEV ONLY
 
-            // T must include S — see derivation above
-            const T = S * (height / 2 - mY);
+            // ── Translations ────────────────────────────────────────────────
+            // See transform model in file header.
+            // Both Tx and Ty include S — without this factor translation
+            // does almost all the visual work instead of scale.
+            const Tx = targetX - width  / 2 - S * (anchorScreenX - width  / 2);
+            const Ty = targetY - height / 2 - S * (anchorScreenY - height / 2);
 
             phaseRef.current = "zooming";
 
-            // ── Phase 3: single continuous camera move ────────────────────
-            translateVal.value = withTiming(T, {
-              duration: 1800,
-              easing: Easing.out(Easing.cubic),
-            });
-            scaleVal.value = withTiming(S, {
-              duration: 1800,
-              easing: Easing.out(Easing.cubic),
-            }, () => {
-              runOnJS(handleZoomComplete)();
-            });
+            const easeOpts = { duration: 1800, easing: Easing.out(Easing.cubic) } as const;
+            translateXVal.value = withTiming(Tx, easeOpts);
+            translateYVal.value = withTiming(Ty, easeOpts);
+            scaleVal.value = withTiming(S, easeOpts, () => runOnJS(handleZoomComplete)());
           },
         );
       }, 380);
@@ -204,22 +220,18 @@ export function CinematicPrototype({
       return () => clearTimeout(timer);
     }
 
-    // ── active → false: trigger dismiss if we're at the handoff frame ────
-    if (
-      phaseRef.current === "ready" ||
-      phaseRef.current === "holding"
-    ) {
+    // active → false: trigger dismiss from handoff frame
+    if (phaseRef.current === "ready" || phaseRef.current === "holding") {
       dismiss();
     }
-    // If "zooming" or "dismissing", the active animation completes naturally.
-    // If "idle", nothing to do.
-  }, [active, devZoomScale]); // devZoomScale intentional: re-measure if scale changes while idle
+  }, [active, devZoomScale]);
 
-  // ── Animated styles ───────────────────────────────────────────────────────
+  // ── Animated style ────────────────────────────────────────────────────────
 
   const contentStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: translateVal.value },
+      { translateX: translateXVal.value },
+      { translateY: translateYVal.value },
       { scale: scaleVal.value },
     ],
   }));
@@ -228,7 +240,6 @@ export function CinematicPrototype({
 
   return (
     <View style={styles.root}>
-      {/* Expedition screen — the single layer that the camera zooms into */}
       <Animated.View
         style={[styles.content, contentStyle]}
         pointerEvents={active ? "none" : "box-none"}
@@ -236,15 +247,34 @@ export function CinematicPrototype({
         {children}
       </Animated.View>
 
-      {/* ── DEV ONLY: restore button shown at the handoff frame ─────────────
-          This placeholder stands in for the Higgsfield cinematic + completion
-          overlay. When those are implemented, remove this block.          */}
+      {/* ── DEV ONLY: debug crosses ──────────────────────────────────────────
+          Shown from the moment the measurement fires until dismiss.
+          GREEN = summit anchor (raw screen position before zoom).
+          RED   = camera target (where anchor will land after zoom).
+          Remove this block when anchor values are finalised.           */}
+      {__DEV__ && devDebugInfo && (
+        <>
+          <DebugCross
+            x={devDebugInfo.anchorX}
+            y={devDebugInfo.anchorY}
+            color="#3ECF75"
+            label="ANCHOR"
+          />
+          <DebugCross
+            x={devDebugInfo.targetX}
+            y={devDebugInfo.targetY}
+            color="#FF3333"
+            label="TARGET"
+          />
+        </>
+      )}
+      {/* END DEV ONLY */}
+
+      {/* ── DEV ONLY: handoff frame restore button ───────────────────────────
+          Placeholder for Higgsfield cinematic + completion overlay.
+          Remove this block when those are implemented.               */}
       {__DEV__ && devRestoreVisible && (
-        <View
-          style={styles.devRestoreBar}
-          // DEV ONLY — remove pointerEvents override with the block above
-          pointerEvents="box-none"
-        >
+        <View style={styles.devRestoreBar} pointerEvents="box-none">
           <View style={styles.devRestoreContent}>
             <Text style={styles.devRestoreLabel}>
               HANDOFF FRAME — Higgsfield starts here
@@ -264,13 +294,54 @@ export function CinematicPrototype({
   );
 }
 
+// ── DEV ONLY: debug cross component ──────────────────────────────────────────
+// Positioned in absolute screen coords (outside the animated layer).
+// Remove when anchor values are finalised.
+
+function DebugCross({
+  x, y, color, label,
+}: {
+  x: number; y: number; color: string; label: string;
+}) {
+  const SIZE  = 18;
+  const THICK = 2;
+  return (
+    <View
+      style={{
+        position:        "absolute",
+        left:            x - SIZE,
+        top:             y - SIZE,
+        width:           SIZE * 2,
+        height:          SIZE * 2,
+        alignItems:      "center",
+        justifyContent:  "center",
+        pointerEvents:   "none",
+      } as any}
+      pointerEvents="none"
+    >
+      <View style={{ position: "absolute", width: SIZE * 2, height: THICK, backgroundColor: color }} />
+      <View style={{ position: "absolute", width: THICK, height: SIZE * 2, backgroundColor: color }} />
+      <Text style={{
+        position:   "absolute",
+        top:        SIZE + 3,
+        fontSize:   8,
+        fontFamily: "Inter_700Bold",
+        color,
+        letterSpacing: 0.5,
+      }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+// END DEV ONLY ────────────────────────────────────────────────────────────────
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    // Clips zoomed content to screen bounds — elements exit frame naturally
-    overflow: "hidden",
+    flex:     1,
+    overflow: "hidden", // clips zoomed content to screen bounds
   },
   content: {
     flex: 1,
@@ -278,43 +349,43 @@ const styles = StyleSheet.create({
 
   // DEV ONLY ──────────────────────────────────────────────────────────────────
   devRestoreBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
+    position:     "absolute",
+    bottom:        0,
+    left:          0,
+    right:         0,
+    alignItems:   "center",
     paddingBottom: 48,
-    zIndex: 9999,
+    zIndex:        9999,
   },
   devRestoreContent: {
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 16,
+    alignItems:        "center",
+    gap:               10,
+    backgroundColor:   "rgba(0,0,0,0.72)",
+    borderRadius:      16,
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    paddingVertical:   14,
+    borderWidth:        1,
+    borderColor:       "rgba(255,255,255,0.12)",
   },
   devRestoreLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: "rgba(255,255,255,0.5)",
+    fontSize:      10,
+    fontFamily:    "Inter_700Bold",
+    color:         "rgba(255,255,255,0.5)",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   devRestoreBtn: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor:   "rgba(255,255,255,0.12)",
+    borderRadius:       10,
+    paddingHorizontal:  16,
+    paddingVertical:     9,
+    borderWidth:         1,
+    borderColor:        "rgba(255,255,255,0.2)",
   },
   devRestoreBtnText: {
-    fontSize: 13,
+    fontSize:   13,
     fontFamily: "Inter_700Bold",
-    color: "#fff",
+    color:      "#fff",
   },
   // END DEV ONLY ──────────────────────────────────────────────────────────────
 });

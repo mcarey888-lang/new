@@ -33,6 +33,17 @@ interface Props {
   onStagePress: (name: string) => void;
   onCtaPress: () => void;        // opens route picker or completion screen
   allDone: boolean;              // all routes completed
+  /**
+   * Ref placed on the View wrapping MountainProgress (the image area only).
+   * Used by CinematicPrototype to compute the summit anchor in screen coords.
+   * DEV ONLY — the ref itself stays; remove this comment when cinematic ships.
+   */
+  mountainImageRef?: React.RefObject<View | null>;
+  /**
+   * Increment to replay the SVG route animation from 0 → 1 during the cinematic.
+   * DEV ONLY — remove when cinematic is finalised.
+   */
+  replayTrigger?: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,6 +68,8 @@ export function ExpeditionMountainProgress({
   onStagePress,
   onCtaPress,
   allDone,
+  mountainImageRef,
+  replayTrigger,
 }: Props) {
 
   // ── Derive MountainProgress stages ────────────────────────────────────────
@@ -161,12 +174,14 @@ export function ExpeditionMountainProgress({
         </View>
 
         {/* Mountain graphic — MountainProgress fills full card width */}
-        <View>
+        {/* mountainImageRef placed here so CinematicPrototype measures the image area only */}
+        <View ref={mountainImageRef} collapsable={false}>
           <MountainProgress
             targetElevationGain={targetElevation}
             currentElevationGain={currentElevation}
             stages={mpStages}
             style={s.mountainInCard}
+            replayTrigger={replayTrigger}
           />
 
           {/* Y-axis labels overlay */}

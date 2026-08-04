@@ -158,9 +158,10 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
-  // DEV ONLY — remove these five lines to clean up
-  const [cinematicActive, setCinematicActive] = useState(false);
-  const [devZoomScale,    setDevZoomScale]    = useState<number | undefined>(undefined);
+  // DEV ONLY — remove these six lines to clean up
+  const [cinematicActive,       setCinematicActive]       = useState(false);
+  const [devZoomScale,          setDevZoomScale]          = useState<number | undefined>(undefined);
+  const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
   const scrollRef   = useRef<import("react-native").ScrollView>(null);
   const mountainRef = useRef<import("react-native").View>(null);
   // END DEV ONLY
@@ -620,7 +621,10 @@ export default function BaseCampScreen() {
             style={s.devCinemaBtn}
             onPress={() => {
               scrollRef.current?.scrollTo({ y: 0, animated: false });
-              setTimeout(() => setCinematicActive(true), 100);
+              setTimeout(() => {
+                setCinematicReplayTrigger(t => t + 1); // DEV: replay route draw
+                setCinematicActive(true);
+              }, 100);
             }}
             activeOpacity={0.8}
           >
@@ -746,8 +750,7 @@ export default function BaseCampScreen() {
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
-          {/* [DEV] mountainRef wrapper — remove View + ref + collapsable to clean up */}
-          <View ref={mountainRef} collapsable={false}>
+          {/* mountainImageRef placed on the inner mountain image view via ExpeditionMountainProgress */}
           <ExpeditionMountainProgress
             targetElevation={totalGoal}
             currentElevation={totalTrained}
@@ -756,6 +759,8 @@ export default function BaseCampScreen() {
             days={target?.estimatedDays ?? 1}
             highestPoint={target?.summitElevation ?? 0}
             allDone={completedRoutes.length > 0 && !nextHill}
+            mountainImageRef={mountainRef}
+            replayTrigger={cinematicReplayTrigger}
             onStagePress={(hillName) => {
               const hill = (summitGoal.virtualHills ?? []).find(h => h.name === hillName);
               if (!hill) {
@@ -786,7 +791,6 @@ export default function BaseCampScreen() {
               }
             }}
           />
-          </View>{/* [DEV] close mountainRef wrapper */}
         </Animated.View>
 
         {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}

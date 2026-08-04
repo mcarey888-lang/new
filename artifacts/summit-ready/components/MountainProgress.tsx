@@ -64,6 +64,12 @@ interface Props {
   stages: ExpeditionStage[];
   onSummitReached?: () => void;
   style?: ViewStyle;
+  /**
+   * Increment this value to replay the route animation from 0 → 1.
+   * Used by the cinematic to draw the full route during the zoom-in.
+   * DEV ONLY — remove when cinematic is finalised.
+   */
+  replayTrigger?: number;
 }
 
 // ── Coordinate system ─────────────────────────────────────────────────────────
@@ -212,6 +218,7 @@ export default function MountainProgress({
   stages,
   onSummitReached,
   style,
+  replayTrigger,
 }: Props) {
   const [width, setWidth] = useState(0);
 
@@ -255,6 +262,18 @@ export default function MountainProgress({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentElevationGain, targetElevationGain]);
+
+  // DEV ONLY — replay animation from 0 → 1 when trigger increments.
+  // Used by the cinematic to draw the full route during the zoom-in.
+  useEffect(() => {
+    if (!replayTrigger) return;
+    progressSv.value = 0;
+    progressSv.value = withTiming(1, {
+      duration: 2200,
+      easing: Easing.inOut(Easing.cubic),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayTrigger]);
 
   const updateMarker = useCallback((frac: number) => {
     const capped = Math.min(frac, 0.985);
