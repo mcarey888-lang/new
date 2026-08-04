@@ -217,7 +217,7 @@ export function CinematicPrototype({
             scaleVal.value = withTiming(S, easeOpts, () => runOnJS(handleZoomComplete)());
           },
         );
-      }, 380);
+      }, 800);
 
       return () => clearTimeout(timer);
     }
