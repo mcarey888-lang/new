@@ -196,17 +196,17 @@ export function CinematicPrototype({
             const S     = devZoomScale ?? autoS;
 
             // ── Translations ────────────────────────────────────────────────
-            // Move the anchor to (targetX, targetY) on screen.
-            // Both include S — without the S multiplier, translation dominates
-            // and scale appears tiny.
+            // X — right-edge-fixed: the right side of the content stays pinned
+            // at screen x = W throughout the zoom. No content can ever slide
+            // off-screen right or reveal a gap.
             //
-            //   After scale S (around screen centre W/2, H/2), anchor is at:
-            //     W/2 + S×(anchorX − W/2)
-            //   We want it at targetX, so:
-            //     Tx = targetX − W/2 − S×(anchorX − W/2)
-            const targetX = width  * TARGET_NORM_X;
+            //   After scale S around screen centre (W/2), the right edge lands at:
+            //     W/2 + S×(W − W/2) = W/2×(1+S)
+            //   To keep it at W: Tx = W − W/2×(1+S) = W/2×(1−S)
+            const Tx = (width / 2) * (1 - S);
+
+            // Y — target-based: pulls the summit toward TARGET_NORM_Y on screen.
             const targetY = height * TARGET_NORM_Y;
-            const Tx = targetX - width  / 2 - S * (anchorScreenX - width  / 2);
             const Ty = targetY - height / 2 - S * (anchorScreenY - height / 2);
 
             phaseRef.current = "zooming";
