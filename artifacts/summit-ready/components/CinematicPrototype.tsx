@@ -62,13 +62,13 @@ const SVG_VB_W = 380;
 const SVG_VB_H = 344;
 
 /** SVG x coordinate of the visual summit — converted to a width fraction. */
-const SUMMIT_ANCHOR_X = 376 / SVG_VB_W;          // ≈ 0.989
+const SUMMIT_ANCHOR_X = 376 / SVG_VB_W;               // ≈ 0.989
 /** SVG y coordinate of the visual summit (4px from top) — converted to a height fraction. */
-const SUMMIT_ANCHOR_Y = (SVG_VB_H - 340) / SVG_VB_H; // = 4/344 ≈ 0.012
+const SUMMIT_ANCHOR_Y = (SVG_VB_H - 340) / SVG_VB_H;  // = 4/344 ≈ 0.012
 
-/** Horizontal fraction of screen where the anchor should land (0 = left, 1 = right). */
+/** Where the anchor should land on screen after zoom — horizontal (0 = left, 1 = right). */
 const TARGET_NORM_X = 0.72;
-/** Vertical fraction of screen where the anchor should land (0 = top, 1 = bottom). */
+/** Where the anchor should land on screen after zoom — vertical (0 = top, 1 = bottom). */
 const TARGET_NORM_Y = 0.28;
 // END DEV ONLY ──────────────────────────────────────────────────────────────
 
@@ -132,7 +132,6 @@ export function CinematicPrototype({
   const [devRestoreVisible, setDevRestoreVisible] = useState(false);
   const [devDebugInfo, setDevDebugInfo] = useState<{
     anchorX: number; anchorY: number;
-    targetX: number; targetY: number;
   } | null>(null);
   // END DEV ONLY
 
@@ -188,15 +187,8 @@ export function CinematicPrototype({
             const anchorScreenX = pageX + cardW * SUMMIT_ANCHOR_X;
             const anchorScreenY = pageY + cardH * SUMMIT_ANCHOR_Y;
 
-            // ── Camera target ───────────────────────────────────────────────
-            // Where the anchor should land after the zoom.
-            // Tune TARGET_NORM_X / TARGET_NORM_Y at the top of this file.
-            // Use the RED debug cross to verify target placement.
-            const targetX = width  * TARGET_NORM_X;
-            const targetY = height * TARGET_NORM_Y;
-
-            // DEV ONLY — render debug crosses
-            setDevDebugInfo({ anchorX: anchorScreenX, anchorY: anchorScreenY, targetX, targetY });
+            // DEV ONLY — render debug cross on the anchor
+            setDevDebugInfo({ anchorX: anchorScreenX, anchorY: anchorScreenY });
 
             // ── Scale ───────────────────────────────────────────────────────
             // Auto fills the card height to the screen. Dev picker overrides.
@@ -204,12 +196,17 @@ export function CinematicPrototype({
             const S     = devZoomScale ?? autoS;
 
             // ── Translations ────────────────────────────────────────────────
-            // No horizontal translation — the camera zooms straight in without
-            // sliding sideways. translateX stays at 0.
+            // Move the anchor to (targetX, targetY) on screen.
+            // Both include S — without the S multiplier, translation dominates
+            // and scale appears tiny.
             //
-            // Ty centres the summit anchor vertically on TARGET_NORM_Y.
-            // Includes S so scale is the primary motion, not translation.
-            const Tx = 0;
+            //   After scale S (around screen centre W/2, H/2), anchor is at:
+            //     W/2 + S×(anchorX − W/2)
+            //   We want it at targetX, so:
+            //     Tx = targetX − W/2 − S×(anchorX − W/2)
+            const targetX = width  * TARGET_NORM_X;
+            const targetY = height * TARGET_NORM_Y;
+            const Tx = targetX - width  / 2 - S * (anchorScreenX - width  / 2);
             const Ty = targetY - height / 2 - S * (anchorScreenY - height / 2);
 
             phaseRef.current = "zooming";
@@ -252,26 +249,17 @@ export function CinematicPrototype({
         {children}
       </Animated.View>
 
-      {/* ── DEV ONLY: debug crosses ──────────────────────────────────────────
-          Shown from the moment the measurement fires until dismiss.
-          GREEN = summit anchor (raw screen position before zoom).
-          RED   = camera target (where anchor will land after zoom).
+      {/* ── DEV ONLY: anchor debug cross ────────────────────────────────────
+          GREEN cross shows the summit anchor in screen coords.
+          The camera zooms around this exact point — it stays fixed.
           Remove this block when anchor values are finalised.           */}
       {__DEV__ && devDebugInfo && (
-        <>
-          <DebugCross
-            x={devDebugInfo.anchorX}
-            y={devDebugInfo.anchorY}
-            color="#3ECF75"
-            label="ANCHOR"
-          />
-          <DebugCross
-            x={devDebugInfo.targetX}
-            y={devDebugInfo.targetY}
-            color="#FF3333"
-            label="TARGET"
-          />
-        </>
+        <DebugCross
+          x={devDebugInfo.anchorX}
+          y={devDebugInfo.anchorY}
+          color="#3ECF75"
+          label="ANCHOR"
+        />
       )}
       {/* END DEV ONLY */}
 
