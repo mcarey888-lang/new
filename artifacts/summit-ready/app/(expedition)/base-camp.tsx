@@ -188,7 +188,7 @@ export default function BaseCampScreen() {
   // ── Auto-trigger cinematic at 90 % progress ──────────────────────────────
   const cinematicTriggeredRef = useRef(false);
   useEffect(() => {
-    if (pct >= 90 && totalGoal > 0 && !cinematicTriggeredRef.current) {
+    if (pct >= 75 && totalGoal > 0 && !cinematicTriggeredRef.current) {
       cinematicTriggeredRef.current = true;
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       setTimeout(() => {
