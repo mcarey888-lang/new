@@ -162,15 +162,27 @@ export function CinematicPrototype({
         mountainRef.current?.measure(
           (_x, _y, _w, cardH, _pageX, pageY) => {
             // ── Transform maths ───────────────────────────────────────────
-            // [{ translateY: T }, { scale: S }] on a flex:1 container:
-            //   T = H/2 − pageY − cardH/2   centres the card on screen
-            //   S = devZoomScale ?? auto-fill based on card height
-            const T = height / 2 - pageY - cardH / 2;
+            // Transform order: [translateY(T), scale(S)]
+            // React Native applies this right-to-left: scale first, then translate.
+            //
+            // After scale S (around element centre = screen centre H/2):
+            //   mountain centre Y → H/2 + S×(mY − H/2)
+            //
+            // We want the mountain centred on screen, so:
+            //   H/2 + S×(mY − H/2) + T = H/2
+            //   T = −S×(mY − H/2) = S×(H/2 − mY)
+            //
+            // The S multiplier is the critical fix — without it, scale appears
+            // tiny while translateY does almost all the apparent work.
+            const mY = pageY + cardH / 2; // mountain card centre in screen coords
 
             // DEV ONLY: honour override scale if provided
             const autoS = (height / cardH) * 0.94;
             const S     = devZoomScale ?? autoS;
             // END DEV ONLY
+
+            // T must include S — see derivation above
+            const T = S * (height / 2 - mY);
 
             phaseRef.current = "zooming";
 
