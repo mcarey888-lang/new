@@ -185,6 +185,19 @@ export default function BaseCampScreen() {
   const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
+  // ── Auto-trigger cinematic at 90 % progress ──────────────────────────────
+  const cinematicTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (pct >= 90 && totalGoal > 0 && !cinematicTriggeredRef.current) {
+      cinematicTriggeredRef.current = true;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      setTimeout(() => {
+        setCinematicReplayTrigger(t => t + 1);
+        setCinematicActive(true);
+      }, 200);
+    }
+  }, [pct, totalGoal]);
+
   // Stage timeline — use virtualHills as named hill checkpoints (the actual
   // places the user will train), falling back to expeditionPlan day titles.
   const stages: StageData[] = useMemo(() => {

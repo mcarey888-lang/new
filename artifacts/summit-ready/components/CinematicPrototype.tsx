@@ -53,15 +53,18 @@ import Animated, {
 } from "react-native-reanimated";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DEV ONLY — Summit anchor tuning constants.
-// These are fractions of the mountain image component (the ref'd View, not the
-// whole Base Camp card). Use the GREEN/RED debug crosses to dial these in.
-// Once the correct values are decided, bake them in and remove the comment.
+// Summit anchor — expressed in SVG viewbox coordinates (380 × 344).
+// "376px in from the left, 340px up from the bottom" → SVG (376, 4).
+// Converted to fractions so they scale correctly on any device.
+// Use the GREEN debug cross to verify the anchor sits on the visual summit peak.
 
-/** Fraction across the mountain image component where the visual summit sits. */
-const SUMMIT_ANCHOR_X = 0.82;
-/** Fraction down the mountain image component where the visual summit sits. */
-const SUMMIT_ANCHOR_Y = 0.18;
+const SVG_VB_W = 380;
+const SVG_VB_H = 344;
+
+/** SVG x coordinate of the visual summit — converted to a width fraction. */
+const SUMMIT_ANCHOR_X = 376 / SVG_VB_W;          // ≈ 0.989
+/** SVG y coordinate of the visual summit (4px from top) — converted to a height fraction. */
+const SUMMIT_ANCHOR_Y = (SVG_VB_H - 340) / SVG_VB_H; // = 4/344 ≈ 0.012
 
 /** Horizontal fraction of screen where the anchor should land (0 = left, 1 = right). */
 const TARGET_NORM_X = 0.72;
