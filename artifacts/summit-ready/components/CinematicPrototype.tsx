@@ -211,7 +211,7 @@ export function CinematicPrototype({
 
             phaseRef.current = "zooming";
 
-            const easeOpts = { duration: 12000, easing: Easing.inOut(Easing.quad) } as const;
+            const easeOpts = { duration: 8000, easing: Easing.inOut(Easing.quad) } as const;
             translateXVal.value = withTiming(Tx, easeOpts);
             translateYVal.value = withTiming(Ty, easeOpts);
             scaleVal.value = withTiming(S, easeOpts, () => runOnJS(handleZoomComplete)());
