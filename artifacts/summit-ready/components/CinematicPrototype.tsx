@@ -204,15 +204,17 @@ export function CinematicPrototype({
             const S     = devZoomScale ?? autoS;
 
             // ── Translations ────────────────────────────────────────────────
-            // See transform model in file header.
-            // Both Tx and Ty include S — without this factor translation
-            // does almost all the visual work instead of scale.
-            const Tx = targetX - width  / 2 - S * (anchorScreenX - width  / 2);
+            // No horizontal translation — the camera zooms straight in without
+            // sliding sideways. translateX stays at 0.
+            //
+            // Ty centres the summit anchor vertically on TARGET_NORM_Y.
+            // Includes S so scale is the primary motion, not translation.
+            const Tx = 0;
             const Ty = targetY - height / 2 - S * (anchorScreenY - height / 2);
 
             phaseRef.current = "zooming";
 
-            const easeOpts = { duration: 2700, easing: Easing.out(Easing.cubic) } as const;
+            const easeOpts = { duration: 4050, easing: Easing.out(Easing.cubic) } as const;
             translateXVal.value = withTiming(Tx, easeOpts);
             translateYVal.value = withTiming(Ty, easeOpts);
             scaleVal.value = withTiming(S, easeOpts, () => runOnJS(handleZoomComplete)());
