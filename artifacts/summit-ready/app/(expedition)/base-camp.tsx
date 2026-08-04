@@ -703,9 +703,28 @@ export default function BaseCampScreen() {
             days={target?.estimatedDays ?? 1}
             highestPoint={target?.summitElevation ?? 0}
             allDone={completedRoutes.length > 0 && !nextHill}
-            onStagePress={(hillName) =>
-              router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
-            }
+            onStagePress={(hillName) => {
+              const hill = (summitGoal.virtualHills ?? []).find(h => h.name === hillName);
+              if (!hill) {
+                router.push({ pathname: "/hike-tracking" as any, params: { hillName } });
+                return;
+              }
+              router.push({
+                pathname: "/hill-detail",
+                params: {
+                  name:           hill.name,
+                  location:       hill.name,
+                  lat:            hill.lat?.toString()       ?? "",
+                  lng:            hill.lng?.toString()       ?? "",
+                  elevation:      (hill.totalElevation ?? hill.elevation ?? 0).toString(),
+                  distance:       hill.distance.toString(),
+                  grade:          hill.grade   ?? "",
+                  surface:        hill.surface ?? "",
+                  emoji:          hill.emoji   ?? "⛰️",
+                  expeditionMode: "true",
+                },
+              });
+            }}
             onCtaPress={() => {
               if (completedRoutes.length > 0 && !nextHill) {
                 router.push("/(expedition)/expedition-complete" as any);

@@ -66,33 +66,43 @@ interface Props {
   style?: ViewStyle;
 }
 
-// ── Mountain image geometry (from pixel analysis of mountain-bg.png, 860×800) ──
-// The transform is calculated so the image summit aligns exactly with the SVG
-// path endpoint, and the ridgeline runs directly beneath the route path.
-const IMG_W           = 430;
-const IMG_H           = 400;
-const IMG_RIDGE_COL   = 86;   // leftmost visible ridge column (pixel analysis)
-const IMG_PEAK_COL    = 358;  // summit column
-const IMG_PEAK_ROW    = 127;  // summit row
-const RIDGE_SPAN_FRAC = (IMG_PEAK_COL - IMG_RIDGE_COL) / IMG_W; // 0.6326
+// ── Coordinate system ─────────────────────────────────────────────────────────
+// SVG viewBox matches master-route.svg exactly: "0 0 380 344"
+// Mountain PNG (406×366) is left- and bottom-aligned with the viewBox at scale
+// W/380, so no pixel analysis is needed — the files share the same coordinate
+// space and the artwork was designed to match the route path.
+const VB_W = 380;
+const VB_H = 344;
 
-// SVG coordinate space
-const VB_W = 360;
-const VB_H = 270;
+// mountain-bg.png natural dimensions
+const PNG_W = 406;
+const PNG_H = 366;
 
-// ROUTE_PATH endpoint — must stay in sync with mountainPath.ts SEGS
-const SUMMIT_SVG_X = 262;
-const SUMMIT_SVG_Y = 85;
-
-// Route path — lead-in from x=-10, follows the ridge to the actual mountain peak.
+// Route path — copied verbatim from master-route.svg
 const ROUTE_PATH =
-  "M-10 268 L2 268" +
-  "C17.8333 267.834 51 266.7 57 263.5C63 260.3 71.1667 252.167 74.5 248.5" +
-  "L88.5 236L100 221.5L110.5 204.5C111.333 202.667 114.3 198.7 119.5 197.5" +
-  "C124.7 196.3 129.5 197.5 138.5 194L147 189.5L156.5 187L169.5 177.5" +
-  "L176.5 170.5L184 161.5C187.833 161.834 196.5 161.8 200.5 159" +
-  "C204.5 156.2 210.5 147.834 213 144L220 137C222.167 133.5 227.1 126.2 229.5 125" +
-  "C231.9 123.8 237 122.834 241.5 122.5C249 111 257 97 262 85";
+  "M2 342.001" +
+  "C18.7464 341.787 53.8256 340.339 60.1716 336.249" +
+  "C66.5176 332.158 75.1552 321.762 78.6807 317.076" +
+  "L93.488 301.098L105.651 282.564L116.757 260.835" +
+  "C117.638 258.492 120.776 253.422 126.276 251.888" +
+  "C131.776 250.354 136.852 251.888 146.371 247.414" +
+  "L155.361 241.662L165.409 238.467L179.159 226.324" +
+  "L186.563 217.376L194.495 205.873" +
+  "C198.549 206.299 207.716 206.256 211.947 202.677" +
+  "C216.177 199.098 222.523 188.404 225.167 183.504" +
+  "L232.571 174.557" +
+  "C234.863 170.083 240.08 160.752 242.619 159.219" +
+  "C245.792 157.301 248.965 154.106 249.494 149.632" +
+  "C249.917 146.053 252.49 141.75 253.724 140.046" +
+  "H262.186" +
+  "C266.416 142.176 275.406 145.798 277.522 143.241" +
+  "C280.166 140.046 288.098 132.376 289.685 127.903" +
+  "C291.271 123.429 294.444 115.76 298.675 113.843" +
+  "C302.906 111.925 314.011 100.422 316.127 98.5043" +
+  "C318.242 96.587 324.588 79.3313 328.29 76.7749" +
+  "C331.992 74.2186 341.511 71.6622 343.626 67.8276" +
+  "C345.741 63.993 361.077 39.7073 362.664 36.5118" +
+  "C363.933 33.9554 370.068 20.3213 378 2.00051";
 
 // ── Stage marker — clean numbered circle with leader line ──────────────────
 
@@ -163,32 +173,33 @@ function StageMarker({
 
 function SummitFlag({ reached }: { reached: boolean }) {
   const tip = getPointAtFraction(1.0);
-  // Position the flag slightly inside the canvas
-  const px = Math.min(tip.x - 1, VB_W - 10);
-  const py = tip.y + 1; // anchor just below the path terminus
+  // Summit is near the top-right of the viewBox (≈ 378, 2).
+  // Pole hangs downward so it stays within the viewBox.
+  const px = Math.min(tip.x, VB_W - 4);
+  const py = Math.max(tip.y, 3);
 
-  const flagColor  = reached ? "#FFD700" : "rgba(255,255,255,0.82)";
-  const glowColor  = reached ? "rgba(255,215,0,0.28)" : "rgba(255,255,255,0.08)";
-  const poleTop    = py - 9; // pole extends up into the viewBox top-padding headroom
+  const flagColor = reached ? "#FFD700" : "rgba(255,255,255,0.82)";
+  const glowColor = reached ? "rgba(255,215,0,0.28)" : "rgba(255,255,255,0.08)";
+  const poleBot   = py + 9;   // pole hangs downward from the summit tip
 
   return (
     <>
       {/* Glow aura */}
       <Circle cx={px} cy={py} r={reached ? 10 : 7} fill={glowColor} />
-      {/* Flag pole */}
+      {/* Flag pole — hangs down from tip so it stays in-frame */}
       <Line
         x1={px} y1={py}
-        x2={px} y2={poleTop}
+        x2={px} y2={poleBot}
         stroke={flagColor} strokeWidth={1.4} strokeLinecap="round"
       />
-      {/* Triangular flag pointing left */}
+      {/* Triangular flag pointing left, below the tip */}
       <Path
-        d={`M${px} ${poleTop} L${px - 7} ${poleTop + 3} L${px} ${poleTop + 6} Z`}
+        d={`M${px} ${poleBot} L${px - 7} ${poleBot - 3} L${px} ${poleBot - 6} Z`}
         fill={flagColor}
         opacity={0.95}
       />
-      {/* Stake dot at base */}
-      <Circle cx={px} cy={py + 1.5} r={2.5} fill={flagColor} opacity={0.9} />
+      {/* Tip dot */}
+      <Circle cx={px} cy={py} r={2.5} fill={flagColor} opacity={0.9} />
     </>
   );
 }
@@ -204,17 +215,16 @@ export default function MountainProgress({
 }: Props) {
   const [width, setWidth] = useState(0);
 
-  // ── Mathematically derived image layout ────────────────────────────────────
-  // Scale so ridge-to-peak span maps to SVG x=0 → x=SUMMIT_SVG_X.
-  // Component height is set so the image base reaches the component bottom.
-  // All values are pure functions of `width` — no manual tuning needed.
-  const imgW   = width > 0 ? (SUMMIT_SVG_X / VB_W) * width / RIDGE_SPAN_FRAC : 0;
-  const imgH   = imgW * (IMG_H / IMG_W);                       // natural aspect ratio
-  const height = imgH > 0
-    ? imgH * (1 - IMG_PEAK_ROW / IMG_H) / (1 - SUMMIT_SVG_Y / VB_H)
-    : 0;
-  const imgLeft = -(IMG_RIDGE_COL / IMG_W) * imgW;             // ridge aligns with x=0
-  const imgTop  = (SUMMIT_SVG_Y / VB_H) * height - (IMG_PEAK_ROW / IMG_H) * imgH;
+  // ── Image layout — left + bottom aligned with SVG viewBox ────────────────
+  // The PNG and SVG share the same coordinate space (both authored together).
+  // Scale both by W/VB_W; position the PNG at left=0, bottom=0 (bottom-aligned).
+  // No pixel analysis needed — alignment is guaranteed by the artwork design.
+  const scale  = width > 0 ? width / VB_W : 0;
+  const imgW   = PNG_W * scale;               // 406/380 × W  — slightly wider than card
+  const imgH   = PNG_H * scale;               // 366/380 × W
+  const height = VB_H * scale;               // 344/380 × W  — component height
+  const imgLeft = 0;
+  const imgTop  = height - imgH;             // bottom-aligned (slightly negative)
 
   const progressSv = useSharedValue(0);
   const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });

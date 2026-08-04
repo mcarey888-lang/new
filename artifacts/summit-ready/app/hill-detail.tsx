@@ -1,4 +1,4 @@
-import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle } from "lucide-react-native";
+import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle, Play } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -61,7 +61,7 @@ import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch,
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { name, location, lat, lng, elevation, distance, grade, surface, emoji } =
+  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -72,7 +72,10 @@ export default function HillDetailScreen() {
       grade?: string;
       surface?: string;
       emoji?: string;
+      expeditionMode?: string;
     }>();
+
+  const isExpeditionMode = expeditionMode === "true";
 
   const [detail, setDetail] = useState<HillDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -171,7 +174,11 @@ export default function HillDetailScreen() {
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 60 : insets.bottom + 40 }}
+        contentContainerStyle={{
+          paddingBottom: isExpeditionMode
+            ? (Platform.OS === "web" ? 120 : insets.bottom + 110)
+            : (Platform.OS === "web" ? 60  : insets.bottom + 40),
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero image */}
@@ -464,6 +471,29 @@ export default function HillDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Expedition mode — sticky Start Stage CTA ── */}
+      {isExpeditionMode && (
+        <View style={[styles.expeditionCtaBar, { paddingBottom: Platform.OS === "web" ? 20 : insets.bottom + 8 }]}>
+          <TouchableOpacity
+            style={styles.expeditionStartBtn}
+            activeOpacity={0.85}
+            onPress={() =>
+              router.push({ pathname: "/hike-tracking" as any, params: { hillName: name } })
+            }
+          >
+            <LinearGradient
+              colors={[T.green, "#2AB860"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.expeditionStartGrad}
+            >
+              <Play size={16} color="#fff" fill="#fff" />
+              <Text style={styles.expeditionStartText}>Start Stage</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Edit start point sheet ── */}
       <Modal
@@ -944,5 +974,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: T.textMuted,
+  },
+
+  // ── Expedition mode sticky CTA ─────────────────────────────────────────────
+  expeditionCtaBar: {
+    position:        "absolute",
+    bottom:          0,
+    left:            0,
+    right:           0,
+    paddingHorizontal: 18,
+    paddingTop:      12,
+    backgroundColor: T.bg,
+    borderTopWidth:  1,
+    borderTopColor:  T.border,
+  },
+  expeditionStartBtn: {
+    borderRadius:  16,
+    overflow:      "hidden",
+  },
+  expeditionStartGrad: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    justifyContent: "center",
+    gap:             10,
+    paddingVertical: 16,
+    borderRadius:    16,
+  },
+  expeditionStartText: {
+    fontSize:   17,
+    fontFamily: "Inter_700Bold",
+    color:      "#fff",
+    letterSpacing: 0.2,
   },
 });

@@ -1,51 +1,51 @@
 ---
 name: ExpeditionMountainProgress component
-description: Production expedition centrepiece — MountainProgress SVG route + analytically derived image positioning.
+description: Production expedition centrepiece — MountainProgress SVG route + image positioning.
 ---
 
-## Image positioning — analytical approach
+## Image positioning — left + bottom aligned (current approach)
 
-The mountain image (mountain-bg.png, 860×800) is positioned by **pure maths from pixel analysis**, not manual scaling. Never adjust the height multiplier or offset by eye — recalculate instead.
+The mountain PNG (`mountain-bg.png`, 406×366) and the route SVG (`master-route.svg`, viewBox "0 0 380 344") were **authored together** at the same coordinate scale. No pixel analysis is needed. Simply scale both by `W/380` and align left+bottom.
 
-### Key constants (from `identify` + Python brightness scan)
-```
-IMG_W = 860, IMG_H = 800
-IMG_RIDGE_COL  = 171   // leftmost visible ridge column
-IMG_PEAK_COL   = 717   // summit column
-IMG_PEAK_ROW   = 253   // summit row
-RIDGE_SPAN_FRAC = (717 - 171) / 860 = 0.6349
-```
-
-### SVG path endpoint (must stay in sync with ROUTE_PATH + SEGS)
-```
-SUMMIT_SVG_X = 262
-SUMMIT_SVG_Y = 85
-```
-
-### Derived transform (given component `width` in px)
 ```js
-imgW   = (SUMMIT_SVG_X / VB_W) * width / RIDGE_SPAN_FRAC   // 1.1463 × width
-imgH   = imgW * (IMG_H / IMG_W)                             // natural aspect ratio
-height = imgH * (1 - IMG_PEAK_ROW/IMG_H) / (1 - SUMMIT_SVG_Y/VB_H)  // ≈ 1.064 × width
-imgLeft = -(IMG_RIDGE_COL / IMG_W) * imgW                  // ≈ -0.228 × width
-imgTop  = (SUMMIT_SVG_Y/VB_H)*height - (IMG_PEAK_ROW/IMG_H)*imgH    // ≈ 0
+const VB_W = 380;   // SVG viewBox width
+const VB_H = 344;   // SVG viewBox height
+const PNG_W = 406;  // mountain-bg.png natural width
+const PNG_H = 366;  // mountain-bg.png natural height
+
+const scale  = width / VB_W;          // 1 SVG unit → this many px
+const imgW   = PNG_W * scale;          // 406/380 × W — slightly wider (right clipped)
+const imgH   = PNG_H * scale;          // 366/380 × W — slightly taller (top clipped)
+const height = VB_H * scale;           // component height = 344/380 × W
+const imgLeft = 0;
+const imgTop  = height - imgH;         // bottom-aligned (slightly negative)
 ```
 
-**Why:** This guarantees (a) ridge left aligns with x=0, (b) the summit pixel aligns exactly with the SVG path endpoint (262,85), and (c) the mountain base fills the component bottom. No guesswork.
+**Why:** The PNG extends 26px right and 22px above the SVG viewBox at the same scale. Left+bottom alignment is exact because both files share a coordinate origin.
 
-## Route path rules
+**How to apply:** If the PNG or SVG ever changes, update `PNG_W/PNG_H/VB_W/VB_H` to match the new file dimensions. No pixel analysis needed.
 
-- **ROUTE_PATH** (in `MountainProgress.tsx`) and **SEGS** (in `mountainPath.ts`) must be kept identical — visual path and arc-length lookup table.
-- Path endpoint: (262, 85) — the actual mountain summit at 83.4% across, 31.6% down in the image.
-- Path starts at M-10,268 (horizontal lead-in, clipped by overflow:hidden).
+## Route path
+
+- ROUTE_PATH copied verbatim from `master-route.svg` (viewBox "0 0 380 344")
+- Path: M2 342 → … → 378 2 (bottom-left to top-right, 27 segments)
+- `mountainPath.ts` SEGS must be kept in sync with ROUTE_PATH
+
+## SVG aspect ratio
+
+With `height = VB_H * scale = VB_H * (width/VB_W)`, the SVG pixel scale is **uniform** (same px/unit in x and y). No distortion. Component is 380×344 ratio ≈ 1.105:1 (slightly wider than tall).
 
 ## Stage markers
 
-Numbered circles only (no SVG text labels on mountain). Leader lines use dashes for upcoming stages. Completed stages show ✓. Summit badge is a planted flag at `getPointAtFraction(1.0)`.
+Numbered circles only (no SVG text labels on mountain). Summit badge at `getPointAtFraction(1.0)` = (378, 2) — flag hangs **downward** (poleBot = py + 9) since summit is near top of viewBox.
+
+## Y-axis labels
+
+Label positions derived from `getPointAtFraction(t).y / VB_H` for t = 0, 0.33, 0.66, 1.0. This makes them span the full mountain height (summit to base). Implemented in `ExpeditionMountainProgress.tsx`.
 
 ## What NOT to do
 
-- Do not hardcode a height multiplier (e.g. `1.3×`, `1.9×`). Use the analytical formula.
-- Do not manually adjust `imgLeft` or `imgTop`. They are mathematically derived.
+- Do not hardcode a height multiplier. Use `height = VB_H * scale`.
+- Do not pixel-analyse the PNG. The files were authored to align.
 - Do not attempt web preview — Reanimated + SVG is native only.
-- Do not re-run the pixel analysis without updating ALL five constants consistently.
+- Do not re-use the old RIDGE_SPAN_FRAC / IMG_PEAK_COL approach — it's been removed.
