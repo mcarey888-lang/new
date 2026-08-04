@@ -158,10 +158,12 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
-  // [DEV] CINEMATIC PROTOTYPE — remove these three lines to clean up
+  // DEV ONLY — remove these five lines to clean up
   const [cinematicActive, setCinematicActive] = useState(false);
-  const scrollRef    = useRef<import("react-native").ScrollView>(null);
-  const mountainRef  = useRef<import("react-native").View>(null);
+  const [devZoomScale,    setDevZoomScale]    = useState<number | undefined>(undefined);
+  const scrollRef   = useRef<import("react-native").ScrollView>(null);
+  const mountainRef = useRef<import("react-native").View>(null);
+  // END DEV ONLY
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -585,27 +587,48 @@ export default function BaseCampScreen() {
   const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
 
   return (
-    // [DEV] CINEMATIC PROTOTYPE — remove CinematicPrototype wrapper + next two state lines to clean up
+    // DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up
     <CinematicPrototype
       active={cinematicActive}
       mountainRef={mountainRef}
-      onComplete={() => setCinematicActive(false)}
+      onCinematicReady={() => { /* future: begin Higgsfield playback here */ }}
+      onDismiss={() => setCinematicActive(false)}
+      devZoomScale={devZoomScale}
     >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
 
-      {/* [DEV] CINEMATIC TRIGGER BUTTON — remove this block to clean up */}
+      {/* DEV ONLY — remove this entire block to clean up */}
       {__DEV__ && !cinematicActive && (
-        <TouchableOpacity
-          style={[s.devCinemaBtn, { top: insets.top + 8 }]}
-          onPress={() => {
-            scrollRef.current?.scrollTo({ y: 0, animated: false });
-            setTimeout(() => setCinematicActive(true), 100);
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
-        </TouchableOpacity>
+        <View style={[s.devCinemaPanel, { top: insets.top + 8 }]}>
+          {/* Zoom scale picker */}
+          <View style={s.devZoomRow}>
+            {([undefined, 3, 4, 5, 6] as const).map((v) => (
+              <TouchableOpacity
+                key={String(v)}
+                style={[s.devZoomBtn, devZoomScale === v && s.devZoomBtnActive]}
+                onPress={() => setDevZoomScale(v)}
+                activeOpacity={0.75}
+              >
+                <Text style={[s.devZoomBtnText, devZoomScale === v && s.devZoomBtnTextActive]}>
+                  {v === undefined ? "auto" : `${v}×`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Trigger */}
+          <TouchableOpacity
+            style={s.devCinemaBtn}
+            onPress={() => {
+              scrollRef.current?.scrollTo({ y: 0, animated: false });
+              setTimeout(() => setCinematicActive(true), 100);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
+          </TouchableOpacity>
+        </View>
       )}
+      {/* END DEV ONLY */}
 
       <ScrollView
         ref={scrollRef}
@@ -1203,15 +1226,46 @@ const s = StyleSheet.create({
     fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff",
   },
 
-  // [DEV] CINEMATIC PROTOTYPE — remove these two style entries to clean up
-  devCinemaBtn: {
+  // DEV ONLY — remove these style entries to clean up
+  devCinemaPanel: {
     position: "absolute",
-    right: 14,
+    right: 12,
     zIndex: 9999,
+    alignItems: "flex-end",
+    gap: 6,
+  },
+  devZoomRow: {
+    flexDirection: "row",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 10,
+    padding: 5,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  devZoomBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  devZoomBtnActive: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  devZoomBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.5)",
+  },
+  devZoomBtnTextActive: {
+    color: "#fff",
+  },
+  devCinemaBtn: {
     backgroundColor: "rgba(0,0,0,0.75)",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
   devCinemaBtnText: {
     fontSize: 13,
@@ -1219,4 +1273,5 @@ const s = StyleSheet.create({
     color: "#fff",
     letterSpacing: 0.2,
   },
+  // END DEV ONLY
 });
