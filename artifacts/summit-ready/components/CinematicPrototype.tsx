@@ -333,8 +333,9 @@ function DebugCross({
 
 const styles = StyleSheet.create({
   root: {
-    flex:     1,
-    overflow: "hidden", // clips zoomed content to screen bounds
+    flex:            1,
+    overflow:        "hidden", // clips zoomed content to screen bounds
+    backgroundColor: "#000",  // prevents white flash when content shifts during zoom
   },
   content: {
     flex: 1,
