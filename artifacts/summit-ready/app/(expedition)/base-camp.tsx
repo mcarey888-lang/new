@@ -12,7 +12,7 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -25,6 +25,8 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
+// [DEV] CINEMATIC PROTOTYPE — remove this import to clean up
+import { CinematicPrototype } from "@/components/CinematicPrototype";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 
@@ -156,6 +158,10 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
+  // [DEV] CINEMATIC PROTOTYPE — remove these three lines to clean up
+  const [cinematicActive, setCinematicActive] = useState(false);
+  const scrollRef    = useRef<import("react-native").ScrollView>(null);
+  const mountainRef  = useRef<import("react-native").View>(null);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -579,8 +585,30 @@ export default function BaseCampScreen() {
   const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
 
   return (
+    // [DEV] CINEMATIC PROTOTYPE — remove CinematicPrototype wrapper + next two state lines to clean up
+    <CinematicPrototype
+      active={cinematicActive}
+      mountainRef={mountainRef}
+      onComplete={() => setCinematicActive(false)}
+    >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+
+      {/* [DEV] CINEMATIC TRIGGER BUTTON — remove this block to clean up */}
+      {__DEV__ && !cinematicActive && (
+        <TouchableOpacity
+          style={[s.devCinemaBtn, { top: insets.top + 8 }]}
+          onPress={() => {
+            scrollRef.current?.scrollTo({ y: 0, animated: false });
+            setTimeout(() => setCinematicActive(true), 100);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
+        </TouchableOpacity>
+      )}
+
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
       >
@@ -695,6 +723,8 @@ export default function BaseCampScreen() {
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
+          {/* [DEV] mountainRef wrapper — remove View + ref + collapsable to clean up */}
+          <View ref={mountainRef} collapsable={false}>
           <ExpeditionMountainProgress
             targetElevation={totalGoal}
             currentElevation={totalTrained}
@@ -733,6 +763,7 @@ export default function BaseCampScreen() {
               }
             }}
           />
+          </View>{/* [DEV] close mountainRef wrapper */}
         </Animated.View>
 
         {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}
@@ -916,6 +947,7 @@ export default function BaseCampScreen() {
       </Modal>
 
     </LinearGradient>
+    </CinematicPrototype>
   );
 }
 
@@ -1169,5 +1201,22 @@ const s = StyleSheet.create({
   },
   pickerStartText: {
     fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff",
+  },
+
+  // [DEV] CINEMATIC PROTOTYPE — remove these two style entries to clean up
+  devCinemaBtn: {
+    position: "absolute",
+    right: 14,
+    zIndex: 9999,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  devCinemaBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 0.2,
   },
 });
