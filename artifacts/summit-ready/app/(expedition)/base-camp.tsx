@@ -196,19 +196,31 @@ export default function BaseCampScreen() {
     await new Promise<void>(r => setTimeout(r, 200));
 
     try {
-      const uri = await captureViewShot(cinematicRootRef, {
-        format: "png",
-        quality: 1,
-        result: "tmpfile",
-      });
-
       const canShare = await Sharing.isAvailableAsync();
+
       if (canShare) {
+        // Native device — capture to tmp file then share sheet
+        const uri = await captureViewShot(cinematicRootRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
         await Sharing.shareAsync(uri, {
           mimeType: "image/png",
           dialogTitle: "Handoff Frame — Higgsfield",
           UTI: "public.png",
         });
+      } else {
+        // Web — capture as base64 data URL and trigger browser download
+        const dataUrl = await captureViewShot(cinematicRootRef, {
+          format: "png",
+          quality: 1,
+          result: "base64",
+        });
+        const a = document.createElement("a");
+        a.href = `data:image/png;base64,${dataUrl}`;
+        a.download = "higgsfield-handoff-frame.png";
+        a.click();
       }
     } catch (e) {
       console.warn("[Capture] Failed:", e);
