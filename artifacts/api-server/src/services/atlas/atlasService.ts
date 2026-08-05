@@ -296,6 +296,22 @@ export async function bulkGenerateAtlasAssets(
   force = false,
   provider: ImageProvider = defaultImageProvider,
 ): Promise<AtlasBulkResult> {
+  // When scoped to a brand, auto-create a default asset record for any asset
+  // type that doesn't already have one — so "Generate All" always covers every
+  // type, not just the ones the user has manually created so far.
+  if (brandId !== null) {
+    const [allTypes, existingAssets] = await Promise.all([
+      db.select({ id: atlasAssetTypes.id }).from(atlasAssetTypes).where(eq(atlasAssetTypes.active, true)),
+      db.select({ assetTypeId: atlasAssets.assetTypeId }).from(atlasAssets)
+        .where(and(eq(atlasAssets.brandId, brandId), eq(atlasAssets.archived, false))),
+    ]);
+    const existingTypeIds = new Set(existingAssets.map(a => a.assetTypeId));
+    const missingTypes = allTypes.filter(t => !existingTypeIds.has(t.id));
+    if (missingTypes.length > 0) {
+      await Promise.all(missingTypes.map(t => createAtlasAsset(brandId, t.id, {})));
+    }
+  }
+
   const query = db
     .select({ assetId: atlasAssets.assetId })
     .from(atlasAssets);
