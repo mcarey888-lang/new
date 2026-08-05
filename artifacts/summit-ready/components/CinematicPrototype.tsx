@@ -263,20 +263,6 @@ export function CinematicPrototype({
         {children}
       </Animated.View>
 
-      {/* ── DEV ONLY: anchor debug cross ────────────────────────────────────
-          GREEN cross shows the summit anchor in screen coords.
-          The camera zooms around this exact point — it stays fixed.
-          Remove this block when anchor values are finalised.           */}
-      {__DEV__ && devDebugInfo && !hideDevOverlays && (
-        <DebugCross
-          x={devDebugInfo.anchorX}
-          y={devDebugInfo.anchorY}
-          color="#3ECF75"
-          label="ANCHOR"
-        />
-      )}
-      {/* END DEV ONLY */}
-
       {/* ── DEV ONLY: handoff frame restore button ───────────────────────────
           Placeholder for Higgsfield cinematic + completion overlay.
           Remove this block when those are implemented.               */}
