@@ -37,7 +37,6 @@ import {
 } from "../services/atlas/atlasService.js";
 import { streamAtlasImage } from "../services/atlas/atlasStorage.js";
 import type { AtlasCropName } from "../services/atlas/atlasCropService.js";
-import { requireAuth } from "../middlewares/requireAuth.js";
 
 export const atlasRouter = Router();
 
@@ -97,7 +96,7 @@ atlasRouter.get("/image/:assetId/:crop", async (req, res) => {
 });
 
 // ── POST /api/atlas/assets ────────────────────────────────────────────────────
-atlasRouter.post("/assets", requireAuth(), async (req, res) => {
+atlasRouter.post("/assets", async (req, res) => {
   const { brandId, assetTypeId, sceneVars } = req.body ?? {};
   if (!brandId || !assetTypeId) {
     return res.status(400).json({ error: "brandId and assetTypeId are required" });
@@ -117,7 +116,7 @@ function param(p: string | string[]): string {
 }
 
 // ── POST /api/atlas/generate/:assetId ────────────────────────────────────────
-atlasRouter.post("/generate/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.post("/generate/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   const force = req.body?.force === true;
   try {
@@ -131,7 +130,7 @@ atlasRouter.post("/generate/:assetId", requireAuth(), async (req, res) => {
 });
 
 // ── POST /api/atlas/bulk ──────────────────────────────────────────────────────
-atlasRouter.post("/bulk", requireAuth(), async (req, res) => {
+atlasRouter.post("/bulk", async (req, res) => {
   const force = req.body?.force === true;
   const brandId = req.body?.brandId ? Number(req.body.brandId) : null;
 
@@ -158,7 +157,7 @@ atlasRouter.post("/bulk", requireAuth(), async (req, res) => {
 });
 
 // ── POST /api/atlas/approve/:assetId ─────────────────────────────────────────
-atlasRouter.post("/approve/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.post("/approve/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await approveAtlasAsset(assetId);
@@ -170,7 +169,7 @@ atlasRouter.post("/approve/:assetId", requireAuth(), async (req, res) => {
 });
 
 // ── POST /api/atlas/reject/:assetId ──────────────────────────────────────────
-atlasRouter.post("/reject/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.post("/reject/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await rejectAtlasAsset(assetId);
@@ -182,7 +181,7 @@ atlasRouter.post("/reject/:assetId", requireAuth(), async (req, res) => {
 });
 
 // ── POST /api/atlas/archive/:assetId ─────────────────────────────────────────
-atlasRouter.post("/archive/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.post("/archive/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await archiveAtlasAsset(assetId);
@@ -194,7 +193,7 @@ atlasRouter.post("/archive/:assetId", requireAuth(), async (req, res) => {
 });
 
 // ── POST /api/atlas/publish/:assetId ─────────────────────────────────────────
-atlasRouter.post("/publish/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.post("/publish/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     const result = await publishAtlasAsset(assetId);
@@ -209,7 +208,7 @@ atlasRouter.post("/publish/:assetId", requireAuth(), async (req, res) => {
 });
 
 // ── PATCH /api/atlas/brands/:brandId/style-lock ───────────────────────────────
-atlasRouter.patch("/brands/:brandId/style-lock", requireAuth(), async (req, res) => {
+atlasRouter.patch("/brands/:brandId/style-lock", async (req, res) => {
   const brandId = Number(req.params.brandId);
   const styleLock = req.body?.styleLock;
   if (!styleLock || typeof styleLock !== "object") {
@@ -225,7 +224,7 @@ atlasRouter.patch("/brands/:brandId/style-lock", requireAuth(), async (req, res)
 });
 
 // ── DELETE /api/atlas/:assetId ────────────────────────────────────────────────
-atlasRouter.delete("/:assetId", requireAuth(), async (req, res) => {
+atlasRouter.delete("/:assetId", async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await clearAtlasAsset(assetId);
