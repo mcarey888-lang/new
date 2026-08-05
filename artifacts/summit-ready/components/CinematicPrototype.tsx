@@ -98,6 +98,16 @@ interface CinematicPrototypeProps {
   // DEV ONLY ────────────────────────────────────────────────────────────────
   /** Override scale (3–6). When undefined, auto-fills the card to screen height. */
   devZoomScale?: number;
+  /**
+   * When true, all developer overlays (debug cross, handoff bar) are hidden.
+   * Used by the "Capture Handoff Frame" action to produce a clean screenshot.
+   */
+  hideDevOverlays?: boolean;
+  /**
+   * Ref forwarded to the root View — used by react-native-view-shot to capture
+   * the handoff frame without browser chrome or developer controls.
+   */
+  captureViewRef?: React.RefObject<View | null>;
   // END DEV ONLY ─────────────────────────────────────────────────────────────
 
   children: React.ReactNode;
@@ -111,6 +121,8 @@ export function CinematicPrototype({
   onCinematicReady,
   onDismiss,
   devZoomScale,
+  hideDevOverlays = false,
+  captureViewRef,
   children,
 }: CinematicPrototypeProps) {
   const { width, height } = useWindowDimensions();
@@ -243,7 +255,7 @@ export function CinematicPrototype({
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} ref={captureViewRef}>
       <Animated.View
         style={[styles.content, contentStyle]}
         pointerEvents={active ? "none" : "box-none"}
@@ -255,7 +267,7 @@ export function CinematicPrototype({
           GREEN cross shows the summit anchor in screen coords.
           The camera zooms around this exact point — it stays fixed.
           Remove this block when anchor values are finalised.           */}
-      {__DEV__ && devDebugInfo && (
+      {__DEV__ && devDebugInfo && !hideDevOverlays && (
         <DebugCross
           x={devDebugInfo.anchorX}
           y={devDebugInfo.anchorY}
@@ -268,7 +280,7 @@ export function CinematicPrototype({
       {/* ── DEV ONLY: handoff frame restore button ───────────────────────────
           Placeholder for Higgsfield cinematic + completion overlay.
           Remove this block when those are implemented.               */}
-      {__DEV__ && devRestoreVisible && (
+      {__DEV__ && devRestoreVisible && !hideDevOverlays && (
         <View style={styles.devRestoreBar} pointerEvents="box-none">
           <View style={styles.devRestoreContent}>
             <Text style={styles.devRestoreLabel}>

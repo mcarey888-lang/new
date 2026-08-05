@@ -12,7 +12,9 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as Sharing from "expo-sharing";
+import { captureRef as captureViewShot } from "react-native-view-shot";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -158,13 +160,63 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
-  // DEV ONLY — remove these six lines to clean up
-  const [cinematicActive,       setCinematicActive]       = useState(false);
-  const [devZoomScale,          setDevZoomScale]          = useState<number | undefined>(undefined);
+  // DEV ONLY — remove these lines to clean up
+  const [cinematicActive,        setCinematicActive]        = useState(false);
+  const [devZoomScale,           setDevZoomScale]           = useState<number | undefined>(undefined);
   const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
-  const scrollRef   = useRef<import("react-native").ScrollView>(null);
-  const mountainRef = useRef<import("react-native").View>(null);
+  const [isCapturing,            setIsCapturing]            = useState(false);
+  const scrollRef        = useRef<import("react-native").ScrollView>(null);
+  const mountainRef      = useRef<import("react-native").View>(null);
+  const cinematicRootRef = useRef<import("react-native").View>(null);
+  const isCapturingRef   = useRef(false); // stable ref for onCinematicReady closure
   // END DEV ONLY
+
+  // DEV ONLY — Capture the handoff frame as a clean PNG for Higgsfield.
+  const captureHandoffFrame = useCallback(async () => {
+    // 1. Mark capturing — hides dev overlays, suppresses dev panel
+    isCapturingRef.current = true;
+    setIsCapturing(true);
+
+    // 2. Reset scroll & wait one frame before triggering cinematic
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    await new Promise<void>(r => setTimeout(r, 100));
+
+    // 3. Start cinematic — line draws to 95%, zoom holds at handoff frame
+    setCinematicReplayTrigger(t => t + 1);
+    setCinematicActive(true);
+
+    // onCinematicReady (below) handles the actual capture once zoom settles
+  }, []);
+
+  // Called by CinematicPrototype once zoom reaches the handoff position
+  const handleCinematicReady = useCallback(async () => {
+    if (!isCapturingRef.current) return;
+
+    // 200 ms grace period for all GPU compositing to settle
+    await new Promise<void>(r => setTimeout(r, 200));
+
+    try {
+      const uri = await captureViewShot(cinematicRootRef, {
+        format: "png",
+        quality: 1,
+        result: "tmpfile",
+      });
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Handoff Frame — Higgsfield",
+          UTI: "public.png",
+        });
+      }
+    } catch (e) {
+      console.warn("[Capture] Failed:", e);
+    } finally {
+      isCapturingRef.current = false;
+      setIsCapturing(false);
+    }
+  }, []);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -605,9 +657,11 @@ export default function BaseCampScreen() {
     <CinematicPrototype
       active={cinematicActive}
       mountainRef={mountainRef}
-      onCinematicReady={() => { /* future: begin Higgsfield playback here */ }}
-      onDismiss={() => setCinematicActive(false)}
+      onCinematicReady={handleCinematicReady}
+      onDismiss={() => { setCinematicActive(false); setIsCapturing(false); isCapturingRef.current = false; }}
       devZoomScale={devZoomScale}
+      hideDevOverlays={isCapturing}
+      captureViewRef={cinematicRootRef}
     >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
 
@@ -629,19 +683,27 @@ export default function BaseCampScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {/* Trigger */}
+          {/* Cinematic trigger */}
           <TouchableOpacity
             style={s.devCinemaBtn}
             onPress={() => {
               scrollRef.current?.scrollTo({ y: 0, animated: false });
               setTimeout(() => {
-                setCinematicReplayTrigger(t => t + 1); // DEV: replay route draw
+                setCinematicReplayTrigger(t => t + 1);
                 setCinematicActive(true);
               }, 100);
             }}
             activeOpacity={0.8}
           >
             <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
+          </TouchableOpacity>
+          {/* Capture handoff frame */}
+          <TouchableOpacity
+            style={[s.devCinemaBtn, s.devCaptureBtn]}
+            onPress={captureHandoffFrame}
+            activeOpacity={0.8}
+          >
+            <Text style={s.devCinemaBtnText}>📸 Capture Handoff Frame</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1289,6 +1351,11 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: 0.2,
+  },
+  devCaptureBtn: {
+    borderColor: "rgba(62,207,117,0.4)",
+    backgroundColor: "rgba(62,207,117,0.15)",
+    marginTop: 4,
   },
   // END DEV ONLY
 });
