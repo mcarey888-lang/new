@@ -93,6 +93,7 @@ app.use("/api/atlas/bulk",                   aiLimiter);
 // requireAuth() is applied per-router in routes/index.ts for protected routes.
 app.use(clerkMiddleware());
 
+app.use("/api/atlas/upload", express.json({ limit: "50mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
