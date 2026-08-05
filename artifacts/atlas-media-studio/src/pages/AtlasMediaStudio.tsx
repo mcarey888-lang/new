@@ -470,8 +470,16 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
     setUploadError(null);
     setBusy(true);
     try {
-      const buf = await file.arrayBuffer();
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      // Use FileReader to avoid stack overflow when spreading large Uint8Arrays
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          resolve(dataUrl.split(",")[1]);
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
       const r = await fetch(`/api/atlas/upload/${asset.assetId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
