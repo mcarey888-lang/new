@@ -86,6 +86,8 @@ app.use("/api/admin",                        aiLimiter);
 app.use("/api/virtual-expedition",           aiLimiter);
 app.use("/api/artwork/generate",             aiLimiter);
 app.use("/api/artwork/bulk",                 aiLimiter);
+app.use("/api/atlas/generate",               aiLimiter);
+app.use("/api/atlas/bulk",                   aiLimiter);
 
 // ── Clerk auth — parses JWT from Authorization header for all routes ──────────
 // requireAuth() is applied per-router in routes/index.ts for protected routes.

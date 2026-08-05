@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/atlas-media-studio/"
+title = "Atlas Media Studio"
+description = "Internal media management tool for Atlas brands (Alliance Installations, AI Wraps, Vistaluxe, Installa). Generate, review, approve and publish AI-produced brand imagery. Supports brand style profiles, scene variables, style lock, asset library and one-click WebP export."
+version = "1.0.0"
+id = "artifacts/atlas-media-studio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/atlas-media-studio/" ]
+localPort = 19763
+
+[services.development]
+run = "pnpm --filter @workspace/atlas-media-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/atlas-media-studio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/atlas-media-studio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19763"
+BASE_PATH = "/atlas-media-studio/"
