@@ -192,8 +192,10 @@ export function CinematicPrototype({
 
             // ── Scale ───────────────────────────────────────────────────────
             // Auto fills the card height to the screen. Dev picker overrides.
+            // Capped at 0.95 of full zoom — the handoff frame where the
+            // progress line stops and Higgsfield takes over.
             const autoS = (height / cardH) * 0.94;
-            const S     = devZoomScale ?? autoS;
+            const S     = (devZoomScale ?? autoS) * 0.95;
 
             // ── Translations ────────────────────────────────────────────────
             // X — right-edge-fixed: the right side of the content stays pinned
