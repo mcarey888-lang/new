@@ -206,6 +206,57 @@ export async function publishAtlasAsset(assetId: string): Promise<{ ok: boolean;
   return { ok: true };
 }
 
+// ── Import (local upload) ─────────────────────────────────────────────────────
+
+export async function importAtlasAsset(
+  assetId: string,
+  imageBuffer: Buffer,
+): Promise<{ ok: boolean; reason?: string }> {
+  const data = await fetchAssetWithRelations(assetId);
+  if (!data) return { ok: false, reason: "Asset not found" };
+  const { asset, brand, assetType } = data;
+
+  try {
+    const crops = await cropAtlasMasterImage(imageBuffer);
+    const nextVersion = (asset.imageVersion ?? 0) + 1;
+    const stored = await uploadAtlasAsset(brand.slug, assetType.slug, assetId, nextVersion, crops);
+
+    const now = new Date();
+    await db
+      .update(atlasAssets)
+      .set({
+        masterImage:      stored.masterPath,
+        desktopHeroImage: stored.desktopHeroPath,
+        mobileHeroImage:  stored.mobileHeroPath,
+        sectionImage:     stored.sectionPath,
+        cardImage:        stored.cardPath,
+        squareImage:      stored.squarePath,
+        portraitImage:    stored.portraitPath,
+        landscapeImage:   stored.landscapePath,
+        socialImage:      stored.socialPath,
+        imageVersion:     nextVersion,
+        imageStatus:      "generated",
+        approved:         false,
+        generatedAt:      now,
+        lastGenerated:    now,
+        provider:         "upload",
+        generationCost:   null,
+        updatedAt:        now,
+      })
+      .where(eq(atlasAssets.assetId, assetId));
+
+    return { ok: true };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`[atlas] import failed for ${assetId}:`, err);
+    await db
+      .update(atlasAssets)
+      .set({ imageStatus: "failed", updatedAt: new Date() })
+      .where(eq(atlasAssets.assetId, assetId));
+    return { ok: false, reason };
+  }
+}
+
 export async function clearAtlasAsset(assetId: string): Promise<void> {
   await deleteAtlasAsset(assetId);
   await db

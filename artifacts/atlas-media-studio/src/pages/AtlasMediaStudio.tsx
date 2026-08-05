@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import {
   Search, Image as ImageIcon, CheckCircle, XCircle, RotateCw, Trash2,
   ChevronDown, ChevronUp, Download, X, Play, Copy, Loader2, Archive,
-  Globe, Bookmark, Lock, Plus, BookOpen, ChevronRight,
+  Globe, Bookmark, Lock, Plus, BookOpen, ChevronRight, Upload,
 } from "lucide-react";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
@@ -460,9 +460,32 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
   const base = `/api/atlas/image/${asset.assetId}`;
   const hasImages = ["generated","approved","rejected"].includes(asset.imageStatus ?? "");
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); onRefresh(); } finally { setBusy(false); } };
   const post = (path: string) => fetch(`/api/atlas${path}`, { method: "POST" });
+
+  const handleUpload = async (file: File) => {
+    setUploadError(null);
+    setBusy(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const r = await fetch(`/api/atlas/upload/${asset.assetId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: b64, mimeType: file.type }),
+      });
+      const json = await r.json();
+      if (!json.ok) setUploadError(json.reason ?? "Upload failed");
+      else onRefresh();
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const download = async (crop: string) => {
     const r = await fetch(`${base}/${crop}?v=${v}`);
@@ -502,10 +525,10 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
           </div>
         </div>
 
-        {/* Action bar */}
-        {hasImages && (
-          <div className="px-6 py-3 border-b border-border bg-card/50 flex items-center gap-2 flex-wrap">
-            {busy && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+        {/* Action bar — always visible */}
+        <div className="px-6 py-3 border-b border-border bg-card/50 flex items-center gap-2 flex-wrap">
+          {busy && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+          {hasImages && <>
             {asset.imageStatus !== "approved" && (
               <button disabled={busy} onClick={() => act(() => post(`/approve/${asset.assetId}`).then(() => {}))}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-green-500/30 text-green-500 hover:bg-green-500/10 disabled:opacity-40">
@@ -532,15 +555,28 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
                 <Globe className="w-3.5 h-3.5" /> {asset.published ? "Published" : "Publish"}
               </button>
             )}
-          </div>
-        )}
+          </>}
+          {/* Upload from local computer — always available */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+          />
+          <button disabled={busy} onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-40 ml-auto">
+            <Upload className="w-3.5 h-3.5" /> Upload Image
+          </button>
+          {uploadError && <span className="text-xs text-red-500 w-full mt-1">{uploadError}</span>}
+        </div>
 
         {/* Crops */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 bg-card">
           {!hasImages ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
               <ImageIcon className="w-12 h-12 opacity-20" />
-              <p>No artwork generated yet.</p>
+              <p>No artwork yet — generate or upload an image above.</p>
             </div>
           ) : (
             <>

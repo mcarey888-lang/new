@@ -16,6 +16,7 @@
  *   POST   /api/atlas/reject/:assetId            — reject
  *   POST   /api/atlas/archive/:assetId           — archive (soft delete)
  *   POST   /api/atlas/publish/:assetId           — publish
+ *   POST   /api/atlas/upload/:assetId             — import local image (base64 JSON)
  *   PATCH  /api/atlas/brands/:brandId/style-lock — update brand style lock
  *   DELETE /api/atlas/:assetId                   — clear asset + storage
  */
@@ -34,6 +35,7 @@ import {
   getAllAssetTypes,
   updateStyleLock,
   createAtlasAsset,
+  importAtlasAsset,
 } from "../services/atlas/atlasService.js";
 import { streamAtlasImage } from "../services/atlas/atlasStorage.js";
 import type { AtlasCropName } from "../services/atlas/atlasCropService.js";
@@ -126,6 +128,23 @@ atlasRouter.post("/generate/:assetId", async (req, res) => {
   } catch (err) {
     console.error(`[atlas/generate] ${assetId}`, err);
     return res.status(500).json({ assetId, status: "failed", reason: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// ── POST /api/atlas/upload/:assetId ──────────────────────────────────────────
+atlasRouter.post("/upload/:assetId", async (req, res) => {
+  const assetId = param(req.params.assetId);
+  const { data, mimeType } = req.body ?? {};
+  if (!data || typeof data !== "string") {
+    return res.status(400).json({ error: "Missing base64 image data" });
+  }
+  try {
+    const buffer = Buffer.from(data, "base64");
+    const result = await importAtlasAsset(assetId, buffer);
+    return res.status(result.ok ? 200 : 500).json(result);
+  } catch (err) {
+    console.error(`[atlas/upload] ${assetId}`, err);
+    return res.status(500).json({ ok: false, reason: err instanceof Error ? err.message : "Upload failed" });
   }
 });
 
