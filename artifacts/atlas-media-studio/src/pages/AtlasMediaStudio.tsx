@@ -163,9 +163,11 @@ export default function AtlasMediaStudio() {
           <button onClick={() => setShowNewAsset(true)} className="flex items-center gap-2 px-3 py-2 text-sm rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
             <Plus className="w-4 h-4" /> New Asset
           </button>
-          <button onClick={startBulkGeneration} disabled={isBulkGenerating} className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-colors font-medium">
-            <Play className="w-4 h-4" /> Generate All
-          </button>
+          {selectedBrand && (
+            <button onClick={startBulkGeneration} disabled={isBulkGenerating} className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-colors font-medium">
+              <Play className="w-4 h-4" /> Generate All — {selectedBrand.name}
+            </button>
+          )}
         </div>
       </header>
 
