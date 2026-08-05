@@ -56,80 +56,30 @@ async function webp(buf: Buffer, quality = 88): Promise<Buffer> {
 }
 
 export async function cropAtlasMasterImage(masterBuffer: Buffer): Promise<AtlasImageCrops> {
-  // Decode once for reuse
-  const img = sharp(masterBuffer);
-  const meta = await img.metadata();
-  const W = meta.width  ?? MASTER_W;
-  const H = meta.height ?? MASTER_H;
+  // All crops use sharp's native fit:"cover" + gravity:"centre" so they work
+  // correctly regardless of the input image dimensions (the AI doesn't always
+  // return the expected 1536×1024 — manual resize+extract math can produce
+  // out-of-bounds coordinates and throw "bad extract area" errors).
 
-  // ── Desktop Hero: 16:9 → 1920×1080 ───────────────────────────────────────
-  // Resize width to 1920 first (upscale), then centre-crop to 1080h
-  const desktopHero = await sharp(masterBuffer)
-    .resize(1920, null, { fit: "outside", kernel: "lanczos3" })
-    .extract({ left: 0, top: ct(Math.round(H * (1920 / W)), 1080), width: 1920, height: 1080 })
-    .webp({ quality: 90 })
-    .toBuffer();
+  const cover = (w: number, h: number, quality = 88) =>
+    sharp(masterBuffer)
+      .resize(w, h, { fit: "cover", position: "centre", kernel: "lanczos3" })
+      .webp({ quality })
+      .toBuffer();
 
-  // ── Mobile Hero: 390×844 ─────────────────────────────────────────────────
-  const mobileHero = await sharp(masterBuffer)
-    .resize(390, null, { fit: "outside", kernel: "lanczos3" })
-    .extract({ left: 0, top: ct(Math.round(H * (390 / W)), 844), width: 390, height: 844 })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Section Banner: 1440×600 ──────────────────────────────────────────────
-  const section = await sharp(masterBuffer)
-    .resize(1440, null, { fit: "outside", kernel: "lanczos3" })
-    .extract({ left: 0, top: ct(Math.round(H * (1440 / W)), 600), width: 1440, height: 600 })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Card: 400×500 (4:5) ───────────────────────────────────────────────────
-  const cardW = Math.min(W, Math.round(H * (4 / 5)));  // 819 from master
-  const card = await sharp(masterBuffer)
-    .extract({ left: cl(W, cardW), top: 0, width: cardW, height: H })
-    .resize(400, 500, { fit: "cover", kernel: "lanczos3" })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Square: 1080×1080 ─────────────────────────────────────────────────────
-  const sqSide = Math.min(W, H);
-  const square = await sharp(masterBuffer)
-    .extract({ left: cl(W, sqSide), top: ct(H, sqSide), width: sqSide, height: sqSide })
-    .resize(1080, 1080, { fit: "cover", kernel: "lanczos3" })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Portrait: 1080×1350 (4:5 tall) ───────────────────────────────────────
-  const portW = Math.min(W, Math.round(H * (1080 / 1350)));
-  const portrait = await sharp(masterBuffer)
-    .extract({ left: cl(W, portW), top: 0, width: portW, height: H })
-    .resize(1080, 1350, { fit: "cover", kernel: "lanczos3" })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Landscape: 1920×1080 (slightly lower focal point — more ground) ───────
-  const landscape = await sharp(masterBuffer)
-    .resize(1920, null, { fit: "outside", kernel: "lanczos3" })
-    .extract({
-      left: 0,
-      top: Math.max(0, ct(Math.round(H * (1920 / W)), 1080) + 40), // shift down 40px
-      width: 1920,
-      height: 1080,
-    })
-    .webp({ quality: 90 })
-    .toBuffer();
-
-  // ── Social: 1080×1080 safe-zone (tighter centre crop) ────────────────────
-  const safeW = Math.min(W, Math.round(H * 0.8));  // 80% of height as width
-  const social = await sharp(masterBuffer)
-    .extract({ left: cl(W, safeW), top: ct(H, safeW), width: safeW, height: safeW })
-    .resize(1080, 1080, { fit: "cover", kernel: "lanczos3" })
-    .webp({ quality: 88 })
-    .toBuffer();
-
-  // ── Master: re-encode as WebP ─────────────────────────────────────────────
-  const master = await webp(masterBuffer, 92);
+  // ── All crops ─────────────────────────────────────────────────────────────
+  const [desktopHero, mobileHero, section, card, square, portrait, landscape, social, master] =
+    await Promise.all([
+      cover(1920, 1080, 90), // Desktop Hero 16:9
+      cover(390,   844, 88), // Mobile Hero  ~9:19
+      cover(1440,  600, 88), // Section Banner 12:5
+      cover(400,   500, 88), // Card 4:5
+      cover(1080, 1080, 88), // Square 1:1
+      cover(1080, 1350, 88), // Portrait 4:5 tall
+      cover(1920, 1080, 90), // Landscape 16:9
+      cover(1080, 1080, 88), // Social 1:1
+      webp(masterBuffer, 92), // Master re-encoded
+    ]);
 
   return {
     master,
