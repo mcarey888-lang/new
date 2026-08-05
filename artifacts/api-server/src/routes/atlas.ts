@@ -17,6 +17,9 @@
  *   POST   /api/atlas/archive/:assetId           — archive (soft delete)
  *   POST   /api/atlas/publish/:assetId           — publish
  *   POST   /api/atlas/upload/:assetId             — import local image (base64 JSON)
+ *   POST   /api/atlas/github/publish             — publish approved assets to GitHub
+ *   GET    /api/atlas/github/queue               — approved assets pending GitHub publish
+ *   GET    /api/atlas/github/status              — GitHub connection + rate-limit status
  *   PATCH  /api/atlas/brands/:brandId/style-lock — update brand style lock
  *   DELETE /api/atlas/:assetId                   — clear asset + storage
  */
@@ -38,6 +41,11 @@ import {
   importAtlasAsset,
 } from "../services/atlas/atlasService.js";
 import { streamAtlasImage } from "../services/atlas/atlasStorage.js";
+import {
+  publishAtlasAssets,
+  getGitHubStatus,
+  getPublishQueue,
+} from "../services/atlas/atlasGitHubService.js";
 import type { AtlasCropName } from "../services/atlas/atlasCropService.js";
 
 export const atlasRouter = Router();
@@ -223,6 +231,53 @@ atlasRouter.post("/publish/:assetId", async (req, res) => {
   } catch (err) {
     console.error(`[atlas/publish] ${assetId}`, err);
     return res.status(500).json({ error: "Failed to publish asset" });
+  }
+});
+
+// ── GET /api/atlas/github/status ─────────────────────────────────────────────
+atlasRouter.get("/github/status", async (_req, res) => {
+  try {
+    const status = await getGitHubStatus();
+    return res.json(status);
+  } catch (err) {
+    return res.status(500).json({ ok: false, reason: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// ── GET /api/atlas/github/queue ───────────────────────────────────────────────
+atlasRouter.get("/github/queue", async (req, res) => {
+  const brandId = req.query.brandId ? Number(req.query.brandId) : undefined;
+  try {
+    const queue = await getPublishQueue(brandId);
+    return res.json({ queue });
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// ── POST /api/atlas/github/publish ────────────────────────────────────────────
+// Body: { assetIds?: string[], brandId?: number }
+// If assetIds is empty/omitted and brandId is set, publishes all approved for that brand.
+atlasRouter.post("/github/publish", async (req, res) => {
+  const assetIds: string[] = req.body?.assetIds ?? [];
+  const brandId: number | undefined = req.body?.brandId ? Number(req.body.brandId) : undefined;
+
+  // SSE so the client can show progress
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    send({ status: "starting", message: "Preparing assets for GitHub publish…" });
+    const result = await publishAtlasAssets(assetIds, brandId);
+    send({ status: "done", result });
+  } catch (err) {
+    send({ status: "error", reason: err instanceof Error ? err.message : "Publish failed" });
+  } finally {
+    res.end();
   }
 });
 

@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import {
   Search, Image as ImageIcon, CheckCircle, XCircle, RotateCw, Trash2,
   ChevronDown, ChevronUp, Download, X, Play, Copy, Loader2, Archive,
-  Globe, Bookmark, Lock, Plus, BookOpen, ChevronRight, Upload,
+  Globe, Bookmark, Lock, Plus, BookOpen, ChevronRight, Upload, Github,
 } from "lucide-react";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
@@ -153,6 +153,11 @@ export default function AtlasMediaStudio() {
           <Link href="/library">
             <button className="flex items-center gap-2 px-3 py-2 text-sm rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
               <BookOpen className="w-4 h-4" /> Asset Library
+            </button>
+          </Link>
+          <Link href="/publish">
+            <button className="flex items-center gap-2 px-3 py-2 text-sm rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              <Github className="w-4 h-4" /> Publish
             </button>
           </Link>
           {selectedBrand && (

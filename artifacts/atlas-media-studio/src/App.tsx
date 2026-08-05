@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import AtlasMediaStudio from './pages/AtlasMediaStudio';
 import AssetLibrary from './pages/AssetLibrary';
+import PublishPanel from './pages/PublishPanel';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ function Router() {
     <Switch>
       <Route path="/" component={AtlasMediaStudio} />
       <Route path="/library" component={AssetLibrary} />
+      <Route path="/publish" component={PublishPanel} />
       <Route component={NotFound} />
     </Switch>
   );

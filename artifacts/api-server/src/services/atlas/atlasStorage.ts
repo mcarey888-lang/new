@@ -114,6 +114,30 @@ export async function deleteAtlasAsset(assetId: string): Promise<void> {
 }
 
 /**
+ * Fetch the latest master image buffer for an asset from GCS.
+ * Used by the GitHub publishing pipeline to obtain the raw image.
+ */
+export async function fetchAtlasImageBuffer(assetId: string): Promise<Buffer> {
+  const bucket = getBucket();
+  const [files] = await bucket.getFiles({ prefix: `atlas-media/` });
+  const versionRe = new RegExp(`/${assetId}/v(\\d+)/master${CROP_EXT.replace(".", "\\.")}$`);
+
+  let bestFile: (typeof files)[0] | null = null;
+  let bestVersion = -1;
+
+  for (const f of files) {
+    const m = versionRe.exec(f.name);
+    if (!m) continue;
+    const v = parseInt(m[1], 10);
+    if (v > bestVersion) { bestVersion = v; bestFile = f; }
+  }
+
+  if (!bestFile) throw new Error(`No master image found for asset ${assetId}`);
+  const [buffer] = await bestFile.download();
+  return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as Uint8Array);
+}
+
+/**
  * Stream a GCS image back through an Express response.
  * Called by GET /api/atlas/image/:assetId/:crop
  */

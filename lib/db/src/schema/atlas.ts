@@ -30,6 +30,8 @@ export const atlasBrands = pgTable("atlas_brands", {
   styleProfile: jsonb("style_profile").$type<Record<string, string[]>>().default({}).notNull(),
   /** JSON blob — per-brand visual DNA captured from approved reference images */
   styleLock:    jsonb("style_lock").$type<Record<string, string>>().default({}).notNull(),
+  /** GitHub destination folder e.g. "apps/alliance-installations/public/images" */
+  githubFolder: text("github_folder"),
   active:       boolean("active").notNull().default(true),
   createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:    timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -39,15 +41,17 @@ export const atlasBrands = pgTable("atlas_brands", {
 // Configurable list of asset types (Hero, Desktop Hero, Social, etc.).
 // cropConfigs stores the set of crop dimensions to generate on approval.
 export const atlasAssetTypes = pgTable("atlas_asset_types", {
-  id:          serial("id").primaryKey(),
-  slug:        text("slug").notNull().unique(),            // e.g. "desktop-hero"
-  name:        text("name").notNull(),                     // e.g. "Desktop Hero"
-  description: text("description"),
+  id:              serial("id").primaryKey(),
+  slug:            text("slug").notNull().unique(),        // e.g. "desktop-hero"
+  name:            text("name").notNull(),                 // e.g. "Desktop Hero"
+  description:     text("description"),
   /** JSON: array of { name, width, height } — crops generated on approval */
-  cropConfigs: jsonb("crop_configs").$type<Array<{ name: string; width: number; height: number }>>().default([]).notNull(),
-  sortOrder:   smallint("sort_order").notNull().default(0),
-  active:      boolean("active").notNull().default(true),
-  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  cropConfigs:     jsonb("crop_configs").$type<Array<{ name: string; width: number; height: number }>>().default([]).notNull(),
+  /** Subfolder within the brand's githubFolder e.g. "hero" or "services" */
+  githubSubfolder: text("github_subfolder"),
+  sortOrder:       smallint("sort_order").notNull().default(0),
+  active:          boolean("active").notNull().default(true),
+  createdAt:       timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ── Atlas Assets ──────────────────────────────────────────────────────────────
@@ -92,11 +96,22 @@ export const atlasAssets = pgTable("atlas_assets", {
   /** Social 1080×1080 safe-zone */
   socialImage:      text("social_image"),
 
+  // ── Human-readable metadata ───────────────────────────────────────────────
+  title:           text("title"),
+  description:     text("description"),
+
   // ── Approval & publishing ─────────────────────────────────────────────────
   approved:        boolean("approved").default(false),
   published:       boolean("published").default(false),
   publishedAt:     timestamp("published_at", { withTimezone: true }),
   archived:        boolean("archived").default(false),
+
+  // ── GitHub publish metadata ───────────────────────────────────────────────
+  /** Base filename slug written to GitHub e.g. "hero-campaign-sign-installation" */
+  publishedFilename: text("published_filename"),
+  /** SHA of the commit that last pushed this asset to GitHub */
+  gitCommitHash:   text("git_commit_hash"),
+  githubPublishedAt: timestamp("github_published_at", { withTimezone: true }),
 
   // ── Match Previous — visual reference for future generations ─────────────
   matchReferenceId: integer("match_reference_id"),         // fk to atlasAssets.id

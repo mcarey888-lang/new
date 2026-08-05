@@ -16,6 +16,7 @@ async function main() {
       {
         slug: "alliance-installations",
         name: "Alliance Installations",
+        githubFolder: "apps/alliance-installations/public/images",
         styleProfile: {
           environments: ["Urban", "Industrial", "Corporate", "Retail"],
           style: ["Professional", "Bold", "Clean"],
@@ -38,6 +39,7 @@ async function main() {
       {
         slug: "ai-wraps",
         name: "AI Wraps",
+        githubFolder: "apps/ai-wraps/public/images",
         styleProfile: {
           environments: ["Urban", "Street", "Showroom", "Outdoor"],
           style: ["Dynamic", "Vibrant", "Modern"],
@@ -60,6 +62,7 @@ async function main() {
       {
         slug: "vistaluxe",
         name: "Vistaluxe",
+        githubFolder: "apps/vistaluxe/public/images",
         styleProfile: {
           environments: ["Luxury", "Interior", "Architectural", "High-end Retail"],
           style: ["Elegant", "Minimal", "Sophisticated"],
@@ -82,6 +85,7 @@ async function main() {
       {
         slug: "installa",
         name: "Installa",
+        githubFolder: "apps/installa/public/images",
         styleProfile: {
           environments: ["Commercial", "Industrial", "Construction", "Infrastructure"],
           style: ["Technical", "Precise", "Professional"],
@@ -105,10 +109,11 @@ async function main() {
     .onConflictDoUpdate({
       target: atlasBrands.slug,
       set: {
-        name: sql`excluded.name`,
+        name:         sql`excluded.name`,
         styleProfile: sql`excluded.style_profile`,
-        styleLock: sql`excluded.style_lock`,
-        active: sql`excluded.active`,
+        styleLock:    sql`excluded.style_lock`,
+        githubFolder: sql`excluded.github_folder`,
+        active:       sql`excluded.active`,
       },
     });
 
@@ -117,21 +122,22 @@ async function main() {
   await db
     .insert(atlasAssetTypes)
     .values([
-      { slug: "hero-campaign",        name: "Hero Campaign",        cropConfigs: [], sortOrder: 1, active: true },
-      { slug: "vehicle-wrap",         name: "Vehicle Wrap",         cropConfigs: [], sortOrder: 2, active: true },
-      { slug: "window-graphics",      name: "Window Graphics",      cropConfigs: [], sortOrder: 3, active: true },
-      { slug: "signage-installation", name: "Signage Installation", cropConfigs: [], sortOrder: 4, active: true },
-      { slug: "social-content",       name: "Social Content",       cropConfigs: [], sortOrder: 5, active: true },
-      { slug: "case-study",           name: "Case Study",           cropConfigs: [], sortOrder: 6, active: true },
-      { slug: "event-backdrop",       name: "Event Backdrop",       cropConfigs: [], sortOrder: 7, active: true },
-      { slug: "mewp-scene",           name: "MEWP Scene",           cropConfigs: [], sortOrder: 8, active: true },
+      { slug: "hero-campaign",        name: "Hero Campaign",        githubSubfolder: "hero",     cropConfigs: [], sortOrder: 1, active: true },
+      { slug: "vehicle-wrap",         name: "Vehicle Wrap",         githubSubfolder: "vehicle",  cropConfigs: [], sortOrder: 2, active: true },
+      { slug: "window-graphics",      name: "Window Graphics",      githubSubfolder: "services", cropConfigs: [], sortOrder: 3, active: true },
+      { slug: "signage-installation", name: "Signage Installation", githubSubfolder: "services", cropConfigs: [], sortOrder: 4, active: true },
+      { slug: "social-content",       name: "Social Content",       githubSubfolder: "social",   cropConfigs: [], sortOrder: 5, active: true },
+      { slug: "case-study",           name: "Case Study",           githubSubfolder: "case-study", cropConfigs: [], sortOrder: 6, active: true },
+      { slug: "event-backdrop",       name: "Event Backdrop",       githubSubfolder: "events",   cropConfigs: [], sortOrder: 7, active: true },
+      { slug: "mewp-scene",           name: "MEWP Scene",           githubSubfolder: "services", cropConfigs: [], sortOrder: 8, active: true },
     ])
     .onConflictDoUpdate({
       target: atlasAssetTypes.slug,
       set: {
-        name: sql`excluded.name`,
-        sortOrder: sql`excluded.sort_order`,
-        active: sql`excluded.active`,
+        name:            sql`excluded.name`,
+        githubSubfolder: sql`excluded.github_subfolder`,
+        sortOrder:       sql`excluded.sort_order`,
+        active:          sql`excluded.active`,
       },
     });
 
