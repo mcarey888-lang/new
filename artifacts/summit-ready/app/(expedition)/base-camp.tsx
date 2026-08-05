@@ -196,9 +196,31 @@ export default function BaseCampScreen() {
     await new Promise<void>(r => setTimeout(r, 200));
 
     try {
-      const canShare = await Sharing.isAvailableAsync();
-
-      if (canShare) {
+      if (Platform.OS === "web") {
+        // Web — react-native-view-shot has no web impl; use html2canvas directly
+        // on the underlying DOM element (Expo web refs resolve to HTMLElement).
+        const { default: html2canvas } = await import("html2canvas");
+        const domEl = cinematicRootRef.current as unknown as HTMLElement;
+        if (!domEl) throw new Error("Capture ref not attached");
+        const canvas = await html2canvas(domEl, {
+          useCORS: true,
+          allowTaint: false,
+          scale: window.devicePixelRatio ?? 2,
+          backgroundColor: "#000",
+          logging: false,
+        });
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "higgsfield-handoff-frame.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, "image/png", 1.0);
+      } else {
         // Native device — capture to tmp file then share sheet
         const uri = await captureViewShot(cinematicRootRef, {
           format: "png",
@@ -210,20 +232,9 @@ export default function BaseCampScreen() {
           dialogTitle: "Handoff Frame — Higgsfield",
           UTI: "public.png",
         });
-      } else {
-        // Web — capture as base64 data URL and trigger browser download
-        const dataUrl = await captureViewShot(cinematicRootRef, {
-          format: "png",
-          quality: 1,
-          result: "base64",
-        });
-        const a = document.createElement("a");
-        a.href = `data:image/png;base64,${dataUrl}`;
-        a.download = "higgsfield-handoff-frame.png";
-        a.click();
       }
     } catch (e) {
-      console.warn("[Capture] Failed:", e);
+      console.warn("[Capture] Failed:", e instanceof Error ? e.message : String(e), e);
     } finally {
       isCapturingRef.current = false;
       setIsCapturing(false);
