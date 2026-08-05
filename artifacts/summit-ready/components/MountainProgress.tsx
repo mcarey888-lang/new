@@ -255,7 +255,7 @@ export default function MountainProgress({
   useEffect(() => {
     if (targetElevationGain <= 0) return;
     const next = Math.min(currentElevationGain / targetElevationGain, 1);
-    progressSv.value = withTiming(next, { duration: 18000, easing: Easing.in(Easing.exp) });
+    progressSv.value = withTiming(next, { duration: 10000, easing: Easing.out(Easing.cubic) });
     if (next >= 1 && !summitFiredRef.current) {
       summitFiredRef.current = true;
       onSummitReached?.();
@@ -269,8 +269,8 @@ export default function MountainProgress({
     if (!replayTrigger) return;
     progressSv.value = 0;
     progressSv.value = withTiming(1, {
-      duration: 4800,
-      easing: Easing.in(Easing.exp),
+      duration: 2200,
+      easing: Easing.inOut(Easing.cubic),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replayTrigger]);
