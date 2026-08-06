@@ -15,6 +15,10 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Sharing from "expo-sharing";
 import { captureRef as captureViewShot } from "react-native-view-shot";
+// html2canvas is web-only; imported statically so Metro bundles it correctly.
+// The usage is gated behind Platform.OS === "web" so it never runs on native.
+// @ts-ignore — no types shipped with html2canvas
+import html2canvasLib from "html2canvas";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -199,7 +203,7 @@ export default function BaseCampScreen() {
       if (Platform.OS === "web") {
         // Web — react-native-view-shot has no web impl; use html2canvas directly
         // on the underlying DOM element (Expo web refs resolve to HTMLElement).
-        const { default: html2canvas } = await import("html2canvas");
+        const html2canvas = html2canvasLib;
         const domEl = cinematicRootRef.current as unknown as HTMLElement;
         if (!domEl) throw new Error("Capture ref not attached");
         const canvas = await html2canvas(domEl, {
