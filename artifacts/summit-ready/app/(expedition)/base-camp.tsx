@@ -33,6 +33,7 @@ import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailS
 import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
 // [DEV] CINEMATIC PROTOTYPE — remove this import to clean up
 import { CinematicPrototype } from "@/components/CinematicPrototype";
+import { CompletionCinematic } from "@/components/CompletionCinematic";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 
@@ -169,6 +170,7 @@ export default function BaseCampScreen() {
   const [devZoomScale,           setDevZoomScale]           = useState<number | undefined>(undefined);
   const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
   const [isCapturing,            setIsCapturing]            = useState(false);
+  const [showCompletion,         setShowCompletion]         = useState(false);
   const scrollRef        = useRef<import("react-native").ScrollView>(null);
   const mountainRef      = useRef<import("react-native").View>(null);
   const cinematicRootRef = useRef<import("react-native").View>(null);
@@ -192,57 +194,72 @@ export default function BaseCampScreen() {
     // onCinematicReady (below) handles the actual capture once zoom settles
   }, []);
 
+  // Dismisses the completion modal and zooms back out to the expedition screen
+  const handleCompletionContinue = useCallback(() => {
+    setShowCompletion(false);
+    setCinematicActive(false);
+    isCapturingRef.current = false;
+    setIsCapturing(false);
+  }, []);
+
   // Called by CinematicPrototype once zoom reaches the handoff position
   const handleCinematicReady = useCallback(async () => {
-    if (!isCapturingRef.current) return;
-
-    // 200 ms grace period for all GPU compositing to settle
-    await new Promise<void>(r => setTimeout(r, 200));
-
-    try {
-      if (Platform.OS === "web") {
-        // Web — react-native-view-shot has no web impl; use html2canvas directly
-        // on the underlying DOM element (Expo web refs resolve to HTMLElement).
-        const html2canvas = html2canvasLib;
-        const domEl = cinematicRootRef.current as unknown as HTMLElement;
-        if (!domEl) throw new Error("Capture ref not attached");
-        const canvas = await html2canvas(domEl, {
-          useCORS: true,
-          allowTaint: false,
-          scale: window.devicePixelRatio ?? 2,
-          backgroundColor: "#000",
-          logging: false,
-        });
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "higgsfield-handoff-frame.png";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, "image/png", 1.0);
-      } else {
-        // Native device — capture to tmp file then share sheet
-        const uri = await captureViewShot(cinematicRootRef, {
-          format: "png",
-          quality: 1,
-          result: "tmpfile",
-        });
-        await Sharing.shareAsync(uri, {
-          mimeType: "image/png",
-          dialogTitle: "Handoff Frame — Higgsfield",
-          UTI: "public.png",
-        });
+    // ── Capture mode (📸 button) ─────────────────────────────────────────
+    if (isCapturingRef.current) {
+      // 200 ms grace period for all GPU compositing to settle
+      await new Promise<void>(r => setTimeout(r, 200));
+      try {
+        if (Platform.OS === "web") {
+          // Web — react-native-view-shot has no web impl; use html2canvas directly
+          // on the underlying DOM element (Expo web refs resolve to HTMLElement).
+          const html2canvas = html2canvasLib;
+          const domEl = cinematicRootRef.current as unknown as HTMLElement;
+          if (!domEl) throw new Error("Capture ref not attached");
+          const canvas = await html2canvas(domEl, {
+            useCORS: true,
+            allowTaint: false,
+            scale: window.devicePixelRatio ?? 2,
+            backgroundColor: "#000",
+            logging: false,
+          });
+          canvas.toBlob((blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "higgsfield-handoff-frame.png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, "image/png", 1.0);
+        } else {
+          // Native device — capture to tmp file then share sheet
+          const uri = await captureViewShot(cinematicRootRef, {
+            format: "png",
+            quality: 1,
+            result: "tmpfile",
+          });
+          await Sharing.shareAsync(uri, {
+            mimeType: "image/png",
+            dialogTitle: "Handoff Frame — Higgsfield",
+            UTI: "public.png",
+          });
+        }
+      } catch (e) {
+        console.warn("[Capture] Failed:", e instanceof Error ? e.message : String(e), e);
+      } finally {
+        isCapturingRef.current = false;
+        setIsCapturing(false);
       }
-    } catch (e) {
-      console.warn("[Capture] Failed:", e instanceof Error ? e.message : String(e), e);
-    } finally {
-      isCapturingRef.current = false;
-      setIsCapturing(false);
+      return;
     }
+
+    // ── Completion cinematic mode (🎬 button or 100% progress) ───────────
+    // The zoom is now frozen at the handoff frame.
+    // CompletionCinematic handles its own 200 ms pause before fading in,
+    // so we show it immediately — the transition feels like one shot.
+    setShowCompletion(true);
   }, []);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
@@ -680,7 +697,8 @@ export default function BaseCampScreen() {
   const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
 
   return (
-    // DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up
+    <>
+    {/* DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up */}
     <CinematicPrototype
       active={cinematicActive}
       mountainRef={mountainRef}
@@ -1077,6 +1095,15 @@ export default function BaseCampScreen() {
 
     </LinearGradient>
     </CinematicPrototype>
+
+    {/* Completion cinematic — Modal sits above tab bar, covers everything */}
+    <CompletionCinematic
+      visible={showCompletion}
+      expeditionName={expTitle ?? "Your Expedition"}
+      totalElevationM={totalTrained}
+      onContinue={handleCompletionContinue}
+    />
+    </>
   );
 }
 
