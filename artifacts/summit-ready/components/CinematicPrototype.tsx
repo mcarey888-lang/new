@@ -80,6 +80,12 @@ interface CinematicPrototypeProps {
   /** Set true to begin the cinematic. Set false to trigger zoom-out. */
   active: boolean;
   /**
+   * When true the zoom snaps back to identity instantly (duration 0) instead
+   * of the normal 800 ms animated zoom-out. Use this when a fullscreen overlay
+   * (e.g. completion video modal) is about to appear so the reset is invisible.
+   */
+  snapToIdentity?: boolean;
+  /**
    * Ref on the mountain image component — measured for summit anchor maths.
    * Should be placed on the MountainProgress view, NOT the whole expedition card.
    */
@@ -120,6 +126,7 @@ export function CinematicPrototype({
   mountainRef,
   onCinematicReady,
   onDismiss,
+  snapToIdentity = false,
   devZoomScale,
   hideDevOverlays = false,
   captureViewRef,
@@ -181,6 +188,21 @@ export function CinematicPrototype({
       onCinematicReadyRef.current();
     }, 250);
   }
+
+  // ── Instant-snap effect — fires when completion video is about to appear ──
+  // Sets all transform values to identity with duration 0 so the zoom
+  // disappears before (or simultaneously with) the video modal fading in.
+
+  useEffect(() => {
+    if (!snapToIdentity) return;
+    // Cancel any in-flight animation and snap to identity immediately.
+    phaseRef.current = "idle";
+    translateXVal.value = withTiming(0, { duration: 0 });
+    translateYVal.value = withTiming(0, { duration: 0 });
+    scaleVal.value      = withTiming(1, { duration: 0 });
+    setDevRestoreVisible(false);
+    setDevDebugInfo(null);
+  }, [snapToIdentity]);
 
   // ── Main effect — responds to active ─────────────────────────────────────
 

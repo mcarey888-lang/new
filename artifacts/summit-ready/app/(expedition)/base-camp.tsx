@@ -707,6 +707,7 @@ export default function BaseCampScreen() {
       mountainRef={mountainRef}
       onCinematicReady={handleCinematicReady}
       onDismiss={() => { setCinematicActive(false); setIsCapturing(false); isCapturingRef.current = false; }}
+      snapToIdentity={showCompletion}
       devZoomScale={devZoomScale}
       hideDevOverlays={isCapturing}
       captureViewRef={cinematicRootRef}

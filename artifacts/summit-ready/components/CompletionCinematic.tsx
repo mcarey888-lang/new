@@ -24,7 +24,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
@@ -51,7 +50,6 @@ export function CompletionCinematic({
   totalElevationM,
   onContinue,
 }: CompletionCinematicProps) {
-  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const videoRef = useRef<Video>(null);
 
@@ -144,50 +142,22 @@ export function CompletionCinematic({
     >
       {/* Pointer-events none on the outer wrapper so taps fall through to buttons */}
       <Animated.View
-        style={[styles.root, { width, height, opacity: modalOpacity }]}
+        style={[styles.root, { opacity: modalOpacity }]}
         pointerEvents="box-none"
       >
-        {/* ── Video layer — pixel-perfect fit, centred ─────────────────── */}
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {(() => {
-            // Known source dimensions: 720 × 1280 (9:16 portrait)
-            const VIDEO_W = 720;
-            const VIDEO_H = 1280;
-            const videoAspect = VIDEO_W / VIDEO_H;
-            const screenAspect = width / height;
-
-            // CONTAIN logic: fit entirely within the screen, centred
-            let vw: number, vh: number;
-            if (screenAspect < videoAspect) {
-              // Screen is narrower → constrain by width
-              vw = width;
-              vh = width / videoAspect;
-            } else {
-              // Screen is taller/equal → constrain by height
-              vh = height;
-              vw = height * videoAspect;
-            }
-
-            return (
-              <Video
-                ref={videoRef}
-                source={COMPLETION_VIDEO}
-                style={{
-                  position: "absolute",
-                  left:   (width  - vw) / 2,
-                  top:    (height - vh) / 2,
-                  width:  vw,
-                  height: vh,
-                }}
-                resizeMode={ResizeMode.STRETCH}
-                shouldPlay={visible}
-                isLooping={false}
-                isMuted={false}
-                onPlaybackStatusUpdate={handleStatus}
-                useNativeControls={false}
-              />
-            );
-          })()}
+        {/* ── Video layer — fills modal, letterboxed by player ─────────── */}
+        <View style={[StyleSheet.absoluteFill, styles.videoContainer]} pointerEvents="none">
+          <Video
+            ref={videoRef}
+            source={COMPLETION_VIDEO}
+            style={styles.video}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={visible}
+            isLooping={false}
+            isMuted={false}
+            onPlaybackStatusUpdate={handleStatus}
+            useNativeControls={false}
+          />
         </View>
 
         {/* ── Completion overlay — mounts at final second ───────────────── */}
@@ -258,11 +228,15 @@ export function CompletionCinematic({
 
 const styles = StyleSheet.create({
   root: {
-    position:        "absolute",
-    top:             0,
-    left:            0,
+    flex:            1,
     backgroundColor: "#000008",
-    overflow:        "hidden",
+  },
+  videoContainer: {
+    flex:            1,
+    backgroundColor: "#000",
+  },
+  video: {
+    flex: 1,
   },
 
   // ── Completion overlay ──────────────────────────────────────────────────
