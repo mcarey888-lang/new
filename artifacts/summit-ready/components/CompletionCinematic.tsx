@@ -153,7 +153,7 @@ export function CompletionCinematic({
             ref={videoRef}
             source={COMPLETION_VIDEO}
             style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.COVER}
+            resizeMode={ResizeMode.CONTAIN}
             shouldPlay={visible}
             isLooping={false}
             isMuted={false}
