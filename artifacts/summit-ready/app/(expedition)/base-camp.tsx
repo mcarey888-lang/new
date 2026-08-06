@@ -256,10 +256,13 @@ export default function BaseCampScreen() {
     }
 
     // ── Completion cinematic mode (🎬 button or 100% progress) ───────────
-    // The zoom is now frozen at the handoff frame.
-    // CompletionCinematic handles its own 200 ms pause before fading in,
-    // so we show it immediately — the transition feels like one shot.
+    // Show the modal immediately — it fades in over 400 ms so the frozen
+    // handoff frame still reads as one continuous shot.
+    // Reset the zoom at the same instant: the Modal covers the screen fully
+    // so the 800 ms zoom-out plays invisibly underneath. When the user
+    // presses Continue the app is already back at 100 % scale.
     setShowCompletion(true);
+    setCinematicActive(false);
   }, []);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
