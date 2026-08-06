@@ -45,6 +45,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   runOnJS,
   useAnimatedStyle,
@@ -195,11 +196,16 @@ export function CinematicPrototype({
 
   useEffect(() => {
     if (!snapToIdentity) return;
-    // Cancel any in-flight animation and snap to identity immediately.
-    phaseRef.current = "idle";
-    translateXVal.value = withTiming(0, { duration: 0 });
-    translateYVal.value = withTiming(0, { duration: 0 });
-    scaleVal.value      = withTiming(1, { duration: 0 });
+    // cancelAnimation kills any in-flight withTiming/withSpring on the UI thread.
+    // Direct `.value =` assignment is synchronous on the UI thread — the transform
+    // is identity before the very next frame, guaranteed before the Modal paints.
+    cancelAnimation(translateXVal);
+    cancelAnimation(translateYVal);
+    cancelAnimation(scaleVal);
+    translateXVal.value = 0;
+    translateYVal.value = 0;
+    scaleVal.value      = 1;
+    phaseRef.current    = "idle";
     setDevRestoreVisible(false);
     setDevDebugInfo(null);
   }, [snapToIdentity]);
