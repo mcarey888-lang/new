@@ -147,19 +147,47 @@ export function CompletionCinematic({
         style={[styles.root, { width, height, opacity: modalOpacity }]}
         pointerEvents="box-none"
       >
-        {/* ── Video layer ───────────────────────────────────────────────── */}
+        {/* ── Video layer — pixel-perfect fit, centred ─────────────────── */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Video
-            ref={videoRef}
-            source={COMPLETION_VIDEO}
-            style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={visible}
-            isLooping={false}
-            isMuted={false}
-            onPlaybackStatusUpdate={handleStatus}
-            useNativeControls={false}
-          />
+          {(() => {
+            // Known source dimensions: 720 × 1280 (9:16 portrait)
+            const VIDEO_W = 720;
+            const VIDEO_H = 1280;
+            const videoAspect = VIDEO_W / VIDEO_H;
+            const screenAspect = width / height;
+
+            // CONTAIN logic: fit entirely within the screen, centred
+            let vw: number, vh: number;
+            if (screenAspect < videoAspect) {
+              // Screen is narrower → constrain by width
+              vw = width;
+              vh = width / videoAspect;
+            } else {
+              // Screen is taller/equal → constrain by height
+              vh = height;
+              vw = height * videoAspect;
+            }
+
+            return (
+              <Video
+                ref={videoRef}
+                source={COMPLETION_VIDEO}
+                style={{
+                  position: "absolute",
+                  left:   (width  - vw) / 2,
+                  top:    (height - vh) / 2,
+                  width:  vw,
+                  height: vh,
+                }}
+                resizeMode={ResizeMode.STRETCH}
+                shouldPlay={visible}
+                isLooping={false}
+                isMuted={false}
+                onPlaybackStatusUpdate={handleStatus}
+                useNativeControls={false}
+              />
+            );
+          })()}
         </View>
 
         {/* ── Completion overlay — mounts at final second ───────────────── */}
