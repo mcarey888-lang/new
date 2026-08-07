@@ -439,6 +439,8 @@ const AppContext = createContext<AppState>({
 });
 
 const _FLAT_GOAL_KEY             = "summitready_goal";
+const _FLAT_TRAINING_GOAL_KEY    = "summitready_training_goal";
+const _FLAT_EXPEDITION_GOAL_KEY  = "summitready_expedition_goal";
 const _FLAT_SESSIONS_KEY         = "summitready_sessions";
 const _FLAT_PLAN_KEY             = "summitready_plan";
 const _FLAT_HILLS_KEY            = "summitready_nearby_hills";
@@ -483,6 +485,12 @@ async function fetchAlpineAssessment(
   } catch {
     return null;
   }
+}
+
+function isSameGoal(a: SummitGoal | null, b: SummitGoal): boolean {
+  return !!a &&
+    a.mountainName === b.mountainName &&
+    a.summitDate === b.summitDate;
 }
 
 const DEMO_GOAL: SummitGoal = {
@@ -547,6 +555,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { userId } = useAuth();
   const _uid = userId ?? "";
   const GOAL_KEY             = _uid ? `summitready_goal_${_uid}`                    : _FLAT_GOAL_KEY;
+  const TRAINING_GOAL_KEY    = _uid ? `summitready_training_goal_${_uid}`           : _FLAT_TRAINING_GOAL_KEY;
+  const EXPEDITION_GOAL_KEY  = _uid ? `summitready_expedition_goal_${_uid}`         : _FLAT_EXPEDITION_GOAL_KEY;
   const SESSIONS_KEY         = _uid ? `summitready_sessions_${_uid}`                : _FLAT_SESSIONS_KEY;
   const PLAN_KEY             = _uid ? `summitready_plan_${_uid}`                    : _FLAT_PLAN_KEY;
   const HILLS_KEY            = _uid ? `summitready_nearby_hills_${_uid}`            : _FLAT_HILLS_KEY;
@@ -574,6 +584,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const _PENDING_KEY         = _uid ? `${PENDING_PAST_HIKES_KEY}_${_uid}`           : PENDING_PAST_HIKES_KEY;
   const [loadKey, setLoadKey] = useState(0);
   const [summitGoal, setSummitGoalState] = useState<SummitGoal | null>(null);
+  const [trainingGoal, setTrainingGoalState] = useState<SummitGoal | null>(null);
+  const [expeditionGoal, setExpeditionGoalState] = useState<SummitGoal | null>(null);
   const [trainingPlan, setTrainingPlan] = useState<TrainingWeek[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [readinessScore, setReadinessScore] = useState(0);
@@ -607,8 +619,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [completedTrailIds, setCompletedTrailIds] = useState<string[]>([]);
   const [customRoutes, setCustomRoutes] = useState<Trail[]>([]);
 
+  const applyAlpineProfile = useCallback(async (
+    scope: "training" | "expedition",
+    requestedGoal: SummitGoal,
+    profile: AlpineProfile,
+  ) => {
+    const scopedGoalKey = scope === "expedition"
+      ? EXPEDITION_GOAL_KEY
+      : TRAINING_GOAL_KEY;
+    const storedGoalStr = await AsyncStorage.getItem(scopedGoalKey);
+    if (!storedGoalStr) return;
+
+    const storedGoal = JSON.parse(storedGoalStr) as SummitGoal;
+    if (!isSameGoal(storedGoal, requestedGoal)) return;
+
+    const enrichedGoal = { ...storedGoal, alpineProfile: profile };
+    await AsyncStorage.setItem(scopedGoalKey, JSON.stringify(enrichedGoal));
+
+    if (scope === "expedition") {
+      setExpeditionGoalState(prev =>
+        isSameGoal(prev, requestedGoal) ? enrichedGoal : prev
+      );
+    } else {
+      setTrainingGoalState(prev =>
+        isSameGoal(prev, requestedGoal) ? enrichedGoal : prev
+      );
+    }
+
+    // The user may have switched shells while the request was in flight.
+    // Only touch the public active snapshot when this scope is still active.
+    const persistedShellMode = await AsyncStorage.getItem(SHELL_MODE_KEY);
+    const activeScope = persistedShellMode === "expedition"
+      ? "expedition"
+      : "training";
+    if (activeScope !== scope) return;
+
+    await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(enrichedGoal));
+    setSummitGoalState(prev =>
+      isSameGoal(prev, requestedGoal) ? enrichedGoal : prev
+    );
+  }, [GOAL_KEY, TRAINING_GOAL_KEY, EXPEDITION_GOAL_KEY, SHELL_MODE_KEY]);
+
   const reloadApp = useCallback(async () => {
     setSummitGoalState(null);
+    setTrainingGoalState(null);
+    setExpeditionGoalState(null);
     setTrainingPlan([]);
     setSessions([]);
     setReadinessScore(0);
@@ -649,6 +704,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               _FLAT_COMPLETED_KEY, _FLAT_ASSIGNED_KEY, _FLAT_ADJUST_NOTE_KEY, _FLAT_SUBMITTED_KEY,
               _FLAT_HILLS_IN_PLAN_KEY, _FLAT_REPS_KEY, _FLAT_EFFORTS_KEY, _FLAT_HAS_VIEWED_PLAN_KEY,
               _FLAT_ACHIEVEMENTS_KEY, _FLAT_COMPLETED_GOALS_KEY, _FLAT_APP_MODE_KEY, _FLAT_EXPLORE_HIKES_KEY,
+              _FLAT_TRAINING_GOAL_KEY, _FLAT_EXPEDITION_GOAL_KEY,
               _FLAT_SAVED_TRAILS_KEY, _FLAT_COMPLETED_TRAILS_KEY, _FLAT_CUSTOM_ROUTES_KEY,
               _FLAT_MY_HILLS_KEY, _FLAT_EXCLUDED_HILLS_KEY, PENDING_PAST_HIKES_KEY,
             ];
@@ -669,10 +725,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         const pairs = await AsyncStorage.multiGet([
-          GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY,
+          GOAL_KEY, TRAINING_GOAL_KEY, EXPEDITION_GOAL_KEY,
+          SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY,
         ]);
-        const [goalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr, excludedHillsStr, expeditionsStr, activeExpeditionStr] =
+        const [legacyGoalStr, storedTrainingGoalStr, storedExpeditionGoalStr, sessionsStr, planStr, hillsStr, completedStr, assignedStr, noteStr, submittedStr, hillsInPlanStr, repsStr, effortsStr, hasViewedPlanStr, achievementsStr, completedGoalsStr, appModeStr, exploreHikesStr, savedTrailsStr, completedTrailsStr, customRoutesStr, myHillsStr, excludedHillsStr, expeditionsStr, activeExpeditionStr] =
           pairs.map(([, v]) => v);
+
+        const storedShellMode = await AsyncStorage.getItem(SHELL_MODE_KEY);
+        const loadedShellMode: "training" | "expedition" =
+          storedShellMode === "expedition" ? "expedition" : "training";
+
+        // Migrate the former single shared goal into the appropriate shell.
+        // `mode: "virtual"` existed before the dual-shell UI, so it is not enough
+        // by itself to identify an Expedition. Require expedition-specific state
+        // or an active library record to avoid moving a legacy Training goal.
+        const legacyGoal: SummitGoal | null = legacyGoalStr ? JSON.parse(legacyGoalStr) : null;
+        const legacyLibrary: SavedExpedition[] = expeditionsStr
+          ? JSON.parse(expeditionsStr)
+          : [];
+        const legacyMatchesLibrary = !!legacyGoal && legacyLibrary.some(expedition =>
+          expedition.challengeName === legacyGoal.mountainName ||
+          expedition.targetMountainName === legacyGoal.targetMountain?.name
+        );
+        const legacyHasVirtualState = !!legacyGoal && (
+          !!legacyGoal.targetMountain ||
+          (legacyGoal.virtualHills?.length ?? 0) > 0 ||
+          legacyGoal.simulationScore !== undefined ||
+          !!legacyGoal.virtualHikeProgress
+        );
+        const legacyLooksLikeExpedition = !!legacyGoal && (
+          !!activeExpeditionStr ||
+          legacyMatchesLibrary ||
+          !!legacyGoal.expeditionPlan ||
+          (legacyGoal.completedRoutes?.length ?? 0) > 0 ||
+          (
+            loadedShellMode === "expedition" &&
+            legacyGoal.mode === "virtual" &&
+            legacyHasVirtualState
+          )
+        );
+        const loadedTrainingGoal: SummitGoal | null = storedTrainingGoalStr
+          ? JSON.parse(storedTrainingGoalStr)
+          : legacyLooksLikeExpedition ? null : legacyGoal;
+        const loadedExpeditionGoal: SummitGoal | null = storedExpeditionGoalStr
+          ? JSON.parse(storedExpeditionGoalStr)
+          : legacyLooksLikeExpedition ? legacyGoal : null;
+
+        setTrainingGoalState(loadedTrainingGoal);
+        setExpeditionGoalState(loadedExpeditionGoal);
+
+        const goal = loadedShellMode === "expedition"
+          ? loadedExpeditionGoal
+          : loadedTrainingGoal;
+        const goalStr = goal ? JSON.stringify(goal) : null;
+
+        const goalMigrationWrites: [string, string][] = [];
+        if (!storedTrainingGoalStr && loadedTrainingGoal) {
+          goalMigrationWrites.push([TRAINING_GOAL_KEY, JSON.stringify(loadedTrainingGoal)]);
+        }
+        if (!storedExpeditionGoalStr && loadedExpeditionGoal) {
+          goalMigrationWrites.push([EXPEDITION_GOAL_KEY, JSON.stringify(loadedExpeditionGoal)]);
+        }
+        if (goalMigrationWrites.length > 0) {
+          await AsyncStorage.multiSet(goalMigrationWrites);
+        }
 
         // Parse explore hikes before the goal block so they're available
         // both for readiness scoring (inside) and hike history (outside).
@@ -682,8 +798,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             )
           : [];
 
-        if (goalStr) {
-          const goal: SummitGoal = JSON.parse(goalStr);
+        if (goal) {
           const rawPlan: TrainingWeek[] = planStr ? JSON.parse(planStr) : generatePlan(goal);
 
           // Migrate stored plans that are missing fields added in later versions.
@@ -789,12 +904,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setAlpineProfileLoading(true);
             fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
               if (profile) {
-                setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
-                const gs = await AsyncStorage.getItem(GOAL_KEY);
-                if (gs) {
-                  const g = JSON.parse(gs) as SummitGoal;
-                  await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
-                }
+                await applyAlpineProfile(loadedShellMode, goal, profile);
               }
               setAlpineProfileLoading(false);
             });
@@ -803,10 +913,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // No else — fresh users start from the landing page with no pre-loaded data
 
         if (appModeStr) setAppModeState(appModeStr as "summit" | "explore");
-        const shellModeStr = await AsyncStorage.getItem(SHELL_MODE_KEY);
-        if (shellModeStr === "training" || shellModeStr === "expedition") {
-          setShellModeState(shellModeStr);
-        }
+        setShellModeState(loadedShellMode);
         // loadedHikes already parsed and migrated above (before readiness calculation)
         if (loadedHikes.length > 0) setExploreHikes(loadedHikes);
         if (savedTrailsStr) setSavedTrailIds(JSON.parse(savedTrailsStr) as string[]);
@@ -818,10 +925,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const loadedExpeditions = JSON.parse(expeditionsStr) as SavedExpedition[];
           setExpeditions(loadedExpeditions);
           if (activeExpeditionStr) setActiveExpeditionIdState(activeExpeditionStr);
-        } else if (goalStr) {
+        } else if (loadedExpeditionGoal) {
           // One-time migration: if a summitGoal with mode "virtual" exists but no
           // expedition library, create a library entry so progress is preserved.
-          const existingGoal: SummitGoal = JSON.parse(goalStr);
+          const existingGoal = loadedExpeditionGoal;
           if (existingGoal.mode === "virtual" && existingGoal.virtualHills?.length) {
             const migratedId = `exp_migrated_${Date.now()}`;
             const migratedExp: SavedExpedition = {
@@ -858,12 +965,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setSummitGoal = useCallback(async (goal: SummitGoal) => {
     // Archive the outgoing goal + its training stats before wiping
-    if (summitGoal && sessions.length > 0) {
+    if (trainingGoal && sessions.length > 0) {
       const archived: CompletedGoal = {
-        mountainName: summitGoal.mountainName,
-        elevationGain: summitGoal.elevationGain,
-        highestAltitude: summitGoal.highestAltitude,
-        difficulty: summitGoal.difficulty,
+        mountainName: trainingGoal.mountainName,
+        elevationGain: trainingGoal.elevationGain,
+        highestAltitude: trainingGoal.highestAltitude,
+        difficulty: trainingGoal.difficulty,
         completedAt: new Date().toISOString().split("T")[0],
         sessionsLogged: sessions.length,
         totalElevationTrained: sessions.reduce((sum, s) => sum + s.elevationGain, 0),
@@ -896,7 +1003,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         hillName: hike.name,
       };
     });
+    setShellModeState("training");
     setSummitGoalState(goal);
+    setTrainingGoalState(goal);
     setTrainingPlan(plan);
     // Reset ALL session data, seeding any past-activity hikes from onboarding
     setSessions(initialSessions);
@@ -915,6 +1024,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNewlyUnlocked([]);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
+      [TRAINING_GOAL_KEY, JSON.stringify(goal)],
+      [SHELL_MODE_KEY, "training"],
       [PLAN_KEY, JSON.stringify(plan)],
       [SESSIONS_KEY, JSON.stringify(initialSessions)],
       [COMPLETED_KEY, "{}"],
@@ -945,24 +1056,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAlpineProfileLoading(true);
       fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
         if (profile) {
-          setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
-          const gs = await AsyncStorage.getItem(GOAL_KEY);
-          if (gs) {
-            const g = JSON.parse(gs) as SummitGoal;
-            await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
-          }
+          await applyAlpineProfile("training", goal, profile);
         }
         setAlpineProfileLoading(false);
       });
     }
-  }, [summitGoal, sessions, trainingPlan, completedGoals]);
+  }, [trainingGoal, sessions, trainingPlan, completedGoals, GOAL_KEY, TRAINING_GOAL_KEY, SHELL_MODE_KEY, applyAlpineProfile]);
 
   const changeSummit = useCallback(async (goal: SummitGoal) => {
     // Update the summit target WITHOUT archiving the old goal or clearing sessions.
     // Existing logged sessions are preserved — only the plan is regenerated.
     const plan = generatePlan(goal);
     void logTrainingPlanGenerated({ mountain_name: goal.mountainName, weeks: plan.length });
+    setShellModeState("training");
     setSummitGoalState(goal);
+    setTrainingGoalState(goal);
     setTrainingPlan(plan);
     // Reset plan-tracking state (old tick-marks don't map to the new plan)
     setCompletedPlanSessions({});
@@ -978,6 +1086,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setReadinessScore(score);
     await AsyncStorage.multiSet([
       [GOAL_KEY, JSON.stringify(goal)],
+      [TRAINING_GOAL_KEY, JSON.stringify(goal)],
+      [SHELL_MODE_KEY, "training"],
       [PLAN_KEY, JSON.stringify(plan)],
       [COMPLETED_KEY, "{}"],
       [ASSIGNED_KEY, "{}"],
@@ -994,17 +1104,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAlpineProfileLoading(true);
       fetchAlpineAssessment(goal.mountainName, goal.highestAltitude).then(async (profile) => {
         if (profile) {
-          setSummitGoalState(prev => prev ? { ...prev, alpineProfile: profile } : prev);
-          const gs = await AsyncStorage.getItem(GOAL_KEY);
-          if (gs) {
-            const g = JSON.parse(gs) as SummitGoal;
-            await AsyncStorage.setItem(GOAL_KEY, JSON.stringify({ ...g, alpineProfile: profile }));
-          }
+          await applyAlpineProfile("training", goal, profile);
         }
         setAlpineProfileLoading(false);
       });
     }
-  }, [sessions, completedGoals]);
+  }, [sessions, completedGoals, GOAL_KEY, TRAINING_GOAL_KEY, SHELL_MODE_KEY, applyAlpineProfile]);
 
   const clearNewlyUnlocked = useCallback(() => {
     setNewlyUnlocked([]);
@@ -1014,9 +1119,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!summitGoal) return;
     const updated = { ...summitGoal, ...updates };
     setSummitGoalState(updated);
-    await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updated));
+    if (shellMode === "expedition") {
+      setExpeditionGoalState(updated);
+      await AsyncStorage.multiSet([
+        [GOAL_KEY, JSON.stringify(updated)],
+        [EXPEDITION_GOAL_KEY, JSON.stringify(updated)],
+      ]);
+    } else {
+      setTrainingGoalState(updated);
+      await AsyncStorage.multiSet([
+        [GOAL_KEY, JSON.stringify(updated)],
+        [TRAINING_GOAL_KEY, JSON.stringify(updated)],
+      ]);
+    }
     // Auto-sync expedition-specific fields back to the active library entry
-    if (activeExpeditionId) {
+    if (shellMode === "expedition" && activeExpeditionId) {
       const expeditionFields = [
         "virtualHills", "expeditionPlan", "simulationScore",
         "simulationScoreBreakdown", "targetMountain", "virtualHikeProgress", "completedRoutes",
@@ -1033,7 +1150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem(EXPEDITIONS_KEY, JSON.stringify(updatedLibrary));
       }
     }
-  }, [summitGoal, expeditions, activeExpeditionId, GOAL_KEY, EXPEDITIONS_KEY]);
+  }, [summitGoal, shellMode, expeditions, activeExpeditionId, GOAL_KEY, TRAINING_GOAL_KEY, EXPEDITION_GOAL_KEY, EXPEDITIONS_KEY]);
 
   // ── Expedition Library ────────────────────────────────────────────────────────
 
@@ -1080,8 +1197,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     let updatedGoal: SummitGoal;
-    if (summitGoal) {
-      updatedGoal = { ...summitGoal, ...goalPatch };
+    const expeditionBaseGoal = expeditionGoal ?? trainingGoal ?? summitGoal;
+    if (expeditionBaseGoal) {
+      updatedGoal = { ...expeditionBaseGoal, ...goalPatch };
     } else {
       // New user entering expedition shell before completing training setup
       updatedGoal = {
@@ -1108,6 +1226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
     }
     setSummitGoalState(updatedGoal);
+    setExpeditionGoalState(updatedGoal);
 
     // Auto-switch to expedition shell
     setShellModeState("expedition");
@@ -1116,11 +1235,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       [EXPEDITIONS_KEY, JSON.stringify(updatedLibrary)],
       [ACTIVE_EXPEDITION_KEY, id],
       [GOAL_KEY, JSON.stringify(updatedGoal)],
+      [EXPEDITION_GOAL_KEY, JSON.stringify(updatedGoal)],
       [SHELL_MODE_KEY, "expedition"],
     ]);
 
     return id;
-  }, [expeditions, summitGoal, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY, SHELL_MODE_KEY]);
+  }, [expeditions, summitGoal, trainingGoal, expeditionGoal, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY, EXPEDITION_GOAL_KEY, SHELL_MODE_KEY]);
 
   const setActiveExpedition = useCallback(async (id: string) => {
     const target = expeditions.find(e => e.id === id);
@@ -1128,8 +1248,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Sync the current expedition's live progress back to the library before switching
     const syncedLibrary = expeditions.map(e => {
-      if (e.id === activeExpeditionId && summitGoal?.virtualHikeProgress) {
-        return { ...e, expeditionStatus: "saved" as const, virtualHikeProgress: summitGoal.virtualHikeProgress };
+      if (e.id === activeExpeditionId && expeditionGoal?.virtualHikeProgress) {
+        return { ...e, expeditionStatus: "saved" as const, virtualHikeProgress: expeditionGoal.virtualHikeProgress };
       }
       if (e.id === id) return { ...e, expeditionStatus: "active" as const };
       return e;
@@ -1139,9 +1259,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setActiveExpeditionIdState(id);
 
     // Load the target expedition's fields into summitGoal so all screens update
-    if (summitGoal) {
+    const expeditionBaseGoal = expeditionGoal ?? (shellMode === "expedition" ? summitGoal : trainingGoal);
+    if (expeditionBaseGoal) {
       const updatedGoal: SummitGoal = {
-        ...summitGoal,
+        ...expeditionBaseGoal,
         mountainName:             target.challengeName,
         mode:                     "virtual",
         targetMountain:           target.targetMountain,
@@ -1154,22 +1275,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         location:                 target.location,
         maxRadius:                target.maxRadius,
       };
-      setSummitGoalState(updatedGoal);
-      await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updatedGoal));
+      setExpeditionGoalState(updatedGoal);
+      if (shellMode === "expedition") setSummitGoalState(updatedGoal);
+      await AsyncStorage.multiSet([
+        [EXPEDITION_GOAL_KEY, JSON.stringify(updatedGoal)],
+        ...(shellMode === "expedition"
+          ? [[GOAL_KEY, JSON.stringify(updatedGoal)] as [string, string]]
+          : []),
+      ]);
     }
 
     await AsyncStorage.multiSet([
       [EXPEDITIONS_KEY, JSON.stringify(syncedLibrary)],
       [ACTIVE_EXPEDITION_KEY, id],
     ]);
-  }, [expeditions, activeExpeditionId, summitGoal, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY]);
+  }, [expeditions, activeExpeditionId, summitGoal, trainingGoal, expeditionGoal, shellMode, EXPEDITIONS_KEY, ACTIVE_EXPEDITION_KEY, GOAL_KEY, EXPEDITION_GOAL_KEY]);
 
   const patchExpedition = useCallback(async (id: string, updates: Partial<SavedExpedition>) => {
     const updated = expeditions.map(e => e.id === id ? { ...e, ...updates } : e);
     setExpeditions(updated);
 
     // Keep summitGoal in sync when patching the active expedition
-    if (id === activeExpeditionId && summitGoal) {
+    const expeditionBaseGoal = expeditionGoal ?? (shellMode === "expedition" ? summitGoal : null);
+    if (id === activeExpeditionId && expeditionBaseGoal) {
       const goalSyncFields: Partial<SummitGoal> = {};
       if (updates.virtualHills !== undefined)             goalSyncFields.virtualHills = updates.virtualHills;
       if (updates.expeditionPlan !== undefined)           goalSyncFields.expeditionPlan = updates.expeditionPlan;
@@ -1179,14 +1307,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (updates.virtualHikeProgress !== undefined)      goalSyncFields.virtualHikeProgress = updates.virtualHikeProgress;
       if (updates.completedRoutes !== undefined)          goalSyncFields.completedRoutes = updates.completedRoutes;
       if (Object.keys(goalSyncFields).length > 0) {
-        const updatedGoal = { ...summitGoal, ...goalSyncFields };
-        setSummitGoalState(updatedGoal);
-        await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updatedGoal));
+        const updatedGoal = { ...expeditionBaseGoal, ...goalSyncFields };
+        setExpeditionGoalState(updatedGoal);
+        if (shellMode === "expedition") setSummitGoalState(updatedGoal);
+        await AsyncStorage.multiSet([
+          [EXPEDITION_GOAL_KEY, JSON.stringify(updatedGoal)],
+          ...(shellMode === "expedition"
+            ? [[GOAL_KEY, JSON.stringify(updatedGoal)] as [string, string]]
+            : []),
+        ]);
       }
     }
 
     await AsyncStorage.setItem(EXPEDITIONS_KEY, JSON.stringify(updated));
-  }, [expeditions, activeExpeditionId, summitGoal, EXPEDITIONS_KEY, GOAL_KEY]);
+  }, [expeditions, activeExpeditionId, summitGoal, expeditionGoal, shellMode, EXPEDITIONS_KEY, GOAL_KEY, EXPEDITION_GOAL_KEY]);
 
   const completeExpedition = useCallback(async (id: string, stats?: SavedExpedition["completionStats"]) => {
     const now = new Date().toISOString();
@@ -1272,7 +1406,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const clearPlan = useCallback(async () => {
-    setSummitGoalState(null);
+    const activeGoalAfterClear = shellMode === "expedition" ? expeditionGoal : null;
+    setSummitGoalState(activeGoalAfterClear);
+    setTrainingGoalState(null);
     setTrainingPlan([]);
     setSessions([]);
     setNearbyHills([]);
@@ -1296,9 +1432,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMyHills([]);
     setExcludedFromMyHills([]);
     await AsyncStorage.multiRemove([
-      GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
+      TRAINING_GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY, "summitready_questionnaire_data", "summitready_challenges",
     ]);
-  }, []);
+    if (activeGoalAfterClear) {
+      await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(activeGoalAfterClear));
+    } else {
+      await AsyncStorage.removeItem(GOAL_KEY);
+    }
+  }, [shellMode, expeditionGoal, GOAL_KEY, TRAINING_GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY]);
 
   const seedPastActivity = useCallback(async (hikes: PastHike[]) => {
     if (hikes.length === 0) return;
@@ -1342,10 +1483,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setShellMode = useCallback(async (mode: "training" | "expedition") => {
+    if (mode === shellMode) return;
+    const nextGoal = mode === "training" ? trainingGoal : expeditionGoal;
     setShellModeState(mode);
-    await AsyncStorage.setItem(SHELL_MODE_KEY, mode);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [SHELL_MODE_KEY]);
+    setSummitGoalState(nextGoal);
+    if (mode === "training" && nextGoal) {
+      setReadinessScore(calculateReadiness(nextGoal, trainingPlan, sessions, {
+        sessionReps,
+        assignedHills,
+        completedGoals,
+        exploreHikes,
+      }));
+    }
+    const writes: [string, string][] = [[SHELL_MODE_KEY, mode]];
+    if (nextGoal) writes.push([GOAL_KEY, JSON.stringify(nextGoal)]);
+    await AsyncStorage.multiSet(writes);
+    if (!nextGoal) await AsyncStorage.removeItem(GOAL_KEY);
+  }, [shellMode, trainingGoal, expeditionGoal, trainingPlan, sessions, sessionReps, assignedHills, completedGoals, exploreHikes, SHELL_MODE_KEY, GOAL_KEY]);
 
   const logExploreHike = useCallback(async (hike: Omit<ExploreHike, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
@@ -1688,8 +1842,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!summitGoal) return;
     const updated = { ...summitGoal, location };
     setSummitGoalState(updated);
-    await AsyncStorage.setItem(GOAL_KEY, JSON.stringify(updated));
-  }, [summitGoal]);
+    const scopedGoalKey = shellMode === "expedition" ? EXPEDITION_GOAL_KEY : TRAINING_GOAL_KEY;
+    if (shellMode === "expedition") setExpeditionGoalState(updated);
+    else setTrainingGoalState(updated);
+    await AsyncStorage.multiSet([
+      [GOAL_KEY, JSON.stringify(updated)],
+      [scopedGoalKey, JSON.stringify(updated)],
+    ]);
+  }, [summitGoal, shellMode, GOAL_KEY, TRAINING_GOAL_KEY, EXPEDITION_GOAL_KEY]);
 
   const setSessionReps = useCallback(async (key: string, reps: number) => {
     // Allow zero to clear an entry (shows "–" again); negative values treated as zero.

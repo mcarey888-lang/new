@@ -13,6 +13,14 @@ These are siblings under the root `<Stack>` in `app/_layout.tsx`. Switching betw
 ## Shell persistence
 `shellMode: "training" | "expedition"` is stored in `AppContext` and persisted to AsyncStorage with key `summitready_shell_mode` (flat) or `summitready_shell_mode_<uid>` (per-user). The `app/index.tsx` routing reads the flat key to decide whether to `/(expedition)/base-camp` or `/(tabs)/dashboard` on launch.
 
+## Goal isolation
+
+Training and Expedition must persist separate goal snapshots. The public `summitGoal` is only the snapshot for the currently active shell; switching shells swaps it atomically.
+
+**Why:** A single shared goal caused the selected expedition to appear as the Training summit, and asynchronous goal enrichment could overwrite the other shell after a switch.
+
+**How to apply:** Scope every goal mutation, background response, migration, and clear/reset action to its owning shell. Only update the shared active snapshot when that shell is still selected.
+
 ## ModeTogglePill placement
 `ModeTogglePill` is an absolutely-positioned overlay rendered as a sibling of `<Tabs>` inside BOTH `(tabs)/_layout.tsx` AND `(expedition)/_layout.tsx`. It sits at `top = safeAreaInsets.top + 4` — within the OS status-bar zone that screens already leave empty (screens pad by `insets.top + PILL_OFFSET` where `PILL_OFFSET = 52`). Uses `BlurView` on iOS, plain dark background on Android/web.
 
