@@ -1103,6 +1103,7 @@ export default function BaseCampScreen() {
     {/* Completion cinematic — Modal sits above tab bar, covers everything */}
     <CompletionCinematic
       visible={showCompletion}
+      preload={cinematicActive}
       expeditionName={expTitle ?? "Your Expedition"}
       totalElevationM={totalTrained}
       onContinue={handleCompletionContinue}

@@ -50,6 +50,13 @@ const COMPLETION_VIDEO = require("../assets/videos/completion.mp4");
 
 interface CompletionCinematicProps {
   visible: boolean;
+  /**
+   * Set true while the cinematic zoom is still playing (before visible becomes
+   * true). Mounts a hidden <video preload="auto"> so the browser fully buffers
+   * the MP4 during the ~8 s zoom, eliminating the decode-latency pause at the
+   * moment of handoff.
+   */
+  preload?: boolean;
   expeditionName: string;
   /** Total elevation in metres, shown in the overlay */
   totalElevationM: number;
@@ -61,6 +68,7 @@ interface CompletionCinematicProps {
 
 export function CompletionCinematic({
   visible,
+  preload = false,
   expeditionName,
   totalElevationM,
   onContinue,
@@ -95,8 +103,8 @@ export function CompletionCinematic({
   const triggerVideoFadeIn = useCallback(() => {
     if (videoReadyRef.current) return;
     videoReadyRef.current = true;
-    // 500 ms fade: handoff frame crossfades to video, no jarring cut
-    videoOpacity.value = withTiming(1, { duration: 500 });
+    // 200 ms fade: quick crossfade — video is preloaded so it's ready instantly
+    videoOpacity.value = withTiming(1, { duration: 200 });
   }, []);
 
   // ── Reset on every open ───────────────────────────────────────────────────
@@ -161,6 +169,24 @@ export function CompletionCinematic({
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
+    <>
+    {/*
+     * ── Preload video (web only) ────────────────────────────────────────────
+     * Mounts a zero-size hidden <video preload="auto"> while the cinematic
+     * zoom is still playing. The browser fetches and decodes the MP4 during
+     * the ~8 s zoom so it is already in cache when the modal opens — the
+     * visible video then gets `onCanPlay` almost immediately.
+     */}
+    {Platform.OS === "web" && preload && !visible && (
+      <video
+        src={COMPLETION_VIDEO as string}
+        style={{ position: "absolute", width: 0, height: 0, opacity: 0 }}
+        preload="auto"
+        muted
+        playsInline
+      />
+    )}
+
     <Modal
       visible={visible}
       transparent
@@ -264,6 +290,7 @@ export function CompletionCinematic({
         )}
       </View>
     </Modal>
+    </>
   );
 }
 
