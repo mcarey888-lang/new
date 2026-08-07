@@ -1,16 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // CompletionCinematic.tsx
 //
-// Fullscreen Modal — plays the completion MP4 then shows a stats overlay.
+// Fullscreen Modal — plays the completion MP4, then shows a stats overlay.
 //
-// Video rendering is split by platform:
-//   • Native  → expo-av <Video>   (reliable sizing on device)
-//   • Web     → plain <video>     (expo-av ignores flex dims on web and renders
-//                                  at intrinsic 1080px; the HTML element honours
-//                                  width:100% / height:100% / object-fit:contain)
+// Transition design:
+//   • Modal is transparent so the handoff frame is briefly visible underneath
+//   • The video fades IN from opacity 0 once it is ready to play
+//   • This produces a seamless crossfade from frozen mountain shot → video
+//   • No black flash, no jarring cut
 //
-// All opacity animations use Reanimated (works on web; Animated.timing +
-// useNativeDriver:true silently fails on Expo web preview).
+// Video sizing:
+//   • object-fit: cover / ResizeMode.COVER — fills edge-to-edge, no letterbox bars
+//
+// Video rendering split:
+//   • Native → expo-av <Video>   (reliable sizing on device)
+//   • Web    → plain <video>     (expo-av ignores flex dims on web and renders at
+//                                 its intrinsic 1080px; HTML element honours 100%/cover)
+//
+// All animations use Reanimated (Animated.timing + useNativeDriver:true silently
+// fails on Expo web preview).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -61,19 +69,21 @@ export function CompletionCinematic({
 
   // Native video ref
   const nativeVideoRef = useRef<Video>(null);
-  // Web video ref — typed as any to avoid importing DOM lib types into RN project
+  // Web video ref (typed as any to avoid importing DOM lib types)
   const webVideoRef = useRef<any>(null);
 
-  // ── Reanimated shared values — correct on both web and native ─────────────
-  const modalOpacity   = useSharedValue(0);
+  // ── Video fade-in — starts at 0, animates to 1 when the video is ready ───
+  const videoOpacity   = useSharedValue(0);
   const overlayOpacity = useSharedValue(0);
-  const modalStyle     = useAnimatedStyle(() => ({ opacity: modalOpacity.value }));
-  const overlayStyle   = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
 
-  const [overlayMounted, setOverlayMounted]   = useState(false);
-  const overlayShownRef                        = useRef(false);
+  const videoStyle   = useAnimatedStyle(() => ({ opacity: videoOpacity.value }));
+  const overlayStyle = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
 
-  // ── Trigger overlay (shared by both native status cb and web event) ───────
+  const [overlayMounted, setOverlayMounted] = useState(false);
+  const overlayShownRef                      = useRef(false);
+  const videoReadyRef                        = useRef(false);
+
+  // ── Show overlay ──────────────────────────────────────────────────────────
   const triggerOverlay = useCallback(() => {
     if (overlayShownRef.current) return;
     overlayShownRef.current = true;
@@ -81,48 +91,60 @@ export function CompletionCinematic({
     overlayOpacity.value = withTiming(1, { duration: 600 });
   }, []);
 
-  // ── Reset + fade-in on every open ─────────────────────────────────────────
+  // ── Fade video in once it is ready to play ────────────────────────────────
+  const triggerVideoFadeIn = useCallback(() => {
+    if (videoReadyRef.current) return;
+    videoReadyRef.current = true;
+    // 500 ms fade: handoff frame crossfades to video, no jarring cut
+    videoOpacity.value = withTiming(1, { duration: 500 });
+  }, []);
+
+  // ── Reset on every open ───────────────────────────────────────────────────
   useEffect(() => {
     if (!visible) {
-      modalOpacity.value   = 0;
+      videoOpacity.value   = 0;
       overlayOpacity.value = 0;
       setOverlayMounted(false);
       overlayShownRef.current = false;
+      videoReadyRef.current   = false;
       return;
     }
 
-    modalOpacity.value   = 0;
+    // Reset for new play-through
+    videoOpacity.value   = 0;
     overlayOpacity.value = 0;
     setOverlayMounted(false);
     overlayShownRef.current = false;
+    videoReadyRef.current   = false;
 
     // Seek native video to start
     nativeVideoRef.current?.setPositionAsync(0).catch(() => {});
-    // Seek web video to start
+    // Seek web video to start and play
     if (webVideoRef.current) {
       webVideoRef.current.currentTime = 0;
       webVideoRef.current.play?.().catch(() => {});
     }
-
-    // Snap black background instantly, then briefly fade up so the cut feels
-    // cinematic rather than jarring.
-    modalOpacity.value = withTiming(1, { duration: 250 });
   }, [visible]);
 
-  // ── Native playback status ─────────────────────────────────────────────────
+  // ── Native playback status ────────────────────────────────────────────────
   const handleNativeStatus = useCallback(
     (status: import("expo-av").AVPlaybackStatus) => {
       if (!status.isLoaded) return;
+
+      // Fade video in on first playing frame
+      if (status.isPlaying) triggerVideoFadeIn();
+
+      // Trigger overlay near end
       const pos = status.positionMillis ?? 0;
       const dur = status.durationMillis ?? 0;
       if ((dur > 0 && pos >= dur - 1000) || status.didJustFinish) {
         triggerOverlay();
       }
     },
-    [triggerOverlay],
+    [triggerVideoFadeIn, triggerOverlay],
   );
 
-  // ── Share ──────────────────────────────────────────────────────────────────
+  // ── Share ─────────────────────────────────────────────────────────────────
   const handleShare = useCallback(async () => {
     try {
       await Share.share({
@@ -141,35 +163,39 @@ export function CompletionCinematic({
   return (
     <Modal
       visible={visible}
-      transparent={false}
+      transparent
       animationType="none"
       statusBarTranslucent
       hardwareAccelerated
       onRequestClose={onContinue}
     >
-      <Animated.View style={[styles.root, modalStyle]}>
+      {/*
+       * Root is transparent so the handoff frame shows through during the
+       * video fade-in, giving a seamless cinematic crossfade.
+       */}
+      <View style={styles.root}>
 
-        {/* ── Video layer ─────────────────────────────────────────────────── */}
-        <View style={[StyleSheet.absoluteFill, styles.videoContainer]}>
+        {/* ── Video — fades in once ready, covers edge-to-edge ──────────── */}
+        <Animated.View style={[StyleSheet.absoluteFill, videoStyle]}>
           {Platform.OS === "web" ? (
-            // Native HTML <video> — correctly sizes to 100%/100% and respects
-            // object-fit:contain regardless of the video's intrinsic resolution.
+            // Native HTML <video>:
+            //  • width/height 100% fill the container correctly (expo-av ignores flex)
+            //  • object-fit: cover fills edge-to-edge, no letterbox bars
             <video
               ref={webVideoRef}
-              // Metro resolves require() to a URL string on web
               src={COMPLETION_VIDEO as string}
               style={{
-                width:      "100%",
-                height:     "100%",
-                objectFit:  "contain",
-                background: "#000",
-                display:    "block",
+                width:     "100%",
+                height:    "100%",
+                objectFit: "cover",
+                display:   "block",
               }}
               autoPlay={visible}
               playsInline
               controls={false}
               loop={false}
               muted={false}
+              onCanPlay={triggerVideoFadeIn}
               onTimeUpdate={(e: any) => {
                 const el  = e.currentTarget;
                 const pos = el.currentTime * 1000;
@@ -182,8 +208,8 @@ export function CompletionCinematic({
             <Video
               ref={nativeVideoRef}
               source={COMPLETION_VIDEO}
-              style={styles.video}
-              resizeMode={ResizeMode.CONTAIN}
+              style={StyleSheet.absoluteFill}
+              resizeMode={ResizeMode.COVER}
               shouldPlay={visible}
               isLooping={false}
               isMuted={false}
@@ -191,7 +217,7 @@ export function CompletionCinematic({
               useNativeControls={false}
             />
           )}
-        </View>
+        </Animated.View>
 
         {/* ── Completion overlay ─────────────────────────────────────────── */}
         {overlayMounted && (
@@ -236,7 +262,7 @@ export function CompletionCinematic({
             </View>
           </Animated.View>
         )}
-      </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -245,14 +271,8 @@ export function CompletionCinematic({
 
 const styles = StyleSheet.create({
   root: {
-    flex:            1,
-    backgroundColor: "#000",
-  },
-  videoContainer: {
-    backgroundColor: "#000",
-  },
-  video: {
     flex: 1,
+    // Transparent — handoff frame visible underneath during video fade-in
   },
 
   // ── Overlay ────────────────────────────────────────────────────────────────
@@ -260,22 +280,22 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   overlayContent: {
-    alignItems:       "center",
+    alignItems:        "center",
     paddingHorizontal: 28,
     paddingTop:        32,
   },
   badge: {
-    fontSize:      11,
-    fontWeight:    "700",
-    color:         T.green,
-    letterSpacing: 2,
-    borderWidth:   1,
-    borderColor:   T.green,
-    borderRadius:  20,
+    fontSize:          11,
+    fontWeight:        "700",
+    color:             T.green,
+    letterSpacing:     2,
+    borderWidth:       1,
+    borderColor:       T.green,
+    borderRadius:      20,
     paddingHorizontal: 12,
-    paddingVertical:    4,
-    marginBottom:  20,
-    overflow:      "hidden",
+    paddingVertical:   4,
+    marginBottom:      20,
+    overflow:          "hidden",
   },
   overlayTitle: {
     fontSize:      28,
@@ -322,12 +342,12 @@ const styles = StyleSheet.create({
     color:      "#000",
   },
   continueBtn: {
-    width:          "100%",
-    height:         54,
-    borderRadius:   14,
+    width:           "100%",
+    height:          54,
+    borderRadius:    14,
     backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems:     "center",
-    justifyContent: "center",
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   continueBtnText: {
     fontSize:   17,
