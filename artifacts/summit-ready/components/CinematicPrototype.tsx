@@ -181,13 +181,9 @@ export function CinematicPrototype({
   }
 
   function handleZoomComplete() {
-    phaseRef.current = "holding";
-    setTimeout(() => {
-      if (phaseRef.current !== "holding") return;
-      phaseRef.current = "ready";
-      setDevRestoreVisible(true); // DEV ONLY
-      onCinematicReadyRef.current();
-    }, 250);
+    phaseRef.current = "ready";
+    setDevRestoreVisible(true); // DEV ONLY
+    onCinematicReadyRef.current();
   }
 
   // ── Instant-snap effect — fires when completion video is about to appear ──
