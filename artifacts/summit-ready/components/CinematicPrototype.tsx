@@ -140,7 +140,8 @@ export function CinematicPrototype({
   const translateXVal = useSharedValue(0);
   const translateYVal = useSharedValue(0);
 
-  const phaseRef = useRef<Phase>("idle");
+  const phaseRef         = useRef<Phase>("idle");
+  const earlyTriggerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stable callback refs — avoids stale closures via runOnJS
   const onCinematicReadyRef = useRef(onCinematicReady);
@@ -181,9 +182,13 @@ export function CinematicPrototype({
   }
 
   function handleZoomComplete() {
-    phaseRef.current = "ready";
-    setDevRestoreVisible(true); // DEV ONLY
-    onCinematicReadyRef.current();
+    // No-op — onCinematicReady is fired by the early-trigger timer below.
+    // This callback still transitions phase so dismiss() stays correct.
+    if (phaseRef.current !== "ready") {
+      phaseRef.current = "ready";
+      setDevRestoreVisible(true); // DEV ONLY
+      onCinematicReadyRef.current();
+    }
   }
 
   // ── Instant-snap effect — fires when completion video is about to appear ──
@@ -249,18 +254,39 @@ export function CinematicPrototype({
 
             phaseRef.current = "zooming";
 
-            const easeOpts = { duration: 8000, easing: Easing.inOut(Easing.quad) } as const;
+            const ZOOM_MS = 8000;
+            const easeOpts = { duration: ZOOM_MS, easing: Easing.inOut(Easing.quad) } as const;
             translateXVal.value = withTiming(Tx, easeOpts);
             translateYVal.value = withTiming(Ty, easeOpts);
             scaleVal.value = withTiming(S, easeOpts, () => runOnJS(handleZoomComplete)());
+
+            // Fire onCinematicReady 125 ms before zoom end so the video modal
+            // opens while the zoom is still imperceptibly moving, eliminating
+            // the visible blip between the frozen handoff frame and the video.
+            earlyTriggerRef.current = setTimeout(() => {
+              if (phaseRef.current !== "zooming") return;
+              phaseRef.current = "ready";
+              setDevRestoreVisible(true); // DEV ONLY
+              onCinematicReadyRef.current();
+            }, ZOOM_MS - 125);
           },
         );
       }, 800);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (earlyTriggerRef.current !== null) {
+          clearTimeout(earlyTriggerRef.current);
+          earlyTriggerRef.current = null;
+        }
+      };
     }
 
-    // active → false: trigger dismiss from handoff frame
+    // active → false: cancel any pending early trigger and dismiss from handoff frame
+    if (earlyTriggerRef.current !== null) {
+      clearTimeout(earlyTriggerRef.current);
+      earlyTriggerRef.current = null;
+    }
     if (phaseRef.current === "ready" || phaseRef.current === "holding") {
       dismiss();
     }
