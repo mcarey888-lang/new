@@ -7,11 +7,17 @@ import {
   hillVerificationStats,
 } from "@workspace/db/schema";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
+// All routes in this file require admin authentication
+router.use(requireAdminAuth());
+
 // ── GET /api/admin/hill-verification/sessions ────────────────────────────────
-// Returns recent tracked hill sessions for admin review
+// Returns recent tracked hill sessions for admin review.
+// userId is intentionally omitted from the response to avoid leaking PII.
 
 router.get("/sessions", async (req, res) => {
   const limit  = Math.min(Number(req.query.limit  ?? 50), 200);
@@ -24,8 +30,8 @@ router.get("/sessions", async (req, res) => {
 
     const rows = await db
       .select({
+        // userId intentionally excluded — not needed by the admin UI
         id:                     trackedHillSessions.id,
-        userId:                 trackedHillSessions.userId,
         plannedHillName:        trackedHillSessions.plannedHillName,
         plannedRouteName:       trackedHillSessions.plannedRouteName,
         completionType:         trackedHillSessions.completionType,
@@ -119,6 +125,8 @@ router.post("/approve/:id", async (req, res) => {
 
     if (!row) return res.status(404).json({ error: "Session not found" });
 
+    void writeAuditLog(res.locals.adminIdentity, "approve_hill_session", id);
+
     return res.json({ ok: true, id });
   } catch (err) {
     req.log.error({ err }, "admin/hill-verification/approve failed");
@@ -140,6 +148,9 @@ router.post("/reject/:id", async (req, res) => {
       .returning({ id: trackedHillSessions.id });
 
     if (!row) return res.status(404).json({ error: "Session not found" });
+
+    void writeAuditLog(res.locals.adminIdentity, "reject_hill_session", id);
+
     return res.json({ ok: true, id });
   } catch (err) {
     req.log.error({ err }, "admin/hill-verification/reject failed");

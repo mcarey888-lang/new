@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { getAdminToken } from "@/components/AdminGuard";
 import {
   useGetArtworkStatus,
   getGetArtworkStatusQueryKey,
@@ -101,9 +102,13 @@ export default function ArtworkManager() {
     setIsBulkGenerating(true);
     setBulkProgress({ index: 0, total: challenges.length, succeeded: 0, failed: 0, skipped: 0, report: null });
     try {
+      const token = getAdminToken();
       const response = await fetch("/api/artwork/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ force: false }),
       });
       if (!response.body) throw new Error("No response body");

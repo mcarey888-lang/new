@@ -1,9 +1,10 @@
 /**
  * Clerk authentication enforcement middleware.
  *
- * Wraps @clerk/express requireAuth() and only enforces in production
- * (when CLERK_SECRET_KEY starts with sk_live_). In dev/test the middleware
- * is a no-op so local development isn't blocked.
+ * Wraps @clerk/express requireAuth() and enforces Clerk auth on every call.
+ *
+ * Dev/test bypass: set ADMIN_AUTH_DEV_BYPASS=true in your local .env.
+ * Never set this in staging or production — it opens all protected routes.
  *
  * Usage:
  *   router.use(requireAuth());          // protect an entire sub-router
@@ -18,8 +19,11 @@ import { requireAuth as clerkRequireAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
 
 export function requireAuth(): RequestHandler {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey?.startsWith("sk_live_")) {
+  if (process.env.ADMIN_AUTH_DEV_BYPASS === "true") {
+    console.warn(
+      "[requireAuth] ⚠️  ADMIN_AUTH_DEV_BYPASS=true — Clerk auth is DISABLED. " +
+      "Never enable this in staging or production."
+    );
     return (_req, _res, next) => next();
   }
   return clerkRequireAuth() as unknown as RequestHandler;

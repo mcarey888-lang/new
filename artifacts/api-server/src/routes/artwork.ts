@@ -5,14 +5,17 @@
  *
  * All routes are mounted at /api/artwork (see routes/index.ts).
  *
- * Endpoints:
- *   GET    /api/artwork/status                  — status for all active challenges
- *   GET    /api/artwork/image/:id/:crop         — stream a generated image from GCS
- *   POST   /api/artwork/generate/:challengeId   — generate artwork for one challenge
- *   POST   /api/artwork/bulk                    — bulk-generate (SSE progress stream)
- *   POST   /api/artwork/approve/:challengeId    — approve artwork for live use
- *   POST   /api/artwork/reject/:challengeId     — reject artwork
- *   DELETE /api/artwork/:challengeId            — clear all artwork + GCS objects
+ * Public (no auth):
+ *   GET  /api/artwork/status                  — status for all active challenges
+ *   GET  /api/artwork/image/:id/:crop         — stream a generated image from GCS
+ *   GET  /api/artwork/prompt/:challengeId     — preview the auto-built prompt
+ *
+ * Admin (requireAdminAuth — server-verified on every request):
+ *   POST   /api/artwork/generate/:challengeId — generate artwork for one challenge
+ *   POST   /api/artwork/bulk                  — bulk-generate (SSE progress stream)
+ *   POST   /api/artwork/approve/:challengeId  — approve artwork for live use
+ *   POST   /api/artwork/reject/:challengeId   — reject artwork
+ *   DELETE /api/artwork/:challengeId          — clear all artwork + GCS objects
  */
 
 import { Router } from "express";
@@ -28,12 +31,16 @@ import { streamArtworkImage, type CropType } from "../services/artwork/artworkSt
 import { buildExpeditionPrompt } from "../services/artwork/promptBuilder.js";
 import { db, signatureChallenges, challengeStages } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
 
-// ── GET /api/artwork/status ────────────────────────────────────────────────────
+// ── Public read-only endpoints ─────────────────────────────────────────────────
+
+// GET /api/artwork/status
 artworkRouter.get("/status", async (_req, res) => {
   try {
     const statuses = await getArtworkStatus();
@@ -44,8 +51,7 @@ artworkRouter.get("/status", async (_req, res) => {
   }
 });
 
-// ── GET /api/artwork/image/:challengeId/:crop ─────────────────────────────────
-// Streams a generated image from GCS. Cached by CDN / browser for 1 year.
+// GET /api/artwork/image/:challengeId/:crop
 artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
   const { challengeId, crop } = req.params;
   if (!VALID_CROPS.includes(crop as CropType)) {
@@ -56,14 +62,11 @@ artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
     await streamArtworkImage(challengeId, crop as CropType, res);
   } catch (err) {
     console.error(`[artwork/image] ${challengeId}/${crop}`, err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to serve image" });
-    }
+    if (!res.headersSent) res.status(500).json({ error: "Failed to serve image" });
   }
 });
 
-// ── GET /api/artwork/prompt/:challengeId ──────────────────────────────────────
-// Returns the auto-built prompt without generating an image.
+// GET /api/artwork/prompt/:challengeId
 artworkRouter.get("/prompt/:challengeId", async (req, res) => {
   const { challengeId } = req.params;
   try {
@@ -90,9 +93,10 @@ artworkRouter.get("/prompt/:challengeId", async (req, res) => {
   }
 });
 
-// ── POST /api/artwork/generate/:challengeId ────────────────────────────────────
-// Body: { force?: boolean }
-artworkRouter.post("/generate/:challengeId", async (req, res) => {
+// ── Admin-only endpoints (server-verified on every request) ───────────────────
+
+// POST /api/artwork/generate/:challengeId
+artworkRouter.post("/generate/:challengeId", requireAdminAuth(), async (req, res) => {
   const { challengeId } = req.params;
   const force = req.body?.force === true;
 
@@ -110,15 +114,10 @@ artworkRouter.post("/generate/:challengeId", async (req, res) => {
   }
 });
 
-// ── POST /api/artwork/bulk ─────────────────────────────────────────────────────
-// Streams Server-Sent Events (SSE) with progress updates.
-// Each event is a JSON object: { index, total, result: GenerateResult }
-// Final event: { done: true, report: BulkResult }
-// Body: { force?: boolean }
-artworkRouter.post("/bulk", async (req, res) => {
+// POST /api/artwork/bulk
+artworkRouter.post("/bulk", requireAdminAuth(), async (req, res) => {
   const force = req.body?.force === true;
 
-  // SSE setup
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -145,11 +144,12 @@ artworkRouter.post("/bulk", async (req, res) => {
   }
 });
 
-// ── POST /api/artwork/approve/:challengeId ─────────────────────────────────────
-artworkRouter.post("/approve/:challengeId", async (req, res) => {
+// POST /api/artwork/approve/:challengeId
+artworkRouter.post("/approve/:challengeId", requireAdminAuth(), async (req, res) => {
   const { challengeId } = req.params;
   try {
     await approveChallengeArtwork(challengeId);
+    void writeAuditLog(res.locals.adminIdentity, "approve_artwork", challengeId);
     return res.json({ challengeId, approved: true });
   } catch (err) {
     console.error(`[artwork/approve] ${challengeId}`, err);
@@ -157,11 +157,12 @@ artworkRouter.post("/approve/:challengeId", async (req, res) => {
   }
 });
 
-// ── POST /api/artwork/reject/:challengeId ──────────────────────────────────────
-artworkRouter.post("/reject/:challengeId", async (req, res) => {
+// POST /api/artwork/reject/:challengeId
+artworkRouter.post("/reject/:challengeId", requireAdminAuth(), async (req, res) => {
   const { challengeId } = req.params;
   try {
     await rejectChallengeArtwork(challengeId);
+    void writeAuditLog(res.locals.adminIdentity, "reject_artwork", challengeId);
     return res.json({ challengeId, approved: false, status: "rejected" });
   } catch (err) {
     console.error(`[artwork/reject] ${challengeId}`, err);
@@ -169,12 +170,12 @@ artworkRouter.post("/reject/:challengeId", async (req, res) => {
   }
 });
 
-// ── DELETE /api/artwork/:challengeId ───────────────────────────────────────────
-// Removes all stored images (GCS + DB fields).
-artworkRouter.delete("/:challengeId", async (req, res) => {
+// DELETE /api/artwork/:challengeId
+artworkRouter.delete("/:challengeId", requireAdminAuth(), async (req, res) => {
   const { challengeId } = req.params;
   try {
     await clearChallengeArtwork(challengeId);
+    void writeAuditLog(res.locals.adminIdentity, "delete_artwork", challengeId);
     return res.json({ challengeId, cleared: true });
   } catch (err) {
     console.error(`[artwork/delete] ${challengeId}`, err);

@@ -14,8 +14,9 @@ interface AtlasAsset {
 interface Brand { id: number; slug: string; name: string; }
 interface AssetType { id: number; slug: string; name: string; }
 
+import { adminApiFetch } from "@/lib/adminToken";
 async function apiFetch(path: string) {
-  const r = await fetch(`/api/atlas${path}`);
+  const r = await adminApiFetch(`/api/atlas${path}`);
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }

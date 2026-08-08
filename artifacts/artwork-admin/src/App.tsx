@@ -1,6 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import ArtworkManager from './pages/ArtworkManager';
+import { AdminGuard, getAdminToken } from './components/AdminGuard';
+import { setAuthTokenGetter } from '@workspace/api-client-react';
+
+// Wire the admin session token into every generated API-client hook call.
+// getAdminToken reads from sessionStorage so it returns null until the user
+// has authenticated via AdminGuard.
+setAuthTokenGetter(() => getAdminToken());
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,11 +40,13 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <Router />
-      </WouterRouter>
-    </QueryClientProvider>
+    <AdminGuard>
+      <QueryClientProvider client={queryClient}>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <Router />
+        </WouterRouter>
+      </QueryClientProvider>
+    </AdminGuard>
   );
 }
 

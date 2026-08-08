@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 
 const BASE = "/api/atlas";
+import { adminApiFetch } from "@/lib/adminToken";
 
 async function apiFetch(path: string, opts?: RequestInit) {
-  const r = await fetch(`${BASE}${path}`, opts);
+  const r = await adminApiFetch(`${BASE}${path}`, opts);
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }

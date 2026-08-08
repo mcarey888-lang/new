@@ -9,8 +9,9 @@ import {
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 const BASE = "/api/atlas";
+import { adminApiFetch } from "@/lib/adminToken";
 async function apiFetch(path: string, opts?: RequestInit) {
-  const r = await fetch(`${BASE}${path}`, opts);
+  const r = await adminApiFetch(`${BASE}${path}`, opts);
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -105,7 +106,7 @@ export default function AtlasMediaStudio() {
     setIsBulkGenerating(true);
     setBulkProgress({ index: 0, total: allAssets.length, succeeded: 0, failed: 0, skipped: 0, report: null });
     try {
-      const resp = await fetch(`${BASE}/bulk`, {
+      const resp = await adminApiFetch(`${BASE}/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force: false, brandId: selectedBrandId }),
@@ -360,11 +361,11 @@ function AssetRow({ asset, assetTypes, onOpenPreview, onSetMatchReference, match
   const qc = useQueryClient();
 
   const doPost = async (path: string, body?: object) => {
-    await fetch(`/api/atlas${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    await adminApiFetch(`/api/atlas${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
     onRefresh();
   };
   const doDel = async (path: string) => {
-    await fetch(`/api/atlas${path}`, { method: "DELETE" });
+    await adminApiFetch(`/api/atlas${path}`, { method: "DELETE" });
     onRefresh();
   };
 
@@ -469,7 +470,7 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const act = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); onRefresh(); } finally { setBusy(false); } };
-  const post = (path: string) => fetch(`/api/atlas${path}`, { method: "POST" });
+  const post = (path: string) => adminApiFetch(`/api/atlas${path}`, { method: "POST" });
 
   const handleUpload = async (file: File) => {
     setUploadError(null);
@@ -485,7 +486,7 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
       });
-      const r = await fetch(`/api/atlas/upload/${asset.assetId}`, {
+      const r = await adminApiFetch(`/api/atlas/upload/${asset.assetId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: b64, mimeType: file.type }),
@@ -554,7 +555,7 @@ function ImagePreviewDrawer({ asset, onClose, onRefresh }: { asset: AtlasAsset; 
                 <XCircle className="w-3.5 h-3.5" /> Reject
               </button>
             )}
-            <button disabled={busy} onClick={() => act(() => fetch(`/api/atlas/generate/${asset.assetId}`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({force:true}) }).then(()=>{}))}
+            <button disabled={busy} onClick={() => act(() => adminApiFetch(`/api/atlas/generate/${asset.assetId}`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({force:true}) }).then(()=>{}))}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-40">
               <RotateCw className="w-3.5 h-3.5" /> Regenerate
             </button>
@@ -649,7 +650,7 @@ function NewAssetDialog({ brand, assetTypes, matchReference, onClose, onCreated 
         body: JSON.stringify({ brandId: brand.id, assetTypeId, sceneVars }),
       });
       if (generateNow) {
-        await fetch(`/api/atlas/generate/${assetId}`, {
+        await adminApiFetch(`/api/atlas/generate/${assetId}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ force: false }),
         });
@@ -725,7 +726,7 @@ function StyleLockDialog({ brand, onClose, onSaved }: { brand: Brand; onClose: (
   const handleSave = async () => {
     setBusy(true);
     try {
-      await fetch(`/api/atlas/brands/${brand.id}/style-lock`, {
+      await adminApiFetch(`/api/atlas/brands/${brand.id}/style-lock`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ styleLock: lock }),
       });

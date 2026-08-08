@@ -4,24 +4,26 @@
  * Internal routes for the Atlas Media Studio AI image pipeline.
  * Mounted at /api/atlas.
  *
- * Endpoints:
- *   GET    /api/atlas/brands                     — list all active brands
- *   GET    /api/atlas/asset-types                — list all asset types
- *   GET    /api/atlas/status                     — all assets (optionally filtered by brand)
- *   GET    /api/atlas/image/:assetId/:crop       — stream image from storage
- *   POST   /api/atlas/assets                     — create a new asset record
- *   POST   /api/atlas/generate/:assetId          — generate image for one asset
- *   POST   /api/atlas/bulk                       — bulk generate (SSE stream)
- *   POST   /api/atlas/approve/:assetId           — approve
- *   POST   /api/atlas/reject/:assetId            — reject
- *   POST   /api/atlas/archive/:assetId           — archive (soft delete)
- *   POST   /api/atlas/publish/:assetId           — publish
- *   POST   /api/atlas/upload/:assetId             — import local image (base64 JSON)
- *   POST   /api/atlas/github/publish             — publish approved assets to GitHub
- *   GET    /api/atlas/github/queue               — approved assets pending GitHub publish
- *   GET    /api/atlas/github/status              — GitHub connection + rate-limit status
+ * Public (no auth):
+ *   GET  /api/atlas/brands                     — list all active brands
+ *   GET  /api/atlas/asset-types                — list all asset types
+ *   GET  /api/atlas/status                     — all assets (optionally filtered by brand)
+ *   GET  /api/atlas/image/:assetId/:crop       — stream image from storage
+ *   GET  /api/atlas/github/status              — GitHub connection + rate-limit status
+ *   GET  /api/atlas/github/queue               — approved assets pending GitHub publish
+ *
+ * Admin (requireAdminAuth — server-verified on every request):
+ *   POST   /api/atlas/assets                   — create a new asset record
+ *   POST   /api/atlas/generate/:assetId        — generate image for one asset
+ *   POST   /api/atlas/bulk                     — bulk generate (SSE stream)
+ *   POST   /api/atlas/approve/:assetId         — approve
+ *   POST   /api/atlas/reject/:assetId          — reject
+ *   POST   /api/atlas/archive/:assetId         — archive (soft delete)
+ *   POST   /api/atlas/publish/:assetId         — publish
+ *   POST   /api/atlas/upload/:assetId          — import local image (base64 JSON)
+ *   POST   /api/atlas/github/publish           — publish approved assets to GitHub
  *   PATCH  /api/atlas/brands/:brandId/style-lock — update brand style lock
- *   DELETE /api/atlas/:assetId                   — clear asset + storage
+ *   DELETE /api/atlas/:assetId                 — clear asset + storage
  */
 
 import { Router } from "express";
@@ -47,6 +49,8 @@ import {
   getPublishQueue,
 } from "../services/atlas/atlasGitHubService.js";
 import type { AtlasCropName } from "../services/atlas/atlasCropService.js";
+import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 export const atlasRouter = Router();
 
@@ -55,7 +59,8 @@ const VALID_CROPS: AtlasCropName[] = [
   "card", "square", "portrait", "landscape", "social",
 ];
 
-// ── GET /api/atlas/brands ─────────────────────────────────────────────────────
+// ── Public read-only endpoints ─────────────────────────────────────────────────
+
 atlasRouter.get("/brands", async (_req, res) => {
   try {
     const brands = await getAllBrands();
@@ -66,7 +71,6 @@ atlasRouter.get("/brands", async (_req, res) => {
   }
 });
 
-// ── GET /api/atlas/asset-types ────────────────────────────────────────────────
 atlasRouter.get("/asset-types", async (_req, res) => {
   try {
     const assetTypes = await getAllAssetTypes();
@@ -77,7 +81,6 @@ atlasRouter.get("/asset-types", async (_req, res) => {
   }
 });
 
-// ── GET /api/atlas/status ─────────────────────────────────────────────────────
 atlasRouter.get("/status", async (req, res) => {
   try {
     const brandId = req.query.brandId ? Number(req.query.brandId) : undefined;
@@ -89,7 +92,6 @@ atlasRouter.get("/status", async (req, res) => {
   }
 });
 
-// ── GET /api/atlas/image/:assetId/:crop ───────────────────────────────────────
 atlasRouter.get("/image/:assetId/:crop", async (req, res) => {
   const assetId = Array.isArray(req.params.assetId) ? req.params.assetId[0] : req.params.assetId;
   const crop    = Array.isArray(req.params.crop)    ? req.params.crop[0]    : req.params.crop;
@@ -105,8 +107,33 @@ atlasRouter.get("/image/:assetId/:crop", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/assets ────────────────────────────────────────────────────
-atlasRouter.post("/assets", async (req, res) => {
+atlasRouter.get("/github/status", async (_req, res) => {
+  try {
+    const status = await getGitHubStatus();
+    return res.json(status);
+  } catch (err) {
+    return res.status(500).json({ ok: false, reason: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+atlasRouter.get("/github/queue", async (req, res) => {
+  const brandId = req.query.brandId ? Number(req.query.brandId) : undefined;
+  try {
+    const queue = await getPublishQueue(brandId);
+    return res.json({ queue });
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// ── Admin-only endpoints (server-verified on every request) ───────────────────
+
+// Normalise Express route params (always string in real requests, but typed as string | string[])
+function param(p: string | string[]): string {
+  return Array.isArray(p) ? p[0]! : p;
+}
+
+atlasRouter.post("/assets", requireAdminAuth(), async (req, res) => {
   const { brandId, assetTypeId, sceneVars } = req.body ?? {};
   if (!brandId || !assetTypeId) {
     return res.status(400).json({ error: "brandId and assetTypeId are required" });
@@ -120,13 +147,7 @@ atlasRouter.post("/assets", async (req, res) => {
   }
 });
 
-// Normalise Express route params (always string in real requests, but typed as string | string[])
-function param(p: string | string[]): string {
-  return Array.isArray(p) ? p[0]! : p;
-}
-
-// ── POST /api/atlas/generate/:assetId ────────────────────────────────────────
-atlasRouter.post("/generate/:assetId", async (req, res) => {
+atlasRouter.post("/generate/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   const force = req.body?.force === true;
   try {
@@ -139,10 +160,9 @@ atlasRouter.post("/generate/:assetId", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/upload/:assetId ──────────────────────────────────────────
-atlasRouter.post("/upload/:assetId", async (req, res) => {
+atlasRouter.post("/upload/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
-  const { data, mimeType } = req.body ?? {};
+  const { data } = req.body ?? {};
   if (!data || typeof data !== "string") {
     return res.status(400).json({ error: "Missing base64 image data" });
   }
@@ -156,8 +176,7 @@ atlasRouter.post("/upload/:assetId", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/bulk ──────────────────────────────────────────────────────
-atlasRouter.post("/bulk", async (req, res) => {
+atlasRouter.post("/bulk", requireAdminAuth(), async (req, res) => {
   const force = req.body?.force === true;
   const brandId = req.body?.brandId ? Number(req.body.brandId) : null;
 
@@ -183,11 +202,11 @@ atlasRouter.post("/bulk", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/approve/:assetId ─────────────────────────────────────────
-atlasRouter.post("/approve/:assetId", async (req, res) => {
+atlasRouter.post("/approve/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await approveAtlasAsset(assetId);
+    void writeAuditLog(res.locals.adminIdentity, "approve_atlas_asset", assetId);
     return res.json({ assetId, approved: true });
   } catch (err) {
     console.error(`[atlas/approve] ${assetId}`, err);
@@ -195,11 +214,11 @@ atlasRouter.post("/approve/:assetId", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/reject/:assetId ──────────────────────────────────────────
-atlasRouter.post("/reject/:assetId", async (req, res) => {
+atlasRouter.post("/reject/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await rejectAtlasAsset(assetId);
+    void writeAuditLog(res.locals.adminIdentity, "reject_atlas_asset", assetId);
     return res.json({ assetId, approved: false, status: "rejected" });
   } catch (err) {
     console.error(`[atlas/reject] ${assetId}`, err);
@@ -207,11 +226,11 @@ atlasRouter.post("/reject/:assetId", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/archive/:assetId ─────────────────────────────────────────
-atlasRouter.post("/archive/:assetId", async (req, res) => {
+atlasRouter.post("/archive/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await archiveAtlasAsset(assetId);
+    void writeAuditLog(res.locals.adminIdentity, "archive_atlas_asset", assetId);
     return res.json({ assetId, archived: true });
   } catch (err) {
     console.error(`[atlas/archive] ${assetId}`, err);
@@ -219,14 +238,14 @@ atlasRouter.post("/archive/:assetId", async (req, res) => {
   }
 });
 
-// ── POST /api/atlas/publish/:assetId ─────────────────────────────────────────
-atlasRouter.post("/publish/:assetId", async (req, res) => {
+atlasRouter.post("/publish/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     const result = await publishAtlasAsset(assetId);
     if (!result.ok) {
       return res.status(400).json({ error: result.reason ?? "Cannot publish asset" });
     }
+    void writeAuditLog(res.locals.adminIdentity, "publish_atlas_asset", assetId);
     return res.json({ assetId, published: true });
   } catch (err) {
     console.error(`[atlas/publish] ${assetId}`, err);
@@ -234,35 +253,10 @@ atlasRouter.post("/publish/:assetId", async (req, res) => {
   }
 });
 
-// ── GET /api/atlas/github/status ─────────────────────────────────────────────
-atlasRouter.get("/github/status", async (_req, res) => {
-  try {
-    const status = await getGitHubStatus();
-    return res.json(status);
-  } catch (err) {
-    return res.status(500).json({ ok: false, reason: err instanceof Error ? err.message : "Unknown error" });
-  }
-});
-
-// ── GET /api/atlas/github/queue ───────────────────────────────────────────────
-atlasRouter.get("/github/queue", async (req, res) => {
-  const brandId = req.query.brandId ? Number(req.query.brandId) : undefined;
-  try {
-    const queue = await getPublishQueue(brandId);
-    return res.json({ queue });
-  } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
-  }
-});
-
-// ── POST /api/atlas/github/publish ────────────────────────────────────────────
-// Body: { assetIds?: string[], brandId?: number }
-// If assetIds is empty/omitted and brandId is set, publishes all approved for that brand.
-atlasRouter.post("/github/publish", async (req, res) => {
+atlasRouter.post("/github/publish", requireAdminAuth(), async (req, res) => {
   const assetIds: string[] = req.body?.assetIds ?? [];
   const brandId: number | undefined = req.body?.brandId ? Number(req.body.brandId) : undefined;
 
-  // SSE so the client can show progress
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -273,6 +267,11 @@ atlasRouter.post("/github/publish", async (req, res) => {
   try {
     send({ status: "starting", message: "Preparing assets for GitHub publish…" });
     const result = await publishAtlasAssets(assetIds, brandId);
+    void writeAuditLog(res.locals.adminIdentity, "github_publish_atlas", null, {
+      assetIds,
+      brandId,
+      published: result,
+    });
     send({ status: "done", result });
   } catch (err) {
     send({ status: "error", reason: err instanceof Error ? err.message : "Publish failed" });
@@ -281,8 +280,7 @@ atlasRouter.post("/github/publish", async (req, res) => {
   }
 });
 
-// ── PATCH /api/atlas/brands/:brandId/style-lock ───────────────────────────────
-atlasRouter.patch("/brands/:brandId/style-lock", async (req, res) => {
+atlasRouter.patch("/brands/:brandId/style-lock", requireAdminAuth(), async (req, res) => {
   const brandId = Number(req.params.brandId);
   const styleLock = req.body?.styleLock;
   if (!styleLock || typeof styleLock !== "object") {
@@ -297,11 +295,11 @@ atlasRouter.patch("/brands/:brandId/style-lock", async (req, res) => {
   }
 });
 
-// ── DELETE /api/atlas/:assetId ────────────────────────────────────────────────
-atlasRouter.delete("/:assetId", async (req, res) => {
+atlasRouter.delete("/:assetId", requireAdminAuth(), async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await clearAtlasAsset(assetId);
+    void writeAuditLog(res.locals.adminIdentity, "delete_atlas_asset", assetId);
     return res.json({ assetId, cleared: true });
   } catch (err) {
     console.error(`[atlas/delete] ${assetId}`, err);

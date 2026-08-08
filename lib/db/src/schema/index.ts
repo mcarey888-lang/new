@@ -11,3 +11,4 @@ export * from "./canonical-hills";
 export * from "./virtual-expedition-engine";
 export * from "./signature-challenges";
 export * from "./atlas";
+export * from "./admin";

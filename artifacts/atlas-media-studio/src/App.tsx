@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { AdminGuard } from './components/AdminGuard';
 import AtlasMediaStudio from './pages/AtlasMediaStudio';
 import AssetLibrary from './pages/AssetLibrary';
 import PublishPanel from './pages/PublishPanel';
@@ -37,11 +38,13 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <Router />
-      </WouterRouter>
-    </QueryClientProvider>
+    <AdminGuard>
+      <QueryClientProvider client={queryClient}>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <Router />
+        </WouterRouter>
+      </QueryClientProvider>
+    </AdminGuard>
   );
 }
 

@@ -1,4 +1,4 @@
-import { AdminGuard } from "@/components/AdminGuard";
+import { AdminGuard, adminFetch } from "@/components/AdminGuard";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Activity,
@@ -102,8 +102,8 @@ function HillVerificationPage() {
     setError(null);
     try {
       const [sessRes, statsRes] = await Promise.all([
-        fetch(`${API}/admin/hill-verification/sessions?limit=100${typeFilter !== "all" ? `&type=${typeFilter}` : ""}`),
-        fetch(`${API}/admin/hill-verification/stats`),
+        adminFetch(`${API}/admin/hill-verification/sessions?limit=100${typeFilter !== "all" ? `&type=${typeFilter}` : ""}`),
+        adminFetch(`${API}/admin/hill-verification/stats`),
       ]);
       if (!sessRes.ok || !statsRes.ok) throw new Error("Failed to fetch");
       const [sessData, statsData] = await Promise.all([sessRes.json(), statsRes.json()]);
@@ -121,7 +121,7 @@ function HillVerificationPage() {
   async function handleApprove(id: number) {
     setActionBusy(b => ({ ...b, [id]: true }));
     try {
-      const res = await fetch(`${API}/admin/hill-verification/approve/${id}`, { method: "POST" });
+      const res = await adminFetch(`${API}/admin/hill-verification/approve/${id}`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to approve");
       setSessions(prev => prev.map(s => s.id === id ? { ...s, adminApproved: true, usedForVerification: true } : s));
     } catch { /* ignore */ }
@@ -131,7 +131,7 @@ function HillVerificationPage() {
   async function handleReject(id: number) {
     setActionBusy(b => ({ ...b, [id]: true }));
     try {
-      const res = await fetch(`${API}/admin/hill-verification/reject/${id}`, { method: "POST" });
+      const res = await adminFetch(`${API}/admin/hill-verification/reject/${id}`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to reject");
       setSessions(prev => prev.map(s => s.id === id ? { ...s, adminApproved: false, usedForVerification: false } : s));
     } catch { /* ignore */ }

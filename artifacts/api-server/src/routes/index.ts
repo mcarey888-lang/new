@@ -23,6 +23,7 @@ import virtualExpeditionEngineRouter from "./virtual-expedition-engine";
 import { signatureChallengesRouter } from "./signature-challenges";
 import { artworkRouter } from "./artwork";
 import { atlasRouter } from "./atlas";
+import { adminRouter } from "./admin";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -45,26 +46,28 @@ router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
 router.use(virtualExpeditionEngineRouter);
 router.use(signatureChallengesRouter);
+router.use(mountainVerificationRouter);
+
+// Artwork and Atlas routers apply requireAdminAuth internally to write/mutating
+// endpoints; read-only endpoints (status, image, prompt) remain public.
 router.use("/artwork", artworkRouter);
 router.use("/atlas", atlasRouter);
+
+// Admin session + identity routes (login + /me)
+router.use("/admin", adminRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
 // ownership; GET/POST are public). Auth is enforced inside the router.
 router.use(trackedRoutesRouter);
 
-// Hill sessions and tracking data belong to a user — require auth.
-// The mobile app (only caller) provides a Clerk JWT in the Authorization header.
+// Hill sessions and tracking data belong to a user — require Clerk auth.
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 
-// User account management — requires auth.
+// User account management — requires Clerk auth.
 router.use(requireAuth(), userRouter);
 
-// Mountain verification and admin pages are called from the landing site which
-// has no Clerk session. They are protected by rate limiting + CORS + a
-// frontend key-prompt (AdminGuard component). requireAuth is intentionally NOT
-// applied here to avoid breaking the internal admin UI.
-router.use(mountainVerificationRouter);
+// Hill verification admin applies requireAdminAuth internally on every route.
 router.use("/admin/hill-verification", hillVerificationAdminRouter);
 
 export default router;
