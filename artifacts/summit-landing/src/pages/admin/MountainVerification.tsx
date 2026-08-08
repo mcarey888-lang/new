@@ -1,4 +1,4 @@
-import { AdminGuard } from "@/components/AdminGuard";
+import { AdminGuard, adminFetch } from "@/components/AdminGuard";
 import React, { useState } from "react";
 import { Search, Loader2, CheckCircle, AlertCircle, Minus, TrendingUp, Mountain, Play, RefreshCw, FlaskConical } from "lucide-react";
 
@@ -134,7 +134,7 @@ function MountainVerificationPage() {
       return body as GptResult;
     });
 
-    const calcPromise = fetch(`${API}/mountain-verification-test`, {
+    const calcPromise = adminFetch(`${API}/mountain-verification-test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mountainName: name }),
@@ -156,7 +156,7 @@ function MountainVerificationPage() {
   async function loadHistory() {
     setHistoryLoading(true);
     try {
-      const res = await fetch(`${API}/mountain-verification-results`);
+      const res = await adminFetch(`${API}/mountain-verification-results`);
       const data = await res.json() as StoredResult[];
       setRecentResults(data);
     } catch { /* ignore */ }
@@ -167,7 +167,7 @@ function MountainVerificationPage() {
     setBatchRunning(true);
     setBatchMsg("Starting batch test for 6 mountains…");
     try {
-      const res = await fetch(`${API}/mountain-verification-test/batch`, { method: "POST" });
+      const res = await adminFetch(`${API}/mountain-verification-test/batch`, { method: "POST" });
       const data = await res.json() as { status: string; mountains: string[] };
       setBatchMsg(`Batch test started. Processing: ${data.mountains?.join(", ")}. Results will appear in history once complete (may take a few minutes).`);
     } catch {

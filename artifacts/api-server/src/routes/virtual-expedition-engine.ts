@@ -2,10 +2,12 @@
  * Virtual Expedition Engine — API routes
  *
  * Public endpoints (no auth): read-only expedition/route/match data
- * Admin endpoints: recalculate DNA and matches (protected by x-vx-admin-key header)
+ * Admin endpoints: recalculate DNA and matches (protected by requireAdminAuth middleware)
  */
 
 import { Router, type IRouter } from "express";
+import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import {
@@ -27,25 +29,8 @@ import {
 
 const router: IRouter = Router();
 
-// ── Admin key guard ───────────────────────────────────────────────────────────
-
-function adminKeyMiddleware(
-  req: import("express").Request,
-  res: import("express").Response,
-  next: import("express").NextFunction,
-) {
-  const provided = req.headers["x-vx-admin-key"];
-  const expected = process.env.VIRTUAL_ENGINE_ADMIN_KEY;
-  if (!expected) {
-    res.status(503).json({ error: "VIRTUAL_ENGINE_ADMIN_KEY not configured on server" });
-    return;
-  }
-  if (!provided || provided !== expected) {
-    res.status(401).json({ error: "Unauthorized — x-vx-admin-key header required" });
-    return;
-  }
-  next();
-}
+// Admin routes are protected by requireAdminAuth() — the unified admin middleware.
+// VIRTUAL_ENGINE_ADMIN_KEY is no longer used; ADMIN_API_KEY (session tokens) covers all admin.
 
 // ── GET /api/vx/expeditions ───────────────────────────────────────────────────
 
@@ -280,7 +265,7 @@ router.get("/vx/training-routes/:routeId", async (req, res) => {
 
 // ── GET /api/vx/admin/review-queue ────────────────────────────────────────────
 
-router.get("/vx/admin/review-queue", adminKeyMiddleware, async (req, res) => {
+router.get("/vx/admin/review-queue", requireAdminAuth(), async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -302,7 +287,7 @@ const RecalcDnaBodySchema = z.object({
   routeType: z.enum(["expedition", "training"]).optional(),
 }).optional();
 
-router.post("/vx/admin/recalculate-dna", adminKeyMiddleware, async (req, res) => {
+router.post("/vx/admin/recalculate-dna", requireAdminAuth(), async (req, res) => {
   const parsed = RecalcDnaBodySchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
@@ -391,6 +376,10 @@ router.post("/vx/admin/recalculate-dna", adminKeyMiddleware, async (req, res) =>
       for (const route of allTrainRoutes) await recalcTrainingRoute(route);
     }
 
+    writeAuditLog(res.locals.adminIdentity, "vx-recalculate-dna", null, {
+      expeditionRoutesUpdated: expUpdated,
+      trainingRoutesUpdated:   trainUpdated,
+    });
     return res.json({
       ok: true,
       expeditionRoutesUpdated: expUpdated,
@@ -405,10 +394,11 @@ router.post("/vx/admin/recalculate-dna", adminKeyMiddleware, async (req, res) =>
 
 // ── POST /api/vx/admin/recalculate-matches ────────────────────────────────────
 
-router.post("/vx/admin/recalculate-matches", adminKeyMiddleware, async (req, res) => {
+router.post("/vx/admin/recalculate-matches", requireAdminAuth(), async (req, res) => {
   try {
     const { created, updated } = await recalculateAllMatches();
 
+    writeAuditLog(res.locals.adminIdentity, "vx-recalculate-matches", null, { created, updated });
     return res.json({
       ok: true,
       matchesProcessed: created + updated,

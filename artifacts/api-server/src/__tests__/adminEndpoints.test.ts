@@ -1,6 +1,11 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
+import { buildAdminSessionToken } from "../lib/adminSessionToken.js";
+
+// ── Spy on auditLog so we can assert writes ───────────────────────────────────
+const mockWriteAuditLog = vi.fn().mockResolvedValue(undefined);
+vi.mock("../lib/auditLog.js", () => ({ writeAuditLog: mockWriteAuditLog }));
 
 /**
  * Admin endpoint auth guard tests.
@@ -34,15 +39,19 @@ const mockDbInsert = vi.fn();
 const mockDbUpdate = vi.fn();
 
 vi.mock("@workspace/db", () => {
-  // Minimal select chain: .from().where().limit() → []
+  // Fully chainable select mock that resolves to [] at any terminal point.
+  // Supports .from().where().orderBy().limit().offset() in any order.
+  const resolvedEmpty = () => Promise.resolve([]);
+  const makeTerminal = (): Record<string, unknown> => ({
+    limit:   () => makeTerminal(),
+    offset:  resolvedEmpty,
+    orderBy: () => makeTerminal(),
+    where:   () => makeTerminal(),
+    groupBy: () => makeTerminal(),
+    then:    (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve),
+  });
   const makeSelectChain = () => ({
-    from: () => ({
-      where: () => ({
-        limit:   () => Promise.resolve([]),
-        orderBy: () => Promise.resolve([]),
-      }),
-      orderBy: () => Promise.resolve([]),
-    }),
+    from: () => makeTerminal(),
   });
 
   // Minimal insert chain
@@ -71,6 +80,7 @@ vi.mock("@workspace/db", () => {
     signatureChallenges:      { challengeId: {} },
     challengeStages:          { challengeId: {}, stageOrder: {} },
     atlasAssets:              { assetId: {}, approved: {}, archived: {} },
+    mountainVerificationTests: { mountainName: {}, createdAt: {} },
   };
 });
 
@@ -142,7 +152,10 @@ function addStubLogger(app: express.Express) {
 
 // ── Build a minimal app with the three admin route groups ─────────────────────
 
-const TEST_KEY = "test-admin-key-xyz-9876";
+const TEST_KEY   = "test-admin-key-xyz-9876";
+// Pre-built signed token for TEST_KEY — used in all auth-passing assertions.
+// buildAdminSessionToken is a pure function; calling it at module scope is safe.
+const SIGNED_TOKEN = buildAdminSessionToken(TEST_KEY);
 
 async function buildApp() {
   process.env.ADMIN_API_KEY = TEST_KEY;
@@ -154,16 +167,66 @@ async function buildApp() {
   const { default: hillVerifRouter }   = await import("../routes/hill-verification-admin.js");
   const { artworkRouter }              = await import("../routes/artwork.js");
   const { atlasRouter }                = await import("../routes/atlas.js");
+  const { default: mtnVerifRouter }    = await import("../routes/mountain-verification.js");
 
   app.use("/admin",                            adminRouter);
   app.use("/admin/hill-verification",          hillVerifRouter);
   app.use("/artwork",                          artworkRouter);
   app.use("/atlas",                            atlasRouter);
+  app.use(mtnVerifRouter); // routes registered as /mountain-verification-test, etc.
 
   return app;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("Mountain verification routes — auth guard on write/compute endpoints", () => {
+  let app: express.Express;
+  beforeAll(async () => { app = await buildApp(); });
+  afterAll(() => { delete process.env.ADMIN_API_KEY; });
+  beforeEach(() => { mockWriteAuditLog.mockClear(); });
+
+  it("POST /mountain-verification-test returns 401 with no token", async () => {
+    const res = await request(app)
+      .post("/mountain-verification-test")
+      .send({ mountainName: "Ben Nevis" });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /mountain-verification-test returns 401 with wrong token", async () => {
+    const res = await request(app)
+      .post("/mountain-verification-test")
+      .set("Authorization", "Bearer bad-token")
+      .send({ mountainName: "Ben Nevis" });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /mountain-verification-results returns 401 with no token", async () => {
+    const res = await request(app).get("/mountain-verification-results");
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /mountain-verification-test/batch returns 401 with no token", async () => {
+    const res = await request(app).post("/mountain-verification-test/batch");
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /mountain-verification-results returns non-401 with signed token and writes audit log", async () => {
+    const res = await request(app)
+      .get("/mountain-verification-results")
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
+    // Auth guard passed; handler may succeed or fail internally — either is fine here
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(403);
+    // Audit log must be written on success
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.any(String),
+      "mountain-verification-results-view",
+      expect.toSatisfy((v: unknown) => v === null || typeof v === "string"),
+      expect.any(Object),
+    );
+  });
+});
 
 describe("POST /admin/login — server-side password verification", () => {
   let app: express.Express;
@@ -180,10 +243,13 @@ describe("POST /admin/login — server-side password verification", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 200 with a token on correct password", async () => {
+  it("returns 200 with a signed token on correct password — raw key is NOT returned", async () => {
     const res = await request(app).post("/admin/login").send({ password: TEST_KEY });
     expect(res.status).toBe(200);
-    expect(res.body.token).toBe(TEST_KEY);
+    // Token must be an opaque signed token — never the raw ADMIN_API_KEY
+    expect(typeof res.body.token).toBe("string");
+    expect(res.body.token).not.toBe(TEST_KEY);
+    expect(res.body.token.length).toBeGreaterThan(20);
   });
 });
 
@@ -205,7 +271,7 @@ describe("GET /admin/me — token validation", () => {
   it("returns 200 with correct token", async () => {
     const res = await request(app)
       .get("/admin/me")
-      .set("Authorization", `Bearer ${TEST_KEY}`);
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
@@ -221,10 +287,17 @@ describe("Hill verification admin routes — auth guard", () => {
     expect(res.status).toBe(401);
   });
 
-  it("GET /admin/hill-verification/sessions returns 200 with valid token", async () => {
+  it("GET /admin/hill-verification/sessions returns 401 with raw API key (raw key no longer accepted)", async () => {
     const res = await request(app)
       .get("/admin/hill-verification/sessions")
       .set("Authorization", `Bearer ${TEST_KEY}`);
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /admin/hill-verification/sessions returns 200 with signed session token", async () => {
+    const res = await request(app)
+      .get("/admin/hill-verification/sessions")
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
     expect(res.status).toBe(200);
   });
 
@@ -269,10 +342,10 @@ describe("Artwork routes — admin guard on write, public read", () => {
     expect(res.status).toBe(401);
   });
 
-  it("POST /artwork/approve/:id passes auth guard with valid token (not 401)", async () => {
+  it("POST /artwork/approve/:id passes auth guard with signed token (not 401)", async () => {
     const res = await request(app)
       .post("/artwork/approve/some-challenge")
-      .set("Authorization", `Bearer ${TEST_KEY}`);
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(403);
   });
@@ -313,10 +386,10 @@ describe("Atlas routes — admin guard on write, public read", () => {
     expect(res.status).toBe(401);
   });
 
-  it("POST /atlas/approve/:id passes auth guard with valid token (not 401)", async () => {
+  it("POST /atlas/approve/:id passes auth guard with signed token (not 401)", async () => {
     const res = await request(app)
       .post("/atlas/approve/some-asset")
-      .set("Authorization", `Bearer ${TEST_KEY}`);
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(403);
   });

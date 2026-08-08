@@ -2,12 +2,14 @@
  * Server-side admin authentication middleware.
  *
  * Accepts ONE of two credential forms on every request:
- *   1. Authorization: Bearer <ADMIN_API_KEY>  — for internal admin tool frontends
- *   2. Authorization: Bearer <Clerk JWT>       — future: Clerk-authenticated admin user
- *      (requires userId present in users table with is_admin = true)
+ *   1. Authorization: Bearer <signed-session-token>
+ *      Token is issued by POST /api/admin/login; verified via HMAC-SHA256 against
+ *      ADMIN_API_KEY; expires after 24 hours. The raw key is never transmitted.
+ *   2. Authorization: Bearer <Clerk JWT>  (future)
+ *      Requires userId present in the users table with is_admin = true.
  *
  * Returns:
- *   401  — no / invalid token
+ *   401  — no / invalid / expired token
  *   403  — valid Clerk token but user is not an admin
  *   next — admin verified; res.locals.adminIdentity is set for audit logging
  *
@@ -20,6 +22,7 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { users } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { verifyAdminSessionToken } from "../lib/adminSessionToken.js";
 
 export function requireAdminAuth(): RequestHandler {
   // Opt-in dev bypass — must be explicitly set; never inferred from key format
@@ -43,9 +46,9 @@ export function requireAdminAuth(): RequestHandler {
       return;
     }
 
-    // ── Path 1: Admin API key ─────────────────────────────────────────────────
+    // ── Path 1: Signed admin session token ────────────────────────────────────
     const adminApiKey = process.env.ADMIN_API_KEY;
-    if (adminApiKey && token === adminApiKey) {
+    if (adminApiKey && verifyAdminSessionToken(token, adminApiKey)) {
       res.locals.adminIdentity = "admin-api-key";
       next();
       return;

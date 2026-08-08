@@ -34,6 +34,11 @@ import { eq } from "drizzle-orm";
 import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 
+// Normalise Express route params (always string in real requests, typed as string | string[])
+function param(p: string | string[]): string {
+  return Array.isArray(p) ? p[0]! : p;
+}
+
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
@@ -97,7 +102,7 @@ artworkRouter.get("/prompt/:challengeId", async (req, res) => {
 
 // POST /api/artwork/generate/:challengeId
 artworkRouter.post("/generate/:challengeId", requireAdminAuth(), async (req, res) => {
-  const { challengeId } = req.params;
+  const challengeId = param(req.params.challengeId);
   const force = req.body?.force === true;
 
   try {
@@ -146,7 +151,7 @@ artworkRouter.post("/bulk", requireAdminAuth(), async (req, res) => {
 
 // POST /api/artwork/approve/:challengeId
 artworkRouter.post("/approve/:challengeId", requireAdminAuth(), async (req, res) => {
-  const { challengeId } = req.params;
+  const challengeId = param(req.params.challengeId);
   try {
     await approveChallengeArtwork(challengeId);
     void writeAuditLog(res.locals.adminIdentity, "approve_artwork", challengeId);
@@ -159,7 +164,7 @@ artworkRouter.post("/approve/:challengeId", requireAdminAuth(), async (req, res)
 
 // POST /api/artwork/reject/:challengeId
 artworkRouter.post("/reject/:challengeId", requireAdminAuth(), async (req, res) => {
-  const { challengeId } = req.params;
+  const challengeId = param(req.params.challengeId);
   try {
     await rejectChallengeArtwork(challengeId);
     void writeAuditLog(res.locals.adminIdentity, "reject_artwork", challengeId);
@@ -172,7 +177,7 @@ artworkRouter.post("/reject/:challengeId", requireAdminAuth(), async (req, res) 
 
 // DELETE /api/artwork/:challengeId
 artworkRouter.delete("/:challengeId", requireAdminAuth(), async (req, res) => {
-  const { challengeId } = req.params;
+  const challengeId = param(req.params.challengeId);
   try {
     await clearChallengeArtwork(challengeId);
     void writeAuditLog(res.locals.adminIdentity, "delete_artwork", challengeId);

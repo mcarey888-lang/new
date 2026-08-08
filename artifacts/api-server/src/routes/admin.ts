@@ -1,16 +1,16 @@
 /**
  * Admin session routes
  *
- * POST /api/admin/login   — verify password server-side, return session token
- * GET  /api/admin/me      — verify an existing token; used by frontend guards
+ * POST /api/admin/login   — verify password server-side, return a signed expiring token
+ * GET  /api/admin/me      — verify an existing token; used by frontend guards on mount
  *
- * The session token is the ADMIN_API_KEY itself, returned after server-side
- * verification. Frontends store it in sessionStorage and forward it as
- * Authorization: Bearer <token> on every subsequent admin request.
+ * Session tokens are HMAC-SHA256 signed and expire after 24 hours.
+ * The raw ADMIN_API_KEY is never returned to the client — only the opaque token.
  */
 
 import { Router } from "express";
 import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { buildAdminSessionToken } from "../lib/adminSessionToken.js";
 
 export const adminRouter = Router();
 
@@ -31,14 +31,13 @@ adminRouter.post("/login", (req, res) => {
     return res.status(401).json({ error: "Incorrect access key" });
   }
 
-  // Return the key as the session token — protected by TLS in transit,
-  // stored in sessionStorage (not localStorage) on the client.
-  return res.json({ token: adminApiKey });
+  // Return a signed, expiring opaque token. The raw ADMIN_API_KEY is NOT returned.
+  const token = buildAdminSessionToken(adminApiKey);
+  return res.json({ token });
 });
 
 // ── GET /api/admin/me ─────────────────────────────────────────────────────────
-// Frontend guards call this on mount to check whether their stored token is
-// still valid. Returns 200 + identity on success, 401/403 on failure.
+// Frontend guards call this on mount to confirm their stored token is still valid.
 adminRouter.get("/me", requireAdminAuth(), (req, res) => {
   return res.json({ ok: true, identity: res.locals.adminIdentity });
 });

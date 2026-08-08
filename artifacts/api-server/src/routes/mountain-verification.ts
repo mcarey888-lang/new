@@ -3,6 +3,8 @@ import { z } from "zod";
 import { db } from "@workspace/db";
 import { mountainVerificationTests } from "@workspace/db/schema";
 import { desc, eq } from "drizzle-orm";
+import { requireAdminAuth } from "../middlewares/requireAdminAuth.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
@@ -319,7 +321,7 @@ async function processMountain(mountainName: string, logger: { info: (...a: unkn
 
 const RequestSchema = z.object({ mountainName: z.string().min(2).max(200) });
 
-router.post("/mountain-verification-test", async (req, res) => {
+router.post("/mountain-verification-test", requireAdminAuth(), async (req, res) => {
   const parsed = RequestSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "mountainName required (2–200 chars)" });
@@ -330,6 +332,11 @@ router.post("/mountain-verification-test", async (req, res) => {
 
   try {
     const result = await processMountain(mountainName, req.log);
+    writeAuditLog(res.locals.adminIdentity, "mountain-verification-test", mountainName, {
+      routeCount: Array.isArray((result as Record<string, unknown>)?.routes)
+        ? ((result as Record<string, unknown>).routes as unknown[]).length
+        : undefined,
+    });
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "Verification test failed");
@@ -340,7 +347,7 @@ router.post("/mountain-verification-test", async (req, res) => {
 
 // ── GET /api/mountain-verification-results ────────────────────────────────
 
-router.get("/mountain-verification-results", async (req, res) => {
+router.get("/mountain-verification-results", requireAdminAuth(), async (req, res) => {
   try {
     const name = typeof req.query.mountainName === "string" ? req.query.mountainName : undefined;
     const rows = name
@@ -355,6 +362,7 @@ router.get("/mountain-verification-results", async (req, res) => {
           .from(mountainVerificationTests)
           .orderBy(desc(mountainVerificationTests.createdAt))
           .limit(100);
+    writeAuditLog(res.locals.adminIdentity, "mountain-verification-results-view", name ?? null, { count: rows.length });
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch results");
@@ -373,7 +381,8 @@ const BATCH_MOUNTAINS = [
   "Ben Nevis",
 ];
 
-router.post("/mountain-verification-test/batch", async (req, res) => {
+router.post("/mountain-verification-test/batch", requireAdminAuth(), async (req, res) => {
+  writeAuditLog(res.locals.adminIdentity, "mountain-verification-batch-start", null, { mountains: BATCH_MOUNTAINS });
   res.json({ status: "started", mountains: BATCH_MOUNTAINS });
 
   setImmediate(async () => {

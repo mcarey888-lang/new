@@ -115,7 +115,7 @@ export default function PublishPanel() {
     setPublishResult(null);
     try {
       const assetIds = idsOverride ?? (selectedIds.size > 0 ? [...selectedIds] : []);
-      const resp = await fetch(`${BASE}/github/publish`, {
+      const resp = await adminApiFetch(`${BASE}/github/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assetIds, brandId: selectedBrandId }),
