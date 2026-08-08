@@ -7,9 +7,9 @@
 import { TrendingUp } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  Dimensions, Platform, ScrollView, StyleSheet, Text,
+  Dimensions, Platform, ScrollView, StyleSheet, Switch, Text,
   TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -45,12 +45,15 @@ function insightMsg(done: number, total: number, remainM: number) {
 export default function ExpeditionProgressScreen() {
   useScreenView("expedition_progress");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, activeExpedition } = useApp();
+  const { summitGoal, sessions, activeExpedition, exploreHikes } = useApp();
 
   const target  = summitGoal?.targetMountain;
   const stages  = summitGoal?.virtualHills ?? [];
   const completedRoutes: string[] = activeExpedition?.completedRoutes
     ?? summitGoal?.completedRoutes ?? [];
+
+  // ── Toggle: include tracked hike elevation ───────────────────────────────────
+  const [includeTracked, setIncludeTracked] = useState(false);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const totalElevGoal = useMemo(
@@ -58,19 +61,29 @@ export default function ExpeditionProgressScreen() {
       ?? stages.reduce((s, h) => s + h.elevation * h.repeats, 0),
     [target, stages],
   );
-  const totalTrained = useMemo(
+  const sessionTrained = useMemo(
     () => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0),
     [sessions],
   );
+  const trackedElevation = useMemo(
+    () => exploreHikes.reduce((s, h) => s + (h.elevationGain ?? 0), 0),
+    [exploreHikes],
+  );
+  // sessionTrained is kept separate so the insight text reflects plan-only progress
+  // (tracked hikes don't complete expedition stages, so the stage count is unchanged)
+  const displayTrained = includeTracked
+    ? sessionTrained + trackedElevation
+    : sessionTrained;
+
   const pct = totalElevGoal > 0
-    ? Math.min(100, Math.round(totalTrained / totalElevGoal * 100))
+    ? Math.min(100, Math.round(displayTrained / totalElevGoal * 100))
     : 0;
 
   const completedCount = useMemo(
     () => completedRoutes.filter(r => stages.some(s => s.name === r)).length,
     [completedRoutes, stages],
   );
-  const remaining = Math.max(0, totalElevGoal - totalTrained);
+  const remaining = Math.max(0, totalElevGoal - displayTrained);
 
   const expName   = (summitGoal as any)?.expeditionPlan?.title
     ?? target?.name ?? summitGoal?.mountainName ?? "Your Expedition";
@@ -79,7 +92,7 @@ export default function ExpeditionProgressScreen() {
     : null;
   const regionText = summitGoal?.location ?? null;
 
-  const insight = insightMsg(completedCount, stages.length, remaining);
+  const insight = insightMsg(completedCount, stages.length, Math.max(0, totalElevGoal - sessionTrained));
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -137,10 +150,38 @@ export default function ExpeditionProgressScreen() {
               {pct}%
             </Text>
             <Text style={s.headerRightSub}>
-              {fmtM(totalTrained)}m of {fmtM(totalElevGoal)}m
+              {fmtM(displayTrained)}m of {fmtM(totalElevGoal)}m
             </Text>
           </View>
         </Animated.View>
+
+        {/* ── Tracked hikes toggle ─────────────────────────────────────────────── */}
+        {trackedElevation > 0 && (
+          <Animated.View entering={FadeInDown.delay(60).duration(400)}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIncludeTracked(v => !v)}
+              style={s.toggleRow}
+            >
+              <View style={s.toggleLeft}>
+                <Text style={s.toggleIcon}>🥾</Text>
+                <View>
+                  <Text style={s.toggleLabel}>Include tracked hikes</Text>
+                  <Text style={s.toggleSub}>
+                    +{fmtM(trackedElevation)}m from {exploreHikes.length} recorded hike{exploreHikes.length !== 1 ? "s" : ""}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={includeTracked}
+                onValueChange={setIncludeTracked}
+                trackColor={{ false: "rgba(255,255,255,0.12)", true: T.blue }}
+                thumbColor="#fff"
+                ios_backgroundColor="rgba(255,255,255,0.12)"
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* ── Chart + stage cards + summary (shared) ──────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
@@ -148,7 +189,7 @@ export default function ExpeditionProgressScreen() {
             stages={stages}
             completedRoutes={completedRoutes}
             totalElev={totalElevGoal}
-            totalTrained={totalTrained}
+            totalTrained={displayTrained}
             onStagePress={(hillName) =>
               router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
             }
@@ -224,4 +265,16 @@ const s = StyleSheet.create({
   },
   insightTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 3 },
   insightBody:  { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+
+  toggleRow: {
+    marginHorizontal: CARD_MX,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12,
+  },
+  toggleLeft:  { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  toggleIcon:  { fontSize: 20 },
+  toggleLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
+  toggleSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
 });
