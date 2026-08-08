@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "da8c171c-00e4-42d2-9975-c317db3c1012"
       }
+    },
+    "android": {
+      "package": "com.careyapps.workspace"
     }
   }
 }
