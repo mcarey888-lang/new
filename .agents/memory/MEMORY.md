@@ -27,3 +27,4 @@
 - [MountainProgress — native only](mountain-progress-native-only.md) — component is native-only; never attempt .web.tsx variants or web preview; Platform.OS inline splits also break the Reanimated+SVG stack.
 - [ExpeditionMountainProgress component](expedition-mountain-progress.md) — wraps MountainProgress as the production expedition centrepiece; stage markers are numbered circles only (no SVG text labels on mountain); progress bubble follows marker via RN View overlay.
 - [Metro pnpm _tmp watcher crash](metro-pnpm-tmp-watcher.md) — blockList regex already in metro.config.js; just restart workflow after any native package install that triggers ENOENT on _tmp_NNN.
+- [metro-config missing in EAS builds](metro-config-eas-build.md) — never require("metro-config") in metro.config.js; use plain RegExp for blockList; metro-config is transitive and absent in EAS clean installs.
