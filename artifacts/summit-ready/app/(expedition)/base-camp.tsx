@@ -12,13 +12,7 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Sharing from "expo-sharing";
-import { captureRef as captureViewShot } from "react-native-view-shot";
-// html2canvas is web-only; imported statically so Metro bundles it correctly.
-// The usage is gated behind Platform.OS === "web" so it never runs on native.
-// @ts-ignore — no types shipped with html2canvas
-import html2canvasLib from "html2canvas";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -31,11 +25,16 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
-// [DEV] CINEMATIC PROTOTYPE — remove this import to clean up
-import { CinematicPrototype } from "@/components/CinematicPrototype";
-import { CompletionCinematic } from "@/components/CompletionCinematic";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
+
+// Keep expo-av and the bundled completion MP4 out of the normal Expedition
+// entry path. Native module/asset initialisation failures are not catchable by
+// React error boundaries, so load the video component only after completion.
+const CompletionCinematic = React.lazy(async () => {
+  const module = await import("@/components/CompletionCinematic");
+  return { default: module.CompletionCinematic };
+});
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -84,6 +83,10 @@ function calcTrailTime(sessions: Session[]): { hours: number; minutes: number } 
     return sum + (distKm / 5 * 60) + (elevM / 100 * 10);
   }, 0);
   return { hours: Math.floor(totalMin / 60), minutes: Math.round(totalMin % 60) };
+}
+
+function finiteNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 /**
@@ -165,104 +168,11 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
-  // DEV ONLY — remove these lines to clean up
-  const [cinematicActive,        setCinematicActive]        = useState(false);
-  const [devZoomScale,           setDevZoomScale]           = useState<number | undefined>(undefined);
-  const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
-  const [isCapturing,            setIsCapturing]            = useState(false);
   const [showCompletion,         setShowCompletion]         = useState(false);
-  const scrollRef        = useRef<import("react-native").ScrollView>(null);
-  const mountainRef      = useRef<import("react-native").View>(null);
-  const cinematicRootRef = useRef<import("react-native").View>(null);
-  const isCapturingRef   = useRef(false); // stable ref for onCinematicReady closure
-  // END DEV ONLY
 
-  // DEV ONLY — Capture the handoff frame as a clean PNG for Higgsfield.
-  const captureHandoffFrame = useCallback(async () => {
-    // 1. Mark capturing — hides dev overlays, suppresses dev panel
-    isCapturingRef.current = true;
-    setIsCapturing(true);
-
-    // 2. Reset scroll & wait one frame before triggering cinematic
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-    await new Promise<void>(r => setTimeout(r, 100));
-
-    // 3. Start cinematic — line draws to 95%, zoom holds at handoff frame
-    setCinematicReplayTrigger(t => t + 1);
-    setCinematicActive(true);
-
-    // onCinematicReady (below) handles the actual capture once zoom settles
-  }, []);
-
-  // Dismisses the completion modal and zooms back out to the expedition screen
+  // Dismisses the completion modal.
   const handleCompletionContinue = useCallback(() => {
     setShowCompletion(false);
-    setCinematicActive(false);
-    isCapturingRef.current = false;
-    setIsCapturing(false);
-  }, []);
-
-  // Called by CinematicPrototype once zoom reaches the handoff position
-  const handleCinematicReady = useCallback(async () => {
-    // ── Capture mode (📸 button) ─────────────────────────────────────────
-    if (isCapturingRef.current) {
-      // 200 ms grace period for all GPU compositing to settle
-      await new Promise<void>(r => setTimeout(r, 200));
-      try {
-        if (Platform.OS === "web") {
-          // Web — react-native-view-shot has no web impl; use html2canvas directly
-          // on the underlying DOM element (Expo web refs resolve to HTMLElement).
-          const html2canvas = html2canvasLib;
-          const domEl = cinematicRootRef.current as unknown as HTMLElement;
-          if (!domEl) throw new Error("Capture ref not attached");
-          const canvas = await html2canvas(domEl, {
-            useCORS: true,
-            allowTaint: false,
-            scale: window.devicePixelRatio ?? 2,
-            backgroundColor: "#000",
-            logging: false,
-          });
-          canvas.toBlob((blob) => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "higgsfield-handoff-frame.png";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }, "image/png", 1.0);
-        } else {
-          // Native device — capture to tmp file then share sheet
-          const uri = await captureViewShot(cinematicRootRef, {
-            format: "png",
-            quality: 1,
-            result: "tmpfile",
-          });
-          await Sharing.shareAsync(uri, {
-            mimeType: "image/png",
-            dialogTitle: "Handoff Frame — Higgsfield",
-            UTI: "public.png",
-          });
-        }
-      } catch (e) {
-        console.warn("[Capture] Failed:", e instanceof Error ? e.message : String(e), e);
-      } finally {
-        isCapturingRef.current = false;
-        setIsCapturing(false);
-      }
-      return;
-    }
-
-    // ── Completion cinematic mode (🎬 button or 100% progress) ───────────
-    // Show the modal immediately — it fades in over 400 ms so the frozen
-    // handoff frame still reads as one continuous shot.
-    // Reset the zoom at the same instant: the Modal covers the screen fully
-    // so the 800 ms zoom-out plays invisibly underneath. When the user
-    // presses Continue the app is already back at 100 % scale.
-    setShowCompletion(true);
-    setCinematicActive(false);
   }, []);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
@@ -280,31 +190,59 @@ export default function BaseCampScreen() {
   ].sort((a, b) => b.elev - a.elev).map((e, i) => ({ ...e, rank: i + 1 })), [myWeeklyElev]);
 
   const target    = summitGoal?.targetMountain;
-  const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const totalGoal = finiteNumber(target?.totalElevationGain, finiteNumber(summitGoal?.elevationGain));
   const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
-  // ── Auto-trigger cinematic only when the expedition is complete ─────────
-  const cinematicTriggeredRef = useRef(false);
+  // Trigger only when this mounted screen observes an incomplete → complete
+  // transition. Returning users whose stored expedition is already complete
+  // must not open the native video merely by entering Expedition mode.
+  const previousCompletionRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (totalGoal > 0 && totalTrained >= totalGoal && !cinematicTriggeredRef.current) {
-      cinematicTriggeredRef.current = true;
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-      setTimeout(() => {
-        setCinematicReplayTrigger(t => t + 1);
-        setCinematicActive(true);
-      }, 200);
+    if (totalGoal <= 0) {
+      previousCompletionRef.current = null;
+      return;
     }
+
+    const isComplete = totalGoal > 0 && totalTrained >= totalGoal;
+    const previous = previousCompletionRef.current;
+    if (previous === false && isComplete) {
+      setShowCompletion(true);
+    }
+    previousCompletionRef.current = isComplete;
   }, [totalGoal, totalTrained]);
+
+  // Normalize API/AsyncStorage hills before rendering. Older stored goals can
+  // omit fields even though NearbyHill marks them as required.
+  const virtualHills = useMemo<NearbyHill[]>(() => {
+    const raw = summitGoal?.virtualHills;
+    if (!Array.isArray(raw)) return [];
+
+    return raw.flatMap((value, index) => {
+      if (!value || typeof value !== "object") return [];
+      const hill = value as NearbyHill;
+      const name = typeof hill.name === "string" && hill.name.trim()
+        ? hill.name.trim()
+        : `Stage ${index + 1}`;
+
+      return [{
+        ...hill,
+        name,
+        distance: finiteNumber(hill.distance),
+        elevation: finiteNumber(hill.elevation),
+        totalElevation: finiteNumber(hill.totalElevation, finiteNumber(hill.elevation)),
+      }];
+    });
+  }, [summitGoal?.virtualHills]);
 
   // Stage timeline — use virtualHills as named hill checkpoints (the actual
   // places the user will train), falling back to expeditionPlan day titles.
   const stages: StageData[] = useMemo(() => {
-    const hills = summitGoal?.virtualHills;
-    if (hills && hills.length > 0) {
-      return hills.map(h => ({
+    if (virtualHills.length > 0) {
+      return virtualHills.map(h => ({
         name: h.name, region: "",
-        distance: h.distance, elevation: h.elevation,
+        distance: h.distance,
+        elevation: h.totalElevation ?? h.elevation,
       }));
     }
     const days = (summitGoal as any)?.expeditionPlan?.days as any[] | null | undefined;
@@ -317,12 +255,14 @@ export default function BaseCampScreen() {
       }));
     }
     return [];
-  }, [summitGoal]);
+  }, [summitGoal, virtualHills]);
 
   // Use explicit completedRoutes[] from the library for accurate stage tracking.
   // Falls back to summitGoal.completedRoutes (migrated goals) then empty array.
-  const completedRoutes: string[] = activeExpedition?.completedRoutes
-    ?? summitGoal?.completedRoutes ?? [];
+  const storedCompletedRoutes = activeExpedition?.completedRoutes ?? summitGoal?.completedRoutes;
+  const completedRoutes: string[] = Array.isArray(storedCompletedRoutes)
+    ? storedCompletedRoutes.filter((name): name is string => typeof name === "string")
+    : [];
   const completedStages = stages.filter(s => completedRoutes.includes(s.name)).length;
   // Route-completion percentage drives the progress ring and stage dots.
   const routePct = stages.length > 0
@@ -330,12 +270,11 @@ export default function BaseCampScreen() {
     : pct; // fall back to elevation-based pct when no stages loaded yet
 
   // Next incomplete route — first hill whose name is not yet in completedRoutes.
-  const nextHill = summitGoal?.virtualHills?.find(h => !completedRoutes.includes(h.name))
-                   ?? summitGoal?.virtualHills?.[0];
+  const nextHill = virtualHills.find(h => !completedRoutes.includes(h.name));
   const nextEst  = nextHill
-    ? `Est. ${Math.round(nextHill.distance / 5)}–${Math.round(nextHill.distance / 3)}h`
+    ? `Est. ${Math.round((nextHill.distance ?? 0) / 5)}–${Math.round((nextHill.distance ?? 0) / 3)}h`
     : "";
-  const journalUrls  = (summitGoal?.virtualHills ?? []).slice(0, 3).map(
+  const journalUrls  = virtualHills.slice(0, 3).map(
     h => `${API_BASE}/mountain-image?name=${encodeURIComponent(h.name)}&width=200&height=200`,
   );
   // AI expedition concept (shown below title when present)
@@ -701,65 +640,8 @@ export default function BaseCampScreen() {
 
   return (
     <>
-    {/* DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up */}
-    <CinematicPrototype
-      active={cinematicActive}
-      mountainRef={mountainRef}
-      onCinematicReady={handleCinematicReady}
-      onDismiss={() => { setCinematicActive(false); setIsCapturing(false); isCapturingRef.current = false; }}
-      snapToIdentity={showCompletion}
-      devZoomScale={devZoomScale}
-      hideDevOverlays={isCapturing}
-      captureViewRef={cinematicRootRef}
-    >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-
-      {/* DEV ONLY — remove this entire block to clean up */}
-      {__DEV__ && !cinematicActive && (
-        <View style={[s.devCinemaPanel, { top: insets.top + 8 }]}>
-          {/* Zoom scale picker */}
-          <View style={s.devZoomRow}>
-            {([undefined, 3, 4, 5, 6] as const).map((v) => (
-              <TouchableOpacity
-                key={String(v)}
-                style={[s.devZoomBtn, devZoomScale === v && s.devZoomBtnActive]}
-                onPress={() => setDevZoomScale(v)}
-                activeOpacity={0.75}
-              >
-                <Text style={[s.devZoomBtnText, devZoomScale === v && s.devZoomBtnTextActive]}>
-                  {v === undefined ? "auto" : `${v}×`}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {/* Cinematic trigger */}
-          <TouchableOpacity
-            style={s.devCinemaBtn}
-            onPress={() => {
-              scrollRef.current?.scrollTo({ y: 0, animated: false });
-              setTimeout(() => {
-                setCinematicReplayTrigger(t => t + 1);
-                setCinematicActive(true);
-              }, 100);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
-          </TouchableOpacity>
-          {/* Capture handoff frame */}
-          <TouchableOpacity
-            style={[s.devCinemaBtn, s.devCaptureBtn]}
-            onPress={captureHandoffFrame}
-            activeOpacity={0.8}
-          >
-            <Text style={s.devCinemaBtnText}>📸 Capture Handoff Frame</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      {/* END DEV ONLY */}
-
       <ScrollView
-        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
       >
@@ -878,15 +760,13 @@ export default function BaseCampScreen() {
           <ExpeditionMountainProgress
             targetElevation={totalGoal}
             currentElevation={totalTrained}
-            stages={summitGoal.virtualHills ?? []}
+            stages={virtualHills}
             completedRoutes={completedRoutes}
             days={target?.estimatedDays ?? 1}
             highestPoint={target?.summitElevation ?? 0}
             allDone={completedRoutes.length > 0 && !nextHill}
-            mountainImageRef={mountainRef}
-            replayTrigger={cinematicReplayTrigger}
             onStagePress={(hillName) => {
-              const hill = (summitGoal.virtualHills ?? []).find(h => h.name === hillName);
+              const hill = virtualHills.find(h => h.name === hillName);
               if (!hill) {
                 router.push({ pathname: "/hike-tracking" as any, params: { hillName } });
                 return;
@@ -899,7 +779,7 @@ export default function BaseCampScreen() {
                   lat:            hill.lat?.toString()       ?? "",
                   lng:            hill.lng?.toString()       ?? "",
                   elevation:      (hill.totalElevation ?? hill.elevation ?? 0).toString(),
-                  distance:       hill.distance.toString(),
+                  distance:       (hill.distance ?? 0).toString(),
                   grade:          hill.grade   ?? "",
                   surface:        hill.surface ?? "",
                   emoji:          hill.emoji   ?? "⛰️",
@@ -1098,16 +978,18 @@ export default function BaseCampScreen() {
       </Modal>
 
     </LinearGradient>
-    </CinematicPrototype>
 
-    {/* Completion cinematic — Modal sits above tab bar, covers everything */}
-    <CompletionCinematic
-      visible={showCompletion}
-      preload={cinematicActive}
-      expeditionName={expTitle ?? "Your Expedition"}
-      totalElevationM={totalTrained}
-      onContinue={handleCompletionContinue}
-    />
+    {/* Do not evaluate expo-av or the MP4 until genuine completion. */}
+    {showCompletion && (
+      <Suspense fallback={<View style={StyleSheet.absoluteFill} />}>
+        <CompletionCinematic
+          visible
+          expeditionName={expTitle ?? "Your Expedition"}
+          totalElevationM={totalTrained}
+          onContinue={handleCompletionContinue}
+        />
+      </Suspense>
+    )}
     </>
   );
 }
@@ -1363,58 +1245,4 @@ const s = StyleSheet.create({
   pickerStartText: {
     fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff",
   },
-
-  // DEV ONLY — remove these style entries to clean up
-  devCinemaPanel: {
-    position: "absolute",
-    right: 12,
-    zIndex: 9999,
-    alignItems: "flex-end",
-    gap: 6,
-  },
-  devZoomRow: {
-    flexDirection: "row",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 10,
-    padding: 5,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  devZoomBtn: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 7,
-  },
-  devZoomBtnActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  devZoomBtnText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.5)",
-  },
-  devZoomBtnTextActive: {
-    color: "#fff",
-  },
-  devCinemaBtn: {
-    backgroundColor: "rgba(0,0,0,0.75)",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  devCinemaBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: 0.2,
-  },
-  devCaptureBtn: {
-    borderColor: "rgba(62,207,117,0.4)",
-    backgroundColor: "rgba(62,207,117,0.15)",
-    marginTop: 4,
-  },
-  // END DEV ONLY
 });

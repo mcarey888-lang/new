@@ -16,9 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Image, LayoutChangeEvent, StyleSheet, Text, View, ViewStyle } from "react-native";
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedProps,
-  useAnimatedReaction,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -234,7 +232,6 @@ export default function MountainProgress({
   const imgTop  = height - imgH;             // bottom-aligned (slightly negative)
 
   const progressSv = useSharedValue(0);
-  const [markerPos, setMarkerPos] = useState({ x: ROUTE_XS[0], y: ROUTE_YS[0] });
   const summitFiredRef = useRef(false);
 
   if (targetElevationGain > 0 && currentElevationGain / targetElevationGain < 0.99) {
@@ -255,7 +252,7 @@ export default function MountainProgress({
   useEffect(() => {
     if (targetElevationGain <= 0) return;
     const next = Math.min(currentElevationGain / targetElevationGain, 0.95);
-    progressSv.value = withTiming(next, { duration: 40000, easing: Easing.out(Easing.cubic) });
+    progressSv.value = withTiming(next, { duration: 1200, easing: Easing.out(Easing.cubic) });
     if (next >= 1 && !summitFiredRef.current) {
       summitFiredRef.current = true;
       onSummitReached?.();
@@ -274,17 +271,6 @@ export default function MountainProgress({
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replayTrigger]);
-
-  const updateMarker = useCallback((frac: number) => {
-    const capped = Math.min(frac, 0.985);
-    const idx = Math.max(0, Math.min(1000, Math.round(capped * 1000)));
-    setMarkerPos({ x: ROUTE_XS[idx], y: ROUTE_YS[idx] });
-  }, []);
-
-  useAnimatedReaction(
-    () => progressSv.value,
-    (val) => runOnJS(updateMarker)(val),
-  );
 
   // Completed (green) route — progressively revealed
   const dashOuterProps = useAnimatedProps(() => ({
@@ -316,6 +302,7 @@ export default function MountainProgress({
   const currentProgress = targetElevationGain > 0
     ? Math.min(currentElevationGain / targetElevationGain, 1)
     : 0;
+  const markerPos = getPointAtFraction(Math.min(currentProgress, 0.985));
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
