@@ -284,10 +284,10 @@ export default function BaseCampScreen() {
   const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
-  // ── Auto-trigger cinematic at 90 % progress ──────────────────────────────
+  // ── Auto-trigger cinematic only when the expedition is complete ─────────
   const cinematicTriggeredRef = useRef(false);
   useEffect(() => {
-    if (pct >= 75 && totalGoal > 0 && !cinematicTriggeredRef.current) {
+    if (totalGoal > 0 && totalTrained >= totalGoal && !cinematicTriggeredRef.current) {
       cinematicTriggeredRef.current = true;
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       setTimeout(() => {
@@ -295,7 +295,7 @@ export default function BaseCampScreen() {
         setCinematicActive(true);
       }, 200);
     }
-  }, [pct, totalGoal]);
+  }, [totalGoal, totalTrained]);
 
   // Stage timeline — use virtualHills as named hill checkpoints (the actual
   // places the user will train), falling back to expeditionPlan day titles.
