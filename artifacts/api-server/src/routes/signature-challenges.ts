@@ -18,9 +18,28 @@ import {
   challengeStages,
   challengeLimitations,
 } from "@workspace/db";
-import { eq, and, ilike, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { bundledSignatureChallenges } from "../data/signature-challenges";
 
 export const signatureChallengesRouter = Router();
+
+type CatalogChallenge = (typeof bundledSignatureChallenges)[number] | typeof signatureChallenges.$inferSelect;
+
+/**
+ * Production schema publication does not copy development rows. Prefer the
+ * database whenever it contains any catalogue records (so artwork/admin edits
+ * remain authoritative), but keep the curated library available read-only when
+ * a newly published production database has not been seeded yet.
+ */
+async function getCatalog(): Promise<{ challenges: CatalogChallenge[]; bundled: boolean }> {
+  try {
+    const rows = await db.select().from(signatureChallenges);
+    if (rows.length > 0) return { challenges: rows, bundled: false };
+  } catch (err) {
+    console.error("[sx/catalog] database unavailable, using bundled library:", err);
+  }
+  return { challenges: bundledSignatureChallenges, bundled: true };
+}
 
 // ── Mountain fame ranking ─────────────────────────────────────────────────────
 // Lower number = more famous. Mountains not listed default to 999.
@@ -110,34 +129,23 @@ async function getStagesAndLimitations(challengeId: string) {
 signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
   try {
     const { region, days, difficulty, featured, mountain, withStages } = req.query;
-
-    const conditions = [eq(signatureChallenges.status, "active")];
-
-    if (region && typeof region === "string") {
-      conditions.push(ilike(signatureChallenges.regions, `%${region}%`));
-    }
-    if (days) {
-      conditions.push(eq(signatureChallenges.recommendedDays, Number(days)));
-    }
-    if (difficulty && typeof difficulty === "string") {
-      conditions.push(eq(signatureChallenges.difficulty, difficulty));
-    }
-    if (featured === "true") {
-      conditions.push(eq(signatureChallenges.featured, true));
-    }
-    if (mountain && typeof mountain === "string") {
-      conditions.push(eq(signatureChallenges.mountainSlug, mountain));
-    }
-
-    const rows = (await db
-      .select()
-      .from(signatureChallenges)
-      .where(and(...conditions))
-    ).sort(byFame);
+    const { challenges, bundled } = await getCatalog();
+    const rows = challenges
+      .filter((challenge) => challenge.status === "active")
+      .filter((challenge) => typeof region !== "string"
+        || challenge.regions?.toLowerCase().includes(region.toLowerCase()))
+      .filter((challenge) => !days || challenge.recommendedDays === Number(days))
+      .filter((challenge) => typeof difficulty !== "string"
+        || challenge.difficulty === difficulty)
+      .filter((challenge) => featured !== "true" || challenge.featured)
+      .filter((challenge) => typeof mountain !== "string"
+        || challenge.mountainSlug === mountain)
+      .sort(byFame);
 
     if (withStages === "true") {
       const enriched = await Promise.all(
         rows.map(async (c) => {
+          if (bundled && "stages" in c) return c;
           const { stages, limitations } = await getStagesAndLimitations(c.challengeId);
           return { ...c, stages, limitations };
         })
@@ -155,16 +163,10 @@ signatureChallengesRouter.get("/sx/challenges", async (req, res) => {
 // ── GET /api/sx/featured ─────────────────────────────────────────────────────
 signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
   try {
-    const rows = (await db
-      .select()
-      .from(signatureChallenges)
-      .where(
-        and(
-          eq(signatureChallenges.status, "active"),
-          eq(signatureChallenges.featured, true)
-        )
-      )
-    ).sort(byFame);
+    const { challenges } = await getCatalog();
+    const rows = challenges
+      .filter((challenge) => challenge.status === "active" && challenge.featured)
+      .sort(byFame);
 
     return res.json({ challenges: rows, total: rows.length });
   } catch (err) {
@@ -179,17 +181,11 @@ signatureChallengesRouter.get("/sx/featured", async (_req, res) => {
 signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
-
-    const rows = await db
-      .select()
-      .from(signatureChallenges)
-      .where(
-        and(
-          eq(signatureChallenges.mountainSlug, slug),
-          eq(signatureChallenges.status, "active")
-        )
-      )
-      .orderBy(signatureChallenges.adventureScore);
+    const { challenges, bundled } = await getCatalog();
+    const rows = challenges
+      .filter((challenge) =>
+        challenge.mountainSlug === slug && challenge.status === "active")
+      .sort((a, b) => (a.adventureScore ?? 0) - (b.adventureScore ?? 0));
 
     if (rows.length === 0) {
       return res.json({ challenges: [], total: 0 });
@@ -198,6 +194,7 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
     // Enrich with stages + limitations
     const enriched = await Promise.all(
       rows.map(async (c) => {
+        if (bundled && "stages" in c) return c;
         const { stages, limitations } = await getStagesAndLimitations(c.challengeId);
         return { ...c, stages, limitations };
       })
@@ -214,18 +211,16 @@ signatureChallengesRouter.get("/sx/challenges/for-mountain/:slug", async (req, r
 signatureChallengesRouter.get("/sx/challenges/:challengeId", async (req, res) => {
   try {
     const { challengeId } = req.params;
+    const { challenges, bundled } = await getCatalog();
+    const challenge = challenges.find((row) => row.challengeId === challengeId);
 
-    const rows = await db
-      .select()
-      .from(signatureChallenges)
-      .where(eq(signatureChallenges.challengeId, challengeId))
-      .limit(1);
-
-    if (rows.length === 0) {
+    if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
 
-    const challenge = rows[0];
+    if (bundled && "stages" in challenge) {
+      return res.json({ challenge });
+    }
     const { stages, limitations } = await getStagesAndLimitations(challengeId);
 
     return res.json({ challenge: { ...challenge, stages, limitations } });
