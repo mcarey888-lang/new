@@ -14,6 +14,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const ACCENT = T.blue;
 const DIM    = T.blueDim;
@@ -52,6 +53,7 @@ export default function ExpeditionLayout() {
   };
 
   return (
+    <ErrorBoundary onError={(error, stack) => console.error("[ExpeditionShell] Caught render error:", error.message, stack)}>
     <>
       <Tabs screenOptions={sharedScreenOptions}>
         <Tabs.Screen
@@ -130,6 +132,7 @@ export default function ExpeditionLayout() {
       {/* Persistent shell toggle — sits in the safe-area zone above all tabs */}
       <ModeTogglePill />
     </>
+    </ErrorBoundary>
   );
 }
 

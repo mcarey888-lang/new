@@ -694,7 +694,7 @@ export default function BaseCampScreen() {
   const expSub   = summitGoal.location
     ? `Simulated in ${summitGoal.location}`
     : target
-      ? `${target.country}  ·  ${target.summitElevation.toLocaleString()}m ASL`
+      ? `${target.country ?? ""}  ·  ${(target.summitElevation ?? 0).toLocaleString()}m ASL`
       : "";
 
   const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
@@ -817,8 +817,8 @@ export default function BaseCampScreen() {
                 <Text
                   style={[
                     s.activeTitle,
-                    expTitle.length > 22 && { fontSize: 26, lineHeight: 31 },
-                    expTitle.length > 32 && { fontSize: 22, lineHeight: 27 },
+                    (expTitle?.length ?? 0) > 22 && { fontSize: 26, lineHeight: 31 },
+                    (expTitle?.length ?? 0) > 32 && { fontSize: 22, lineHeight: 27 },
                   ]}
                 >
                   {expTitle}
@@ -934,7 +934,7 @@ export default function BaseCampScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.nextHillName} numberOfLines={2}>{nextHill.name}</Text>
-                    <Text style={s.nextHillMeta}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
+                    <Text style={s.nextHillMeta}>{nextHill.distance ?? 0} km · {(nextHill.totalElevation ?? nextHill.elevation ?? 0).toLocaleString()} m gain</Text>
                     <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>{nextEst}</Text>
                   </View>
                 </View>
