@@ -61,7 +61,45 @@ export type RouteDna = z.infer<typeof RouteDnaSchema>;
 
 // ── Target mountain profile schema ────────────────────────────────────────────
 
-const TargetMountainProfileSchema = z.object({
+function positiveProfileNumber(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * Older generated/cached mountain profiles used a singular
+ * `dayElevationGain` field and sometimes stored 0 for an unused day. Normalize
+ * those profiles before Zod validation so legacy catalogue cards remain usable.
+ */
+function normalizeTargetMountainProfile(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+
+  const raw = value as Record<string, unknown>;
+  const normalized = { ...raw };
+  const totalGain = positiveProfileNumber(raw.totalElevationGain);
+  const estimatedDays = Number(raw.estimatedDays) >= 2 ? 2 : 1;
+  const legacyDayGain = positiveProfileNumber(raw.dayElevationGain);
+  const fallbackDayGain = totalGain
+    ? Math.max(1, Math.round(totalGain / estimatedDays))
+    : null;
+
+  const day1 = positiveProfileNumber(raw.day1ElevationGain)
+    ?? legacyDayGain
+    ?? fallbackDayGain;
+  const day2 = estimatedDays === 2
+    ? positiveProfileNumber(raw.day2ElevationGain) ?? fallbackDayGain
+    : null;
+  const maxDaily = positiveProfileNumber(raw.maxDailyElevation)
+    ?? Math.max(day1 ?? 0, day2 ?? 0, fallbackDayGain ?? 0);
+
+  normalized.day1ElevationGain = day1;
+  normalized.day2ElevationGain = day2;
+  if (maxDaily > 0) normalized.maxDailyElevation = maxDaily;
+
+  return normalized;
+}
+
+const TargetMountainProfileSchema = z.preprocess(normalizeTargetMountainProfile, z.object({
   name:               z.string(),
   country:            z.string(),
   summitElevation:    z.number().positive(),
@@ -76,7 +114,7 @@ const TargetMountainProfileSchema = z.object({
   altitudeExposure:   z.enum(["None", "Moderate", "High", "Extreme"]),
   notes:              z.string(),
   routeDna:           RouteDnaSchema,
-});
+}));
 
 type TargetMountainProfile = z.infer<typeof TargetMountainProfileSchema>;
 
@@ -770,8 +808,15 @@ router.post("/virtual-expedition", async (req, res) => {
   } catch (err) {
     const log = (req as { log?: { error: (obj: object, msg: string) => void } }).log;
     log?.error?.({ err }, "virtual-expedition failed");
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: `Virtual expedition failed: ${msg}` });
+    if (err instanceof z.ZodError) {
+      res.status(502).json({
+        error: "We couldn't build this expedition from the available mountain data. Please try again.",
+      });
+      return;
+    }
+    res.status(500).json({
+      error: "We couldn't build this expedition right now. Please try again.",
+    });
   }
 });
 

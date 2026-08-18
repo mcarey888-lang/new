@@ -1130,11 +1130,14 @@ export default function HikeTrackingScreen() {
                         );
                         return;
                       }
-                      router.replace(
-                        (result.isFinished
-                          ? "/(expedition)/expedition-complete"
-                          : "/(expedition)/base-camp") as any,
-                      );
+                      if (result.isFinished) {
+                        router.replace({
+                          pathname: "/(expedition)/base-camp" as any,
+                          params: { celebrate: expId },
+                        });
+                      } else {
+                        router.replace("/(expedition)/base-camp" as any);
+                      }
                     } catch {
                       setMarkExpeditionError("We couldn't save this completion. Please try again.");
                     } finally {

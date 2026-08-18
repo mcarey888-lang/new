@@ -74,6 +74,18 @@ function bundleMatchesRegion(bundle: VirtualBundle, region: string): boolean {
   return bundle.regionDisplay === region;
 }
 
+function friendlyExpeditionError(message: string): string {
+  if (
+    message.includes("Virtual expedition failed")
+    || message.includes("too_small")
+    || message.includes("dayElevationGain")
+    || message.trim().startsWith("[")
+  ) {
+    return "We couldn't build this expedition from the available mountain data. Please try again.";
+  }
+  return message;
+}
+
 function challengeMatchesRegion(regions: string | null, region: string): boolean {
   if (region === "All Regions") return true;
   if (!regions) return false;
@@ -306,7 +318,11 @@ export default function VirtualScreen() {
       void fetchSigChallenge(mountain); // non-blocking — enhances results view
       setView("results");
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : "Couldn't load expedition data.");
+      setFetchError(
+        friendlyExpeditionError(
+          err instanceof Error ? err.message : "Couldn't load expedition data.",
+        ),
+      );
     } finally {
       setLoading(false);
     }

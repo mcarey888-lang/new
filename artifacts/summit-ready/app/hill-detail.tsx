@@ -289,11 +289,14 @@ export default function HillDetailScreen() {
 
       if (result.status === "already-completed") {
         setManualLogOpen(false);
-        router.replace(
-          (result.isFinished
-            ? "/(expedition)/expedition-complete"
-            : "/(expedition)/base-camp") as any,
-        );
+        if (result.isFinished) {
+          router.replace({
+            pathname: "/(expedition)/base-camp" as any,
+            params: { celebrate: currentExpedition.id },
+          });
+        } else {
+          router.replace("/(expedition)/base-camp" as any);
+        }
         return;
       }
       if (result.status === "invalid-expedition") {
@@ -312,11 +315,14 @@ export default function HillDetailScreen() {
       });
 
       setManualLogOpen(false);
-      router.replace(
-        (result.isFinished
-          ? "/(expedition)/expedition-complete"
-          : "/(expedition)/base-camp") as any,
-      );
+      if (result.isFinished) {
+        router.replace({
+          pathname: "/(expedition)/base-camp" as any,
+          params: { celebrate: currentExpedition.id },
+        });
+      } else {
+        router.replace("/(expedition)/base-camp" as any);
+      }
     } catch {
       setManualError("We couldn't save this summit. Please try again.");
     } finally {

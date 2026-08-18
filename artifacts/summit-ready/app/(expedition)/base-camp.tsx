@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
@@ -24,6 +24,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
+import { CompletionCinematic as WebCompletionCinematic } from "@/components/CompletionCinematic.web";
 import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
@@ -31,7 +32,7 @@ import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 // Keep expo-av and the bundled completion MP4 out of the normal Expedition
 // entry path. Native module/asset initialisation failures are not catchable by
 // React error boundaries, so load the video component only after completion.
-const CompletionCinematic = React.lazy(async () => {
+const NativeCompletionCinematic = React.lazy(async () => {
   const module = await import("@/components/CompletionCinematic");
   return { default: module.CompletionCinematic };
 });
@@ -152,8 +153,10 @@ export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
-          startExpedition, expeditions, activeExpeditionId, activeExpedition } = useApp();
+          startExpedition, expeditions, activeExpeditionId, activeExpedition,
+          completeExpedition } = useApp();
   const { user } = useUser();
+  const { celebrate } = useLocalSearchParams<{ celebrate?: string }>();
 
   const firstName = user?.firstName ?? "Adventurer";
 
@@ -169,11 +172,8 @@ export default function BaseCampScreen() {
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
   const [showCompletion,         setShowCompletion]         = useState(false);
-
-  // Dismisses the completion modal.
-  const handleCompletionContinue = useCallback(() => {
-    setShowCompletion(false);
-  }, []);
+  const finalizeAfterCompletionRef = useRef(false);
+  const handledCelebrationRef = useRef<string | null>(null);
 
   const hasCachedData = !!summitGoal?.simulationScore && !!summitGoal?.targetMountain;
 
@@ -268,6 +268,37 @@ export default function BaseCampScreen() {
   const routePct = stages.length > 0
     ? Math.round(completedStages / stages.length * 100)
     : pct; // fall back to elevation-based pct when no stages loaded yet
+
+  // Final stage completions arrive with an explicit expedition id. This avoids
+  // relying on elevation totals or an incomplete→complete transition surviving
+  // navigation back from hill detail / GPS tracking.
+  useEffect(() => {
+    const requestedId = typeof celebrate === "string" ? celebrate : null;
+    if (
+      !requestedId
+      || handledCelebrationRef.current === requestedId
+      || requestedId !== activeExpeditionId
+      || stages.length === 0
+      || completedStages !== stages.length
+    ) {
+      return;
+    }
+
+    handledCelebrationRef.current = requestedId;
+    finalizeAfterCompletionRef.current = true;
+    setShowCompletion(true);
+  }, [celebrate, activeExpeditionId, completedStages, stages.length]);
+
+  const handleCompletionContinue = useCallback(async () => {
+    const shouldFinalize = finalizeAfterCompletionRef.current;
+    finalizeAfterCompletionRef.current = false;
+    setShowCompletion(false);
+
+    if (shouldFinalize && activeExpeditionId) {
+      await completeExpedition(activeExpeditionId);
+      router.replace("/(expedition)/mountains" as any);
+    }
+  }, [activeExpeditionId, completeExpedition]);
 
   // Next incomplete route — first hill whose name is not yet in completedRoutes.
   const nextHill = virtualHills.find(h => !completedRoutes.includes(h.name));
@@ -989,14 +1020,23 @@ export default function BaseCampScreen() {
 
     {/* Do not evaluate expo-av or the MP4 until genuine completion. */}
     {showCompletion && (
-      <Suspense fallback={<View style={StyleSheet.absoluteFill} />}>
-        <CompletionCinematic
+      Platform.OS === "web" ? (
+        <WebCompletionCinematic
           visible
           expeditionName={expTitle ?? "Your Expedition"}
           totalElevationM={totalTrained}
           onContinue={handleCompletionContinue}
         />
-      </Suspense>
+      ) : (
+        <Suspense fallback={<View style={StyleSheet.absoluteFill} />}>
+          <NativeCompletionCinematic
+            visible
+            expeditionName={expTitle ?? "Your Expedition"}
+            totalElevationM={totalTrained}
+            onContinue={handleCompletionContinue}
+          />
+        </Suspense>
+      )
     )}
     </>
   );
