@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   AppState,
   AppStateStatus,
   Linking,
@@ -199,7 +200,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
-          summitGoal, patchExpedition, activeExpeditionId, activeExpedition } = useApp();
+          summitGoal, completeExpeditionStage, activeExpeditionId, activeExpedition } = useApp();
 
   // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
   const params = useLocalSearchParams<{
@@ -210,6 +211,8 @@ export default function HikeTrackingScreen() {
     estimatedTotalGain?: string;
     referenceRouteId?: string;
     referenceRouteName?: string;
+    expeditionStageName?: string;
+    expeditionId?: string;
     restore?: string;           // "1" when app was killed mid-hike and we're restoring
   }>();
   const hillMeta = {
@@ -240,6 +243,16 @@ export default function HikeTrackingScreen() {
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
+  const [markingExpeditionRoute, setMarkingExpeditionRoute] = useState(false);
+  const [markExpeditionError, setMarkExpeditionError] = useState("");
+
+  const stageParamMatchesActiveExpedition =
+    !!params.expeditionId && params.expeditionId === activeExpeditionId;
+  const requestedExpeditionStage = stageParamMatchesActiveExpedition
+    && params.expeditionStageName
+    && activeExpedition?.virtualHills?.some(hill => hill.name === params.expeditionStageName)
+      ? params.expeditionStageName
+      : null;
 
   // ── Nearby route picker ───────────────────────────────────────────────────
   const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
@@ -943,7 +956,19 @@ export default function HikeTrackingScreen() {
       // In expedition mode ask "Did you complete this route?" before leaving.
       // In training mode navigate straight to hike history as before.
       if (summitGoal?.mode === "virtual" && activeExpeditionId) {
-        setShowExpeditionPrompt(true);
+        if (requestedExpeditionStage) {
+          setShowExpeditionPrompt(true);
+        } else {
+          Alert.alert(
+            "Stage not marked complete",
+            "Your hike was saved, but this expedition stage could not be verified. Return to Base Camp and use Log manually if you reached the summit.",
+            [{
+              text: "Back to Base Camp",
+              onPress: () => router.replace("/(expedition)/base-camp" as any),
+            }],
+            { cancelable: false },
+          );
+        }
       } else {
         router.replace("/(tabs)/hikes");
       }
@@ -951,7 +976,7 @@ export default function HikeTrackingScreen() {
       setSaving(false);
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-      addSession, logExploreHike, summitGoal, activeExpeditionId]);
+      addSession, logExploreHike, summitGoal, activeExpeditionId, requestedExpeditionStage]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
@@ -1068,7 +1093,7 @@ export default function HikeTrackingScreen() {
         </ScrollView>
 
         {/* ── Expedition route completion prompt ─────────────────────────── */}
-        {showExpeditionPrompt && !!activeExpeditionId && (
+        {showExpeditionPrompt && !!activeExpeditionId && !!requestedExpeditionStage && (
           <Modal transparent animationType="fade" visible>
             <View style={s.promptOverlay}>
               <Animated.View entering={FadeInUp.duration(350)} style={s.promptCard}>
@@ -1079,34 +1104,42 @@ export default function HikeTrackingScreen() {
                 <Text style={s.promptEmo}>⛰️</Text>
                 <Text style={s.promptTitle}>Route completed?</Text>
                 <Text style={s.promptRoute} numberOfLines={2}>
-                  {/* Show the next incomplete expedition hill (what they should have been doing) */}
-                  {activeExpedition?.virtualHills?.find(
-                    h => !(activeExpedition.completedRoutes ?? []).includes(h.name),
-                  )?.name ?? routeName}
+                  {requestedExpeditionStage}
                 </Text>
 
                 <TouchableOpacity
-                  style={s.promptYes}
+                  style={[s.promptYes, markingExpeditionRoute && { opacity: 0.6 }]}
                   activeOpacity={0.85}
-                  onPress={() => {
+                  disabled={markingExpeditionRoute}
+                  onPress={async () => {
                     const expId = activeExpeditionId;
-                    if (!expId) return;
-                    const nextIncomplete = activeExpedition?.virtualHills?.find(
-                      h => !(activeExpedition.completedRoutes ?? []).includes(h.name),
-                    );
-                    const toMark = nextIncomplete?.name ?? routeName;
-                    const newCompleted = [
-                      ...(activeExpedition?.completedRoutes ?? []),
-                      toMark,
-                    ];
-                    void patchExpedition(expId, { completedRoutes: newCompleted });
-                    const totalRoutes = activeExpedition?.virtualHills?.length ?? 0;
-                    const isFinished  = totalRoutes > 0 && newCompleted.length >= totalRoutes;
-                    router.replace(
-                      (isFinished
-                        ? "/(expedition)/expedition-complete"
-                        : "/(expedition)/base-camp") as any
-                    );
+                    if (!expId || !requestedExpeditionStage || markingExpeditionRoute) return;
+                    setMarkingExpeditionRoute(true);
+                    setMarkExpeditionError("");
+                    try {
+                      const result = await completeExpeditionStage({
+                        expeditionId: expId,
+                        stageName: requestedExpeditionStage,
+                      });
+                      if (
+                        result.status === "invalid-expedition"
+                        || result.status === "invalid-stage"
+                      ) {
+                        setMarkExpeditionError(
+                          "This expedition changed while you were tracking. Return to Base Camp to review it.",
+                        );
+                        return;
+                      }
+                      router.replace(
+                        (result.isFinished
+                          ? "/(expedition)/expedition-complete"
+                          : "/(expedition)/base-camp") as any,
+                      );
+                    } catch {
+                      setMarkExpeditionError("We couldn't save this completion. Please try again.");
+                    } finally {
+                      setMarkingExpeditionRoute(false);
+                    }
                   }}
                 >
                   <LinearGradient
@@ -1114,9 +1147,15 @@ export default function HikeTrackingScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={s.promptYesGrad}
                   >
-                    <Text style={s.promptYesText}>Yes — mark it complete ✓</Text>
+                    <Text style={s.promptYesText}>
+                      {markingExpeditionRoute ? "Saving completion…" : "Yes — mark it complete ✓"}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
+
+                {!!markExpeditionError && (
+                  <Text style={s.promptError}>{markExpeditionError}</Text>
+                )}
 
                 <TouchableOpacity
                   style={s.promptNo}
@@ -1799,6 +1838,16 @@ const s = StyleSheet.create({
     borderRadius: 14,
   },
   promptYesText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  promptError: {
+    alignSelf: "stretch",
+    marginTop: -2,
+    marginBottom: 8,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Inter_500Medium",
+    color: T.orange,
+    textAlign: "center",
+  },
   promptNo: { paddingVertical: 12, alignSelf: "stretch", alignItems: "center" },
   promptNoText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
 });

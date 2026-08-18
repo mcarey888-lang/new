@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
 import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
@@ -248,6 +248,8 @@ export interface Session {
   treadmillKm?: number;
   treadmillInclinePct?: number;
   stepperFloors?: number;
+  /** Stable key used to keep expedition stage completion retries idempotent. */
+  expeditionStageKey?: string;
 }
 
 export const PENDING_PAST_HIKES_KEY = "summitready_pending_past_hikes";
@@ -270,6 +272,20 @@ export interface ExploreHike {
   timeTaken: number;
   notes: string;
   trackPoints?: Array<{ lat: number; lon: number }>;
+  /** Stable key used to keep expedition stage completion retries idempotent. */
+  expeditionStageKey?: string;
+}
+
+export interface ExpeditionStageCompletionInput {
+  expeditionId: string;
+  stageName: string;
+  session?: Omit<Session, "id">;
+  hike?: Omit<ExploreHike, "id">;
+}
+
+export interface ExpeditionStageCompletionResult {
+  status: "completed" | "already-completed" | "invalid-expedition" | "invalid-stage";
+  isFinished: boolean;
 }
 
 interface AppState {
@@ -357,6 +373,10 @@ interface AppState {
   setActiveExpedition: (id: string) => Promise<void>;
   /** Update fields on a saved expedition, syncing to summitGoal if it's the active one. */
   patchExpedition: (id: string, updates: Partial<SavedExpedition>) => Promise<void>;
+  /** Idempotently complete one exact stage and persist its optional activity records together. */
+  completeExpeditionStage: (
+    input: ExpeditionStageCompletionInput,
+  ) => Promise<ExpeditionStageCompletionResult>;
   /** Mark an expedition as complete and record its final stats. */
   completeExpedition: (id: string, stats?: SavedExpedition["completionStats"]) => Promise<void>;
 }
@@ -435,6 +455,7 @@ const AppContext = createContext<AppState>({
   startExpedition: async () => "",
   setActiveExpedition: async () => {},
   patchExpedition: async () => {},
+  completeExpeditionStage: async () => ({ status: "invalid-expedition", isFinished: false }),
   completeExpedition: async () => {},
 });
 
@@ -491,6 +512,16 @@ function isSameGoal(a: SummitGoal | null, b: SummitGoal): boolean {
   return !!a &&
     a.mountainName === b.mountainName &&
     a.summitDate === b.summitDate;
+}
+
+function parseStoredArray<T>(value: string | null, fallback: T[]): T[] {
+  if (!value) return fallback;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as T[] : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 const DEMO_GOAL: SummitGoal = {
@@ -618,6 +649,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [savedTrailIds, setSavedTrailIds] = useState<string[]>([]);
   const [completedTrailIds, setCompletedTrailIds] = useState<string[]>([]);
   const [customRoutes, setCustomRoutes] = useState<Trail[]>([]);
+  const expeditionStageCompletionQueue = useRef<Promise<void>>(Promise.resolve());
 
   const applyAlpineProfile = useCallback(async (
     scope: "training" | "expedition",
@@ -1391,6 +1423,184 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     checkAndNotifyAchievements(updated, score, submittedPlanSessions, unlockedAchievements, exploreHikes);
   }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
+  const completeExpeditionStage = useCallback((
+    input: ExpeditionStageCompletionInput,
+  ): Promise<ExpeditionStageCompletionResult> => {
+    const run = async (): Promise<ExpeditionStageCompletionResult> => {
+      const [
+        [, storedExpeditionsJson],
+        [, storedSessionsJson],
+        [, storedHikesJson],
+        [, storedActiveExpeditionId],
+      ] = await AsyncStorage.multiGet([
+        EXPEDITIONS_KEY,
+        SESSIONS_KEY,
+        EXPLORE_HIKES_KEY,
+        ACTIVE_EXPEDITION_KEY,
+      ]);
+
+      const storedExpeditions = parseStoredArray(storedExpeditionsJson, expeditions);
+      const expedition = storedExpeditions.find(item => item.id === input.expeditionId);
+      if (
+        !expedition
+        || expedition.expeditionStatus !== "active"
+        || storedActiveExpeditionId !== input.expeditionId
+      ) {
+        return { status: "invalid-expedition", isFinished: false };
+      }
+
+      const stageNames = expedition.virtualHills.map(hill => hill.name);
+      if (!stageNames.includes(input.stageName)) {
+        return { status: "invalid-stage", isFinished: false };
+      }
+
+      const completionKey = `${input.expeditionId}::${input.stageName}`;
+      const storedSessions = parseStoredArray(storedSessionsJson, sessions);
+      const storedHikes = parseStoredArray(storedHikesJson, exploreHikes);
+      const completed = new Set(expedition.completedRoutes ?? []);
+      const wasAlreadyCompleted = completed.has(input.stageName);
+      const needsSession = !!input.session
+        && !storedSessions.some(item => item.expeditionStageKey === completionKey);
+      const needsHike = !!input.hike
+        && !storedHikes.some(item => item.expeditionStageKey === completionKey);
+
+      if (wasAlreadyCompleted && !needsSession && !needsHike) {
+        return {
+          status: "already-completed",
+          isFinished: stageNames.length > 0 && stageNames.every(name => completed.has(name)),
+        };
+      }
+
+      completed.add(input.stageName);
+      const completedRoutes = Array.from(completed);
+      const updatedExpeditions = storedExpeditions.map(item =>
+        item.id === input.expeditionId ? { ...item, completedRoutes } : item,
+      );
+      const idBase = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+      const updatedSessions = needsSession && input.session
+        ? [{
+            ...input.session,
+            id: `session_${idBase}`,
+            expeditionStageKey: completionKey,
+          }, ...storedSessions]
+        : storedSessions;
+      const updatedHikes = needsHike && input.hike
+        ? [{
+            ...input.hike,
+            id: `hike_${idBase}`,
+            expeditionStageKey: completionKey,
+          }, ...storedHikes]
+        : storedHikes;
+
+      let updatedGoal: SummitGoal | null = null;
+      if (input.expeditionId === activeExpeditionId) {
+        const storedGoalJson = await AsyncStorage.getItem(EXPEDITION_GOAL_KEY);
+        const goalBase = storedGoalJson
+          ? JSON.parse(storedGoalJson) as SummitGoal
+          : expeditionGoal ?? (shellMode === "expedition" ? summitGoal : null);
+        if (goalBase) updatedGoal = { ...goalBase, completedRoutes };
+      }
+
+      const writes: [string, string][] = [
+        [EXPEDITIONS_KEY, JSON.stringify(updatedExpeditions)],
+      ];
+      if (needsSession) writes.push([SESSIONS_KEY, JSON.stringify(updatedSessions)]);
+      if (needsHike) writes.push([EXPLORE_HIKES_KEY, JSON.stringify(updatedHikes)]);
+      if (updatedGoal) {
+        writes.push([EXPEDITION_GOAL_KEY, JSON.stringify(updatedGoal)]);
+        if (shellMode === "expedition") {
+          writes.push([GOAL_KEY, JSON.stringify(updatedGoal)]);
+        }
+      }
+      try {
+        await AsyncStorage.multiSet(writes);
+      } catch {
+        // A device interruption can leave a native storage batch partially
+        // applied. Replaying the same idempotent payload repairs missing keys
+        // without creating duplicate stage activity records.
+        await AsyncStorage.multiSet(writes);
+      }
+
+      setExpeditions(updatedExpeditions);
+      if (needsSession) setSessions(updatedSessions);
+      if (needsHike) setExploreHikes(updatedHikes);
+      if (updatedGoal) {
+        setExpeditionGoalState(updatedGoal);
+        if (shellMode === "expedition") setSummitGoalState(updatedGoal);
+      }
+
+      if (needsSession && input.session) {
+        const readinessGoal = updatedGoal ?? summitGoal;
+        let score = readinessScore;
+        if (readinessGoal) {
+          score = calculateReadiness(
+            readinessGoal,
+            trainingPlan,
+            updatedSessions,
+            { sessionReps, assignedHills, completedGoals, exploreHikes: updatedHikes },
+          );
+          setReadinessScore(score);
+          if (score > readinessScore) {
+            void logReadinessScoreImproved({
+              readiness_score: score,
+              previous_score: readinessScore,
+            });
+          } else if (input.session.completed) {
+            const insight = diagnoseScoreStagnation(
+              readinessGoal,
+              updatedSessions,
+              updatedHikes,
+              readinessScore,
+              score,
+            );
+            if (insight) setScoreStagnation(insight);
+          }
+        }
+        void checkAndNotifyAchievements(
+          updatedSessions,
+          score,
+          submittedPlanSessions,
+          unlockedAchievements,
+          updatedHikes,
+        );
+      }
+
+      return {
+        status: "completed",
+        isFinished: stageNames.length > 0 && stageNames.every(name => completed.has(name)),
+      };
+    };
+
+    const queued = expeditionStageCompletionQueue.current.then(run, run);
+    expeditionStageCompletionQueue.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }, [
+    EXPEDITIONS_KEY,
+    SESSIONS_KEY,
+    EXPLORE_HIKES_KEY,
+    ACTIVE_EXPEDITION_KEY,
+    EXPEDITION_GOAL_KEY,
+    GOAL_KEY,
+    expeditions,
+    sessions,
+    exploreHikes,
+    activeExpeditionId,
+    expeditionGoal,
+    shellMode,
+    summitGoal,
+    readinessScore,
+    trainingPlan,
+    sessionReps,
+    assignedHills,
+    completedGoals,
+    submittedPlanSessions,
+    unlockedAchievements,
+    checkAndNotifyAchievements,
+  ]);
+
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
     const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
     setSessions(updated);
@@ -2002,7 +2212,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       shellMode, setShellMode,
       expeditions, activeExpeditionId,
       activeExpedition: expeditions.find(e => e.id === activeExpeditionId) ?? null,
-      startExpedition, setActiveExpedition, patchExpedition, completeExpedition,
+      startExpedition, setActiveExpedition, patchExpedition, completeExpeditionStage, completeExpedition,
     }}>
       {children}
     </AppContext.Provider>

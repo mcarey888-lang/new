@@ -19,6 +19,8 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
+import { logHillSessionCompleted } from "@/lib/analytics";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -31,6 +33,19 @@ const DIFF_COLOR: Record<string, string> = {
   Hard: T.orange,
   Alpine: "#FF4444",
 };
+
+function localDateISO(date = new Date()): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+function isValidCompletedDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T12:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime())
+    && parsed.toISOString().slice(0, 10) === value
+    && value <= localDateISO();
+}
 
 interface HillRoute {
   name: string;
@@ -61,7 +76,13 @@ import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch,
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode } =
+  const {
+    activeExpedition,
+    activeExpeditionId,
+    completeExpeditionStage,
+    trainingPlan,
+  } = useApp();
+  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode, expeditionId } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -73,6 +94,7 @@ export default function HillDetailScreen() {
       surface?: string;
       emoji?: string;
       expeditionMode?: string;
+      expeditionId?: string;
     }>();
 
   const isExpeditionMode = expeditionMode === "true";
@@ -89,9 +111,22 @@ export default function HillDetailScreen() {
   const [draftPostcode, setDraftPostcode] = useState("");
   const [draftDirections, setDraftDirections] = useState("");
   const [draftParking, setDraftParking] = useState("");
+  const [manualLogOpen, setManualLogOpen] = useState(false);
+  const [manualDate, setManualDate] = useState(localDateISO());
+  const [manualDistance, setManualDistance] = useState(distance ?? "");
+  const [manualElevation, setManualElevation] = useState(elevation ?? "");
+  const [manualDuration, setManualDuration] = useState("");
+  const [manualEffort, setManualEffort] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [manualNotes, setManualNotes] = useState("");
+  const [manualError, setManualError] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
 
   const hillLat = lat ? parseFloat(lat) : null;
   const hillLng = lng ? parseFloat(lng) : null;
+  const currentExpedition = activeExpedition?.id === (expeditionId ?? activeExpeditionId)
+    ? activeExpedition
+    : null;
+  const isStageCompleted = !!name && !!currentExpedition?.completedRoutes.includes(name);
 
   const heroImageUri = name && !imageError
     ? `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}`
@@ -166,6 +201,127 @@ export default function HillDetailScreen() {
     await clearOverride(name);
     setOverride(null);
     setEditingStart(false);
+  }
+
+  function openManualLog() {
+    setManualDate(localDateISO());
+    setManualDistance(distance ?? "");
+    setManualElevation(elevation ?? "");
+    setManualDuration("");
+    setManualEffort(3);
+    setManualNotes("");
+    setManualError("");
+    setManualLogOpen(true);
+  }
+
+  async function handleManualSummit() {
+    if (!name || !currentExpedition || !activeExpeditionId) {
+      setManualError("This expedition is no longer active. Return to Base Camp and try again.");
+      return;
+    }
+    if (currentExpedition.id !== activeExpeditionId) {
+      setManualError("This stage belongs to a different expedition.");
+      return;
+    }
+    if (!isValidCompletedDate(manualDate.trim())) {
+      setManualError("Enter a valid date in YYYY-MM-DD format. Future dates are not allowed.");
+      return;
+    }
+
+    const distanceKm = Number.parseFloat(manualDistance);
+    const elevationM = Number.parseFloat(manualElevation);
+    const durationMin = manualDuration.trim() ? Number.parseFloat(manualDuration) : 0;
+    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+      setManualError("Enter a valid distance of 0 km or more.");
+      return;
+    }
+    if (!Number.isFinite(elevationM) || elevationM < 0) {
+      setManualError("Enter a valid elevation gain of 0 m or more.");
+      return;
+    }
+    if (!Number.isFinite(durationMin) || durationMin < 0) {
+      setManualError("Enter a valid duration of 0 minutes or more.");
+      return;
+    }
+
+    if (!currentExpedition.virtualHills.some(hill => hill.name === name)) {
+      setManualError("This hill is no longer part of the active expedition.");
+      return;
+    }
+
+    setManualSaving(true);
+    setManualError("");
+    try {
+      const matchingWeek = trainingPlan.find(
+        week => week.startDate <= manualDate && week.endDate >= manualDate,
+      );
+      const currentWeek = trainingPlan.find(week => week.isCurrentWeek);
+      const result = await completeExpeditionStage({
+        expeditionId: currentExpedition.id,
+        stageName: name,
+        session: {
+          date: manualDate.trim(),
+          type: "bigDay",
+          distance: distanceKm,
+          elevationGain: Math.round(elevationM),
+          duration: Math.round(durationMin),
+          effort: manualEffort,
+          notes: [
+            `Manually logged expedition summit: ${name}.`,
+            manualNotes.trim(),
+          ].filter(Boolean).join(" "),
+          completed: true,
+          weekNumber: matchingWeek?.weekNumber ?? currentWeek?.weekNumber ?? 1,
+          hillName: name,
+        },
+        hike: {
+          name,
+          date: manualDate.trim(),
+          distance: distanceKm,
+          elevationGain: Math.round(elevationM),
+          timeTaken: Math.round(durationMin),
+          notes: [
+            "Manually logged expedition summit.",
+            manualNotes.trim(),
+          ].filter(Boolean).join(" "),
+        },
+      });
+
+      if (result.status === "already-completed") {
+        setManualLogOpen(false);
+        router.replace(
+          (result.isFinished
+            ? "/(expedition)/expedition-complete"
+            : "/(expedition)/base-camp") as any,
+        );
+        return;
+      }
+      if (result.status === "invalid-expedition") {
+        setManualError("This expedition is no longer active. Return to Base Camp and try again.");
+        return;
+      }
+      if (result.status === "invalid-stage") {
+        setManualError("This hill is no longer part of the active expedition.");
+        return;
+      }
+
+      void logHillSessionCompleted({
+        hill_name: name,
+        elevation_gain: Math.round(elevationM),
+        source: "manual",
+      });
+
+      setManualLogOpen(false);
+      router.replace(
+        (result.isFinished
+          ? "/(expedition)/expedition-complete"
+          : "/(expedition)/base-camp") as any,
+      );
+    } catch {
+      setManualError("We couldn't save this summit. Please try again.");
+    } finally {
+      setManualSaving(false);
+    }
   }
 
   const gradeColor = DIFF_COLOR[grade ?? ""] ?? T.blue;
@@ -475,25 +631,213 @@ export default function HillDetailScreen() {
       {/* ── Expedition mode — sticky Start Stage CTA ── */}
       {isExpeditionMode && (
         <View style={[styles.expeditionCtaBar, { paddingBottom: Platform.OS === "web" ? 20 : insets.bottom + 8 }]}>
-          <TouchableOpacity
-            style={styles.expeditionStartBtn}
-            activeOpacity={0.85}
-            onPress={() =>
-              router.push({ pathname: "/hike-tracking" as any, params: { hillName: name } })
-            }
-          >
-            <LinearGradient
-              colors={[T.green, "#2AB860"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.expeditionStartGrad}
-            >
-              <Play size={16} color="#fff" fill="#fff" />
-              <Text style={styles.expeditionStartText}>Start Stage</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {isStageCompleted ? (
+            <View style={styles.expeditionCompletedBtn}>
+              <CheckCircle size={17} color={T.green} />
+              <Text style={styles.expeditionCompletedText}>Summit logged</Text>
+            </View>
+          ) : (
+            <View style={styles.expeditionCtaRow}>
+              <TouchableOpacity
+                style={styles.expeditionStartBtn}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push({
+                    pathname: "/hike-tracking" as any,
+                    params: {
+                      hillName: name,
+                      expeditionStageName: name,
+                      expeditionId: currentExpedition?.id ?? activeExpeditionId ?? "",
+                    },
+                  })
+                }
+              >
+                <LinearGradient
+                  colors={[T.green, "#2AB860"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.expeditionStartGrad}
+                >
+                  <Play size={16} color="#fff" fill="#fff" />
+                  <Text style={styles.expeditionStartText}>Start Stage</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.expeditionManualBtn}
+                activeOpacity={0.78}
+                onPress={openManualLog}
+                accessibilityRole="button"
+                accessibilityLabel={`Log ${name} summit manually`}
+              >
+                <CheckCircle size={16} color={T.blue} />
+                <Text style={styles.expeditionManualText}>Log manually</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
+
+      {/* ── Manual expedition summit sheet ── */}
+      <Modal
+        visible={manualLogOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!manualSaving) setManualLogOpen(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.sheetBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            disabled={manualSaving}
+            onPress={() => setManualLogOpen(false)}
+          />
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View style={{ flex: 1, paddingRight: 16 }}>
+                <Text style={styles.sheetTitle}>Log summit manually</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Use this if GPS failed or you are adding {name} after the fact.
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={manualSaving}
+                onPress={() => setManualLogOpen(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.sheetCancelX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.sheetScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.manualInfoCard}>
+                <CheckCircle size={18} color={T.green} />
+                <Text style={styles.manualInfoText}>
+                  This will mark the expedition stage complete and add it to your activity history.
+                </Text>
+              </View>
+
+              <Text style={styles.fieldLabel}>Date achieved</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={manualDate}
+                onChangeText={setManualDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={T.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={10}
+              />
+
+              <View style={styles.manualFieldRow}>
+                <View style={styles.manualFieldHalf}>
+                  <Text style={styles.fieldLabel}>Distance (km)</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={manualDistance}
+                    onChangeText={setManualDistance}
+                    placeholder="0"
+                    placeholderTextColor={T.textMuted}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={styles.manualFieldHalf}>
+                  <Text style={styles.fieldLabel}>Elevation gain (m)</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={manualElevation}
+                    onChangeText={setManualElevation}
+                    placeholder="0"
+                    placeholderTextColor={T.textMuted}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.fieldLabel}>Duration in minutes (optional)</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={manualDuration}
+                onChangeText={setManualDuration}
+                placeholder="e.g. 180"
+                placeholderTextColor={T.textMuted}
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.fieldLabel}>How hard did it feel?</Text>
+              <View style={styles.effortRow}>
+                {([1, 2, 3, 4, 5] as const).map(value => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.effortButton,
+                      manualEffort === value && styles.effortButtonActive,
+                    ]}
+                    onPress={() => setManualEffort(value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[
+                      styles.effortButtonText,
+                      manualEffort === value && styles.effortButtonTextActive,
+                    ]}>
+                      {value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Notes (optional)</Text>
+              <TextInput
+                style={[styles.fieldInput, styles.fieldInputMulti]}
+                value={manualNotes}
+                onChangeText={setManualNotes}
+                placeholder="Weather, route, how it felt…"
+                placeholderTextColor={T.textMuted}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              {!!manualError && (
+                <View style={styles.manualError}>
+                  <AlertCircle size={15} color={T.orange} />
+                  <Text style={styles.manualErrorText}>{manualError}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.manualConfirmBtn, manualSaving && { opacity: 0.6 }]}
+                onPress={handleManualSummit}
+                disabled={manualSaving}
+                activeOpacity={0.82}
+              >
+                <LinearGradient
+                  colors={[T.green, "#2AB860"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.manualConfirmGrad}
+                >
+                  {manualSaving
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <CheckCircle size={17} color="#fff" />}
+                  <Text style={styles.sheetSaveBtnText}>
+                    {manualSaving ? "Saving summit…" : "Confirm summit"}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ── Edit start point sheet ── */}
       <Modal
@@ -988,7 +1332,12 @@ const styles = StyleSheet.create({
     borderTopWidth:  1,
     borderTopColor:  T.border,
   },
+  expeditionCtaRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   expeditionStartBtn: {
+    flex:          1.25,
     borderRadius:  16,
     overflow:      "hidden",
   },
@@ -1001,9 +1350,125 @@ const styles = StyleSheet.create({
     borderRadius:    16,
   },
   expeditionStartText: {
-    fontSize:   17,
+    fontSize:   15,
     fontFamily: "Inter_700Bold",
     color:      "#fff",
     letterSpacing: 0.2,
+  },
+  expeditionManualBtn: {
+    flex: 1,
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.blue + "55",
+    backgroundColor: T.blueDim,
+  },
+  expeditionManualText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: T.blue,
+  },
+  expeditionCompletedBtn: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.green + "55",
+    backgroundColor: T.greenDim,
+  },
+  expeditionCompletedText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: T.green,
+  },
+  manualInfoCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.green + "30",
+    backgroundColor: T.greenDim,
+    marginBottom: 2,
+  },
+  manualInfoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+  },
+  manualFieldRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  manualFieldHalf: {
+    flex: 1,
+  },
+  effortRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  effortButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: T.cardBorder,
+    backgroundColor: T.card,
+  },
+  effortButtonActive: {
+    borderColor: T.green,
+    backgroundColor: T.greenDim,
+  },
+  effortButtonText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: T.textMuted,
+  },
+  effortButtonTextActive: {
+    color: T.green,
+  },
+  manualError: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.orange + "40",
+    backgroundColor: T.orange + "12",
+    marginTop: 14,
+  },
+  manualErrorText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Inter_500Medium",
+    color: T.orange,
+  },
+  manualConfirmBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    marginTop: 22,
+    marginBottom: 8,
+  },
+  manualConfirmGrad: {
+    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
   },
 });

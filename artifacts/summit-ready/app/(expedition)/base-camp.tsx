@@ -768,7 +768,14 @@ export default function BaseCampScreen() {
             onStagePress={(hillName) => {
               const hill = virtualHills.find(h => h.name === hillName);
               if (!hill) {
-                router.push({ pathname: "/hike-tracking" as any, params: { hillName } });
+                router.push({
+                  pathname: "/hike-tracking" as any,
+                  params: {
+                    hillName,
+                    expeditionStageName: hillName,
+                    expeditionId: activeExpeditionId ?? "",
+                  },
+                });
                 return;
               }
               router.push({
@@ -784,6 +791,7 @@ export default function BaseCampScreen() {
                   surface:        hill.surface ?? "",
                   emoji:          hill.emoji   ?? "⛰️",
                   expeditionMode: "true",
+                  expeditionId:   activeExpeditionId ?? "",
                 },
               });
             }}
