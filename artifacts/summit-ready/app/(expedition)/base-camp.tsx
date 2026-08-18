@@ -179,9 +179,24 @@ export default function BaseCampScreen() {
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const myWeeklyElev = useMemo(() => weeklyElevation(sessions), [sessions]);
-  const totalTrained = useMemo(() => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0), [sessions]);
-  const totalDistKm  = useMemo(() => sessions.reduce((s, sess) => s + (sess.distance ?? 0), 0), [sessions]);
-  const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
+  const expeditionSessions = useMemo(() => {
+    if (!activeExpeditionId) return [];
+    const stageKeyPrefix = `${activeExpeditionId}::`;
+    return sessions.filter(sess => sess.expeditionStageKey?.startsWith(stageKeyPrefix));
+  }, [activeExpeditionId, sessions]);
+  const storedExpeditionProgress =
+    activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
+  const totalTrained = useMemo(
+    () => finiteNumber(storedExpeditionProgress?.elevationGained)
+      + expeditionSessions.reduce((sum, sess) => sum + finiteNumber(sess.elevationGain), 0),
+    [expeditionSessions, storedExpeditionProgress?.elevationGained],
+  );
+  const totalDistKm = useMemo(
+    () => finiteNumber(storedExpeditionProgress?.distanceCovered)
+      + expeditionSessions.reduce((sum, sess) => sum + finiteNumber(sess.distance), 0),
+    [expeditionSessions, storedExpeditionProgress?.distanceCovered],
+  );
+  const trailTime = useMemo(() => calcTrailTime(expeditionSessions), [expeditionSessions]);
 
   const leaderboard = useMemo(() => [
     { name: "Alex H.",  elev: 12450, isUser: false },
