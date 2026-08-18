@@ -790,7 +790,7 @@ export default function BaseCampScreen() {
               activeOpacity={0.85}
               onPress={() => {
                 if (completedRoutes.length > 0 && !nextHill) {
-                  router.push("/(expedition)/expedition-complete" as any);
+                  setShowCompletion(true);
                 } else {
                   setRoutePickerOpen(true);
                 }
@@ -857,7 +857,7 @@ export default function BaseCampScreen() {
             }}
             onCtaPress={() => {
               if (completedRoutes.length > 0 && !nextHill) {
-                router.push("/(expedition)/expedition-complete" as any);
+                setShowCompletion(true);
               } else {
                 setRoutePickerOpen(true);
               }
