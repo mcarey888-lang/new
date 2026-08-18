@@ -1199,9 +1199,7 @@ export default function VirtualScreen() {
               {BROWSE_REGIONS.map(r => {
                 const featCh = featuredList.find(f => f.challengeId === r.challengeId && f.approved);
                 const artPath = featCh?.thumbnailImage ?? featCh?.cardImage ?? null;
-                const regionImgUri = artPath
-                  ? artworkUrl(artPath)
-                  : `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160`;
+                const regionImgUri = artworkUrl(artPath);
                 return (
                 <TouchableOpacity
                   key={r.name}
@@ -1209,11 +1207,17 @@ export default function VirtualScreen() {
                   activeOpacity={0.85}
                   onPress={() => setSelectedRegion(r.name)}
                 >
-                  <ExpoImage
-                    source={{ uri: regionImgUri ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(r.slug)}&width=240&height=160` }}
+                  <LinearGradient
+                    colors={["#17304A", "#0C1C30"]}
                     style={StyleSheet.absoluteFill}
-                    contentFit="cover"
                   />
+                  {regionImgUri && (
+                    <ExpoImage
+                      source={{ uri: regionImgUri }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                  )}
                   <LinearGradient
                     colors={["transparent", "rgba(0,0,0,0.82)"]}
                     locations={[0.3, 1]}
@@ -1255,14 +1259,17 @@ export default function VirtualScreen() {
                   <LinearGradient colors={["rgba(255,255,255,0.025)", "transparent"]} style={StyleSheet.absoluteFill} />
                   {/* Thumbnail */}
                   <View style={s.popularThumb}>
-                    <ExpoImage
-                      source={{
-                        uri: (ch.approved && artworkUrl(ch.thumbnailImage ?? ch.cardImage))
-                          || `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=160&height=160`,
-                      }}
-                      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10 }}
-                      contentFit="cover"
+                    <LinearGradient
+                      colors={["#17304A", "#0C1C30"]}
+                      style={StyleSheet.absoluteFill}
                     />
+                    {ch.approved && artworkUrl(ch.thumbnailImage ?? ch.cardImage) && (
+                      <ExpoImage
+                        source={{ uri: artworkUrl(ch.thumbnailImage ?? ch.cardImage)! }}
+                        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10 }}
+                        contentFit="cover"
+                      />
+                    )}
                     {ch.featured && (
                       <View style={s.featuredBadge}>
                         <Text style={s.featuredBadgeText}>FEATURED</Text>
