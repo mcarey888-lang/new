@@ -35,6 +35,9 @@ const imageCache = new Map<string, ImageResult>();
 
 const CURATED_MOUNTAIN_FILES: Record<string, string[]> = {
   // Filenames verified against live Commons imageinfo API — landscape JPEGs confirmed to exist.
+  "pendle hill": [
+    "Pendle_Hill_and_the_Ribble_Valley_-_geograph.org.uk_-_72304.jpg",
+  ],
   "kilimanjaro": [
     "Kilimanjaro_dec_2009_edit2.jpg",   // Classic aerial view from Amboseli, snow cap visible
     "Kilimanjaro_2_edit.jpg",
@@ -86,6 +89,34 @@ const CURATED_MOUNTAIN_FILES: Record<string, string[]> = {
   ],
 };
 
+const CURATED_LOCAL_MOUNTAIN_FILES: Array<{
+  name: string;
+  coord: Coord;
+  maxDistanceKm: number;
+  files: string[];
+}> = [
+  {
+    name: "bull hill",
+    coord: { lat: 53.6641933, lng: -2.3544012 },
+    maxDistanceKm: 15,
+    files: [
+      "Bull_Hill_and_West_Moss_-_geograph.org.uk_-_3953179.jpg",
+    ],
+  },
+];
+
+function distanceKm(a: Coord, b: Coord): number {
+  const toRadians = (value: number) => value * Math.PI / 180;
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
 async function lookupCommonsFile(filename: string): Promise<string | null> {
   const url =
     `https://commons.wikimedia.org/w/api.php?action=query` +
@@ -123,11 +154,19 @@ async function lookupCommonsFile(filename: string): Promise<string | null> {
   return info.thumburl ?? info.url ?? null;
 }
 
-async function getCuratedImage(name: string): Promise<string | null> {
+async function getCuratedImage(name: string, hintCoord?: Coord): Promise<string | null> {
   const cleaned = cleanName(name).toLowerCase();
 
   let candidates: string[] = [];
+  if (hintCoord) {
+    const localMatch = CURATED_LOCAL_MOUNTAIN_FILES.find(entry =>
+      cleaned === entry.name && distanceKm(hintCoord, entry.coord) <= entry.maxDistanceKm
+    );
+    if (localMatch) candidates = localMatch.files;
+  }
+
   for (const [key, files] of Object.entries(CURATED_MOUNTAIN_FILES)) {
+    if (candidates.length > 0) break;
     if (cleaned.includes(key) || key.includes(cleaned)) {
       candidates = files;
       break;
@@ -244,22 +283,82 @@ async function searchCommons(query: string): Promise<string | null> {
   return null;
 }
 
-async function getCommonsImage(name: string, location?: string): Promise<string | null> {
+async function searchCommonsNear(name: string, coord: Coord): Promise<string | null> {
+  const apiUrl =
+    `https://commons.wikimedia.org/w/api.php?action=query` +
+    `&generator=geosearch` +
+    `&ggsprimary=all` +
+    `&ggsnamespace=6` +
+    `&ggsradius=10000` +
+    `&ggslimit=50` +
+    `&ggscoord=${encodeURIComponent(`${coord.lat}|${coord.lng}`)}` +
+    `&prop=imageinfo` +
+    `&iiprop=url%7Cdimensions%7Cmime` +
+    `&iiurlwidth=960` +
+    `&format=json&formatversion=2`;
+
+  const res = await fetch(apiUrl, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) return null;
+
+  const data = await res.json() as {
+    query?: {
+      pages?: Array<{
+        title: string;
+        imageinfo?: CommonsImageInfo[];
+      }>;
+    };
+  };
+
+  const nameWords = cleanName(name)
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 2);
+
+  for (const page of data.query?.pages ?? []) {
+    const title = page.title.toLowerCase();
+    if (!nameWords.every(word => title.includes(word))) continue;
+
+    const info = page.imageinfo?.[0];
+    if (!info) continue;
+
+    const mime = info.mime ?? "";
+    if (!mime.startsWith("image/jpeg") && !mime.startsWith("image/png") && !mime.startsWith("image/webp")) continue;
+
+    const thumb = info.thumburl ?? info.url;
+    if (thumb && isImageSuitable(thumb, info.width, info.height)) return thumb;
+  }
+
+  return null;
+}
+
+async function getCommonsImage(name: string, location?: string, coord?: Coord): Promise<string | null> {
   const cleaned = cleanName(name);
 
-  // Lead with "photograph" to strongly bias toward actual photos, not artwork.
-  const queries = [
+  if (coord) {
+    try {
+      const nearbyResult = await searchCommonsNear(cleaned, coord);
+      if (nearbyResult) return nearbyResult;
+    } catch { /* fall through to text search */ }
+  }
+
+  // Location-specific searches must come first so duplicated names such as
+  // Bull Hill resolve near the user's training area rather than another country.
+  const queries: string[] = [];
+  if (location) {
+    const cleanedLoc = cleanName(location);
+    queries.push(
+      `${cleaned} ${cleanedLoc} photograph`,
+      `${cleaned} ${cleanedLoc} landscape`,
+    );
+  }
+  queries.push(
     `${cleaned} mountain photograph`,
     `${cleaned} mountain landscape photograph`,
     `${cleaned} summit photograph`,
     `${cleaned} mountain landscape`,
     `${cleaned} peak photograph`,
     `${cleaned}`,
-  ];
-  if (location) {
-    const cleanedLoc = cleanName(location);
-    queries.push(`${cleanedLoc} mountain photograph`, `${cleanedLoc} mountain landscape`);
-  }
+  );
 
   for (const q of queries) {
     try {
@@ -336,13 +435,14 @@ async function getWikipediaData(name: string): Promise<ImageResult> {
 
 // ── Master lookup (cached) ────────────────────────────────────────────────────
 
-async function getImageData(name: string, location?: string): Promise<ImageResult> {
-  const cacheKey = `${name}::${location ?? ""}`;
+async function getImageData(name: string, location?: string, hintCoord?: Coord): Promise<ImageResult> {
+  const coordKey = hintCoord ? `${hintCoord.lat.toFixed(4)},${hintCoord.lng.toFixed(4)}` : "";
+  const cacheKey = `${name}::${location ?? ""}::${coordKey}`;
   const cached   = imageCache.get(cacheKey);
   if (cached !== undefined) return cached;
 
   // Step 1: try the curated map first — authoritative photos, never paintings
-  const curatedUrl = await getCuratedImage(name).catch(() => null);
+  const curatedUrl = await getCuratedImage(name, hintCoord).catch(() => null);
 
   let thumbUrl: string | null = curatedUrl;
   let coord:    Coord  | null = null;
@@ -350,7 +450,7 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
   if (!thumbUrl) {
     // Step 2+3: Commons search + Wikipedia in parallel (for coords + fallback image)
     const [commonsRes, wikiRes] = await Promise.allSettled([
-      getCommonsImage(name, location),
+      getCommonsImage(name, location, hintCoord),
       getWikipediaData(name),
     ]);
 
@@ -358,10 +458,11 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
       (commonsRes.status === "fulfilled" ? commonsRes.value : null) ??
       (wikiRes.status    === "fulfilled" ? wikiRes.value.thumbUrl : null);
 
-    if (wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
+    coord = hintCoord ?? (wikiRes.status === "fulfilled" ? wikiRes.value.coord : null);
   } else {
+    coord = hintCoord ?? null;
     // Still fetch coords for the Mapbox fallback, without waiting for image
-    getWikipediaData(name).then(r => {
+    if (!coord) getWikipediaData(name).then(r => {
       if (r.coord) {
         const existing = imageCache.get(cacheKey);
         if (existing && !existing.coord) imageCache.set(cacheKey, { ...existing, coord: r.coord });
@@ -415,6 +516,11 @@ async function fallbackGeocode(name: string): Promise<Coord> {
 router.get("/mountain-image", async (req, res) => {
   const rawName     = typeof req.query["name"]     === "string" ? req.query["name"]     : "";
   const rawLocation = typeof req.query["location"] === "string" ? req.query["location"] : "";
+  const rawLat      = typeof req.query["lat"]      === "string" ? Number(req.query["lat"]) : NaN;
+  const rawLng      = typeof req.query["lng"]      === "string" ? Number(req.query["lng"]) : NaN;
+  const hintCoord   = Number.isFinite(rawLat) && Number.isFinite(rawLng)
+    ? { lat: rawLat, lng: rawLng }
+    : undefined;
   const name        = rawName || rawLocation;
 
   const width  = Math.min(parseInt(String(req.query["width"]  ?? "800"), 10) || 800, 1280);
@@ -423,7 +529,7 @@ router.get("/mountain-image", async (req, res) => {
   if (!name) { res.status(400).end(); return; }
 
   try {
-    const { thumbUrl, coord } = await getImageData(name, rawLocation || undefined);
+    const { thumbUrl, coord } = await getImageData(name, rawLocation || undefined, hintCoord);
 
     // ── Proxy the photo ───────────────────────────────────────────────────────
     if (thumbUrl) {

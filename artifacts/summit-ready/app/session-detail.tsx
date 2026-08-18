@@ -222,6 +222,9 @@ export default function SessionDetailScreen() {
     ? { ...week.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" } as NearbyHill
     : null;
   const assignedHill: NearbyHill | null = assignedHills[sessionKey] ?? planHill ?? null;
+  const displaySessionLabel = session && assignedHill && (session.type === "hill" || session.type === "bigDay")
+    ? `${session.label.split("—")[0]?.trim() || (session.type === "bigDay" ? "Big Day" : "Hill Repeats")} — ${assignedHill.name}`
+    : (session?.label ?? "");
 
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
   const [saving, setSaving] = useState(false);
@@ -232,17 +235,24 @@ export default function SessionDetailScreen() {
 
   const handleHillSelect = useCallback(async (hill: NearbyHill) => {
     setHillPickerOpen(false);
+    setImageError(false);
     // Recalculate reps to keep total gain near the session's target, not the hill's default
     const sessionTarget = session?.targetElevation ?? hill.elevation * hill.repeats;
     const adjustedReps = Math.max(1, Math.round(sessionTarget / Math.max(1, hill.elevation)));
     const adjustedHill: NearbyHill = { ...hill, repeats: adjustedReps, totalElevation: adjustedReps * hill.elevation };
+    const labelPrefix = session?.label?.split("—")[0]?.trim()
+      || (session?.type === "bigDay" ? "Big Day" : "Hill Repeats");
     const description =
       `Head to ${adjustedHill.name} (${adjustedHill.elevation}m gain per rep). ` +
       `Complete ${adjustedReps} rep${adjustedReps !== 1 ? "s" : ""} for a total of ${adjustedHill.totalElevation}m elevation gain. ` +
       `Focus on a steady pace on the ascent and controlled steps on the descent to build the leg strength you'll need on summit day.`;
     await assignHillToSession(weekNum, sessionIdx, adjustedHill);
-    await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation, description });
-  }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
+    await updatePlanSession(weekNum, sessionIdx, {
+      label: `${labelPrefix} — ${adjustedHill.name}`,
+      targetElevation: adjustedHill.totalElevation,
+      description,
+    });
+  }, [weekNum, sessionIdx, session?.label, session?.type, session?.targetElevation, assignHillToSession, updatePlanSession]);
 
   const EXERCISE_LABEL: Record<GymExercise, string> = {
     "treadmill":       "Incline Treadmill",
@@ -353,6 +363,22 @@ export default function SessionDetailScreen() {
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
   // Local asset overrides take priority; fall back to the API for hill/stair sessions
+  const heroImageParams = assignedHill
+    ? new URLSearchParams({
+        name: heroSubject,
+        location: summitGoal?.location ?? "",
+        ...(assignedHill.lat != null ? { lat: String(assignedHill.lat) } : {}),
+        ...(assignedHill.lng != null ? { lng: String(assignedHill.lng) } : {}),
+        width: "800",
+        height: "400",
+        v: "3",
+      }).toString()
+    : new URLSearchParams({
+        name: heroSubject,
+        width: "800",
+        height: "400",
+        v: "3",
+      }).toString();
   const heroImageSource: ImageSourcePropType | null = !imageError
     ? inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
@@ -361,7 +387,7 @@ export default function SessionDetailScreen() {
     : inferredGymExercise === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : heroSubject
-      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400` }
+      ? { uri: `${API_BASE}/mountain-image?${heroImageParams}` }
       : null
     : null;
 
@@ -486,7 +512,7 @@ export default function SessionDetailScreen() {
           </View>
 
           {/* Session title */}
-          <Text style={s.title}>{session.label}</Text>
+          <Text style={s.title}>{displaySessionLabel}</Text>
 
           {/* Stats row */}
           <View style={s.statsRow}>
@@ -835,7 +861,7 @@ export default function SessionDetailScreen() {
       {/* Day picker modal */}
       <DayPickerModal
         visible={dayPickerOpen}
-        sessionLabel={session.label}
+        sessionLabel={displaySessionLabel}
         weekStartDate={week.startDate}
         currentDow={sessionDow}
         occupiedDows={occupiedDows}
