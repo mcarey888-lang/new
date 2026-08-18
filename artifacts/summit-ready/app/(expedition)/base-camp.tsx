@@ -315,6 +315,20 @@ export default function BaseCampScreen() {
     }
   }, [activeExpeditionId, completeExpedition]);
 
+  const daysTaken = useMemo(() => {
+    if (activeExpedition?.completionStats?.daysToComplete) {
+      return activeExpedition.completionStats.daysToComplete;
+    }
+    if (activeExpedition?.startedAt) {
+      const start = new Date(activeExpedition.startedAt);
+      const now = new Date();
+      const diffMs = now.getTime() - start.getTime();
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+      return Math.max(1, days);
+    }
+    return 1;
+  }, [activeExpedition]);
+
   // Next incomplete route — first hill whose name is not yet in completedRoutes.
   const nextHill = virtualHills.find(h => !completedRoutes.includes(h.name));
   const nextEst  = nextHill
@@ -1040,6 +1054,9 @@ export default function BaseCampScreen() {
           visible
           expeditionName={expTitle ?? "Your Expedition"}
           totalElevationM={totalTrained}
+          totalDistanceKm={totalDistKm}
+          routesCompleted={completedStages}
+          daysTaken={daysTaken}
           onContinue={handleCompletionContinue}
         />
       ) : (
@@ -1048,6 +1065,9 @@ export default function BaseCampScreen() {
             visible
             expeditionName={expTitle ?? "Your Expedition"}
             totalElevationM={totalTrained}
+            totalDistanceKm={totalDistKm}
+            routesCompleted={completedStages}
+            daysTaken={daysTaken}
             onContinue={handleCompletionContinue}
           />
         </Suspense>

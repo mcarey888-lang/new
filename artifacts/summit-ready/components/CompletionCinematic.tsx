@@ -60,6 +60,12 @@ interface CompletionCinematicProps {
   expeditionName: string;
   /** Total elevation in metres, shown in the overlay */
   totalElevationM: number;
+  /** Total distance in km */
+  totalDistanceKm: number;
+  /** Number of routes completed */
+  routesCompleted: number;
+  /** Number of days taken to complete */
+  daysTaken: number;
   /** Called once the user taps "Continue" — parent should dismiss */
   onContinue: () => void;
 }
@@ -71,6 +77,9 @@ export function CompletionCinematic({
   preload = false,
   expeditionName,
   totalElevationM,
+  totalDistanceKm,
+  routesCompleted,
+  daysTaken,
   onContinue,
 }: CompletionCinematicProps) {
   const insets = useSafeAreaInsets();
@@ -158,13 +167,14 @@ export function CompletionCinematic({
       await Share.share({
         message:
           `🏔️ I just completed the ${expeditionName} expedition on SummitReady!\n` +
-          `Total elevation climbed: ${Math.round(totalElevationM).toLocaleString()}m`,
+          `Finished in ${daysTaken} ${daysTaken === 1 ? "day" : "days"} across ${routesCompleted} ${routesCompleted === 1 ? "route" : "routes"}.\n` +
+          `Total elevation: ${Math.round(totalElevationM).toLocaleString()}m | Distance: ${totalDistanceKm.toFixed(1)}km`,
         title: "Expedition Complete!",
       });
     } catch {
       // cancelled
     }
-  }, [expeditionName, totalElevationM]);
+  }, [expeditionName, totalElevationM, totalDistanceKm, routesCompleted, daysTaken]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -261,11 +271,28 @@ export function CompletionCinematic({
 
               <Text style={styles.overlayTitle}>{expeditionName}</Text>
 
-              <View style={styles.statRow}>
+              <View style={styles.statMain}>
                 <Text style={styles.statValue}>
                   {Math.round(totalElevationM).toLocaleString()}m
                 </Text>
                 <Text style={styles.statLabel}>Total elevation climbed</Text>
+              </View>
+
+              <View style={styles.statsGrid}>
+                <View style={styles.statCol}>
+                  <Text style={styles.statValueSmall}>{totalDistanceKm.toFixed(1)}</Text>
+                  <Text style={styles.statLabelSmall}>km distance</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statCol}>
+                  <Text style={styles.statValueSmall}>{routesCompleted}</Text>
+                  <Text style={styles.statLabelSmall}>{routesCompleted === 1 ? "route" : "routes"}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statCol}>
+                  <Text style={styles.statValueSmall}>{daysTaken}</Text>
+                  <Text style={styles.statLabelSmall}>{daysTaken === 1 ? "day" : "days"}</Text>
+                </View>
               </View>
 
               <View style={styles.divider} />
@@ -332,9 +359,9 @@ const styles = StyleSheet.create({
     marginBottom:  24,
     letterSpacing: -0.5,
   },
-  statRow: {
+  statMain: {
     alignItems:   "center",
-    marginBottom: 28,
+    marginBottom: 24,
   },
   statValue: {
     fontSize:      52,
@@ -347,6 +374,39 @@ const styles = StyleSheet.create({
     fontSize:  14,
     color:     "rgba(255,255,255,0.55)",
     marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 32,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    width: "100%",
+  },
+  statCol: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  statValueSmall: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  statLabelSmall: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.55)",
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   divider: {
     width:           48,

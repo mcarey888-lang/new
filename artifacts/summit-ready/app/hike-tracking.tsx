@@ -222,6 +222,10 @@ export default function HikeTrackingScreen() {
     estimatedGainPerRep: params.estimatedGainPerRep ? parseInt(params.estimatedGainPerRep, 10) : null,
     estimatedTotalGain:  params.estimatedTotalGain  ? parseInt(params.estimatedTotalGain, 10)  : null,
   };
+  const [restoredExpeditionContext, setRestoredExpeditionContext] = useState<{
+    expeditionId: string;
+    stageName?: string;
+  } | null>(null);
 
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
   const [routeName, setRouteName]       = useState(params.hillName ?? params.referenceRouteName ?? "");
@@ -246,13 +250,20 @@ export default function HikeTrackingScreen() {
   const [markingExpeditionRoute, setMarkingExpeditionRoute] = useState(false);
   const [markExpeditionError, setMarkExpeditionError] = useState("");
 
+  const effectiveExpeditionId = params.expeditionId
+    ?? restoredExpeditionContext?.expeditionId;
+  const effectiveExpeditionStageName = params.expeditionStageName
+    ?? restoredExpeditionContext?.stageName;
   const stageParamMatchesActiveExpedition =
-    !!params.expeditionId && params.expeditionId === activeExpeditionId;
+    !!effectiveExpeditionId && effectiveExpeditionId === activeExpeditionId;
   const requestedExpeditionStage = stageParamMatchesActiveExpedition
-    && params.expeditionStageName
-    && activeExpedition?.virtualHills?.some(hill => hill.name === params.expeditionStageName)
-      ? params.expeditionStageName
+    && effectiveExpeditionStageName
+    && activeExpedition?.virtualHills?.some(hill => hill.name === effectiveExpeditionStageName)
+      ? effectiveExpeditionStageName
       : null;
+  const expeditionActivityKey = effectiveExpeditionId
+    ? `${effectiveExpeditionId}::${requestedExpeditionStage ?? "__unverified__"}`
+    : undefined;
 
   // ── Nearby route picker ───────────────────────────────────────────────────
   const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
@@ -504,12 +515,15 @@ export default function HikeTrackingScreen() {
           estimatedGainPerRep: hillMeta.estimatedGainPerRep,
           estimatedTotalGain:  hillMeta.estimatedTotalGain,
         },
+        expeditionId: effectiveExpeditionId,
+        expeditionStageName: requestedExpeditionStage ?? undefined,
         savedAt: Date.now(),
       };
       await AsyncStorage.setItem(ACTIVE_HIKE_KEY, JSON.stringify(session));
     } catch { /* ignore — non-critical */ }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
-      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain]);
+      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain,
+      stageParamMatchesActiveExpedition, effectiveExpeditionId, requestedExpeditionStage]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -536,6 +550,12 @@ export default function HikeTrackingScreen() {
           // Stale — discard and let the user start fresh
           await AsyncStorage.removeItem(ACTIVE_HIKE_KEY);
           return;
+        }
+        if (session.expeditionId) {
+          setRestoredExpeditionContext({
+            expeditionId: session.expeditionId,
+            stageName: session.expeditionStageName,
+          });
         }
 
         // Restore timer refs so elapsed time and syncBgPoints are accurate
@@ -851,12 +871,13 @@ export default function HikeTrackingScreen() {
         timeTaken: Math.round(elapsedSecs / 60),   // store in minutes
         notes: `GPS tracked hike. Elevation loss: ${elevLoss} m. Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "—"} km/h.`,
         trackPoints: trackPoints.current,
+        expeditionStageKey: expeditionActivityKey,
       });
       void logHikeTracked({ distance_km: distKm, elevation_gain: elevGain, duration_min: Math.round(elapsedSecs / 60) });
 
       // Close the GPS gap: if this hike was launched from a plan session,
       // automatically tick it as complete so the user doesn't have to go back manually.
-      if (hillMeta.sessionKey) {
+      if (hillMeta.sessionKey && !expeditionActivityKey) {
         const parts = hillMeta.sessionKey.split("-");
         if (parts.length >= 2) {
           const _weekNum    = parseInt(parts[0], 10);
@@ -884,6 +905,7 @@ export default function HikeTrackingScreen() {
           completed: true,
           weekNumber: Math.max(0, currentWeek),
           hillName: name,
+          expeditionStageKey: expeditionActivityKey,
         });
       }
 
@@ -975,8 +997,29 @@ export default function HikeTrackingScreen() {
     } catch {
       setSaving(false);
     }
-  }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-      addSession, logExploreHike, summitGoal, activeExpeditionId, requestedExpeditionStage]);
+  }, [
+    addToPlan,
+    routeName,
+    distanceKm,
+    elevGainM,
+    elevLossM,
+    elapsedSecs,
+    trainingPlan,
+    addSession,
+    logExploreHike,
+    summitGoal,
+    activeExpeditionId,
+    requestedExpeditionStage,
+    expeditionActivityKey,
+    hillMeta.sessionKey,
+    hillMeta.hillName,
+    hillMeta.targetReps,
+    hillMeta.estimatedGainPerRep,
+    hillMeta.estimatedTotalGain,
+    completedPlanSessions,
+    togglePlanSession,
+    selectedCanonical,
+  ]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {

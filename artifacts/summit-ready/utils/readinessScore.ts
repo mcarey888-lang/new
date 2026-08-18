@@ -1,4 +1,5 @@
 import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, CompletedGoal, ExploreHike } from "@/context/AppContext";
+import { isTrainingActivity } from "@/utils/expeditionTrainingMigration";
 
 const DIFFICULTY_RANK: Record<string, number> = {
   Easy: 1, Moderate: 2, Hard: 3, Alpine: 4,
@@ -59,7 +60,7 @@ export function isRequirementMet(
   weeksElapsed: number,
 ): boolean {
   if (!req.benchmark || req.benchmarkValue === undefined) return false;
-  const completed = sessions.filter(s => s.completed);
+  const completed = sessions.filter(s => isTrainingActivity(s) && s.completed);
   switch (req.benchmark) {
     case "sessions_count":
       return completed.length >= req.benchmarkValue;
@@ -91,13 +92,15 @@ export function calculateReadiness(
   if (!goal || plan.length === 0) return 0;
 
   const sessionsPerWeek = goal.trainingDaysPerWeek || 4;
-  const planCompleted = sessions.filter(s => s.completed);
+  const planCompleted = sessions.filter(s => isTrainingActivity(s) && s.completed);
   const virtual = opts?.virtualSessionCount ?? 0;
   const baseline = goal.fitnessBaseline ?? 0;
 
   // Convert GPS-tracked hikes into session-shaped objects so they feed
   // every scoring component that should reward real outdoor activity.
-  const hikeCompleted: Session[] = (opts?.exploreHikes ?? []).map(h => ({
+  const hikeCompleted: Session[] = (opts?.exploreHikes ?? [])
+    .filter(isTrainingActivity)
+    .map(h => ({
     id: h.id,
     date: h.date,
     type: "cardio" as const,
@@ -108,7 +111,7 @@ export function calculateReadiness(
     notes: h.notes,
     completed: true,
     weekNumber: 0,
-  }));
+    }));
 
   // allCompleted includes plan sessions + explore hikes, sorted oldest-first
   // so that effort-trend slices are chronologically meaningful.
@@ -295,8 +298,8 @@ export function diagnoseScoreStagnation(
 ): ScoreInsight | null {
   if (newScore > oldScore) return null;
 
-  const planCompleted = sessions.filter(s => s.completed);
-  const hikeCompleted: Session[] = exploreHikes.map(h => ({
+  const planCompleted = sessions.filter(s => isTrainingActivity(s) && s.completed);
+  const hikeCompleted: Session[] = exploreHikes.filter(isTrainingActivity).map(h => ({
     id: h.id, date: h.date, type: "cardio" as const,
     distance: h.distance, elevationGain: h.elevationGain,
     duration: h.timeTaken, effort: 3 as const,
