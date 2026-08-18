@@ -148,7 +148,7 @@ Other rules:
 - surface = brief description e.g. "Grassy moorland", "Rocky path"
 - grade: Easy ≤ 150m gain, Easy–Mod 150-300m, Moderate 300-500m, Hard 500-700m, Alpine 700m+
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
-- lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
+- lat/lng = EXACT GPS coordinates of the hill's physical summit (highest point), NOT the car park, NOT the trailhead, NOT a nearby village. Misplaced summit coords corrupt altitude scoring. Use OS/survey data — 4 decimal places.
 - trailheadLat/trailheadLng = GPS coordinates of the recommended public car park or trailhead start point (decimal degrees, 4 decimal places)
 - If the hill appears in the verified table above, use that exact elevation value`;
 
@@ -195,11 +195,82 @@ Other rules:
 - routeDistance: total circuit/route distance in km for circular or out-and-back routes; null for hills
 - estimatedTime: estimated walking time e.g. "1.5–2 hrs", "3–4 hrs"; null for pure hills
 - Use real place names and realistic hills/trails for the given location
-- lat/lng = accurate GPS coordinates of the hill summit (decimal degrees, 4 decimal places)
+- lat/lng = EXACT GPS coordinates of the hill's physical summit (highest point), NOT the car park, NOT the trailhead, NOT a nearby village. Misplaced summit coords corrupt altitude scoring. Use OS/survey data — 4 decimal places.
 - trailheadLat/trailheadLng = GPS coordinates of the recommended public car park or trailhead start point (decimal degrees, 4 decimal places)
 - For UK: include fells, moors, and popular circular walks
 - emoji: 🌿 for Easy, ⛰️ for Easy–Mod or Moderate, 🏔️ for Hard, 🗻 for Alpine
 - If a hill appears in the verified table above, use that exact elevation value`;
+
+// ── Hard-coded verified summit elevations ASL ─────────────────────────────────
+// Keyed by slugified hill name (same key space as KNOWN_GAINS).
+//
+// Why this table exists:
+//   The AI fallback path (triggered when Overpass returns <3 peaks) supplies its
+//   own lat/lng for each hill.  These coordinates are sometimes misplaced by 1–3 km
+//   (e.g. Bull Hill was placed near a car park at ~206 m instead of the 456 m summit).
+//   When those AI-guessed coordinates feed OpenTopoData the returned elevation is
+//   the terrain height at the wrong location — useless for altitude scoring.
+//
+//   The Overpass pipeline threads the real surveyor-tagged OSM ele value through
+//   `summitElevationASL` on each Hill object, so it is unaffected.  This table is
+//   the authoritative fallback for hills that came via AI fallback and have no
+//   `summitElevationASL`.  It is also used as a sanity-check rejection criterion:
+//   if a topo lookup at AI lat/lng returns a summit elevation lower than the hill's
+//   own stated elevation gain (physically impossible — summit ASL = trailhead ASL +
+//   gain, and trailhead ASL is always > 0), the coordinates are provably wrong and
+//   this table is substituted instead.
+//
+// All values are summit metres ASL sourced from OS maps / official survey data.
+export const KNOWN_SUMMIT_ASL: Record<string, number> = {
+  // Peak District
+  "mam-tor": 517, "mam-tor-great-ridge": 517,
+  "kinder-scout": 636, "kinder-scout-circular": 636,
+  "lose-hill": 476, "shutlingsloe": 506, "chrome-hill": 425,
+  "parkhouse-hill": 432, "thorpe-cloud": 287, "axe-edge-moor": 551,
+  // Yorkshire Dales / South Pennines
+  "pen-y-ghent": 694, "whernside": 736, "ingleborough": 724,
+  "great-whernside": 704,
+  // Lake District
+  "skiddaw": 931, "helvellyn": 950, "helvellyn-via-striding-edge": 950,
+  "blencathra": 868, "blencathra-via-sharp-edge": 868,
+  "catbells": 451, "great-gable": 899, "scafell-pike": 978,
+  "sca-fell": 964, "sca-fell-scafell-pike-loop": 978,
+  "coniston-old-man": 803, "fairfield": 873, "st-sunday-crag": 841,
+  "red-screes": 776, "high-street": 828,
+  // Wales
+  "pen-y-fan": 886, "pen-y-fan-south-ridge": 886,
+  "corn-du": 873, "cribyn": 795,
+  "snowdon": 1085, "snowdon-via-pyg-track": 1085, "snowdon-via-rhyd-ddu": 1085,
+  "snowdon-llanberis-path": 1085, "snowdon-via-llanberis-path": 1085,
+  "snowdon-miners-track": 1085,
+  "cadair-idris": 893,
+  "tryfan": 915, "tryfan-north-ridge": 915,
+  "glyder-fawr": 999, "glyder-fach": 994, "y-garn": 947,
+  "carnedd-llewelyn": 1064, "carnedd-dafydd": 1044, "pen-yr-ole-wen": 978,
+  "sugar-loaf": 596, "skirrid-fawr": 486,
+  "old-man-of-storr": 719,
+  // Scotland
+  "ben-nevis": 1345, "ben-lomond": 974, "schiehallion": 1083,
+  "cairngorm": 1245, "cairn-gorm-via-ptarmigan-ridge": 1245,
+  "ben-macdui": 1309, "braeriach": 1296, "cairn-toul": 1291,
+  "arthurs-seat": 251, "tinto-hill": 707,
+  "ben-ledi": 879, "ben-more-crianlarich": 1174, "stob-binnein": 1165,
+  // Ireland
+  "croagh-patrick": 764, "carrauntoohil": 1039,
+  "brandon-mountain": 952, "diamond-hill": 445,
+  // Lancashire / West Pennines
+  "pendle-hill": 557, "bull-hill": 456, "winter-hill": 456,
+  "rivington-pike": 373, "holcombe-hill": 420,
+  "boulsworth-hill": 517, "great-hameldon": 391,
+};
+
+/**
+ * Look up the authoritative summit elevation ASL for a hill by name.
+ * Returns null if the hill is not in the known table.
+ */
+export function resolveKnownSummitASL(hillName: string): number | null {
+  return KNOWN_SUMMIT_ASL[slugify(hillName)] ?? null;
+}
 
 // ── Hard-coded verified elevation gains ──────────────────────────────────────
 // Keyed by slugified hill name. These take precedence over terrain API results
@@ -359,6 +430,12 @@ async function applyTerrainElevation(hill: Hill): Promise<Hill> {
 
   if (summitElev === null || trailElev === null) return applyKnownGain(hill);
 
+  // Coordinate accuracy guard: summit_ASL must exceed the hill's own elevation gain
+  // (summit_ASL = trailhead_ASL + gain, and trailhead_ASL > 0 always).  If topo
+  // returns a summit elevation lower than the stated gain the AI coords are off —
+  // e.g. Bull Hill: AI placed ~2km away returning 206m topo vs. 456m real summit.
+  if (summitElev < hill.elevation) return applyKnownGain(hill);
+
   const verifiedGain = Math.round(summitElev - trailElev);
 
   // Sanity checks — discard obviously wrong results.
@@ -418,6 +495,10 @@ export async function applyTerrainElevationBatch(hills: Hill[]): Promise<Hill[]>
     const summitElev = elevations[si] ?? null;
     const trailElev = elevations[ti] ?? null;
     if (summitElev === null || trailElev === null) return applyKnownGain(hill);
+    // Coordinate accuracy guard — see applyTerrainElevation for full explanation.
+    // summit_ASL must exceed the hill's own elevation gain; if it doesn't the AI
+    // lat/lng is off and the topo reading is unreliable.
+    if (summitElev < hill.elevation) return applyKnownGain(hill);
     const verifiedGain = Math.round(summitElev - trailElev);
     if (verifiedGain <= 0 || verifiedGain < hill.elevation * 0.50 || verifiedGain > hill.elevation * 4) {
       return applyKnownGain(hill);

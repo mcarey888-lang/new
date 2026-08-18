@@ -34,6 +34,7 @@ import {
   applyTerrainElevationBatch,
   parseAIJson,
   normalizeLocation,
+  resolveKnownSummitASL,
 } from "./hills-unified";
 
 const router: IRouter = Router();
@@ -745,15 +746,46 @@ router.post("/virtual-expedition", async (req, res) => {
     }
 
     // ── Summit elevations ASL for altitude dimension ──────────────────────────
-    const missingASL   = recommendedHills.filter(h => !h.summitElevationASL && h.lat && h.lng);
-    const topoPoints   = missingASL.map(h => ({ lat: h.lat!, lng: h.lng! }));
-    const topoResults  = topoPoints.length > 0 ? await fetchTopoElevations(topoPoints) : [];
+    // Three-tier resolution to avoid corrupt ASL from AI-guessed coords:
+    //
+    // Tier 1 — summitElevationASL from osmPeaksToHills (Overpass path only).
+    //   Uses the OSM ele tag at the real surveyed peak position.  Immune to
+    //   AI coord errors.
+    //
+    // Tier 2 — KNOWN_SUMMIT_ASL lookup table.
+    //   Covers the most common UK training hills with OS-map-sourced values.
+    //   Used when a hill came via the AI fallback path (no summitElevationASL).
+    //   This prevents wrong altitude scores when AI lat/lng are misplaced
+    //   (e.g. Bull Hill AI coords returned 206m topo instead of 456m summit).
+    //
+    // Tier 3 — OpenTopoData query at AI-supplied lat/lng.
+    //   Only for hills not in either of the above.  A coordinate sanity check
+    //   discards the result if topo < hill.elevation (physically impossible:
+    //   summit_ASL = trailhead_ASL + gain, trailhead_ASL > 0 always).
+    //
+    // Hills resolved via Tier 1 or 2 skip the topo network call entirely.
+    const needsTopoQuery = recommendedHills.filter(
+      h => !h.summitElevationASL && resolveKnownSummitASL(h.name) === null && h.lat && h.lng,
+    );
+    const topoPoints = needsTopoQuery.map(h => ({ lat: h.lat!, lng: h.lng! }));
+    const topoResults = topoPoints.length > 0 ? await fetchTopoElevations(topoPoints) : [];
 
     const summitElevsASL: Array<number | null> = recommendedHills.map(h => {
+      // Tier 1: Overpass-sourced surveyed elevation
       if (h.summitElevationASL) return h.summitElevationASL;
+
+      // Tier 2: KNOWN_SUMMIT_ASL table (authoritative for common UK hills)
+      const knownASL = resolveKnownSummitASL(h.name);
+      if (knownASL !== null) return knownASL;
+
+      // Tier 3: topo at AI lat/lng with coordinate accuracy sanity check
       if (!h.lat || !h.lng) return null;
-      const idx = missingASL.findIndex(m => m.name === h.name);
-      return idx >= 0 ? (topoResults[idx] ?? null) : null;
+      const idx = needsTopoQuery.findIndex(m => m.name === h.name);
+      const topoResult = idx >= 0 ? (topoResults[idx] ?? null) : null;
+      // Reject if topo summit elevation is lower than the hill's own elevation gain —
+      // this is physically impossible and indicates the AI coords are misplaced.
+      if (topoResult !== null && topoResult < h.elevation) return null;
+      return topoResult;
     });
 
     // ── Step 4: Scores ────────────────────────────────────────────────────────
