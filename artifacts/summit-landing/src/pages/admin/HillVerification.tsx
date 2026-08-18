@@ -20,7 +20,7 @@ const API = "/api";
 
 interface HillSession {
   id: number;
-  userId: string | null;
+  // userId is intentionally absent — the API never returns it to protect user privacy.
   plannedHillName: string | null;
   plannedRouteName: string | null;
   completionType: string;

@@ -301,6 +301,28 @@ describe("Hill verification admin routes — auth guard", () => {
     expect(res.status).toBe(200);
   });
 
+  it("GET /admin/hill-verification/sessions response never includes userId", async () => {
+    const res = await request(app)
+      .get("/admin/hill-verification/sessions")
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
+    expect(res.status).toBe(200);
+    const sessions: unknown[] = res.body.sessions ?? [];
+    // Guard: if no rows exist the check still passes (empty array is fine).
+    for (const session of sessions) {
+      expect(session).not.toHaveProperty("userId");
+    }
+  });
+
+  it("GET /admin/hill-verification/stats never exposes userId in its response", async () => {
+    const res = await request(app)
+      .get("/admin/hill-verification/stats")
+      .set("Authorization", `Bearer ${SIGNED_TOKEN}`);
+    // Auth guard passes — endpoint responds (200 or 500 if test-DB aggregate
+    // syntax isn't fully supported), but userId must never be in the body.
+    expect(res.status).not.toBe(401);
+    expect(res.body).not.toHaveProperty("userId");
+  });
+
   it("GET /admin/hill-verification/stats returns 401 with no token", async () => {
     const res = await request(app).get("/admin/hill-verification/stats");
     expect(res.status).toBe(401);

@@ -17,7 +17,19 @@ router.use(requireAdminAuth());
 
 // ── GET /api/admin/hill-verification/sessions ────────────────────────────────
 // Returns recent tracked hill sessions for admin review.
-// userId is intentionally omitted from the response to avoid leaking PII.
+//
+// PII / data-exposure review (2026-08-18):
+//   - userId is intentionally EXCLUDED from the SELECT — it exists on the DB
+//     table but must never appear in this response.
+//   - All returned fields are operational / quality metrics: hill/route name,
+//     completion type, elevation/distance/duration measurements, quality scores,
+//     admin approval state, and timestamps.  None of these fields identify an
+//     individual user; they describe the quality of a single GPS track.
+//   - The route requires a valid admin session token (requireAdminAuth applied
+//     via router.use at the top of this file).  No unauthenticated access is
+//     possible.
+//   - No lower-privilege public endpoint is needed: this data has no use outside
+//     the admin verification workflow.
 
 router.get("/sessions", async (req, res) => {
   const limit  = Math.min(Number(req.query.limit  ?? 50), 200);
