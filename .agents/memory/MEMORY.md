@@ -11,6 +11,7 @@
 - [iOS pod install failures](ios-build-failures.md) — newArchEnabled:true + useFrameworks:static are mutually exclusive in RN 0.73+; expo-build-properties must match SDK version (~0.14.0 for SDK 54).
 - [withTimeout generic inference with any](withtimeout-any-inference.md) — generic timeout wrapper around an any-typed Clerk call infers T as unknown; cast result `as any` at each call site.
 - [Expo dev domain preview routing quirk](expo-dev-domain-preview-quirk.md) — screenshotting Expo artifact root can render the wrong artifact; verify via curling the local Metro port instead.
+- [Clerk browser-test redirect blocker](clerk-browser-test-redirect-blocker.md) — programmatic browser sign-in can fail before app tests when the generated redirect URL is not allowlisted.
 - [App Store screenshot fake status bar](app-store-screenshot-status-bar.md) — never draw simulated "9:41"/WiFi-text status bars in marketing screenshot generators; triggers Apple 2.3.10 rejection.
 - [EAS build detached monitoring](eas-build-detached-monitoring.md) — use setsid+disown+</dev/null to launch `eas build`, then poll `eas build:view <id> --json` for status instead of trusting local stdout.
 - [EAS CLI pnpm Expo resolution](eas-cli-pnpm-expo-resolution.md) — EAS 19 cannot launch Expo 54 directly in this pnpm workspace; use EAS 21 via pnpm dlx.

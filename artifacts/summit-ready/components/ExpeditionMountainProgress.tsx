@@ -6,7 +6,7 @@
  * as the centrepiece, plus stage cards, stat tiles and a CTA row.
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Calendar, ChevronRight, Flag, Mountain, TrendingUp, Trophy } from "lucide-react-native";
 
 import MountainProgress, { ExpeditionStage } from "@/components/MountainProgress";
@@ -71,6 +72,30 @@ export function ExpeditionMountainProgress({
   mountainImageRef,
   replayTrigger,
 }: Props) {
+  const stageScrollRef = useRef<ScrollView>(null);
+  const [stageScrollX, setStageScrollX] = useState(0);
+  const [stageViewportWidth, setStageViewportWidth] = useState(0);
+  const [stageContentWidth, setStageContentWidth] = useState(0);
+  const hasMoreStages = stages.length > 2;
+  const canScrollForward =
+    hasMoreStages &&
+    (stageContentWidth === 0 || stageContentWidth - stageViewportWidth - stageScrollX > 12);
+
+  function advanceStages() {
+    const nextX = Math.min(
+      stageScrollX + stageViewportWidth * 0.72,
+      Math.max(0, stageContentWidth - stageViewportWidth),
+    );
+    setStageScrollX(nextX);
+    stageScrollRef.current?.scrollTo({
+      x: nextX,
+      animated: true,
+    });
+  }
+
+  function recordStageScrollEnd(x: number) {
+    setStageScrollX(x);
+  }
 
   // ── Derive MountainProgress stages ────────────────────────────────────────
   const mpStages: ExpeditionStage[] = useMemo(() => {
@@ -199,68 +224,119 @@ export function ExpeditionMountainProgress({
       </View>
 
       {/* ── Stage cards (horizontal scroll) ──────────────────────────────── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.stageScroll}
-        style={{ marginTop: 14 }}
-      >
-        {stages.map((h, i) => {
-          const status = statusLabel(h, i);
-          const done   = status === "COMPLETE";
-          const isNext = status === "NEXT UP" || status === "ACTIVE";
-          const gain   = h.totalElevation ?? h.elevation ?? 0;
-
-          return (
+      <View style={s.stageSection}>
+        {hasMoreStages && (
+          <View style={s.stageScrollHeader}>
+            <Text style={s.stageCount}>{stages.length} EXPEDITION STAGES</Text>
             <TouchableOpacity
-              key={h.name + i}
-              style={[s.stageCard, done && s.stageCardDone]}
-              activeOpacity={0.8}
-              onPress={() => !done && onStagePress(h.name)}
+              onPress={advanceStages}
+              disabled={!canScrollForward}
+              activeOpacity={0.72}
+              style={s.swipeHint}
+              accessibilityRole="button"
+              accessibilityLabel={
+                canScrollForward ? "Show more expedition stages" : "All expedition stages shown"
+              }
+              accessibilityState={{ disabled: !canScrollForward }}
             >
-              {/* Number badge */}
-              <View style={[
-                s.stageNum,
-                isNext && s.stageNumActive,
-                done  && s.stageNumDone,
-              ]}>
-                <Text style={[s.stageNumText, (isNext || done) && s.stageNumTextActive]}>
-                  {done ? "✓" : i + 1}
-                </Text>
-              </View>
-
-              <Text style={s.stageCat}>STAGE {i + 1}</Text>
-              <Text style={s.stageName} numberOfLines={2}>{h.name}</Text>
-              <Text style={s.stageElev}>
-                ▲ {Math.round(gain).toLocaleString()}m gain
+              <Text style={s.swipeHintText}>
+                {canScrollForward ? "SWIPE FOR MORE" : "ALL STAGES SHOWN"}
               </Text>
-
-              {/* Status badge */}
-              <View style={[
-                s.stageBadge,
-                status === "NEXT UP"   && s.stageBadgeNext,
-                status === "ACTIVE"    && s.stageBadgeActive,
-                status === "COMPLETE"  && s.stageBadgeDone,
-                status === "UPCOMING"  && s.stageBadgeUpcoming,
-              ]}>
-                <Text style={[
-                  s.stageBadgeText,
-                  status === "NEXT UP"   && { color: T.blue },
-                  status === "ACTIVE"    && { color: T.green },
-                  status === "COMPLETE"  && { color: T.green },
-                  status === "UPCOMING"  && { color: T.textDim },
-                ]}>
-                  {status}
-                </Text>
-              </View>
-
-              {!done && (
-                <Text style={s.stageTap}>▶ Tap to start</Text>
-              )}
+              {canScrollForward && <ChevronRight size={13} color={T.blue} />}
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          </View>
+        )}
+
+        <View
+          style={s.stageScrollWrap}
+          onLayout={(event) => setStageViewportWidth(event.nativeEvent.layout.width)}
+        >
+          <ScrollView
+            ref={stageScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.stageScroll}
+            onContentSizeChange={(width) => setStageContentWidth(width)}
+            onScrollEndDrag={(event) => recordStageScrollEnd(event.nativeEvent.contentOffset.x)}
+            onMomentumScrollEnd={(event) => recordStageScrollEnd(event.nativeEvent.contentOffset.x)}
+            decelerationRate="fast"
+          >
+            {stages.map((h, i) => {
+              const status = statusLabel(h, i);
+              const done   = status === "COMPLETE";
+              const isNext = status === "NEXT UP" || status === "ACTIVE";
+              const gain   = h.totalElevation ?? h.elevation ?? 0;
+
+              return (
+                <TouchableOpacity
+                  key={h.name + i}
+                  style={[s.stageCard, done && s.stageCardDone]}
+                  activeOpacity={0.8}
+                  onPress={() => !done && onStagePress(h.name)}
+                >
+                  {/* Number badge */}
+                  <View style={[
+                    s.stageNum,
+                    isNext && s.stageNumActive,
+                    done  && s.stageNumDone,
+                  ]}>
+                    <Text style={[s.stageNumText, (isNext || done) && s.stageNumTextActive]}>
+                      {done ? "✓" : i + 1}
+                    </Text>
+                  </View>
+
+                  <Text style={s.stageCat}>STAGE {i + 1}</Text>
+                  <Text style={s.stageName} numberOfLines={2}>{h.name}</Text>
+                  <Text style={s.stageElev}>
+                    ▲ {Math.round(gain).toLocaleString()}m gain
+                  </Text>
+
+                  {/* Status badge */}
+                  <View style={[
+                    s.stageBadge,
+                    status === "NEXT UP"   && s.stageBadgeNext,
+                    status === "ACTIVE"    && s.stageBadgeActive,
+                    status === "COMPLETE"  && s.stageBadgeDone,
+                    status === "UPCOMING"  && s.stageBadgeUpcoming,
+                  ]}>
+                    <Text style={[
+                      s.stageBadgeText,
+                      status === "NEXT UP"   && { color: T.blue },
+                      status === "ACTIVE"    && { color: T.green },
+                      status === "COMPLETE"  && { color: T.green },
+                      status === "UPCOMING"  && { color: T.textDim },
+                    ]}>
+                      {status}
+                    </Text>
+                  </View>
+
+                  {!done && (
+                    <Text style={s.stageTap}>▶ Tap to start</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {canScrollForward && (
+            <LinearGradient
+              colors={["rgba(6,13,27,0)", "rgba(6,13,27,0.94)"]}
+              pointerEvents="box-none"
+              style={s.stageEdgeCue}
+            >
+              <TouchableOpacity
+                onPress={advanceStages}
+                activeOpacity={0.75}
+                style={s.stageEdgeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Scroll to more expedition stages"
+              >
+                <ChevronRight size={19} color="#fff" strokeWidth={2.5} />
+              </TouchableOpacity>
+            </LinearGradient>
+          )}
+        </View>
+      </View>
 
       {/* ── 4-stat tiles ─────────────────────────────────────────────────── */}
       <View style={s.statsRow}>
@@ -345,10 +421,75 @@ const s = StyleSheet.create({
   },
 
   // ── Stage cards ──
+  stageSection: {
+    marginTop: 14,
+  },
+  stageScrollHeader: {
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  stageCount: {
+    flex: 1,
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textMuted,
+    letterSpacing: 0.75,
+  },
+  swipeHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    minHeight: 28,
+    paddingLeft: 10,
+    paddingRight: 7,
+    borderRadius: 14,
+    backgroundColor: T.blueDim,
+    borderWidth: 1,
+    borderColor: "rgba(74,159,245,0.28)",
+  },
+  swipeHintText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: T.blue,
+    letterSpacing: 0.55,
+  },
+  stageScrollWrap: {
+    position: "relative",
+  },
   stageScroll: {
     paddingHorizontal: 14,
+    paddingRight:      46,
     gap:               10,
     paddingBottom:      4,
+  },
+  stageEdgeCue: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 4,
+    width: 58,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingRight: 8,
+  },
+  stageEdgeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: T.blue,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    shadowColor: T.blue,
+    shadowOpacity: 0.32,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
   },
   stageCard: {
     width:            160,
