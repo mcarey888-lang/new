@@ -21,7 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
-import { logAppOpen } from "@/lib/analytics";
+import { logAppOpen, logFirstOpenForReddit } from "@/lib/analytics";
 import { clerkTokenCache } from "@/utils/clerkTokenCache";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
@@ -185,7 +185,10 @@ export default function RootLayout() {
   }, [ready]);
 
   useEffect(() => {
-    if (ready) void logAppOpen();
+    if (ready) {
+      void logAppOpen();
+      void logFirstOpenForReddit();
+    }
   }, [ready]);
 
   return (
