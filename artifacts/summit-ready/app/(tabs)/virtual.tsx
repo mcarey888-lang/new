@@ -285,10 +285,16 @@ export default function VirtualScreen() {
     region:       string,
     radius        = searchRadius,
     daysOverride?: 1 | 2,
+    includeSignatureChallenge = false,
   ) {
     setLoading(true);
     setFetchError(null);
     setResults(null);
+    if (!includeSignatureChallenge) {
+      setSigChallenge(null);
+      setSigLoading(false);
+      setSigExpanded(false);
+    }
     try {
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
@@ -303,7 +309,9 @@ export default function VirtualScreen() {
       const body = await res.json() as ExpeditionResult & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
       setResults(body);
-      void fetchSigChallenge(mountain); // non-blocking — enhances results view
+      if (includeSignatureChallenge) {
+        void fetchSigChallenge(mountain); // non-blocking — curated bundles only
+      }
       setView("results");
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Couldn't load expedition data.");
@@ -346,7 +354,13 @@ export default function VirtualScreen() {
     setActiveBundle(bundle);
     setActiveSearch(null);
     setCustomLocation(bundle.region);
-    void fetchExpedition(bundle.goalMountain, bundle.region, searchRadius, customDays ?? undefined);
+    void fetchExpedition(
+      bundle.goalMountain,
+      bundle.region,
+      searchRadius,
+      customDays ?? undefined,
+      true,
+    );
   }
 
   // ── Custom search ────────────────────────────────────────────────────────────
@@ -364,7 +378,13 @@ export default function VirtualScreen() {
     const region   = customLocation.trim() || activeBundle?.region || activeSearch?.region;
     if (!mountain || !region) return;
     setCustomOpen(false);
-    void fetchExpedition(mountain, region, searchRadius, customDays ?? undefined);
+    void fetchExpedition(
+      mountain,
+      region,
+      searchRadius,
+      customDays ?? undefined,
+      activeBundle !== null,
+    );
   }
 
   // ── Set as goal ──────────────────────────────────────────────────────────────
@@ -581,7 +601,7 @@ export default function VirtualScreen() {
           </Animated.View>
 
           {/* ── Signature Challenge card ────────────────────────────────────── */}
-          {(sigLoading || sigChallenge) && (
+          {activeBundle && (sigLoading || sigChallenge) && (
             <Animated.View entering={FadeInDown.delay(50).duration(380)}>
               <View style={s.sigCard}>
                 <LinearGradient colors={["#1a0e2e", "transparent"]} style={StyleSheet.absoluteFill} />
