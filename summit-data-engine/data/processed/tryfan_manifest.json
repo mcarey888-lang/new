@@ -1,0 +1,3961 @@
+{
+  "artifact_integrity": {
+    "tryfan_candidate_path_network.geojson": {
+      "local_path": "data/processed/tryfan_candidate_path_network.geojson",
+      "sha256": "3b1f376c4a957f883b30baf4a8260b631a434a50f21649c15be04dbcdf7f7993",
+      "size_bytes": 3718808
+    }
+  },
+  "bbox_epsg4326": [
+    -4.052578,
+    53.0599311,
+    -3.9425779999999997,
+    53.1699311
+  ],
+  "calculation_version": "summitready_elevation_v1",
+  "candidate_path_network": {
+    "artifact_file": "tryfan_candidate_path_network.geojson",
+    "artifact_sha256": "3b1f376c4a957f883b30baf4a8260b631a434a50f21649c15be04dbcdf7f7993",
+    "artifact_size_bytes": 3718808,
+    "feature_count": 650,
+    "reason": "Unassigned source-backed OSM path evidence for QA only; these features are not identified as any requested named route and no connectivity is inferred.",
+    "source_ids": [
+      "way/1023639351",
+      "way/1023656720",
+      "way/1023707858",
+      "way/1024845362",
+      "way/1024920162",
+      "way/1033312990",
+      "way/1033312992",
+      "way/107252630",
+      "way/107252633",
+      "way/107252638",
+      "way/107252643",
+      "way/107252647",
+      "way/107252649",
+      "way/107252655",
+      "way/1074855924",
+      "way/1074855927",
+      "way/1074855928",
+      "way/1074855929",
+      "way/1074855930",
+      "way/1074855931",
+      "way/1074855932",
+      "way/1074855933",
+      "way/1082210347",
+      "way/1099703789",
+      "way/1099703790",
+      "way/1099736128",
+      "way/1099736136",
+      "way/1099736137",
+      "way/1099835622",
+      "way/1099835623",
+      "way/1099835624",
+      "way/1099835627",
+      "way/1099835628",
+      "way/1099835629",
+      "way/1099835630",
+      "way/1099835631",
+      "way/1099835632",
+      "way/1099835633",
+      "way/1099835635",
+      "way/1099835636",
+      "way/1099835637",
+      "way/1099911945",
+      "way/1099911947",
+      "way/1111449669",
+      "way/1111449670",
+      "way/1111449671",
+      "way/1111458062",
+      "way/1111478730",
+      "way/111631693",
+      "way/111635143",
+      "way/111635149",
+      "way/111635158",
+      "way/1118473933",
+      "way/1118473934",
+      "way/1133776199",
+      "way/1133776200",
+      "way/1133776202",
+      "way/1136454765",
+      "way/1136454766",
+      "way/1136454770",
+      "way/1136454771",
+      "way/1136454772",
+      "way/1136454773",
+      "way/1136457964",
+      "way/1136457966",
+      "way/1136457967",
+      "way/1136457972",
+      "way/1136472270",
+      "way/1136472272",
+      "way/1136472273",
+      "way/1136472274",
+      "way/1136472275",
+      "way/1136472276",
+      "way/1136472277",
+      "way/1136472278",
+      "way/1136665798",
+      "way/114871119",
+      "way/114871121",
+      "way/114871123",
+      "way/114871124",
+      "way/114871130",
+      "way/114871135",
+      "way/114871136",
+      "way/114871142",
+      "way/114871143",
+      "way/114871144",
+      "way/114871145",
+      "way/114871151",
+      "way/114874110",
+      "way/1158225722",
+      "way/11675142",
+      "way/11675145",
+      "way/11675150",
+      "way/1174305537",
+      "way/1174305538",
+      "way/1174305539",
+      "way/1174315406",
+      "way/1174315407",
+      "way/1174315408",
+      "way/1174316491",
+      "way/1174316492",
+      "way/1174316493",
+      "way/1174316494",
+      "way/118025039",
+      "way/118044377",
+      "way/118044438",
+      "way/118044439",
+      "way/118045659",
+      "way/118045662",
+      "way/118045665",
+      "way/118070155",
+      "way/1181211812",
+      "way/1181211813",
+      "way/1181211814",
+      "way/1181211815",
+      "way/1181211816",
+      "way/1181211817",
+      "way/1181211818",
+      "way/1181212813",
+      "way/1181213032",
+      "way/118143537",
+      "way/118143541",
+      "way/118143542",
+      "way/1183701754",
+      "way/1183701755",
+      "way/1183701756",
+      "way/1183701757",
+      "way/1183851525",
+      "way/1183851526",
+      "way/1184032927",
+      "way/1184033370",
+      "way/1184034037",
+      "way/1184034038",
+      "way/1184034039",
+      "way/1184208094",
+      "way/1184211012",
+      "way/1184211013",
+      "way/1184525831",
+      "way/1184525833",
+      "way/1184525834",
+      "way/1184525835",
+      "way/1184525839",
+      "way/1184525843",
+      "way/1187833127",
+      "way/1187833128",
+      "way/1187833129",
+      "way/1187833130",
+      "way/1187833131",
+      "way/1203272435",
+      "way/121236954",
+      "way/1214357495",
+      "way/1224953463",
+      "way/1224953472",
+      "way/1224953495",
+      "way/1224953506",
+      "way/1224953507",
+      "way/122967832",
+      "way/122967837",
+      "way/1287076636",
+      "way/1295713375",
+      "way/1295713376",
+      "way/1298860615",
+      "way/1311030059",
+      "way/1311310892",
+      "way/1311310893",
+      "way/1352734067",
+      "way/1375215412",
+      "way/1375215413",
+      "way/1375215444",
+      "way/1375215449",
+      "way/1375215450",
+      "way/1375215452",
+      "way/1375215455",
+      "way/1375215460",
+      "way/1375215462",
+      "way/1375562609",
+      "way/1375562638",
+      "way/1375562639",
+      "way/1375695306",
+      "way/1375695734",
+      "way/1375695735",
+      "way/1375820547",
+      "way/1375820548",
+      "way/1375820549",
+      "way/1383254489",
+      "way/1383254493",
+      "way/1385361218",
+      "way/1385361219",
+      "way/1385361223",
+      "way/1385361224",
+      "way/1385361225",
+      "way/1385361226",
+      "way/1385361227",
+      "way/1390922711",
+      "way/1390946980",
+      "way/1390977954",
+      "way/1390977957",
+      "way/1390977958",
+      "way/1390978005",
+      "way/1390978006",
+      "way/1392317271",
+      "way/1392709638",
+      "way/1392709639",
+      "way/1393508313",
+      "way/1393508314",
+      "way/1393508318",
+      "way/1393809868",
+      "way/1393809883",
+      "way/1393876082",
+      "way/1393876105",
+      "way/1393876106",
+      "way/140115342",
+      "way/140115370",
+      "way/140115388",
+      "way/1408241728",
+      "way/1408271789",
+      "way/1415441426",
+      "way/1415460366",
+      "way/1415460369",
+      "way/1415460370",
+      "way/1415460371",
+      "way/1415465072",
+      "way/1415465073",
+      "way/1415851947",
+      "way/1416944921",
+      "way/1416944922",
+      "way/1416944932",
+      "way/1416944953",
+      "way/1417730584",
+      "way/1417730585",
+      "way/1417730586",
+      "way/1417730598",
+      "way/1417730702",
+      "way/1417730703",
+      "way/1417730704",
+      "way/1418165010",
+      "way/1418171605",
+      "way/1418642810",
+      "way/1418642811",
+      "way/1418642881",
+      "way/1418683785",
+      "way/1421748491",
+      "way/1421748498",
+      "way/1421748503",
+      "way/1421748507",
+      "way/1421748508",
+      "way/1421748509",
+      "way/1421748511",
+      "way/1423364830",
+      "way/144399050",
+      "way/147435301",
+      "way/1506935724",
+      "way/1506935731",
+      "way/1506935732",
+      "way/1506935733",
+      "way/1506935734",
+      "way/1506935737",
+      "way/1506935738",
+      "way/1506959253",
+      "way/1506959254",
+      "way/1506959255",
+      "way/1507754973",
+      "way/1507754974",
+      "way/1507754975",
+      "way/1507754983",
+      "way/1507754984",
+      "way/1507754985",
+      "way/1507754986",
+      "way/1507754987",
+      "way/1507754988",
+      "way/1507754993",
+      "way/1507754995",
+      "way/1507755001",
+      "way/1507755003",
+      "way/1507755004",
+      "way/1507755005",
+      "way/1507755006",
+      "way/1507763054",
+      "way/1507809688",
+      "way/1507809691",
+      "way/1507809692",
+      "way/1507809694",
+      "way/1507809695",
+      "way/1507809696",
+      "way/1507809697",
+      "way/1507809698",
+      "way/1507809699",
+      "way/1507809700",
+      "way/1507809701",
+      "way/1507809702",
+      "way/1512888324",
+      "way/1512888325",
+      "way/1512894939",
+      "way/1512894940",
+      "way/1512894941",
+      "way/1512894942",
+      "way/1512894943",
+      "way/1532660454",
+      "way/1532660458",
+      "way/1532660460",
+      "way/1532660461",
+      "way/1546737385",
+      "way/1546737386",
+      "way/1546737387",
+      "way/1546737388",
+      "way/1547708903",
+      "way/1547709057",
+      "way/1547709058",
+      "way/1547797951",
+      "way/1547860253",
+      "way/1547891499",
+      "way/1548327436",
+      "way/1549879763",
+      "way/1549879764",
+      "way/1549879765",
+      "way/1549902744",
+      "way/1549902746",
+      "way/1549921107",
+      "way/1550088136",
+      "way/1550088137",
+      "way/1550088138",
+      "way/1550088139",
+      "way/1550088140",
+      "way/1550088141",
+      "way/1550088142",
+      "way/1550088143",
+      "way/1550088144",
+      "way/1550088145",
+      "way/1550088146",
+      "way/1550088147",
+      "way/1550088148",
+      "way/1550088149",
+      "way/1550088150",
+      "way/1550088151",
+      "way/1550088152",
+      "way/1550088153",
+      "way/1550088154",
+      "way/1550088155",
+      "way/1550107104",
+      "way/1550107105",
+      "way/1550107107",
+      "way/1550144359",
+      "way/1550236133",
+      "way/1550236136",
+      "way/1550236140",
+      "way/1550238613",
+      "way/1550238614",
+      "way/1550818191",
+      "way/1550834652",
+      "way/1550834668",
+      "way/1550838788",
+      "way/1550925962",
+      "way/1550925963",
+      "way/1550925965",
+      "way/1550925966",
+      "way/1550925969",
+      "way/1551043434",
+      "way/1551052224",
+      "way/1551052264",
+      "way/157120938",
+      "way/163848958",
+      "way/163848959",
+      "way/167869302",
+      "way/168426574",
+      "way/168426575",
+      "way/168426582",
+      "way/168426583",
+      "way/172476342",
+      "way/172476343",
+      "way/230560201",
+      "way/230560203",
+      "way/230560204",
+      "way/230560207",
+      "way/230576305",
+      "way/230576316",
+      "way/230875913",
+      "way/240048607",
+      "way/240048608",
+      "way/240048609",
+      "way/240048610",
+      "way/240048611",
+      "way/260995716",
+      "way/260995723",
+      "way/26566356",
+      "way/268756930",
+      "way/271436364",
+      "way/271440142",
+      "way/271764982",
+      "way/274500319",
+      "way/274500359",
+      "way/274566002",
+      "way/274566021",
+      "way/274566097",
+      "way/274566139",
+      "way/274566149",
+      "way/274566151",
+      "way/274566158",
+      "way/274568890",
+      "way/274568893",
+      "way/276120620",
+      "way/276120627",
+      "way/276120642",
+      "way/304445180",
+      "way/314490865",
+      "way/314490866",
+      "way/314490867",
+      "way/32543877",
+      "way/32543883",
+      "way/32543884",
+      "way/32543885",
+      "way/32543887",
+      "way/32543890",
+      "way/32544364",
+      "way/327229885",
+      "way/327229887",
+      "way/327229889",
+      "way/330142317",
+      "way/331461787",
+      "way/331461788",
+      "way/331461789",
+      "way/331461793",
+      "way/333635904",
+      "way/333636006",
+      "way/334433650",
+      "way/334433652",
+      "way/33795798",
+      "way/33795799",
+      "way/33881759",
+      "way/33881761",
+      "way/342144788",
+      "way/342144789",
+      "way/342144790",
+      "way/342144791",
+      "way/342144797",
+      "way/343966967",
+      "way/343966968",
+      "way/343966969",
+      "way/344149267",
+      "way/344149288",
+      "way/344149289",
+      "way/344149290",
+      "way/344149291",
+      "way/344149292",
+      "way/344149294",
+      "way/344149295",
+      "way/344149296",
+      "way/348350594",
+      "way/348350612",
+      "way/356858896",
+      "way/358640068",
+      "way/372419761",
+      "way/372419762",
+      "way/372419763",
+      "way/372419764",
+      "way/372419765",
+      "way/372624574",
+      "way/372624575",
+      "way/372624576",
+      "way/372624580",
+      "way/372624581",
+      "way/372624587",
+      "way/372624592",
+      "way/372624596",
+      "way/373962191",
+      "way/373962192",
+      "way/373962193",
+      "way/373962196",
+      "way/373962197",
+      "way/373962198",
+      "way/373962199",
+      "way/373962201",
+      "way/373962203",
+      "way/373962204",
+      "way/373983924",
+      "way/373983925",
+      "way/373983926",
+      "way/373983928",
+      "way/373983930",
+      "way/373983932",
+      "way/373983934",
+      "way/373983936",
+      "way/373983941",
+      "way/374756735",
+      "way/374756736",
+      "way/374756737",
+      "way/374798244",
+      "way/374798245",
+      "way/374798246",
+      "way/374798261",
+      "way/374805069",
+      "way/374994727",
+      "way/374994737",
+      "way/38577574",
+      "way/38577576",
+      "way/38871423",
+      "way/38871425",
+      "way/38871426",
+      "way/38871427",
+      "way/38871428",
+      "way/38871429",
+      "way/402442979",
+      "way/40614708",
+      "way/40618039",
+      "way/40618054",
+      "way/40619386",
+      "way/40619627",
+      "way/40619628",
+      "way/40670530",
+      "way/426661873",
+      "way/426661874",
+      "way/426661875",
+      "way/426661876",
+      "way/426661878",
+      "way/426670847",
+      "way/426670848",
+      "way/43584469",
+      "way/439793215",
+      "way/439793216",
+      "way/439793217",
+      "way/439793224",
+      "way/439798011",
+      "way/447765900",
+      "way/447765910",
+      "way/447777974",
+      "way/447777975",
+      "way/447777976",
+      "way/447777997",
+      "way/448976235",
+      "way/448976236",
+      "way/45399907",
+      "way/476120049",
+      "way/476125995",
+      "way/476125996",
+      "way/476125997",
+      "way/476125998",
+      "way/498644247",
+      "way/531040900",
+      "way/531040901",
+      "way/531040903",
+      "way/531040905",
+      "way/531134894",
+      "way/531134897",
+      "way/561647628",
+      "way/563836658",
+      "way/563836659",
+      "way/563836661",
+      "way/563836664",
+      "way/563836665",
+      "way/563836666",
+      "way/563836667",
+      "way/588575701",
+      "way/60826992",
+      "way/60826994",
+      "way/60826996",
+      "way/60826998",
+      "way/60840906",
+      "way/60840908",
+      "way/60840909",
+      "way/60840910",
+      "way/61982150",
+      "way/62522976",
+      "way/62522977",
+      "way/62522988",
+      "way/62547358",
+      "way/62547364",
+      "way/62547371",
+      "way/672637565",
+      "way/672637571",
+      "way/672637572",
+      "way/672637573",
+      "way/672637574",
+      "way/672637578",
+      "way/672637579",
+      "way/672637580",
+      "way/672637581",
+      "way/672637591",
+      "way/672637605",
+      "way/672640515",
+      "way/684463104",
+      "way/684463635",
+      "way/68559675",
+      "way/697989284",
+      "way/718191975",
+      "way/718191976",
+      "way/718192580",
+      "way/718194152",
+      "way/719142205",
+      "way/719142210",
+      "way/719296749",
+      "way/719296750",
+      "way/719296752",
+      "way/719296753",
+      "way/719296756",
+      "way/719316335",
+      "way/719316342",
+      "way/719316343",
+      "way/719316344",
+      "way/73479955",
+      "way/736292895",
+      "way/792195709",
+      "way/829360082",
+      "way/829360083",
+      "way/831754692",
+      "way/83377269",
+      "way/83377270",
+      "way/83390045",
+      "way/834703410",
+      "way/83537002",
+      "way/83537005",
+      "way/83537007",
+      "way/83537012",
+      "way/83537015",
+      "way/83537017",
+      "way/83537020",
+      "way/83537025",
+      "way/83537026",
+      "way/83537029",
+      "way/838586519",
+      "way/838586520",
+      "way/83866669",
+      "way/83866675",
+      "way/83871760",
+      "way/842716011",
+      "way/842731879",
+      "way/842731881",
+      "way/850293458",
+      "way/853248336",
+      "way/85416942",
+      "way/85416947",
+      "way/85416953",
+      "way/855185070",
+      "way/855185071",
+      "way/855185072",
+      "way/855185124",
+      "way/855185145",
+      "way/855527459",
+      "way/855527460",
+      "way/880802866",
+      "way/880803789",
+      "way/907182828",
+      "way/907182829",
+      "way/935295449",
+      "way/942604394",
+      "way/942604513",
+      "way/968281860",
+      "way/985121268",
+      "way/985121269",
+      "way/985121270",
+      "way/993764361",
+      "way/993764362"
+    ],
+    "status": "needs_review"
+  },
+  "database_gate": {
+    "attempted": false,
+    "environment_variable": "ENGINE_DATABASE_URL",
+    "reason": "No engine-specific database secret was configured; no migration, connection, query, or insert was attempted.",
+    "status": "unavailable"
+  },
+  "dem_plan": {
+    "coverage_status": "not_applicable_no_resolved_geometry",
+    "missing_tile_filenames": [],
+    "planned_tiles": [],
+    "supplied_tile_ids": [
+      "Copernicus_DSM_COG_10_N53_00_W004_00_DEM"
+    ]
+  },
+  "evidence_package": {
+    "catalog_version": "tryfan_route_evidence_v1",
+    "mountain_key": "tryfan",
+    "mountain_verification": {
+      "evidence_source_keys": [
+        "coflein-tryfan",
+        "national-trust-tryfan",
+        "dobih-tryfan"
+      ],
+      "mountain_key": "tryfan",
+      "status": "needs_review",
+      "version": "1"
+    },
+    "retrieved_at": "2026-08-24T00:00:00Z",
+    "route_definitions": [
+      {
+        "definition_key": "tryfan-north-ridge-definition",
+        "description": "Evidence-backed identity and course anchors only; no external route geometry is reused.",
+        "evidence_source_keys": [
+          "bmc-tryfan-north-ridge",
+          "ramblers-classic-tryfan-north-ridge",
+          "coflein-tryfan"
+        ],
+        "factual_anchors": [
+          {
+            "key": "start_kind",
+            "locator": null,
+            "value": "A5 layby below the North Ridge"
+          },
+          {
+            "key": "start_coordinate",
+            "locator": "Ramblers route summary",
+            "value": "53.1229271,-3.999702"
+          },
+          {
+            "key": "course",
+            "locator": null,
+            "value": "north ridge of Tryfan"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Milestone Buttress"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "The Cannon"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "North Tower"
+          },
+          {
+            "key": "finish",
+            "locator": null,
+            "value": "Tryfan summit / Adam and Eve"
+          }
+        ],
+        "route_identity_key": "tryfan-north-ridge",
+        "route_identity_version": "1",
+        "status": "needs_review",
+        "version": "1"
+      },
+      {
+        "definition_key": "tryfan-south-ridge-definition",
+        "description": "Evidence-backed South Ridge identity and landmarks only; no route trace is licensed or selected.",
+        "evidence_source_keys": [
+          "ramblers-tryfan-overview",
+          "walk-snowdonia-south-ridge",
+          "ukclimbing-south-ridge",
+          "cicerone-scrambles-snowdonia",
+          "coflein-tryfan"
+        ],
+        "factual_anchors": [
+          {
+            "key": "course",
+            "locator": null,
+            "value": "south ridge of Tryfan"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Far South Peak"
+          },
+          {
+            "key": "finish",
+            "locator": null,
+            "value": "Tryfan summit / Adam and Eve"
+          },
+          {
+            "key": "ambiguity",
+            "locator": null,
+            "value": "South Ridge and South Ridge Direct are separately named evidence"
+          }
+        ],
+        "route_identity_key": "tryfan-south-ridge",
+        "route_identity_version": "1",
+        "status": "needs_review",
+        "version": "1"
+      },
+      {
+        "definition_key": "tryfan-heather-terrace-definition",
+        "description": "Evidence identifies Heather Terrace on Tryfan's east side; proprietary map and GPX geometry are excluded.",
+        "evidence_source_keys": [
+          "coflein-tryfan",
+          "mud-and-routes-heather-terrace"
+        ],
+        "factual_anchors": [
+          {
+            "key": "course",
+            "locator": null,
+            "value": "terrace along the east side of Tryfan"
+          },
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "Heather Terrace"
+          },
+          {
+            "key": "published_distance_km",
+            "locator": "Mud and Routes summary",
+            "value": "6.7"
+          },
+          {
+            "key": "published_ascent_m",
+            "locator": "Mud and Routes summary",
+            "value": "710"
+          },
+          {
+            "key": "geometry_policy",
+            "locator": null,
+            "value": "published map and GPX are not reused without an explicit compatible licence"
+          }
+        ],
+        "route_identity_key": "tryfan-heather-terrace",
+        "route_identity_version": "1",
+        "status": "needs_review",
+        "version": "1"
+      }
+    ],
+    "route_identities": [
+      {
+        "aliases": [
+          "North Ridge"
+        ],
+        "canonical_name": "Tryfan North Ridge",
+        "identity_key": "tryfan-north-ridge",
+        "mountain_key": "tryfan",
+        "status": "needs_review",
+        "version": "1"
+      },
+      {
+        "aliases": [
+          "South Ridge"
+        ],
+        "canonical_name": "Tryfan South Ridge",
+        "identity_key": "tryfan-south-ridge",
+        "mountain_key": "tryfan",
+        "status": "needs_review",
+        "version": "1"
+      },
+      {
+        "aliases": [
+          "Tryfan via Heather Terrace"
+        ],
+        "canonical_name": "Heather Terrace",
+        "identity_key": "tryfan-heather-terrace",
+        "mountain_key": "tryfan",
+        "status": "needs_review",
+        "version": "1"
+      }
+    ],
+    "sources": [
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": "page title",
+            "value": "North Ridge"
+          },
+          {
+            "key": "route_grade",
+            "locator": null,
+            "value": "grade one"
+          },
+          {
+            "key": "start_kind",
+            "locator": null,
+            "value": "A5 layby below the North Ridge"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Milestone Buttress"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "North Tower"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "British Mountaineering Council",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified.",
+        "source_key": "bmc-tryfan-north-ridge",
+        "title": "How to scramble Tryfan's North Ridge",
+        "url": "https://www.thebmc.co.uk/en/how-to-scramble-tryfans-north-ridge",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "Tryfan North Ridge"
+          },
+          {
+            "key": "start",
+            "locator": null,
+            "value": "A5 between Ogwen Cottage and Tryfan"
+          },
+          {
+            "key": "start_coordinate",
+            "locator": null,
+            "value": "53.1229271,-3.999702"
+          },
+          {
+            "key": "distance_km",
+            "locator": null,
+            "value": "5.9"
+          },
+          {
+            "key": "route_type",
+            "locator": null,
+            "value": "circular"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "The Cannon"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Ramblers",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "Route details and GPX are not treated as reusable geometry without an explicit compatible licence.",
+        "source_key": "ramblers-classic-tryfan-north-ridge",
+        "title": "Classic Tryfan North Ridge",
+        "url": "https://www.ramblers.org.uk/go-walking/routes/classic-tryfan-north-ridge",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "North Ridge"
+          },
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "South Ridge"
+          },
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "West Face"
+          },
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Ramblers",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified.",
+        "source_key": "ramblers-tryfan-overview",
+        "title": "The ultimate guide to hiking Tryfan and the Glyderau",
+        "url": "https://www.ramblers.org.uk/go-walking-hub/ultimate-guide-hiking-tryfan-and-glyderau",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "South Ridge"
+          },
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Walk Snowdonia",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified.",
+        "source_key": "walk-snowdonia-south-ridge",
+        "title": "The South Ridge of Tryfan",
+        "url": "https://walk-snowdonia.co.uk/rtryfan.php",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "The South Ridge"
+          },
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "UKClimbing / Rockfax",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "Commercial route description; no geometry reuse licence identified.",
+        "source_key": "ukclimbing-south-ridge",
+        "title": "The South Ridge",
+        "url": "https://www.ukclimbing.com/logbook/crags/tryfan-491/the_south_ridge-58167",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "South Ridge Direct"
+          },
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "guide_content",
+            "locator": null,
+            "value": "grid references and photo topos are supplied in the guide"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Cicerone Press",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "Commercial guidebook; no route-geometry reuse licence identified.",
+        "source_key": "cicerone-scrambles-snowdonia",
+        "title": "Scrambles in Snowdonia",
+        "url": "https://www.cicerone.co.uk/scrambles-in-snowdonia",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "feature_name",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "record_number",
+            "locator": null,
+            "value": "408980"
+          },
+          {
+            "key": "grid_reference",
+            "locator": null,
+            "value": "SH6645059510"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Milestone Buttress"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Heather Terrace"
+          },
+          {
+            "key": "course",
+            "locator": null,
+            "value": "Heather Terrace along the east side"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Far South Peak"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Royal Commission on the Ancient and Historical Monuments of Wales / Coflein",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified for this record.",
+        "source_key": "coflein-tryfan",
+        "title": "Tryfan, Mountain — NPRN 408980",
+        "url": "https://coflein.gov.uk/en/site/408980",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "route_name",
+            "locator": null,
+            "value": "Tryfan Heather Terrace Scramble"
+          },
+          {
+            "key": "distance_km",
+            "locator": null,
+            "value": "6.7"
+          },
+          {
+            "key": "ascent_m",
+            "locator": null,
+            "value": "710"
+          },
+          {
+            "key": "gpx_available",
+            "locator": null,
+            "value": "true"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Mud and Routes",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "A GPX is offered and the map attributes Crown copyright/OS data, but no compatible geometry reuse licence was identified.",
+        "source_key": "mud-and-routes-heather-terrace",
+        "title": "Tryfan Heather Terrace Scramble",
+        "url": "https://www.mudandroutes.com/routes/tryfan-via-the-heather-terrace/",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917.51"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          },
+          {
+            "key": "place",
+            "locator": null,
+            "value": "Ogwen Cottage"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "National Trust",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified.",
+        "source_key": "national-trust-tryfan",
+        "title": "Walking and climbing on Tryfan",
+        "url": "https://www.nationaltrust.org.uk/visit/wales/carneddau-and-glyderau/walking-and-climbing-on-tryfan",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "summit_name",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "record_number",
+            "locator": "DoBIH_v18_5.csv",
+            "value": "1977"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917.5"
+          },
+          {
+            "key": "grid_reference",
+            "locator": null,
+            "value": "SH 66408 59390"
+          },
+          {
+            "key": "latitude",
+            "locator": null,
+            "value": "53.114898"
+          },
+          {
+            "key": "longitude",
+            "locator": null,
+            "value": "-3.997491"
+          },
+          {
+            "key": "survey_method",
+            "locator": null,
+            "value": "Leica 530"
+          },
+          {
+            "key": "record_revision",
+            "locator": null,
+            "value": "23-Oct-23"
+          },
+          {
+            "key": "record_url",
+            "locator": null,
+            "value": "https://www.hill-bagging.co.uk/hill-view/?qu=S&rf=1977"
+          },
+          {
+            "key": "identity_disambiguation",
+            "locator": null,
+            "value": "high summit record 1977, not lower namesake 19648"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Database of British and Irish Hills",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "Database licensed CC BY 4.0; attribute Database of British and Irish Hills.",
+        "source_key": "dobih-tryfan",
+        "title": "DoBIH v18.5 — Tryfan record 1977",
+        "url": "https://www.hill-bagging.co.uk/dobih/downloads/",
+        "version": "18.5"
+      }
+    ]
+  },
+  "manifest_sha256": "8d49f80ab81bf05db36b40bf3144a712377a6bb5bd37f59f82ebfb98b31e8da6",
+  "mountain_verification": {
+    "decision": "never automatically verified; independent human review required",
+    "evidence_source_keys": [
+      "coflein-tryfan",
+      "national-trust-tryfan",
+      "dobih-tryfan"
+    ],
+    "independent_sources": [
+      {
+        "factual_anchors": [
+          {
+            "key": "feature_name",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "record_number",
+            "locator": null,
+            "value": "408980"
+          },
+          {
+            "key": "grid_reference",
+            "locator": null,
+            "value": "SH6645059510"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Milestone Buttress"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Heather Terrace"
+          },
+          {
+            "key": "course",
+            "locator": null,
+            "value": "Heather Terrace along the east side"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Far South Peak"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Royal Commission on the Ancient and Historical Monuments of Wales / Coflein",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified for this record.",
+        "source_key": "coflein-tryfan",
+        "title": "Tryfan, Mountain — NPRN 408980",
+        "url": "https://coflein.gov.uk/en/site/408980",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "mountain",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917.51"
+          },
+          {
+            "key": "landmark",
+            "locator": null,
+            "value": "Adam and Eve"
+          },
+          {
+            "key": "place",
+            "locator": null,
+            "value": "Ogwen Cottage"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "National Trust",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "No compatible route-geometry reuse licence identified.",
+        "source_key": "national-trust-tryfan",
+        "title": "Walking and climbing on Tryfan",
+        "url": "https://www.nationaltrust.org.uk/visit/wales/carneddau-and-glyderau/walking-and-climbing-on-tryfan",
+        "version": "1"
+      },
+      {
+        "factual_anchors": [
+          {
+            "key": "summit_name",
+            "locator": null,
+            "value": "Tryfan"
+          },
+          {
+            "key": "record_number",
+            "locator": "DoBIH_v18_5.csv",
+            "value": "1977"
+          },
+          {
+            "key": "summit_elevation_m",
+            "locator": null,
+            "value": "917.5"
+          },
+          {
+            "key": "grid_reference",
+            "locator": null,
+            "value": "SH 66408 59390"
+          },
+          {
+            "key": "latitude",
+            "locator": null,
+            "value": "53.114898"
+          },
+          {
+            "key": "longitude",
+            "locator": null,
+            "value": "-3.997491"
+          },
+          {
+            "key": "survey_method",
+            "locator": null,
+            "value": "Leica 530"
+          },
+          {
+            "key": "record_revision",
+            "locator": null,
+            "value": "23-Oct-23"
+          },
+          {
+            "key": "record_url",
+            "locator": null,
+            "value": "https://www.hill-bagging.co.uk/hill-view/?qu=S&rf=1977"
+          },
+          {
+            "key": "identity_disambiguation",
+            "locator": null,
+            "value": "high summit record 1977, not lower namesake 19648"
+          }
+        ],
+        "geometry_reuse_allowed": false,
+        "publisher": "Database of British and Irish Hills",
+        "retrieved_at": "2026-08-24T00:00:00Z",
+        "rights_classification": "factual_identity_only",
+        "rights_statement": "Database licensed CC BY 4.0; attribute Database of British and Irish Hills.",
+        "source_key": "dobih-tryfan",
+        "title": "DoBIH v18.5 — Tryfan record 1977",
+        "url": "https://www.hill-bagging.co.uk/dobih/downloads/",
+        "version": "18.5"
+      }
+    ],
+    "mountain_key": "tryfan",
+    "osm_peak_elevation_evidence": {
+      "ele": "917.5",
+      "natural": "peak",
+      "outcome": "present",
+      "source_id": "node/29580544"
+    },
+    "status": "needs_review",
+    "version": "1"
+  },
+  "osm_extraction": {
+    "ordered_relation_member_field_available": true,
+    "path_osm_ids": [
+      "1023639351",
+      "1023656720",
+      "1023707858",
+      "1024845362",
+      "1024920162",
+      "1033312990",
+      "1033312992",
+      "107252630",
+      "107252633",
+      "107252638",
+      "107252643",
+      "107252647",
+      "107252649",
+      "107252655",
+      "1074855924",
+      "1074855927",
+      "1074855928",
+      "1074855929",
+      "1074855930",
+      "1074855931",
+      "1074855932",
+      "1074855933",
+      "1082210347",
+      "1099703789",
+      "1099703790",
+      "1099736128",
+      "1099736136",
+      "1099736137",
+      "1099835622",
+      "1099835623",
+      "1099835624",
+      "1099835627",
+      "1099835628",
+      "1099835629",
+      "1099835630",
+      "1099835631",
+      "1099835632",
+      "1099835633",
+      "1099835635",
+      "1099835636",
+      "1099835637",
+      "1099911945",
+      "1099911947",
+      "1111449669",
+      "1111449670",
+      "1111449671",
+      "1111458062",
+      "1111478730",
+      "111631693",
+      "111635143",
+      "111635149",
+      "111635158",
+      "1118473933",
+      "1118473934",
+      "1133776199",
+      "1133776200",
+      "1133776202",
+      "1136454765",
+      "1136454766",
+      "1136454770",
+      "1136454771",
+      "1136454772",
+      "1136454773",
+      "1136457964",
+      "1136457966",
+      "1136457967",
+      "1136457972",
+      "1136472270",
+      "1136472272",
+      "1136472273",
+      "1136472274",
+      "1136472275",
+      "1136472276",
+      "1136472277",
+      "1136472278",
+      "1136665798",
+      "114871119",
+      "114871121",
+      "114871123",
+      "114871124",
+      "114871130",
+      "114871135",
+      "114871136",
+      "114871142",
+      "114871143",
+      "114871144",
+      "114871145",
+      "114871151",
+      "114874110",
+      "1158225722",
+      "11675142",
+      "11675145",
+      "11675150",
+      "1174305537",
+      "1174305538",
+      "1174305539",
+      "1174315406",
+      "1174315407",
+      "1174315408",
+      "1174316491",
+      "1174316492",
+      "1174316493",
+      "1174316494",
+      "118025039",
+      "118044377",
+      "118044438",
+      "118044439",
+      "118045659",
+      "118045662",
+      "118045665",
+      "118070155",
+      "1181211812",
+      "1181211813",
+      "1181211814",
+      "1181211815",
+      "1181211816",
+      "1181211817",
+      "1181211818",
+      "1181212813",
+      "1181213032",
+      "118143537",
+      "118143541",
+      "118143542",
+      "1183701754",
+      "1183701755",
+      "1183701756",
+      "1183701757",
+      "1183851525",
+      "1183851526",
+      "1184032927",
+      "1184033370",
+      "1184034037",
+      "1184034038",
+      "1184034039",
+      "1184208094",
+      "1184211012",
+      "1184211013",
+      "1184525831",
+      "1184525833",
+      "1184525834",
+      "1184525835",
+      "1184525839",
+      "1184525843",
+      "1187833127",
+      "1187833128",
+      "1187833129",
+      "1187833130",
+      "1187833131",
+      "1203272435",
+      "121236954",
+      "1214357495",
+      "1224953463",
+      "1224953472",
+      "1224953495",
+      "1224953506",
+      "1224953507",
+      "122967832",
+      "122967837",
+      "1287076636",
+      "1295713375",
+      "1295713376",
+      "1298860615",
+      "1311030059",
+      "1311310892",
+      "1311310893",
+      "1352734067",
+      "1375215412",
+      "1375215413",
+      "1375215444",
+      "1375215449",
+      "1375215450",
+      "1375215452",
+      "1375215455",
+      "1375215460",
+      "1375215462",
+      "1375562609",
+      "1375562638",
+      "1375562639",
+      "1375695306",
+      "1375695734",
+      "1375695735",
+      "1375820547",
+      "1375820548",
+      "1375820549",
+      "1383254489",
+      "1383254493",
+      "1385361218",
+      "1385361219",
+      "1385361223",
+      "1385361224",
+      "1385361225",
+      "1385361226",
+      "1385361227",
+      "1390922711",
+      "1390946980",
+      "1390977954",
+      "1390977957",
+      "1390977958",
+      "1390978005",
+      "1390978006",
+      "1392317271",
+      "1392709638",
+      "1392709639",
+      "1393508313",
+      "1393508314",
+      "1393508318",
+      "1393809868",
+      "1393809883",
+      "1393876082",
+      "1393876105",
+      "1393876106",
+      "140115342",
+      "140115370",
+      "140115388",
+      "1408241728",
+      "1408271789",
+      "1415441426",
+      "1415460366",
+      "1415460369",
+      "1415460370",
+      "1415460371",
+      "1415465072",
+      "1415465073",
+      "1415851947",
+      "1416944921",
+      "1416944922",
+      "1416944932",
+      "1416944953",
+      "1417730584",
+      "1417730585",
+      "1417730586",
+      "1417730598",
+      "1417730702",
+      "1417730703",
+      "1417730704",
+      "1418165010",
+      "1418171605",
+      "1418642810",
+      "1418642811",
+      "1418642881",
+      "1418683785",
+      "1421748491",
+      "1421748498",
+      "1421748503",
+      "1421748507",
+      "1421748508",
+      "1421748509",
+      "1421748511",
+      "1423364830",
+      "144399050",
+      "147435301",
+      "1506935724",
+      "1506935731",
+      "1506935732",
+      "1506935733",
+      "1506935734",
+      "1506935737",
+      "1506935738",
+      "1506959253",
+      "1506959254",
+      "1506959255",
+      "1507754973",
+      "1507754974",
+      "1507754975",
+      "1507754983",
+      "1507754984",
+      "1507754985",
+      "1507754986",
+      "1507754987",
+      "1507754988",
+      "1507754993",
+      "1507754995",
+      "1507755001",
+      "1507755003",
+      "1507755004",
+      "1507755005",
+      "1507755006",
+      "1507763054",
+      "1507809688",
+      "1507809691",
+      "1507809692",
+      "1507809694",
+      "1507809695",
+      "1507809696",
+      "1507809697",
+      "1507809698",
+      "1507809699",
+      "1507809700",
+      "1507809701",
+      "1507809702",
+      "1512888324",
+      "1512888325",
+      "1512894939",
+      "1512894940",
+      "1512894941",
+      "1512894942",
+      "1512894943",
+      "1532660454",
+      "1532660458",
+      "1532660460",
+      "1532660461",
+      "1546737385",
+      "1546737386",
+      "1546737387",
+      "1546737388",
+      "1547708903",
+      "1547709057",
+      "1547709058",
+      "1547797951",
+      "1547860253",
+      "1547891499",
+      "1548327436",
+      "1549879763",
+      "1549879764",
+      "1549879765",
+      "1549902744",
+      "1549902746",
+      "1549921107",
+      "1550088136",
+      "1550088137",
+      "1550088138",
+      "1550088139",
+      "1550088140",
+      "1550088141",
+      "1550088142",
+      "1550088143",
+      "1550088144",
+      "1550088145",
+      "1550088146",
+      "1550088147",
+      "1550088148",
+      "1550088149",
+      "1550088150",
+      "1550088151",
+      "1550088152",
+      "1550088153",
+      "1550088154",
+      "1550088155",
+      "1550107104",
+      "1550107105",
+      "1550107107",
+      "1550144359",
+      "1550236133",
+      "1550236136",
+      "1550236140",
+      "1550238613",
+      "1550238614",
+      "1550818191",
+      "1550834652",
+      "1550834668",
+      "1550838788",
+      "1550925962",
+      "1550925963",
+      "1550925965",
+      "1550925966",
+      "1550925969",
+      "1551043434",
+      "1551052224",
+      "1551052264",
+      "157120938",
+      "163848958",
+      "163848959",
+      "167869302",
+      "168426574",
+      "168426575",
+      "168426582",
+      "168426583",
+      "172476342",
+      "172476343",
+      "230560201",
+      "230560203",
+      "230560204",
+      "230560207",
+      "230576305",
+      "230576316",
+      "230875913",
+      "240048607",
+      "240048608",
+      "240048609",
+      "240048610",
+      "240048611",
+      "260995716",
+      "260995723",
+      "26566356",
+      "268756930",
+      "271436364",
+      "271440142",
+      "271764982",
+      "274500319",
+      "274500359",
+      "274566002",
+      "274566021",
+      "274566097",
+      "274566139",
+      "274566149",
+      "274566151",
+      "274566158",
+      "274568890",
+      "274568893",
+      "276120620",
+      "276120627",
+      "276120642",
+      "304445180",
+      "314490865",
+      "314490866",
+      "314490867",
+      "32543877",
+      "32543883",
+      "32543884",
+      "32543885",
+      "32543887",
+      "32543890",
+      "32544364",
+      "327229885",
+      "327229887",
+      "327229889",
+      "330142317",
+      "331461787",
+      "331461788",
+      "331461789",
+      "331461793",
+      "333635904",
+      "333636006",
+      "334433650",
+      "334433652",
+      "33795798",
+      "33795799",
+      "33881759",
+      "33881761",
+      "342144788",
+      "342144789",
+      "342144790",
+      "342144791",
+      "342144797",
+      "343966967",
+      "343966968",
+      "343966969",
+      "344149267",
+      "344149288",
+      "344149289",
+      "344149290",
+      "344149291",
+      "344149292",
+      "344149294",
+      "344149295",
+      "344149296",
+      "348350594",
+      "348350612",
+      "356858896",
+      "358640068",
+      "372419761",
+      "372419762",
+      "372419763",
+      "372419764",
+      "372419765",
+      "372624574",
+      "372624575",
+      "372624576",
+      "372624580",
+      "372624581",
+      "372624587",
+      "372624592",
+      "372624596",
+      "373962191",
+      "373962192",
+      "373962193",
+      "373962196",
+      "373962197",
+      "373962198",
+      "373962199",
+      "373962201",
+      "373962203",
+      "373962204",
+      "373983924",
+      "373983925",
+      "373983926",
+      "373983928",
+      "373983930",
+      "373983932",
+      "373983934",
+      "373983936",
+      "373983941",
+      "374756735",
+      "374756736",
+      "374756737",
+      "374798244",
+      "374798245",
+      "374798246",
+      "374798261",
+      "374805069",
+      "374994727",
+      "374994737",
+      "38577574",
+      "38577576",
+      "38871423",
+      "38871425",
+      "38871426",
+      "38871427",
+      "38871428",
+      "38871429",
+      "402442979",
+      "40614708",
+      "40618039",
+      "40618054",
+      "40619386",
+      "40619627",
+      "40619628",
+      "40670530",
+      "426661873",
+      "426661874",
+      "426661875",
+      "426661876",
+      "426661878",
+      "426670847",
+      "426670848",
+      "43584469",
+      "439793215",
+      "439793216",
+      "439793217",
+      "439793224",
+      "439798011",
+      "447765900",
+      "447765910",
+      "447777974",
+      "447777975",
+      "447777976",
+      "447777997",
+      "448976235",
+      "448976236",
+      "45399907",
+      "476120049",
+      "476125995",
+      "476125996",
+      "476125997",
+      "476125998",
+      "498644247",
+      "531040900",
+      "531040901",
+      "531040903",
+      "531040905",
+      "531134894",
+      "531134897",
+      "561647628",
+      "563836658",
+      "563836659",
+      "563836661",
+      "563836664",
+      "563836665",
+      "563836666",
+      "563836667",
+      "588575701",
+      "60826992",
+      "60826994",
+      "60826996",
+      "60826998",
+      "60840906",
+      "60840908",
+      "60840909",
+      "60840910",
+      "61982150",
+      "62522976",
+      "62522977",
+      "62522988",
+      "62547358",
+      "62547364",
+      "62547371",
+      "672637565",
+      "672637571",
+      "672637572",
+      "672637573",
+      "672637574",
+      "672637578",
+      "672637579",
+      "672637580",
+      "672637581",
+      "672637591",
+      "672637605",
+      "672640515",
+      "684463104",
+      "684463635",
+      "68559675",
+      "697989284",
+      "718191975",
+      "718191976",
+      "718192580",
+      "718194152",
+      "719142205",
+      "719142210",
+      "719296749",
+      "719296750",
+      "719296752",
+      "719296753",
+      "719296756",
+      "719316335",
+      "719316342",
+      "719316343",
+      "719316344",
+      "73479955",
+      "736292895",
+      "792195709",
+      "829360082",
+      "829360083",
+      "831754692",
+      "83377269",
+      "83377270",
+      "83390045",
+      "834703410",
+      "83537002",
+      "83537005",
+      "83537007",
+      "83537012",
+      "83537015",
+      "83537017",
+      "83537020",
+      "83537025",
+      "83537026",
+      "83537029",
+      "838586519",
+      "838586520",
+      "83866669",
+      "83866675",
+      "83871760",
+      "842716011",
+      "842731879",
+      "842731881",
+      "850293458",
+      "853248336",
+      "85416942",
+      "85416947",
+      "85416953",
+      "855185070",
+      "855185071",
+      "855185072",
+      "855185124",
+      "855185145",
+      "855527459",
+      "855527460",
+      "880802866",
+      "880803789",
+      "907182828",
+      "907182829",
+      "935295449",
+      "942604394",
+      "942604513",
+      "968281860",
+      "985121268",
+      "985121269",
+      "985121270",
+      "993764361",
+      "993764362"
+    ],
+    "path_topology_feature_count": 609,
+    "route_osm_ids": [
+      "11114801",
+      "11661295",
+      "19400332",
+      "239620",
+      "4004180",
+      "4004182",
+      "4499076"
+    ]
+  },
+  "requested_routes": [
+    "Tryfan North Ridge",
+    "Tryfan South Ridge",
+    "Heather Terrace"
+  ],
+  "routes": [
+    {
+      "artifact_files": {
+        "candidate_path_network": "tryfan_candidate_path_network.geojson"
+      },
+      "dem_coverage": {
+        "missing_tile_filenames": [],
+        "planned_tile_ids": [],
+        "status": "not_applicable_no_geometry",
+        "supplied_tile_ids": [
+          "Copernicus_DSM_COG_10_N53_00_W004_00_DEM"
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "ordered_relation_not_unique",
+          "details": {
+            "matching_relation_count": 0
+          },
+          "message": "Exactly one named OSM relation with ordered topology is required.",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "acquisition_publication_blocked",
+          "details": {
+            "accepted_candidate_count": 0,
+            "accepted_osm_source_hash_matches": false,
+            "candidate_statuses": {
+              "osm-north-ridge-three-fragments": "partial",
+              "ramblers-north-ridge-gpx": "rejected",
+              "walking-britain-north-ridge-gpx": "rejected"
+            },
+            "candidate_way_ids": {
+              "osm-north-ridge-three-fragments": [
+                1136472277,
+                1111458062,
+                114871121
+              ],
+              "ramblers-north-ridge-gpx": [],
+              "walking-britain-north-ridge-gpx": []
+            },
+            "pbf_tied_candidate_evaluations": [
+              {
+                "acquisition_status": "partial",
+                "candidate_key": "osm-north-ridge-three-fragments",
+                "diagnostics": [
+                  {
+                    "code": "ordered_topology_gap",
+                    "details": {
+                      "ordered_way_ids": [
+                        1136472277,
+                        1111458062,
+                        114871121
+                      ],
+                      "valid_orientation_count": 0
+                    },
+                    "message": "Consecutive ordered members do not share source node IDs.",
+                    "outcome": "indeterminate"
+                  }
+                ],
+                "evaluation_status": "needs_review",
+                "resolution_method": "explicit_osm_way_topology",
+                "source_ids": [
+                  "way/1136472277",
+                  "way/1111458062",
+                  "way/114871121"
+                ]
+              }
+            ],
+            "publication_reasons": {
+              "osm-north-ridge-three-fragments": "Missing source-node chain: way 1136472277 ends at node 388197068 while the next ordered fragment way 1111458062 starts at node 30395756. No unnamed way, routing, snapping, or coordinate-proximity gap fill is permitted.",
+              "ramblers-north-ridge-gpx": "Unclear GPX and map reuse rights block acquisition.",
+              "walking-britain-north-ridge-gpx": "The publisher's stated private-use-only terms are incompatible with route geometry reuse."
+            }
+          },
+          "message": "No single accepted acquisition candidate tied to the imported OSM PBF hash is available.",
+          "outcome": "indeterminate"
+        }
+      ],
+      "elevation_profile": null,
+      "evidence": {
+        "evidence_sources": [
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": "page title",
+                "value": "North Ridge"
+              },
+              {
+                "key": "route_grade",
+                "locator": null,
+                "value": "grade one"
+              },
+              {
+                "key": "start_kind",
+                "locator": null,
+                "value": "A5 layby below the North Ridge"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Milestone Buttress"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "North Tower"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Adam and Eve"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "British Mountaineering Council",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified.",
+            "source_key": "bmc-tryfan-north-ridge",
+            "title": "How to scramble Tryfan's North Ridge",
+            "url": "https://www.thebmc.co.uk/en/how-to-scramble-tryfans-north-ridge",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "Tryfan North Ridge"
+              },
+              {
+                "key": "start",
+                "locator": null,
+                "value": "A5 between Ogwen Cottage and Tryfan"
+              },
+              {
+                "key": "start_coordinate",
+                "locator": null,
+                "value": "53.1229271,-3.999702"
+              },
+              {
+                "key": "distance_km",
+                "locator": null,
+                "value": "5.9"
+              },
+              {
+                "key": "route_type",
+                "locator": null,
+                "value": "circular"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "The Cannon"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Adam and Eve"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Ramblers",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "Route details and GPX are not treated as reusable geometry without an explicit compatible licence.",
+            "source_key": "ramblers-classic-tryfan-north-ridge",
+            "title": "Classic Tryfan North Ridge",
+            "url": "https://www.ramblers.org.uk/go-walking/routes/classic-tryfan-north-ridge",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "feature_name",
+                "locator": null,
+                "value": "Tryfan"
+              },
+              {
+                "key": "record_number",
+                "locator": null,
+                "value": "408980"
+              },
+              {
+                "key": "grid_reference",
+                "locator": null,
+                "value": "SH6645059510"
+              },
+              {
+                "key": "summit_elevation_m",
+                "locator": null,
+                "value": "917"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Milestone Buttress"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Heather Terrace"
+              },
+              {
+                "key": "course",
+                "locator": null,
+                "value": "Heather Terrace along the east side"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Far South Peak"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Adam and Eve"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Royal Commission on the Ancient and Historical Monuments of Wales / Coflein",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified for this record.",
+            "source_key": "coflein-tryfan",
+            "title": "Tryfan, Mountain — NPRN 408980",
+            "url": "https://coflein.gov.uk/en/site/408980",
+            "version": "1"
+          }
+        ],
+        "route_definition": {
+          "definition_key": "tryfan-north-ridge-definition",
+          "description": "Evidence-backed identity and course anchors only; no external route geometry is reused.",
+          "evidence_source_keys": [
+            "bmc-tryfan-north-ridge",
+            "ramblers-classic-tryfan-north-ridge",
+            "coflein-tryfan"
+          ],
+          "factual_anchors": [
+            {
+              "key": "start_kind",
+              "locator": null,
+              "value": "A5 layby below the North Ridge"
+            },
+            {
+              "key": "start_coordinate",
+              "locator": "Ramblers route summary",
+              "value": "53.1229271,-3.999702"
+            },
+            {
+              "key": "course",
+              "locator": null,
+              "value": "north ridge of Tryfan"
+            },
+            {
+              "key": "landmark",
+              "locator": null,
+              "value": "Milestone Buttress"
+            },
+            {
+              "key": "landmark",
+              "locator": null,
+              "value": "The Cannon"
+            },
+            {
+              "key": "landmark",
+              "locator": null,
+              "value": "North Tower"
+            },
+            {
+              "key": "finish",
+              "locator": null,
+              "value": "Tryfan summit / Adam and Eve"
+            }
+          ],
+          "route_identity_key": "tryfan-north-ridge",
+          "route_identity_version": "1",
+          "status": "needs_review",
+          "version": "1"
+        },
+        "route_identity": {
+          "aliases": [
+            "North Ridge"
+          ],
+          "canonical_name": "Tryfan North Ridge",
+          "identity_key": "tryfan-north-ridge",
+          "mountain_key": "tryfan",
+          "status": "needs_review",
+          "version": "1"
+        }
+      },
+      "geometry": null,
+      "ordered_topology": null,
+      "requested_name": "Tryfan North Ridge",
+      "resolution_method": "ordered_osm_member_topology",
+      "source_ids": [],
+      "source_name": null,
+      "status": "needs_review",
+      "tags": {},
+      "topology_acquisition": {
+        "evaluations": [
+          {
+            "acquisition_status": "partial",
+            "candidate_key": "osm-north-ridge-three-fragments",
+            "diagnostics": [
+              {
+                "code": "ordered_topology_gap",
+                "details": {
+                  "ordered_way_ids": [
+                    1136472277,
+                    1111458062,
+                    114871121
+                  ],
+                  "valid_orientation_count": 0
+                },
+                "message": "Consecutive ordered members do not share source node IDs.",
+                "outcome": "indeterminate"
+              }
+            ],
+            "evaluation_status": "needs_review",
+            "resolution_method": "explicit_osm_way_topology",
+            "source_ids": [
+              "way/1136472277",
+              "way/1111458062",
+              "way/114871121"
+            ]
+          }
+        ],
+        "publication_blocked": true,
+        "route": {
+          "candidates": [
+            {
+              "candidate_key": "osm-north-ridge-three-fragments",
+              "geometry_reuse_allowed": true,
+              "ordered_osm_ways": [
+                {
+                  "endpoint_node_ids": [
+                    30395677,
+                    388197068
+                  ],
+                  "ordered_node_ids": [
+                    30395677,
+                    30395678,
+                    30395679,
+                    30395682,
+                    30395685,
+                    30395687,
+                    388197068
+                  ],
+                  "source_direction": "forward",
+                  "tag_assertions": {
+                    "name:en": "North Ridge"
+                  },
+                  "version": 4,
+                  "way_id": 1136472277
+                },
+                {
+                  "endpoint_node_ids": [
+                    30395756,
+                    30395793
+                  ],
+                  "ordered_node_ids": [
+                    30395756,
+                    30395757,
+                    388197025,
+                    388197024,
+                    30395758,
+                    10969815102,
+                    10969824432,
+                    388197023,
+                    10969815099,
+                    10969815101,
+                    10969815100,
+                    10969824431,
+                    10969824430,
+                    10969815098,
+                    30395765,
+                    10969824433,
+                    10969815095,
+                    10969815097,
+                    10969815096,
+                    10969824438,
+                    10969824437,
+                    30395769,
+                    30395770,
+                    388197022,
+                    388197021,
+                    10969815082,
+                    30395773,
+                    10969824439,
+                    30395774,
+                    30395775,
+                    30395776,
+                    10969824440,
+                    30395777,
+                    10995384575,
+                    10995384574,
+                    10995384573,
+                    30395778,
+                    30395779,
+                    10969824441,
+                    10969824442,
+                    30395780,
+                    388197020,
+                    30395781,
+                    30395782,
+                    388197019,
+                    30395785,
+                    2666033027,
+                    30395787,
+                    6752861536,
+                    30395788,
+                    6752083025,
+                    30395789,
+                    6752083026,
+                    30395790,
+                    6752083024,
+                    30395791,
+                    30395792,
+                    30395793
+                  ],
+                  "source_direction": "forward",
+                  "tag_assertions": {
+                    "alt_name": "North Ridge"
+                  },
+                  "version": 9,
+                  "way_id": 1111458062
+                },
+                {
+                  "endpoint_node_ids": [
+                    30395793,
+                    30395798
+                  ],
+                  "ordered_node_ids": [
+                    30395793,
+                    10969824443,
+                    30395794,
+                    30395795,
+                    30395796,
+                    30395797,
+                    30395798
+                  ],
+                  "source_direction": "forward",
+                  "tag_assertions": {
+                    "alt_name": "North Ridge"
+                  },
+                  "version": 9,
+                  "way_id": 114871121
+                }
+              ],
+              "reason": "Missing source-node chain: way 1136472277 ends at node 388197068 while the next ordered fragment way 1111458062 starts at node 30395756. No unnamed way, routing, snapping, or coordinate-proximity gap fill is permitted.",
+              "rights_classification": "reusable_geometry",
+              "rights_statement": "ODbL topology is reusable with OpenStreetMap attribution, but incomplete topology is not publishable.",
+              "source_keys": [
+                "geofabrik-wales-pbf-2026-08-24"
+              ],
+              "status": "partial",
+              "version": "1"
+            },
+            {
+              "candidate_key": "walking-britain-north-ridge-gpx",
+              "geometry_reuse_allowed": false,
+              "ordered_osm_ways": [],
+              "reason": "The publisher's stated private-use-only terms are incompatible with route geometry reuse.",
+              "rights_classification": "non_reusable",
+              "rights_statement": "Copyright; private use only.",
+              "source_keys": [
+                "walking-britain-north-ridge-gpx"
+              ],
+              "status": "rejected",
+              "version": "1"
+            },
+            {
+              "candidate_key": "ramblers-north-ridge-gpx",
+              "geometry_reuse_allowed": false,
+              "ordered_osm_ways": [],
+              "reason": "Unclear GPX and map reuse rights block acquisition.",
+              "rights_classification": "unclear",
+              "rights_statement": "No explicit compatible geometry licence was found.",
+              "source_keys": [
+                "ramblers-north-ridge-gpx"
+              ],
+              "status": "rejected",
+              "version": "1"
+            }
+          ],
+          "canonical_name": "Tryfan North Ridge",
+          "route_identity_key": "tryfan-north-ridge",
+          "route_identity_version": "1",
+          "search_findings": [
+            "The hashed Wales PBF contains no route relation exactly named Tryfan North Ridge.",
+            "Three ways assert North Ridge through name:en or alt_name, but the lower way and upper pair do not share endpoint source node IDs."
+          ],
+          "status": "needs_review"
+        },
+        "sources": [
+          {
+            "geometry_reuse_allowed": true,
+            "publisher": "Geofabrik / OpenStreetMap contributors",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "OpenStreetMap data is available under ODbL 1.0; attribution to OpenStreetMap contributors is required.",
+            "sha256": "1448648324adbb376947020e3108dc7d76adfbcb63afd4b22d288b288b8142f0",
+            "source_key": "geofabrik-wales-pbf-2026-08-24",
+            "title": "Wales OpenStreetMap PBF used for the Tryfan import",
+            "url": "https://download.geofabrik.de/europe/united-kingdom/wales-latest.osm.pbf",
+            "version": "1"
+          },
+          {
+            "geometry_reuse_allowed": false,
+            "publisher": "Walking Britain",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Walking Britain states that its downloadable GPX files are copyright and for private use only.",
+            "sha256": null,
+            "source_key": "walking-britain-north-ridge-gpx",
+            "title": "Tryfan North Ridge GPX download candidate",
+            "url": "https://www.walkingbritain.co.uk/walk-3001-gps",
+            "version": "1"
+          },
+          {
+            "geometry_reuse_allowed": false,
+            "publisher": "Ramblers",
+            "rights_classification": "unclear",
+            "rights_statement": "A reusable geometry licence for the route GPX or map was not identified.",
+            "sha256": null,
+            "source_key": "ramblers-north-ridge-gpx",
+            "title": "Classic Tryfan North Ridge",
+            "url": "https://www.ramblers.org.uk/go-walking/routes/classic-tryfan-north-ridge",
+            "version": "1"
+          }
+        ]
+      },
+      "validation_results": [
+        {
+          "code": "geometry",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "nonempty",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "connectivity",
+          "details": {},
+          "message": "Connectivity cannot be evaluated",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "bounds",
+          "details": {},
+          "message": "Geometry or expected bounds are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "summit_reach",
+          "details": {},
+          "message": "Route or summit is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "plausible_length",
+          "details": {},
+          "message": "Route length is unavailable",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "elevation",
+          "details": {},
+          "message": "Elevation profile is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "jumps",
+          "details": {},
+          "message": "Elevation samples are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "dem_coverage",
+          "details": {},
+          "message": "DEM coverage is unknown",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "source_ids",
+          "details": {},
+          "message": "Source IDs are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "duplicates",
+          "details": {},
+          "message": "Route geometry is unavailable",
+          "outcome": "indeterminate"
+        }
+      ]
+    },
+    {
+      "artifact_files": {
+        "candidate_path_network": "tryfan_candidate_path_network.geojson"
+      },
+      "dem_coverage": {
+        "missing_tile_filenames": [],
+        "planned_tile_ids": [],
+        "status": "not_applicable_no_geometry",
+        "supplied_tile_ids": [
+          "Copernicus_DSM_COG_10_N53_00_W004_00_DEM"
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "ordered_relation_not_unique",
+          "details": {
+            "matching_relation_count": 0
+          },
+          "message": "Exactly one named OSM relation with ordered topology is required.",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "acquisition_publication_blocked",
+          "details": {
+            "accepted_candidate_count": 0,
+            "accepted_osm_source_hash_matches": false,
+            "candidate_statuses": {
+              "cicerone-south-ridge-guide-topology": "rejected",
+              "south-ridge-open-topology-search": "unavailable"
+            },
+            "candidate_way_ids": {
+              "cicerone-south-ridge-guide-topology": [],
+              "south-ridge-open-topology-search": []
+            },
+            "pbf_tied_candidate_evaluations": [
+              {
+                "acquisition_status": "unavailable",
+                "candidate_key": "south-ridge-open-topology-search",
+                "diagnostics": [],
+                "evaluation_status": "needs_review",
+                "resolution_method": "topology_acquisition_dossier",
+                "source_ids": []
+              }
+            ],
+            "publication_reasons": {
+              "cicerone-south-ridge-guide-topology": "The commercial guide is factual identity evidence only and cannot supply reusable topology.",
+              "south-ridge-open-topology-search": "No accepted or partial exact source topology is available."
+            }
+          },
+          "message": "No single accepted acquisition candidate tied to the imported OSM PBF hash is available.",
+          "outcome": "indeterminate"
+        }
+      ],
+      "elevation_profile": null,
+      "evidence": {
+        "evidence_sources": [
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "North Ridge"
+              },
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "South Ridge"
+              },
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "West Face"
+              },
+              {
+                "key": "mountain",
+                "locator": null,
+                "value": "Tryfan"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Ramblers",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified.",
+            "source_key": "ramblers-tryfan-overview",
+            "title": "The ultimate guide to hiking Tryfan and the Glyderau",
+            "url": "https://www.ramblers.org.uk/go-walking-hub/ultimate-guide-hiking-tryfan-and-glyderau",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "South Ridge"
+              },
+              {
+                "key": "mountain",
+                "locator": null,
+                "value": "Tryfan"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Walk Snowdonia",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified.",
+            "source_key": "walk-snowdonia-south-ridge",
+            "title": "The South Ridge of Tryfan",
+            "url": "https://walk-snowdonia.co.uk/rtryfan.php",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "The South Ridge"
+              },
+              {
+                "key": "mountain",
+                "locator": null,
+                "value": "Tryfan"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "UKClimbing / Rockfax",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "Commercial route description; no geometry reuse licence identified.",
+            "source_key": "ukclimbing-south-ridge",
+            "title": "The South Ridge",
+            "url": "https://www.ukclimbing.com/logbook/crags/tryfan-491/the_south_ridge-58167",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "South Ridge Direct"
+              },
+              {
+                "key": "mountain",
+                "locator": null,
+                "value": "Tryfan"
+              },
+              {
+                "key": "guide_content",
+                "locator": null,
+                "value": "grid references and photo topos are supplied in the guide"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Cicerone Press",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "Commercial guidebook; no route-geometry reuse licence identified.",
+            "source_key": "cicerone-scrambles-snowdonia",
+            "title": "Scrambles in Snowdonia",
+            "url": "https://www.cicerone.co.uk/scrambles-in-snowdonia",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "feature_name",
+                "locator": null,
+                "value": "Tryfan"
+              },
+              {
+                "key": "record_number",
+                "locator": null,
+                "value": "408980"
+              },
+              {
+                "key": "grid_reference",
+                "locator": null,
+                "value": "SH6645059510"
+              },
+              {
+                "key": "summit_elevation_m",
+                "locator": null,
+                "value": "917"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Milestone Buttress"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Heather Terrace"
+              },
+              {
+                "key": "course",
+                "locator": null,
+                "value": "Heather Terrace along the east side"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Far South Peak"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Adam and Eve"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Royal Commission on the Ancient and Historical Monuments of Wales / Coflein",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified for this record.",
+            "source_key": "coflein-tryfan",
+            "title": "Tryfan, Mountain — NPRN 408980",
+            "url": "https://coflein.gov.uk/en/site/408980",
+            "version": "1"
+          }
+        ],
+        "route_definition": {
+          "definition_key": "tryfan-south-ridge-definition",
+          "description": "Evidence-backed South Ridge identity and landmarks only; no route trace is licensed or selected.",
+          "evidence_source_keys": [
+            "ramblers-tryfan-overview",
+            "walk-snowdonia-south-ridge",
+            "ukclimbing-south-ridge",
+            "cicerone-scrambles-snowdonia",
+            "coflein-tryfan"
+          ],
+          "factual_anchors": [
+            {
+              "key": "course",
+              "locator": null,
+              "value": "south ridge of Tryfan"
+            },
+            {
+              "key": "landmark",
+              "locator": null,
+              "value": "Far South Peak"
+            },
+            {
+              "key": "finish",
+              "locator": null,
+              "value": "Tryfan summit / Adam and Eve"
+            },
+            {
+              "key": "ambiguity",
+              "locator": null,
+              "value": "South Ridge and South Ridge Direct are separately named evidence"
+            }
+          ],
+          "route_identity_key": "tryfan-south-ridge",
+          "route_identity_version": "1",
+          "status": "needs_review",
+          "version": "1"
+        },
+        "route_identity": {
+          "aliases": [
+            "South Ridge"
+          ],
+          "canonical_name": "Tryfan South Ridge",
+          "identity_key": "tryfan-south-ridge",
+          "mountain_key": "tryfan",
+          "status": "needs_review",
+          "version": "1"
+        }
+      },
+      "geometry": null,
+      "ordered_topology": null,
+      "requested_name": "Tryfan South Ridge",
+      "resolution_method": "ordered_osm_member_topology",
+      "source_ids": [],
+      "source_name": null,
+      "status": "needs_review",
+      "tags": {},
+      "topology_acquisition": {
+        "evaluations": [
+          {
+            "acquisition_status": "unavailable",
+            "candidate_key": "south-ridge-open-topology-search",
+            "diagnostics": [],
+            "evaluation_status": "needs_review",
+            "resolution_method": "topology_acquisition_dossier",
+            "source_ids": []
+          }
+        ],
+        "publication_blocked": true,
+        "route": {
+          "candidates": [
+            {
+              "candidate_key": "cicerone-south-ridge-guide-topology",
+              "geometry_reuse_allowed": false,
+              "ordered_osm_ways": [],
+              "reason": "The commercial guide is factual identity evidence only and cannot supply reusable topology.",
+              "rights_classification": "non_reusable",
+              "rights_statement": "Commercial guide content is not licensed for route-geometry reuse.",
+              "source_keys": [
+                "cicerone-south-ridge-guide"
+              ],
+              "status": "rejected",
+              "version": "1"
+            },
+            {
+              "candidate_key": "south-ridge-open-topology-search",
+              "geometry_reuse_allowed": true,
+              "ordered_osm_ways": [],
+              "reason": "No accepted or partial exact source topology is available.",
+              "rights_classification": "reusable_geometry",
+              "rights_statement": "ODbL topology would be reusable, but no complete named topology exists in the source.",
+              "source_keys": [
+                "geofabrik-wales-pbf-2026-08-24"
+              ],
+              "status": "unavailable",
+              "version": "1"
+            }
+          ],
+          "canonical_name": "Tryfan South Ridge",
+          "route_identity_key": "tryfan-south-ridge",
+          "route_identity_version": "1",
+          "search_findings": [
+            "The hashed Wales PBF contains no route relation exactly named Tryfan South Ridge.",
+            "No open-licensed complete South Ridge source-node topology or trace was found; commercial guide and map rights are incompatible or unclear."
+          ],
+          "status": "needs_review"
+        },
+        "sources": [
+          {
+            "geometry_reuse_allowed": true,
+            "publisher": "Geofabrik / OpenStreetMap contributors",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "OpenStreetMap data is available under ODbL 1.0; attribution to OpenStreetMap contributors is required.",
+            "sha256": "1448648324adbb376947020e3108dc7d76adfbcb63afd4b22d288b288b8142f0",
+            "source_key": "geofabrik-wales-pbf-2026-08-24",
+            "title": "Wales OpenStreetMap PBF used for the Tryfan import",
+            "url": "https://download.geofabrik.de/europe/united-kingdom/wales-latest.osm.pbf",
+            "version": "1"
+          },
+          {
+            "geometry_reuse_allowed": false,
+            "publisher": "Cicerone Press",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Commercial guidebook content; no route-topology reuse licence was identified.",
+            "sha256": null,
+            "source_key": "cicerone-south-ridge-guide",
+            "title": "Scrambles in Snowdonia",
+            "url": "https://www.cicerone.co.uk/scrambles-in-snowdonia",
+            "version": "1"
+          }
+        ]
+      },
+      "validation_results": [
+        {
+          "code": "geometry",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "nonempty",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "connectivity",
+          "details": {},
+          "message": "Connectivity cannot be evaluated",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "bounds",
+          "details": {},
+          "message": "Geometry or expected bounds are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "summit_reach",
+          "details": {},
+          "message": "Route or summit is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "plausible_length",
+          "details": {},
+          "message": "Route length is unavailable",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "elevation",
+          "details": {},
+          "message": "Elevation profile is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "jumps",
+          "details": {},
+          "message": "Elevation samples are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "dem_coverage",
+          "details": {},
+          "message": "DEM coverage is unknown",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "source_ids",
+          "details": {},
+          "message": "Source IDs are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "duplicates",
+          "details": {},
+          "message": "Route geometry is unavailable",
+          "outcome": "indeterminate"
+        }
+      ]
+    },
+    {
+      "artifact_files": {
+        "candidate_path_network": "tryfan_candidate_path_network.geojson"
+      },
+      "dem_coverage": {
+        "missing_tile_filenames": [],
+        "planned_tile_ids": [],
+        "status": "not_applicable_no_geometry",
+        "supplied_tile_ids": [
+          "Copernicus_DSM_COG_10_N53_00_W004_00_DEM"
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "ordered_relation_not_unique",
+          "details": {
+            "matching_relation_count": 0
+          },
+          "message": "Exactly one named OSM relation with ordered topology is required.",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "acquisition_publication_blocked",
+          "details": {
+            "accepted_candidate_count": 0,
+            "accepted_osm_source_hash_matches": false,
+            "candidate_statuses": {
+              "heather-terrace-open-topology-search": "unavailable",
+              "mud-routes-heather-terrace-gpx": "rejected",
+              "walking-britain-heather-terrace-gpx": "rejected"
+            },
+            "candidate_way_ids": {
+              "heather-terrace-open-topology-search": [],
+              "mud-routes-heather-terrace-gpx": [],
+              "walking-britain-heather-terrace-gpx": []
+            },
+            "pbf_tied_candidate_evaluations": [
+              {
+                "acquisition_status": "unavailable",
+                "candidate_key": "heather-terrace-open-topology-search",
+                "diagnostics": [],
+                "evaluation_status": "needs_review",
+                "resolution_method": "topology_acquisition_dossier",
+                "source_ids": []
+              }
+            ],
+            "publication_reasons": {
+              "heather-terrace-open-topology-search": "No accepted complete source-node topology is available.",
+              "mud-routes-heather-terrace-gpx": "GPX and attributed commercial map rights are unclear and therefore block reuse.",
+              "walking-britain-heather-terrace-gpx": "The publisher's stated private-use-only terms are incompatible with route geometry reuse."
+            }
+          },
+          "message": "No single accepted acquisition candidate tied to the imported OSM PBF hash is available.",
+          "outcome": "indeterminate"
+        }
+      ],
+      "elevation_profile": null,
+      "evidence": {
+        "evidence_sources": [
+          {
+            "factual_anchors": [
+              {
+                "key": "feature_name",
+                "locator": null,
+                "value": "Tryfan"
+              },
+              {
+                "key": "record_number",
+                "locator": null,
+                "value": "408980"
+              },
+              {
+                "key": "grid_reference",
+                "locator": null,
+                "value": "SH6645059510"
+              },
+              {
+                "key": "summit_elevation_m",
+                "locator": null,
+                "value": "917"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Milestone Buttress"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Heather Terrace"
+              },
+              {
+                "key": "course",
+                "locator": null,
+                "value": "Heather Terrace along the east side"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Far South Peak"
+              },
+              {
+                "key": "landmark",
+                "locator": null,
+                "value": "Adam and Eve"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Royal Commission on the Ancient and Historical Monuments of Wales / Coflein",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "No compatible route-geometry reuse licence identified for this record.",
+            "source_key": "coflein-tryfan",
+            "title": "Tryfan, Mountain — NPRN 408980",
+            "url": "https://coflein.gov.uk/en/site/408980",
+            "version": "1"
+          },
+          {
+            "factual_anchors": [
+              {
+                "key": "route_name",
+                "locator": null,
+                "value": "Tryfan Heather Terrace Scramble"
+              },
+              {
+                "key": "distance_km",
+                "locator": null,
+                "value": "6.7"
+              },
+              {
+                "key": "ascent_m",
+                "locator": null,
+                "value": "710"
+              },
+              {
+                "key": "gpx_available",
+                "locator": null,
+                "value": "true"
+              }
+            ],
+            "geometry_reuse_allowed": false,
+            "publisher": "Mud and Routes",
+            "retrieved_at": "2026-08-24T00:00:00Z",
+            "rights_classification": "factual_identity_only",
+            "rights_statement": "A GPX is offered and the map attributes Crown copyright/OS data, but no compatible geometry reuse licence was identified.",
+            "source_key": "mud-and-routes-heather-terrace",
+            "title": "Tryfan Heather Terrace Scramble",
+            "url": "https://www.mudandroutes.com/routes/tryfan-via-the-heather-terrace/",
+            "version": "1"
+          }
+        ],
+        "route_definition": {
+          "definition_key": "tryfan-heather-terrace-definition",
+          "description": "Evidence identifies Heather Terrace on Tryfan's east side; proprietary map and GPX geometry are excluded.",
+          "evidence_source_keys": [
+            "coflein-tryfan",
+            "mud-and-routes-heather-terrace"
+          ],
+          "factual_anchors": [
+            {
+              "key": "course",
+              "locator": null,
+              "value": "terrace along the east side of Tryfan"
+            },
+            {
+              "key": "route_name",
+              "locator": null,
+              "value": "Heather Terrace"
+            },
+            {
+              "key": "published_distance_km",
+              "locator": "Mud and Routes summary",
+              "value": "6.7"
+            },
+            {
+              "key": "published_ascent_m",
+              "locator": "Mud and Routes summary",
+              "value": "710"
+            },
+            {
+              "key": "geometry_policy",
+              "locator": null,
+              "value": "published map and GPX are not reused without an explicit compatible licence"
+            }
+          ],
+          "route_identity_key": "tryfan-heather-terrace",
+          "route_identity_version": "1",
+          "status": "needs_review",
+          "version": "1"
+        },
+        "route_identity": {
+          "aliases": [
+            "Tryfan via Heather Terrace"
+          ],
+          "canonical_name": "Heather Terrace",
+          "identity_key": "tryfan-heather-terrace",
+          "mountain_key": "tryfan",
+          "status": "needs_review",
+          "version": "1"
+        }
+      },
+      "geometry": null,
+      "ordered_topology": null,
+      "requested_name": "Heather Terrace",
+      "resolution_method": "ordered_osm_member_topology",
+      "source_ids": [],
+      "source_name": null,
+      "status": "needs_review",
+      "tags": {},
+      "topology_acquisition": {
+        "evaluations": [
+          {
+            "acquisition_status": "unavailable",
+            "candidate_key": "heather-terrace-open-topology-search",
+            "diagnostics": [],
+            "evaluation_status": "needs_review",
+            "resolution_method": "topology_acquisition_dossier",
+            "source_ids": []
+          }
+        ],
+        "publication_blocked": true,
+        "route": {
+          "candidates": [
+            {
+              "candidate_key": "walking-britain-heather-terrace-gpx",
+              "geometry_reuse_allowed": false,
+              "ordered_osm_ways": [],
+              "reason": "The publisher's stated private-use-only terms are incompatible with route geometry reuse.",
+              "rights_classification": "non_reusable",
+              "rights_statement": "Copyright; private use only.",
+              "source_keys": [
+                "walking-britain-heather-terrace-gpx"
+              ],
+              "status": "rejected",
+              "version": "1"
+            },
+            {
+              "candidate_key": "mud-routes-heather-terrace-gpx",
+              "geometry_reuse_allowed": false,
+              "ordered_osm_ways": [],
+              "reason": "GPX and attributed commercial map rights are unclear and therefore block reuse.",
+              "rights_classification": "unclear",
+              "rights_statement": "No explicit compatible route-geometry reuse licence was found.",
+              "source_keys": [
+                "mud-routes-heather-terrace-gpx"
+              ],
+              "status": "rejected",
+              "version": "1"
+            },
+            {
+              "candidate_key": "heather-terrace-open-topology-search",
+              "geometry_reuse_allowed": true,
+              "ordered_osm_ways": [],
+              "reason": "No accepted complete source-node topology is available.",
+              "rights_classification": "reusable_geometry",
+              "rights_statement": "ODbL topology would be reusable, but no complete named topology exists in the source.",
+              "source_keys": [
+                "geofabrik-wales-pbf-2026-08-24"
+              ],
+              "status": "unavailable",
+              "version": "1"
+            }
+          ],
+          "canonical_name": "Heather Terrace",
+          "route_identity_key": "tryfan-heather-terrace",
+          "route_identity_version": "1",
+          "search_findings": [
+            "The hashed Wales PBF contains no route relation exactly named Heather Terrace.",
+            "No open-licensed complete Heather Terrace trace was found; available GPX/map rights are incompatible or unclear."
+          ],
+          "status": "needs_review"
+        },
+        "sources": [
+          {
+            "geometry_reuse_allowed": true,
+            "publisher": "Geofabrik / OpenStreetMap contributors",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "OpenStreetMap data is available under ODbL 1.0; attribution to OpenStreetMap contributors is required.",
+            "sha256": "1448648324adbb376947020e3108dc7d76adfbcb63afd4b22d288b288b8142f0",
+            "source_key": "geofabrik-wales-pbf-2026-08-24",
+            "title": "Wales OpenStreetMap PBF used for the Tryfan import",
+            "url": "https://download.geofabrik.de/europe/united-kingdom/wales-latest.osm.pbf",
+            "version": "1"
+          },
+          {
+            "geometry_reuse_allowed": false,
+            "publisher": "Mud and Routes",
+            "rights_classification": "unclear",
+            "rights_statement": "The page offers GPX and attributes Crown copyright/OS map data, but no compatible route-geometry reuse licence was identified.",
+            "sha256": null,
+            "source_key": "mud-routes-heather-terrace-gpx",
+            "title": "Tryfan Heather Terrace Scramble",
+            "url": "https://www.mudandroutes.com/routes/tryfan-via-the-heather-terrace/",
+            "version": "1"
+          },
+          {
+            "geometry_reuse_allowed": false,
+            "publisher": "Walking Britain",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Walking Britain states that its downloadable GPX files are copyright and for private use only.",
+            "sha256": null,
+            "source_key": "walking-britain-heather-terrace-gpx",
+            "title": "Tryfan Heather Terrace GPX download candidate",
+            "url": "https://www.walkingbritain.co.uk/walk-1215-gps",
+            "version": "1"
+          }
+        ]
+      },
+      "validation_results": [
+        {
+          "code": "geometry",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "nonempty",
+          "details": {},
+          "message": "Geometry is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "connectivity",
+          "details": {},
+          "message": "Connectivity cannot be evaluated",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "bounds",
+          "details": {},
+          "message": "Geometry or expected bounds are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "summit_reach",
+          "details": {},
+          "message": "Route or summit is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "plausible_length",
+          "details": {},
+          "message": "Route length is unavailable",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "elevation",
+          "details": {},
+          "message": "Elevation profile is absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "jumps",
+          "details": {},
+          "message": "Elevation samples are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "dem_coverage",
+          "details": {},
+          "message": "DEM coverage is unknown",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "source_ids",
+          "details": {},
+          "message": "Source IDs are absent",
+          "outcome": "indeterminate"
+        },
+        {
+          "code": "duplicates",
+          "details": {},
+          "message": "Route geometry is unavailable",
+          "outcome": "indeterminate"
+        }
+      ]
+    }
+  ],
+  "schema_version": "summitready_tryfan_manifest_v2",
+  "software_version": "0.1.0",
+  "sources": {
+    "acquisition_package_file": {
+      "local_path": "config/tryfan_topology_acquisition.json",
+      "sha256": "6b69d6c19ea97bb7ce2ff06b234460ec768f63b911d0fad24390a8a130c31e8b",
+      "size_bytes": 10501
+    },
+    "dem_tiles": [
+      {
+        "local_path": "data/raw/Copernicus_DSM_COG_10_N53_00_W004_00_DEM.tif",
+        "metadata": {
+          "bounds": [
+            -4.000208333333333,
+            53.00013888888889,
+            -3.000208333333333,
+            54.00013888888889
+          ],
+          "canonical_source_url": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N53_00_W004_00_DEM/Copernicus_DSM_COG_10_N53_00_W004_00_DEM.tif",
+          "crs": "EPSG:4326",
+          "dtype": "float32",
+          "height": 3600,
+          "nodata": null,
+          "planned_bounds_wgs84": [
+            -4.0,
+            53.0,
+            -3.0,
+            54.0
+          ],
+          "retrieval": {
+            "declared_source_url": "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/Copernicus_DSM_COG_10_N53_00_W004_00_DEM/Copernicus_DSM_COG_10_N53_00_W004_00_DEM.tif",
+            "licence": "Copernicus DEM Licence",
+            "provider": "Copernicus DEM GLO-30 via AWS Open Data",
+            "retrieved_at": "2026-08-24T17:36:56Z"
+          },
+          "tile_id": "Copernicus_DSM_COG_10_N53_00_W004_00_DEM",
+          "width": 2400
+        },
+        "sha256": "35cc8bf307e86d8ccc55d0c646181002cc5cc9dfbecd59aabcfddad765179f4c",
+        "size_bytes": 11375019,
+        "source_url": "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/Copernicus_DSM_COG_10_N53_00_W004_00_DEM/Copernicus_DSM_COG_10_N53_00_W004_00_DEM.tif"
+      }
+    ],
+    "evidence_package_file": {
+      "local_path": "config/tryfan_evidence.json",
+      "sha256": "8db625a9d64015f7d0bb20a90db59579b80f52a62d96ebb1dda4802d453bb2f1",
+      "size_bytes": 12172
+    },
+    "osm": {
+      "licence": "Open Database License 1.0",
+      "local_path": "data/raw/wales-latest.osm.pbf",
+      "metadata": {},
+      "provider": "Geofabrik GmbH / OpenStreetMap contributors",
+      "retrieved_at": "2026-08-24T17:36:56Z",
+      "sha256": "1448648324adbb376947020e3108dc7d76adfbcb63afd4b22d288b288b8142f0",
+      "size_bytes": 146515063,
+      "source_type": "osm_pbf",
+      "source_url": "https://download.geofabrik.de/europe/united-kingdom/wales-latest.osm.pbf"
+    }
+  },
+  "summit": {
+    "latitude": 53.1149311,
+    "longitude": -3.997578,
+    "name": "Tryfan",
+    "osm_id": 29580544,
+    "osm_type": "node",
+    "tags": {
+      "changeset": 0,
+      "communication:amateur_radio:sota": "GW/NW-006",
+      "communication:amateur_radio:sota:points": "8",
+      "ele": "917.5",
+      "image": "https://www.geograph.org.uk/photo/1326877",
+      "lat": 53.1149311,
+      "lon": -3.997578,
+      "name": "Tryfan",
+      "natural": "peak",
+      "source:ele": "G & J Surveys",
+      "source_ref": "NPE maps",
+      "timestamp": 1738708034,
+      "version": 12,
+      "visible": false,
+      "wikidata": "Q3405438",
+      "wikipedia": "en:Tryfan"
+    }
+  },
+  "summit_locator": {
+    "local_path": "data/raw/tryfan_nominatim.json",
+    "osm_id": 29580544,
+    "retrieved_at": "2026-08-24T17:36:56Z",
+    "selected_response": {
+      "boundingbox": [
+        "53.1148811",
+        "53.1149811",
+        "-3.9976280",
+        "-3.9975280"
+      ],
+      "category": "natural",
+      "display_name": "Tryfan, Conwy, Cymru / Wales, United Kingdom",
+      "lat": "53.1149311",
+      "lon": "-3.9975780",
+      "name": "Tryfan",
+      "osm_id": 29580544,
+      "osm_type": "node",
+      "place_id": 276279983,
+      "type": "peak"
+    },
+    "sha256": "228edf816fe9170c98146f882758d8763b0fe122a085cfd0c56d9a57d3375d71",
+    "size_bytes": 1732,
+    "source_url": "https://nominatim.openstreetmap.org/search?q=Tryfan%2C%20Wales&format=jsonv2&limit=5&extratags=1"
+  },
+  "topology_acquisition_package": {
+    "catalog_version": "tryfan_topology_acquisition_v1",
+    "mountain_key": "tryfan",
+    "retrieved_at": "2026-08-24T00:00:00Z",
+    "routes": [
+      {
+        "candidates": [
+          {
+            "candidate_key": "osm-north-ridge-three-fragments",
+            "geometry_reuse_allowed": true,
+            "ordered_osm_ways": [
+              {
+                "endpoint_node_ids": [
+                  30395677,
+                  388197068
+                ],
+                "ordered_node_ids": [
+                  30395677,
+                  30395678,
+                  30395679,
+                  30395682,
+                  30395685,
+                  30395687,
+                  388197068
+                ],
+                "source_direction": "forward",
+                "tag_assertions": {
+                  "name:en": "North Ridge"
+                },
+                "version": 4,
+                "way_id": 1136472277
+              },
+              {
+                "endpoint_node_ids": [
+                  30395756,
+                  30395793
+                ],
+                "ordered_node_ids": [
+                  30395756,
+                  30395757,
+                  388197025,
+                  388197024,
+                  30395758,
+                  10969815102,
+                  10969824432,
+                  388197023,
+                  10969815099,
+                  10969815101,
+                  10969815100,
+                  10969824431,
+                  10969824430,
+                  10969815098,
+                  30395765,
+                  10969824433,
+                  10969815095,
+                  10969815097,
+                  10969815096,
+                  10969824438,
+                  10969824437,
+                  30395769,
+                  30395770,
+                  388197022,
+                  388197021,
+                  10969815082,
+                  30395773,
+                  10969824439,
+                  30395774,
+                  30395775,
+                  30395776,
+                  10969824440,
+                  30395777,
+                  10995384575,
+                  10995384574,
+                  10995384573,
+                  30395778,
+                  30395779,
+                  10969824441,
+                  10969824442,
+                  30395780,
+                  388197020,
+                  30395781,
+                  30395782,
+                  388197019,
+                  30395785,
+                  2666033027,
+                  30395787,
+                  6752861536,
+                  30395788,
+                  6752083025,
+                  30395789,
+                  6752083026,
+                  30395790,
+                  6752083024,
+                  30395791,
+                  30395792,
+                  30395793
+                ],
+                "source_direction": "forward",
+                "tag_assertions": {
+                  "alt_name": "North Ridge"
+                },
+                "version": 9,
+                "way_id": 1111458062
+              },
+              {
+                "endpoint_node_ids": [
+                  30395793,
+                  30395798
+                ],
+                "ordered_node_ids": [
+                  30395793,
+                  10969824443,
+                  30395794,
+                  30395795,
+                  30395796,
+                  30395797,
+                  30395798
+                ],
+                "source_direction": "forward",
+                "tag_assertions": {
+                  "alt_name": "North Ridge"
+                },
+                "version": 9,
+                "way_id": 114871121
+              }
+            ],
+            "reason": "Missing source-node chain: way 1136472277 ends at node 388197068 while the next ordered fragment way 1111458062 starts at node 30395756. No unnamed way, routing, snapping, or coordinate-proximity gap fill is permitted.",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "ODbL topology is reusable with OpenStreetMap attribution, but incomplete topology is not publishable.",
+            "source_keys": [
+              "geofabrik-wales-pbf-2026-08-24"
+            ],
+            "status": "partial",
+            "version": "1"
+          },
+          {
+            "candidate_key": "walking-britain-north-ridge-gpx",
+            "geometry_reuse_allowed": false,
+            "ordered_osm_ways": [],
+            "reason": "The publisher's stated private-use-only terms are incompatible with route geometry reuse.",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Copyright; private use only.",
+            "source_keys": [
+              "walking-britain-north-ridge-gpx"
+            ],
+            "status": "rejected",
+            "version": "1"
+          },
+          {
+            "candidate_key": "ramblers-north-ridge-gpx",
+            "geometry_reuse_allowed": false,
+            "ordered_osm_ways": [],
+            "reason": "Unclear GPX and map reuse rights block acquisition.",
+            "rights_classification": "unclear",
+            "rights_statement": "No explicit compatible geometry licence was found.",
+            "source_keys": [
+              "ramblers-north-ridge-gpx"
+            ],
+            "status": "rejected",
+            "version": "1"
+          }
+        ],
+        "canonical_name": "Tryfan North Ridge",
+        "route_identity_key": "tryfan-north-ridge",
+        "route_identity_version": "1",
+        "search_findings": [
+          "The hashed Wales PBF contains no route relation exactly named Tryfan North Ridge.",
+          "Three ways assert North Ridge through name:en or alt_name, but the lower way and upper pair do not share endpoint source node IDs."
+        ],
+        "status": "needs_review"
+      },
+      {
+        "candidates": [
+          {
+            "candidate_key": "cicerone-south-ridge-guide-topology",
+            "geometry_reuse_allowed": false,
+            "ordered_osm_ways": [],
+            "reason": "The commercial guide is factual identity evidence only and cannot supply reusable topology.",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Commercial guide content is not licensed for route-geometry reuse.",
+            "source_keys": [
+              "cicerone-south-ridge-guide"
+            ],
+            "status": "rejected",
+            "version": "1"
+          },
+          {
+            "candidate_key": "south-ridge-open-topology-search",
+            "geometry_reuse_allowed": true,
+            "ordered_osm_ways": [],
+            "reason": "No accepted or partial exact source topology is available.",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "ODbL topology would be reusable, but no complete named topology exists in the source.",
+            "source_keys": [
+              "geofabrik-wales-pbf-2026-08-24"
+            ],
+            "status": "unavailable",
+            "version": "1"
+          }
+        ],
+        "canonical_name": "Tryfan South Ridge",
+        "route_identity_key": "tryfan-south-ridge",
+        "route_identity_version": "1",
+        "search_findings": [
+          "The hashed Wales PBF contains no route relation exactly named Tryfan South Ridge.",
+          "No open-licensed complete South Ridge source-node topology or trace was found; commercial guide and map rights are incompatible or unclear."
+        ],
+        "status": "needs_review"
+      },
+      {
+        "candidates": [
+          {
+            "candidate_key": "walking-britain-heather-terrace-gpx",
+            "geometry_reuse_allowed": false,
+            "ordered_osm_ways": [],
+            "reason": "The publisher's stated private-use-only terms are incompatible with route geometry reuse.",
+            "rights_classification": "non_reusable",
+            "rights_statement": "Copyright; private use only.",
+            "source_keys": [
+              "walking-britain-heather-terrace-gpx"
+            ],
+            "status": "rejected",
+            "version": "1"
+          },
+          {
+            "candidate_key": "mud-routes-heather-terrace-gpx",
+            "geometry_reuse_allowed": false,
+            "ordered_osm_ways": [],
+            "reason": "GPX and attributed commercial map rights are unclear and therefore block reuse.",
+            "rights_classification": "unclear",
+            "rights_statement": "No explicit compatible route-geometry reuse licence was found.",
+            "source_keys": [
+              "mud-routes-heather-terrace-gpx"
+            ],
+            "status": "rejected",
+            "version": "1"
+          },
+          {
+            "candidate_key": "heather-terrace-open-topology-search",
+            "geometry_reuse_allowed": true,
+            "ordered_osm_ways": [],
+            "reason": "No accepted complete source-node topology is available.",
+            "rights_classification": "reusable_geometry",
+            "rights_statement": "ODbL topology would be reusable, but no complete named topology exists in the source.",
+            "source_keys": [
+              "geofabrik-wales-pbf-2026-08-24"
+            ],
+            "status": "unavailable",
+            "version": "1"
+          }
+        ],
+        "canonical_name": "Heather Terrace",
+        "route_identity_key": "tryfan-heather-terrace",
+        "route_identity_version": "1",
+        "search_findings": [
+          "The hashed Wales PBF contains no route relation exactly named Heather Terrace.",
+          "No open-licensed complete Heather Terrace trace was found; available GPX/map rights are incompatible or unclear."
+        ],
+        "status": "needs_review"
+      }
+    ],
+    "sources": [
+      {
+        "geometry_reuse_allowed": true,
+        "publisher": "Geofabrik / OpenStreetMap contributors",
+        "rights_classification": "reusable_geometry",
+        "rights_statement": "OpenStreetMap data is available under ODbL 1.0; attribution to OpenStreetMap contributors is required.",
+        "sha256": "1448648324adbb376947020e3108dc7d76adfbcb63afd4b22d288b288b8142f0",
+        "source_key": "geofabrik-wales-pbf-2026-08-24",
+        "title": "Wales OpenStreetMap PBF used for the Tryfan import",
+        "url": "https://download.geofabrik.de/europe/united-kingdom/wales-latest.osm.pbf",
+        "version": "1"
+      },
+      {
+        "geometry_reuse_allowed": false,
+        "publisher": "Walking Britain",
+        "rights_classification": "non_reusable",
+        "rights_statement": "Walking Britain states that its downloadable GPX files are copyright and for private use only.",
+        "sha256": null,
+        "source_key": "walking-britain-north-ridge-gpx",
+        "title": "Tryfan North Ridge GPX download candidate",
+        "url": "https://www.walkingbritain.co.uk/walk-3001-gps",
+        "version": "1"
+      },
+      {
+        "geometry_reuse_allowed": false,
+        "publisher": "Ramblers",
+        "rights_classification": "unclear",
+        "rights_statement": "A reusable geometry licence for the route GPX or map was not identified.",
+        "sha256": null,
+        "source_key": "ramblers-north-ridge-gpx",
+        "title": "Classic Tryfan North Ridge",
+        "url": "https://www.ramblers.org.uk/go-walking/routes/classic-tryfan-north-ridge",
+        "version": "1"
+      },
+      {
+        "geometry_reuse_allowed": false,
+        "publisher": "Mud and Routes",
+        "rights_classification": "unclear",
+        "rights_statement": "The page offers GPX and attributes Crown copyright/OS map data, but no compatible route-geometry reuse licence was identified.",
+        "sha256": null,
+        "source_key": "mud-routes-heather-terrace-gpx",
+        "title": "Tryfan Heather Terrace Scramble",
+        "url": "https://www.mudandroutes.com/routes/tryfan-via-the-heather-terrace/",
+        "version": "1"
+      },
+      {
+        "geometry_reuse_allowed": false,
+        "publisher": "Walking Britain",
+        "rights_classification": "non_reusable",
+        "rights_statement": "Walking Britain states that its downloadable GPX files are copyright and for private use only.",
+        "sha256": null,
+        "source_key": "walking-britain-heather-terrace-gpx",
+        "title": "Tryfan Heather Terrace GPX download candidate",
+        "url": "https://www.walkingbritain.co.uk/walk-1215-gps",
+        "version": "1"
+      },
+      {
+        "geometry_reuse_allowed": false,
+        "publisher": "Cicerone Press",
+        "rights_classification": "non_reusable",
+        "rights_statement": "Commercial guidebook content; no route-topology reuse licence was identified.",
+        "sha256": null,
+        "source_key": "cicerone-south-ridge-guide",
+        "title": "Scrambles in Snowdonia",
+        "url": "https://www.cicerone.co.uk/scrambles-in-snowdonia",
+        "version": "1"
+      }
+    ]
+  },
+  "validation_policy": {
+    "elevation": {
+      "calculation_version": "summitready_elevation_v1",
+      "max_nodata_fraction": 0.0,
+      "median_window": 5,
+      "sample_spacing_m": 20.0,
+      "vertical_deadband_m": 3.0
+    },
+    "extraction": {
+      "bbox_padding_degrees": 0.055
+    },
+    "validation": {
+      "duplicate_hausdorff_tolerance_m": 20.0,
+      "max_elevation_m": 3000.0,
+      "max_route_length_m": 50000.0,
+      "max_segment_jump_m": 250.0,
+      "min_elevation_m": -100.0,
+      "min_route_length_m": 100.0,
+      "summit_reach_tolerance_m": 75.0
+    },
+    "version": "summitready_validation_v1"
+  },
+  "validation_version": "summitready_validation_v1"
+}

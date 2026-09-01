@@ -1,0 +1,552 @@
+{
+  "package": {
+    "package_sha256": "a33d20710f783e6ac68868e94b3db0b53a2c5ba0cc1265f20136e4235425f700",
+    "import_csv_sha256": "92c96cab187a33c445e56715b78071c80dc5452cb9749a1dd721facdd1c81e36",
+    "original_source_sha256": "d27bc69dbb6d30a6f171ef277408831fe8763fc9043422f4e375e63f4cc190ea",
+    "record_count": 21576,
+    "version": "v18.5"
+  },
+  "import": {
+    "source_records_seen": 21576,
+    "source_records_inserted": 0,
+    "source_records_unchanged": 21576,
+    "mountains_inserted": 0,
+    "mountains_updated": 0,
+    "mountains_unchanged": 21576,
+    "classifications_inserted": 0,
+    "classifications_unchanged": 33369,
+    "failed": 0
+  },
+  "validation": {
+    "ready": true,
+    "errors": [],
+    "migration_revision": "0003_dobih_hill_catalogue",
+    "counts": {
+      "source_records": 21576,
+      "unique_source_ids": 21576,
+      "matched_mountains": 21576,
+      "unique_canonical_keys": 21576,
+      "missing_names": 0,
+      "missing_coordinates": 0,
+      "missing_elevation": 0,
+      "missing_prominence": 0,
+      "invalid_spatial_records": 0
+    },
+    "country_counts": {
+      "Channel Islands": 22,
+      "England": 4745,
+      "England/Scotland": 15,
+      "Ireland": 1664,
+      "Isle of Man": 54,
+      "Scotland": 12422,
+      "Wales": 2654
+    },
+    "status_counts": [
+      {
+        "final_verification_status": "needs_review",
+        "qa_status": "review",
+        "record_count": 1
+      },
+      {
+        "final_verification_status": "trusted_source",
+        "qa_status": "info",
+        "record_count": 3730
+      },
+      {
+        "final_verification_status": "trusted_source",
+        "qa_status": "pass",
+        "record_count": 17845
+      }
+    ],
+    "classification_counts": {
+      "0": 2179,
+      "1": 3471,
+      "2": 3046,
+      "3": 2419,
+      "4": 2391,
+      "5": 1530,
+      "A": 409,
+      "B": 541,
+      "Bin": 1,
+      "C": 222,
+      "CT": 1,
+      "CoA": 109,
+      "CoA=": 1,
+      "CoH": 112,
+      "CoH=": 1,
+      "CoL": 32,
+      "CoL=": 2,
+      "CoU": 212,
+      "CoU=": 6,
+      "D": 89,
+      "DDew": 247,
+      "DT": 52,
+      "Dew": 425,
+      "Dil": 212,
+      "E": 95,
+      "F": 34,
+      "Fel": 230,
+      "G": 231,
+      "HF": 713,
+      "HHB": 1035,
+      "Hew": 523,
+      "Hu": 1808,
+      "Hu=": 5,
+      "M": 282,
+      "MT": 226,
+      "Ma": 2007,
+      "Ma=": 1,
+      "N": 442,
+      "O": 54,
+      "SIB": 858,
+      "Sim": 2755,
+      "Sy": 670,
+      "Un": 642,
+      "VL": 275,
+      "W": 214,
+      "WO": 116,
+      "s4": 90,
+      "s5": 623,
+      "sHu": 673,
+      "sMa": 109,
+      "sSim": 739,
+      "xC": 21,
+      "xDT": 30,
+      "xG": 3,
+      "xMT": 95,
+      "xN": 60
+    },
+    "provenance": {
+      "source_bundle_count": 1,
+      "import_csv_sha256": "92c96cab187a33c445e56715b78071c80dc5452cb9749a1dd721facdd1c81e36",
+      "provider": "Database of British and Irish Hills (DoBIH)",
+      "licence": "CC BY 4.0",
+      "original_source_sha256": "d27bc69dbb6d30a6f171ef277408831fe8763fc9043422f4e375e63f4cc190ea",
+      "original_source_hash_count": 1
+    },
+    "special_records": [
+      {
+        "dobih_id": "15584",
+        "name": "Grassholm Island",
+        "elevation_m": 42.0,
+        "prominence_m": 42.0,
+        "latitude": 51.73027,
+        "longitude": -5.47888,
+        "final_verification_status": "needs_review",
+        "qa_status": "review",
+        "qa_flags": [
+          "known_wales_coordinate_review"
+        ],
+        "needs_review_reason": "Wales QA: source latitude/longitude is ~91 m from its own OS grid-reference-derived position; preserve source values pending targeted review."
+      },
+      {
+        "dobih_id": "1965",
+        "name": "Carnedd Llewelyn",
+        "elevation_m": 1061.8,
+        "prominence_m": 747.5,
+        "latitude": 53.160168,
+        "longitude": -3.970333,
+        "final_verification_status": "trusted_source",
+        "qa_status": "info",
+        "qa_flags": [
+          "known_wales_recent_revision_info"
+        ],
+        "needs_review_reason": "INFO: DoBIH v18.5 retains 1061.8 m after a 10-Dec-2025 revision; older external sources may still show 1064 m. Retain DoBIH value."
+      }
+    ],
+    "indexes": [
+      {
+        "tablename": "mountain_classifications",
+        "indexname": "ix_mountain_classifications_code"
+      },
+      {
+        "tablename": "mountain_classifications",
+        "indexname": "pk_mountain_classifications"
+      },
+      {
+        "tablename": "mountain_classifications",
+        "indexname": "uq_mountain_classifications_record_code"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "ix_mountain_source_records_mountain_release"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "ix_mountain_source_records_source_bundle_id"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "ix_mountain_source_records_source_feature"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "ix_mountain_source_records_version_status"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "pk_mountain_source_records"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "uq_mountain_source_records_bundle_feature"
+      },
+      {
+        "tablename": "mountain_source_records",
+        "indexname": "uq_mountain_source_records_dataset_version_feature"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "ix_mountains_country_region"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "ix_mountains_elevation_prominence"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "ix_mountains_geom_gist"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "ix_mountains_name"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "ix_mountains_status_name"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "pk_mountains"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "uq_mountains_canonical_source_key"
+      },
+      {
+        "tablename": "mountains",
+        "indexname": "uq_mountains_source_bundle_feature"
+      }
+    ]
+  },
+  "benchmarks": {
+    "exact_id_lookup": {
+      "canonical_key": "dobih:1965",
+      "median_ms": 0.401,
+      "result": {
+        "source_feature_id": "1965"
+      }
+    },
+    "name_search": {
+      "median_across_requested_names_ms": 5.284,
+      "lookups": [
+        {
+          "requested_name": "Tryfan",
+          "stored_name_query": "Tryfan",
+          "median_ms": 5.224,
+          "found": true,
+          "result": {
+            "dobih_id": "1977",
+            "name": "Tryfan",
+            "elevation_m": 917.5,
+            "prominence_m": 192.0,
+            "latitude": 53.114898,
+            "longitude": -3.997491,
+            "country": "Wales",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "F",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim"
+            ],
+            "exact_name_matches": 2
+          }
+        },
+        {
+          "requested_name": "Yr Wyddfa/Snowdon",
+          "stored_name_query": "Snowdon - Yr Wyddfa",
+          "median_ms": 5.154,
+          "found": true,
+          "result": {
+            "dobih_id": "1963",
+            "name": "Snowdon - Yr Wyddfa",
+            "elevation_m": 1085.0,
+            "prominence_m": 1039.0,
+            "latitude": 53.068496,
+            "longitude": -4.076231,
+            "country": "Wales",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "CoA",
+              "CoH",
+              "CoU",
+              "F",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Carnedd Llewelyn",
+          "stored_name_query": "Carnedd Llewelyn",
+          "median_ms": 5.174,
+          "found": true,
+          "result": {
+            "dobih_id": "1965",
+            "name": "Carnedd Llewelyn",
+            "elevation_m": 1061.8,
+            "prominence_m": 747.5,
+            "latitude": 53.160168,
+            "longitude": -3.970333,
+            "country": "Wales",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "CoU",
+              "F",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Pen y Fan",
+          "stored_name_query": "Pen y Fan",
+          "median_ms": 5.372,
+          "found": true,
+          "result": {
+            "dobih_id": "2226",
+            "name": "Pen y Fan",
+            "elevation_m": 886.0,
+            "prominence_m": 672.0,
+            "latitude": 51.884031,
+            "longitude": -3.436765,
+            "country": "Wales",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "CoA",
+              "CoH",
+              "CoU",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim"
+            ],
+            "exact_name_matches": 2
+          }
+        },
+        {
+          "requested_name": "Scafell Pike",
+          "stored_name_query": "Scafell Pike",
+          "median_ms": 5.603,
+          "found": true,
+          "result": {
+            "dobih_id": "2359",
+            "name": "Scafell Pike",
+            "elevation_m": 978.07,
+            "prominence_m": 912.2,
+            "latitude": 54.454263,
+            "longitude": -3.211682,
+            "country": "England",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "B",
+              "CoA",
+              "CoH",
+              "CoU",
+              "F",
+              "Fel",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim",
+              "Sy",
+              "W"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Helvellyn",
+          "stored_name_query": "Helvellyn",
+          "median_ms": 5.314,
+          "found": true,
+          "result": {
+            "dobih_id": "2515",
+            "name": "Helvellyn",
+            "elevation_m": 949.8,
+            "prominence_m": 713.4,
+            "latitude": 54.527001,
+            "longitude": -3.017514,
+            "country": "England",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "B",
+              "CoA",
+              "CoH",
+              "CoU",
+              "F",
+              "Fel",
+              "HHB",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim",
+              "Sy",
+              "W"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Ben Nevis",
+          "stored_name_query": "Ben Nevis [Beinn Nibheis]",
+          "median_ms": 5.36,
+          "found": true,
+          "result": {
+            "dobih_id": "278",
+            "name": "Ben Nevis [Beinn Nibheis]",
+            "elevation_m": 1344.53,
+            "prominence_m": 1344.5,
+            "latitude": 56.796891,
+            "longitude": -5.003675,
+            "country": "Scotland",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "CoA",
+              "CoH",
+              "CoU",
+              "HHB",
+              "M",
+              "Ma",
+              "SIB",
+              "Sim"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Kinder Scout",
+          "stored_name_query": "Kinder Scout",
+          "median_ms": 5.258,
+          "found": true,
+          "result": {
+            "dobih_id": "2807",
+            "name": "Kinder Scout",
+            "elevation_m": 636.3,
+            "prominence_m": 496.6,
+            "latitude": 53.384808,
+            "longitude": -1.87391,
+            "country": "England",
+            "source": "Database of British and Irish Hills (DoBIH)",
+            "source_version": "v18.5",
+            "supplied_status": "trusted_source",
+            "classifications": [
+              "CoA",
+              "CoH",
+              "CoU",
+              "E",
+              "Hew",
+              "Ma",
+              "N",
+              "Sim"
+            ],
+            "exact_name_matches": 1
+          }
+        },
+        {
+          "requested_name": "Musbury Tor",
+          "stored_name_query": "Musbury Tor",
+          "median_ms": 5.284,
+          "found": false,
+          "result": null
+        }
+      ]
+    },
+    "nearest_hill": {
+      "origin": {
+        "longitude": -3.9975,
+        "latitude": 53.1146
+      },
+      "median_ms": 0.867,
+      "results": [
+        {
+          "dobih_id": "1977",
+          "name": "Tryfan",
+          "elevation_m": 917.5,
+          "prominence_m": 192.0,
+          "latitude": 53.114898,
+          "longitude": -3.997491,
+          "country": "Wales",
+          "distance_m": 33.14157755
+        },
+        {
+          "dobih_id": "5625",
+          "name": "Tryfan Far South Peak",
+          "elevation_m": 830.8,
+          "prominence_m": 13.1,
+          "latitude": 53.112416,
+          "longitude": -3.998556,
+          "country": "Wales",
+          "distance_m": 252.87079007
+        },
+        {
+          "dobih_id": "1968",
+          "name": "Glyder Fach",
+          "elevation_m": 994.3,
+          "prominence_m": 74.5,
+          "latitude": 53.104815,
+          "longitude": -4.008407,
+          "country": "Wales",
+          "distance_m": 1309.14644848
+        },
+        {
+          "dobih_id": "3662",
+          "name": "Castell y Gwynt",
+          "elevation_m": 972.0,
+          "prominence_m": 16.0,
+          "latitude": 53.103818,
+          "longitude": -4.012035,
+          "country": "Wales",
+          "distance_m": 1542.29351121
+        },
+        {
+          "dobih_id": "1988",
+          "name": "Y Foel Goch",
+          "elevation_m": 807.0,
+          "prominence_m": 64.5,
+          "latitude": 53.10472,
+          "longitude": -3.976447,
+          "country": "Wales",
+          "distance_m": 1783.73196764
+        }
+      ]
+    }
+  }
+}

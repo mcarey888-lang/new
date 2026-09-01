@@ -1,0 +1,26 @@
+{
+  "files": {
+    "tryfan_candidate_path_network.geojson": {
+      "local_path": "data/processed/tryfan_candidate_path_network.geojson",
+      "sha256": "3b1f376c4a957f883b30baf4a8260b631a434a50f21649c15be04dbcdf7f7993",
+      "size_bytes": 3718808
+    },
+    "tryfan_manifest.json": {
+      "local_path": "data/processed/tryfan_manifest.json",
+      "sha256": "c4b0160bba2ae26a9365445a15fd46738f2d542029d2cc5e4a1a41a619a48237",
+      "size_bytes": 119934
+    },
+    "tryfan_review.html": {
+      "local_path": "data/processed/tryfan_review.html",
+      "sha256": "78046b779f2c45dbb86b05f76cdc527611eed5da38ee22b0315ac5292e028f26",
+      "size_bytes": 15221198
+    },
+    "tryfan_review.md": {
+      "local_path": "data/processed/tryfan_review.md",
+      "sha256": "98669905d400c06be9e6cb53c99bcfb9c0f5a5c9f3939ec8aba20fa1dc22af95",
+      "size_bytes": 4674
+    }
+  },
+  "index_sha256": "a10cc0a644251664fb4476cd89a9f72325b45b096c8fc8391c70580a26a9a575",
+  "manifest_sha256": "8d49f80ab81bf05db36b40bf3144a712377a6bb5bd37f59f82ebfb98b31e8da6"
+}
