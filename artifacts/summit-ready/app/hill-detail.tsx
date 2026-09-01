@@ -57,7 +57,7 @@ interface HillDetail {
   summitLng?: number;
 }
 
-import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapSearch, openMapsForHill } from "@/utils/openMaps";
+import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -109,6 +109,8 @@ export default function HillDetailScreen() {
           body: JSON.stringify({
             hillName: name,
             location: location ?? "",
+            summitLat: Number.isFinite(hillLat) ? hillLat : undefined,
+            summitLng: Number.isFinite(hillLng) ? hillLng : undefined,
             elevation: elevation ? parseFloat(elevation) : undefined,
             grade: grade ?? undefined,
             surface: surface ?? undefined,
@@ -125,7 +127,7 @@ export default function HillDetailScreen() {
     }
 
     fetchDetail();
-  }, [name, location]);
+  }, [name, location, lat, lng, elevation, grade, surface]);
 
   // Load any saved user correction for this hill's start point
   useEffect(() => {
@@ -170,6 +172,20 @@ export default function HillDetailScreen() {
 
   const gradeColor = DIFF_COLOR[grade ?? ""] ?? T.blue;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
+
+  function openStartPointDirections() {
+    if (
+      startPoint &&
+      Number.isFinite(startPoint.lat) &&
+      Number.isFinite(startPoint.lng)
+    ) {
+      openMapDirections(startPoint.lat, startPoint.lng, startPoint.name);
+    } else if (startPoint?.postcode) {
+      openDirectionsToPostcode(startPoint.postcode, startPoint.name);
+    } else {
+      openMapsForHill(hillLat, hillLng, name ?? "", true, location);
+    }
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -267,16 +283,7 @@ export default function HillDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.mapActionBtn}
-                onPress={() => {
-                  if (detail?.startPoint.postcode) {
-                    openDirectionsToPostcode(detail.startPoint.postcode, detail.startPoint.name);
-                  } else if (detail) {
-                    // Use geocoded (postcodes.io-validated) start point coords
-                    openMapDirections(detail.startPoint.lat, detail.startPoint.lng, detail.startPoint.name);
-                  } else {
-                    openMapSearch((name ?? "") + " car park");
-                  }
-                }}
+                onPress={openStartPointDirections}
                 activeOpacity={0.8}
               >
                 <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -373,13 +380,7 @@ export default function HillDetailScreen() {
                     <View style={styles.startActionsRow}>
                       <TouchableOpacity
                         style={[styles.startMapBtn, { borderColor: T.blue + "50", flex: 1 }]}
-                        onPress={() => {
-                          if (startPoint!.postcode) {
-                            openDirectionsToPostcode(startPoint!.postcode, startPoint!.name);
-                          } else {
-                            openMapDirections(startPoint!.lat, startPoint!.lng, startPoint!.name);
-                          }
-                        }}
+                        onPress={openStartPointDirections}
                         activeOpacity={0.8}
                       >
                         <Navigation size={13} color={T.blue} />

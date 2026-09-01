@@ -895,10 +895,10 @@ export default function BaseCampScreen() {
                 pathname: "/hill-detail",
                 params: {
                   name:           hill.name,
-                  location:       hill.name,
+                  location:       summitGoal.location ?? "",
                   lat:            hill.lat?.toString()       ?? "",
                   lng:            hill.lng?.toString()       ?? "",
-                  elevation:      (hill.totalElevation ?? hill.elevation ?? 0).toString(),
+                  elevation:      (hill.elevation ?? 0).toString(),
                   distance:       hill.distance.toString(),
                   grade:          hill.grade   ?? "",
                   surface:        hill.surface ?? "",

@@ -247,9 +247,29 @@ const KNOWN_GAINS: Record<string, number> = {
   "boulsworth-hill": 237, "great-hameldon": 210,
 };
 
+// Common names need a coordinate check before a UK-specific verified gain is
+// applied. This prevents a different Bull Hill elsewhere in the world inheriting
+// the Lancashire route's 316m training gain.
+const KNOWN_GAIN_ANCHORS: Record<string, { lat: number; lng: number; maxKm: number }> = {
+  "bull-hill": { lat: 53.6641933, lng: -2.3544012, maxKm: 8 },
+};
+
+function knownGainForHill(hill: Pick<Hill, "name" | "lat" | "lng">): number | undefined {
+  const slug = slugify(hill.name);
+  const known = KNOWN_GAINS[slug];
+  if (!known) return undefined;
+
+  const anchor = KNOWN_GAIN_ANCHORS[slug];
+  if (!anchor) return known;
+  if (!hill.lat || !hill.lng) return undefined;
+  return haversineKm(anchor.lat, anchor.lng, hill.lat, hill.lng) <= anchor.maxKm
+    ? known
+    : undefined;
+}
+
 /** Apply hard-coded verified gain if the hill is in the known table. */
 function applyKnownGain(hill: Hill): Hill {
-  const known = KNOWN_GAINS[slugify(hill.name)];
+  const known = knownGainForHill(hill);
   if (!known) return hill;
   const grade = gradeFromGain(known);
   return {
@@ -281,8 +301,28 @@ interface NominatimResult { lat: string; lon: string; class: string; type: strin
 /** Geocode a free-text location string to lat/lng using Nominatim (OSM). */
 export async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
   try {
-    const q = encodeURIComponent(location);
-    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3`;
+    const normalized = normalizeLocation(location.trim());
+    const isUkPostcode = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s[0-9][A-Z]{2}$/.test(normalized);
+
+    if (isUkPostcode) {
+      const q = encodeURIComponent(normalized);
+      const postcodeRes = await fetch(`https://api.postcodes.io/postcodes/${q}`, {
+        headers: { "User-Agent": GEO_UA },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (postcodeRes.ok) {
+        const postcodeData = await postcodeRes.json() as {
+          result?: { latitude?: number; longitude?: number };
+        };
+        const lat = postcodeData.result?.latitude;
+        const lng = postcodeData.result?.longitude;
+        if (typeof lat === "number" && typeof lng === "number") return { lat, lng };
+      }
+    }
+
+    const q = encodeURIComponent(normalized);
+    const country = isUkPostcode ? "&countrycodes=gb" : "";
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3${country}`;
     const res = await fetch(url, { headers: { "User-Agent": GEO_UA }, signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
     const data = await res.json() as NominatimResult[];
@@ -629,7 +669,7 @@ export async function osmPeaksToHills(
     if (gain < 30 || gain > 6_000) continue;
 
     // Known-gains table overrides computed gain for well-researched hills
-    const known = KNOWN_GAINS[slugify(peak.name)];
+    const known = knownGainForHill({ name: peak.name, lat: peak.lat, lng: peak.lng });
     if (known) gain = known;
 
     if (gain < minElevation) continue;
@@ -803,11 +843,27 @@ router.post("/hills-unified", async (req, res) => {
     const slug = slugify(name);
     const loc = location ? normalizeLocation(location.trim()) : "unknown location";
 
-    // 1. Check cache
+    // 1. Check cache. A global name-only row is safe only when its coordinates
+    // agree with the requested location; common names such as Bull Hill occur
+    // in several countries.
     const cached = await getFromCache(slug);
     if (cached) {
-      res.json({ hill: cached, fromCache: true });
-      return;
+      const corrected = applyKnownGain(cached);
+      if (!location) {
+        res.json({ hill: corrected, fromCache: true });
+        return;
+      }
+
+      const requestedCenter = await geocodeLocation(loc);
+      const cacheMatchesLocation =
+        requestedCenter &&
+        corrected.lat &&
+        corrected.lng &&
+        haversineKm(requestedCenter.lat, requestedCenter.lng, corrected.lat, corrected.lng) <= 100;
+      if (cacheMatchesLocation) {
+        res.json({ hill: corrected, fromCache: true });
+        return;
+      }
     }
 
     // 2. Ask AI

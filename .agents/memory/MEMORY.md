@@ -1,4 +1,5 @@
 - [Hills elevation pipeline](hills-elevation-pipeline.md) — Overpass-first + terrain sampling + KNOWN_GAINS override; AI fallback for alpine/sparse areas.
+- [Ambiguous hill identity](ambiguous-hill-identity.md) — Common hill names require location/coordinates across caches, detail generation, directions, and gain overrides.
 - [Topo elevation sanity check bounds](topo-elevation-sanity.md) — lower bound (< 0.25× AI) must exist alongside upper bound or misplaced coords produce tiny gains that slip through.
 - [Clerk Expo Auth](clerk-expo-auth.md) — Clerk Phase 1 implemented; key patterns and gotchas for future phases.
 - [Clerk v3 auth hooks — correct import is @clerk/expo](clerk-v3-legacy-hooks.md) — import from @clerk/expo (NOT /legacy); signIn.password() confirmed working on real device; full v3 API rename table inside.
