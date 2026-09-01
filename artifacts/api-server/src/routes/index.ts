@@ -23,12 +23,14 @@ import virtualExpeditionEngineRouter from "./virtual-expedition-engine";
 import { signatureChallengesRouter } from "./signature-challenges";
 import { artworkRouter } from "./artwork";
 import { atlasRouter } from "./atlas";
+import redditConversionsRouter from "./reddit-conversions";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
 // ── Public routes (no auth required) ─────────────────────────────────────────
 router.use(healthRouter);
+router.use(redditConversionsRouter);
 router.use(mountainRouter);
 router.use(mountainImageRouter);
 router.use(hillsRouter);

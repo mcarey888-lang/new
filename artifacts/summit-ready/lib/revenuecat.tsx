@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
-import { logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
+import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -81,9 +81,9 @@ function useSubscriptionContext() {
   const purchaseMutation = useMutation({
     mutationFn: async (packageToPurchase: any) => {
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-      return customerInfo;
+      return { customerInfo, packageToPurchase };
     },
-    onSuccess: (customerInfo) => {
+    onSuccess: ({ customerInfo, packageToPurchase }) => {
       queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
       const entitlement = customerInfo.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER];
       if (entitlement) {
@@ -92,6 +92,14 @@ function useSubscriptionContext() {
           void logTrialStarted({ plan });
         } else {
           void logSubscriptionStarted({ plan });
+          const product = packageToPurchase?.product;
+          void logPurchase({
+            plan,
+            value: typeof product?.price === "number" ? product.price : undefined,
+            currency: typeof product?.currencyCode === "string"
+              ? product.currencyCode.toUpperCase()
+              : undefined,
+          });
         }
       }
     },

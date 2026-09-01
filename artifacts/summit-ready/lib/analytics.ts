@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import analytics from "@react-native-firebase/analytics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Crypto from "expo-crypto";
 
 /**
  * Firebase Analytics wrapper — Android only.
@@ -16,6 +18,59 @@ import analytics from "@react-native-firebase/analytics";
  */
 
 type EventParams = Record<string, string | number | boolean | undefined>;
+
+type RedditEventName =
+  | "first_open"
+  | "readiness_test_completed"
+  | "readiness_score_viewed"
+  | "subscription_started"
+  | "purchase";
+
+const INSTALL_ID_KEY = "analytics_install_id_v1";
+const FIRST_OPEN_SENT_KEY = "reddit_first_open_sent_v1";
+
+async function getInstallId(): Promise<string> {
+  const existing = await AsyncStorage.getItem(INSTALL_ID_KEY);
+  if (existing) return existing;
+  const created = Crypto.randomUUID();
+  await AsyncStorage.setItem(INSTALL_ID_KEY, created);
+  return created;
+}
+
+/** Best-effort server relay. Reddit credentials are never present in this bundle. */
+async function mirrorToReddit(
+  eventName: RedditEventName,
+  metadata?: { plan?: string; value?: number; currency?: string },
+): Promise<boolean> {
+  if (!isAndroid()) return false;
+  try {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
+    const response = await fetch(`https://${domain}/api/reddit-conversions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventName,
+        eventAt: Date.now(),
+        conversionId: Crypto.randomUUID(),
+        installId: await getInstallId(),
+        ...metadata,
+      }),
+    });
+    return response.ok;
+  } catch (err) {
+    if (__DEV__) console.warn(`[analytics] Failed to mirror "${eventName}" to Reddit`, err);
+    return false;
+  }
+}
+
+/** Mirrors Firebase's automatic first_open once per app installation. Retries after failures. */
+export async function logFirstOpenForReddit(): Promise<void> {
+  if (!isAndroid()) return;
+  if ((await AsyncStorage.getItem(FIRST_OPEN_SENT_KEY)) === "1") return;
+  if (await mirrorToReddit("first_open")) {
+    await AsyncStorage.setItem(FIRST_OPEN_SENT_KEY, "1");
+  }
+}
 
 function isAndroid(): boolean {
   return Platform.OS === "android";
@@ -86,6 +141,7 @@ export function logReadinessTestCompleted(params: {
   readiness_score?: number;
   fitness_level?: string;
 }): Promise<void> {
+  void mirrorToReddit("readiness_test_completed");
   return logAnalyticsEvent("readiness_test_completed", params);
 }
 
@@ -161,6 +217,7 @@ export function logChallengeCompleted(params: { challenge_id: string }): Promise
 
 /** The readiness score was viewed on the dashboard. */
 export function logReadinessScoreViewed(params: { readiness_score: number }): Promise<void> {
+  void mirrorToReddit("readiness_score_viewed");
   return logAnalyticsEvent("readiness_score_viewed", params);
 }
 
@@ -174,12 +231,25 @@ export function logReadinessScoreImproved(params: {
 
 /** A free-trial subscription period was started. */
 export function logTrialStarted(params?: { plan?: string }): Promise<void> {
+  void mirrorToReddit("subscription_started", { plan: params?.plan });
   return logAnalyticsEvent("trial_started", params);
 }
 
 /** A paid subscription was started (non-trial). */
 export function logSubscriptionStarted(params?: { plan?: string }): Promise<void> {
+  void mirrorToReddit("subscription_started", { plan: params?.plan });
   return logAnalyticsEvent("subscription_started", params);
+}
+
+/** A confirmed, non-trial store purchase. Firebase remains the primary event store. */
+export function logPurchase(params: { plan?: string; value?: number; currency?: string }): Promise<void> {
+  void mirrorToReddit("purchase", params);
+  return logAnalyticsEvent("purchase", {
+    transaction_id: Crypto.randomUUID(),
+    item_id: params.plan,
+    value: params.value,
+    currency: params.currency,
+  });
 }
 
 /** A subscription was cancelled. Currently unused — see report. */
