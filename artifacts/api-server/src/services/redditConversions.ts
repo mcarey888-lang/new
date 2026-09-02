@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export const REDDIT_EVENT_NAMES = [
   "first_open",
   "readiness_test_completed",
@@ -41,10 +39,6 @@ type RedditEvent = {
   };
 };
 
-function hash(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
 export function buildRedditEvent(input: RedditConversionInput): RedditEvent {
   const isPurchase = input.eventName === "purchase";
   const hasRevenue =
@@ -81,8 +75,9 @@ export function buildRedditEvent(input: RedditConversionInput): RedditEvent {
         : {}),
     },
     user: {
-      // Hash the app-generated installation ID before it leaves our server.
-      uuid: hash(input.installId),
+      // Reddit validates this match key as an RFC-4122 UUID. This is a random,
+      // app-generated installation ID and contains no account or contact data.
+      uuid: input.installId,
       ...(input.ipAddress ? { ip_address: input.ipAddress } : {}),
       ...(input.userAgent ? { user_agent: input.userAgent } : {}),
     },
