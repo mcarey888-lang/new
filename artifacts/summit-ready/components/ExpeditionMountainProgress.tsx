@@ -30,6 +30,7 @@ interface Props {
   completedRoutes: string[];     // route names that are done
   days: number;                  // expedition day count
   highestPoint: number;          // summit ASL or target elevation
+  targetDistance?: number;
   onStagePress: (name: string) => void;
   onCtaPress: () => void;        // opens route picker or completion screen
   allDone: boolean;              // all routes completed
@@ -53,6 +54,11 @@ function fmtElev(m: number): string {
   return `${Math.round(m).toLocaleString()}m`;
 }
 
+function metricMatchPercent(actual: number, target: number): number | null {
+  if (actual <= 0 || target <= 0) return null;
+  return Math.round((Math.min(actual, target) / Math.max(actual, target)) * 100);
+}
+
 const VB_H = 270;
 const VB_W = 360;
 
@@ -65,6 +71,7 @@ export function ExpeditionMountainProgress({
   completedRoutes,
   days,
   highestPoint,
+  targetDistance,
   onStagePress,
   onCtaPress,
   allDone,
@@ -210,6 +217,30 @@ export function ExpeditionMountainProgress({
           const done   = status === "COMPLETE";
           const isNext = status === "NEXT UP" || status === "ACTIVE";
           const gain   = h.totalElevation ?? h.elevation ?? 0;
+          const dist   = (h.routeDistance ?? 0) * Math.max(1, h.repeats ?? 1);
+
+          // Each suggested stage represents an equal share of the expedition.
+          // This stays meaningful when a multi-day target has more local stages
+          // than mountain days.
+          const divisor = stages.length || days || 1;
+          const stageTargetElev = targetElevation / divisor;
+          const stageTargetDist = (targetDistance ?? 0) / divisor;
+          const targetSteepness = (targetDistance ?? 0) > 0
+            ? targetElevation / ((targetDistance ?? 0) * 1000)
+            : 0;
+          const stageSteepness = dist > 0 ? gain / (dist * 1000) : 0;
+
+          let matchPct: number | null = null;
+          const metricScores = [
+            metricMatchPercent(gain, stageTargetElev),
+            metricMatchPercent(dist, stageTargetDist),
+            metricMatchPercent(stageSteepness, targetSteepness),
+          ].filter((value): value is number => value !== null);
+          if (metricScores.length === 3) {
+            matchPct = Math.round(
+              metricScores.reduce((sum, value) => sum + value, 0) / metricScores.length,
+            );
+          }
 
           return (
             <TouchableOpacity
@@ -229,7 +260,13 @@ export function ExpeditionMountainProgress({
                 </Text>
               </View>
 
-              <Text style={s.stageCat}>STAGE {i + 1}</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <Text style={s.stageCat}>STAGE {i + 1}</Text>
+                <Text style={s.matchPct}>
+                  {matchPct !== null ? `${matchPct}% DNA` : "DNA n/a"}
+                </Text>
+              </View>
+
               <Text style={s.stageName} numberOfLines={2}>{h.name}</Text>
               <Text style={s.stageElev}>
                 ▲ {Math.round(gain).toLocaleString()}m gain
@@ -396,6 +433,12 @@ const s = StyleSheet.create({
     color:       T.blue,
     letterSpacing: 0.7,
     marginBottom:  4,
+  },
+  matchPct: {
+    fontSize:    9,
+    fontFamily:  "Inter_600SemiBold",
+    color:       T.green,
+    letterSpacing: 0.5,
   },
   stageName: {
     fontSize:    13,

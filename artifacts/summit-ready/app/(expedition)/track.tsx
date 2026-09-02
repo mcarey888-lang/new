@@ -74,21 +74,17 @@ function relativeDate(dateStr: string): string {
 export default function TrackScreen() {
   useScreenView("expedition_track");
   const insets = useSafeAreaInsets();
-  const { sessions, summitGoal } = useApp();
+  const { sessions, summitGoal, activeExpedition, activeExpeditionId } = useApp();
   const activeHike = useActiveHike();
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  const totalElev = useMemo(() => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0), [sessions]);
-  const totalDist = useMemo(() => sessions.reduce((s, sess) => s + (sess.distance ?? 0), 0), [sessions]);
-  const totalTime = useMemo(() => sessions.reduce((s, sess) => s + (sess.duration ?? 0), 0), [sessions]);
-  const avgPace   = useMemo(() => {
-    if (totalDist < 0.1 || totalTime === 0) return null;
-    const minPerKm = totalTime / totalDist;
-    const m = Math.floor(minPerKm);
-    const s = Math.round((minPerKm - m) * 60);
-    return `${m}:${s.toString().padStart(2, "0")}/km`;
-  }, [totalDist, totalTime]);
+  const activeProgress = activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
+  const totalElev = activeProgress?.elevationGained ?? 0;
+  const totalDist = activeProgress?.distanceCovered ?? 0;
+  const totalHikes = activeProgress?.hikesLogged ?? 0;
+  const targetElev = summitGoal?.targetMountain?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const progressPct = targetElev > 0 ? Math.min(100, Math.round((totalElev / targetElev) * 100)) : 0;
 
   const recentSessions = useMemo(
     () => [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
@@ -155,18 +151,14 @@ export default function TrackScreen() {
             </View>
             <View style={s.bigStatDiv} />
             <View style={s.bigStat}>
-              <Text style={[s.bigStatValue, { color: T.orange }]}>{avgPace ?? "--"}</Text>
-              <Text style={s.bigStatUnit}>avg pace</Text>
+              <Text style={[s.bigStatValue, { color: T.orange }]}>{totalHikes}</Text>
+              <Text style={s.bigStatUnit}>hikes</Text>
             </View>
           </View>
           <View style={s.subStatRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Clock size={12} color={T.textDim} />
-              <Text style={s.subStatText}>{fmtDuration(totalTime)} total</Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Footprints size={12} color={T.textDim} />
-              <Text style={s.subStatText}>{sessions.length} sessions</Text>
+              <Text style={s.subStatText}>Active expedition progress only</Text>
             </View>
           </View>
         </Animated.View>
@@ -178,18 +170,28 @@ export default function TrackScreen() {
               Next mission: <Text style={{ color: T.green }}>{nextHill.name}</Text> · {nextHill.elevation}m gain
             </Text>
           )}
+
           <TouchableOpacity
-            onPress={() => router.push("/hike-tracking" as any)}
+            onPress={() => {
+              if (!activeExpeditionId) return;
+              router.push({
+                pathname: "/hike-tracking",
+                params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+              });
+            }}
             style={s.startBtn}
             activeOpacity={0.88}
+            testID="free-hike-track-cta"
+            disabled={!activeExpeditionId}
           >
             <LinearGradient
               colors={[T.green, "#2AB85A"]}
               style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}
             />
             <Play size={20} color="#fff" fill="#fff" />
-            <Text style={s.startBtnText}>Start Activity</Text>
+            <Text style={s.startBtnText}>Free Hike (GPS Mode)</Text>
           </TouchableOpacity>
+
           <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
             <TouchableOpacity
               onPress={() => router.push("/log-hill" as any)}
@@ -269,7 +271,7 @@ export default function TrackScreen() {
         <View style={{ flexDirection: "row", gap: 8, marginHorizontal: 14 }}>
           {[
             { icon: <TrendingUp size={16} color={T.blue} />, val: `${totalElev.toLocaleString()}m`, lbl: "Elev Gain" },
-            { icon: <Clock size={16} color={T.orange} />, val: fmtDuration(totalTime), lbl: "Time on Trail" },
+            { icon: <Activity size={16} color={T.orange} />, val: `${progressPct}%`, lbl: "Goal Progress" },
           ].map(({ icon, val, lbl }) => (
             <View key={lbl} style={s.miniStatCard}>
               <LinearGradient colors={["rgba(255,255,255,0.04)", "transparent"]} style={StyleSheet.absoluteFill} />

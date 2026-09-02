@@ -134,6 +134,7 @@ export interface SummitGoal {
     elevationGained: number;  // metres accumulated across logged hikes
     distanceCovered: number;  // km accumulated across logged hikes
     hikesLogged: number;      // total count of logged hikes
+    creditedHikeIds?: string[]; // prevents a saved GPS hike being credited twice
   };
   /** Expedition mode: routes the user has explicitly confirmed completing. */
   completedRoutes?: string[];
@@ -165,6 +166,7 @@ export interface SavedExpedition {
     elevationGained: number;
     distanceCovered: number;
     hikesLogged: number;
+    creditedHikeIds?: string[];
   };
   /** User context needed when switching back to this expedition. */
   location: string;

@@ -59,6 +59,11 @@ function greetingTime() {
   return "Good evening";
 }
 
+function metricMatchPercent(actual: number, target: number): number | null {
+  if (actual <= 0 || target <= 0) return null;
+  return Math.round((Math.min(actual, target) / Math.max(actual, target)) * 100);
+}
+
 function diffColor(d: string | null) {
   if (d === "Easy")     return T.green;
   if (d === "Moderate") return T.blue;
@@ -96,6 +101,99 @@ function artworkUrl(storedPath: string | null | undefined): string | null {
   // Strip the trailing /api to avoid doubling the prefix.
   const base = API_BASE.replace(/\/api$/, "");
   return base + storedPath;
+}
+
+type CommunityStats = {
+  totalRoutes: number;
+  totalElev: number;
+  topRouteName: string;
+  topRouteElev: number;
+  mostRepeatedName: string | null;
+  mostRepeatedCount: number | null;
+};
+
+function CommunityActivityCard({
+  stats,
+  loading,
+}: {
+  stats: CommunityStats | null;
+  loading: boolean;
+}) {
+  return (
+    <View style={{ marginHorizontal: 16, marginTop: 16, marginBottom: 16 }}>
+      <View style={[s.sectionRow, { marginBottom: 10 }]}>
+        <Text style={s.sectionLabel}>COMMUNITY ACTIVITY</Text>
+        <TouchableOpacity onPress={() => router.push("/community-routes" as any)}>
+          <Text style={s.viewAllLink}>View all routes</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={[s.card, { padding: 16 }]}>
+        {loading ? (
+          <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 20 }}>
+            <ActivityIndicator size="small" color={T.green} />
+          </View>
+        ) : !stats ? (
+          <View style={{ alignItems: "center", paddingVertical: 20 }}>
+            <Mountain size={24} color={T.textDim} />
+            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted, marginTop: 8 }}>
+              No community routes shared yet
+            </Text>
+          </View>
+        ) : (
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1, gap: 12 }}>
+              <View>
+                <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: "#fff" }}>
+                  {stats.totalRoutes}
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted }}>
+                  Routes shared by the community
+                </Text>
+              </View>
+              <View>
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: T.green }}>
+                  {stats.totalElev.toLocaleString()}m
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted }}>
+                  Combined route gain
+                </Text>
+              </View>
+            </View>
+            <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.08)" }} />
+            <View style={{ flex: 1.2, gap: 12 }}>
+              <View>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue, marginBottom: 2 }}>
+                  TOP ELEVATION ROUTE
+                </Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }} numberOfLines={1}>
+                  {stats.topRouteName}
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>
+                  ▲ {stats.topRouteElev.toLocaleString()}m gain
+                </Text>
+              </View>
+              {stats.mostRepeatedName && (
+                <View>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.orange, marginBottom: 2 }}>
+                    MOST REPEATED
+                  </Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }} numberOfLines={1}>
+                    {stats.mostRepeatedName}
+                  </Text>
+                  {stats.mostRepeatedCount && (
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>
+                      {stats.mostRepeatedCount.toLocaleString()} contributions
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -161,6 +259,9 @@ export default function BaseCampScreen() {
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [routePickerOpen, setRoutePickerOpen] = useState(false);
   const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
+  const [communityStats, setCommunityStats] = useState<CommunityStats | null>(null);
+  const [communityLoading, setCommunityLoading] = useState(true);
+
   // Keep artwork + fallback errors separate so artwork failure silently
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
@@ -269,20 +370,47 @@ export default function BaseCampScreen() {
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const myWeeklyElev = useMemo(() => weeklyElevation(sessions), [sessions]);
-  const totalTrained = useMemo(() => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0), [sessions]);
-  const totalDistKm  = useMemo(() => sessions.reduce((s, sess) => s + (sess.distance ?? 0), 0), [sessions]);
-  const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
 
-  const leaderboard = useMemo(() => [
-    { name: "Alex H.",  elev: 12450, isUser: false },
-    { name: "You",      elev: myWeeklyElev, isUser: true },
-    { name: "Sarah M.", elev: 8310,  isUser: false },
-  ].sort((a, b) => b.elev - a.elev).map((e, i) => ({ ...e, rank: i + 1 })), [myWeeklyElev]);
+  // Use explicit activeExpedition progress for true expedition mode progress.
+  const activeProgress = activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
+  const totalTrained = activeProgress?.elevationGained ?? 0;
+
+  const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
 
   const target    = summitGoal?.targetMountain;
   const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const targetDist = target?.totalDistance ?? summitGoal?.distance ?? 0;
   const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
+
+  // ── DNA Match Breakdown ──────────────────────────────────────────────────────
+  const suggestedHills = summitGoal?.virtualHills ?? [];
+  const suggestedGain = suggestedHills.reduce(
+    (acc, h) => acc + (h.totalElevation ?? h.elevation * Math.max(1, h.repeats ?? 1)),
+    0,
+  );
+  const hasCompleteRouteDistance = suggestedHills.length > 0
+    && suggestedHills.every(h => (h.routeDistance ?? 0) > 0);
+  const suggestedDist = suggestedHills.reduce(
+    (acc, h) => acc + ((h.routeDistance ?? 0) * Math.max(1, h.repeats ?? 1)),
+    0,
+  );
+
+  const elevMatch = metricMatchPercent(suggestedGain, totalGoal);
+  const distMatch = hasCompleteRouteDistance
+    ? metricMatchPercent(suggestedDist, targetDist)
+    : null;
+
+  const targetSteepness = targetDist > 0 ? (totalGoal / (targetDist * 1000)) : 0; // m / m
+  const suggestedSteepness = hasCompleteRouteDistance && suggestedDist > 0
+    ? suggestedGain / (suggestedDist * 1000)
+    : 0;
+  const steepnessMatch = hasCompleteRouteDistance
+    ? metricMatchPercent(suggestedSteepness, targetSteepness)
+    : null;
+
+  const steepnessRatio = suggestedSteepness > 0 ? `1:${Math.round(1 / suggestedSteepness)}` : "—";
+  const targetSteepnessRatio = targetSteepness > 0 ? `1:${Math.round(1 / targetSteepness)}` : "—";
 
   // ── Auto-trigger cinematic at 90 % progress ──────────────────────────────
   const cinematicTriggeredRef = useRef(false);
@@ -400,6 +528,43 @@ export default function BaseCampScreen() {
       .then(d => { if (d) setFeatured(d.challenges ?? []); })
       .catch(() => {})
       .finally(() => setFeatLoading(false));
+  }, []);
+
+  // Fetch community stats
+  useEffect(() => {
+    setCommunityLoading(true);
+    fetch(`${API_BASE}/tracked-routes`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d || !d.routes) return;
+        const routes: any[] = d.routes;
+        if (routes.length === 0) return;
+
+        let totalElev = 0;
+        let topRoute: any = null;
+        let mostRepeated: any = null;
+
+        for (const r of routes) {
+          totalElev += (r.elevationGain || 0);
+          if (!topRoute || (r.elevationGain || 0) > (topRoute.elevationGain || 0)) {
+            topRoute = r;
+          }
+          if (r.contributionCount && (!mostRepeated || r.contributionCount > mostRepeated.contributionCount)) {
+            mostRepeated = r;
+          }
+        }
+
+        setCommunityStats({
+          totalRoutes: routes.length,
+          totalElev,
+          topRouteName: topRoute?.name || "Unknown Route",
+          topRouteElev: topRoute?.elevationGain || 0,
+          mostRepeatedName: mostRepeated?.name || null,
+          mostRepeatedCount: mostRepeated?.contributionCount || null,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setCommunityLoading(false));
   }, []);
 
   // Fetch approved artwork for the active expedition's challenge
@@ -532,62 +697,7 @@ export default function BaseCampScreen() {
             })}
           </ScrollView>
 
-          {/* ── Leaderboard + Community Highlight ─────────────────────────── */}
-          <View style={{ flexDirection: "row", gap: 10, marginHorizontal: 16, marginBottom: 16 }}>
-            {/* Leaderboard */}
-            <View style={[s.card, { flex: 1 }]}>
-              <View style={[s.sectionRow, { marginBottom: 10 }]}>
-                <Text style={s.sectionLabel}>THIS WEEK'S{"\n"}LEADERBOARD</Text>
-                <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
-              </View>
-              {leaderboard.map(e => (
-                <View key={e.name} style={[s.lbRow, e.isUser && s.lbRowYou]}>
-                  <Text style={[s.lbRank, e.isUser && { color: T.green }]}>{e.rank}</Text>
-                  <View style={[s.lbAvatar, e.isUser && { backgroundColor: "rgba(62,207,117,0.18)" }]}>
-                    <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: e.isUser ? T.green : T.blue }}>
-                      {e.name.slice(0, 1)}
-                    </Text>
-                  </View>
-                  <Text style={[s.lbName, e.isUser && { color: T.white, fontFamily: "Inter_700Bold" }]}>{e.name}</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Text style={[s.lbElev, e.isUser && { color: T.green }]}>
-                      {e.elev > 0 ? `${e.elev.toLocaleString()}m` : "–"}
-                    </Text>
-                    <Mountain size={9} color={e.isUser ? T.green : T.textDim} />
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            {/* Community Highlight */}
-            <View style={[s.card, { width: 142 }]}>
-              <Text style={[s.sectionLabel, { marginBottom: 10 }]}>COMMUNITY{"\n"}HIGHLIGHT</Text>
-              <View style={s.communityImg}>
-                <ExpoImage
-                  source={{ uri: `${API_BASE}/mountain-image?name=Helvellyn&width=300&height=220` }}
-                  style={[StyleSheet.absoluteFill, { borderRadius: 10 }]}
-                  contentFit="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.84)"]}
-                  locations={[0.28, 1]}
-                  style={[StyleSheet.absoluteFill, { borderRadius: 10 }]}
-                />
-                <View style={{ position: "absolute", bottom: 8, left: 8, right: 8 }}>
-                  <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 13 }}>
-                    Striding Edge Sunrise
-                  </Text>
-                  <Text style={{ fontSize: 8, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.52)", marginTop: 2 }}>
-                    Helvellyn, Lake District
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 }}>
-                    <Heart size={8} color={T.orange} fill={T.orange} />
-                    <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: T.orange }}>128</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
+          <CommunityActivityCard stats={communityStats} loading={communityLoading} />
 
           {/* ── Popular Regions ────────────────────────────────────────────── */}
           <View style={[s.sectionRow, { marginHorizontal: 16, marginBottom: 10 }]}>
@@ -869,6 +979,30 @@ export default function BaseCampScreen() {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.quickStartBtn, { marginTop: 8 }]}
+              activeOpacity={0.85}
+              testID="free-hike-base-camp-cta"
+              onPress={() => {
+                if (!activeExpeditionId) return;
+                router.push({
+                  pathname: "/hike-tracking" as any,
+                  params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+                });
+              }}
+              disabled={!activeExpeditionId}
+            >
+              <LinearGradient
+                colors={["#69CEF5", "#45B7E8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.quickStartGrad}
+              >
+                <MapPin size={14} color="#071428" />
+                <Text style={[s.quickStartText, { color: "#071428" }]}>Free Hike</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -877,6 +1011,7 @@ export default function BaseCampScreen() {
           {/* mountainImageRef placed on the inner mountain image view via ExpeditionMountainProgress */}
           <ExpeditionMountainProgress
             targetElevation={totalGoal}
+            targetDistance={targetDist}
             currentElevation={totalTrained}
             stages={summitGoal.virtualHills ?? []}
             completedRoutes={completedRoutes}
@@ -916,6 +1051,49 @@ export default function BaseCampScreen() {
             }}
           />
         </Animated.View>
+
+        {/* ── DNA Match Breakdown ──────────────────────────────────────────── */}
+        <View style={s.dnaCard}>
+          <View style={[s.sectionRow, { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }]}>
+            <Text style={s.sectionLabel}>MOUNTAIN DNA MATCH</Text>
+            {score > 0 && (
+              <View style={s.overallScoreBadge}>
+                <Text style={s.overallScoreText}>{score}% overall</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={s.dnaGrid}>
+            <View style={s.dnaCol}>
+              <Text style={s.dnaVal}>{elevMatch !== null ? `${elevMatch}%` : "—"}</Text>
+              <Text style={s.dnaLbl}>Elevation</Text>
+              <Text style={s.dnaSub}>{suggestedGain.toLocaleString()}m / {totalGoal.toLocaleString()}m</Text>
+            </View>
+            <View style={s.dnaDiv} />
+            <View style={s.dnaCol}>
+              <Text style={s.dnaVal}>{distMatch !== null ? `${distMatch}%` : "—"}</Text>
+              <Text style={s.dnaLbl}>Distance</Text>
+              <Text style={s.dnaSub}>
+                {hasCompleteRouteDistance
+                  ? `${suggestedDist.toFixed(1)}km / ${targetDist.toFixed(1)}km`
+                  : "Route data unavailable"}
+              </Text>
+            </View>
+            <View style={s.dnaDiv} />
+            <View style={s.dnaCol}>
+              <Text style={s.dnaVal}>{steepnessMatch !== null ? `${steepnessMatch}%` : "—"}</Text>
+              <Text style={s.dnaLbl}>Steepness</Text>
+              <Text style={s.dnaSub}>
+                {hasCompleteRouteDistance
+                  ? `${steepnessRatio} vs ${targetSteepnessRatio}`
+                  : "Route data unavailable"}
+              </Text>
+            </View>
+          </View>
+          <Text style={s.dnaNote}>
+            Stage DNA compares each local route with an equal share of the full mountain target.
+          </Text>
+        </View>
 
         {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(140).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
@@ -1023,6 +1201,8 @@ export default function BaseCampScreen() {
             )}
           </View>
         </Animated.View>
+
+        <CommunityActivityCard stats={communityStats} loading={communityLoading} />
 
         {/* Error */}
         {error && (
@@ -1191,6 +1371,68 @@ const s = StyleSheet.create({
   },
 
   // ── Active state ──
+  // ── DNA Match Breakdown & Free Hike CTA ──
+  dnaCard: {
+    marginHorizontal: 14,
+    marginTop: 14,
+    backgroundColor: "#080F20",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  overallScoreBadge: {
+    backgroundColor: "rgba(62,207,117,0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  overallScoreText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: T.green,
+  },
+  dnaGrid: {
+    flexDirection: "row",
+    paddingVertical: 14,
+  },
+  dnaCol: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  dnaDiv: {
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  dnaVal: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  dnaLbl: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: T.blue,
+    letterSpacing: 0.5,
+    marginTop: 4,
+    textTransform: "uppercase",
+  },
+  dnaSub: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.40)",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  dnaNote: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    fontSize: 10,
+    lineHeight: 14,
+    fontFamily: "Inter_400Regular",
+    color: T.textDim,
+    textAlign: "center",
+  },
   activeHero: { overflow: "hidden" },
   activeHeroContent: { paddingHorizontal: 16, paddingBottom: 20 },
   activeBadge: {

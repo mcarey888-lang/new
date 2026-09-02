@@ -199,7 +199,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
-          summitGoal, patchExpedition, activeExpeditionId, activeExpedition } = useApp();
+          summitGoal, patchExpedition, activeExpeditionId, activeExpedition, expeditions } = useApp();
 
   // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
   const params = useLocalSearchParams<{
@@ -211,13 +211,21 @@ export default function HikeTrackingScreen() {
     referenceRouteId?: string;
     referenceRouteName?: string;
     restore?: string;           // "1" when app was killed mid-hike and we're restoring
+    trackingMode?: string;
+    expeditionId?: string;
   }>();
+  const [expeditionTracking, setExpeditionTracking] = useState({
+    trackingMode: params.trackingMode ?? null,
+    expeditionId: params.expeditionId ?? null,
+  });
   const hillMeta = {
     sessionKey:          params.hillSessionKey    ?? null,
     hillName:            params.hillName          ?? null,
     targetReps:          params.targetReps          ? parseInt(params.targetReps, 10)          : null,
     estimatedGainPerRep: params.estimatedGainPerRep ? parseInt(params.estimatedGainPerRep, 10) : null,
     estimatedTotalGain:  params.estimatedTotalGain  ? parseInt(params.estimatedTotalGain, 10)  : null,
+    trackingMode:        expeditionTracking.trackingMode,
+    expeditionId:        expeditionTracking.expeditionId,
   };
 
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
@@ -256,6 +264,10 @@ export default function HikeTrackingScreen() {
   const webViewRef        = useRef<WebView>(null);
   const webMapContainerRef = useRef<View>(null);
   const iframeRef          = useRef<any>(null);
+  const saveInFlightRef    = useRef(false);
+  const routeIdRef         = useRef(
+    "tracked_" + Date.now().toString() + Math.random().toString(36).slice(2, 6),
+  );
 
   // ── Timestamp refs for background-safe timer ─────────────────────────────
   // Timer computed as Date.now() - trackStartMsRef - totalPausedMsRef
@@ -490,13 +502,16 @@ export default function HikeTrackingScreen() {
           targetReps:          hillMeta.targetReps,
           estimatedGainPerRep: hillMeta.estimatedGainPerRep,
           estimatedTotalGain:  hillMeta.estimatedTotalGain,
+          trackingMode:        hillMeta.trackingMode,
+          expeditionId:        hillMeta.expeditionId,
         },
+        routeId: routeIdRef.current,
         savedAt: Date.now(),
       };
       await AsyncStorage.setItem(ACTIVE_HIKE_KEY, JSON.stringify(session));
     } catch { /* ignore — non-critical */ }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
-      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain]);
+      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode, hillMeta.expeditionId]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -532,6 +547,13 @@ export default function HikeTrackingScreen() {
 
         // Restore route name (may differ from hillName for custom-named routes)
         if (session.routeName) setRouteName(session.routeName);
+        if (session.routeId) routeIdRef.current = session.routeId;
+        if (session.hillMeta?.trackingMode || session.hillMeta?.expeditionId) {
+          setExpeditionTracking(current => ({
+            trackingMode: session.hillMeta?.trackingMode ?? current.trackingMode,
+            expeditionId: session.hillMeta?.expeditionId ?? current.expeditionId,
+          }));
+        }
         setNameLocked(true);
 
         // Set tracking status (required before syncBgPoints will run)
@@ -820,13 +842,15 @@ export default function HikeTrackingScreen() {
 
   // ── Save completed hike ──────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
     setSaving(true);
     const name     = routeName.trim() || "Tracked Hike";
     const distKm   = parseFloat(distanceKm.toFixed(2));
     const elevGain = Math.round(elevGainM);
     const elevLoss = Math.round(elevLossM);
     const firstPt  = trackPoints.current[0];
-    const routeId  = "tracked_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
+    const routeId  = routeIdRef.current;
 
     try {
       // 1 ── Always log the completed hike to the hike history
@@ -940,18 +964,35 @@ export default function HikeTrackingScreen() {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // In expedition mode ask "Did you complete this route?" before leaving.
-      // In training mode navigate straight to hike history as before.
-      if (summitGoal?.mode === "virtual" && activeExpeditionId) {
+      // Free Hike: direct expedition credit without checking off stages
+      if (hillMeta.trackingMode === "freehike" && hillMeta.expeditionId) {
+        const exp = expeditions.find(e => e.id === hillMeta.expeditionId);
+        const prevProg = exp?.virtualHikeProgress ?? { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 };
+        const creditedHikeIds = prevProg.creditedHikeIds ?? [];
+        if (!creditedHikeIds.includes(routeId)) {
+          await patchExpedition(hillMeta.expeditionId, {
+            virtualHikeProgress: {
+              elevationGained: prevProg.elevationGained + elevGain,
+              distanceCovered: prevProg.distanceCovered + distKm,
+              hikesLogged: prevProg.hikesLogged + 1,
+              creditedHikeIds: [...creditedHikeIds.slice(-99), routeId],
+            },
+          });
+        }
+        router.replace("/(tabs)/hikes" as any);
+      } else if (summitGoal?.mode === "virtual" && activeExpeditionId) {
+        // In expedition mode ask "Did you complete this route?" before leaving.
         setShowExpeditionPrompt(true);
       } else {
-        router.replace("/(tabs)/hikes");
+        // In training mode navigate straight to hike history as before.
+        router.replace("/(tabs)/hikes" as any);
       }
     } catch {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-      addSession, logExploreHike, summitGoal, activeExpeditionId]);
+      addSession, logExploreHike, summitGoal, activeExpeditionId, hillMeta, expeditions, patchExpedition]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
@@ -1184,9 +1225,14 @@ export default function HikeTrackingScreen() {
           <ArrowLeft size={22} color={T.text} />
         </TouchableOpacity>
 
-        <Text style={s.headerTitle} numberOfLines={1}>
-          {nameLocked && routeName ? routeName : "Start Hiking"}
-        </Text>
+        <View style={s.headerTitleContainer}>
+          <Text style={s.headerTitle} numberOfLines={1}>
+            {nameLocked && routeName ? routeName : hillMeta.trackingMode === "freehike" ? "Start Free Hike" : "Start Hiking"}
+          </Text>
+          {hillMeta.trackingMode === "freehike" && nameLocked && (
+            <Text style={s.headerSubtitle}>Free Hike (GPS Mode)</Text>
+          )}
+        </View>
 
         <View style={[s.gpsPill, gpsReady && s.gpsPillReady]}>
           <Animated.View style={[s.gpsDot, isTracking && pulseStyle]} />
@@ -1490,9 +1536,18 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: 20, paddingBottom: 16, gap: 12,
   },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
   headerTitle: {
-    flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold",
+    fontSize: 17, fontFamily: "Inter_600SemiBold",
     color: T.text, textAlign: "center",
+  },
+  headerSubtitle: {
+    fontSize: 11, fontFamily: "Inter_500Medium",
+    color: T.green, textAlign: "center",
+    marginTop: 2,
   },
   backBtn: { padding: 4 },
 
