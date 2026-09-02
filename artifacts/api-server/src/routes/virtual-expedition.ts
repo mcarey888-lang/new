@@ -80,10 +80,49 @@ const TargetMountainProfileSchema = z.object({
 
 type TargetMountainProfile = z.infer<typeof TargetMountainProfileSchema>;
 
+// Route-specific figures that should not be left to an AI estimate. Mont Blanc's
+// standard Goûter route starts at Nid d'Aigle after the normal lift/tram approach;
+// counting from Les Houches incorrectly inflates the ascent to roughly 3,800m.
+const VERIFIED_MOUNTAIN_PROFILE_OVERRIDES: Record<
+  string,
+  Partial<Pick<
+    TargetMountainProfile,
+    | "summitElevation"
+    | "totalElevationGain"
+    | "totalDistance"
+    | "estimatedDays"
+    | "day1ElevationGain"
+    | "day2ElevationGain"
+    | "maxDailyElevation"
+  >>
+> = {
+  "mont-blanc": {
+    summitElevation: 4_806,
+    totalElevationGain: 2_400,
+    totalDistance: 21,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
+};
+
+function applyVerifiedMountainProfile(
+  requestedName: string,
+  profile: TargetMountainProfile,
+): TargetMountainProfile {
+  const key = requestedName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const override = VERIFIED_MOUNTAIN_PROFILE_OVERRIDES[key];
+  return override ? { ...profile, ...override } : profile;
+}
+
 // ── DB cache helpers ──────────────────────────────────────────────────────────
 
 const PROFILE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const PROFILE_SLUG_PREFIX  = "virt-mt-v2-"; // new prefix — v1 profiles lack routeDna
+const PROFILE_SLUG_PREFIX  = "virt-mt-v3-"; // v3 clarifies standard-route ascent semantics
 
 function mountainSlug(name: string): string {
   return PROFILE_SLUG_PREFIX + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -163,10 +202,11 @@ Note: altitude, glaciers and snow are informational context only — do NOT let 
 
 Field definitions:
 - summitElevation: metres ASL at summit
-- totalElevationGain: total vertical metres gained (entire round trip)
+- totalElevationGain: total uphill ascent on the standard route, measured from the conventional trailhead, lift station or tram terminus normally used by climbers. Do not measure from the nearest valley town, and do not substitute summit altitude.
 - totalDistance: km for the full round trip or traverse
 - estimatedDays: 1 for peaks done in a single day; 2 for multi-day or hut-based ascents
-- maxDailyElevation: highest gain on any single day
+- day1ElevationGain/day2ElevationGain: uphill ascent on each climbing day; together they should approximately equal totalElevationGain
+- maxDailyElevation: highest uphill gain on any single day
 - difficulty: Easy <600m; Moderate 600–1000m rough; Hard 1000–1500m or sustained; Alpine >1500m / glaciated / high altitude
 - notes: 1–2 sentences on what distinguishes this mountain's character
 
@@ -594,9 +634,13 @@ router.post("/virtual-expedition", async (req, res) => {
 
       const raw       = parseAIJson(content);
       const validated = TargetMountainProfileSchema.parse(raw);
-      targetProfile   = validated;
+      targetProfile   = applyVerifiedMountainProfile(targetMountain, validated);
       void saveProfileToCache(slug, targetProfile);
     }
+
+    // Keep verified route figures authoritative even if a cached profile was
+    // created before an override was added.
+    targetProfile = applyVerifiedMountainProfile(targetMountain, targetProfile);
 
     // ── Step 2: Local hill discovery (Overpass or AI fallback) ────────────────
     const areaCacheKey = `${userLocation.toLowerCase()}|${radiusKm}`;
