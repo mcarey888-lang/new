@@ -15,13 +15,15 @@ afterEach(() => {
 });
 
 describe("Reddit conversions", () => {
-  it("builds an APP custom event without exposing the raw install ID", () => {
+  it("builds an APP custom event with an RFC-4122 installation UUID", () => {
     const event = buildRedditEvent(base);
     expect(event.action_source).toBe("APP");
     expect(event.type).toEqual({ tracking_type: "CUSTOM", custom_event_name: "first_open" });
     expect(event.metadata.conversion_id).toBe(base.conversionId);
-    expect(event.user.uuid).toMatch(/^[a-f0-9]{64}$/);
-    expect(event.user.uuid).not.toBe(base.installId);
+    expect(event.user.uuid).toBe(base.installId);
+    expect(event.user.uuid).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
   });
 
   it("adds revenue metadata to PURCHASE events", () => {

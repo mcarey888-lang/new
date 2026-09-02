@@ -52,4 +52,4 @@ Remove `REDDIT_CAPI_TEST_ID` and `REDDIT_CAPI_TEST_KEY` from Replit Secrets afte
 
 Install a fresh Android build, open it, finish the readiness questionnaire, view the dashboard score, and complete a store test purchase. Then check **Events Manager → Diagnostics** for malformed payloads, missing match keys, stale timestamps, or authorization errors. Counts in Reddit should be compared with the corresponding Firebase events; Firebase remains the source of truth.
 
-The app retries `first_open` on a later launch if the API was unavailable. Other event forwarding is best-effort and never blocks the app or Firebase logging.
+The app retries `first_open` on a later launch if the API was unavailable. Other event forwarding is best-effort and never blocks the app or Firebase logging. The UUID match key is a random RFC-4122 app-installation identifier; it contains no account or contact data.
