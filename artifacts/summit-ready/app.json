@@ -58,6 +58,7 @@
     },
     "android": {
       "package": "uk.summitready.app",
+      "versionCode": 77,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
