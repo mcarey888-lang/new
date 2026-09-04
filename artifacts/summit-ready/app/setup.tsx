@@ -3,7 +3,7 @@ import { ArrowLeft, Zap, Search, AlertCircle, Check, Calendar, ChevronDown, Chec
 import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -108,12 +108,14 @@ export default function SetupScreen() {
   useScreenView("setup");
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
-  const { setSummitGoal, changeSummit, summitGoal } = useApp();
+  const { setSummitGoal, changeSummit, summitGoal, shellMode, setShellMode, isLoading } = useApp();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isChangeMode = mode === "change";
-  // Track whether we arrived from a Virtual questionnaire so we can set
-  // mode:"virtual" on the goal and route to the correct home screen.
-  const [virtualMode, setVirtualMode] = React.useState(mode === "virtual");
+  useEffect(() => {
+    if (mode === "virtual" && !isLoading && shellMode !== "expedition") {
+      void setShellMode("expedition");
+    }
+  }, [mode, isLoading, shellMode, setShellMode]);
 
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
@@ -176,14 +178,6 @@ export default function SetupScreen() {
     const _qKey = userId ? `summitready_questionnaire_data_${userId}` : "summitready_questionnaire_data";
     const _getQuizData = async () => {
       const v = await AsyncStorage.getItem(_qKey);
-      if (!v && userId) {
-        const flat = await AsyncStorage.getItem("summitready_questionnaire_data");
-        if (flat) {
-          await AsyncStorage.setItem(_qKey, flat);
-          await AsyncStorage.removeItem("summitready_questionnaire_data");
-          return flat;
-        }
-      }
       return v;
     };
     _getQuizData().then(raw => {
@@ -202,9 +196,7 @@ export default function SetupScreen() {
           rawElevation?: number;
           rawRunning?: number;
           rawUphillFreq?: number;
-          mode?: "expedition" | "virtual";
         };
-        if (data.mode === "virtual") setVirtualMode(true);
         if (data.mountainName) {
           skipLookupRef.current = true;
           setName(data.mountainName);
@@ -437,9 +429,6 @@ export default function SetupScreen() {
       fitnessBaseline,
       planStartMode,
       availableDays: availableDays.length > 0 ? availableDays : undefined,
-      // Preserve the mode that was set during the questionnaire flow.
-      // Virtual users keep mode:"virtual"; expedition users get undefined (treated as expedition everywhere).
-      ...(virtualMode ? { mode: "virtual" as const } : {}),
     };
     if (isChangeMode) {
       await changeSummit(newGoal);
@@ -448,12 +437,16 @@ export default function SetupScreen() {
     }
     void logMountainSelected({ mountain_name: newGoal.mountainName, difficulty: newGoal.difficulty });
     setSaving(false);
-    // Virtual users land on their own home screen; expedition users land on dashboard.
-    router.replace(virtualMode ? "/(tabs)/virtual" : "/(tabs)/dashboard");
+    router.replace("/(tabs)/dashboard");
   }
 
   const inp = (field: string) => [styles.input, errors[field] ? { borderColor: T.red + "80" } : null];
   const maxHillDays = Math.max(1, trainingDays - 1);
+
+  if (mode === "virtual") {
+    if (isLoading || shellMode !== "expedition") return null;
+    return <Redirect href="/(expedition)/mountains" />;
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -491,7 +484,7 @@ export default function SetupScreen() {
           )}
 
           {/* Fitness Assessment — slider quiz */}
-          {!isChangeMode && !virtualMode && <Section label="Your Fitness" icon={Zap}>
+          {!isChangeMode && <Section label="Your Fitness" icon={Zap}>
             <Text style={styles.sectionDesc}>
               Slide each to where you honestly sit — this shapes your entire plan.
             </Text>
@@ -721,7 +714,7 @@ export default function SetupScreen() {
             </View>
 
             {/* Time assessment banner — expedition only */}
-            {!virtualMode && timeAssessment && !errors.date && (() => {
+            {timeAssessment && !errors.date && (() => {
               const ta = timeAssessment;
               const cfg = {
                 good:        { icon: CheckCircle,   bg: T.greenDim,   border: T.green + "40",  text: T.green,   title: ta.message },
@@ -762,7 +755,7 @@ export default function SetupScreen() {
             })()}
 
             {/* Plan duration choice — expedition only */}
-            {!virtualMode && timeAssessment && !errors.date && timeAssessment.status === "good" && timeAssessment.weeksAvailable > timeAssessment.recommendedWeeks + 2 && (() => {
+            {timeAssessment && !errors.date && timeAssessment.status === "good" && timeAssessment.weeksAvailable > timeAssessment.recommendedWeeks + 2 && (() => {
               const ta = timeAssessment;
               const summitMs = new Date(date + "T12:00:00").getTime();
               const optimalStartMs = summitMs - ta.recommendedWeeks * 7 * 24 * 60 * 60 * 1000;
@@ -867,7 +860,7 @@ export default function SetupScreen() {
           </Section>
 
           {/* Equipment */}
-          {!virtualMode && <Section label="Available Equipment" icon={Wrench}>
+          <Section label="Available Equipment" icon={Wrench}>
             <Text style={styles.sectionDesc}>
               Select everything you have access to — your plan will be tailored around what's available.
             </Text>
@@ -897,9 +890,9 @@ export default function SetupScreen() {
                 );
               })}
             </View>
-          </Section>}
+          </Section>
 
-          {!virtualMode && <Section label="Training Schedule" icon={Calendar}>
+          <Section label="Training Schedule" icon={Calendar}>
             <Text style={styles.sectionDesc}>
               How many days per week can you commit to training? We'll build the plan around your availability.
             </Text>
@@ -999,7 +992,7 @@ export default function SetupScreen() {
                 <Text style={styles.fieldHint}>{availableDays.length} / {trainingDays} days selected.</Text>
               )}
             </View>
-          </Section>}
+          </Section>
 
           {/* Location + Hill Picker */}
           <Section label="Your Location" icon={Map}>

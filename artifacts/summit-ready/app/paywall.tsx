@@ -101,7 +101,7 @@ export default function PaywallScreen() {
     try {
       await purchase(selectedPkg);
       if (fromQuestionnaire) {
-        router.replace(quizMode === "virtual" ? { pathname: "/setup", params: { mode: "virtual" } } : "/setup");
+        router.replace("/setup");
       } else {
         router.back();
       }
@@ -122,7 +122,7 @@ export default function PaywallScreen() {
         setTimeout(() => {
           setRestoreSuccess(false);
           if (fromQuestionnaire) {
-            router.replace(quizMode === "virtual" ? { pathname: "/setup", params: { mode: "virtual" } } : "/setup");
+            router.replace("/setup");
           } else {
             router.back();
           }
@@ -152,7 +152,9 @@ export default function PaywallScreen() {
       >
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <TouchableOpacity
-            onPress={() => fromQuestionnaire ? router.replace("/(tabs)/dashboard") : router.back()}
+            onPress={() => fromQuestionnaire
+              ? router.replace("/setup")
+              : router.back()}
             style={styles.closeBtn}
             activeOpacity={0.7}
           >

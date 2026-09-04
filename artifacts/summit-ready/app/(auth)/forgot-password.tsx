@@ -88,7 +88,7 @@ export default function ForgotPasswordScreen() {
       }
       const { error: finalizeErr } = await withTimeout((signIn as any).finalize(), 20000) as any;
       if (!finalizeErr) {
-        router.replace("/(tabs)/dashboard" as any);
+        router.replace("/" as any);
       } else {
         setError("Password reset — please sign in with your new password.");
       }

@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import {
   Home, Calendar, User, Trophy, Mountain,
   Footprints,
@@ -20,7 +20,7 @@ export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
-  const { scoreStagnation, clearScoreStagnation } = useApp();
+  const { scoreStagnation, clearScoreStagnation, shellMode, isLoading } = useApp();
 
   // Show "why didn't my score improve?" popup whenever a session or hike
   // is logged and the readiness score stays the same or drops.
@@ -61,6 +61,9 @@ export default function TabLayout() {
       marginBottom: isWeb ? 0 : 2,
     },
   };
+
+  if (isLoading) return null;
+  if (shellMode !== "training") return <Redirect href="/(expedition)/base-camp" />;
 
   return (
     <>

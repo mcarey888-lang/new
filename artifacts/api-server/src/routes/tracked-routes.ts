@@ -77,7 +77,7 @@ function mergeCanonical(canonical: LatLon[], newTrack: LatLon[], existingContrib
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-router.post("/tracked-routes", async (req, res) => {
+router.post("/tracked-routes", requireAuth(), async (req, res) => {
   const parsed = submitSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid payload", issues: parsed.error.issues });
@@ -86,11 +86,15 @@ router.post("/tracked-routes", async (req, res) => {
 
   const d = parsed.data;
   const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
 
   try {
     await db.insert(trackedRoutes).values({
       id:            d.id,
-      createdBy:     userId ?? null,
+      createdBy:     userId,
       name:          d.name,
       location:      d.location,
       distanceKm:    d.distanceKm,
@@ -204,6 +208,7 @@ router.get("/tracked-routes/:id", async (req, res) => {
 });
 
 const contributeSchema = z.object({
+  contributionId: z.string().min(1).optional(),
   trackPoints:   z.array(trackPointSchema).min(2),
   distanceKm:    z.number().min(0),
   elevationGain: z.number().int().min(0),
@@ -211,9 +216,18 @@ const contributeSchema = z.object({
   durationSecs:  z.number().int().min(0),
 });
 
-router.post("/tracked-routes/:id/contribute", async (req, res) => {
-  const { id } = req.params;
+router.post("/tracked-routes/:id/contribute", requireAuth(), async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  if (!id) {
+    res.status(400).json({ error: "Missing route id" });
+    return;
+  }
   const parsed = contributeSchema.safeParse(req.body);
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid payload", issues: parsed.error.issues });
     return;
@@ -237,7 +251,20 @@ router.post("/tracked-routes/:id/contribute", async (req, res) => {
       const canonical = rows[0];
       const d = parsed.data;
 
-      const contribId = "contrib_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
+      const contribId = d.contributionId
+        ? `contrib_${id}_${d.contributionId}`
+        : "contrib_" + Date.now().toString() + Math.random().toString(36).slice(2, 6);
+      if (d.contributionId) {
+        const duplicate = await tx
+          .select({ id: routeContributions.id })
+          .from(routeContributions)
+          .where(eq(routeContributions.id, contribId))
+          .limit(1);
+        if (duplicate.length > 0) {
+          res.status(200).json({ ok: true, contributions: canonical.contributionCount, deduplicated: true });
+          return;
+        }
+      }
       await tx.insert(routeContributions).values({
         id:               contribId,
         canonicalRouteId: id,
@@ -277,7 +304,7 @@ router.post("/tracked-routes/:id/contribute", async (req, res) => {
 
 // DELETE requires auth; also verifies the caller owns the route.
 router.delete("/tracked-routes/:id", requireAuth(), async (req, res) => {
-  const { id } = req.params;
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!id) {
     res.status(400).json({ error: "Missing route id" });
     return;
@@ -301,7 +328,7 @@ router.delete("/tracked-routes/:id", requireAuth(), async (req, res) => {
     // Allow deletion only by the original creator.
     // Routes without a createdBy (legacy) may only be deleted by authenticated
     // users — we can't verify ownership but at least require a valid session.
-    if (route.createdBy !== null && route.createdBy !== userId) {
+    if (route.createdBy === null || route.createdBy !== userId) {
       res.status(403).json({ error: "You do not have permission to delete this route" });
       return;
     }

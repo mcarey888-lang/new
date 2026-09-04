@@ -5,7 +5,7 @@
  */
 
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import {
   Compass, Mountain, Footprints, Map, TrendingUp, User,
 } from "lucide-react-native";
@@ -14,6 +14,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
+import { useApp } from "@/context/AppContext";
 
 const ACCENT = T.blue;
 const DIM    = T.blueDim;
@@ -22,6 +23,7 @@ export default function ExpeditionLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
+  const { shellMode, isLoading } = useApp();
 
   const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
 
@@ -50,6 +52,9 @@ export default function ExpeditionLayout() {
       marginBottom: isWeb ? 0 : 2,
     },
   };
+
+  if (isLoading) return null;
+  if (shellMode !== "expedition") return <Redirect href="/(tabs)/dashboard" />;
 
   return (
     <>

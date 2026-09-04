@@ -44,13 +44,16 @@ export default function ExpeditionCompleteScreen() {
     activeExpedition,
     activeExpeditionId,
     sessions,
+    exploreHikes,
     completeExpedition,
   } = useApp();
+  const expeditionSnapshot = useRef(activeExpedition).current;
+  const expeditionIdSnapshot = useRef(activeExpeditionId).current;
 
   // ── Approved artwork for the hero image ──────────────────────────────────────
   const [heroArtwork, setHeroArtwork] = useState<string | null>(null);
   useEffect(() => {
-    const cid = activeExpedition?.challengeId;
+    const cid = expeditionSnapshot?.challengeId;
     if (!cid) return;
     fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
       .then(r => r.ok ? r.json() : null)
@@ -66,30 +69,58 @@ export default function ExpeditionCompleteScreen() {
   }, []);
 
   // ── Snapshot stats from the session log ──────────────────────────────────────
-  const totalElevationM  = Math.round(sessions.reduce((s, h) => s + (h.elevationGain ?? 0), 0));
-  const totalDistanceKm  = parseFloat(sessions.reduce((s, h) => s + (h.distance ?? 0), 0).toFixed(1));
-  const totalSessions    = sessions.length;
+  const linkedSessions = sessions.filter(item => item.expeditionId === expeditionIdSnapshot);
+  const linkedHikes = exploreHikes.filter(item => item.expeditionId === expeditionIdSnapshot);
+  const linkedActivities = [
+    ...linkedHikes.map(item => ({
+      key: item.activityId ?? `hike:${item.id}`,
+      elevationGain: item.elevationGain,
+      distance: item.distance,
+    })),
+    ...linkedSessions.map(item => ({
+      key: item.activityId ?? `session:${item.id}`,
+      elevationGain: item.elevationGain,
+      distance: item.distance,
+    })),
+  ].filter((item, index, all) => all.findIndex(candidate => candidate.key === item.key) === index);
+  const totalElevationM = Math.round(
+    linkedActivities.length > 0
+      ? linkedActivities.reduce((sum, item) => sum + item.elevationGain, 0)
+      : expeditionSnapshot?.virtualHikeProgress.elevationGained ?? 0,
+  );
+  const totalDistanceKm = parseFloat((linkedActivities.length > 0
+    ? linkedActivities.reduce((sum, item) => sum + item.distance, 0)
+    : expeditionSnapshot?.virtualHikeProgress.distanceCovered ?? 0
+  ).toFixed(1));
+  const totalSessions = linkedActivities.length > 0
+    ? linkedActivities.length
+    : expeditionSnapshot?.virtualHikeProgress.hikesLogged ?? 0;
 
-  const startedAt        = activeExpedition?.startedAt;
+  const startedAt        = expeditionSnapshot?.startedAt;
   const daysToComplete   = startedAt
     ? Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / (1000 * 60 * 60 * 24)))
     : 1;
 
-  const expeditionName   = activeExpedition?.challengeName ?? "Your Expedition";
-  const mountainName     = activeExpedition?.targetMountainName ?? expeditionName;
-  const routeCount       = activeExpedition?.virtualHills?.length
-                           ?? activeExpedition?.completedRoutes?.length ?? 0;
+  const expeditionName   = expeditionSnapshot?.challengeName ?? "Your Expedition";
+  const mountainName     = expeditionSnapshot?.targetMountainName ?? expeditionName;
+  const routeCount       = new Set(expeditionSnapshot?.completedRoutes ?? []).size;
 
   // ── Mark complete once (idempotent) ──────────────────────────────────────────
   const didComplete = useRef(false);
   useEffect(() => {
-    if (!didComplete.current && activeExpeditionId) {
+    if (!expeditionSnapshot || !expeditionIdSnapshot) {
+      router.replace("/(expedition)/base-camp" as any);
+      return;
+    }
+    if (!didComplete.current) {
       didComplete.current = true;
-      void completeExpedition(activeExpeditionId, {
+      void completeExpedition(expeditionIdSnapshot, {
         totalElevationM,
         totalDistanceKm,
         totalSessions,
         daysToComplete,
+      }).then(success => {
+        if (!success) router.replace("/(expedition)/base-camp" as any);
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,10 +203,10 @@ export default function ExpeditionCompleteScreen() {
         </Animated.View>
 
         {/* Completed routes list */}
-        {(activeExpedition?.completedRoutes?.length ?? 0) > 0 && (
+        {(expeditionSnapshot?.completedRoutes?.length ?? 0) > 0 && (
           <Animated.View entering={FadeInDown.duration(600).delay(700)} style={s.routesList}>
             <Text style={s.routesTitle}>Routes Conquered</Text>
-            {(activeExpedition!.completedRoutes ?? []).map((name) => (
+            {(expeditionSnapshot!.completedRoutes ?? []).map((name) => (
               <View key={name} style={s.routeRow}>
                 <View style={s.routeCheck}>
                   <Text style={s.routeCheckText}>✓</Text>

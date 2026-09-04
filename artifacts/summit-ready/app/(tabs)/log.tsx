@@ -29,6 +29,7 @@ import {
   HillSearchSection,
   AddSessionModal,
 } from "@/components/LogSessionModals";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 
 function SessionCard({ session, onDelete, onToggle, index }: {
   session: Session;
@@ -352,24 +353,26 @@ export default function LogScreen() {
   }
 
   const allItems = useMemo<LogItem[]>(() => {
-    const items: LogItem[] = [
-      ...sessions.map(s => ({ kind: "session" as const, data: s })),
-      ...exploreHikes.map(h => ({ kind: "hike" as const, data: h })),
-    ];
+    const items: LogItem[] = mergeActivityKinds(
+      sessions.map(s => ({ kind: "session" as const, data: s, id: s.id, activityId: s.activityId })),
+      exploreHikes.map(h => ({ kind: "hike" as const, data: h, id: h.id, activityId: h.activityId })),
+    );
     return items.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
   }, [sessions, exploreHikes]);
 
+  const uniqueActivities = useMemo(
+    () => mergeActivityKinds(sessions.filter(item => item.completed), exploreHikes),
+    [sessions, exploreHikes],
+  );
   const totalElev = useMemo(() =>
-    sessions.filter(s => s.completed).reduce((a, s) => a + s.elevationGain, 0) +
-    exploreHikes.reduce((a, h) => a + h.elevationGain, 0),
-  [sessions, exploreHikes]);
+    uniqueActivities.reduce((a, item) => a + item.elevationGain, 0),
+  [uniqueActivities]);
 
   const totalDist = useMemo(() =>
-    sessions.filter(s => s.completed).reduce((a, s) => a + s.distance, 0) +
-    exploreHikes.reduce((a, h) => a + h.distance, 0),
-  [sessions, exploreHikes]);
+    uniqueActivities.reduce((a, item) => a + item.distance, 0),
+  [uniqueActivities]);
 
-  const totalCount = sessions.filter(s => s.completed).length + exploreHikes.length;
+  const totalCount = uniqueActivities.length;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>

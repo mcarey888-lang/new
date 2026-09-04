@@ -61,7 +61,7 @@ import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHil
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode } =
+  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode, expeditionId } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -73,6 +73,7 @@ export default function HillDetailScreen() {
       surface?: string;
       emoji?: string;
       expeditionMode?: string;
+      expeditionId?: string;
     }>();
 
   const isExpeditionMode = expeditionMode === "true";
@@ -480,7 +481,16 @@ export default function HillDetailScreen() {
             style={styles.expeditionStartBtn}
             activeOpacity={0.85}
             onPress={() =>
-              router.push({ pathname: "/hike-tracking" as any, params: { hillName: name } })
+              router.push({
+                pathname: "/hike-tracking" as any,
+                params: {
+                  hillName: name,
+                  ...(isExpeditionMode ? {
+                    trackingMode: "expedition-route",
+                    expeditionId: expeditionId ?? "",
+                  } : {}),
+                },
+              })
             }
           >
             <LinearGradient

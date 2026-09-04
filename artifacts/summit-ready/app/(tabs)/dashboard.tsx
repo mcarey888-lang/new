@@ -26,7 +26,6 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { confirmModeSwitch } from "@/utils/modeSwitch";
 import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
@@ -444,7 +443,7 @@ function AlpineCard({
 export default function DashboardScreen() {
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, setSummitGoal } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -896,7 +895,7 @@ export default function DashboardScreen() {
         )}
 
         {/* Readiness Hero Card — Expedition mode */}
-        {(summitGoal.mode ?? "expedition") === "expedition" && (
+        {(
           <Animated.View entering={FadeInDown.delay(80).duration(500)}>
             <View style={styles.readinessCard}>
               <LinearGradient
@@ -965,78 +964,6 @@ export default function DashboardScreen() {
                   </View>
                 </View>
               </View>
-            </View>
-          </Animated.View>
-        )}
-
-        {/* Simulation Score Card — Virtual mode */}
-        {summitGoal.mode === "virtual" && (
-          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
-            <View style={styles.readinessCard}>
-              {(() => {
-                const simScore = summitGoal.simulationScore ?? 0;
-                const hasScore = !!summitGoal.simulationScore && !!summitGoal.targetMountain;
-                const simColor = simScore >= 80 ? T.green : simScore >= 60 ? T.blue : simScore >= 40 ? T.orange : T.red;
-                const simLabel = simScore >= 80 ? "Excellent match" : simScore >= 60 ? "Good match" : simScore >= 40 ? "Partial match" : hasScore ? "Weak match" : "Not yet scored";
-                return (
-                  <>
-                    <LinearGradient
-                      colors={[hasScore ? simColor + "10" : T.blue + "10", "transparent"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={styles.readinessInner}>
-                      <TouchableOpacity
-                        onPress={() => router.push("/(tabs)/plan")}
-                        activeOpacity={0.85}
-                      >
-                        <ProgressRing
-                          score={hasScore ? simScore : 0}
-                          size={148}
-                          strokeWidth={11}
-                          hideScore={false}
-                        />
-                      </TouchableOpacity>
-                      <View style={styles.readinessMeta}>
-                        <Text style={styles.areYouReadyLabel}>Simulation score</Text>
-                        <View style={[styles.statusPill, { backgroundColor: hasScore ? simColor + "20" : T.surface }]}>
-                          {hasScore
-                            ? <View style={[styles.statusDot, { backgroundColor: simColor }]} />
-                            : <BarChart2 size={11} color={T.textMuted} />
-                          }
-                          <Text style={[styles.statusText, { color: hasScore ? simColor : T.textMuted }]}>
-                            {simLabel}
-                          </Text>
-                        </View>
-                        {hasScore ? (
-                          <>
-                            <Text style={styles.trackingMsg} numberOfLines={2}>
-                              {summitGoal.targetMountain!.name}
-                            </Text>
-                            <Text style={styles.daysText}>
-                              {summitGoal.targetMountain!.summitElevation}m · {summitGoal.targetMountain!.country}
-                            </Text>
-                          </>
-                        ) : (
-                          <Text style={[styles.trackingMsg, { color: T.textMuted, fontSize: 12 }]}>
-                            Go to the Plan tab to set up your Virtual Expedition
-                          </Text>
-                        )}
-                        <TouchableOpacity
-                          onPress={() => router.push("/(tabs)/plan")}
-                          activeOpacity={0.8}
-                          style={styles.ringUpgradeBtn}
-                        >
-                          <Text style={styles.ringUpgradeBtnText}>
-                            {hasScore ? "View expedition →" : "Set up expedition →"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </>
-                );
-              })()}
             </View>
           </Animated.View>
         )}
@@ -1385,42 +1312,6 @@ export default function DashboardScreen() {
         </Animated.View>
 
       </ScrollView>
-
-      {/* ── Floating mode toggle — sits over the hero, doesn't scroll ── */}
-      {summitGoal && (
-        <View
-          style={{
-            position: "absolute",
-            top: Platform.OS === "web" ? 16 : insets.top + 8,
-            left: 0, right: 0,
-            alignItems: "center",
-            zIndex: 20,
-            pointerEvents: "box-none",
-          } as any}
-        >
-          <View style={modeToggleStyles.pill}>
-            {(["expedition", "virtual"] as const).map(m => {
-              const isActive = (summitGoal.mode ?? "expedition") === m;
-              return (
-                <TouchableOpacity
-                  key={m}
-                  style={[modeToggleStyles.seg, isActive && modeToggleStyles.segActive]}
-                  onPress={() => {
-                    if (!isActive) {
-                      confirmModeSwitch(m, summitGoal, trainingPlan, setSummitGoal);
-                    }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[modeToggleStyles.segText, isActive && modeToggleStyles.segTextActive]}>
-                    {m === "expedition" ? "Expedition" : "Virtual"}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
 
       {newlyUnlocked.length > 0 && (
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />

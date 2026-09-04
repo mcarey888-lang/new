@@ -98,15 +98,16 @@ function SectionRow({
 export default function RouteScreen() {
   useScreenView("expedition_route");
   const insets = useSafeAreaInsets();
-  const { summitGoal, activeExpedition } = useApp();
+  const { activeExpedition } = useApp();
   const [activeTab,    setActiveTab]    = useState<TabKey>("route");
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
   const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
 
-  const target  = summitGoal?.targetMountain;
-  const hills   = summitGoal?.virtualHills ?? [];
-  const plan    = (summitGoal as any)?.expeditionPlan as { title?: string; concept?: string; days?: any[] } | null | undefined;
+  const target  = activeExpedition?.targetMountain;
+  const hills   = activeExpedition?.virtualHills ?? [];
+  const plan    = activeExpedition?.expeditionPlan as { title?: string; concept?: string; days?: any[] } | null | undefined;
+  const mountainName = activeExpedition?.challengeName;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
   // Fetch approved AI artwork for the active challenge
@@ -127,13 +128,13 @@ export default function RouteScreen() {
       .catch(() => {});
   }, [activeExpedition?.challengeId]); // eslint-disable-line
 
-  const heroUri = !summitGoal
+  const heroUri = !mountainName
     ? null
     : (challengeHeroUri && !artworkError)
       ? challengeHeroUri
       : fallbackError
         ? null
-        : `${API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}&width=800&height=400`;
+        : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=800&height=400`;
 
   // Build section list — prefer AI expedition plan, fall back to virtual hills
   const routeSections = (() => {
@@ -166,7 +167,7 @@ export default function RouteScreen() {
   const estimatedDays = target?.estimatedDays ?? 1;
 
   // ── Empty state ─────────────────────────────────────────────────────────────
-  if (!summitGoal || !target) {
+  if (!mountainName || !target) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 18, padding: 32, marginTop: PILL_OFFSET }}>
@@ -225,7 +226,7 @@ export default function RouteScreen() {
 
           {/* Top nav */}
           <View style={[s.heroTopRow, { paddingTop: topInset + PILL_OFFSET + 6 }]}>
-            <Text style={s.heroTitle}>{summitGoal.mountainName}</Text>
+            <Text style={s.heroTitle}>{mountainName}</Text>
           </View>
 
           {/* Route overlay showing on mountain */}

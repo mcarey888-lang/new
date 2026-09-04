@@ -259,22 +259,26 @@ function LogModal({
     const fromSessions = sessions
       .filter(s => s.completed)
       .map(s => ({
-        key: `s-${s.id}`,
+        key: s.activityId ?? `s-${s.id}`,
         title: s.type === "hill" ? (s.hillName || "Hill session") : s.type === "cardio" ? "Cardio session" : "Big day",
         date: s.date,
         elevationGain: s.elevationGain,
         distance: s.distance,
         duration: s.duration,
+        activityId: s.activityId ?? `session:${s.id}`,
       }));
     const fromHikes = exploreHikes.map(h => ({
-      key: `h-${h.id}`,
+      key: h.activityId ?? `h-${h.id}`,
       title: h.name,
       date: h.date,
       elevationGain: h.elevationGain,
       distance: h.distance,
       duration: h.timeTaken,
+      activityId: h.activityId ?? `hike:${h.id}`,
     }));
-    return [...fromSessions, ...fromHikes].sort((a, b) => b.date.localeCompare(a.date));
+    return [...fromSessions, ...fromHikes]
+      .filter((item, index, all) => all.findIndex(other => other.key === item.key) === index)
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [sessions, exploreHikes]);
 
   function toggleSelect(key: string) {
@@ -327,6 +331,7 @@ function LogModal({
         distance: item.distance,
         duration: item.duration,
         notes: "",
+        activityId: item.activityId,
       }));
     onSubmit(entries);
     reset();

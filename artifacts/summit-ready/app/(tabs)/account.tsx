@@ -22,13 +22,14 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import Purchases from "react-native-purchases";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type CompletedGoal } from "@/context/AppContext";
-import { confirmModeSwitch } from "@/utils/modeSwitch";
 import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
+import { authenticatedHeaders, responseError } from "@/utils/authRequest";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -78,7 +79,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   useScreenView("account");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals, setSummitGoal } = useApp();
+  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -108,9 +109,13 @@ export default function AccountScreen() {
     0,
   );
 
+  const uniqueCurrentActivities = mergeActivityKinds(
+    sessions.filter(session => session.completed),
+    exploreHikes,
+  );
   // Lifetime stats
-  const lifetimeSessions = sessions.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
-  const lifetimeElevation = sessions.reduce((s, sess) => s + sess.elevationGain, 0)
+  const lifetimeSessions = uniqueCurrentActivities.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
+  const lifetimeElevation = uniqueCurrentActivities.reduce((s, activity) => s + activity.elevationGain, 0)
     + completedGoals.reduce((s, g) => s + g.totalElevationTrained, 0);
 
   // Max elevation any goal was trained for — used to compute "ready for" peaks
@@ -214,26 +219,13 @@ export default function AccountScreen() {
     setDeletingAccount(true);
     const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
     try {
-      await Promise.allSettled(
-        exploreHikes.map(h =>
-          fetch(`https://${domain}/api/tracked-routes/${h.id}`, { method: "DELETE" })
-        )
-      );
-    } catch {}
-    try { await Purchases.logOut(); } catch {}
-    try {
-      if (Platform.OS === "web") {
-        await user?.delete();
-      } else {
-        const token = await getToken();
-        const res = await fetch(`https://${domain}/api/user/me`, {
-          method: "DELETE",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({})) as { error?: string };
-          throw new Error(body.error ?? `Server error ${res.status}`);
-        }
+      const token = await getToken();
+      const res = await fetch(`https://${domain}/api/user/me`, {
+        method: "DELETE",
+        headers: authenticatedHeaders(token),
+      });
+      if (!res.ok) {
+        throw await responseError(res, "Could not delete account data");
       }
     } catch (err: unknown) {
       setDeletingAccount(false);
@@ -241,6 +233,7 @@ export default function AccountScreen() {
       Alert.alert("Delete failed", msg);
       return;
     }
+    try { await Purchases.logOut(); } catch {}
     if (userId) {
       try {
         const allKeys = await AsyncStorage.getAllKeys();
@@ -396,7 +389,7 @@ export default function AccountScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <Text style={styles.statVal}>{sessions.length + exploreHikes.length}</Text>
+              <Text style={styles.statVal}>{uniqueCurrentActivities.length}</Text>
               <Text style={styles.statLbl}>Sessions logged</Text>
             </View>
             <View style={styles.statBox}>
@@ -449,33 +442,6 @@ export default function AccountScreen() {
             </TouchableOpacity>
           )}
 
-          {/* ── Training mode toggle ────────────────────────────────── */}
-          {summitGoal && (
-            <View style={styles.modeRow}>
-              <Text style={styles.modeRowLabel}>Training mode</Text>
-              <View style={styles.modePill}>
-                {(["expedition", "virtual"] as const).map(m => {
-                  const isActive = (summitGoal.mode ?? "expedition") === m;
-                  return (
-                    <TouchableOpacity
-                      key={m}
-                      style={[styles.modeSeg, isActive && styles.modeSegActive]}
-                      onPress={() => {
-                        if (!isActive) {
-                          confirmModeSwitch(m, summitGoal, trainingPlan, setSummitGoal);
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.modeSegText, isActive && styles.modeSegTextActive]}>
-                        {m === "expedition" ? "Expedition" : "Virtual"}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
         </Animated.View>
 
         {/* Training History */}

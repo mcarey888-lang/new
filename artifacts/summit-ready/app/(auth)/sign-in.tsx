@@ -72,7 +72,7 @@ export default function SignInScreen() {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!error) {
           void logLogin("email");
-          router.replace("/(tabs)/dashboard" as any);
+          router.replace("/" as any);
         }
       } else if (signIn.status === "needs_second_factor") {
         await withTimeout(signIn.mfa.sendEmailCode(), 20000);
@@ -114,7 +114,7 @@ export default function SignInScreen() {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!error) {
           void logLogin("email_mfa");
-          router.replace("/(tabs)/dashboard" as any);
+          router.replace("/" as any);
         }
       } else {
         setError("Verification failed — please try again.");
@@ -149,7 +149,7 @@ export default function SignInScreen() {
       if (sessionId && ssoSetActive) {
         await withTimeout(ssoSetActive({ session: sessionId }), 20000);
         void logLogin("google");
-        router.replace("/(tabs)/dashboard" as any);
+        router.replace("/" as any);
       } else {
         setError("Google sign-in didn't complete — please try again.");
       }
@@ -187,7 +187,7 @@ export default function SignInScreen() {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logLogin("apple");
-          router.replace("/(tabs)/dashboard" as any);
+          router.replace("/" as any);
         }
       } else if (result.status === "needs_transfer") {
         // No Clerk account yet — transfer to sign-up path
@@ -199,7 +199,7 @@ export default function SignInScreen() {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
           if (!finalizeErr) {
             void logLogin("apple");
-            router.replace("/(tabs)/dashboard" as any);
+            router.replace("/" as any);
           }
         } else {
           setError("Apple sign-in didn't complete — please try again.");

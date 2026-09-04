@@ -102,7 +102,7 @@ export default function SignUpScreen() {
         const { error } = await withTimeout(signUp.finalize(), 20000) as any;
         if (!error) {
           void logSignUp("email");
-          router.replace("/(tabs)/dashboard" as any);
+          router.replace("/" as any);
         }
       } else {
         setError("Verification failed — please try again.");
@@ -137,7 +137,7 @@ export default function SignUpScreen() {
       if (sessionId && ssoSetActive) {
         await withTimeout(ssoSetActive({ session: sessionId }), 20000);
         void logSignUp("google");
-        router.replace("/(tabs)/dashboard" as any);
+        router.replace("/" as any);
       } else {
         setError("Google sign-in didn't complete — please try again.");
       }
@@ -176,7 +176,7 @@ export default function SignUpScreen() {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logSignUp("apple");
-          router.replace("/(tabs)/dashboard" as any);
+          router.replace("/" as any);
         }
       } else if (result.status === "needs_transfer") {
         // No Clerk account yet — create a new one via transfer
@@ -188,7 +188,7 @@ export default function SignUpScreen() {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
           if (!finalizeErr) {
             void logSignUp("apple");
-            router.replace("/(tabs)/dashboard" as any);
+            router.replace("/" as any);
           }
         } else {
           setError("Apple sign-up didn't complete — please try again.");

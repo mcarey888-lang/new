@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
   ExpeditionProgressCard,
   fmtM,
@@ -45,12 +46,18 @@ function insightMsg(done: number, total: number, remainM: number) {
 export default function ExpeditionProgressScreen() {
   useScreenView("expedition_progress");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, activeExpedition } = useApp();
+  const { sessions, exploreHikes, activeExpedition } = useApp();
 
-  const target  = summitGoal?.targetMountain;
-  const stages  = summitGoal?.virtualHills ?? [];
-  const completedRoutes: string[] = activeExpedition?.completedRoutes
-    ?? summitGoal?.completedRoutes ?? [];
+  const target  = activeExpedition?.targetMountain;
+  const stages  = activeExpedition?.virtualHills ?? [];
+  const completedRoutes: string[] = activeExpedition?.completedRoutes ?? [];
+  const linkedActivities = useMemo(() => {
+    if (!activeExpedition) return [];
+    return mergeActivityKinds(
+      sessions.filter(item => item.expeditionId === activeExpedition.id),
+      exploreHikes.filter(item => item.expeditionId === activeExpedition.id),
+    );
+  }, [activeExpedition, sessions, exploreHikes]);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const totalElevGoal = useMemo(
@@ -59,32 +66,32 @@ export default function ExpeditionProgressScreen() {
     [target, stages],
   );
   const totalTrained = useMemo(
-    () => sessions.reduce((s, sess) => s + (sess.elevationGain ?? 0), 0),
-    [sessions],
+    () => linkedActivities.reduce((s, item) => s + (item.elevationGain ?? 0), 0),
+    [linkedActivities],
   );
   const pct = totalElevGoal > 0
     ? Math.min(100, Math.round(totalTrained / totalElevGoal * 100))
     : 0;
 
   const completedCount = useMemo(
-    () => completedRoutes.filter(r => stages.some(s => s.name === r)).length,
+    () => new Set(completedRoutes.filter(r => stages.some(s => s.name === r))).size,
     [completedRoutes, stages],
   );
   const remaining = Math.max(0, totalElevGoal - totalTrained);
 
-  const expName   = (summitGoal as any)?.expeditionPlan?.title
-    ?? target?.name ?? summitGoal?.mountainName ?? "Your Expedition";
+  const expName   = activeExpedition?.expeditionPlan?.title
+    ?? target?.name ?? activeExpedition?.challengeName ?? "Your Expedition";
   const daysText  = target?.estimatedDays
     ? `${target.estimatedDays} Day${target.estimatedDays !== 1 ? "s" : ""} Expedition`
     : null;
-  const regionText = summitGoal?.location ?? null;
+  const regionText = activeExpedition?.location ?? null;
 
   const insight = insightMsg(completedCount, stages.length, remaining);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
   // ── Empty state ──────────────────────────────────────────────────────────────
-  if (!summitGoal) {
+  if (!activeExpedition) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 18, padding: 32, marginTop: PILL_OFFSET }}>
@@ -150,7 +157,14 @@ export default function ExpeditionProgressScreen() {
             totalElev={totalElevGoal}
             totalTrained={totalTrained}
             onStagePress={(hillName) =>
-              router.push({ pathname: "/hike-tracking" as any, params: { hillName } })
+              router.push({
+                pathname: "/hike-tracking" as any,
+                params: {
+                  hillName,
+                  trackingMode: "expedition-route",
+                  expeditionId: activeExpedition.id,
+                },
+              })
             }
           />
         </Animated.View>

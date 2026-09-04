@@ -28,9 +28,9 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@clerk/expo";
 
 import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
-import { VirtualExpeditionView } from "@/components/VirtualExpeditionView";
 import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { HillPickerModal } from "@/components/HillPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
@@ -38,6 +38,8 @@ import { useScreenView } from "@/lib/analytics";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 import { assignSessionsToDays, DAY_SHORT, DAY_FULL } from "@/utils/dayAssignment";
+import { authenticatedJsonHeaders, responseError } from "@/utils/authRequest";
+import { enqueueSyncFailure, enqueueSyncPending, markSyncComplete, retrySyncOutbox } from "@/utils/syncOutbox";
 
 const PLAN_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -68,24 +70,46 @@ function HillActionCard({
   onTrack: () => void;
 }) {
   const hillName = assignedHill?.name ?? null;
+  const { getToken, userId } = useAuth();
 
   async function handleMarkComplete() {
     if (!isDone) {
       onMarkComplete();
-      // Fire-and-forget: save estimated completion to backend
+      const body = {
+        plannedHillName: hillName ?? sessionKey,
+        trainingSessionId: sessionKey,
+        targetReps,
+        estimatedGainPerRepM: elevPerRep,
+        estimatedTotalGainM: Math.round(estimatedTotalGain),
+      };
+      const syncId = `hill-session:complete:${sessionKey}`;
       try {
-        await fetch(`${PLAN_API_BASE}/hill-session/complete`, {
+        if (!userId) throw new Error("Authentication required");
+        await retrySyncOutbox(userId, getToken);
+        await enqueueSyncPending(userId, {
+          id: syncId,
+          kind: "hill-session",
+          url: `${PLAN_API_BASE}/hill-session/complete`,
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            plannedHillName: hillName ?? sessionKey,
-            trainingSessionId: sessionKey,
-            targetReps,
-            estimatedGainPerRepM: elevPerRep,
-            estimatedTotalGainM: Math.round(estimatedTotalGain),
-          }),
+          body,
         });
-      } catch { /* best-effort — local state already updated */ }
+        const token = await getToken();
+        const res = await fetch(`${PLAN_API_BASE}/hill-session/complete`, {
+          method: "POST",
+          headers: authenticatedJsonHeaders(token),
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw await responseError(res, "Could not sync hill session");
+        await markSyncComplete(userId, syncId);
+      } catch {
+        if (userId) await enqueueSyncFailure(userId, {
+          id: syncId,
+          kind: "hill-session",
+          url: `${PLAN_API_BASE}/hill-session/complete`,
+          method: "POST",
+          body,
+        });
+      }
     }
   }
 
@@ -646,7 +670,7 @@ function WeekCard({
   const pc = PHASE_COLOR[week.phase] ?? T.green;
   const totalSessions = week.sessions.length;
   const completedInWeek = week.sessions.filter((_, i) =>
-    completedPlanSessions[`${week.weekNumber}-${i}`]
+    completedPlanSessions[week.sessions[i].id ?? `${week.weekNumber}-${i}`]
   ).length;
   const allDone = completedInWeek === totalSessions;
 
@@ -735,7 +759,7 @@ function WeekCard({
 
             <Text style={styles.sectionHead}>SESSIONS</Text>
             {week.sessions.map((s, i) => {
-              const sessionKey = `${week.weekNumber}-${i}`;
+              const sessionKey = s.id ?? `${week.weekNumber}-${i}`;
               const isDone = !!completedPlanSessions[sessionKey];
               const isSubmitted = !!submittedPlanSessions[sessionKey];
               const tc = s.type === "bigDay" ? T.orange : s.type === "cardio" ? T.blue : T.green;
@@ -830,12 +854,12 @@ function WeekCard({
 
             {/* Submit / confirmation row */}
             {(() => {
-              const unsubmitted = week.sessions.filter((_, i) => {
-                const key = `${week.weekNumber}-${i}`;
+              const unsubmitted = week.sessions.filter((s, i) => {
+                const key = s.id ?? `${week.weekNumber}-${i}`;
                 return completedPlanSessions[key] && !submittedPlanSessions[key];
               }).length;
-              const submitted = week.sessions.filter((_, i) =>
-                submittedPlanSessions[`${week.weekNumber}-${i}`]
+              const submitted = week.sessions.filter((s, i) =>
+                submittedPlanSessions[s.id ?? `${week.weekNumber}-${i}`]
               ).length;
 
               if (unsubmitted > 0) {
@@ -1239,7 +1263,8 @@ export default function PlanScreen() {
     const week = trainingPlan.find(w => w.weekNumber === weekNum);
     const session = week?.sessions[sessionIdx];
     if (!session) return;
-    const key = `${weekNum}-${sessionIdx}`;
+    const key = trainingPlan.find(w => w.weekNumber === weekNum)?.sessions[sessionIdx]?.id
+      ?? `${weekNum}-${sessionIdx}`;
     setEditTarget({ weekNum, sessionIdx });
     setEditDuration(session.duration);
     setEditEffort((sessionEfforts[key] ?? 3) as 1 | 2 | 3 | 4 | 5);
@@ -1351,17 +1376,6 @@ export default function PlanScreen() {
           <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Set up my summit</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
-
-  // ── Virtual Expedition mode: show the simulation dashboard ──────────────────
-  if (summitGoal.mode === "virtual") {
-    return (
-      <VirtualExpeditionView
-        summitGoal={summitGoal}
-        patchGoal={patchGoal}
-        insets={insets}
-      />
     );
   }
 

@@ -213,7 +213,7 @@ export default function SessionDetailScreen() {
 
   const week    = trainingPlan.find(w => w.weekNumber === weekNum);
   const session = week?.sessions[sessionIdx];
-  const sessionKey = `${weekNum}-${sessionIdx}`;
+  const sessionKey = session?.id ?? `${weekNum}-${sessionIdx}`;
 
   const isDone      = !!completedPlanSessions[sessionKey];
   const isSubmitted = !!submittedPlanSessions[sessionKey];
@@ -380,7 +380,7 @@ export default function SessionDetailScreen() {
     const _weekAuto = assignSessionsToDays(week.sessions.length, summitGoal?.availableDays);
     week.sessions.forEach((s, i) => {
       if (i === sessionIdx) return;
-      const k = `${weekNum}-${i}`;
+      const k = s.id ?? `${weekNum}-${i}`;
       const dow = sessionDayOverrides[k] !== undefined
         ? sessionDayOverrides[k]
         : (_weekAuto.find(a => a.sessionIdx === i)?.dayOfWeek ?? null);
@@ -398,13 +398,13 @@ export default function SessionDetailScreen() {
   // Count unsubmitted completed sessions in this week for the submit button
   const unsubmittedCount = week
     ? week.sessions.filter((_, i) => {
-        const k = `${weekNum}-${i}`;
+        const k = week.sessions[i].id ?? `${weekNum}-${i}`;
         return completedPlanSessions[k] && !submittedPlanSessions[k];
       }).length
     : 0;
 
   const submittedCount = week
-    ? week.sessions.filter((_, i) => submittedPlanSessions[`${weekNum}-${i}`]).length
+    ? week.sessions.filter((s, i) => submittedPlanSessions[s.id ?? `${weekNum}-${i}`]).length
     : 0;
 
   if (!session || !week) {

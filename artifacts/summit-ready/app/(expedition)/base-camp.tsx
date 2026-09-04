@@ -246,8 +246,26 @@ function StageDot({ done, active, index }: { done: boolean; active: boolean; ind
 export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
+  const { summitGoal: publicGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
           startExpedition, expeditions, activeExpeditionId, activeExpedition } = useApp();
+  const summitGoal: SummitGoal | null = activeExpedition
+    ? {
+        ...(publicGoal ?? {
+          summitDate: "", distance: 0, elevationGain: 0, highestAltitude: 0,
+          difficulty: "Hard", fitnessLevel: activeExpedition.fitnessLevel,
+          location: activeExpedition.location, maxRadius: activeExpedition.maxRadius,
+          equipment: ["none"], trainingDaysPerWeek: 3, hillDaysPerWeek: 2,
+        }),
+        mountainName: activeExpedition.challengeName,
+        targetMountain: activeExpedition.targetMountain,
+        virtualHills: activeExpedition.virtualHills,
+        expeditionPlan: activeExpedition.expeditionPlan,
+        simulationScore: activeExpedition.simulationScore,
+        simulationScoreBreakdown: activeExpedition.simulationScoreBreakdown,
+        virtualHikeProgress: activeExpedition.virtualHikeProgress,
+        completedRoutes: activeExpedition.completedRoutes,
+      }
+    : null;
   const { user } = useUser();
 
   const firstName = user?.firstName ?? "Adventurer";
@@ -1023,7 +1041,14 @@ export default function BaseCampScreen() {
             onStagePress={(hillName) => {
               const hill = (summitGoal.virtualHills ?? []).find(h => h.name === hillName);
               if (!hill) {
-                router.push({ pathname: "/hike-tracking" as any, params: { hillName } });
+                router.push({
+                  pathname: "/hike-tracking" as any,
+                  params: {
+                    hillName,
+                    trackingMode: "expedition-route",
+                    expeditionId: activeExpeditionId,
+                  },
+                });
                 return;
               }
               router.push({
@@ -1039,6 +1064,7 @@ export default function BaseCampScreen() {
                   surface:        hill.surface ?? "",
                   emoji:          hill.emoji   ?? "⛰️",
                   expeditionMode: "true",
+                  expeditionId: activeExpeditionId ?? "",
                 },
               });
             }}
@@ -1241,7 +1267,11 @@ export default function BaseCampScreen() {
                     setRoutePickerOpen(false);
                     router.push({
                       pathname: "/hike-tracking" as any,
-                      params: { hillName: stage.name },
+                      params: {
+                        hillName: stage.name,
+                        trackingMode: "expedition-route",
+                        expeditionId: activeExpeditionId,
+                      },
                     });
                   }}
                   style={[s.pickerRow, done && s.pickerRowDone]}

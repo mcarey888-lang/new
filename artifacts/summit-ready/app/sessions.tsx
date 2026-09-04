@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type Session, type ExploreHike, useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { logWorkoutCompleted } from "@/lib/analytics";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type FilterTab = "all" | "training" | "hikes";
@@ -201,14 +202,15 @@ export default function SessionsScreen() {
       completed: true,
       weekNumber: weekNum,
       hillName: hike.name,
+      activityId: hike.activityId ?? hike.id,
     });
   }
 
   const allItems = useMemo<LogItem[]>(() => {
-    const base: LogItem[] = [
-      ...sessions.map(d => ({ kind: "session" as const, data: d })),
-      ...exploreHikes.map(d => ({ kind: "hike" as const, data: d })),
-    ];
+    const base: LogItem[] = mergeActivityKinds(
+      sessions.map(d => ({ kind: "session" as const, data: d, id: d.id, activityId: d.activityId })),
+      exploreHikes.map(d => ({ kind: "hike" as const, data: d, id: d.id, activityId: d.activityId })),
+    );
     return base.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
   }, [sessions, exploreHikes]);
 
@@ -218,15 +220,17 @@ export default function SessionsScreen() {
     return allItems;
   }, [allItems, filter]);
 
+  const uniqueActivities = useMemo(
+    () => mergeActivityKinds(sessions.filter(item => item.completed), exploreHikes),
+    [sessions, exploreHikes],
+  );
   const totalElev = useMemo(() =>
-    sessions.filter(s => s.completed).reduce((a, s) => a + s.elevationGain, 0) +
-    exploreHikes.reduce((a, h) => a + h.elevationGain, 0),
-  [sessions, exploreHikes]);
+    uniqueActivities.reduce((a, item) => a + item.elevationGain, 0),
+  [uniqueActivities]);
 
   const totalDist = useMemo(() =>
-    sessions.filter(s => s.completed).reduce((a, s) => a + s.distance, 0) +
-    exploreHikes.reduce((a, h) => a + h.distance, 0),
-  [sessions, exploreHikes]);
+    uniqueActivities.reduce((a, item) => a + item.distance, 0),
+  [uniqueActivities]);
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: "all",      label: "All",      count: allItems.length },

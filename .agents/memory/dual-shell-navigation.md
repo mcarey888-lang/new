@@ -21,18 +21,24 @@ Training and Expedition must persist separate goal snapshots. The public `summit
 
 **How to apply:** Scope every goal mutation, background response, migration, and clear/reset action to its owning shell. Only update the shared active snapshot when that shell is still selected.
 
+`shellMode` is the only behavioral shell selector. Legacy `summitGoal.mode` may be inspected only while migrating old stored data; screens, layouts, deep links, and mutations must never use or write it to choose a shell. Both route-group layouts enforce this boundary.
+
+**Why:** Duplicate Dashboard/Account controls used `setSummitGoal` as a mode switch, which regenerated Training state and allowed hidden Virtual deep links to mix both shells.
+
+**How to apply:** New navigation must call `setShellMode`, and legacy Virtual routes must redirect one-way into Expedition-owned screens rather than being re-exported by those screens.
+
 ## ModeTogglePill placement
 `ModeTogglePill` is an absolutely-positioned overlay rendered as a sibling of `<Tabs>` inside BOTH `(tabs)/_layout.tsx` AND `(expedition)/_layout.tsx`. It sits at `top = safeAreaInsets.top + 4` — within the OS status-bar zone that screens already leave empty (screens pad by `insets.top + PILL_OFFSET` where `PILL_OFFSET = 52`). Uses `BlurView` on iOS, plain dark background on Android/web.
 
-## Virtual tab hidden in Training shell
-The `virtual` tab in `(tabs)/_layout.tsx` is set to `href: null` — its content is now served by `(expedition)/mountains.tsx` (a re-export). The old `v-home`, `v-mountain`, `v-hills`, `v-progress` screens are similarly hidden via `href: null` but kept for potential deep links.
+## Legacy Virtual routes
+The hidden Training `virtual` and `v-*` routes are compatibility redirects only. Expedition screens must use Expedition-owned components; never re-export a legacy redirect route or it can create a self-redirect loop.
 
 ## Expedition tab screens
 - `base-camp.tsx` — expedition home, hero image + simulation score ring + hills list + target profile
-- `mountains.tsx` — re-exports `(tabs)/virtual.tsx`
+- `mountains.tsx` — Expedition-owned mountain browse and selection screen
 - `track.tsx` — re-exports `(tabs)/trails.tsx`
 - `route.tsx` — new screen: elevation progress bar + recommended hills breakdown
-- `progress.tsx` — re-exports `(tabs)/v-progress.tsx`
+- `progress.tsx` — active-Expedition progress and linked activity totals
 - `profile.tsx` — re-exports `(tabs)/account.tsx`
 
 **Why:** Keeps code DRY for shared screens (track, profile) while giving expedition-specific screens (base-camp, route) their own dedicated implementation.

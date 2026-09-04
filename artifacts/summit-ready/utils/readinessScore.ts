@@ -1,4 +1,5 @@
 import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, CompletedGoal, ExploreHike } from "@/context/AppContext";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 
 const DIFFICULTY_RANK: Record<string, number> = {
   Easy: 1, Moderate: 2, Hard: 3, Alpine: 4,
@@ -99,6 +100,7 @@ export function calculateReadiness(
   // every scoring component that should reward real outdoor activity.
   const hikeCompleted: Session[] = (opts?.exploreHikes ?? []).map(h => ({
     id: h.id,
+    activityId: h.activityId,
     date: h.date,
     type: "cardio" as const,
     distance: h.distance,
@@ -112,7 +114,7 @@ export function calculateReadiness(
 
   // allCompleted includes plan sessions + explore hikes, sorted oldest-first
   // so that effort-trend slices are chronologically meaningful.
-  const allCompleted = [...planCompleted, ...hikeCompleted].sort(
+  const allCompleted = mergeActivityKinds(planCompleted, hikeCompleted).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
@@ -297,12 +299,12 @@ export function diagnoseScoreStagnation(
 
   const planCompleted = sessions.filter(s => s.completed);
   const hikeCompleted: Session[] = exploreHikes.map(h => ({
-    id: h.id, date: h.date, type: "cardio" as const,
+    id: h.id, activityId: h.activityId, date: h.date, type: "cardio" as const,
     distance: h.distance, elevationGain: h.elevationGain,
     duration: h.timeTaken, effort: 3 as const,
     notes: h.notes, completed: true, weekNumber: 0,
   }));
-  const allCompleted = [...planCompleted, ...hikeCompleted].sort(
+  const allCompleted = mergeActivityKinds(planCompleted, hikeCompleted).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
   if (allCompleted.length === 0) return null;

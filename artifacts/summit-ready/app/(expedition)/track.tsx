@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const ACTIVE_HIKE_KEY = "summitready_active_hike_session";
 
 function useActiveHike() {
-  const [activeHike, setActiveHike] = useState<{ routeName: string; trackStartMs: number } | null>(null);
+  const [activeHike, setActiveHike] = useState<{ routeName: string; trackStartMs: number; routeId: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -74,24 +74,59 @@ function relativeDate(dateStr: string): string {
 export default function TrackScreen() {
   useScreenView("expedition_track");
   const insets = useSafeAreaInsets();
-  const { sessions, summitGoal, activeExpedition, activeExpeditionId } = useApp();
+  const { sessions, exploreHikes, activeExpedition, activeExpeditionId } = useApp();
   const activeHike = useActiveHike();
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  const activeProgress = activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
+  const activeProgress = activeExpedition?.virtualHikeProgress;
   const totalElev = activeProgress?.elevationGained ?? 0;
   const totalDist = activeProgress?.distanceCovered ?? 0;
   const totalHikes = activeProgress?.hikesLogged ?? 0;
-  const targetElev = summitGoal?.targetMountain?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const targetElev = activeExpedition?.targetMountain?.totalElevationGain ?? 0;
   const progressPct = targetElev > 0 ? Math.min(100, Math.round((totalElev / targetElev) * 100)) : 0;
 
   const recentSessions = useMemo(
-    () => [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
-    [sessions],
+    () => {
+      const activities = [
+        ...exploreHikes
+          .filter(hike => hike.expeditionId === activeExpeditionId)
+          .map(hike => ({
+            ...hike,
+            hillName: hike.name,
+            duration: hike.timeTaken,
+            dedupeKey: hike.activityId ?? `hike:${hike.id}`,
+          })),
+        ...sessions
+          .filter(session => session.expeditionId === activeExpeditionId)
+          .map(session => ({
+            ...session,
+            dedupeKey: session.activityId ?? `session:${session.id}`,
+          })),
+      ];
+      return activities
+        .filter((item, index) => activities.findIndex(other => other.dedupeKey === item.dedupeKey) === index)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
+    },
+    [sessions, exploreHikes, activeExpeditionId],
   );
 
-  const nextHill = summitGoal?.virtualHills?.[0];
+  const nextHill = activeExpedition?.virtualHills?.find(
+    hill => !activeExpedition.completedRoutes.includes(hill.name),
+  );
+
+  if (!activeExpedition) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 28 }}>
+        <Mountain size={36} color={T.textMuted} />
+        <Text style={[s.pageTitle, { marginTop: 14, textAlign: "center" }]}>No active expedition</Text>
+        <TouchableOpacity style={[s.startBtn, { marginTop: 18 }]} onPress={() => router.replace("/(expedition)/base-camp" as any)}>
+          <Text style={s.startBtnText}>Go to Base Camp</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -118,7 +153,10 @@ export default function TrackScreen() {
         {activeHike && (
           <Animated.View entering={FadeInDown.delay(30).duration(350)} style={{ marginHorizontal: 14, marginBottom: 12 }}>
             <TouchableOpacity
-              onPress={() => router.push("/hike-tracking" as any)}
+              onPress={() => router.push({
+                pathname: "/hike-tracking",
+                params: { restore: "1", routeId: activeHike.routeId },
+              })}
               style={s.resumeBanner}
               activeOpacity={0.88}
             >
