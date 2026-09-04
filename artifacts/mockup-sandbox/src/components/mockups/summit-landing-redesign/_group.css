@@ -33,7 +33,7 @@
   position: relative;
   display: flex;
   align-items: flex-end;
-  background: linear-gradient(90deg, rgba(7,17,27,.88), rgba(7,17,27,.32) 55%, rgba(7,17,27,.12)), url('/images/hero-bg.jpeg') center/cover;
+  background: linear-gradient(90deg, rgba(7,17,27,.88), rgba(7,17,27,.32) 55%, rgba(7,17,27,.12)), url('/__mockup/images/summit-landing-redesign-hero.png') center/cover;
 }
 .sr-redesign .sr-hero:after {
   content: "";
