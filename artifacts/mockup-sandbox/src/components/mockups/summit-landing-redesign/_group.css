@@ -33,7 +33,11 @@
   position: relative;
   display: flex;
   align-items: flex-end;
-  background: linear-gradient(90deg, rgba(7,17,27,.88), rgba(7,17,27,.32) 55%, rgba(7,17,27,.12)), url('/__mockup/images/summit-landing-redesign-hero.png') center/cover;
+  background-color: var(--night);
+  background-image: linear-gradient(90deg, rgba(7,17,27,.88), rgba(7,17,27,.32) 55%, rgba(7,17,27,.12)), url('/__mockup/images/summit-landing-redesign-hero.png');
+  background-position: center top;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
 .sr-redesign .sr-hero:after {
   content: "";
@@ -214,7 +218,7 @@
 @media (max-width: 760px) {
   .sr-redesign .sr-nav-inner { padding: 16px 20px; }
   .sr-redesign .sr-nav-links { display: none !important; }
-  .sr-redesign .sr-hero { min-height: 700px; background-position: 62% center; }
+  .sr-redesign .sr-hero { min-height: 700px; background-position: 62% center; background-size: cover; }
   .sr-redesign .sr-hero-copy,.sr-redesign .sr-section,.sr-redesign .sr-cta-inner { padding-left: 20px; padding-right: 20px; }
   .sr-redesign .sr-hero h1 { font-size: 44px; }
   .sr-redesign .sr-scroll { display: none; }
