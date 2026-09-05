@@ -9,8 +9,9 @@
  */
 
 import { router } from "expo-router";
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
+  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -28,17 +29,42 @@ const EXPEDITION_COLOR  = T.blue;
 export function ModeTogglePill() {
   const insets  = useSafeAreaInsets();
   const isIOS   = Platform.OS === "ios";
-  const { shellMode, setShellMode } = useApp();
+  const { shellMode, setShellMode, activeExpeditionId } = useApp();
+  const switchingRef = useRef(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const top = insets.top + (Platform.OS === "web" ? 8 : 4);
 
   async function switchTo(mode: "training" | "expedition") {
-    if (mode === shellMode) return;
-    await setShellMode(mode);
-    if (mode === "expedition") {
-      router.replace("/(expedition)/base-camp" as any);
-    } else {
-      router.replace("/(tabs)/dashboard" as any);
+    if (mode === shellMode || switchingRef.current) return;
+
+    switchingRef.current = true;
+    setIsSwitching(true);
+    try {
+      await setShellMode(mode);
+      if (mode === "expedition") {
+        router.replace(
+          activeExpeditionId
+            ? "/(expedition)/base-camp"
+            : "/(expedition)/mountains" as any,
+        );
+      } else {
+        router.replace("/(tabs)/dashboard" as any);
+      }
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error(String(error));
+      console.error(
+        `[mode-switch] Could not switch to ${mode}`,
+        normalized.message,
+        normalized.stack ?? "Stack trace unavailable",
+      );
+      Alert.alert(
+        "Couldn't switch modes",
+        "SummitReady couldn't open that mode. Please try again.",
+      );
+    } finally {
+      switchingRef.current = false;
+      setIsSwitching(false);
     }
   }
 
@@ -46,7 +72,8 @@ export function ModeTogglePill() {
     <View style={s.pill}>
       {/* Training segment */}
       <TouchableOpacity
-        onPress={() => switchTo("training")}
+        onPress={() => { void switchTo("training"); }}
+        disabled={isSwitching}
         activeOpacity={0.75}
         style={[
           s.segment,
@@ -68,7 +95,8 @@ export function ModeTogglePill() {
 
       {/* Expeditions segment */}
       <TouchableOpacity
-        onPress={() => switchTo("expedition")}
+        onPress={() => { void switchTo("expedition"); }}
+        disabled={isSwitching}
         activeOpacity={0.75}
         style={[
           s.segment,

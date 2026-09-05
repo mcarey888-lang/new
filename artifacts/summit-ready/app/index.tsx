@@ -18,7 +18,7 @@ const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoading, reloadApp, shellMode } = useApp();
+  const { isLoading, reloadApp, shellMode, activeExpeditionId } = useApp();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
@@ -90,12 +90,16 @@ export default function LandingScreen() {
       // and a direct storage read can race against the per-user key written by
       // AppContext, causing the pill and the routed screen to disagree.
       if (shellMode === "expedition") {
-        router.replace("/(expedition)/base-camp" as any);
+        router.replace(
+          activeExpeditionId
+            ? "/(expedition)/base-camp"
+            : "/(expedition)/mountains" as any,
+        );
         return;
       }
       router.replace("/(tabs)/dashboard");
     })();
-  }, [authLoaded, isSignedIn, isLoading]);
+  }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId]);
 
   if (isLoading || demoLoading) {
     return (

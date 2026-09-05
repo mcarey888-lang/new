@@ -13,12 +13,6 @@ import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Sharing from "expo-sharing";
-import { captureRef as captureViewShot } from "react-native-view-shot";
-// html2canvas is web-only; imported statically so Metro bundles it correctly.
-// The usage is gated behind Platform.OS === "web" so it never runs on native.
-// @ts-ignore — no types shipped with html2canvas
-import html2canvasLib from "html2canvas";
 import {
   ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -30,12 +24,23 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
-import { ExpeditionMountainProgress } from "@/components/ExpeditionMountainProgress";
-// [DEV] CINEMATIC PROTOTYPE — remove this import to clean up
-import { CinematicPrototype } from "@/components/CinematicPrototype";
-import { CompletionCinematic } from "@/components/CompletionCinematic";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
+
+const ExpeditionMountainProgress = React.lazy(async () => {
+  const module = await import("@/components/ExpeditionMountainProgress");
+  return { default: module.ExpeditionMountainProgress };
+});
+
+const CinematicPrototype = React.lazy(async () => {
+  const module = await import("@/components/CinematicPrototype");
+  return { default: module.CinematicPrototype };
+});
+
+const CompletionCinematic = React.lazy(async () => {
+  const module = await import("@/components/CompletionCinematic");
+  return { default: module.CompletionCinematic };
+});
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -331,7 +336,7 @@ export default function BaseCampScreen() {
         if (Platform.OS === "web") {
           // Web — react-native-view-shot has no web impl; use html2canvas directly
           // on the underlying DOM element (Expo web refs resolve to HTMLElement).
-          const html2canvas = html2canvasLib;
+          const { default: html2canvas } = await import("html2canvas");
           const domEl = cinematicRootRef.current as unknown as HTMLElement;
           if (!domEl) throw new Error("Capture ref not attached");
           const canvas = await html2canvas(domEl, {
@@ -354,7 +359,11 @@ export default function BaseCampScreen() {
           }, "image/png", 1.0);
         } else {
           // Native device — capture to tmp file then share sheet
-          const uri = await captureViewShot(cinematicRootRef, {
+          const [{ captureRef }, Sharing] = await Promise.all([
+            import("react-native-view-shot"),
+            import("expo-sharing"),
+          ]);
+          const uri = await captureRef(cinematicRootRef, {
             format: "png",
             quality: 1,
             result: "tmpfile",
@@ -828,6 +837,16 @@ export default function BaseCampScreen() {
   const ACHIEVEMENT_COLORS = [T.orange, T.green, T.blue, T.purple];
 
   return (
+    <React.Suspense
+      fallback={
+        <LinearGradient
+          colors={T.bgGrad}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator color={T.blue} />
+        </LinearGradient>
+      }
+    >
     <>
     {/* DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up */}
     <CinematicPrototype
@@ -1319,6 +1338,7 @@ export default function BaseCampScreen() {
       onContinue={handleCompletionContinue}
     />
     </>
+    </React.Suspense>
   );
 }
 

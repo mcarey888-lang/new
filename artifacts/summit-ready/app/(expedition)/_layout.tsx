@@ -23,7 +23,7 @@ export default function ExpeditionLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
-  const { shellMode, isLoading } = useApp();
+  const { shellMode, isLoading, activeExpeditionId } = useApp();
 
   const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
 
@@ -58,11 +58,15 @@ export default function ExpeditionLayout() {
 
   return (
     <>
-      <Tabs screenOptions={sharedScreenOptions}>
+      <Tabs
+        initialRouteName={activeExpeditionId ? "base-camp" : "mountains"}
+        screenOptions={sharedScreenOptions}
+      >
         <Tabs.Screen
           name="base-camp"
           options={{
             title: "Base Camp",
+            href: activeExpeditionId ? undefined : null,
             tabBarIcon: ({ color, focused }) => (
               <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
                 <Compass size={20} color={color} />

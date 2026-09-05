@@ -20,7 +20,13 @@ export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
-  const { scoreStagnation, clearScoreStagnation, shellMode, isLoading } = useApp();
+  const {
+    scoreStagnation,
+    clearScoreStagnation,
+    shellMode,
+    isLoading,
+    activeExpeditionId,
+  } = useApp();
 
   // Show "why didn't my score improve?" popup whenever a session or hike
   // is logged and the readiness score stays the same or drops.
@@ -63,7 +69,17 @@ export default function TabLayout() {
   };
 
   if (isLoading) return null;
-  if (shellMode !== "training") return <Redirect href="/(expedition)/base-camp" />;
+  if (shellMode !== "training") {
+    return (
+      <Redirect
+        href={
+          activeExpeditionId
+            ? "/(expedition)/base-camp"
+            : "/(expedition)/mountains"
+        }
+      />
+    );
+  }
 
   return (
     <>

@@ -298,3 +298,17 @@ mtime_ms = 1787614623629
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/da748430-5d06-4748-9179-7122d4fe5a5d/b3460b51-04fd-4d2f-afb7-ada32e0ebf2a"
 storage_version_token = "1788615832488156"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "wYCyXt8WFXqQK29Bl49d8"
+uri = "file://attached_assets/SummitReady-1.0.4-80.aab"
+type = "unspecified"
+title = "SummitReady Android 1.0.4 (80)"
+description = "Signed production Android App Bundle containing the Expedition startup crash fix. Ready for manual upload to Google Play Console."
+logical_id = "ae759a5e-f61c-446b-9d2a-3290b1942646"
+content_hash = "sha256:f19a36f8a54422da15e0fc2cfd3cb4b7d17302cefe3afef3b86448dd58c7c0b3"
+size = 102873630
+mtime_ms = 1788625385797
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/ae759a5e-f61c-446b-9d2a-3290b1942646/f479f0f4-280d-4572-8064-a9d1efd181bc"
+storage_version_token = "1788625389353918"
+content_type = "application/octet-stream"
