@@ -1,11 +1,11 @@
 ---
-name: Clerk key missing from EAS builds
-description: EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be explicitly set in eas.json env for every build profile or the app crashes on launch.
+name: Clerk production bundle alignment
+description: Keep Clerk configuration aligned across EAS builds and Replit-hosted native bundles.
 ---
 
 ## Rule
-Always include `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in the `env` block of every EAS build profile (development, preview, production).
+Every native production bundle path must inject the same reachable production Clerk instance. Do not let the hosted bundle inherit a workspace development key while direct EAS builds use a separate production key.
 
-**Why:** EAS builds run in a clean environment with no access to local `.env` files or shell environment. If the key is absent, `process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` is `undefined` at bundle time, Clerk initializes with an invalid key, and the app crashes instantly on launch with no visible error to the user.
+**Why:** EAS builds run in a clean environment, while the Replit-hosted native bundle has its own build script and environment. A missing key can crash at launch; a live key whose encoded frontend hostname has broken TLS leaves Clerk loading forever and makes every sign-in time out.
 
-**How to apply:** Before any EAS build, verify `eas.json` has `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in all three profile `env` sections. The current key (test) is `pk_test_YWJzb2x1dGUtdGFycG9uLTYxLmNsZXJrLmFjY291bnRzLmRldiQ`. Switch to a `pk_live_` key before App Store public release.
+**How to apply:** Keep the publishable key explicit in every EAS profile and make the hosted production bundle read the production profile as its source of truth. Before release, inspect the generated bundle without printing the key, decode only its frontend hostname, and confirm its Clerk environment endpoint responds over HTTPS.

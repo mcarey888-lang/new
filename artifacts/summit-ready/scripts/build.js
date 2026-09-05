@@ -21,6 +21,7 @@ function findWorkspaceRoot(startDir) {
 
 const workspaceRoot = findWorkspaceRoot(projectRoot);
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const metroPort = Number(process.env.METRO_PORT || 8081);
 
 function exitWithError(message) {
   console.error(message);
@@ -114,7 +115,7 @@ function clearMetroCache() {
 
 async function checkMetroHealth() {
   try {
-    const response = await fetch("http://localhost:8081/status", {
+    const response = await fetch(`http://localhost:${metroPort}/status`, {
       signal: AbortSignal.timeout(5000),
     });
     return response.ok;
@@ -125,6 +126,60 @@ async function checkMetroHealth() {
 
 function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
+}
+
+function getProductionClerkPublishableKey() {
+  const easConfigPath = path.join(projectRoot, "eas.json");
+
+  try {
+    const easConfig = JSON.parse(fs.readFileSync(easConfigPath, "utf-8"));
+    const publishableKey =
+      easConfig?.build?.production?.env?.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+    if (typeof publishableKey !== "string" || !publishableKey.startsWith("pk_live_")) {
+      exitWithError(
+        "Production Clerk publishable key is missing or invalid in eas.json",
+      );
+    }
+
+    return publishableKey;
+  } catch (error) {
+    exitWithError(
+      `Could not load the production Clerk configuration: ${error.message}`,
+    );
+  }
+}
+
+async function validateProductionClerkEndpoint(publishableKey) {
+  const encodedFrontendApi = publishableKey.replace(/^pk_live_/, "");
+  const frontendApi = Buffer.from(
+    encodedFrontendApi.replace(/_/g, "/").replace(/-/g, "+"),
+    "base64",
+  )
+    .toString("utf-8")
+    .replace(/\$$/, "");
+
+  if (!frontendApi || frontendApi.includes("/") || frontendApi.includes(" ")) {
+    exitWithError("Production Clerk publishable key contains an invalid frontend API");
+  }
+
+  try {
+    const response = await fetch(`https://${frontendApi}/v1/environment`, {
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      exitWithError(
+        `Production Clerk endpoint check failed with HTTP ${response.status}`,
+      );
+    }
+  } catch (error) {
+    exitWithError(
+      `Production Clerk endpoint is unreachable: ${error.message}`,
+    );
+  }
+
+  console.log("Production Clerk endpoint is reachable");
 }
 
 async function startMetro(expoPublicDomain, expoPublicReplId) {
@@ -140,12 +195,17 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   const clerkProxyUrl = process.env.CLERK_PROXY_URL
     ? `https://${expoPublicDomain}${process.env.CLERK_PROXY_URL}`
     : "";
+  const productionClerkPublishableKey = getProductionClerkPublishableKey();
+  await validateProductionClerkEndpoint(productionClerkPublishableKey);
 
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
-    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || "",
+    // The hosted native bundle is a production bundle. Keep it on the same
+    // Clerk instance as direct EAS production builds instead of inheriting the
+    // workspace development key.
+    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: productionClerkPublishableKey,
     EXPO_PUBLIC_CLERK_PROXY_URL: clerkProxyUrl,
   };
 
@@ -162,6 +222,8 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       "--no-dev",
       "--minify",
       "--localhost",
+      "--port",
+      String(metroPort),
     ],
     {
       stdio: ["ignore", "pipe", "pipe"],
@@ -237,7 +299,7 @@ async function downloadFile(url, outputPath) {
 async function downloadBundle(platform, timestamp) {
   const entryPath = path.resolve(projectRoot, "node_modules", "expo-router", "entry");
   const bundlePath = path.relative(workspaceRoot, entryPath);
-  const url = new URL(`http://localhost:8081/${bundlePath}.bundle`);
+  const url = new URL(`http://localhost:${metroPort}/${bundlePath}.bundle`);
   url.searchParams.set("platform", platform);
   url.searchParams.set("dev", "false");
   url.searchParams.set("hot", "false");
@@ -265,7 +327,7 @@ async function downloadManifest(platform) {
 
   try {
     console.log(`Fetching ${platform} manifest...`);
-    const response = await fetch("http://localhost:8081/manifest", {
+    const response = await fetch(`http://localhost:${metroPort}/manifest`, {
       headers: { "expo-platform": platform },
       signal: controller.signal,
     });
@@ -333,7 +395,7 @@ function extractAssets(timestamp) {
       const originalPath = match[1];
       const filename = match[3] + "." + match[4];
 
-      const tempUrl = new URL(`http://localhost:8081${originalPath}`);
+      const tempUrl = new URL(`http://localhost:${metroPort}${originalPath}`);
       const unstablePath = tempUrl.searchParams.get("unstable_path");
 
       if (!unstablePath) {
@@ -375,7 +437,7 @@ async function downloadAssets(assets, timestamp) {
   const failures = [];
 
   const downloadPromises = assets.map(async (asset) => {
-    const tempUrl = new URL(`http://localhost:8081${asset.originalPath}`);
+    const tempUrl = new URL(`http://localhost:${metroPort}${asset.originalPath}`);
     const unstablePath = tempUrl.searchParams.get("unstable_path");
 
     if (!unstablePath) {
@@ -448,7 +510,7 @@ function updateBundleUrls(timestamp, baseUrl) {
     bundle = bundle.replace(
       /httpServerLocation:"(\/[^"]+)"/g,
       (_match, capturedPath) => {
-        const tempUrl = new URL(`http://localhost:8081${capturedPath}`);
+        const tempUrl = new URL(`http://localhost:${metroPort}${capturedPath}`);
         const unstablePath = tempUrl.searchParams.get("unstable_path");
 
         if (!unstablePath) {

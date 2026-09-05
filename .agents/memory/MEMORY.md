@@ -6,7 +6,7 @@
 - [Clerk v3 auth hooks — correct import is @clerk/expo](clerk-v3-legacy-hooks.md) — import from @clerk/expo (NOT /legacy); signIn.password() confirmed working on real device; full v3 API rename table inside.
 - [Theme constants](theme-constants.md) — T.surface, T.border, T.textMuted, T.textDim, T.bgGrad, T.greenDim all exist; useColors.ts TS2352 is a pre-existing harmless error, always ignore.
 - [Clerk v3 finalize navigation](clerk-v3-finalize.md) — In Expo web, decorateUrl returns an absolute URL Expo Router can't handle; call finalize() with no args, then router.replace("/") manually.
-- [Clerk key missing from EAS builds](clerk-eas-build-key.md) — EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY must be in eas.json env for all build profiles or app crashes on launch instantly.
+- [Clerk production bundle alignment](clerk-eas-build-key.md) — EAS and Replit-hosted native bundles must use the same reachable production Clerk instance.
 - [Android MergeJavaResWorkAction fix](android-merge-java-res.md) — Two conflicts fixed: async-storage version clash (pnpm override to 2.2.0) + META-INF MANIFEST.MF clash (expo-build-properties packagingOptions.pickFirst).
 - [Hill verification DB build step](hill-verification-db-build.md) — After adding new tables to lib/db/src/schema, must run `cd lib/db && pnpm exec tsc --build` before API server typecheck; `pnpm run typecheck:libs` at root fails due to pre-existing integrations-openai-ai-server errors blocking all libs.
 - [Clerk dummy resources root cause](clerk-dummy-resources.md) — "undefined is not a function" on auth screens: dummy `signUp/signIn = {}` objects; guard needs `isLoaded && typeof method === 'function'`, not just `!signUp`.
