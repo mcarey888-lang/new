@@ -25,6 +25,21 @@ import { logLogin, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
 
+type ClerkErrorLike = {
+  code?: string;
+  longMessage?: string;
+  message?: string;
+  errors?: Array<{ code?: string; longMessage?: string; message?: string }>;
+};
+
+function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback: string): string {
+  return error?.errors?.[0]?.longMessage
+    ?? error?.errors?.[0]?.message
+    ?? error?.longMessage
+    ?? error?.message
+    ?? fallback;
+}
+
 export default function SignInScreen() {
   useScreenView("sign_in");
   const insets = useSafeAreaInsets();
@@ -52,7 +67,7 @@ export default function SignInScreen() {
   }, []);
 
   async function handleSignIn() {
-    if (!clerkLoaded || typeof signIn?.create !== "function") {
+    if (!clerkLoaded || typeof signIn?.password !== "function") {
       setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
@@ -64,18 +79,43 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(
+      const { error: passwordErr } = await withTimeout(
         signIn.password({ emailAddress: email.trim(), password }),
         20000,
-      );
+      ) as any;
+      if (passwordErr) {
+        const code = passwordErr?.errors?.[0]?.code ?? passwordErr?.code ?? "";
+        const message = getClerkErrorMessage(passwordErr, "Sign-in failed — please try again.");
+        if (
+          code === "strategy_for_user_invalid"
+          || code === "form_strategy_not_permitted"
+          || message.toLowerCase().includes("strategy")
+        ) {
+          setError("This account uses Google or Apple sign-in. Tap the button above to continue.");
+        } else {
+          setError(message);
+        }
+        return;
+      }
+
       if (signIn.status === "complete") {
-        const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) {
+        const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
+        if (!finalizeErr) {
           void logLogin("email");
           router.replace("/" as any);
+        } else {
+          setError(getClerkErrorMessage(finalizeErr, "Could not finish signing in."));
         }
       } else if (signIn.status === "needs_second_factor") {
-        await withTimeout(signIn.mfa.sendEmailCode(), 20000);
+        const { error: mfaSendErr } = await withTimeout(
+          signIn.mfa.sendEmailCode(),
+          20000,
+        ) as any;
+        if (mfaSendErr) {
+          setError(getClerkErrorMessage(mfaSendErr, "Could not send the verification code."));
+          return;
+        }
+
         setNeedsMFA(true);
       } else {
         setError("Sign-in failed — please try again.");
@@ -109,12 +149,22 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(signIn.mfa.verifyEmailCode({ code: verifyCode }), 20000);
+      const { error: verifyErr } = await withTimeout(
+        signIn.mfa.verifyEmailCode({ code: verifyCode }),
+        20000,
+      ) as any;
+      if (verifyErr) {
+        setError(getClerkErrorMessage(verifyErr, "Verification failed — please try again."));
+        return;
+      }
+
       if (signIn.status === "complete") {
-        const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) {
+        const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
+        if (!finalizeErr) {
           void logLogin("email_mfa");
           router.replace("/" as any);
+        } else {
+          setError(getClerkErrorMessage(finalizeErr, "Could not finish signing in."));
         }
       } else {
         setError("Verification failed — please try again.");
@@ -179,27 +229,41 @@ export default function SignInScreen() {
         return;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await withTimeout(
+      const { error: signInCreateErr } = await withTimeout(
         signIn.create({ strategy: "oauth_token_apple", token: identityToken }),
         20000,
       ) as any;
-      if (result.status === "complete") {
+      if (signInCreateErr) {
+        setError(getClerkErrorMessage(signInCreateErr, "Apple sign-in failed."));
+        return;
+      }
+
+      if (signIn.status === "complete") {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logLogin("apple");
           router.replace("/" as any);
+        } else {
+          setError(getClerkErrorMessage(finalizeErr, "Apple sign-in didn't complete — please try again."));
         }
-      } else if (result.status === "needs_transfer") {
+      } else if (signIn.status === "needs_transfer") {
         // No Clerk account yet — transfer to sign-up path
-        const signUpResult = await withTimeout(
+        const { error: transferErr } = await withTimeout(
           signUp.create({ transfer: true }),
           20000,
         ) as any;
-        if (signUpResult.status === "complete") {
+        if (transferErr) {
+          setError(getClerkErrorMessage(transferErr, "Apple sign-in didn't complete — please try again."));
+          return;
+        }
+
+        if (signUp.status === "complete") {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
           if (!finalizeErr) {
             void logLogin("apple");
             router.replace("/" as any);
+          } else {
+            setError(getClerkErrorMessage(finalizeErr, "Apple sign-in didn't complete — please try again."));
           }
         } else {
           setError("Apple sign-in didn't complete — please try again.");
@@ -248,7 +312,13 @@ export default function SignInScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  await withTimeout(signIn?.mfa.sendEmailCode(), 20000);
+                  const { error: resendErr } = await withTimeout(
+                    signIn?.mfa.sendEmailCode(),
+                    20000,
+                  ) as any;
+                  if (resendErr) {
+                    setError(getClerkErrorMessage(resendErr, "Could not resend code — please try again."));
+                  }
                 } catch (err: unknown) {
                   const e = err as Record<string, unknown>;
                   const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage

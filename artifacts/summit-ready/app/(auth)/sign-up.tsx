@@ -26,6 +26,20 @@ import { logSignUp, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
 
+type ClerkErrorLike = {
+  longMessage?: string;
+  message?: string;
+  errors?: Array<{ longMessage?: string; message?: string }>;
+};
+
+function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback: string): string {
+  return error?.errors?.[0]?.longMessage
+    ?? error?.errors?.[0]?.message
+    ?? error?.longMessage
+    ?? error?.message
+    ?? fallback;
+}
+
 export default function SignUpScreen() {
   useScreenView("sign_up");
   const insets = useSafeAreaInsets();
@@ -69,11 +83,24 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(
+      const { error: createErr } = await withTimeout(
         signUp.create({ emailAddress: email.trim(), password }),
         20000,
-      );
-      await withTimeout(signUp.verifications.sendEmailCode(), 20000);
+      ) as any;
+      if (createErr) {
+        setError(getClerkErrorMessage(createErr, "Sign-up failed — please try again."));
+        return;
+      }
+
+      const { error: sendCodeErr } = await withTimeout(
+        signUp.verifications.sendEmailCode(),
+        20000,
+      ) as any;
+      if (sendCodeErr) {
+        setError(getClerkErrorMessage(sendCodeErr, "Could not send the verification code."));
+        return;
+      }
+
       setNeedsVerification(true);
     } catch (err: unknown) {
       const e = err as Record<string, unknown>;
@@ -97,12 +124,22 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(signUp.verifications.verifyEmailCode({ code: verifyCode }), 20000);
+      const { error: verifyErr } = await withTimeout(
+        signUp.verifications.verifyEmailCode({ code: verifyCode }),
+        20000,
+      ) as any;
+      if (verifyErr) {
+        setError(getClerkErrorMessage(verifyErr, "Verification failed — please try again."));
+        return;
+      }
+
       if (signUp.status === "complete") {
-        const { error } = await withTimeout(signUp.finalize(), 20000) as any;
-        if (!error) {
+        const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
+        if (!finalizeErr) {
           void logSignUp("email");
           router.replace("/" as any);
+        } else {
+          setError(getClerkErrorMessage(finalizeErr, "Could not finish creating your account."));
         }
       } else {
         setError("Verification failed — please try again.");
@@ -167,28 +204,42 @@ export default function SignUpScreen() {
         return;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await withTimeout(
+      const { error: signInCreateErr } = await withTimeout(
         signIn.create({ strategy: "oauth_token_apple", token: identityToken }),
         20000,
       ) as any;
-      if (result.status === "complete") {
+      if (signInCreateErr) {
+        setError(getClerkErrorMessage(signInCreateErr, "Apple sign-up failed."));
+        return;
+      }
+
+      if (signIn.status === "complete") {
         // Existing Clerk account — sign in directly
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logSignUp("apple");
           router.replace("/" as any);
+        } else {
+          setError(getClerkErrorMessage(finalizeErr, "Apple sign-up didn't complete — please try again."));
         }
-      } else if (result.status === "needs_transfer") {
+      } else if (signIn.status === "needs_transfer") {
         // No Clerk account yet — create a new one via transfer
-        const signUpResult = await withTimeout(
+        const { error: transferErr } = await withTimeout(
           signUp.create({ transfer: true }),
           20000,
         ) as any;
-        if (signUpResult.status === "complete") {
+        if (transferErr) {
+          setError(getClerkErrorMessage(transferErr, "Apple sign-up didn't complete — please try again."));
+          return;
+        }
+
+        if (signUp.status === "complete") {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
           if (!finalizeErr) {
             void logSignUp("apple");
             router.replace("/" as any);
+          } else {
+            setError(getClerkErrorMessage(finalizeErr, "Apple sign-up didn't complete — please try again."));
           }
         } else {
           setError("Apple sign-up didn't complete — please try again.");
@@ -245,7 +296,13 @@ export default function SignUpScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  await withTimeout(signUp?.verifications?.sendEmailCode(), 20000);
+                  const { error: resendErr } = await withTimeout(
+                    signUp?.verifications?.sendEmailCode(),
+                    20000,
+                  ) as any;
+                  if (resendErr) {
+                    setError(getClerkErrorMessage(resendErr, "Could not resend code — please try again."));
+                  }
                 } catch (err: unknown) {
                   const e = err as Record<string, unknown>;
                   const msg = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0]?.longMessage

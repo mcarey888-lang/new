@@ -18,6 +18,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { withTimeout } from "@/utils/withTimeout";
 
+type ClerkErrorLike = {
+  longMessage?: string;
+  message?: string;
+  errors?: Array<{ longMessage?: string; message?: string }>;
+};
+
+function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback: string): string {
+  return error?.errors?.[0]?.longMessage
+    ?? error?.errors?.[0]?.message
+    ?? error?.longMessage
+    ?? error?.message
+    ?? fallback;
+}
+
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,17 +52,35 @@ export default function ForgotPasswordScreen() {
     if (!email) { setError("Please enter your email address."); return; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) { setError("Please enter a valid email address."); return; }
-    if (!clerkLoaded || typeof signIn?.create !== "function") {
+    if (
+      !clerkLoaded
+      || typeof signIn?.create !== "function"
+      || typeof signIn?.resetPasswordEmailCode?.sendCode !== "function"
+    ) {
       setError("Authentication service is still loading — please wait a moment and try again.");
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      await withTimeout(
-        (signIn as any).create({ strategy: "reset_password_email_code", identifier: email }),
+      const { error: createErr } = await withTimeout(
+        signIn.create({ identifier: email.trim() }),
         20000,
-      );
+      ) as any;
+      if (createErr) {
+        setError(getClerkErrorMessage(createErr, "Could not find an account with that email."));
+        return;
+      }
+
+      const { error: sendCodeErr } = await withTimeout(
+        signIn.resetPasswordEmailCode.sendCode(),
+        20000,
+      ) as any;
+      if (sendCodeErr) {
+        setError(getClerkErrorMessage(sendCodeErr, "Could not send reset email. Please try again."));
+        return;
+      }
+
       setStep("reset");
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Could not send reset email. Please try again.";
@@ -75,7 +107,7 @@ export default function ForgotPasswordScreen() {
         20000,
       ) as any;
       if (verifyErr) {
-        setError(verifyErr.message ?? "Invalid code — please check and try again.");
+        setError(getClerkErrorMessage(verifyErr, "Invalid code — please check and try again."));
         return;
       }
       const { error: submitErr } = await withTimeout(
@@ -83,14 +115,14 @@ export default function ForgotPasswordScreen() {
         20000,
       ) as any;
       if (submitErr) {
-        setError(submitErr.message ?? "Could not set new password — please try again.");
+        setError(getClerkErrorMessage(submitErr, "Could not set new password — please try again."));
         return;
       }
       const { error: finalizeErr } = await withTimeout((signIn as any).finalize(), 20000) as any;
       if (!finalizeErr) {
         router.replace("/" as any);
       } else {
-        setError("Password reset — please sign in with your new password.");
+        setError(getClerkErrorMessage(finalizeErr, "Password reset — please sign in with your new password."));
       }
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? err?.message ?? "Reset failed. Check your code and try again.";

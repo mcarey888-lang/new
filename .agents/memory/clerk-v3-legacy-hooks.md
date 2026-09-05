@@ -68,6 +68,8 @@ if (!isLoaded) { /* show spinner */ }
 
 `useSignIn()` returns `SignInSignalValue`. Most methods need `as any` casts.
 
+Future API auth operations resolve to an `{ error }` result on Clerk failures instead of throwing. Always inspect that result before reading `signIn.status` / `signUp.status`, advancing UI state, or calling the next operation. The status lives on the reactive hook resource, not the operation's return value.
+
 **The v3 API is completely different from v2.** Key renames:
 
 | v2 (WRONG — throws "not a function") | v3 (correct) |
@@ -87,17 +89,19 @@ const { signIn } = useSignIn() as any;
 
 // Email+password sign-in — v3 pattern
 const { error: signInErr } = await signIn.password({ emailAddress: email, password });
-if (signInErr) { setError(signInErr.message); return; }
+if (signInErr) { setError(signInErr.longMessage ?? signInErr.message); return; }
 if (signIn.status === "complete") {
   const { error } = await signIn.finalize(); // finalize() IS typed, no cast needed
   if (!error) router.replace("/");
 } else if (signIn.status === "needs_second_factor") {
-  await signIn.mfa.sendEmailCode();
+  const { error } = await signIn.mfa.sendEmailCode();
+  if (error) { setError(error.longMessage ?? error.message); return; }
   // show MFA UI
 }
 
 // MFA second factor — v3 pattern
-await signIn.mfa.verifyEmailCode({ code });
+const { error: verifyError } = await signIn.mfa.verifyEmailCode({ code });
+if (verifyError) { setError(verifyError.longMessage ?? verifyError.message); return; }
 if (signIn.status === "complete") {
   const { error } = await signIn.finalize();
   if (!error) router.replace("/");
@@ -109,13 +113,15 @@ if (signIn.status === "complete") {
 const { signUp } = useSignUp() as any;
 
 // Email+password sign-up — v3 pattern
-const { error: createErr } = await signUp.password({ emailAddress: email, password });
-if (createErr) { setError(createErr.message); return; }
-await signUp.verifications.sendEmailCode();
+const { error: createErr } = await signUp.create({ emailAddress: email, password });
+if (createErr) { setError(createErr.longMessage ?? createErr.message); return; }
+const { error: sendError } = await signUp.verifications.sendEmailCode();
+if (sendError) { setError(sendError.longMessage ?? sendError.message); return; }
 // show verification UI
 
 // Verify — v3 pattern
-await signUp.verifications.verifyEmailCode({ code });
+const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code });
+if (verifyError) { setError(verifyError.longMessage ?? verifyError.message); return; }
 if (signUp.status === "complete") {
   const { error } = await signUp.finalize();
   if (!error) router.replace("/");
