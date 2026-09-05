@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import heroBgPath from "./assets/hero-summit.jpg";
+import devicePlanPath from "./assets/app-device-plan.jpg";
 import featureMapPath from "./assets/feature-map.jpg";
 import featureClimbPath from "./assets/feature-climb.jpg";
 import {
@@ -118,28 +119,70 @@ function Hero() {
 
 function ProblemStatement() {
   return (
-    <section id="problem" className="py-32 bg-background relative border-t border-white/5">
-      <div className="container mx-auto px-4 max-w-4xl text-center">
-        <h2 className="text-3xl md:text-5xl font-display font-bold mb-8 text-white">You don't need to live near mountains to train for them.</h2>
-        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed mb-16">
-          Most people think serious mountain training is only possible if you're already in the Alps or Rockies. SummitReady uses the hills right on your doorstep to build the vertical endurance, leg strength, and pack-carrying capacity your summit actually demands.
-        </p>
+    <section id="problem" className="relative bg-background border-t sr-hairline overflow-hidden">
+      <div className="grid lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] items-stretch">
+        {/* Device composition — bleeds to the left viewport edge, no card.
+            The source is a tall portrait, so anchor to the top: the plan
+            header and readiness score matter more than the phone's chrome. */}
+        <div className="relative order-1 h-[clamp(26rem,86vw,34rem)] lg:h-auto lg:min-h-[46rem]">
+          <img
+            src={devicePlanPath}
+            alt="The SummitReady app showing a Mont Blanc training plan, propped on a rock with the mountain behind"
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover object-[center_top]"
+          />
+          {/* Feathered edge so the photograph meets the dark section without a hard seam */}
+          <div
+            className="hidden lg:block absolute inset-y-0 right-0 w-32 pointer-events-none"
+            style={{ background: "linear-gradient(to right, transparent, hsl(var(--background)))" }}
+          />
+        </div>
 
-        <div className="grid sm:grid-cols-3 gap-8">
-          <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <MapPin className="w-10 h-10 text-primary mb-6" />
-            <h3 className="text-xl font-bold mb-3">Hills Near You</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">The app finds hills within reach of where you live and maps their elevation data into your weekly training sessions.</p>
-          </div>
-          <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <TrendingUp className="w-10 h-10 text-primary mb-6" />
-            <h3 className="text-xl font-bold mb-3">Summit-Matched Workouts</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">Every session is reverse-engineered from your target mountain's elevation profile, distance, and technical demands.</p>
-          </div>
-          <div className="bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm text-left">
-            <Compass className="w-10 h-10 text-primary mb-6" />
-            <h3 className="text-xl font-bold mb-3">No Generic Plans</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">A plan for Ben Nevis looks nothing like a plan for Kilimanjaro. We build specifically for your route, your hills, your timeline.</p>
+        {/* Editorial column */}
+        <div className="order-2 px-[clamp(1.25rem,5.5vw,5.5rem)] lg:pl-[clamp(2.5rem,4vw,4.5rem)] py-[clamp(4.5rem,9vw,9.5rem)]">
+          <div className="max-w-[36rem]">
+            <p className="sr-eyebrow text-primary mb-6">Train local. Climb higher.</p>
+
+            <h2 className="font-display text-foreground mb-7 text-[clamp(2rem,3.6vw,3.25rem)] font-bold leading-[1.05] tracking-[-0.025em] text-balance">
+              You don't need to live near mountains to train for them.
+            </h2>
+
+            <p className="sr-lede text-muted-foreground mb-12">
+              Most people think serious mountain training is only possible if you're already in the Alps or Rockies. SummitReady uses the hills right on your doorstep to build the vertical endurance, leg strength, and pack-carrying capacity your summit actually demands.
+            </p>
+
+            <ul className="border-t sr-hairline">
+              {[
+                {
+                  Icon: MapPin,
+                  title: "Hills Near You",
+                  body: "The app finds hills within reach of where you live and maps their elevation data into your weekly training sessions.",
+                },
+                {
+                  Icon: TrendingUp,
+                  title: "Summit-Matched Workouts",
+                  body: "Every session is reverse-engineered from your target mountain's elevation profile, distance, and technical demands.",
+                },
+                {
+                  Icon: Compass,
+                  title: "No Generic Plans",
+                  body: "A plan for Ben Nevis looks nothing like a plan for Kilimanjaro. We build specifically for your route, your hills, your timeline.",
+                },
+              ].map(({ Icon, title, body }) => (
+                <li key={title} className="flex gap-5 py-7 border-b sr-hairline">
+                  <Icon className="w-5 h-5 mt-0.5 shrink-0 text-primary" strokeWidth={1.5} aria-hidden="true" />
+                  <div className="min-w-0">
+                    <h3 className="text-[1.0625rem] font-semibold text-foreground mb-1.5 tracking-[-0.01em]">
+                      {title}
+                    </h3>
+                    <p className="text-[0.9375rem] text-muted-foreground leading-relaxed">
+                      {body}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
