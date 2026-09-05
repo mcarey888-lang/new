@@ -18,13 +18,16 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RootErrorFallback } from "@/components/RootErrorFallback";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 import { logAppOpen, logFirstOpenForReddit } from "@/lib/analytics";
 import { clerkTokenCache } from "@/utils/clerkTokenCache";
+import { installGlobalErrorHandler } from "@/utils/globalErrorHandler";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
+installGlobalErrorHandler();
 SplashScreen.preventAutoHideAsync();
 
 // Point the API client at the production API for native builds.
@@ -195,7 +198,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootApp() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -221,26 +224,44 @@ export default function RootLayout() {
       <ClerkLoadedOrTimeout>
         <NativeServicesGate>
           <SafeAreaProvider>
-            <ErrorBoundary>
-              <QueryClientProvider client={queryClient}>
-                <SubscriptionProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <KeyboardProvider>
-                      <UserSwitchGuard>
-                        <AppProvider>
-                          <ChallengesProvider>
-                            <RootLayoutNav />
-                          </ChallengesProvider>
-                        </AppProvider>
-                      </UserSwitchGuard>
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </SubscriptionProvider>
-              </QueryClientProvider>
-            </ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <SubscriptionProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <UserSwitchGuard>
+                      <AppProvider>
+                        <ChallengesProvider>
+                          <RootLayoutNav />
+                        </ChallengesProvider>
+                      </AppProvider>
+                    </UserSwitchGuard>
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </SubscriptionProvider>
+            </QueryClientProvider>
           </SafeAreaProvider>
         </NativeServicesGate>
       </ClerkLoadedOrTimeout>
     </ClerkProvider>
+  );
+}
+
+function logRootRenderError(error: Error, componentStack: string): void {
+  console.error(
+    "[root-error-boundary]",
+    error.message,
+    error.stack ?? "JavaScript stack unavailable",
+    componentStack || "React component stack unavailable",
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ErrorBoundary
+      FallbackComponent={RootErrorFallback}
+      onError={logRootRenderError}
+    >
+      <RootApp />
+    </ErrorBoundary>
   );
 }
