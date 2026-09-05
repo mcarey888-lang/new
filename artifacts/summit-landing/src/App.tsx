@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import heroBgPath from "./assets/hero-bg.jpeg";
+import heroBgPath from "./assets/hero-summit.jpg";
 import featureMapPath from "./assets/feature-map.jpg";
 import featureClimbPath from "./assets/feature-climb.jpg";
 import {
@@ -15,76 +15,102 @@ import {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-20 pb-32 overflow-hidden">
+    <section className="relative min-h-[100svh] flex flex-col justify-end overflow-hidden">
+      {/* Cinematic full-bleed photography */}
       <div className="absolute inset-0 z-0">
-        <img src={heroBgPath} alt="Alpine Peak at Dawn" className="w-full h-full object-cover opacity-70 object-top" />
-        <div className="hero-overlay-v absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="hero-overlay-h absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/50" />
+        <img
+          src={heroBgPath}
+          alt="A mountaineer on a summit ridge looking out over cloud-filled valleys at sunrise"
+          fetchPriority="high"
+          decoding="async"
+          className="sr-settle w-full h-full object-cover object-[72%_center] md:object-center"
+        />
+        <div className="sr-scrim-h absolute inset-0" />
+        <div className="sr-scrim-v absolute inset-x-0 bottom-0 h-2/5" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center max-w-5xl mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-bold text-primary mb-8 backdrop-blur-md uppercase tracking-widest shadow-[0_0_15px_rgba(62,207,117,0.15)]">
-          <MapPin className="w-4 h-4" />
-          <span>Train Local. Climb Higher.</span>
-        </div>
+      {/* Editorial caption locating the photograph */}
+      <div className="hidden md:flex absolute z-10 right-[clamp(1.25rem,5.5vw,5.5rem)] bottom-[9.5rem] items-center gap-2 text-muted-foreground">
+        <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+        <span className="sr-eyebrow">Aonach Eagach&nbsp;·&nbsp;Scotland</span>
+      </div>
 
-        <h1 className="text-6xl md:text-8xl lg:text-[7rem] font-display font-bold text-white mb-6 leading-[0.9] tracking-tighter drop-shadow-2xl">
-          Big mountains.<br/>
-          <span className="text-primary italic">Trained on hills near you.</span>
-        </h1>
+      {/* Asymmetric, left-weighted content */}
+      <div className="sr-shell relative z-10 pt-36 pb-12 md:pb-14">
+        <div className="max-w-[58rem] sr-rise">
+          <p className="sr-eyebrow text-primary mb-6 md:mb-7">
+            Real mountains. Real progress.
+          </p>
 
-        <p className="text-lg md:text-2xl text-muted-foreground mb-12 max-w-3xl leading-relaxed drop-shadow-lg font-light">
-          Tell us your target summit. SummitReady finds the hills near you and builds a week-by-week plan that uses your local terrain to simulate exactly what your mountain demands. Train where you live. Summit anywhere.
-        </p>
+          <h1 className="sr-display font-display text-foreground mb-7 md:mb-8">
+            Big mountains.<br />
+            Trained on hills near you.
+          </h1>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 mb-12">
-          <a href="https://testflight.apple.com/join/PbT6NbZn" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105 active:scale-95">
-            <div className="flex items-center gap-3 bg-black border border-white/20 text-white font-semibold rounded-2xl px-6 py-4 shadow-[0_0_25px_rgba(0,0,0,0.5)] min-w-[200px] justify-center">
-              <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-              </svg>
-              <div className="text-left">
-                <div className="text-xs leading-none mb-0.5 text-white/70">Download on the</div>
-                <div className="text-base leading-none">App Store</div>
+          <p className="sr-lede text-muted-foreground mb-9 md:mb-10">
+            Tell us your target summit. SummitReady finds the hills near you and builds a week-by-week plan that uses your local terrain to simulate exactly what your mountain demands. Train where you live. Summit anywhere.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+            <a href="https://testflight.apple.com/join/PbT6NbZn" target="_blank" rel="noopener noreferrer" className="group">
+              <div className="flex items-center gap-3 bg-black/85 border border-white/15 text-white font-semibold rounded-lg px-5 h-[52px] min-w-[186px] justify-center transition-colors duration-200 group-hover:bg-black">
+                <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-[0.6875rem] leading-none mb-1 text-white/65">Download on the</div>
+                  <div className="text-[0.9375rem] leading-none">App Store</div>
+                </div>
               </div>
-            </div>
-          </a>
+            </a>
 
-          <a href="https://play.google.com/store/apps/details?id=uk.summitready.app" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105 active:scale-95">
-            <div className="flex items-center gap-3 bg-black border border-white/20 text-white font-semibold rounded-2xl px-6 py-4 shadow-[0_0_25px_rgba(0,0,0,0.5)] min-w-[200px] justify-center">
-              <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
-              </svg>
-              <div className="text-left">
-                <div className="text-xs leading-none mb-0.5 text-white/70">Get it on</div>
-                <div className="text-base leading-none">Google Play</div>
+            <a href="https://play.google.com/store/apps/details?id=uk.summitready.app" target="_blank" rel="noopener noreferrer" className="group">
+              <div className="flex items-center gap-3 bg-black/85 border border-white/15 text-white font-semibold rounded-lg px-5 h-[52px] min-w-[186px] justify-center transition-colors duration-200 group-hover:bg-black">
+                <svg className="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3.18 23.76c.3.17.64.22.98.16L15.5 12 11.34 7.84 3.18 23.76zm16.4-11.02L16.7 11.2 12.5 12l4.2.8 2.88-1.54c.82-.46.82-1.6 0-2.06zM3.54.24C3.2.18 2.86.23 2.56.4c-.6.34-.6 1.2 0 1.54l8.16 15.92L15.5 12 3.54.24zm12.86 8.34l-2.9-1.6-4.2.8 4.2.8 2.9-1.6z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-[0.6875rem] leading-none mb-1 text-white/65">Get it on</div>
+                  <div className="text-[0.9375rem] leading-none">Google Play</div>
+                </div>
               </div>
-            </div>
-          </a>
-        </div>
-
-        <div className="w-full max-w-2xl">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-semibold">Free summit guides</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/training-guides" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
-              <BookOpen className="w-3.5 h-3.5 text-primary" />
-              Training Guides
-            </Link>
-            <Link to="/can-i-climb" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
-              <HelpCircle className="w-3.5 h-3.5 text-primary" />
-              Am I Ready?
-            </Link>
-            <Link to="/mountains" className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 hover:border-primary/40 hover:text-primary transition-all backdrop-blur-md">
-              <Mountain className="w-3.5 h-3.5 text-primary" />
-              Mountain Profiles
-            </Link>
+            </a>
           </div>
         </div>
       </div>
 
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center animate-pulse opacity-50">
-        <span className="text-xs uppercase tracking-widest mb-2 font-semibold">Scroll</span>
-        <ChevronRight className="w-5 h-5 rotate-90" />
+      {/* Capability rail — hairline-separated editorial row, no cards */}
+      <div className="relative z-10 border-t sr-hairline">
+        <div className="sr-shell">
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-transparent">
+            {[
+              { to: "/training-guides", Icon: BookOpen,   label: "Training Guides",   note: "Week-by-week summit plans" },
+              { to: "/can-i-climb",     Icon: HelpCircle, label: "Am I Ready?",       note: "Honest readiness answers" },
+              { to: "/mountains",       Icon: Mountain,   label: "Mountain Profiles", note: "Routes, data and demands" },
+            ].map(({ to, Icon, label, note }, i) => (
+              <li key={to} className={i > 0 ? "sm:border-l sr-hairline" : ""}>
+                <Link
+                  to={to}
+                  className="group flex items-center gap-4 py-6 sm:py-7 sm:px-7 first:sm:pl-0 transition-colors"
+                >
+                  <Icon className="w-[18px] h-[18px] shrink-0 text-primary" strokeWidth={1.5} aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block text-[0.9375rem] font-semibold text-foreground leading-snug">
+                      {label}
+                    </span>
+                    <span className="block text-[0.8125rem] text-muted-foreground leading-snug mt-0.5">
+                      {note}
+                    </span>
+                  </span>
+                  <ArrowRight
+                    className="w-4 h-4 ml-auto shrink-0 text-muted-foreground/60 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary"
+                    aria-hidden="true"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );
