@@ -27,12 +27,6 @@ import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 SplashScreen.preventAutoHideAsync();
 
-try {
-  initializeRevenueCat();
-} catch (err: any) {
-  Alert.alert("RevenueCat Unavailable", err?.message ?? "Unknown error");
-}
-
 // Point the API client at the production API for native builds.
 // Relative paths work automatically in web/preview; this is a no-op there.
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
@@ -124,6 +118,43 @@ function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Native SDK startup is deliberately deferred until Clerk has had a chance to
+ * load. Some TurboModules can monopolise the JS thread during first render,
+ * preventing Clerk's initial network response from being processed.
+ */
+function NativeServicesGate({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      initializeRevenueCat();
+    } catch (err: any) {
+      Alert.alert("RevenueCat Unavailable", err?.message ?? "Unknown error");
+    } finally {
+      setReady(true);
+    }
+
+    void logAppOpen();
+    void logFirstOpenForReddit();
+  }, []);
+
+  if (!ready) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={ls.container}>
+        <Image
+          source={require("@/assets/images/logo.gif")}
+          style={ls.logo}
+          resizeMode="contain"
+        />
+        <ActivityIndicator color={T.green} size="large" style={ls.spinner} />
+      </LinearGradient>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 const ls = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center" },
   logo: { width: 220, height: 88 },
@@ -184,36 +215,31 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
-  useEffect(() => {
-    if (ready) {
-      void logAppOpen();
-      void logFirstOpenForReddit();
-    }
-  }, [ready]);
-
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
       <AuthBridge />
       <ClerkLoadedOrTimeout>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <QueryClientProvider client={queryClient}>
-              <SubscriptionProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <UserSwitchGuard>
-                      <AppProvider>
-                        <ChallengesProvider>
-                          <RootLayoutNav />
-                        </ChallengesProvider>
-                      </AppProvider>
-                    </UserSwitchGuard>
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </SubscriptionProvider>
-            </QueryClientProvider>
-          </ErrorBoundary>
-        </SafeAreaProvider>
+        <NativeServicesGate>
+          <SafeAreaProvider>
+            <ErrorBoundary>
+              <QueryClientProvider client={queryClient}>
+                <SubscriptionProvider>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <KeyboardProvider>
+                      <UserSwitchGuard>
+                        <AppProvider>
+                          <ChallengesProvider>
+                            <RootLayoutNav />
+                          </ChallengesProvider>
+                        </AppProvider>
+                      </UserSwitchGuard>
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </SubscriptionProvider>
+              </QueryClientProvider>
+            </ErrorBoundary>
+          </SafeAreaProvider>
+        </NativeServicesGate>
       </ClerkLoadedOrTimeout>
     </ClerkProvider>
   );
