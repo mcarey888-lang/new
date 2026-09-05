@@ -1,0 +1,34 @@
+diff --git a/dist/provider/ClerkProvider.js b/dist/provider/ClerkProvider.js
+index 194772c0d3ee36bab987531a15e7be16dc0cc2a9..9cb4a345536df8b2fc34c79d3734e17b34f6021e 100644
+--- a/dist/provider/ClerkProvider.js
++++ b/dist/provider/ClerkProvider.js
+@@ -132,7 +132,7 @@ function ClerkProvider(props) {
+   const isMountedRef = (0, import_react2.useRef)(true);
+   (0, import_react2.useEffect)(() => {
+     isMountedRef.current = true;
+-    if ((import_react_native.Platform.OS === "ios" || import_react_native.Platform.OS === "android") && pk && !initStartedRef.current) {
++    if (false && (import_react_native.Platform.OS === "ios" || import_react_native.Platform.OS === "android") && pk && !initStartedRef.current) {
+       initStartedRef.current = true;
+       const configureNativeClerk = async () => {
+         var _a, _b, _c, _d, _e, _f;
+@@ -230,7 +230,10 @@ function ClerkProvider(props) {
+       isMountedRef.current = false;
+     };
+   }, [pk, clerkInstance]);
+-  const { nativeAuthState } = (0, import_useNativeAuthEvents.useNativeAuthEvents)();
++  // SummitReady uses Clerk's JS flows for email, Google and Apple. Keep the
++  // separate native Clerk SDK dormant: synchronising both clients can race
++  // Android activity/session startup and terminate the process after sign-in.
++  const nativeAuthState = null;
+   (0, import_react2.useEffect)(() => {
+     if (!nativeAuthState || !clerkInstance) {
+       return;
+@@ -304,7 +307,7 @@ function ClerkProvider(props) {
+         ...(0, import_runtime.isNative)() && { runtimeEnvironment: "headless" }
+       },
+       children: [
+-        (0, import_runtime.isNative)() && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
++        false && (0, import_runtime.isNative)() && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+           NativeSessionSync,
+           {
+             publishableKey: pk,
