@@ -23,222 +23,259 @@ id = "neVNzkxcGmWjQ3nBJ2x_h"
 uri = "file://screenshots/screen-home.jpg"
 type = "image"
 title = "Screenshot 1 — Home Screen"
+logical_id = "77b7dcef-eb76-4aa7-a7e8-1d39a31a35ab"
 
 [[outputs]]
 id = "3A8JTcZACexvUHRbcSnSv"
 uri = "file://screenshots/screen-questionnaire.jpg"
 type = "image"
 title = "2. Questionnaire — Summit goal"
+logical_id = "6742362e-d010-43cf-8212-f3fd16d7dfc9"
 
 [[outputs]]
 id = "MBbTb2A3i58fnMCnyRu_e"
 uri = "file://screenshots/screen-setup.jpg"
 type = "image"
 title = "Screenshot 2 — Fitness Setup"
+logical_id = "564074a0-b204-4781-b131-7dcf5d189504"
 
 [[outputs]]
 id = "Unk3IC8_wgRPCP8Jenll4"
 uri = "file://screenshots/screen-hills.jpg"
 type = "image"
 title = "Screenshot 3 — Nearby Hills"
+logical_id = "885eecd3-345e-46fa-870e-04020c6a8fcd"
 
 [[outputs]]
 id = "YG8OYEtfzTAHuGOtnSmXH"
 uri = "file://screenshots/screen-paywall.jpg"
 type = "image"
 title = "Screenshot 4 — Premium Plan"
+logical_id = "dfcdceb9-4825-408f-8a48-4564fa37a85e"
 
 [[outputs]]
 id = "hgCDaIHp-R-Ho1pWiYK8V"
 uri = "file://artifacts/summit-landing/src/assets/candidates/mb_b.jpg"
 type = "image"
 title = "Mont Blanc A — panoramic massif & summit"
+logical_id = "6303f007-4428-413c-98cd-a59b509d5bf8"
 
 [[outputs]]
 id = "3tgNp_-qF1lZWuHlR98se"
 uri = "file://artifacts/summit-landing/src/assets/candidates/mb_c.jpg"
 type = "image"
 title = "Mont Blanc B — Chamonix aerial glacier"
+logical_id = "05d23f97-6fd4-47fe-bdda-2166d56936eb"
 
 [[outputs]]
 id = "dnLJdmSx57obS_s7DiOlQ"
 uri = "file://artifacts/summit-landing/src/assets/candidates/mb_d.jpg"
 type = "image"
 title = "Mont Blanc C — snowy peak ridge"
+logical_id = "4098a180-a753-46c5-9bde-83a6f8bae0d3"
 
 [[outputs]]
 id = "SiZ6MUV3C2LunP8rgy-6E"
 uri = "file://artifacts/summit-landing/src/assets/candidates/kili_b.jpg"
 type = "image"
 title = "Kilimanjaro A — Amboseli acacia & snow cap"
+logical_id = "6bbd98e4-2598-4416-abcd-602a8dc08cb7"
 
 [[outputs]]
 id = "-w6GHWJSJW37zy5ggnQ6C"
 uri = "file://artifacts/summit-landing/src/assets/candidates/kili_d.jpg"
 type = "image"
 title = "Kilimanjaro B — Machame route summit view"
+logical_id = "f6b8eda2-40d3-4dcd-abca-af8ae479721e"
 
 [[outputs]]
 id = "hyjmgoVbPDZPHhxSxqnLO"
 uri = "file://artifacts/summit-landing/src/assets/candidates/kili_e.jpg"
 type = "image"
 title = "Kilimanjaro C — savannah & snow cap sky"
+logical_id = "6cf4e4d8-f226-4a7f-95dd-59e0d6a668a7"
 
 [[outputs]]
 id = "CgCa90soMPqZL0l9BnaeF"
 uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_a.jpg"
 type = "image"
 title = "EBC A — Himalaya valley & peaks"
+logical_id = "a3163845-a764-445c-8f01-01ff6a335c54"
 
 [[outputs]]
 id = "exBFZhnchYz-P44qBIWVx"
 uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_b.jpg"
 type = "image"
 title = "EBC B — Everest Base Camp tents & Khumbu"
+logical_id = "42af8795-3938-4428-8f95-979669914a24"
 
 [[outputs]]
 id = "w5Dj7QiW_3OH4KAqtC9eH"
 uri = "file://artifacts/summit-landing/src/assets/candidates/ebc_c.jpg"
 type = "image"
 title = "EBC C — Nepal mountain ridge trek"
+logical_id = "1df58fe4-6b31-4bfb-aaba-117c699752d6"
 
 [[outputs]]
 id = "2Iaza0I7shf9Y5oTN8VAw"
 uri = "file://attached_assets/icon-512.png"
 type = "image"
 title = "SummitReady App Icon (512×512)"
+logical_id = "9d54139a-b205-4b91-bcf2-dcd41a8a7c5e"
 
 [[outputs]]
 id = "1nUJWUa-sF68Z0YJeMVqi"
 uri = "file://screenshots/screen-dashboard-kili.jpg"
 type = "image"
 title = "Dashboard — Kilimanjaro + mountain photo"
+logical_id = "96c8c29b-a94b-49eb-b4f4-5346c6def0a6"
 
 [[outputs]]
 id = "F9cNI1eLpAYt-k-ntLvQx"
 uri = "file://screenshots/screen-plan-kili.jpg"
 type = "image"
 title = "Training Plan — 12-week progression"
+logical_id = "c48ea7ab-b875-4779-99ba-05c67b604fc6"
 
 [[outputs]]
 id = "xGAAu9g6rXw_DZuf3NSbk"
 uri = "file://screenshots/screen-log-kili.jpg"
 type = "image"
 title = "Session Log — 12 sessions, real hill data"
+logical_id = "5623aac5-4651-4bf7-afa7-212a6277d309"
 
 [[outputs]]
 id = "2ZEXpgo61wbiyMu2neH6e"
 uri = "file://summit-ready-build.tar.gz"
 type = "unspecified"
 title = "SummitReady — app source (ready to build)"
+logical_id = "da102715-641b-4415-b506-91bc8e52f6d2"
 
 [[outputs]]
 id = "MpnirXqOtyzvHiqV5BrLk"
 uri = "file://summitready-tester-links.txt"
 type = "text"
 title = "SummitReady — Tester Links & Instructions"
+logical_id = "93ea2bac-e143-4e41-8c5f-05b5df0ffedd"
 
 [[outputs]]
 id = "nSt4T2x6KcSuo-OBWzn-E"
 uri = "file://artifacts/summit-ready/assets/sounds/challenge_complete.mp3"
 type = "audio"
 title = "challenge_complete"
+logical_id = "96fd964a-4387-4113-a11c-916ef85e6b46"
 
 [[outputs]]
 id = "kNwSBBIKn5--S3yE4EZoC"
 uri = "file://.local/exports/summitready-seo-audit.md"
 type = "text"
 title = "SummitReady SEO & Content Audit"
+logical_id = "0cb48439-0dab-4cc6-9181-70570883fa6b"
 
 [[outputs]]
 id = "NNzJQYI666hAtWT4cYE4z"
 uri = "file://.local/content-plan-local-hills-guide.md"
 type = "text"
 title = "Content Plan — Train for Mountains Using Local Hills"
+logical_id = "aa178495-7af4-48fe-93b7-321186952781"
 
 [[outputs]]
 id = "9turqZPCbYsGEMo4U_fjr"
 uri = "file://.local/reports/mountain-lookup-evaluation-2026-06-09.md"
 type = "text"
 title = "Mountain Lookup Evaluation Report — 9 June 2026"
+logical_id = "e41c2bdf-3ff7-4c5c-91ad-cb3f0b32f301"
 
 [[outputs]]
 id = "0FFO-kzI3ZYXar1VmAxQU"
 uri = "file://mountain-lookup-evaluation-2026-06-09.md"
 type = "text"
 title = "Mountain Lookup Evaluation Report — 9 June 2026"
+logical_id = "11567bec-fc69-4157-a2a1-c71fc9cabcd2"
 
 [[outputs]]
 id = "1Xp5J4DslMKew7MIl-cyJ"
 uri = "file://artifacts/summit-ready/assets/screenshots/01-dashboard.png"
 type = "image"
 title = "1 — Dashboard & Readiness Score"
+logical_id = "82178354-3377-48d4-8486-c36622e2e5b5"
 
 [[outputs]]
 id = "kV4dneRDECMkN5Xi2Hwth"
 uri = "file://artifacts/summit-ready/assets/screenshots/02-hills.png"
 type = "image"
 title = "2 — Hill Finder"
+logical_id = "3a0f1557-c311-4a49-8329-cdfb5049d11b"
 
 [[outputs]]
 id = "12MTtpKx4ZJhZe1IB7IxX"
 uri = "file://artifacts/summit-ready/assets/screenshots/03-plan.png"
 type = "image"
 title = "3 — Training Plan"
+logical_id = "86d4b18b-cf2a-4b7b-9436-ddefda77a5e4"
 
 [[outputs]]
 id = "4ib0crkstwstpxI_7Z6Dd"
 uri = "file://artifacts/summit-ready/assets/screenshots/04-tracking.png"
 type = "image"
 title = "4 — Hike Tracking"
+logical_id = "cec2414c-9d07-49e7-ad8f-7835e172db0c"
 
 [[outputs]]
 id = "aDFTZ_a4MXok2BhFmHari"
 uri = "file://artifacts/summit-ready/assets/screenshots/05-goal-setup.png"
 type = "image"
 title = "5 — Goal Setup"
+logical_id = "dd50f4ee-f19e-486b-9f75-92fba652c972"
 
 [[outputs]]
 id = "5g3GwHxy6HoxugrPYeXP5"
 uri = "file://artifacts/summit-ready/assets/screenshots/01-prepare.png"
 type = "image"
 title = "1 — Prepare For Any Mountain"
+logical_id = "3078236e-a554-4662-afca-84ed8cee1591"
 
 [[outputs]]
 id = "Wpt5bFcUYCqACeKmWjzR5"
 uri = "file://artifacts/summit-ready/assets/screenshots/02-plan.png"
 type = "image"
 title = "2 — Get Your Personalised Training Plan"
+logical_id = "a967fb6a-cc4f-4105-b49e-44a80c3227fe"
 
 [[outputs]]
 id = "vyxV_oJMqPQJ-9eaR55R-"
 uri = "file://artifacts/summit-ready/assets/screenshots/03-hills.png"
 type = "image"
 title = "3 — Train Using Local Hills"
+logical_id = "c7e54fc5-e15f-4f1d-86f9-05c8c95ee755"
 
 [[outputs]]
 id = "oqTYFRZPs21UobuzMvjHQ"
 uri = "file://artifacts/summit-ready/assets/screenshots/04-progress.png"
 type = "image"
 title = "4 — Track Your Progress"
+logical_id = "6c0bfcef-6786-4515-a510-cf142bfee809"
 
 [[outputs]]
 id = "nW7G7fEmZrYLo0pFoUSzh"
 uri = "file://artifacts/summit-ready/assets/screenshots/05-adventure.png"
 type = "image"
 title = "5 — Built For Your Next Adventure"
+logical_id = "f7f9a288-b880-4668-b4cf-ce2358c1cb39"
 
 [[outputs]]
 id = "6T4v1ecj5mxfzBzqzlOV7"
 uri = "file://screenshots/paywall-iphone.jpg"
 type = "image"
 title = "Paywall — above the fold (correct prices + legal links)"
+logical_id = "3bbe12ea-5ad3-42b6-862f-9050b3affb10"
 
 [[outputs]]
 id = "NHeikGf4XGS5iMdfM59ba"
 uri = "file://screenshots/paywall-iphone-full.jpg"
 type = "image"
 title = "Paywall — full scroll (legal footer visible at bottom)"
+logical_id = "4f53bb6a-dbdd-4937-8096-47760a6e3165"
 
 [[outputs]]
 id = "Aodnq49N-HQvwyCqg6JrR"
@@ -246,3 +283,18 @@ uri = "file://attached_assets/expedition-mode-audit.md"
 type = "text"
 title = "Expedition Mode — Audit & Implementation Plan"
 description = "Full audit of the current Expedition Mode implementation, screen flow, state diagram, navigation diagram, and phased implementation plan."
+logical_id = "188ea5e8-784b-4bed-a1f6-e9e75bef4de2"
+
+[[outputs]]
+id = "0G-Pif_jxFEICsS3aGszG"
+uri = "file://artifacts/tryfan-3d-prototype/screenshots/tryfan-circular-candidate-final.jpg"
+type = "image"
+title = "Tryfan 3D Render"
+description = "Final 3D terrain render of Tryfan with the North Ridge circular route overlay."
+logical_id = "da748430-5d06-4748-9179-7122d4fe5a5d"
+content_hash = "sha256:1a6a0d6bcc18fdb3d67de3463745d62a505edb4438576ed9af0cfb02849d5bd9"
+size = 86900
+mtime_ms = 1787614623629
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/da748430-5d06-4748-9179-7122d4fe5a5d/b3460b51-04fd-4d2f-afb7-ada32e0ebf2a"
+storage_version_token = "1788615832488156"
+content_type = "image/jpeg"
