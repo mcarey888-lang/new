@@ -19,17 +19,17 @@ import {
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import Purchases from "react-native-purchases";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp, type CompletedGoal } from "@/context/AppContext";
 import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
-import { useSubscription } from "@/lib/revenuecat";
+import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import { mergeActivityKinds } from "@/utils/activityReliability";
+import { discardActiveHike } from "@/utils/activeHikeSession";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -172,7 +172,8 @@ export default function AccountScreen() {
   }
 
   async function doSignOut() {
-    try { await Purchases.logOut(); } catch {}
+    await discardActiveHike();
+    try { await logoutRevenueCat(); } catch {}
     queryClient.clear();
     try { await signOut(); } catch {}
     router.replace("/");
@@ -233,7 +234,8 @@ export default function AccountScreen() {
       Alert.alert("Delete failed", msg);
       return;
     }
-    try { await Purchases.logOut(); } catch {}
+    await discardActiveHike();
+    try { await logoutRevenueCat(); } catch {}
     if (userId) {
       try {
         const allKeys = await AsyncStorage.getAllKeys();

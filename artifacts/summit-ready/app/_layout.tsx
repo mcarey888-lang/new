@@ -9,8 +9,8 @@ import { ClerkProvider, useAuth } from "@clerk/expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,7 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RootErrorFallback } from "@/components/RootErrorFallback";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
-import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+import { SubscriptionProvider } from "@/lib/revenuecat";
 import { logAppOpen, logFirstOpenForReddit } from "@/lib/analytics";
 import { clerkTokenCache } from "@/utils/clerkTokenCache";
 import { installGlobalErrorHandler } from "@/utils/globalErrorHandler";
@@ -122,38 +122,18 @@ function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Native SDK startup is deliberately deferred until Clerk has had a chance to
- * load. Some TurboModules can monopolise the JS thread during first render,
- * preventing Clerk's initial network response from being processed.
+ * Non-essential analytics startup is deferred until the app's provider tree
+ * has rendered. Native SDKs must never block auth restoration or initial
+ * routing.
  */
 function NativeServicesGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-
   useEffect(() => {
-    try {
-      initializeRevenueCat();
-    } catch (err: any) {
-      Alert.alert("RevenueCat Unavailable", err?.message ?? "Unknown error");
-    } finally {
-      setReady(true);
-    }
-
-    void logAppOpen();
-    void logFirstOpenForReddit();
+    const timer = setTimeout(() => {
+      void logAppOpen();
+      void logFirstOpenForReddit();
+    }, 750);
+    return () => clearTimeout(timer);
   }, []);
-
-  if (!ready) {
-    return (
-      <LinearGradient colors={T.bgGrad} style={ls.container}>
-        <Image
-          source={require("@/assets/images/logo.gif")}
-          style={ls.logo}
-          resizeMode="contain"
-        />
-        <ActivityIndicator color={T.green} size="large" style={ls.spinner} />
-      </LinearGradient>
-    );
-  }
 
   return <>{children}</>;
 }

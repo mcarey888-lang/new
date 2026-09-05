@@ -19,7 +19,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 
@@ -28,7 +27,6 @@ const EXPEDITION_COLOR  = T.blue;
 
 export function ModeTogglePill() {
   const insets  = useSafeAreaInsets();
-  const isIOS   = Platform.OS === "ios";
   const { shellMode, setShellMode, activeExpeditionId } = useApp();
   const switchingRef = useRef(false);
   const [isSwitching, setIsSwitching] = useState(false);
@@ -120,15 +118,9 @@ export function ModeTogglePill() {
       style={[s.wrapper, { top }]}
       pointerEvents="box-none"
     >
-      {isIOS ? (
-        <BlurView intensity={55} tint="dark" style={s.blurWrap}>
-          {pill}
-        </BlurView>
-      ) : (
-        <View style={s.plainBg}>
-          {pill}
-        </View>
-      )}
+      <View style={s.plainBg}>
+        {pill}
+      </View>
     </View>
   );
 }
@@ -142,12 +134,6 @@ const s = StyleSheet.create({
     zIndex: 200,
     pointerEvents: "box-none",
   } as any,
-  blurWrap: {
-    borderRadius: 22,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
   plainBg: {
     borderRadius: 22,
     overflow: "hidden",

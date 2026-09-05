@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
-import Purchases from "react-native-purchases";
+import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
@@ -11,6 +11,15 @@ const REVENUECAT_ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_AP
 const USE_TEST_STORE = process.env.EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE === "true";
 
 export const REVENUECAT_ENTITLEMENT_IDENTIFIER = "premium";
+
+async function loadPurchases() {
+  const purchasesModule = await import("react-native-purchases");
+  return purchasesModule.default;
+}
+
+let configuredPurchasesPromise: ReturnType<typeof loadPurchases> | null = null;
+let identifiedRevenueCatUserId: string | null = null;
+let identityOperation: Promise<void> = Promise.resolve();
 
 function getRevenueCatApiKey() {
   if (!REVENUECAT_TEST_API_KEY || !REVENUECAT_IOS_API_KEY || !REVENUECAT_ANDROID_API_KEY) {
@@ -36,23 +45,104 @@ function getRevenueCatApiKey() {
   return REVENUECAT_TEST_API_KEY;
 }
 
-export function initializeRevenueCat() {
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) throw new Error("RevenueCat Public API Key not found");
+async function getConfiguredPurchases() {
+  if (!configuredPurchasesPromise) {
+    const attempt = loadPurchases().then((Purchases) => {
+      const apiKey = getRevenueCatApiKey();
+      if (!apiKey) throw new Error("RevenueCat Public API Key not found");
+      Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+      Purchases.configure({ apiKey });
+      return Purchases;
+    });
+    configuredPurchasesPromise = attempt.catch((error) => {
+      configuredPurchasesPromise = null;
+      throw error;
+    });
+  }
+  return configuredPurchasesPromise;
+}
 
-  Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
-  Purchases.configure({ apiKey });
+export async function initializeRevenueCat(): Promise<void> {
+  await getConfiguredPurchases();
+}
+
+async function identifyRevenueCatUser(userId: string): Promise<void> {
+  if (identifiedRevenueCatUserId === userId) return;
+  identityOperation = identityOperation.catch(() => {}).then(async () => {
+    if (identifiedRevenueCatUserId === userId) return;
+    const Purchases = await getConfiguredPurchases();
+    await Purchases.logIn(userId);
+    identifiedRevenueCatUserId = userId;
+  });
+  return identityOperation;
+}
+
+export async function logoutRevenueCat(): Promise<void> {
+  identityOperation = identityOperation.catch(() => {}).then(async () => {
+    if (!configuredPurchasesPromise || !identifiedRevenueCatUserId) return;
+    const Purchases = await configuredPurchasesPromise;
+    await Purchases.logOut();
+    identifiedRevenueCatUserId = null;
+  });
+  return identityOperation;
+}
+
+async function getPurchasesForUser(userId: string | null | undefined) {
+  if (!userId) throw new Error("Authentication required for subscription access");
+  const Purchases = await getConfiguredPurchases();
+  await identifyRevenueCatUser(userId);
+  return Purchases;
 }
 
 function useSubscriptionContext() {
   const queryClient = useQueryClient();
+  const { isLoaded: authLoaded, userId } = useAuth();
+  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkError, setSdkError] = useState<Error | null>(null);
+  const revenueCatUserKey = userId ?? "anonymous";
+  const customerInfoKey = ["revenuecat", "customer-info", revenueCatUserKey] as const;
+  const offeringsKey = ["revenuecat", "offerings", revenueCatUserKey] as const;
+
+  useEffect(() => {
+    if (!authLoaded) return;
+    let active = true;
+    setSdkReady(false);
+    setSdkError(null);
+    if (!userId) {
+      return () => {
+        active = false;
+      };
+    }
+    const timer = setTimeout(() => {
+      void getPurchasesForUser(userId)
+        .then(() => {
+          if (active) setSdkReady(true);
+        })
+        .catch((error) => {
+          if (!active) return;
+          const normalized = error instanceof Error ? error : new Error(String(error));
+          console.error(
+            "[revenuecat-init]",
+            normalized.message,
+            normalized.stack ?? "Stack trace unavailable",
+          );
+          setSdkError(normalized);
+        });
+    }, 750);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [authLoaded, userId]);
 
   const customerInfoQuery = useQuery({
-    queryKey: ["revenuecat", "customer-info"],
+    queryKey: customerInfoKey,
     queryFn: async () => {
+      const Purchases = await getPurchasesForUser(userId);
       const info = await Purchases.getCustomerInfo();
       return info;
     },
+    enabled: sdkReady && !!userId,
     staleTime: 60 * 1000,
   });
 
@@ -60,31 +150,46 @@ function useSubscriptionContext() {
   // This fires immediately on purchase, restore, or background sync —
   // without it, isSubscribed stays stale until the next manual refetch.
   useEffect(() => {
+    if (!sdkReady || !userId) return;
+    let active = true;
+    let purchases: Awaited<ReturnType<typeof loadPurchases>> | null = null;
     const handler = (info: import("react-native-purchases").CustomerInfo) => {
-      queryClient.setQueryData(["revenuecat", "customer-info"], info);
+      queryClient.setQueryData(customerInfoKey, info);
     };
-    Purchases.addCustomerInfoUpdateListener(handler);
+    void getPurchasesForUser(userId)
+      .then((Purchases) => {
+        if (!active) return;
+        purchases = Purchases;
+        Purchases.addCustomerInfoUpdateListener(handler);
+      })
+      .catch((error) => {
+        console.error("[revenuecat-listener]", error);
+      });
     return () => {
-      Purchases.removeCustomerInfoUpdateListener(handler);
+      active = false;
+      purchases?.removeCustomerInfoUpdateListener(handler);
     };
-  }, [queryClient]);
+  }, [queryClient, revenueCatUserKey, sdkReady, userId]);
 
   const offeringsQuery = useQuery({
-    queryKey: ["revenuecat", "offerings"],
+    queryKey: offeringsKey,
     queryFn: async () => {
+      const Purchases = await getPurchasesForUser(userId);
       const offerings = await Purchases.getOfferings();
       return offerings;
     },
+    enabled: sdkReady && !!userId,
     staleTime: 300 * 1000,
   });
 
   const purchaseMutation = useMutation({
     mutationFn: async (packageToPurchase: any) => {
+      const Purchases = await getPurchasesForUser(userId);
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
       return { customerInfo, packageToPurchase };
     },
     onSuccess: ({ customerInfo, packageToPurchase }) => {
-      queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
+      queryClient.setQueryData(customerInfoKey, customerInfo);
       const entitlement = customerInfo.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER];
       if (entitlement) {
         const plan = entitlement.productIdentifier;
@@ -107,27 +212,29 @@ function useSubscriptionContext() {
 
   const restoreMutation = useMutation({
     mutationFn: async () => {
+      const Purchases = await getPurchasesForUser(userId);
       return Purchases.restorePurchases();
     },
     onSuccess: (customerInfo) => {
       // Set immediately for instant UI update, then force a fresh server fetch
       // to guarantee we have the latest entitlement state.
-      queryClient.setQueryData(["revenuecat", "customer-info"], customerInfo);
-      queryClient.invalidateQueries({ queryKey: ["revenuecat", "customer-info"] });
+      queryClient.setQueryData(customerInfoKey, customerInfo);
+      queryClient.invalidateQueries({ queryKey: customerInfoKey });
     },
   });
 
   const isSubscribed =
     customerInfoQuery.data?.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER] !== undefined;
+  const sdkPending = !!userId && !sdkReady && !sdkError;
 
   return {
     customerInfo: customerInfoQuery.data,
     offerings: offeringsQuery.data,
     isSubscribed,
-    isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
-    isError: customerInfoQuery.isError,
-    offeringsLoading: offeringsQuery.isLoading,
-    offeringsError: offeringsQuery.isError,
+    isLoading: sdkPending || customerInfoQuery.isLoading || offeringsQuery.isLoading,
+    isError: !!sdkError || customerInfoQuery.isError,
+    offeringsLoading: sdkPending || offeringsQuery.isLoading,
+    offeringsError: !!sdkError || offeringsQuery.isError,
     refetchOfferings: offeringsQuery.refetch,
     purchase: purchaseMutation.mutateAsync,
     restore: restoreMutation.mutateAsync,

@@ -14,6 +14,7 @@ export interface PointBatch {
 }
 
 export interface HikeCheckpoint {
+  userId?: string;
   version: 2;
   routeId: string;
   routeName: string;

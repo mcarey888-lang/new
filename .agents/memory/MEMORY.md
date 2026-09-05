@@ -30,3 +30,4 @@
 - [ExpeditionMountainProgress component](expedition-mountain-progress.md) — wraps MountainProgress as the production expedition centrepiece; stage markers are numbered circles only (no SVG text labels on mountain); progress bubble follows marker via RN View overlay.
 - [Metro pnpm _tmp watcher crash](metro-pnpm-tmp-watcher.md) — blockList regex already in metro.config.js; just restart workflow after any native package install that triggers ENOENT on _tmp_NNN.
 - [Expedition startup isolation](empty-expedition-startup-routing.md) — route discovery can initialize imports; defer native/browser-heavy features and send empty accounts to Mountains.
+- [Active hike ownership](active-hike-ownership.md) — cold-start restoration must reject checkpoints without the current authenticated user ID.

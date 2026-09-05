@@ -4,7 +4,6 @@
  * to Expeditions via the persistent ModeTogglePill.
  */
 
-import { BlurView } from "expo-blur";
 import { Redirect, Tabs } from "expo-router";
 import {
   Compass, Mountain, Footprints, Map, TrendingUp, User,
@@ -20,7 +19,6 @@ const ACCENT = T.blue;
 const DIM    = T.blueDim;
 
 export default function ExpeditionLayout() {
-  const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
   const { shellMode, isLoading, activeExpeditionId } = useApp();
@@ -33,19 +31,16 @@ export default function ExpeditionLayout() {
     headerShown: false,
     tabBarStyle: {
       position: "absolute" as const,
-      backgroundColor: isIOS ? "transparent" : T.bg,
+      backgroundColor: T.bg,
       borderTopWidth: 1,
       borderTopColor: "rgba(100,160,255,0.10)",
       elevation: 0,
       height: tabBarHeight,
       paddingBottom: isWeb ? 12 : insets.bottom,
     },
-    tabBarBackground: () =>
-      isIOS ? (
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: T.bg }]} />
-      ),
+    tabBarBackground: () => (
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: T.bg }]} />
+    ),
     tabBarLabelStyle: {
       fontSize: 11,
       fontFamily: "Inter_600SemiBold",

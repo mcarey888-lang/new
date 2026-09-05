@@ -61,6 +61,11 @@ import {
   type PointBatch,
 } from "@/utils/hikeReliability";
 import { authenticatedJsonHeaders, responseError } from "@/utils/authRequest";
+import {
+  ACTIVE_HIKE_KEY,
+  HIKE_LOCATION_TASK,
+  discardActiveHike,
+} from "@/utils/activeHikeSession";
 import { enqueueSyncFailure, enqueueSyncPending, markSyncComplete, retrySyncOutbox } from "@/utils/syncOutbox";
 import { addUniqueCompletedRoute, isExpeditionComplete } from "@/utils/stateReliability";
 
@@ -144,11 +149,6 @@ interface NearbyRoute {
 const ALTITUDE_NOISE_THRESHOLD = 1;
 const GPS_MAX_ACCURACY_M = 25;   // reject fixes noisier than 25 m horizontal accuracy
 const GPS_MAX_SPEED_KMH  = 20;   // ~12 mph — not achievable on foot / mountainside
-const HIKE_LOCATION_TASK = "hike-location-task";
-// Persisted across app kills — lets the hike screen be restored if the OS
-// terminates the app while tracking (screen off, memory pressure, etc.)
-const ACTIVE_HIKE_KEY    = "summitready_active_hike_session";
-
 const LOCATION_UPDATES_CONFIG: Location.LocationTaskOptions = {
   accuracy: Location.Accuracy.BestForNavigation,
   distanceInterval: 5,
@@ -579,6 +579,7 @@ export default function HikeTrackingScreen() {
         pauseStartMs: pauseStartMsRef.current,
         trackingMode: hillMeta.trackingMode,
         expeditionId: hillMeta.expeditionId,
+        userId: userId ?? undefined,
         hillMeta: {
           sessionKey:          hillMeta.sessionKey,
           hillName:            hillMeta.hillName,
@@ -599,7 +600,7 @@ export default function HikeTrackingScreen() {
       await write;
     } catch { /* ignore — non-critical */ }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
-      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode, hillMeta.expeditionId]);
+      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode, hillMeta.expeditionId, userId]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -613,6 +614,7 @@ export default function HikeTrackingScreen() {
   // (b) user navigated away while tracking and returned to this screen.
   // Reads persisted metadata + background GPS points and resumes seamlessly.
   useEffect(() => {
+    if (!userId) return;
     if (restoreAttempted.current) return;
     restoreAttempted.current = true;
 
@@ -621,10 +623,14 @@ export default function HikeTrackingScreen() {
         const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
         if (!raw) return;
         const session = JSON.parse(raw) as HikeCheckpoint;
+        if (session.userId !== userId) {
+          await discardActiveHike(session);
+          return;
+        }
         const ageMs = Date.now() - (session.savedAt ?? 0);
         if (ageMs > 24 * 60 * 60 * 1000) {
           // Stale — discard and let the user start fresh
-          await AsyncStorage.removeItem(ACTIVE_HIKE_KEY);
+          await discardActiveHike(session);
           return;
         }
         if (!shouldRestoreCheckpoint(session, {
@@ -737,7 +743,7 @@ export default function HikeTrackingScreen() {
     }
 
     doRestore();
-  }, [syncBgPoints, sendPointToMap, replayTrackOnMap, params.restore, params.routeId]);
+  }, [syncBgPoints, sendPointToMap, replayTrackOnMap, params.restore, params.routeId, userId]);
 
   // ── Auto-expand drawer when tracking starts ───────────────────────────────
   useEffect(() => {

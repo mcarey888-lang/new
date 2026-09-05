@@ -312,3 +312,17 @@ mtime_ms = 1788625385797
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/ae759a5e-f61c-446b-9d2a-3290b1942646/f479f0f4-280d-4572-8064-a9d1efd181bc"
 storage_version_token = "1788625389353918"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "kPsX0IYzYPhQPRaqqyKa1"
+uri = "file://attached_assets/SummitReady-1.0.4-81.aab"
+type = "unspecified"
+title = "SummitReady Android 1.0.4 (81)"
+description = "Signed Google Play App Bundle containing the corrected Expedition startup and lazy-loading fixes."
+logical_id = "1ffe7ba6-8f14-443d-847f-ce93a3639a2b"
+content_hash = "sha256:ad1508dffadcec5059497766d7b1722597a7d1a9561b182e5dddbe9140290f62"
+size = 102794672
+mtime_ms = 1788632649446
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/1ffe7ba6-8f14-443d-847f-ce93a3639a2b/1af71232-167e-4c46-8eec-2b32fd05b9d2"
+storage_version_token = "1788632661319595"
+content_type = "application/octet-stream"

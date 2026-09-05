@@ -12,6 +12,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { DevToolsModal } from "@/components/DevToolsModal";
 import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
+import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
 
 const DEV_TAPS_REQUIRED = 5;
 const DEV_TAP_WINDOW_MS = 2000;
@@ -19,7 +20,7 @@ const DEV_TAP_WINDOW_MS = 2000;
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
   const { isLoading, reloadApp, shellMode, activeExpeditionId } = useApp();
-  const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { isSignedIn, isLoaded: authLoaded, userId } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -61,27 +62,31 @@ export default function LandingScreen() {
     // If so, route back to the tracking screen instead of the dashboard.
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem("summitready_active_hike_session");
+        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
         if (raw) {
           const session = JSON.parse(raw);
-          const ageMs = Date.now() - (session.savedAt ?? 0);
-          if (ageMs < 24 * 60 * 60 * 1000) {
-            // Recent session — send the user back to the hike screen to restore it
-            router.replace({
-              pathname: "/hike-tracking",
-              params: {
-                restore: "1",
-                ...(session.hillMeta?.sessionKey    && { hillSessionKey:        session.hillMeta.sessionKey }),
-                ...(session.hillMeta?.hillName      && { hillName:              session.hillMeta.hillName }),
-                ...(session.hillMeta?.targetReps    != null && { targetReps:         String(session.hillMeta.targetReps) }),
-                ...(session.hillMeta?.estimatedGainPerRep != null && { estimatedGainPerRep: String(session.hillMeta.estimatedGainPerRep) }),
-                ...(session.hillMeta?.estimatedTotalGain  != null && { estimatedTotalGain:  String(session.hillMeta.estimatedTotalGain) }),
-              },
-            } as any);
-            return;
+          if (!userId || session.userId !== userId) {
+            await discardActiveHike(session);
+          } else {
+            const ageMs = Date.now() - (session.savedAt ?? 0);
+            if (ageMs < 24 * 60 * 60 * 1000) {
+              // Recent session — send the user back to the hike screen to restore it
+              router.replace({
+                pathname: "/hike-tracking",
+                params: {
+                  restore: "1",
+                  ...(session.hillMeta?.sessionKey    && { hillSessionKey:        session.hillMeta.sessionKey }),
+                  ...(session.hillMeta?.hillName      && { hillName:              session.hillMeta.hillName }),
+                  ...(session.hillMeta?.targetReps    != null && { targetReps:         String(session.hillMeta.targetReps) }),
+                  ...(session.hillMeta?.estimatedGainPerRep != null && { estimatedGainPerRep: String(session.hillMeta.estimatedGainPerRep) }),
+                  ...(session.hillMeta?.estimatedTotalGain  != null && { estimatedTotalGain:  String(session.hillMeta.estimatedTotalGain) }),
+                },
+              } as any);
+              return;
+            }
+            // Stale session (> 24 h old) — discard and go to dashboard
+            await discardActiveHike(session);
           }
-          // Stale session (> 24 h old) — discard and go to dashboard
-          await AsyncStorage.removeItem("summitready_active_hike_session");
         }
       } catch { /* ignore — fall through to dashboard */ }
       // Restore the shell the user was last in.
@@ -99,7 +104,7 @@ export default function LandingScreen() {
       }
       router.replace("/(tabs)/dashboard");
     })();
-  }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId]);
+  }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId, userId]);
 
   if (isLoading || demoLoading) {
     return (

@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import analytics from "@react-native-firebase/analytics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 
@@ -76,11 +75,17 @@ function isAndroid(): boolean {
   return Platform.OS === "android";
 }
 
+async function getAnalyticsInstance() {
+  const analyticsModule = await import("@react-native-firebase/analytics");
+  return analyticsModule.default();
+}
+
 /** Low-level helper — logs a raw Firebase Analytics event. Android only, never throws. */
 export async function logAnalyticsEvent(name: string, params?: EventParams): Promise<void> {
   if (!isAndroid()) return;
   try {
-    await analytics().logEvent(name, params);
+    const analytics = await getAnalyticsInstance();
+    await analytics.logEvent(name, params);
   } catch (err) {
     if (__DEV__) {
       console.warn(`[analytics] Failed to log event "${name}"`, err);
@@ -92,7 +97,8 @@ export async function logAnalyticsEvent(name: string, params?: EventParams): Pro
 export async function logScreenView(screenName: string, screenClass?: string): Promise<void> {
   if (!isAndroid()) return;
   try {
-    await analytics().logScreenView({
+    const analytics = await getAnalyticsInstance();
+    await analytics.logScreenView({
       screen_name: screenName,
       screen_class: screenClass ?? screenName,
     });

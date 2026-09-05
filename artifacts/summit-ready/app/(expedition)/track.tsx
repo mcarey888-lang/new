@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -19,28 +20,46 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const ACTIVE_HIKE_KEY = "summitready_active_hike_session";
+import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
 
 function useActiveHike() {
+  const { isLoaded: authLoaded, userId } = useAuth();
   const [activeHike, setActiveHike] = useState<{ routeName: string; trackStartMs: number; routeId: string } | null>(null);
 
   useEffect(() => {
+    if (!authLoaded || !userId) {
+      setActiveHike(null);
+      return;
+    }
     let mounted = true;
     async function check() {
       try {
         const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
-        if (!raw || !mounted) return;
+        if (!mounted) return;
+        if (!raw) {
+          setActiveHike(null);
+          return;
+        }
         const session = JSON.parse(raw);
+        if (session.userId !== userId) {
+          await discardActiveHike(session);
+          if (mounted) setActiveHike(null);
+          return;
+        }
         const ageMs = Date.now() - (session.savedAt ?? 0);
-        if (ageMs < 24 * 60 * 60 * 1000) setActiveHike(session);
+        if (ageMs < 24 * 60 * 60 * 1000) {
+          if (mounted) setActiveHike(session);
+        } else {
+          await discardActiveHike(session);
+          if (mounted) setActiveHike(null);
+        }
       } catch { /* ignore */ }
     }
     check();
     // Re-check each time the screen comes into focus
     const id = setInterval(check, 3000);
     return () => { mounted = false; clearInterval(id); };
-  }, []);
+  }, [authLoaded, userId]);
 
   return activeHike;
 }
