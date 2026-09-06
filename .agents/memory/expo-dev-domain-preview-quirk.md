@@ -9,4 +9,6 @@ In this workspace, the external Expo preview domain can misroute by request type
 
 **How to apply:** Compare an Android manifest request against the local Metro port and external domains. Cache clears and workflow restarts cannot repair this mapping; after one compute restart, stop changing app code and treat persistent misrouting as a Replit preview-router issue.
 
-For the editor's web simulation, keep the mobile artifact preview wrapper at `/mobile-preview.html`; using `/mobile/` makes Expo Router interpret `mobile` as an app route and show its not-found screen. Avoid runtime `import()` for web startup services in this workspace: Metro lazy chunks resolve against the normal web domain and can receive landing-page HTML. Use a `.web.ts` statically bundled loader while retaining deferred imports in the native `.ts` implementation.
+For the editor's web simulation, keep the mobile artifact preview wrapper at `/mobile-preview.html`; using `/mobile/` makes Expo Router interpret `mobile` as an app route and show its not-found screen. The wrapper is served by the root landing artifact, not Metro, so regenerate its pnpm-resolved Expo Router entry whenever the mobile workflow starts. Use `lazy=false`: Metro lazy chunks resolve against the normal web domain and can receive landing-page HTML.
+
+For native preview, use Expo tunnel mode and keep the CLI interactive so it advertises the generated `exp.direct` URL. The dedicated Replit Expo domain can return an edge-level 404 before any workspace middleware runs; app/API proxy code cannot reliably repair it.
