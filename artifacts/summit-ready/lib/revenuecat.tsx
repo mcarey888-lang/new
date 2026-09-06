@@ -224,7 +224,7 @@ function useSubscriptionContext() {
   });
 
   const isSubscribed =
-    customerInfoQuery.data?.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER] !== undefined;
+    customerInfoQuery.data?.entitlements?.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER] !== undefined;
   const sdkPending = !!userId && !sdkReady && !sdkError;
 
   return {

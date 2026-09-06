@@ -76,7 +76,7 @@ export function requiredExpeditionStageNames(expedition: {
   expeditionPlan?: { days: Array<{ routes: Array<{ name: string }> }> } | null;
 }): string[] {
   const names = expedition.virtualHills?.map(hill => hill.name)
-    ?? expedition.expeditionPlan?.days.flatMap(day => day.routes.map(route => route.name))
+    ?? expedition.expeditionPlan?.days?.flatMap(day => day.routes.map(route => route.name))
     ?? [];
   return [...new Set(names.filter(Boolean))];
 }

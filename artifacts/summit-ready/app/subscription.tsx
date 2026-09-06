@@ -42,7 +42,7 @@ export default function SubscriptionScreen() {
   const { customerInfo, isSubscribed, restore, isRestoring } = useSubscription();
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const entitlement = customerInfo?.entitlements.active?.["premium"];
+  const entitlement = customerInfo?.entitlements?.active?.["premium"];
   const expiresDate = entitlement?.expirationDate
     ? new Date(entitlement.expirationDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
     : null;

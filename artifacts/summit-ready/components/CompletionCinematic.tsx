@@ -126,11 +126,11 @@ export function CompletionCinematic({
     videoReadyRef.current   = false;
 
     // Seek native video to start
-    nativeVideoRef.current?.setPositionAsync(0).catch(() => {});
+      nativeVideoRef.current?.setPositionAsync(0)?.catch(() => {});
     // Seek web video to start and play
     if (webVideoRef.current) {
       webVideoRef.current.currentTime = 0;
-      webVideoRef.current.play?.().catch(() => {});
+      webVideoRef.current.play?.()?.catch(() => {});
     }
   }, [visible]);
 

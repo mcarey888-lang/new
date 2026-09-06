@@ -126,7 +126,7 @@ export default function AccountScreen() {
 
   // Already trained / currently training peak names (case-insensitive) to exclude from ready-for list
   const trainedNames = new Set([
-    summitGoal?.mountainName.toLowerCase(),
+    summitGoal?.mountainName?.toLowerCase(),
     ...completedGoals.map(g => g.mountainName.toLowerCase()),
   ]);
 
@@ -144,7 +144,7 @@ export default function AccountScreen() {
   const avatarInitial = (user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? "?")[0].toUpperCase();
   const userId = user?.id ?? null;
 
-  const entitlement = customerInfo?.entitlements.active?.["premium"];
+  const entitlement = customerInfo?.entitlements?.active?.["premium"];
   const expiresDate = entitlement?.expirationDate
     ? new Date(entitlement.expirationDate).toLocaleDateString("en-GB", {
         day: "numeric", month: "long", year: "numeric",

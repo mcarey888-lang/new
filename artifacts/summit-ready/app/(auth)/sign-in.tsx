@@ -313,7 +313,7 @@ export default function SignInScreen() {
               onPress={async () => {
                 try {
                   const { error: resendErr } = await withTimeout(
-                    signIn?.mfa.sendEmailCode(),
+                    signIn?.mfa?.sendEmailCode(),
                     20000,
                   ) as any;
                   if (resendErr) {

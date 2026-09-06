@@ -86,15 +86,15 @@ export default function ExpeditionCompleteScreen() {
   const totalElevationM = Math.round(
     linkedActivities.length > 0
       ? linkedActivities.reduce((sum, item) => sum + item.elevationGain, 0)
-      : expeditionSnapshot?.virtualHikeProgress.elevationGained ?? 0,
+      : expeditionSnapshot?.virtualHikeProgress?.elevationGained ?? 0,
   );
   const totalDistanceKm = parseFloat((linkedActivities.length > 0
     ? linkedActivities.reduce((sum, item) => sum + item.distance, 0)
-    : expeditionSnapshot?.virtualHikeProgress.distanceCovered ?? 0
+    : expeditionSnapshot?.virtualHikeProgress?.distanceCovered ?? 0
   ).toFixed(1));
   const totalSessions = linkedActivities.length > 0
     ? linkedActivities.length
-    : expeditionSnapshot?.virtualHikeProgress.hikesLogged ?? 0;
+    : expeditionSnapshot?.virtualHikeProgress?.hikesLogged ?? 0;
 
   const startedAt        = expeditionSnapshot?.startedAt;
   const daysToComplete   = startedAt

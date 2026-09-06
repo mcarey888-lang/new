@@ -1006,7 +1006,7 @@ export default function ExpeditionMountainsScreen() {
   /** Derive per-bundle progress from the active expedition. */
   function bundleProgress(bundle: VirtualBundle) {
     const isActive =
-      activeExpedition?.challengeName.toLowerCase() === bundle.goalMountain.toLowerCase();
+      activeExpedition?.challengeName?.toLowerCase() === bundle.goalMountain.toLowerCase();
 
     if (!isActive || !activeExpedition?.targetMountain) {
       return { progressPct: 0, elevationGained: 0, equivalentHills: bundle.exampleHills };
