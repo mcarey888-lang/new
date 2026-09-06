@@ -33,6 +33,13 @@ Training and Expedition must persist separate goal snapshots. The public `summit
 ## Legacy Virtual routes
 The hidden Training `virtual` and `v-*` routes are compatibility redirects only. Expedition screens must use Expedition-owned components; never re-export a legacy redirect route or it can create a self-redirect loop.
 
+## Cross-shell utility screens
+Never navigate from Expedition directly into a `(tabs)` route. The Training layout guard will redirect it to Base Camp while `shellMode === "expedition"`. Shared utility screens must be exposed through a hidden Expedition route or a root Stack route.
+
+**Why:** Expedition Profile's Account Settings link targeted `(tabs)/account`, so the Training shell guard immediately sent users back to Base Camp.
+
+**How to apply:** Keep shell-owned tab links within their current route group. For shared screens, reuse the implementation behind a shell-local hidden route and link to that route.
+
 ## Expedition tab screens
 - `base-camp.tsx` — expedition home, hero image + simulation score ring + hills list + target profile
 - `mountains.tsx` — Expedition-owned mountain browse and selection screen

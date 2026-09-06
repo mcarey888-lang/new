@@ -7,7 +7,7 @@
 
 import {
   Mountain, MapPin, ChevronRight, TrendingUp, Clock, Flag,
-  Layers, Navigation, CheckCircle,
+  Layers, Navigation, CheckCircle, AlertTriangle,
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -55,6 +55,14 @@ function fmtMetres(m: number) {
   return `${m}m`;
 }
 
+function mountainArtworkSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^(mount|jebel|jbel|djebel)-/, "")
+    .replace(/^-+|-+$/g, "");
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function StatChip({ label, value }: { label: string; value: string }) {
@@ -67,8 +75,16 @@ function StatChip({ label, value }: { label: string; value: string }) {
 }
 
 function SectionRow({
-  index, name, sub, why, color, isLast,
-}: { index: number; name: string; sub: string; why?: string; color: string; isLast: boolean }) {
+  index, name, sub, why, warning, color, isLast,
+}: {
+  index: number;
+  name: string;
+  sub: string;
+  why?: string;
+  warning?: string;
+  color: string;
+  isLast: boolean;
+}) {
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(350)} style={[s.sectionRow, isLast && { borderBottomWidth: 0 }]}>
       {/* Timeline dot + line */}
@@ -85,6 +101,12 @@ function SectionRow({
         <Text style={s.rowSub}>{sub}</Text>
         {why && (
           <Text style={s.rowWhy} numberOfLines={2}>{why}</Text>
+        )}
+        {warning && (
+          <View style={s.warningRow}>
+            <AlertTriangle size={13} color={T.orange} />
+            <Text style={s.warningText}>{warning}</Text>
+          </View>
         )}
       </View>
 
@@ -107,26 +129,61 @@ export default function RouteScreen() {
   const target  = activeExpedition?.targetMountain;
   const hills   = activeExpedition?.virtualHills ?? [];
   const plan    = activeExpedition?.expeditionPlan as { title?: string; concept?: string; days?: any[] } | null | undefined;
-  const mountainName = activeExpedition?.challengeName;
+  const mountainName =
+    activeExpedition?.targetMountainName
+    ?? target?.name
+    ?? activeExpedition?.challengeName;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
-  // Fetch approved AI artwork for the active challenge
+  // Prefer approved library artwork for either the exact challenge or its
+  // target mountain. Custom expeditions do not have a challenge ID.
   React.useEffect(() => {
     const cid = activeExpedition?.challengeId;
-    if (!cid) return;
-    fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then((d: any) => {
-        if (!d) return;
-        const ch   = d.challenge ?? d;
-        const path = ch.heroImage ?? ch.cardImage ?? null;
-        if (path && ch.approved) {
+    setChallengeHeroUri(null);
+    setArtworkError(false);
+    setFallbackError(false);
+
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        let candidates: any[] = [];
+
+        if (cid) {
+          const response = await fetch(
+            `${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`,
+            { signal: controller.signal },
+          );
+          if (response.ok) {
+            const data = await response.json();
+            candidates = [data.challenge ?? data];
+          }
+        }
+
+        if (!candidates.some(ch => ch?.approved && (ch.heroImage || ch.cardImage)) && mountainName) {
+          const slug = mountainArtworkSlug(mountainName);
+          const response = await fetch(
+            `${API_BASE}/sx/challenges/for-mountain/${encodeURIComponent(slug)}`,
+            { signal: controller.signal },
+          );
+          if (response.ok) {
+            const data = await response.json();
+            candidates = [...candidates, ...(data.challenges ?? [])];
+          }
+        }
+
+        const approved = candidates.find(ch => ch?.approved && (ch.heroImage || ch.cardImage));
+        const path = approved?.heroImage ?? approved?.cardImage ?? null;
+        if (path) {
           const base = API_BASE.replace(/\/api$/, "");
           setChallengeHeroUri(base + path);
         }
-      })
-      .catch(() => {});
-  }, [activeExpedition?.challengeId]); // eslint-disable-line
+      } catch {
+        // The canonical mountain-photo endpoint remains the fallback.
+      }
+    })();
+
+    return () => controller.abort();
+  }, [activeExpedition?.challengeId, mountainName]);
 
   const heroUri = !mountainName
     ? null
@@ -139,13 +196,15 @@ export default function RouteScreen() {
   // Build section list — prefer AI expedition plan, fall back to virtual hills
   const routeSections = (() => {
     if (activeTab === "route" && plan?.days && plan.days.length > 0) {
-      const sections: Array<{ name: string; sub: string; why?: string; color: string }> = [];
+      const sections: Array<{ name: string; sub: string; why?: string; warning?: string; color: string }> = [];
       plan.days.forEach((day: any) => {
         (day.routes ?? []).forEach((r: any) => {
+          const hill = hills.find(h => h.name.toLowerCase() === String(r.name ?? "").toLowerCase());
           sections.push({
             name:  r.name ?? "Route section",
             sub:   day.label ? `${day.label} · ${day.focus ?? ""}` : day.focus ?? "",
             why:   r.why,
+            warning: hill?.safetyWarning,
             color: T.green,
           });
         });
@@ -157,6 +216,7 @@ export default function RouteScreen() {
       name:  h.name,
       sub:   `${h.elevation}m gain · ${h.distance}km · ×${h.repeats} reps`,
       why:   undefined,
+      warning: h.safetyWarning,
       color: routeTypeColor(h),
     }));
   })();
@@ -295,6 +355,7 @@ export default function RouteScreen() {
                 name={sec.name}
                 sub={sec.sub}
                 why={sec.why}
+                warning={sec.warning}
                 color={sec.color}
                 isLast={i === routeSections.length - 1}
               />
@@ -374,6 +435,15 @@ const s = StyleSheet.create({
   rowName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
   rowSub:  { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
   rowWhy:  { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 3, fontStyle: "italic", lineHeight: 15 },
+  warningRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 7,
+    padding: 8, borderRadius: 9, backgroundColor: T.orange + "14",
+    borderWidth: 1, borderColor: T.orange + "35",
+  },
+  warningText: {
+    flex: 1, fontSize: 10, lineHeight: 14,
+    fontFamily: "Inter_600SemiBold", color: T.orange,
+  },
 
   footerStats: {
     marginHorizontal: 14, marginBottom: 8, padding: 12,

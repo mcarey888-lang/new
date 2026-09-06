@@ -125,7 +125,7 @@ export default function ExpeditionProfileScreen() {
             <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: T.white }}>Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push("/(tabs)/account" as any)}
+            onPress={() => router.push("/(expedition)/account" as any)}
             style={s.settingsBtn}
             activeOpacity={0.8}
           >
@@ -177,7 +177,7 @@ export default function ExpeditionProfileScreen() {
               <Trophy size={14} color={T.orange} />
               <Text style={s.cardTitle}>ACHIEVEMENTS</Text>
             </View>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/account" as any)}>
+            <TouchableOpacity onPress={() => router.push("/(expedition)/account" as any)}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -281,7 +281,7 @@ export default function ExpeditionProfileScreen() {
 
         {/* ── Settings link ─────────────────────────────────────────────────── */}
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/account" as any)}
+          onPress={() => router.push("/(expedition)/account" as any)}
           style={s.settingsLink}
           activeOpacity={0.8}
         >

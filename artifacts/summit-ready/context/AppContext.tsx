@@ -242,6 +242,9 @@ export interface NearbyHill {
   estimatedTime?: string;
   /** Summit elevation in metres ASL, threaded from OSM ele tag by the hills pipeline. */
   summitElevationASL?: number;
+  /** Explicit warning for exposed or technically serious routes. */
+  safetyWarning?: string;
+  hazardLevel?: "low" | "moderate" | "high" | "severe";
 }
 
 export interface Session {

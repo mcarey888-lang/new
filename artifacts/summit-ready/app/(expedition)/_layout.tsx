@@ -129,6 +129,10 @@ export default function ExpeditionLayout() {
           name="expedition-complete"
           options={{ href: null }}
         />
+        <Tabs.Screen
+          name="account"
+          options={{ href: null }}
+        />
       </Tabs>
 
       {/* Persistent shell toggle — sits in the safe-area zone above all tabs */}

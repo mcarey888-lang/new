@@ -40,6 +40,9 @@ export const HillSchema = z.object({
   routeType: z.enum(["hill", "circular", "out-and-back"]).nullish(),
   routeDistance: z.number().nullish(),
   estimatedTime: z.string().nullish(),
+  /** Deterministic metadata for routes with material objective hazards. */
+  safetyWarning: z.string().optional(),
+  hazardLevel: z.enum(["low", "moderate", "high", "severe"]).optional(),
   /** Summit elevation in metres ASL — from OSM ele tag or OpenTopoData radial sampling.
    *  Only present on hills that came through the Overpass pipeline; absent on DB-cached hits.
    *  Used by virtual-expedition altitude scoring to avoid re-querying topo at AI lat/lng. */

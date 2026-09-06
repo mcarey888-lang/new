@@ -108,6 +108,14 @@ function artworkUrl(storedPath: string | null | undefined): string | null {
   return base + storedPath;
 }
 
+function mountainArtworkSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^(mount|jebel|jbel|djebel)-/, "")
+    .replace(/^-+|-+$/g, "");
+}
+
 type CommunityStats = {
   totalRoutes: number;
   totalElev: number;
@@ -514,21 +522,64 @@ export default function BaseCampScreen() {
       .finally(() => setCommunityLoading(false));
   }, []);
 
-  // Fetch approved artwork for the active expedition's challenge
+  // Prefer approved library artwork for either the exact challenge or its
+  // target mountain. Custom expeditions do not have a challenge ID.
   useEffect(() => {
     const cid = activeExpedition?.challengeId;
-    if (!cid) return;
-    fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then((d: any) => {
-        if (!d) return;
-        const ch   = d.challenge ?? d;           // endpoint wraps under { challenge: ... }
-        const path = ch.heroImage ?? ch.cardImage ?? null;
-        const url  = artworkUrl(path);
-        if (url && ch.approved) setChallengeHeroUri(url);
-      })
-      .catch(() => {});
-  }, [activeExpedition?.challengeId]); // eslint-disable-line
+    const mountainName =
+      activeExpedition?.targetMountainName
+      ?? activeExpedition?.targetMountain?.name
+      ?? summitGoal?.targetMountain?.name
+      ?? summitGoal?.mountainName;
+
+    setChallengeHeroUri(null);
+    setArtworkError(false);
+    setFallbackError(false);
+
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        let candidates: any[] = [];
+
+        if (cid) {
+          const response = await fetch(
+            `${API_BASE}/sx/challenges/${encodeURIComponent(cid)}`,
+            { signal: controller.signal },
+          );
+          if (response.ok) {
+            const data = await response.json();
+            candidates = [data.challenge ?? data];
+          }
+        }
+
+        if (!candidates.some(ch => ch?.approved && (ch.heroImage || ch.cardImage)) && mountainName) {
+          const slug = mountainArtworkSlug(mountainName);
+          const response = await fetch(
+            `${API_BASE}/sx/challenges/for-mountain/${encodeURIComponent(slug)}`,
+            { signal: controller.signal },
+          );
+          if (response.ok) {
+            const data = await response.json();
+            candidates = [...candidates, ...(data.challenges ?? [])];
+          }
+        }
+
+        const approved = candidates.find(ch => ch?.approved && (ch.heroImage || ch.cardImage));
+        const url = artworkUrl(approved?.heroImage ?? approved?.cardImage);
+        if (url) setChallengeHeroUri(url);
+      } catch {
+        // The canonical mountain-photo endpoint remains the fallback.
+      }
+    })();
+
+    return () => controller.abort();
+  }, [
+    activeExpedition?.challengeId,
+    activeExpedition?.targetMountainName,
+    activeExpedition?.targetMountain?.name,
+    summitGoal?.targetMountain?.name,
+    summitGoal?.mountainName,
+  ]);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
   // Snapshot before any narrowing so closures inside conditional branches

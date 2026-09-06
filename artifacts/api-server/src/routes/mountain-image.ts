@@ -82,6 +82,8 @@ const CURATED_MOUNTAIN_FILES: Record<string, string[]> = {
     "Großglockner_from_Pasterze_glacier.jpg",
   ],
   "toubkal": [
+    "Mount_Toubkal,_Atlas_Mountains,_Morocco.jpg",
+    "Trekking_Toubkal_2019.jpg",
     "Toubkal_summer.jpg",
   ],
 };

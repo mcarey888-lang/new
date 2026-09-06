@@ -61,7 +61,7 @@ export type RouteDna = z.infer<typeof RouteDnaSchema>;
 
 // ── Target mountain profile schema ────────────────────────────────────────────
 
-const TargetMountainProfileSchema = z.object({
+export const TargetMountainProfileSchema = z.object({
   name:               z.string(),
   country:            z.string(),
   summitElevation:    z.number().positive(),
@@ -78,7 +78,7 @@ const TargetMountainProfileSchema = z.object({
   routeDna:           RouteDnaSchema,
 });
 
-type TargetMountainProfile = z.infer<typeof TargetMountainProfileSchema>;
+export type TargetMountainProfile = z.infer<typeof TargetMountainProfileSchema>;
 
 // Route-specific figures that should not be left to an AI estimate. Mont Blanc's
 // standard Goûter route starts at Nid d'Aigle after the normal lift/tram approach;
@@ -105,9 +105,54 @@ const VERIFIED_MOUNTAIN_PROFILE_OVERRIDES: Record<
     day2ElevationGain: 950,
     maxDailyElevation: 1_450,
   },
+  "toubkal": {
+    summitElevation: 4_167,
+    totalElevationGain: 2_400,
+    totalDistance: 27,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
+  "mount-toubkal": {
+    summitElevation: 4_167,
+    totalElevationGain: 2_400,
+    totalDistance: 27,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
+  "jebel-toubkal": {
+    summitElevation: 4_167,
+    totalElevationGain: 2_400,
+    totalDistance: 27,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
+  "jbel-toubkal": {
+    summitElevation: 4_167,
+    totalElevationGain: 2_400,
+    totalDistance: 27,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
+  "djebel-toubkal": {
+    summitElevation: 4_167,
+    totalElevationGain: 2_400,
+    totalDistance: 27,
+    estimatedDays: 2,
+    day1ElevationGain: 1_450,
+    day2ElevationGain: 950,
+    maxDailyElevation: 1_450,
+  },
 };
 
-function applyVerifiedMountainProfile(
+export function applyVerifiedMountainProfile(
   requestedName: string,
   profile: TargetMountainProfile,
 ): TargetMountainProfile {
@@ -388,8 +433,43 @@ function formatDna(dna: RouteDna): string {
   ].join("\n");
 }
 
+const CRIB_GOCH_WARNING =
+  "SEVERE EXPOSURE WARNING: Crib Goch is a serious, committing Grade 1 scramble with sustained knife-edge exposure and consequential falls. Attempt only with suitable skills, conditions and judgement.";
+
+function hillNameKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isCribGoch(name: string): boolean {
+  const key = hillNameKey(name);
+  return /\bcrib (?:goch|gough)\b/.test(key);
+}
+
+/** Serious exposed scrambles are candidates only for targets that demand them. */
+export function targetAcceptsSeriousExposedScramble(dna: RouteDna): boolean {
+  return dna.exposure >= 7 && (dna.scrambling >= 7 || dna.technicalMovement >= 7);
+}
+
+/**
+ * Add deterministic known-route hazard data and remove incompatible hazards.
+ * This runs after area caching, so both fresh and cached hill lists follow the
+ * target's Route DNA without contaminating the shared cache.
+ */
+export function prepareCandidateHills(hills: Hill[], dna: RouteDna): Hill[] {
+  const compatible = targetAcceptsSeriousExposedScramble(dna);
+  return hills.flatMap(hill => {
+    if (!isCribGoch(hill.name)) return [hill];
+    if (!compatible) return [];
+    return [{
+      ...hill,
+      safetyWarning: CRIB_GOCH_WARNING,
+      hazardLevel: "severe" as const,
+    }];
+  });
+}
+
 /** Build a compact hill list for the prompt (cap at 25 to avoid token overflow). */
-function formatHillsForPrompt(hills: Hill[]): string {
+export function formatHillsForPrompt(hills: Hill[]): string {
   return hills
     .slice(0, 25)
     .map(h => [
@@ -399,7 +479,8 @@ function formatHillsForPrompt(hills: Hill[]): string {
       h.surface,
       h.routeType ?? "hill",
       h.routeDistance ? `${h.routeDistance}km` : `${h.distance}km`,
-    ].join(" | "))
+      h.safetyWarning ? `SAFETY: ${h.safetyWarning}` : null,
+    ].filter(Boolean).join(" | "))
     .join("\n");
 }
 
@@ -500,46 +581,94 @@ function resolveExpeditionHills(
  *
  * If total gain is already ≥ 90 % of target, nothing changes.
  */
-function bridgeElevationGap(
+export function bridgeElevationGap(
   selectedHills: Hill[],
   allHills:      Hill[],
   targetGain:    number,
 ): Hill[] {
   if (!selectedHills.length || targetGain <= 0) return selectedHills;
 
-  // ── Step 1: add extra hills from the unused pool ──────────────────────────
-  const result    = [...selectedHills];
+  const lower = targetGain * 0.90;
+  const upper = targetGain * 1.10;
+  const distanceFromTarget = (gain: number) => Math.abs(gain - targetGain);
 
-  const currentGain = () => result.reduce((s, h) => s + h.elevation * h.repeats, 0);
+  // GPT occasionally returns the same route under trivial spelling variants.
+  const seen = new Set<string>();
+  const result = selectedHills
+    .filter(hill => {
+      const key = hillNameKey(hill.name);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8)
+    .map(h => {
+      const repeats = Math.min(3, Math.max(1, Math.round(h.repeats || 1)));
+      return { ...h, repeats, totalElevation: Math.round(h.elevation * repeats) };
+    });
 
-  // Already close enough — leave as-is.
-  if (currentGain() >= targetGain * 0.90) return selectedHills;
-  const usedNames = new Set(result.map(h => h.name));
+  const currentGain = () => result.reduce((sum, h) => sum + h.elevation * h.repeats, 0);
 
-  const pool = allHills
-    .filter(h => !usedNames.has(h.name))
-    .sort((a, b) => b.elevation - a.elevation); // highest-gain first
-
-  for (const hill of pool) {
-    if (currentGain() >= targetGain * 0.90) break;
-    if (result.length >= 8) break; // keep the plan manageable
-    result.push({ ...hill, repeats: 1, totalElevation: hill.elevation });
-    usedNames.add(hill.name);
+  // Prune every redundant summit whose removal gets closer while retaining at
+  // least 90% of the target. Re-evaluate after each removal.
+  while (result.length > 1) {
+    const gain = currentGain();
+    let bestIndex = -1;
+    let bestDistance = distanceFromTarget(gain);
+    for (let i = 0; i < result.length; i++) {
+      const without = gain - result[i].elevation * result[i].repeats;
+      const candidateDistance = distanceFromTarget(without);
+      if (without >= lower && candidateDistance < bestDistance) {
+        bestIndex = i;
+        bestDistance = candidateDistance;
+      }
+    }
+    if (bestIndex < 0) break;
+    result.splice(bestIndex, 1);
   }
 
-  // ── Step 2: still short? distribute reps as a last resort ─────────────────
-  if (currentGain() >= targetGain * 0.90) return result;
+  // Only bridge an actual shortfall. Pick the unused hill or single additional
+  // rep that best fits the remaining gap, preferring a result inside 90–110%.
+  const pool = allHills.filter(h => !seen.has(hillNameKey(h.name)));
+  while (currentGain() < lower) {
+    const gain = currentGain();
+    const options: Array<
+      | { kind: "hill"; hill: Hill; resultingGain: number }
+      | { kind: "rep"; index: number; resultingGain: number }
+    > = [];
 
-  const totalElev = result.reduce((s, h) => s + h.elevation, 0);
-  const aimGain   = Math.min(targetGain, totalElev * 3);
-  const avgElev   = totalElev / result.length;
+    if (result.length < 8) {
+      for (const hill of pool) {
+        if (!seen.has(hillNameKey(hill.name))) {
+          options.push({ kind: "hill", hill, resultingGain: gain + hill.elevation });
+        }
+      }
+    }
+    result.forEach((hill, index) => {
+      if (hill.repeats < 3) {
+        options.push({ kind: "rep", index, resultingGain: gain + hill.elevation });
+      }
+    });
+    if (!options.length) break;
 
-  return result.map(h => {
-    const share  = avgElev > 0 ? h.elevation / avgElev : 1;
-    const rawRep = (aimGain / totalElev) * share;
-    const reps   = Math.min(3, Math.max(1, Math.round(rawRep)));
-    return { ...h, repeats: reps, totalElevation: Math.round(h.elevation * reps) };
-  });
+    options.sort((a, b) => {
+      const aInBand = a.resultingGain >= lower && a.resultingGain <= upper ? 0 : 1;
+      const bInBand = b.resultingGain >= lower && b.resultingGain <= upper ? 0 : 1;
+      return aInBand - bInBand
+        || distanceFromTarget(a.resultingGain) - distanceFromTarget(b.resultingGain);
+    });
+    const best = options[0];
+    if (best.kind === "hill") {
+      result.push({ ...best.hill, repeats: 1, totalElevation: Math.round(best.hill.elevation) });
+      seen.add(hillNameKey(best.hill.name));
+    } else {
+      const hill = result[best.index];
+      hill.repeats += 1;
+      hill.totalElevation = Math.round(hill.elevation * hill.repeats);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -706,6 +835,12 @@ router.post("/virtual-expedition", async (req, res) => {
     const effectiveProfile: TargetMountainProfile = daysOverride
       ? { ...targetProfile, estimatedDays: daysOverride }
       : targetProfile;
+    const candidateHills = prepareCandidateHills(localHills, effectiveProfile.routeDna);
+
+    if (!candidateHills.length) {
+      res.status(404).json({ error: "No routes compatible with the target Route DNA were found." });
+      return;
+    }
 
     let recommendedHills: Hill[];
     let expedition: MiniExpedition | null = null;
@@ -713,12 +848,12 @@ router.post("/virtual-expedition", async (req, res) => {
     let usingAiExpedition = false;
 
     try {
-      expedition = await buildMiniExpedition(localHills, effectiveProfile, difficultyPreference);
+      expedition = await buildMiniExpedition(candidateHills, effectiveProfile, difficultyPreference);
     } catch { /* fall through to calculator */ }
 
     if (expedition) {
-      const rawHills   = resolveExpeditionHills(expedition, localHills);
-      recommendedHills = bridgeElevationGap(rawHills, localHills, effectiveProfile.totalElevationGain);
+      const rawHills   = resolveExpeditionHills(expedition, candidateHills);
+      recommendedHills = bridgeElevationGap(rawHills, candidateHills, effectiveProfile.totalElevationGain);
       usingAiExpedition = true;
 
       // Synthesise weekendPairing for score compat (2+ hills → treat as weekend pairing)
@@ -731,20 +866,20 @@ router.post("/virtual-expedition", async (req, res) => {
     } else {
       // Legacy fallback — uses effectiveProfile so daysOverride is respected
       if (effectiveProfile.estimatedDays === 1) {
-        const best = nearestMatch(localHills, effectiveProfile.totalElevationGain);
+        const best = nearestMatch(candidateHills, effectiveProfile.totalElevationGain);
         recommendedHills = [hillWithReps(best, effectiveProfile.totalElevationGain)];
       } else {
         const day1Target = effectiveProfile.day1ElevationGain ?? Math.round(effectiveProfile.totalElevationGain * 0.55);
         const day2Target = effectiveProfile.day2ElevationGain ?? (effectiveProfile.totalElevationGain - day1Target);
-        const hillA      = nearestMatch(localHills, day1Target);
-        const hillB      = nearestMatch(localHills, day2Target, hillA?.name);
+        const hillA      = nearestMatch(candidateHills, day1Target);
+        const hillB      = nearestMatch(candidateHills, day2Target, hillA?.name);
         if (hillA && hillB) {
           const saturday = hillWithReps(hillA, day1Target);
           const sunday   = hillWithReps(hillB, day2Target);
           weekendPairing   = { saturday, sunday };
           recommendedHills = [saturday, sunday];
         } else {
-          const best = nearestMatch(localHills, effectiveProfile.totalElevationGain);
+          const best = nearestMatch(candidateHills, effectiveProfile.totalElevationGain);
           recommendedHills = [hillWithReps(best, effectiveProfile.totalElevationGain)];
         }
       }
@@ -777,7 +912,7 @@ router.post("/virtual-expedition", async (req, res) => {
     // Resolve alternatives (only if AI expedition succeeded)
     const primaryNames  = new Set(recommendedHills.map(h => h.name));
     const alternatives  = expedition
-      ? resolveAlternatives(expedition.alternatives, primaryNames, localHills)
+      ? resolveAlternatives(expedition.alternatives, primaryNames, candidateHills)
       : {};
 
     // Build a clean expedition object for the response
