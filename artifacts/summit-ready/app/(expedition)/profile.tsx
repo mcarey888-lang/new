@@ -26,6 +26,7 @@ import { useSubscription } from "@/lib/revenuecat";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { DevToolsModal } from "@/components/DevToolsModal";
+import { englishPlaceName } from "@/utils/placeNames";
 
 const PILL_OFFSET = 52;
 
@@ -265,7 +266,7 @@ export default function ExpeditionProfileScreen() {
                   <Mountain size={14} color={T.blue} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.routeName}>{hill.name}</Text>
+                  <Text style={s.routeName}>{englishPlaceName(hill.name)}</Text>
                   <Text style={s.routeSub}>{hill.elevation}m gain · {hill.distance}km</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>

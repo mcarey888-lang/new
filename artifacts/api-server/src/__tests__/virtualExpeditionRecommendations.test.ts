@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Hill } from "../routes/hills-unified.js";
+import { englishPlaceName } from "../routes/hills-unified.js";
 import {
   applyVerifiedMountainProfile,
   bridgeElevationGap,
@@ -82,6 +83,19 @@ describe("verified Toubkal profile", () => {
       day2ElevationGain: 950,
       maxDailyElevation: 1_450,
     });
+  });
+});
+
+describe("English place names", () => {
+  it.each([
+    ["Yr Wyddfa", "Snowdon"],
+    ["Yr Wyddfa via the Pyg Track", "Snowdon via the Pyg Track"],
+    ["Snowdon / Yr Wyddfa", "Snowdon"],
+    ["Eryri", "Snowdonia"],
+    ["Bannau Brycheiniog", "Brecon Beacons"],
+    ["Glyder Fawr", "Glyder Fawr"],
+  ])("displays %s as %s", (input, expected) => {
+    expect(englishPlaceName(input)).toBe(expected);
   });
 });
 

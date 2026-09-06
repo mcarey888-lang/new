@@ -34,6 +34,7 @@ import {
   applyTerrainElevationBatch,
   parseAIJson,
   normalizeLocation,
+  englishPlaceName,
 } from "./hills-unified";
 
 const router: IRouter = Router();
@@ -457,7 +458,12 @@ export function targetAcceptsSeriousExposedScramble(dna: RouteDna): boolean {
  */
 export function prepareCandidateHills(hills: Hill[], dna: RouteDna): Hill[] {
   const compatible = targetAcceptsSeriousExposedScramble(dna);
-  return hills.flatMap(hill => {
+  const seen = new Set<string>();
+  return hills.flatMap(rawHill => {
+    const hill = { ...rawHill, name: englishPlaceName(rawHill.name) };
+    const key = hillNameKey(hill.name);
+    if (seen.has(key)) return [];
+    seen.add(key);
     if (!isCribGoch(hill.name)) return [hill];
     if (!compatible) return [];
     return [{

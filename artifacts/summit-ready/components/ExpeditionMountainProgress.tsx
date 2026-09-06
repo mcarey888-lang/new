@@ -20,6 +20,7 @@ import MountainProgress, { ExpeditionStage } from "@/components/MountainProgress
 import { T } from "@/constants/theme";
 import { getPointAtFraction } from "@/utils/mountainPath";
 import type { NearbyHill } from "@/context/AppContext";
+import { englishPlaceName } from "@/utils/placeNames";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -267,7 +268,7 @@ export function ExpeditionMountainProgress({
                 </Text>
               </View>
 
-              <Text style={s.stageName} numberOfLines={2}>{h.name}</Text>
+              <Text style={s.stageName} numberOfLines={2}>{englishPlaceName(h.name)}</Text>
               <Text style={s.stageElev}>
                 ▲ {Math.round(gain).toLocaleString()}m gain
               </Text>

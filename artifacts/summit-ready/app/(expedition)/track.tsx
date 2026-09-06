@@ -21,6 +21,7 @@ import {
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
+import { englishPlaceName } from "@/utils/placeNames";
 
 function useActiveHike() {
   const { isLoaded: authLoaded, userId } = useAuth();
@@ -224,7 +225,7 @@ export default function TrackScreen() {
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginHorizontal: 14, marginBottom: 14 }}>
           {nextHill && (
             <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, marginBottom: 8 }}>
-              Next mission: <Text style={{ color: T.green }}>{nextHill.name}</Text> · {nextHill.elevation}m gain
+              Next mission: <Text style={{ color: T.green }}>{englishPlaceName(nextHill.name)}</Text> · {nextHill.elevation}m gain
             </Text>
           )}
 

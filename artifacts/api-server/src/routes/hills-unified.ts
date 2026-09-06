@@ -10,6 +10,21 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Prefer established English place names where a commonly recognised English
+ * equivalent exists. Welsh names without an English equivalent stay unchanged.
+ */
+export function englishPlaceName(name: string): string {
+  return name
+    .replace(/\bSnowdon\s*\/\s*Yr Wyddfa\b/gi, "Snowdon")
+    .replace(/\bYr Wyddfa\s*\/\s*Snowdon\b/gi, "Snowdon")
+    .replace(/\bSnowdon\s*\(\s*Yr Wyddfa\s*\)/gi, "Snowdon")
+    .replace(/\bYr Wyddfa\s*\(\s*Snowdon\s*\)/gi, "Snowdon")
+    .replace(/\bYr Wyddfa\b/gi, "Snowdon")
+    .replace(/\bBannau Brycheiniog\b/gi, "Brecon Beacons")
+    .replace(/\bEryri\b/gi, "Snowdonia");
+}
+
 // Normalise a UK postcode that arrives without a space ("bb44bh" → "BB4 4BH")
 export function normalizeLocation(loc: string): string {
   const stripped = loc.replace(/\s+/g, "").toUpperCase();
@@ -25,7 +40,7 @@ const gradeSchema = z
   .pipe(z.enum(["Easy", "Easy–Mod", "Moderate", "Hard", "Alpine"]));
 
 export const HillSchema = z.object({
-  name: z.string(),
+  name: z.string().transform(englishPlaceName),
   elevation: z.number(),
   distance: z.number(),
   repeats: z.number(),
@@ -682,7 +697,7 @@ export async function osmPeaksToHills(
     const grade = gradeFromGain(gain);
 
     hills.push({
-      name: peak.name,
+      name: englishPlaceName(peak.name),
       elevation: gain,
       distance,
       repeats,

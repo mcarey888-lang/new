@@ -24,6 +24,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import type { NearbyHill } from "@/context/AppContext";
+import { englishPlaceName } from "@/utils/placeNames";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -199,9 +200,10 @@ export default function RouteScreen() {
       const sections: Array<{ name: string; sub: string; why?: string; warning?: string; color: string }> = [];
       plan.days.forEach((day: any) => {
         (day.routes ?? []).forEach((r: any) => {
-          const hill = hills.find(h => h.name.toLowerCase() === String(r.name ?? "").toLowerCase());
+          const routeName = englishPlaceName(String(r.name ?? "Route section"));
+          const hill = hills.find(h => englishPlaceName(h.name).toLowerCase() === routeName.toLowerCase());
           sections.push({
-            name:  r.name ?? "Route section",
+            name:  routeName,
             sub:   day.label ? `${day.label} · ${day.focus ?? ""}` : day.focus ?? "",
             why:   r.why,
             warning: hill?.safetyWarning,
@@ -213,7 +215,7 @@ export default function RouteScreen() {
     }
     // Local adventure or no plan — use virtual hills
     return hills.map((h, i) => ({
-      name:  h.name,
+      name:  englishPlaceName(h.name),
       sub:   `${h.elevation}m gain · ${h.distance}km · ×${h.repeats} reps`,
       why:   undefined,
       warning: h.safetyWarning,

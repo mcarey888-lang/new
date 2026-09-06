@@ -26,6 +26,7 @@ import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
+import { englishPlaceName } from "@/utils/placeNames";
 
 const ExpeditionMountainProgress = React.lazy(async () => {
   const module = await import("@/components/ExpeditionMountainProgress");
@@ -1072,13 +1073,13 @@ export default function BaseCampScreen() {
                 <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
                   <View style={s.nextHillThumb}>
                     <ExpoImage
-                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(nextHill.name)}&width=160&height=120` }}
+                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=160&height=120` }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.nextHillName} numberOfLines={2}>{nextHill.name}</Text>
+                    <Text style={s.nextHillName} numberOfLines={2}>{englishPlaceName(nextHill.name)}</Text>
                     <Text style={s.nextHillMeta}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
                     <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>{nextEst}</Text>
                   </View>
@@ -1225,7 +1226,7 @@ export default function BaseCampScreen() {
                   </View>
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={[s.pickerRouteName, done && s.pickerRouteNameDone]}>
-                      {stage.name}
+                      {englishPlaceName(stage.name)}
                     </Text>
                     <Text style={s.pickerRouteSub}>
                       {stage.elevation != null ? `${Math.round(stage.elevation)}m gain · ` : ""}
