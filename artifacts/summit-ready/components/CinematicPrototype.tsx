@@ -103,8 +103,6 @@ interface CinematicPrototypeProps {
   onDismiss: () => void;
 
   // DEV ONLY ────────────────────────────────────────────────────────────────
-  /** Override scale (3–6). When undefined, auto-fills the card to screen height. */
-  devZoomScale?: number;
   /**
    * When true, all developer overlays (debug cross, handoff bar) are hidden.
    * Used by the "Capture Handoff Frame" action to produce a clean screenshot.
@@ -128,7 +126,6 @@ export function CinematicPrototype({
   onCinematicReady,
   onDismiss,
   snapToIdentity = false,
-  devZoomScale,
   hideDevOverlays = false,
   captureViewRef,
   children,
@@ -232,11 +229,11 @@ export function CinematicPrototype({
             setDevDebugInfo({ anchorX: anchorScreenX, anchorY: anchorScreenY });
 
             // ── Scale ───────────────────────────────────────────────────────
-            // Auto fills the card height to the screen. Dev picker overrides.
+            // Auto fills the card height to the screen.
             // Capped at 0.95 of full zoom — the handoff frame where the
             // progress line stops and Higgsfield takes over.
             const autoS = (height / cardH) * 0.94;
-            const S     = (devZoomScale ?? autoS) * 0.95;
+            const S     = autoS * 0.95;
 
             // ── Translations ────────────────────────────────────────────────
             // X — right-edge-fixed: the right side of the content stays pinned
@@ -290,7 +287,7 @@ export function CinematicPrototype({
     if (phaseRef.current === "ready" || phaseRef.current === "holding") {
       dismiss();
     }
-  }, [active, devZoomScale]);
+  }, [active]);
 
   // ── Animated style ────────────────────────────────────────────────────────
 

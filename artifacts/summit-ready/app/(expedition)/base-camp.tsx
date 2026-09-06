@@ -298,7 +298,6 @@ export default function BaseCampScreen() {
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
   const [cinematicActive,        setCinematicActive]        = useState(false);
-  const [devZoomScale,           setDevZoomScale]           = useState<number | undefined>(undefined);
   const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
   const [showCompletion,         setShowCompletion]         = useState(false);
   const scrollRef        = useRef<import("react-native").ScrollView>(null);
@@ -825,31 +824,8 @@ export default function BaseCampScreen() {
       onCinematicReady={handleCinematicReady}
       onDismiss={() => setCinematicActive(false)}
       snapToIdentity={showCompletion}
-      devZoomScale={devZoomScale}
     >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-
-      {/* DEV ONLY — remove this entire block to clean up */}
-      {__DEV__ && !cinematicActive && (
-        <View style={[s.devCinemaPanel, { top: insets.top + 8 }]}>
-          {/* Zoom scale picker */}
-          <View style={s.devZoomRow}>
-            {([undefined, 3, 4, 5, 6] as const).map((v) => (
-              <TouchableOpacity
-                key={String(v)}
-                style={[s.devZoomBtn, devZoomScale === v && s.devZoomBtnActive]}
-                onPress={() => setDevZoomScale(v)}
-                activeOpacity={0.75}
-              >
-                <Text style={[s.devZoomBtnText, devZoomScale === v && s.devZoomBtnTextActive]}>
-                  {v === undefined ? "auto" : `${v}×`}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-      {/* END DEV ONLY */}
 
       <ScrollView
         ref={scrollRef}
@@ -1602,38 +1578,4 @@ const s = StyleSheet.create({
     fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff",
   },
 
-  // DEV ONLY — remove these style entries to clean up
-  devCinemaPanel: {
-    position: "absolute",
-    right: 12,
-    zIndex: 9999,
-    alignItems: "flex-end",
-    gap: 6,
-  },
-  devZoomRow: {
-    flexDirection: "row",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 10,
-    padding: 5,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  devZoomBtn: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 7,
-  },
-  devZoomBtnActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  devZoomBtnText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.5)",
-  },
-  devZoomBtnTextActive: {
-    color: "#fff",
-  },
-  // END DEV ONLY
 });
