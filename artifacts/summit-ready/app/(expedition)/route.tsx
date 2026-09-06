@@ -229,12 +229,6 @@ export default function RouteScreen() {
             <Text style={s.heroTitle}>{mountainName}</Text>
           </View>
 
-          {/* Route overlay showing on mountain */}
-          <View style={s.routeOverlay}>
-            <View style={s.routeLineDot} />
-            <View style={s.routeLineTrack} />
-            <View style={[s.routeLineDot, { backgroundColor: T.orange }]} />
-          </View>
         </View>
 
         {/* ── Tabs ────────────────────────────────────────────────────────── */}
@@ -332,13 +326,6 @@ const s = StyleSheet.create({
   heroWrap: { height: 280, overflow: "hidden" },
   heroTopRow: { paddingHorizontal: 16, paddingBottom: 8 },
   heroTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#fff" },
-
-  routeOverlay: {
-    position: "absolute", bottom: 40, left: "30%", right: "20%",
-    flexDirection: "row", alignItems: "center", gap: 2,
-  },
-  routeLineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: T.green, borderWidth: 2, borderColor: "#fff" },
-  routeLineTrack: { flex: 1, height: 2, backgroundColor: T.green, opacity: 0.7 },
 
   tabRow: {
     flexDirection: "row", marginHorizontal: 14, marginTop: -8, marginBottom: 14,
