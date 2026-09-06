@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { logPurchase, logTrialStarted, logSubscriptionStarted } from "@/lib/analytics";
+import { loadPurchases } from "@/lib/revenuecatSdk";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -11,11 +12,6 @@ const REVENUECAT_ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_AP
 const USE_TEST_STORE = process.env.EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE === "true";
 
 export const REVENUECAT_ENTITLEMENT_IDENTIFIER = "premium";
-
-async function loadPurchases() {
-  const purchasesModule = await import("react-native-purchases");
-  return purchasesModule.default;
-}
 
 let configuredPurchasesPromise: ReturnType<typeof loadPurchases> | null = null;
 let identifiedRevenueCatUserId: string | null = null;
