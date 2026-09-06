@@ -79,7 +79,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   useScreenView("account");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, clearPlan, unlockedAchievements, completedGoals } = useApp();
+  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -137,6 +137,7 @@ export default function AccountScreen() {
 
   const [restoreMsg, setRestoreMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [resettingData, setResettingData] = useState(false);
 
   // Clerk user info
   const displayEmail = user?.primaryEmailAddress?.emailAddress ?? null;
@@ -185,7 +186,7 @@ export default function AccountScreen() {
     } else {
       Alert.alert(
         "Reset all data",
-        "This will permanently delete your summit goal, training plan, session history, and all saved hills. This cannot be undone.",
+        "This will permanently delete your goals, expeditions, training plan, session history, saved routes, and hills. This cannot be undone.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Reset", style: "destructive", onPress: doResetData },
@@ -195,9 +196,17 @@ export default function AccountScreen() {
   }
 
   async function doResetData() {
-    await clearChallenges();
-    await clearPlan();
-    router.replace("/");
+    if (resettingData) return;
+    setResettingData(true);
+    try {
+      await discardActiveHike();
+      await clearChallenges();
+      await resetAllData();
+      router.replace("/");
+    } catch {
+      Alert.alert("Reset failed", "Your data could not be reset. Please try again.");
+      setResettingData(false);
+    }
   }
 
   async function handleDeleteAccount() {
@@ -796,11 +805,13 @@ export default function AccountScreen() {
               <Text style={[styles.actionText, { color: T.orange }]}>Sign out</Text>
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleResetData} activeOpacity={0.7}>
-              <Trash2 size={16} color="#FF4444" />
+            <TouchableOpacity style={[styles.actionRow, { borderColor: "#FF444420" }]} onPress={handleResetData} disabled={resettingData} activeOpacity={0.7}>
+              {resettingData
+                ? <ActivityIndicator size="small" color="#FF4444" />
+                : <Trash2 size={16} color="#FF4444" />}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionText, { color: "#FF4444" }]}>Reset all data</Text>
-                <Text style={styles.actionSub}>Deletes your local goal, plan and session history</Text>
+                <Text style={styles.actionSub}>Deletes all local goals, expeditions, plans, sessions and routes</Text>
               </View>
               <ChevronRight size={16} color={T.textDim} />
             </TouchableOpacity>

@@ -317,6 +317,7 @@ interface AppState {
   updateSession: (id: string, updates: Partial<Session>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearPlan: () => Promise<void>;
+  resetAllData: () => Promise<void>;
   seedPastActivity: (hikes: PastHike[]) => Promise<void>;
   fetchNearbyHills: (radiusOverride?: number, minElevation?: number, locationOverride?: string) => Promise<void>;
   togglePlanSession: (weekNum: number, sessionIdx: number) => Promise<void>;
@@ -406,6 +407,7 @@ const AppContext = createContext<AppState>({
   updateSession: async () => {},
   deleteSession: async () => {},
   clearPlan: async () => {},
+  resetAllData: async () => {},
   seedPastActivity: async () => {},
   fetchNearbyHills: async () => {},
   togglePlanSession: async () => {},
@@ -1555,6 +1557,80 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [shellMode, expeditionGoal, GOAL_KEY, TRAINING_GOAL_KEY, SESSIONS_KEY, PLAN_KEY, HILLS_KEY, COMPLETED_KEY, ASSIGNED_KEY, ADJUST_NOTE_KEY, SUBMITTED_KEY, HILLS_IN_PLAN_KEY, REPS_KEY, EFFORTS_KEY, HAS_VIEWED_PLAN_KEY, ACHIEVEMENTS_KEY, COMPLETED_GOALS_KEY, APP_MODE_KEY, EXPLORE_HIKES_KEY, SAVED_TRAILS_KEY, COMPLETED_TRAILS_KEY, CUSTOM_ROUTES_KEY, MY_HILLS_KEY, EXCLUDED_HILLS_KEY]);
 
+  const resetAllData = useCallback(async () => {
+    // Invalidate any in-flight hydration before removing its source data.
+    hydrationGeneration.current += 1;
+
+    const questionnaireKey = _uid
+      ? `summitready_questionnaire_data_${_uid}`
+      : "summitready_questionnaire_data";
+
+    await AsyncStorage.multiRemove([
+      GOAL_KEY,
+      TRAINING_GOAL_KEY,
+      EXPEDITION_GOAL_KEY,
+      SESSIONS_KEY,
+      PLAN_KEY,
+      HILLS_KEY,
+      COMPLETED_KEY,
+      ASSIGNED_KEY,
+      ADJUST_NOTE_KEY,
+      SUBMITTED_KEY,
+      HILLS_IN_PLAN_KEY,
+      REPS_KEY,
+      EFFORTS_KEY,
+      DAY_OVERRIDES_KEY,
+      HAS_VIEWED_PLAN_KEY,
+      ACHIEVEMENTS_KEY,
+      COMPLETED_GOALS_KEY,
+      APP_MODE_KEY,
+      SHELL_MODE_KEY,
+      EXPLORE_HIKES_KEY,
+      SAVED_TRAILS_KEY,
+      COMPLETED_TRAILS_KEY,
+      CUSTOM_ROUTES_KEY,
+      MY_HILLS_KEY,
+      EXCLUDED_HILLS_KEY,
+      EXPEDITIONS_KEY,
+      ACTIVE_EXPEDITION_KEY,
+      _PENDING_KEY,
+      questionnaireKey,
+    ]);
+
+    await reloadApp();
+  }, [
+    _uid,
+    GOAL_KEY,
+    TRAINING_GOAL_KEY,
+    EXPEDITION_GOAL_KEY,
+    SESSIONS_KEY,
+    PLAN_KEY,
+    HILLS_KEY,
+    COMPLETED_KEY,
+    ASSIGNED_KEY,
+    ADJUST_NOTE_KEY,
+    SUBMITTED_KEY,
+    HILLS_IN_PLAN_KEY,
+    REPS_KEY,
+    EFFORTS_KEY,
+    DAY_OVERRIDES_KEY,
+    HAS_VIEWED_PLAN_KEY,
+    ACHIEVEMENTS_KEY,
+    COMPLETED_GOALS_KEY,
+    APP_MODE_KEY,
+    SHELL_MODE_KEY,
+    EXPLORE_HIKES_KEY,
+    SAVED_TRAILS_KEY,
+    COMPLETED_TRAILS_KEY,
+    CUSTOM_ROUTES_KEY,
+    MY_HILLS_KEY,
+    EXCLUDED_HILLS_KEY,
+    EXPEDITIONS_KEY,
+    ACTIVE_EXPEDITION_KEY,
+    _PENDING_KEY,
+    reloadApp,
+  ]);
+
   const seedPastActivity = useCallback(async (hikes: PastHike[]) => {
     if (hikes.length === 0) return;
     const newSessions: Session[] = hikes.map((hike, idx) => {
@@ -2120,7 +2196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nearbyHills, hillsLoading, hillsError, alpineProfileLoading, completedPlanSessions, assignedHills,
       planAdjusting, planAdjustNote, submittedPlanSessions, sessionReps,
       hasViewedPlan, markPlanViewed,
-      setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan, seedPastActivity,
+      setSummitGoal, changeSummit, addSession, updateSession, deleteSession, clearPlan, resetAllData, seedPastActivity,
       fetchNearbyHills, togglePlanSession, assignHillToSession, adjustPlanWithAI,
       submitWeekSessions, hillsInPlan, addHillToPlan, myHills, addToMyHills, removeFromMyHills, addToNearbyHills, updateGoalLocation, setSessionReps, setSessionEffort, sessionEfforts, sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride, updatePlanSession,
       unlockedAchievements, newlyUnlocked, clearNewlyUnlocked,

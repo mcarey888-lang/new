@@ -5,6 +5,7 @@ import {
   bridgeElevationGap,
   formatHillsForPrompt,
   prepareCandidateHills,
+  reconcileExpeditionDays,
   type RouteDna,
   type TargetMountainProfile,
 } from "../routes/virtual-expedition.js";
@@ -103,6 +104,43 @@ describe("elevation bridge", () => {
     expect(gain).toBeLessThanOrEqual(2_640);
     expect(result.length).toBeLessThanOrEqual(8);
     expect(result.every(route => route.repeats <= 3)).toBe(true);
+  });
+
+  it("removes pruned summits from the returned expedition day plan", () => {
+    const selected = [
+      hill("Snowdon", 980),
+      hill("Helvellyn", 760),
+      hill("Skiddaw", 651),
+      hill("Kinder Scout", 490),
+      hill("Mam Tor", 490),
+    ];
+    const recommended = bridgeElevationGap(selected, selected, 2_400);
+    const days = reconcileExpeditionDays({
+      title: "Atlas in Snowdonia",
+      concept: "A sustained mountain weekend.",
+      days: [
+        {
+          label: "Saturday",
+          title: "High ridges",
+          focus: "endurance",
+          routes: selected.slice(0, 3).map(route => ({ name: route.name, why: `${route.name} reason` })),
+        },
+        {
+          label: "Sunday",
+          title: "Final climbs",
+          focus: "sustained ascent",
+          routes: selected.slice(3).map(route => ({ name: route.name, why: `${route.name} reason` })),
+        },
+      ],
+      alternatives: {},
+      adventureScore: 80,
+      dnaMatchScore: 85,
+      dnaMatchNotes: "A close endurance match.",
+    }, recommended);
+    const plannedNames = days.flatMap(day => day.routes.map(route => route.name));
+
+    expect(plannedNames).toEqual(recommended.map(route => route.name));
+    expect(plannedNames).not.toContain("Snowdon");
   });
 });
 

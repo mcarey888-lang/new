@@ -40,6 +40,12 @@ Never navigate from Expedition directly into a `(tabs)` route. The Training layo
 
 **How to apply:** Keep shell-owned tab links within their current route group. For shared screens, reuse the implementation behind a shell-local hidden route and link to that route.
 
+`clearPlan` is Training-only and deliberately preserves Expedition state. Any user-facing “Reset all data” action must use the dedicated full reset path so both shell goals, the expedition library, active expedition, and shell selection are cleared together.
+
+**Why:** Reusing `clearPlan` made Reset all data appear to do nothing for Expedition users because Base Camp and its saved expedition survived.
+
+**How to apply:** Keep plan clearing and full account-data reset as separate operations; never wire destructive account controls to the Training-only clear method.
+
 ## Expedition tab screens
 - `base-camp.tsx` — expedition home, hero image + simulation score ring + hills list + target profile
 - `mountains.tsx` — Expedition-owned mountain browse and selection screen

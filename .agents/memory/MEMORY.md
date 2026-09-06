@@ -31,3 +31,4 @@
 - [Metro pnpm _tmp watcher crash](metro-pnpm-tmp-watcher.md) — blockList regex already in metro.config.js; just restart workflow after any native package install that triggers ENOENT on _tmp_NNN.
 - [Expedition startup isolation](empty-expedition-startup-routing.md) — route discovery can initialize imports; defer native/browser-heavy features and send empty accounts to Mountains.
 - [Active hike ownership](active-hike-ownership.md) — cold-start restoration must reject checkpoints without the current authenticated user ID.
+- [Virtual expedition response consistency](virtual-expedition-response-consistency.md) — narrative day routes must match the final post-processed recommendation set.

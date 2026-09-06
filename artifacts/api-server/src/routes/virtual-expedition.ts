@@ -570,6 +570,58 @@ function resolveExpeditionHills(
 }
 
 /**
+ * Keep the narrative day plan aligned with the final post-processed hill list.
+ * The elevation bridge may prune an AI-selected route or add a better-fit hill;
+ * the client must never receive stale day routes that disagree with
+ * recommendedHills.
+ */
+export function reconcileExpeditionDays(
+  expedition: MiniExpedition,
+  recommendedHills: Hill[],
+): MiniExpedition["days"] {
+  if (!recommendedHills.length) return [];
+
+  const sourceRoutes = expedition.days.flatMap((day, dayIndex) =>
+    day.routes.map(route => ({ route, dayIndex }))
+  );
+  const dayCount = Math.max(1, Math.min(3, expedition.days.length));
+  const days: MiniExpedition["days"] = expedition.days
+    .slice(0, dayCount)
+    .map(day => ({ ...day, routes: [] }));
+
+  for (const hill of recommendedHills.slice(0, 9)) {
+    const source = sourceRoutes.find(({ route }) => {
+      const matched = fuzzyMatchHill(route.name, recommendedHills);
+      return matched?.name === hill.name;
+    });
+
+    let destination = source?.dayIndex ?? -1;
+    if (destination < 0 || destination >= days.length || days[destination].routes.length >= 3) {
+      destination = days.findIndex(day => day.routes.length < 3);
+    }
+    if (destination < 0 && days.length < 3) {
+      const nextDay = days.length + 1;
+      days.push({
+        label: `Day ${nextDay}`,
+        title: "Ascent builder",
+        focus: "sustained climbing and endurance",
+        routes: [],
+      });
+      destination = days.length - 1;
+    }
+    if (destination < 0) break;
+
+    days[destination].routes.push({
+      name: hill.name,
+      why: source?.route.why
+        ?? "Adds the closest available ascent match to the target expedition.",
+    });
+  }
+
+  return days.filter(day => day.routes.length > 0);
+}
+
+/**
  * Post-selection elevation bridge.
  *
  * Strategy (in priority order):
@@ -920,7 +972,7 @@ router.post("/virtual-expedition", async (req, res) => {
       ? {
           title:         expedition.title,
           concept:       expedition.concept,
-          days:          expedition.days,
+          days:          reconcileExpeditionDays(expedition, recommendedHills),
           alternatives,
           adventureScore,
           dnaMatchScore,
