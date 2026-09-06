@@ -289,101 +289,21 @@ export default function BaseCampScreen() {
   // falls back to the Wikimedia mountain photo rather than going blank.
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
-  // DEV ONLY — remove these lines to clean up
   const [cinematicActive,        setCinematicActive]        = useState(false);
   const [devZoomScale,           setDevZoomScale]           = useState<number | undefined>(undefined);
   const [cinematicReplayTrigger, setCinematicReplayTrigger] = useState(0);
-  const [isCapturing,            setIsCapturing]            = useState(false);
   const [showCompletion,         setShowCompletion]         = useState(false);
   const scrollRef        = useRef<import("react-native").ScrollView>(null);
   const mountainRef      = useRef<import("react-native").View>(null);
-  const cinematicRootRef = useRef<import("react-native").View>(null);
-  const isCapturingRef   = useRef(false); // stable ref for onCinematicReady closure
-  // END DEV ONLY
-
-  // DEV ONLY — Capture the handoff frame as a clean PNG for Higgsfield.
-  const captureHandoffFrame = useCallback(async () => {
-    // 1. Mark capturing — hides dev overlays, suppresses dev panel
-    isCapturingRef.current = true;
-    setIsCapturing(true);
-
-    // 2. Reset scroll & wait one frame before triggering cinematic
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-    await new Promise<void>(r => setTimeout(r, 100));
-
-    // 3. Start cinematic — line draws to 95%, zoom holds at handoff frame
-    setCinematicReplayTrigger(t => t + 1);
-    setCinematicActive(true);
-
-    // onCinematicReady (below) handles the actual capture once zoom settles
-  }, []);
 
   // Dismisses the completion modal and zooms back out to the expedition screen
   const handleCompletionContinue = useCallback(() => {
     setShowCompletion(false);
     setCinematicActive(false);
-    isCapturingRef.current = false;
-    setIsCapturing(false);
   }, []);
 
   // Called by CinematicPrototype once zoom reaches the handoff position
-  const handleCinematicReady = useCallback(async () => {
-    // ── Capture mode (📸 button) ─────────────────────────────────────────
-    if (isCapturingRef.current) {
-      // 200 ms grace period for all GPU compositing to settle
-      await new Promise<void>(r => setTimeout(r, 200));
-      try {
-        if (Platform.OS === "web") {
-          // Web — react-native-view-shot has no web impl; use html2canvas directly
-          // on the underlying DOM element (Expo web refs resolve to HTMLElement).
-          const { default: html2canvas } = await import("html2canvas");
-          const domEl = cinematicRootRef.current as unknown as HTMLElement;
-          if (!domEl) throw new Error("Capture ref not attached");
-          const canvas = await html2canvas(domEl, {
-            useCORS: true,
-            allowTaint: false,
-            scale: window.devicePixelRatio ?? 2,
-            backgroundColor: "#000",
-            logging: false,
-          });
-          canvas.toBlob((blob) => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "higgsfield-handoff-frame.png";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }, "image/png", 1.0);
-        } else {
-          // Native device — capture to tmp file then share sheet
-          const [{ captureRef }, Sharing] = await Promise.all([
-            import("react-native-view-shot"),
-            import("expo-sharing"),
-          ]);
-          const uri = await captureRef(cinematicRootRef, {
-            format: "png",
-            quality: 1,
-            result: "tmpfile",
-          });
-          await Sharing.shareAsync(uri, {
-            mimeType: "image/png",
-            dialogTitle: "Handoff Frame — Higgsfield",
-            UTI: "public.png",
-          });
-        }
-      } catch (e) {
-        console.warn("[Capture] Failed:", e instanceof Error ? e.message : String(e), e);
-      } finally {
-        isCapturingRef.current = false;
-        setIsCapturing(false);
-      }
-      return;
-    }
-
-    // ── Completion cinematic mode (🎬 button or 100% progress) ───────────
+  const handleCinematicReady = useCallback(() => {
     // Show the modal immediately — it fades in over 400 ms so the frozen
     // handoff frame still reads as one continuous shot.
     // Reset the zoom at the same instant: the Modal covers the screen fully
@@ -848,16 +768,13 @@ export default function BaseCampScreen() {
       }
     >
     <>
-    {/* DEV ONLY — remove CinematicPrototype wrapper + state lines above to clean up */}
     <CinematicPrototype
       active={cinematicActive}
       mountainRef={mountainRef}
       onCinematicReady={handleCinematicReady}
-      onDismiss={() => { setCinematicActive(false); setIsCapturing(false); isCapturingRef.current = false; }}
+      onDismiss={() => setCinematicActive(false)}
       snapToIdentity={showCompletion}
       devZoomScale={devZoomScale}
-      hideDevOverlays={isCapturing}
-      captureViewRef={cinematicRootRef}
     >
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
 
@@ -879,28 +796,6 @@ export default function BaseCampScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {/* Cinematic trigger */}
-          <TouchableOpacity
-            style={s.devCinemaBtn}
-            onPress={() => {
-              scrollRef.current?.scrollTo({ y: 0, animated: false });
-              setTimeout(() => {
-                setCinematicReplayTrigger(t => t + 1);
-                setCinematicActive(true);
-              }, 100);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={s.devCinemaBtnText}>🎬 Cinematic</Text>
-          </TouchableOpacity>
-          {/* Capture handoff frame */}
-          <TouchableOpacity
-            style={[s.devCinemaBtn, s.devCaptureBtn]}
-            onPress={captureHandoffFrame}
-            activeOpacity={0.8}
-          >
-            <Text style={s.devCinemaBtnText}>📸 Capture Handoff Frame</Text>
-          </TouchableOpacity>
         </View>
       )}
       {/* END DEV ONLY */}
@@ -1688,25 +1583,6 @@ const s = StyleSheet.create({
   },
   devZoomBtnTextActive: {
     color: "#fff",
-  },
-  devCinemaBtn: {
-    backgroundColor: "rgba(0,0,0,0.75)",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  devCinemaBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: 0.2,
-  },
-  devCaptureBtn: {
-    borderColor: "rgba(62,207,117,0.4)",
-    backgroundColor: "rgba(62,207,117,0.15)",
-    marginTop: 4,
   },
   // END DEV ONLY
 });
