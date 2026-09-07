@@ -23,7 +23,7 @@ from summit_data_engine.international.package import (
 ARCHIVE = (
     Path(__file__).parents[2]
     / "attached_assets"
-    / "0_summit-ready-international-alignment-upload_1788803262874.zip"
+    / "summit-ready-international-alignment-v4-2026-09-07.zip"
 )
 
 
@@ -62,30 +62,35 @@ def test_unicode_alias_normalization_and_duplicate_key(catalogue_archive: Path) 
     assert len(keys) <= len(package.aliases)
 
 
-def test_collision_holds_both_and_missing_geometry_is_blocked(
+def test_corrected_identity_routes_and_missing_geometry_contract(
     catalogue_archive: Path,
 ) -> None:
     package = load_catalogue_package(catalogue_archive)
     plan = plan_import(package)
     decisions = {item.source_feature_id: item for item in plan.decisions}
-    for feature_id in ("INT-0092", "INT-0252"):
-        assert decisions[feature_id].decision == "review"
-        assert "geonames:5868589" in decisions[feature_id].reason
-    assert plan.inserted == 215
-    assert plan.reviewed == 144
+    assert "INT-0092" not in decisions
+    assert decisions["INT-0252"].decision == "insert"
+    assert plan.inserted == 216
+    assert plan.reviewed == 142
     assert plan.blocked == 37
-    assert plan.aliases_staged == 4203
-    assert plan.aliases_unique == 4098
-    assert plan.aliases_duplicate == 105
-    assert plan.evidence_total == 487
-    assert plan.evidence_loadable == 447
-    assert plan.evidence_held == 3
+    assert plan.aliases_staged == 4102
+    assert plan.aliases_unique == 4001
+    assert plan.aliases_duplicate == 101
+    assert plan.evidence_total == 489
+    assert plan.evidence_loadable == 452
+    assert plan.evidence_held == 0
     assert plan.evidence_blocked == 37
     assert plan.routes_total == 23
-    assert plan.routes_loadable == 21
-    assert plan.routes_held == 2
-    assert plan.accepted_verified == 73
+    assert plan.routes_loadable == 23
+    assert plan.routes_held == 0
+    assert plan.accepted_verified == 74
     assert plan.accepted_needs_review == 142
+    denali = next(
+        row for row in package.mountains if row["source_feature_id"] == "INT-0252"
+    )
+    assert denali["tags"]["wikidata_id"] == "Q130018"
+    assert denali["tags"]["geonames_id"] == "5868589"
+    assert all(route["evidence_matched"] for route in package.routes)
     assert all(not row["geom"] for row in package.blocked)
 
 
@@ -145,11 +150,10 @@ def test_repeat_plan_is_a_no_op_for_exact_existing_keys(
             row["geometry"].y,
         )
         for row in package.mountains
-        if row["source_feature_id"] not in {"INT-0092", "INT-0252"}
     )
     plan = plan_import(package, existing)
     assert plan.inserted == 0
-    assert plan.unchanged == 215
+    assert plan.unchanged == 216
 
 
 def test_tampered_raw_payload_is_rejected(catalogue_archive: Path) -> None:

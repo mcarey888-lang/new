@@ -67,6 +67,24 @@ ROUTE_HEADERS = (
     "provenance_version",
 )
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+EXPECTED_COUNTS_BY_VERSION = {
+    "international-v3-2026-09-06": {
+        "mountains": 217,
+        "blocked": 37,
+        "source_records": 254,
+        "aliases": 4203,
+        "evidence": 487,
+        "routes": 23,
+    },
+    "international-v4-2026-09-07": {
+        "mountains": 216,
+        "blocked": 37,
+        "source_records": 253,
+        "aliases": 4102,
+        "evidence": 489,
+        "routes": 23,
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -273,14 +291,12 @@ def _validate_source(row: dict[str, str], number: int) -> dict[str, Any]:
 
 
 def _validate_package(package: CataloguePackage) -> None:
-    expected_counts = {
-        "mountains": 217,
-        "blocked": 37,
-        "source_records": 254,
-        "aliases": 4203,
-        "evidence": 487,
-        "routes": 23,
-    }
+    try:
+        expected_counts = EXPECTED_COUNTS_BY_VERSION[package.catalogue_version]
+    except KeyError as exc:
+        raise ValueError(
+            f"unsupported catalogue contract: {package.catalogue_version}"
+        ) from exc
     actual_counts = {
         field: len(getattr(package, field)) for field in expected_counts
     }

@@ -94,6 +94,19 @@ changes. Pass the supplied archive directly:
 summit-import-international path/to/international-catalogue.zip
 ```
 
+The corrected v4 source package is reproducible from the immutable v3 upload:
+
+```bash
+summit-rebuild-international \
+  ../attached_assets/0_summit-ready-international-alignment-upload_1788803262874.zip \
+  ../attached_assets/summit-ready-international-alignment-v4-2026-09-07.zip
+```
+
+The rebuild removes the duplicate Denali shadow record, transfers its identity
+evidence to the verified Denali record, and adds exact NPS evidence for the two
+previously held routes. ZIP member order, timestamps, permissions, CSV encoding,
+UUID generation, and compression settings are deterministic.
+
 `--apply` is deliberately required for a future transactional import. Do not use
 it against a production or shared database.
 

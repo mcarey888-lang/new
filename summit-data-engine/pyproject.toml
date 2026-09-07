@@ -40,6 +40,7 @@ summit-import-tryfan = "summit_data_engine.pipelines.tryfan:main_import"
 summit-validate-tryfan = "summit_data_engine.pipelines.tryfan:main_validate"
 summit-import-dobih = "summit_data_engine.dobih.importer:main"
 summit-import-international = "summit_data_engine.international.importer:main"
+summit-rebuild-international = "summit_data_engine.international.rebuild:main"
 summit-prepare-wales-dobih = "summit_data_engine.dobih.wales_review:main"
 
 [tool.hatch.build.targets.wheel]

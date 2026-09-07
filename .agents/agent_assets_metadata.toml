@@ -340,3 +340,31 @@ mtime_ms = 1788805410979
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/c8e7b74d-7167-48ac-8ba7-d6ed760f3ed8/4d0fd84d-b80c-4973-9ec5-69c4e27677cf"
 storage_version_token = "1788805420463327"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "Op6lN_H5Xifee7GdnS7b-"
+uri = "file://attached_assets/summit-ready-international-alignment-v4-2026-09-07.zip"
+type = "unspecified"
+title = "Corrected international catalogue v4"
+description = "Deterministic corrected source archive with the Denali duplicate merged and both held routes supported by exact NPS evidence."
+logical_id = "8edfb9ee-5d83-436a-b673-35515a30c34b"
+content_hash = "sha256:75b2eefd8f0a74bf1a8e320638843fed4e8becff63f81ae16e812651d7ec3334"
+size = 226462
+mtime_ms = 1788817554363
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/8edfb9ee-5d83-436a-b673-35515a30c34b/e6a41c48-ebc2-4be4-8c2a-fd7ab4ff010b"
+storage_version_token = "1788817877625541"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "lte7IJOYKOQpzPeOG5wdH"
+uri = "file://summit-data-engine/reports/international-catalogue-v4-correction-2026-09-07.md"
+type = "text"
+title = "International catalogue v4 correction report"
+description = "Identity decision, route evidence corrections, deterministic hash, package counts, and zero-mutation dry-run results."
+logical_id = "df17022b-7a8d-454a-8618-42241cbb63a1"
+content_hash = "sha256:66f39b45e687c30823fd3625ac9ca223115d96e85a5a5b8b9b5da27d77e03b51"
+size = 2816
+mtime_ms = 1788817753471
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/df17022b-7a8d-454a-8618-42241cbb63a1/a28932ca-af64-4eac-a749-58174b09745f"
+storage_version_token = "1788817878333930"
+content_type = "text/markdown"
