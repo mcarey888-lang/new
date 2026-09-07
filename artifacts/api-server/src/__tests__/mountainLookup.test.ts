@@ -1,0 +1,408 @@
+import { describe, expect, it, vi } from "vitest";
+import type { RequestHandler } from "express";
+import {
+  lookupVerifiedCanonicalMountain,
+  normalizeMountainLookupTerm,
+  type CanonicalLookupResult,
+  type CanonicalQuery,
+  type VerifiedCanonicalMountain,
+} from "../services/mountain/canonicalMountainLookup";
+
+vi.mock("@workspace/db", () => ({
+  cachedMountains: { slug: {} },
+  db: {
+    select: vi.fn(),
+    insert: vi.fn(),
+  },
+}));
+
+vi.mock("@workspace/integrations-openai-ai-server", () => ({
+  openai: {
+    chat: {
+      completions: {
+        create: vi.fn(),
+      },
+    },
+  },
+}));
+
+import {
+  createMountainLookupHandler,
+  type MountainLookupDependencies,
+} from "../routes/mountain";
+
+const candidate = {
+  id: "11111111-1111-1111-1111-111111111111",
+  sourceFeatureId: "INT-0200",
+  canonicalSourceKey: "geonames:123",
+  name: "Aletschhorn",
+  matchedBy: "alias",
+  country: "Switzerland",
+  region: null,
+  area: "Bernese Alps",
+  county: null,
+  elevationM: 4194,
+  prominenceM: 1043,
+  colHeightM: null,
+  gridReference: null,
+  summitFeature: null,
+  latitude: 46.465,
+  longitude: 7.993,
+  provenanceVersion: "international-v4-2026-09-07",
+};
+
+const verifiedMountain: VerifiedCanonicalMountain = {
+  id: candidate.id,
+  sourceFeatureId: candidate.sourceFeatureId,
+  canonicalSourceKey: candidate.canonicalSourceKey,
+  name: candidate.name,
+  matchedBy: "alias",
+  country: "Switzerland",
+  area: "Bernese Alps",
+  elevationM: 4194,
+  prominenceM: 1043,
+  latitude: candidate.latitude,
+  longitude: candidate.longitude,
+  provenanceVersion: candidate.provenanceVersion,
+  routes: [],
+};
+
+const legacyRoute = {
+  name: "Normal route",
+  distance: 12,
+  elevationGain: 1400,
+  highestAltitude: 4194,
+  difficulty: "Alpine" as const,
+  description: "Cached legacy route details",
+  startingPoint: "Trailhead",
+};
+
+function queryMockWith(
+  ...results: Record<string, unknown>[][]
+): CanonicalQuery & ReturnType<typeof vi.fn> {
+  const query = vi.fn();
+  for (const result of results) {
+    query.mockResolvedValueOnce(result);
+  }
+  return query as CanonicalQuery & ReturnType<typeof vi.fn>;
+}
+
+function dependencies(
+  canonicalResult: CanonicalLookupResult,
+): MountainLookupDependencies {
+  return {
+    canonicalLookup: vi.fn().mockResolvedValue(canonicalResult),
+    cacheLookup: vi.fn().mockResolvedValue(null),
+    cacheStore: vi.fn().mockResolvedValue(undefined),
+    aiLookup: vi.fn().mockResolvedValue({
+      mountainName: "AI mountain",
+      routes: [],
+    }),
+  };
+}
+
+async function invoke(
+  handler: RequestHandler,
+  body: unknown,
+): Promise<{ status: number; payload: Record<string, unknown> }> {
+  let status = 200;
+  let payload: Record<string, unknown> = {};
+  const response = {
+    status(code: number) {
+      status = code;
+      return response;
+    },
+    json(value: Record<string, unknown>) {
+      payload = value;
+      return response;
+    },
+  };
+  const request = {
+    body,
+    log: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+
+  await handler(
+    request as never,
+    response as never,
+    vi.fn(),
+  );
+
+  return { status, payload };
+}
+
+describe("normalizeMountainLookupTerm", () => {
+  it("uses NFKC and Unicode alphanumeric normalization", () => {
+    expect(normalizeMountainLookupTerm("  ＡＬＥＴＳＣＨ-ＨＯＲＮ  ")).toBe(
+      "aletschhorn",
+    );
+    expect(normalizeMountainLookupTerm("Aleč-hornas")).toBe("alečhornas");
+    expect(normalizeMountainLookupTerm("Straße")).toBe("strasse");
+    expect(normalizeMountainLookupTerm("ΟΣ")).toBe("οσ");
+    expect(normalizeMountainLookupTerm("Ꭰ")).toBe("Ꭰ");
+    expect(normalizeMountainLookupTerm("ꭰ")).toBe("Ꭰ");
+    expect(normalizeMountainLookupTerm("µ")).toBe("μ");
+  });
+});
+
+describe("lookupVerifiedCanonicalMountain", () => {
+  it("resolves an exact canonical name and returns trusted facts", async () => {
+    const query = queryMockWith(
+      [],
+      [{ ...candidate, name: "Mount Fuji" }],
+      [{ ...candidate, name: "Mount Fuji", matchedBy: "canonical_name" }],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "mount fuji" },
+      query,
+    );
+
+    expect(result.kind).toBe("match");
+    if (result.kind === "match") {
+      expect(result.mountain.name).toBe("Mount Fuji");
+      expect(result.mountain.matchedBy).toBe("canonical_name");
+    }
+    expect(query.mock.calls[0][0]).toContain("m.status = 'verified'");
+    expect(query.mock.calls[0][0]).not.toContain("a.status");
+    expect(query.mock.calls[0][1]).toEqual(["mountfuji"]);
+  });
+
+  it("resolves a diacritic-bearing approved alias to its canonical mountain", async () => {
+    const query = queryMockWith(
+      [candidate],
+      [],
+      [candidate],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "ALEČ-HORNAS", country: "switzerland" },
+      query,
+    );
+
+    expect(result).toMatchObject({
+      kind: "match",
+      mountain: {
+        name: "Aletschhorn",
+        matchedBy: "alias",
+        canonicalSourceKey: "geonames:123",
+      },
+    });
+    expect(query.mock.calls[0][1]).toEqual(["alečhornas"]);
+  });
+
+  it("uses country context to resolve a genuine alias collision", async () => {
+    const frenchCandidate = {
+      ...candidate,
+      id: "22222222-2222-2222-2222-222222222222",
+      sourceFeatureId: "INT-0201",
+      canonicalSourceKey: "geonames:456",
+      name: "Aletschhorn France",
+      country: "France",
+    };
+    const query = queryMockWith(
+      [candidate, frenchCandidate],
+      [],
+      [candidate],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "Alečhornas", country: "Switzerland" },
+      query,
+    );
+
+    expect(result).toMatchObject({
+      kind: "match",
+      mountain: {
+        name: "Aletschhorn",
+        country: "Switzerland",
+      },
+    });
+    expect(query.mock.calls[2][1]).toEqual([[candidate.id]]);
+  });
+
+  it("uses importer-compatible case folding for canonical names", async () => {
+    const streetMountain = {
+      ...candidate,
+      name: "Straße",
+      country: "Germany",
+    };
+    const query = queryMockWith(
+      [],
+      [streetMountain],
+      [streetMountain],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "STRASSE" },
+      query,
+    );
+
+    expect(result).toMatchObject({
+      kind: "match",
+      mountain: {
+        name: "Straße",
+        matchedBy: "canonical_name",
+      },
+    });
+  });
+
+  it("uses Python case folding for alias query parameters", async () => {
+    const query = queryMockWith(
+      [candidate],
+      [],
+      [candidate],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "ꭰ" },
+      query,
+    );
+
+    expect(result.kind).toBe("match");
+    expect(query.mock.calls[0][1]).toEqual(["Ꭰ"]);
+  });
+
+  it("returns none if a discovered candidate is no longer verified", async () => {
+    const query = queryMockWith(
+      [candidate],
+      [],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "Alečhornas" },
+      query,
+    );
+
+    expect(result).toEqual({ kind: "none" });
+    expect(query).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns every verified exact match as ambiguous without guessing", async () => {
+    const secondCandidate = {
+      ...candidate,
+      id: "22222222-2222-2222-2222-222222222222",
+      sourceFeatureId: "INT-0201",
+      canonicalSourceKey: "geonames:456",
+      name: "Aletschhorn East",
+    };
+    const query = queryMockWith(
+      [candidate, secondCandidate],
+      [],
+      [candidate, secondCandidate],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "Alečhornas" },
+      query,
+    );
+
+    expect(result.kind).toBe("ambiguous");
+    if (result.kind === "ambiguous") {
+      expect(result.matches).toHaveLength(2);
+    }
+    expect(query).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("POST /api/mountain-lookup handler", () => {
+  it("keeps canonical identity while enriching legacy routes from cache", async () => {
+    const deps = dependencies({ kind: "match", mountain: verifiedMountain });
+    vi.mocked(deps.cacheLookup).mockResolvedValue({
+      mountainName: "Aletschhorn",
+      routes: [legacyRoute],
+    });
+    const result = await invoke(
+      createMountainLookupHandler(deps),
+      { name: "Alečhornas" },
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.payload).toMatchObject({
+      source: "canonical",
+      mountainName: "Aletschhorn",
+      routeSource: "cache",
+      routes: [legacyRoute],
+      canonicalIdentity: {
+        canonicalSourceKey: "geonames:123",
+        matchedBy: "alias",
+        matchedTerm: "Alečhornas",
+      },
+      trustedFacts: {
+        verificationStatus: "verified",
+        elevationM: 4194,
+      },
+    });
+    expect(deps.cacheLookup).toHaveBeenCalledWith("aletschhorn");
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 for ambiguity and never falls back to cache or AI", async () => {
+    const deps = dependencies({
+      kind: "ambiguous",
+      matches: [
+        {
+          id: candidate.id,
+          sourceFeatureId: candidate.sourceFeatureId,
+          canonicalSourceKey: candidate.canonicalSourceKey,
+          name: candidate.name,
+          country: "Switzerland",
+        },
+        {
+          id: "22222222-2222-2222-2222-222222222222",
+          sourceFeatureId: "INT-0201",
+          canonicalSourceKey: "geonames:456",
+          name: "Aletschhorn East",
+          country: "Switzerland",
+        },
+      ],
+    });
+
+    const result = await invoke(
+      createMountainLookupHandler(deps),
+      { name: "Alečhornas" },
+    );
+
+    expect(result.status).toBe(409);
+    expect(result.payload).toMatchObject({
+      code: "AMBIGUOUS_MOUNTAIN",
+    });
+    expect(deps.cacheLookup).not.toHaveBeenCalled();
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+
+  it("checks the legacy cache only after a canonical miss", async () => {
+    const events: string[] = [];
+    const deps = dependencies({ kind: "none" });
+    vi.mocked(deps.canonicalLookup).mockImplementation(async () => {
+      events.push("canonical");
+      return { kind: "none" };
+    });
+    vi.mocked(deps.cacheLookup).mockImplementation(async () => {
+      events.push("cache");
+      return { mountainName: "Cached mountain", routes: [] };
+    });
+
+    const result = await invoke(
+      createMountainLookupHandler(deps),
+      { name: "Cached mountain" },
+    );
+
+    expect(events).toEqual(["canonical", "cache"]);
+    expect(result.payload).toMatchObject({
+      source: "cache",
+      mountainName: "Cached mountain",
+    });
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+});
