@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "summit-data-engine"
+version = "0.1.0"
+description = "Deterministic mountain and hiking-route data proof of concept for Summit Ready."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Proprietary proof of concept" }
+dependencies = [
+  "alembic>=1.16,<2",
+  "branca>=0.8,<1",
+  "folium>=0.20,<1",
+  "geoalchemy2>=0.18,<1",
+  "geopandas>=1.0,<2",
+  "networkx>=3.4,<4",
+  "numpy>=2.0,<2.3",
+  "pandas>=2.2,<3",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.8,<3",
+  "pyproj>=3.6,<4",
+  "pyrosm>=0.6,<1",
+  "rasterio>=1.4,<2",
+  "shapely>=2.0,<3",
+  "sqlalchemy>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.15,<2",
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<7",
+  "ruff>=0.11,<1",
+]
+
+[project.scripts]
+summit-import-tryfan = "summit_data_engine.pipelines.tryfan:main_import"
+summit-validate-tryfan = "summit_data_engine.pipelines.tryfan:main_validate"
+summit-import-dobih = "summit_data_engine.dobih.importer:main"
+summit-import-international = "summit_data_engine.international.importer:main"
+summit-prepare-wales-dobih = "summit_data_engine.dobih.wales_review:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/summit_data_engine"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "database: read-only integration checks against an explicitly configured engine database",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["summit_data_engine"]
+mypy_path = "src"
+exclude = ["alembic/"]
+
+[[tool.mypy.overrides]]
+module = [
+  "folium.*",
+  "geopandas.*",
+  "pyrosm.*",
+  "rasterio.*",
+]
+ignore_missing_imports = true

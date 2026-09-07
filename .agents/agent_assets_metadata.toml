@@ -326,3 +326,17 @@ mtime_ms = 1788632649446
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/1ffe7ba6-8f14-443d-847f-ce93a3639a2b/1af71232-167e-4c46-8eec-2b32fd05b9d2"
 storage_version_token = "1788632661319595"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "kDm4vKAOMMxHENwtdPRc_"
+uri = "file://summit-data-engine/reports/international-catalogue-dry-run-2026-09-07.md"
+type = "text"
+title = "International catalogue migration report"
+description = "Development migration, DoBIH preservation fingerprints, dry-run counts, match decisions, changed files, and the full review queue."
+logical_id = "c8e7b74d-7167-48ac-8ba7-d6ed760f3ed8"
+content_hash = "sha256:6729b8aeedd90e7826f6ff0e70ad43c7f6f30628f966e18d65b78fd0c45bb59f"
+size = 19397
+mtime_ms = 1788805410979
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/c8e7b74d-7167-48ac-8ba7-d6ed760f3ed8/4d0fd84d-b80c-4973-9ec5-69c4e27677cf"
+storage_version_token = "1788805420463327"
+content_type = "text/markdown"
