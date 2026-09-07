@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-09-07T00:00:00+01:00",
+  "environment": "development",
+  "checkpoint_tag": "checkpoint-before-international-v4-dev-import-20260907",
+  "checkpoint_commit": "7fc80d7711966ce1b4dff428ccec8a29a06e158f",
+  "archive": "attached_assets/summit-ready-international-alignment-v4-2026-09-07.zip",
+  "archive_sha256": "6f5e432cdf1c0289cdc0e04b10bf67fc79358e57c13b44b29fce0bd89027c369",
+  "alembic_revision_csv": "version_num\n0006_international_catalogue\n",
+  "catalogue_table_fingerprints_csv": "table_name,row_count,factual_fingerprint\nevidence_sources,0,d41d8cd98f00b204e9800998ecf8427e\nmountain_aliases,0,d41d8cd98f00b204e9800998ecf8427e\nmountain_classifications,33369,bd8dbdc4235d3fdbae1c6d2d993ee5ca\nmountain_source_records,21576,0c3b8a92460d0b71082161f29041f001\nmountain_verification_evidence,0,d41d8cd98f00b204e9800998ecf8427e\nmountain_verifications,0,d41d8cd98f00b204e9800998ecf8427e\nmountains,21576,c76d377ac1e06814cf3d3a2718b69464\nroute_definition_evidence,0,d41d8cd98f00b204e9800998ecf8427e\nroute_definitions,0,d41d8cd98f00b204e9800998ecf8427e\nroute_facts,0,d41d8cd98f00b204e9800998ecf8427e\nroute_identities,0,d41d8cd98f00b204e9800998ecf8427e\nsource_bundles,1,caf8499991e6dff3c842dab393a79f84\n",
+  "dobih_fingerprints_csv": "dataset,row_count,factual_fingerprint\nmountain_classifications,33369,bd8dbdc4235d3fdbae1c6d2d993ee5ca\nmountain_source_records,21576,0c3b8a92460d0b71082161f29041f001\nmountains,21576,c76d377ac1e06814cf3d3a2718b69464\n",
+  "runtime_table_inventory_csv": "table_schema,table_name\npublic,cached_mountains\npublic,canonical_hills\npublic,virtual_expeditions\n",
+  "protected_runtime_table_fingerprints_csv": "table_name,row_count,factual_fingerprint\ncached_mountains,56,889eaedd887d97d4bc719203acb8d049\ncanonical_hills,0,d41d8cd98f00b204e9800998ecf8427e\nvirtual_expeditions,0,d41d8cd98f00b204e9800998ecf8427e\n"
+}

@@ -1,0 +1,4360 @@
+{
+  "mode": "apply",
+  "package_sha256": "6f5e432cdf1c0289cdc0e04b10bf67fc79358e57c13b44b29fce0bd89027c369",
+  "catalogue_version": "international-v4-2026-09-07",
+  "counts": {
+    "inserted": 216,
+    "updated": 0,
+    "unchanged": 0,
+    "reviewed": 142,
+    "blocked": 37,
+    "failed": 0,
+    "details": {
+      "source_records": 216,
+      "evidence": 452,
+      "aliases": 4001,
+      "aliases_duplicate": 101,
+      "routes": 23
+    }
+  },
+  "decisions": [
+    {
+      "source_feature_id": "INT-0001",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mont Blanc",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0003",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dufourspitze",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0004",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nordend",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0005",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Zumsteinspitze",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0006",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Signalkuppe",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0007",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dom",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0009",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Weisshorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0010",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Täschhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0012",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Matterhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0014",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mont Maudit",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0015",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Parrotspitze",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0016",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dent Blanche",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0017",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ludwigshöhe",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0018",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nadelhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0022",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Lenzspitze",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0023",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Finsteraarhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0024",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mont Blanc du Tacul",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0026",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Stecknadelhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0027",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Castor",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0028",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Zinalrothorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0029",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Hohberghorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0032",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Alphubel",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0033",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Rimpfischhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0034",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aletschhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0035",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Strahlhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0038",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dent d’Hérens",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0041",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Jungfrau",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0042",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Bishorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0045",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aiguille Verte",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0050",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mönch",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0053",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Barre des Écrins",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0055",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pollux",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0056",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Schreckhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0062",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ober Gabelhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0063",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gran Paradiso",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0064",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aiguille de Bionnassay",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0065",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Piz Bernina",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0069",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Grünhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0070",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Lauteraarhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0072",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dürrenhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0073",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Allalinhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0075",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Weissmies",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0078",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dent du Géant",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0080",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Lagginhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0081",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aiguille de Rochefort",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0083",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Everest",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0084",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kilimanjaro",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0085",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aconcagua",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0086",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Elbrus",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0087",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "K2",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0088",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Ararat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0089",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Olympus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0090",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Bazardüzü",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0091",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Kanchenjunga",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0093",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Rushmore",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0094",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kailash",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0095",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nanga Parbat",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0096",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dhaulagiri",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0097",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Makalu",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0098",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kenya",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0099",
+      "decision": "insert",
+      "reason": "name/alias signal only; no identity or coordinate match",
+      "name": "Mauna Kea",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0100",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Athos",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0101",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Sinai",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0102",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Lhotse",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0103",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kosciuszko",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0104",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Cho Oyu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0105",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Manaslu",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0106",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Q4675",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0107",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Damavand",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0108",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Shishapangma",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0109",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Baekdu Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0110",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Broad Peak",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0111",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Puncak Jaya",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0112",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Logan",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0113",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Zugspitze",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0114",
+      "decision": "insert",
+      "reason": "name/alias signal only; no identity or coordinate match",
+      "name": "Table Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0115",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ojos del Salado",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0116",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Popocatépetl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0117",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gasherbrum",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0118",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gasherbrum II",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0119",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Tai",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0120",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Erebus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0121",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kinabalu",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0122",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Rainier",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0123",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aoraki / Mount Cook",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0124",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Aragats",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0125",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Parnassus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0126",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Hermon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0127",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Triglav",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0128",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Citlaltepetl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0129",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Kīlauea",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0130",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Khan Tengri",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0131",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gangkhar Puensum",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0132",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kazbek",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0133",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Grossglockner",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0134",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Pelée",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0135",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Arafat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0136",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Whitney",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0137",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nanda Devi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0138",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Terich Mir",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0139",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Hoverla",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0140",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Roraima",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0141",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Tabor",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0142",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Sněžka",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0143",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Eiger",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0144",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Semeru",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0145",
+      "decision": "insert",
+      "reason": "name/alias signal only; no identity or coordinate match",
+      "name": "Sugarloaf Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0146",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Rysy",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0147",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Noshaq",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0148",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gerlachovský štít",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0149",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Kebnekaise",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0150",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ismoil Somoni Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0151",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Musala",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0152",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Jengish Chokusu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0153",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Apo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0154",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Adam's Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0155",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Emei",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0156",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Shkhara",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0157",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nevado del Ruiz",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0158",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Monte Titano",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0159",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Jbel Toubkal",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0160",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Taal Volcano",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0161",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Ruapehu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0162",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Galdhøpiggen",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0163",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aneto",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0164",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mulhacén",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0165",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Belukha Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0166",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Yushan Main Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0167",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Asama",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0168",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Devils Tower",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0169",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Sinabung",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0170",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mont Ventoux",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0171",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Erciyes",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0172",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Huascarán",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0173",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Herzl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0174",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nevado Sajama",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0175",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Scopus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0176",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Dykh-Tau",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0177",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Katla",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0178",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Moldoveanu Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0179",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Korab",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0180",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Lu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0181",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Monte San Giorgio",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0182",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ras Dashen",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0183",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Corcovado",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0184",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Jebel Barkal",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0185",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Yamantau",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0186",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Kerinci",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0187",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pico Bolívar",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0188",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Bromo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0189",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Lenin Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0190",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Rinjani",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0191",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Colima",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0192",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pico do Fogo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0193",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Halti",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0194",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Fansipan",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0195",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Fitz Roy",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0196",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Hoher Dachstein",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0197",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Elgon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0198",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Monte Perdido",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0199",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Phou Bia",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0200",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Nebo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0201",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pico da Neblina",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0202",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Shasta",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0203",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Hood",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0204",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pumori",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0205",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Narodnaya",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0206",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Saint Elias",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0207",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Gerizim",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0208",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Emi Koussi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0209",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Pico",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0210",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Helicon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0211",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gyachung Kang",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0212",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Muztagh Ata",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0213",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Ontake",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0214",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Aiguille du Midi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0215",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Jezercë",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0216",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Haleakalā",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0217",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Puy de Dôme",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0218",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Coma Pedrosa",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0219",
+      "decision": "insert",
+      "reason": "name/alias signal only; no identity or coordinate match",
+      "name": "Mount Ida",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0220",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Illimani",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0221",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Brocken",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0222",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Meron",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0223",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Pico Cristóbal Colón",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0224",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Kongur Tagh",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0225",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Wilhelm",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0226",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Ama Dablam",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0227",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Tahat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0228",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Hkakabo Razi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0229",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Monte Pissis",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0230",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Baker",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0231",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Signal de Botrange",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0232",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Taranaki Maunga",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0233",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "La Soufrière",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0234",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nevado del Huila",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0235",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Hiei",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0236",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gjeravica",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0237",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Amiata",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0238",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Maglić",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0239",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Masherbrum",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0240",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Namcha Barwa",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0241",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Nuptse",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0242",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Kamet",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0243",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Tongariro",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0244",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Corno Grande",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0245",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Viso",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0246",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Elbert",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0247",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Wildspitze",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0248",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Feldberg",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0249",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Gasherbrum IV",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0250",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Uludağ",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0251",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Mount Fuji",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0252",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Denali",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0253",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Teide",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0254",
+      "decision": "insert",
+      "reason": "no identity or coordinate match",
+      "name": "Annapurna I",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0002",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Mont Blanc de Courmayeur",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0008",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Liskamm (Eastern Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0011",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Liskamm (Western Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0013",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Picco Luigi Amedeo",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0019",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Schwarzhorn (Corno Nero)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0020",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Grafeneire)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0021",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Dôme du Goûter",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0025",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Pilier d’Angle",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0030",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Vincent Pyramid",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0031",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Walker)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0036",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Valsorey)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0037",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Whymper)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0039",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Western Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0040",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Central Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0043",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Eastern Summit/ western Twin Peak)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0044",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Tsessette)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0046",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (L’Isolée)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0047",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguille Blanche de Peuterey",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0048",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Croz)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0049",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Carmen)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0051",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Gendarm/ eastern Twin Peak)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0052",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grande Rocheuse",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0054",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Médiane)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0057",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Roccia Nera)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0058",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Chaubert)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0059",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Mont Brouillard",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0060",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Marguerite)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0061",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Corne du Diable)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0066",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Gross Fiescherhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0067",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Vincent Pyramid (Punta Giordani/Giordanispetz)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0068",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Elena)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0071",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguille du Jardin",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0074",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Hinter Fiescherhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0076",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Dôme de Rochefort",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0077",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Barre des Écrins (Dôme de Neige)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0079",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Punta Baretti",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0082",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Les Droites",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    }
+  ],
+  "review_records": [
+    {
+      "source_feature_id": "INT-0088",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Ararat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0089",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Olympus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0090",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Bazardüzü",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0093",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Rushmore",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0094",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Kailash",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0099",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mauna Kea",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0100",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Athos",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0101",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Sinai",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0104",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Cho Oyu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0106",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Q4675",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0107",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Damavand",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0109",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Baekdu Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0112",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Logan",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0113",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Zugspitze",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0114",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Table Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0115",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Ojos del Salado",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0116",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Popocatépetl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0119",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Tai",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0120",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Erebus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0124",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Aragats",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0125",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Parnassus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0126",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Hermon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0127",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Triglav",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0128",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Citlaltepetl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0129",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Kīlauea",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0130",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Khan Tengri",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0131",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Gangkhar Puensum",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0132",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Kazbek",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0133",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Grossglockner",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0134",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Pelée",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0135",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Arafat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0137",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Nanda Devi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0138",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Terich Mir",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0139",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Hoverla",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0140",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Roraima",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0141",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Tabor",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0142",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Sněžka",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0143",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Eiger",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0144",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Semeru",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0145",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Sugarloaf Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0146",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Rysy",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0147",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Noshaq",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0148",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Gerlachovský štít",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0149",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Kebnekaise",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0150",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Ismoil Somoni Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0151",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Musala",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0152",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Jengish Chokusu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0153",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Apo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0154",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Adam's Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0155",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Emei",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0156",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Shkhara",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0157",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Nevado del Ruiz",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0158",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Monte Titano",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0160",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Taal Volcano",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0161",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Ruapehu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0162",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Galdhøpiggen",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0163",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Aneto",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0164",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mulhacén",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0165",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Belukha Mountain",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0166",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Yushan Main Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0167",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Asama",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0168",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Devils Tower",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0169",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Sinabung",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0170",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mont Ventoux",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0171",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Erciyes",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0172",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Huascarán",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0173",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Herzl",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0174",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Nevado Sajama",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0175",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Scopus",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0176",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Dykh-Tau",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0177",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Katla",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0178",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Moldoveanu Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0179",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Korab",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0180",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Lu",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0181",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Monte San Giorgio",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0182",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Ras Dashen",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0183",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Corcovado",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0184",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Jebel Barkal",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0185",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Yamantau",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0186",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Kerinci",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0187",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Pico Bolívar",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0188",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Bromo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0189",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Lenin Peak",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0190",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Rinjani",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0191",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Colima",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0192",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Pico do Fogo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0193",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Halti",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0194",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Fansipan",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0195",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Fitz Roy",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0196",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Hoher Dachstein",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0197",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Elgon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0198",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Monte Perdido",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0199",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Phou Bia",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0200",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Nebo",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0201",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Pico da Neblina",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0204",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Pumori",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0205",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Narodnaya",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0206",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Saint Elias",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0207",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Gerizim",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0208",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Emi Koussi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0209",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Pico",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0210",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Helicon",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0211",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Gyachung Kang",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0212",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Muztagh Ata",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0213",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Ontake",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0214",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Aiguille du Midi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0215",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Jezercë",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0216",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Haleakalā",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0217",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Puy de Dôme",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0218",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Coma Pedrosa",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0219",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Ida",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": [
+        "normalized_name_or_alias_only"
+      ]
+    },
+    {
+      "source_feature_id": "INT-0220",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Illimani",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0221",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Brocken",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0222",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Meron",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0223",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Pico Cristóbal Colón",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0224",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Kongur Tagh",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0225",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Wilhelm",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0226",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Ama Dablam",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0227",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Tahat",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0228",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Hkakabo Razi",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0229",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Monte Pissis",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0230",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Baker",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0231",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Signal de Botrange",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0232",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Taranaki Maunga",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0233",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "La Soufrière",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0234",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Nevado del Huila",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0235",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Hiei",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0236",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Gjeravica",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0237",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Amiata",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0238",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Maglić",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0239",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Masherbrum",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0240",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Namcha Barwa",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0241",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Nuptse",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0242",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Kamet",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0243",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Tongariro",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0244",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Corno Grande",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0245",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Viso",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0246",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Mount Elbert",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0247",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Wildspitze",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0248",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Feldberg",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0249",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Gasherbrum IV",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0250",
+      "decision": "review",
+      "reason": "source status needs_review",
+      "name": "Uludağ",
+      "status": "needs_review",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0002",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Mont Blanc de Courmayeur",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0008",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Liskamm (Eastern Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0011",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Liskamm (Western Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0013",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Picco Luigi Amedeo",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0019",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Schwarzhorn (Corno Nero)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0020",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Grafeneire)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0021",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Dôme du Goûter",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0025",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Pilier d’Angle",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0030",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Vincent Pyramid",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0031",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Walker)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0036",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Valsorey)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0037",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Whymper)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0039",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Western Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0040",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Central Summit)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0043",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Eastern Summit/ western Twin Peak)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0044",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grand Combin (Tsessette)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0046",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (L’Isolée)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0047",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguille Blanche de Peuterey",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0048",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Croz)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0049",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Carmen)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0051",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Gendarm/ eastern Twin Peak)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0052",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grande Rocheuse",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0054",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Médiane)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0057",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Breithorn (Roccia Nera)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0058",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Pointe Chaubert)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0059",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Mont Brouillard",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0060",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Marguerite)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0061",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguilles du Diable (Corne du Diable)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0066",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Gross Fiescherhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0067",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Vincent Pyramid (Punta Giordani/Giordanispetz)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0068",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Grandes Jorasses (Pointe Elena)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0071",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Aiguille du Jardin",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0074",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Hinter Fiescherhorn",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0076",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Dôme de Rochefort",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0077",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Barre des Écrins (Dôme de Neige)",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0079",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Punta Baretti",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    },
+    {
+      "source_feature_id": "INT-0082",
+      "decision": "blocked",
+      "reason": "MISSING_REQUIRED_GEOMETRY",
+      "name": "Les Droites",
+      "status": "verified",
+      "existing_mountain_id": null,
+      "distance_m": null,
+      "match_signals": []
+    }
+  ]
+}

@@ -368,3 +368,17 @@ mtime_ms = 1788817753471
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/df17022b-7a8d-454a-8618-42241cbb63a1/a28932ca-af64-4eac-a749-58174b09745f"
 storage_version_token = "1788817878333930"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "69fIebo2LEgukWY5ma5bv"
+uri = "file://summit-data-engine/reports/international-v4-development-import-2026-09-07.md"
+type = "text"
+title = "International catalogue v4 development import report"
+description = "Checkpoint, checksum, dry-run gates, transactional import counts, DoBIH and protected-table fingerprints, trust-tier validation, representative records, and idempotency results."
+logical_id = "ad3d80eb-baef-4440-b438-042363960836"
+content_hash = "sha256:286015984da21bfea30f25f4281f57ce656e612262e9dbe6f4fa90736db54550"
+size = 3953
+mtime_ms = 1788822439307
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/ad3d80eb-baef-4440-b438-042363960836/d0f77b3e-c5e8-4e82-b10e-40bbdfb93848"
+storage_version_token = "1788822462303528"
+content_type = "text/markdown"
