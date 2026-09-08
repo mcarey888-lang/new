@@ -27,6 +27,8 @@ export interface RouteFacts {
   routeType?: string;
   lat?: number;
   lng?: number;
+  /** Catalogue area used to disambiguate a name search; this is not a trailhead. */
+  location?: string;
   description?: string;
   source: "cached_hills" | "seeded_trails";
 }
@@ -129,6 +131,7 @@ function seededFacts(row: SeededTrail): RouteFacts | null {
     terrain: row.terrain.trim() || undefined,
     routeType: row.routeType.trim() || undefined,
     description: row.description.trim() || undefined,
+    location: row.location.trim() || undefined,
     ...coordinates,
     source: "seeded_trails",
   };
@@ -251,7 +254,9 @@ export async function buildHillDetail(
   // match may only fill facts which were absent from the selection.
   const facts: ResolvedHillDetailFacts = {
     name: input.hillName.trim(),
-    location: requestLocation || "unknown location",
+    // A matched catalogue route describes its own area more accurately than the
+    // user's search/home location. Neither is a verified trailhead.
+    location: database?.location || requestLocation || "unknown location",
     summitLat: suppliedCoords?.lat ?? database?.lat,
     summitLng: suppliedCoords?.lng ?? database?.lng,
     ascent: selectedAscent ?? database?.ascent,
@@ -301,19 +306,21 @@ export async function buildHillDetail(
 
   const hasCompleteRoute = positive(facts.ascent) && positive(facts.routeDistance) &&
     Boolean(facts.duration && facts.difficulty);
-  // Keep the legacy startPoint coordinate keys, but use explicit nulls when no
-  // trusted selected/catalogue coordinates exist. Never manufacture (0, 0).
-  const lat = facts.summitLat ?? null;
-  const lng = facts.summitLng ?? null;
+  // Selected, seeded, and cached coordinates identify a hill or route lookup
+  // area. They are never evidence of a navigable trailhead.
+  const mapCoordinates = coordinatePair(facts.summitLat, facts.summitLng);
+  const lat = mapCoordinates?.lat ?? null;
+  const lng = mapCoordinates?.lng ?? null;
+  const mapSearchContext = database?.location || requestLocation || undefined;
   const response: Record<string, unknown> = {
     description: narration.description?.trim() || database?.description || deterministicDescription(facts),
     startPoint: {
-      name: `${facts.name} mapped hill location`,
-      lat,
-      lng,
+      name: "Start point not verified",
+      lat: null,
+      lng: null,
       postcode: "",
       directions: narration.directions?.trim() ||
-        "Use the mapped hill location to verify a suitable public route start before travelling.",
+        "No verified trailhead is available. Confirm a suitable public route start before travelling.",
       parkingNotes: narration.parkingNotes?.trim() ||
         "A dedicated car park has not been independently verified. Check local access restrictions and parking signs.",
     },
@@ -327,8 +334,14 @@ export async function buildHillDetail(
       isRecommended: true,
     }] : [],
   };
+  // Retain legacy summit fields for consumers that display hill/route metadata.
+  // Consumers must consult provenance before using any coordinate for maps.
   response.summitLat = lat;
   response.summitLng = lng;
+  response.mapSearchContext = mapSearchContext;
+  response.mapCoordinates = mapCoordinates
+    ? { lat, lng, provenance: "unverified_route_location" }
+    : null;
   if (facts.safetyWarning) {
     response.safetyWarning = facts.safetyWarning;
     response.hazardLevel = facts.hazardLevel;
@@ -347,6 +360,8 @@ export async function buildHillDetail(
       routeType: selectedRouteType ? "selected_hill" : database?.routeType ? database.source : "unknown",
     },
     narration: narration.description ? "optional_narration" : "deterministic",
+    mapCoordinates: mapCoordinates ? "unverified_route_location" : "unavailable",
+    startPoint: "unverified",
   };
   response.warnings = warnings;
   if (dependencies.development) {

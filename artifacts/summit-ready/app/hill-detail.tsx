@@ -55,6 +55,11 @@ interface HillDetail {
   routes: HillRoute[];
   summitLat: number | null;
   summitLng: number | null;
+  mapSearchContext?: string;
+  provenance?: {
+    mapCoordinates?: "verified" | "unverified_route_location" | "unavailable";
+    startPoint?: "verified" | "unverified";
+  };
 }
 
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
@@ -181,18 +186,22 @@ export default function HillDetailScreen() {
 
   const gradeColor = DIFF_COLOR[grade ?? ""] ?? T.blue;
   const topInset = Platform.OS === "web" ? 20 : insets.top;
+  const mapSearchContext = detail?.mapSearchContext ?? location;
+  const hasVerifiedStartPoint = detail?.provenance?.startPoint === "verified" &&
+    Number.isFinite(startPoint?.lat) && Number.isFinite(startPoint?.lng);
+  const hasVerifiedMapCoordinates = detail?.provenance?.mapCoordinates === "verified" &&
+    Number.isFinite(detail?.summitLat) && Number.isFinite(detail?.summitLng);
 
   function openStartPointDirections() {
     if (
       startPoint &&
-      Number.isFinite(startPoint.lat) &&
-      Number.isFinite(startPoint.lng)
+      hasVerifiedStartPoint
     ) {
       openMapDirections(startPoint.lat!, startPoint.lng!, startPoint.name);
     } else if (startPoint?.postcode) {
       openDirectionsToPostcode(startPoint.postcode, startPoint.name);
     } else {
-      openMapsForHill(hillLat, hillLng, name ?? "", true, location);
+      openMapsForHill(null, null, name ?? "", true, mapSearchContext);
     }
   }
 
@@ -256,7 +265,7 @@ export default function HillDetailScreen() {
               {distance && (
                 <View style={styles.elevBadge}>
                   <MapPin size={11} color={T.green} />
-                  <Text style={styles.elevText}>{distance}km away</Text>
+                  <Text style={styles.elevText}>{Number.isFinite(Number(distance)) ? Number(distance).toFixed(1) : distance}km away</Text>
                 </View>
               )}
             </View>
@@ -272,16 +281,10 @@ export default function HillDetailScreen() {
               <TouchableOpacity
                 style={styles.mapActionBtn}
                 onPress={() => {
-                  if (Number.isFinite(detail?.summitLat) && Number.isFinite(detail?.summitLng)) {
-                    // Prefer AI-enriched summit pin when available
+                  if (hasVerifiedMapCoordinates) {
                     openMapPin(detail!.summitLat!, detail!.summitLng!, name ?? "");
-                  } else if (hillLat && hillLng) {
-                    // Fall back to the hill's own Overpass/terrain coordinates
-                    openMapPin(hillLat, hillLng, name ?? "");
                   } else {
-                    // Last resort: name search with location context to avoid
-                    // common-name ambiguity (e.g. "Bull Hill" exists in the US)
-                    openMapsForHill(null, null, name ?? "", false, location);
+                    openMapsForHill(null, null, name ?? "", false, mapSearchContext);
                   }
                 }}
                 activeOpacity={0.8}
@@ -351,7 +354,7 @@ export default function HillDetailScreen() {
                         <Text style={styles.startName}>{startPoint!.name}</Text>
                         {startPoint!.postcode ? (
                           <Text style={styles.startCoords}>{startPoint!.postcode}</Text>
-                        ) : Number.isFinite(startPoint!.lat) && Number.isFinite(startPoint!.lng) ? (
+                        ) : hasVerifiedStartPoint ? (
                           <Text style={styles.startCoords}>
                             {startPoint!.lat!.toFixed(5)}, {startPoint!.lng!.toFixed(5)}
                           </Text>
@@ -463,8 +466,8 @@ export default function HillDetailScreen() {
                           onPress={() => {
                             if (startPoint?.postcode) {
                               openDirectionsToPostcode(startPoint.postcode, startPoint.name);
-                            } else if (startPoint && Number.isFinite(startPoint.lat) && Number.isFinite(startPoint.lng)) {
-                              openMapDirections(startPoint.lat!, startPoint.lng!, startPoint.name);
+                            } else {
+                              openStartPointDirections();
                             }
                           }}
                           activeOpacity={0.8}

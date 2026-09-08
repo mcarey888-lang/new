@@ -25,7 +25,11 @@ describe("deterministic hill detail", () => {
       description: expect.stringContaining("Local Fell"),
       summitLat: 54.5,
       summitLng: -3.1,
-      startPoint: expect.objectContaining({ lat: 54.5, lng: -3.1 }),
+      startPoint: expect.objectContaining({
+        name: "Start point not verified",
+        lat: null,
+        lng: null,
+      }),
       routes: [expect.objectContaining({
         distance: 8.2,
         elevationGain: 420,
@@ -77,6 +81,36 @@ describe("deterministic hill detail", () => {
         difficulty: "selected_hill",
         terrain: "selected_hill",
       },
+    });
+  });
+
+  it("keeps route lookup coordinates as unverified metadata and uses the seeded area for map searches", async () => {
+    const result = await buildHillDetail({
+      hillName: "Ladybrook Valley Interest Trail",
+      location: "Manchester",
+      summitLat: 53.377728,
+      summitLng: -2.1408849,
+    }, {
+      findRouteFacts: async () => ({
+        lat: 53.377728,
+        lng: -2.1408849,
+        location: "Peak District, Derbyshire",
+        source: "seeded_trails",
+      }),
+    });
+
+    expect(result.startPoint).toMatchObject({ lat: null, lng: null });
+    expect(result.summitLat).toBe(53.377728);
+    expect(result.summitLng).toBe(-2.1408849);
+    expect(result.mapSearchContext).toBe("Peak District, Derbyshire");
+    expect(result.mapCoordinates).toEqual({
+      lat: 53.377728,
+      lng: -2.1408849,
+      provenance: "unverified_route_location",
+    });
+    expect(result.provenance).toMatchObject({
+      mapCoordinates: "unverified_route_location",
+      startPoint: "unverified",
     });
   });
 
