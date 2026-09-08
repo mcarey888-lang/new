@@ -41,6 +41,8 @@ const gradeSchema = z
 
 export const HillSchema = z.object({
   name: z.string().transform(englishPlaceName),
+  /** Stable public route identity. Never contains a private tracked-route ID. */
+  routeIdentityKey: z.string().min(1).optional(),
   elevation: z.number(),
   distance: z.number(),
   repeats: z.number(),
@@ -58,6 +60,14 @@ export const HillSchema = z.object({
   /** Deterministic metadata for routes with material objective hazards. */
   safetyWarning: z.string().optional(),
   hazardLevel: z.enum(["low", "moderate", "high", "severe"]).optional(),
+  /** Additive provenance used by custom-expedition matching. */
+  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass"]).optional(),
+  routeDataStatus: z.enum([
+    "unverified_cache",
+    "seeded_estimate",
+    "external_route",
+    "terrain_calculated",
+  ]).optional(),
   /** Summit elevation in metres ASL — from OSM ele tag or OpenTopoData radial sampling.
    *  Only present on hills that came through the Overpass pipeline; absent on DB-cached hits.
    *  Used by virtual-expedition altitude scoring to avoid re-querying topo at AI lat/lng. */
@@ -65,6 +75,25 @@ export const HillSchema = z.object({
 });
 
 export type Hill = z.infer<typeof HillSchema>;
+
+export function normalizedRouteIdentityName(name: string): string {
+  return name.normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** Build a deterministic public identity from provenance and stable geography. */
+export function routeIdentityKeyFor(
+  source: "legacy_cache" | "seeded_osm" | "osm_overpass",
+  name: string,
+  lat: number,
+  lng: number,
+  sourceIdentity?: string | number,
+): string {
+  const sourcePart = sourceIdentity == null
+    ? `${normalizedRouteIdentityName(name)}:${lat.toFixed(5)},${lng.toFixed(5)}`
+    : String(sourceIdentity).replace(/[^a-zA-Z0-9:_-]+/g, "-");
+  return `route:v1:${source}:${sourcePart}`;
+}
 
 // ── Shared verified calibration table ────────────────────────────────────────
 // All figures researched from AllTrails, OS maps, and authoritative hiking guides.
@@ -272,7 +301,7 @@ const KNOWN_GAIN_ANCHORS: Record<string, { lat: number; lng: number; maxKm: numb
   "bull-hill": { lat: 53.6641933, lng: -2.3544012, maxKm: 8 },
 };
 
-function knownGainForHill(hill: Pick<Hill, "name" | "lat" | "lng">): number | undefined {
+export function knownGainForHill(hill: Pick<Hill, "name" | "lat" | "lng">): number | undefined {
   const slug = slugify(hill.name);
   const known = KNOWN_GAINS[slug];
   if (!known) return undefined;
@@ -698,6 +727,13 @@ export async function osmPeaksToHills(
 
     hills.push({
       name: englishPlaceName(peak.name),
+      routeIdentityKey: routeIdentityKeyFor(
+        "osm_overpass",
+        peak.name,
+        peak.lat,
+        peak.lng,
+        `node:${peak.id}`,
+      ),
       elevation: gain,
       distance,
       repeats,

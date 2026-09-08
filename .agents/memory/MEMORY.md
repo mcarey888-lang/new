@@ -34,3 +34,4 @@
 - [Virtual expedition response consistency](virtual-expedition-response-consistency.md) — narrative day routes must match the final post-processed recommendation set.
 - [English place-name display](english-place-name-display.md) — use recognised English equivalents in user-facing route and region names; retain Welsh names without one.
 - [Canonical mountain trust boundary](canonical-mountain-trust-boundary.md) — only verified aliases resolve canonically; canonical routes never use cache or AI.
+- [Virtual expedition trust boundary](virtual-expedition-trust-boundary.md) — verified targets/routes first; explicit fallback lineage; deterministic local routes with stable optional identities.

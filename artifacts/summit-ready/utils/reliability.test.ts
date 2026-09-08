@@ -12,11 +12,13 @@ import { canMigrateFlatData, createGenerationGuard } from "./userHydration";
 import { FLAT_MIGRATION_KEYS } from "./userHydration";
 import {
   addUniqueCompletedRoute,
+  isRouteCompleted,
   canonicalShellRoot,
   countCompletedPlanWeeks,
   ensurePlanSessionIds,
   isExpeditionComplete,
   migratePlanKeyedRecord,
+  routeCompletionKey,
   selectShellGoal,
 } from "./stateReliability";
 import { syncOutboxKey } from "./syncOutbox";
@@ -107,6 +109,26 @@ it("counts final route completion uniquely", () => {
     completedRoutes,
     virtualHills: [{ name: "A" }, { name: "B" }],
   })).toBe(true);
+});
+
+it("keeps distant same-name expedition completion identities distinct", () => {
+  const west = { name: "Twin Peak", routeIdentityKey: "route:v1:osm_overpass:node:10" };
+  const east = { name: "Twin Peak", routeIdentityKey: "route:v1:osm_overpass:node:20" };
+  const completedRoutes = addUniqueCompletedRoute([], west.routeIdentityKey);
+
+  expect(isRouteCompleted(completedRoutes, west)).toBe(true);
+  expect(isRouteCompleted(completedRoutes, east)).toBe(false);
+  expect(isExpeditionComplete({ completedRoutes, virtualHills: [west, east] })).toBe(false);
+  expect(isRouteCompleted(["Twin Peak"], east)).toBe(true);
+});
+
+it("completes a legacy route with an empty identity by its display name", () => {
+  const legacy = { name: "Legacy Fell", routeIdentityKey: "" };
+  const completedRoutes = addUniqueCompletedRoute([], routeCompletionKey(legacy));
+
+  expect(completedRoutes).toEqual(["Legacy Fell"]);
+  expect(isRouteCompleted(completedRoutes, legacy)).toBe(true);
+  expect(isExpeditionComplete({ completedRoutes, virtualHills: [legacy] })).toBe(true);
 });
 
 it("counts completed plan weeks rather than stable session IDs", () => {

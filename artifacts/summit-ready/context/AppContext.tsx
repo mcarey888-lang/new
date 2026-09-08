@@ -84,6 +84,20 @@ export interface TargetMountain {
   routeDna?: RouteDna;
 }
 
+export interface VirtualExpeditionProvenance {
+  targetMountainSource: string;
+  targetRouteSource: string;
+  routeDataStatus: "verified" | "unverified";
+  selectedTargetRouteIdentityKey?: string | null;
+  selectedTargetRouteName?: string | null;
+  routeSelectionRequired?: boolean;
+  localCandidateSources?: string[];
+  matchMethod: string;
+  usedAi: boolean;
+  metricSources?: Record<string, string>;
+  warnings?: string[];
+}
+
 export interface SummitGoal {
   mountainName: string;
   summitDate: string;
@@ -116,6 +130,8 @@ export interface SummitGoal {
   simulationDurationWeeks?: number;
   /** Virtual mode only: cached recommended training hills from the last /virtual-expedition call. */
   virtualHills?: NearbyHill[];
+  /** Optional data lineage for the generated custom expedition. */
+  virtualExpeditionProvenance?: VirtualExpeditionProvenance;
   /**
    * Virtual / Expedition mode: the AI-designed mini expedition plan returned
    * by the Mountain Guide expedition builder. Stored for display and editing.
@@ -128,7 +144,7 @@ export interface SummitGoal {
       label:  string;
       title:  string;
       focus:  string;
-      routes: Array<{ name: string; why: string }>;
+      routes: Array<{ name: string; routeIdentityKey?: string; why: string }>;
     }>;
     alternatives:  Record<string, string[]>;
     adventureScore: number;
@@ -168,6 +184,8 @@ export interface SavedExpedition {
   expeditionPlan?: SummitGoal["expeditionPlan"];
   simulationScore?: number;
   simulationScoreBreakdown?: SimulationScoreBreakdown;
+  /** Optional data lineage; absent on legacy saved expeditions. */
+  virtualExpeditionProvenance?: VirtualExpeditionProvenance;
   /** Routes the user has explicitly confirmed completing. */
   completedRoutes: string[];
   expeditionStatus: "saved" | "active" | "complete";
@@ -228,6 +246,8 @@ export interface TrainingWeek {
 
 export interface NearbyHill {
   name: string;
+  /** Stable geographic route identity; absent on legacy AsyncStorage records. */
+  routeIdentityKey?: string;
   elevation: number;
   distance: number;
   repeats: number;
@@ -1229,6 +1249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const expeditionFields = [
         "virtualHills", "expeditionPlan", "simulationScore",
         "simulationScoreBreakdown", "targetMountain", "virtualHikeProgress", "completedRoutes",
+        "virtualExpeditionProvenance",
       ] as const;
       const expUpdates: Partial<SavedExpedition> = {};
       for (const field of expeditionFields) {
@@ -1280,6 +1301,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       virtualHills:             data.virtualHills,
       simulationScore:          data.simulationScore,
       simulationScoreBreakdown: data.simulationScoreBreakdown,
+      virtualExpeditionProvenance: data.virtualExpeditionProvenance,
       expeditionPlan:           data.expeditionPlan ?? null,
       virtualHikeProgress:      { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 },
       completedRoutes:          [],
@@ -1310,6 +1332,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         virtualHills:             data.virtualHills,
         simulationScore:          data.simulationScore,
         simulationScoreBreakdown: data.simulationScoreBreakdown,
+        virtualExpeditionProvenance: data.virtualExpeditionProvenance,
         expeditionPlan:           data.expeditionPlan ?? null,
         virtualHikeProgress:      { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 },
         completedRoutes:          [],
@@ -1370,6 +1393,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         virtualHills:             target.virtualHills,
         simulationScore:          target.simulationScore,
         simulationScoreBreakdown: target.simulationScoreBreakdown,
+        virtualExpeditionProvenance: target.virtualExpeditionProvenance,
         expeditionPlan:           target.expeditionPlan ?? null,
         virtualHikeProgress:      target.virtualHikeProgress,
         completedRoutes:          target.completedRoutes,
@@ -1405,6 +1429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (updates.expeditionPlan !== undefined)           goalSyncFields.expeditionPlan = updates.expeditionPlan;
       if (updates.simulationScore !== undefined)          goalSyncFields.simulationScore = updates.simulationScore;
       if (updates.simulationScoreBreakdown !== undefined) goalSyncFields.simulationScoreBreakdown = updates.simulationScoreBreakdown;
+      if (updates.virtualExpeditionProvenance !== undefined) goalSyncFields.virtualExpeditionProvenance = updates.virtualExpeditionProvenance;
       if (updates.targetMountain !== undefined)           goalSyncFields.targetMountain = updates.targetMountain;
       if (updates.virtualHikeProgress !== undefined)      goalSyncFields.virtualHikeProgress = updates.virtualHikeProgress;
       if (updates.completedRoutes !== undefined)          goalSyncFields.completedRoutes = updates.completedRoutes;

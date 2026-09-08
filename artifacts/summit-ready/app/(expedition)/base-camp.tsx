@@ -27,6 +27,11 @@ import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailS
 import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 import { englishPlaceName } from "@/utils/placeNames";
+import { isRouteCompleted } from "@/utils/stateReliability";
+import {
+  VerifiedMountainChooser,
+  type VerifiedMountainChoice,
+} from "@/components/VerifiedMountainChooser";
 
 const ExpeditionMountainProgress = React.lazy(async () => {
   const module = await import("@/components/ExpeditionMountainProgress");
@@ -230,9 +235,27 @@ interface FeaturedChallenge {
 
 interface StageData {
   name: string;
+  routeIdentityKey?: string;
   region: string;
   distance?: number;
   elevation?: number;
+}
+
+interface VerifiedTargetRouteChoice {
+  identityKey: string;
+  routeName: string;
+  startPoint: string | null;
+  distanceKm: number | null;
+  totalAscentMetres: number | null;
+  typicalDurationHours: number | null;
+}
+
+interface PendingBaseExpeditionRequest {
+  force: boolean;
+  mountainOverride?: string;
+  targetRouteIdentityKey?: string;
+  targetCountry?: string;
+  targetRegion?: string;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -290,6 +313,12 @@ export default function BaseCampScreen() {
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [routePickerOpen, setRoutePickerOpen] = useState(false);
+  const [targetRoutePickerOpen, setTargetRoutePickerOpen] = useState(false);
+  const [targetRouteChoices, setTargetRouteChoices] = useState<VerifiedTargetRouteChoice[]>([]);
+  const [pendingTargetRouteRequest, setPendingTargetRouteRequest] = useState<PendingBaseExpeditionRequest | null>(null);
+  const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
+  const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
+  const [pendingMountainRequest, setPendingMountainRequest] = useState<PendingBaseExpeditionRequest | null>(null);
   const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
   const [communityStats, setCommunityStats] = useState<CommunityStats | null>(null);
   const [communityLoading, setCommunityLoading] = useState(true);
@@ -386,7 +415,7 @@ export default function BaseCampScreen() {
     const hills = summitGoal?.virtualHills;
     if (hills && hills.length > 0) {
       return hills.map(h => ({
-        name: h.name, region: "",
+        name: h.name, routeIdentityKey: h.routeIdentityKey, region: "",
         distance: h.distance, elevation: h.elevation,
       }));
     }
@@ -394,6 +423,7 @@ export default function BaseCampScreen() {
     if (days && days.length > 0) {
       return days.map((d: any, i: number) => ({
         name:      d.routes?.[0]?.name ?? d.title ?? `Stage ${i + 1}`,
+        routeIdentityKey: d.routes?.[0]?.routeIdentityKey,
         region:    "",
         distance:  undefined,
         elevation: undefined,
@@ -406,14 +436,14 @@ export default function BaseCampScreen() {
   // Falls back to summitGoal.completedRoutes (migrated goals) then empty array.
   const completedRoutes: string[] = activeExpedition?.completedRoutes
     ?? summitGoal?.completedRoutes ?? [];
-  const completedStages = stages.filter(s => completedRoutes.includes(s.name)).length;
+  const completedStages = stages.filter(s => isRouteCompleted(completedRoutes, s)).length;
   // Route-completion percentage drives the progress ring and stage dots.
   const routePct = stages.length > 0
     ? Math.round(completedStages / stages.length * 100)
     : pct; // fall back to elevation-based pct when no stages loaded yet
 
   // Next incomplete route — first hill whose name is not yet in completedRoutes.
-  const nextHill = summitGoal?.virtualHills?.find(h => !completedRoutes.includes(h.name))
+  const nextHill = summitGoal?.virtualHills?.find(h => !isRouteCompleted(completedRoutes, h))
                    ?? summitGoal?.virtualHills?.[0];
   const nextEst  = nextHill
     ? `Est. ${Math.round(nextHill.distance / 5)}–${Math.round(nextHill.distance / 3)}h`
@@ -425,7 +455,13 @@ export default function BaseCampScreen() {
   const concept = (summitGoal as any)?.expeditionPlan?.concept as string | undefined;
 
   // ── Fetches ──────────────────────────────────────────────────────────────────
-  async function fetchExpedition(force = false, mountainOverride?: string) {
+  async function fetchExpedition(
+    force = false,
+    mountainOverride?: string,
+    targetRouteIdentityKey?: string,
+    targetCountry?: string,
+    targetRegion?: string,
+  ) {
     // Allow starting fresh from a challenge card even without an existing goal
     if (!summitGoal && !mountainOverride) return;
     if (!force && !mountainOverride && hasCachedData) return;
@@ -434,16 +470,66 @@ export default function BaseCampScreen() {
       const mountain = mountainOverride ?? summitGoal!.mountainName;
       const location = summitGoal?.location ?? "United Kingdom";
       const radius   = summitGoal?.maxRadius ?? 30;
+      const savedRouteIdentityKey = mountainOverride
+        ? undefined
+        : activeExpedition?.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey
+          ?? summitGoal?.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey
+          ?? undefined;
+      const request: PendingBaseExpeditionRequest = {
+        force,
+        ...(mountainOverride ? { mountainOverride } : {}),
+        ...(targetRouteIdentityKey ?? savedRouteIdentityKey
+          ? { targetRouteIdentityKey: targetRouteIdentityKey ?? savedRouteIdentityKey }
+          : {}),
+        ...(targetCountry ? { targetCountry } : {}),
+        ...(targetRegion ? { targetRegion } : {}),
+      };
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ targetMountain: mountain, userLocation: location, radius }),
+        body: JSON.stringify({
+          targetMountain: mountain,
+          userLocation: location,
+          radius,
+          targetRouteIdentityKey: request.targetRouteIdentityKey,
+          targetCountry: request.targetCountry,
+          targetRegion: request.targetRegion,
+          requireVerifiedRouteSelection: true,
+        }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({})) as any;
+        if (
+          res.status === 409
+          && b.code === "AMBIGUOUS_MOUNTAIN"
+          && Array.isArray(b.candidates)
+          && b.candidates.length > 0
+        ) {
+          setMountainChoices(b.candidates);
+          setPendingMountainRequest(request);
+          setMountainChooserOpen(true);
+          return;
+        }
+        if (
+          res.status === 409
+          && b.code === "TARGET_ROUTE_SELECTION_REQUIRED"
+          && Array.isArray(b.routes)
+          && b.routes.length > 0
+        ) {
+          setTargetRouteChoices(b.routes);
+          setPendingTargetRouteRequest(request);
+          setTargetRoutePickerOpen(true);
+          return;
+        }
         throw new Error(b.error ?? "Error");
       }
       const data = await res.json();
+      setTargetRoutePickerOpen(false);
+      setTargetRouteChoices([]);
+      setPendingTargetRouteRequest(null);
+      setMountainChooserOpen(false);
+      setMountainChoices([]);
+      setPendingMountainRequest(null);
 
       if (mountainOverride) {
         // Starting a new expedition — add to Adventure Library and make it active.
@@ -455,6 +541,7 @@ export default function BaseCampScreen() {
           simulationScore:          data.dnaMatchScore ?? data.simulationScore,
           simulationScoreBreakdown: data.scoreBreakdown,
           expeditionPlan:           data.expedition ?? null,
+          virtualExpeditionProvenance: data.provenance,
           location,
           maxRadius:                radius,
           fitnessLevel:             summitGoal?.fitnessLevel ?? "Average",
@@ -466,6 +553,7 @@ export default function BaseCampScreen() {
           simulationScore: data.dnaMatchScore ?? data.simulationScore,
           virtualHills:    data.recommendedHills,
           expeditionPlan:  data.expedition ?? null,
+          virtualExpeditionProvenance: data.provenance,
         });
       }
     } catch (err) {
@@ -592,6 +680,26 @@ export default function BaseCampScreen() {
   if (!summitGoal) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        <VerifiedMountainChooser
+          visible={mountainChooserOpen}
+          candidates={mountainChoices}
+          onClose={() => {
+            setMountainChooserOpen(false);
+            setPendingMountainRequest(null);
+          }}
+          onSelect={(candidate) => {
+            const pending = pendingMountainRequest;
+            if (!pending) return;
+            setMountainChooserOpen(false);
+            void fetchExpedition(
+              pending.force,
+              pending.mountainOverride,
+              pending.targetRouteIdentityKey,
+              candidate.country,
+              candidate.region ?? undefined,
+            );
+          }}
+        />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
 
           {/* ── Hero ──────────────────────────────────────────────────────── */}
@@ -819,6 +927,26 @@ export default function BaseCampScreen() {
       }
     >
     <>
+    <VerifiedMountainChooser
+      visible={mountainChooserOpen}
+      candidates={mountainChoices}
+      onClose={() => {
+        setMountainChooserOpen(false);
+        setPendingMountainRequest(null);
+      }}
+      onSelect={(candidate) => {
+        const pending = pendingMountainRequest;
+        if (!pending) return;
+        setMountainChooserOpen(false);
+        void fetchExpedition(
+          pending.force,
+          pending.mountainOverride,
+          pending.targetRouteIdentityKey,
+          candidate.country,
+          candidate.region ?? undefined,
+        );
+      }}
+    />
     <CinematicPrototype
       active={cinematicActive}
       mountainRef={mountainRef}
@@ -980,19 +1108,8 @@ export default function BaseCampScreen() {
             allDone={completedRoutes.length > 0 && !nextHill}
             mountainImageRef={mountainRef}
             replayTrigger={cinematicReplayTrigger}
-            onStagePress={(hillName) => {
-              const hill = (summitGoal.virtualHills ?? []).find(h => h.name === hillName);
-              if (!hill) {
-                router.push({
-                  pathname: "/hike-tracking" as any,
-                  params: {
-                    hillName,
-                    trackingMode: "expedition-route",
-                    expeditionId: activeExpeditionId,
-                  },
-                });
-                return;
-              }
+            onStagePress={(pressedHill) => {
+              const hill = pressedHill;
               router.push({
                 pathname: "/hill-detail",
                 params: {
@@ -1002,11 +1119,15 @@ export default function BaseCampScreen() {
                   lng:            hill.lng?.toString()       ?? "",
                   elevation:      (hill.elevation ?? 0).toString(),
                   distance:       hill.distance.toString(),
+                  routeDistance:  hill.routeDistance?.toString() ?? "",
+                  estimatedTime:  hill.estimatedTime ?? "",
+                  routeType:      hill.routeType ?? "",
                   grade:          hill.grade   ?? "",
                   surface:        hill.surface ?? "",
                   emoji:          hill.emoji   ?? "⛰️",
                   expeditionMode: "true",
                   expeditionId: activeExpeditionId ?? "",
+                  routeIdentityKey: hill.routeIdentityKey ?? "",
                 },
               });
             }}
@@ -1200,7 +1321,7 @@ export default function BaseCampScreen() {
           <Text style={s.pickerSub}>All routes are available — climb in any order you like.</Text>
           <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
             {stages.map((stage, idx) => {
-              const done = completedRoutes.includes(stage.name);
+              const done = isRouteCompleted(completedRoutes, stage);
               return (
                 <TouchableOpacity
                   key={stage.name + idx}
@@ -1211,6 +1332,7 @@ export default function BaseCampScreen() {
                       pathname: "/hike-tracking" as any,
                       params: {
                         hillName: stage.name,
+                        routeIdentityKey: stage.routeIdentityKey ?? "",
                         trackingMode: "expedition-route",
                         expeditionId: activeExpeditionId,
                       },
@@ -1244,6 +1366,70 @@ export default function BaseCampScreen() {
                 </TouchableOpacity>
               );
             })}
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Verified target-route selection — shown only when canonical routes differ. */}
+      <Modal
+        visible={targetRoutePickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTargetRoutePickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={s.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setTargetRoutePickerOpen(false)}
+        />
+        <View style={s.pickerSheet}>
+          <View style={s.pickerHandle} />
+          <Text style={s.pickerTitle}>Choose the target route</Text>
+          <Text style={s.pickerSub}>
+            These verified routes have materially different ascent and distance facts. Choose the route you want your local expedition to simulate.
+          </Text>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+            {targetRouteChoices.map((routeChoice, index) => (
+              <TouchableOpacity
+                key={routeChoice.identityKey}
+                activeOpacity={0.75}
+                style={s.pickerRow}
+                onPress={() => {
+                  const pending = pendingTargetRouteRequest;
+                  setTargetRoutePickerOpen(false);
+                  if (pending) {
+                    void fetchExpedition(
+                      pending.force,
+                      pending.mountainOverride,
+                      routeChoice.identityKey,
+                      pending.targetCountry,
+                      pending.targetRegion,
+                    );
+                  }
+                }}
+              >
+                <View style={s.pickerBadge}>
+                  <Text style={s.pickerBadgeText}>{index + 1}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={s.pickerRouteName}>{routeChoice.routeName}</Text>
+                  <Text style={s.pickerRouteSub}>
+                    {[
+                      routeChoice.startPoint ? `From ${routeChoice.startPoint}` : null,
+                      routeChoice.totalAscentMetres != null
+                        ? `${routeChoice.totalAscentMetres.toLocaleString()}m ascent`
+                        : null,
+                      routeChoice.distanceKm != null ? `${routeChoice.distanceKm}km` : null,
+                      routeChoice.typicalDurationHours != null
+                        ? `${routeChoice.typicalDurationHours}h`
+                        : null,
+                    ].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+                <ChevronRight size={16} color={T.blue} />
+              </TouchableOpacity>
+            ))}
             <View style={{ height: 32 }} />
           </ScrollView>
         </View>

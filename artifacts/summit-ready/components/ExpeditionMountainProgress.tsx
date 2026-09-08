@@ -21,6 +21,7 @@ import { T } from "@/constants/theme";
 import { getPointAtFraction } from "@/utils/mountainPath";
 import type { NearbyHill } from "@/context/AppContext";
 import { englishPlaceName } from "@/utils/placeNames";
+import { isRouteCompleted } from "@/utils/stateReliability";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ interface Props {
   days: number;                  // expedition day count
   highestPoint: number;          // summit ASL or target elevation
   targetDistance?: number;
-  onStagePress: (name: string) => void;
+  onStagePress: (hill: NearbyHill) => void;
   onCtaPress: () => void;        // opens route picker or completion screen
   allDone: boolean;              // all routes completed
   /**
@@ -84,7 +85,7 @@ export function ExpeditionMountainProgress({
   const mpStages: ExpeditionStage[] = useMemo(() => {
     let foundActive = false;
     return stages.map(h => {
-      const done = completedRoutes.includes(h.name);
+      const done = isRouteCompleted(completedRoutes, h);
       const gain = h.totalElevation ?? h.elevation ?? 0;
       if (done) return { name: h.name, elevationGain: gain, status: "completed" as const };
       if (!foundActive) {
@@ -97,8 +98,8 @@ export function ExpeditionMountainProgress({
 
   // ── Stage status label ─────────────────────────────────────────────────────
   function statusLabel(h: NearbyHill, idx: number): "COMPLETE" | "NEXT UP" | "ACTIVE" | "UPCOMING" {
-    if (completedRoutes.includes(h.name)) return "COMPLETE";
-    const firstIdx = stages.findIndex(s => !completedRoutes.includes(s.name));
+    if (isRouteCompleted(completedRoutes, h)) return "COMPLETE";
+    const firstIdx = stages.findIndex(stage => !isRouteCompleted(completedRoutes, stage));
     if (idx === firstIdx) return completedRoutes.length === 0 ? "NEXT UP" : "ACTIVE";
     return "UPCOMING";
   }
@@ -248,7 +249,7 @@ export function ExpeditionMountainProgress({
               key={h.name + i}
               style={[s.stageCard, done && s.stageCardDone]}
               activeOpacity={0.8}
-              onPress={() => !done && onStagePress(h.name)}
+              onPress={() => !done && onStagePress(h)}
             >
               {/* Number badge */}
               <View style={[

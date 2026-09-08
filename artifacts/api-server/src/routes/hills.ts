@@ -1,11 +1,13 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
+import { buildHillDetail, findDatabaseRouteFacts } from "../services/hillDetail.js";
 
 const router: IRouter = Router();
 
 const HillSchema = z.object({
   name: z.string(),
+  routeIdentityKey: z.string().min(1).optional(),
   elevation: z.number(),
   distance: z.number(),
   repeats: z.number(),
@@ -90,73 +92,6 @@ Rules:
 - lat/lng = accurate GPS coordinates of the hill summit or main trailhead (decimal degrees, 4 decimal places)
 - If you cannot identify the hill, make a reasonable estimate based on the name
 - Use the real elevation data for well-known hills/peaks`;
-
-const HILL_DETAIL_SYSTEM_PROMPT = `You are an expert mountain and hiking guide. Given a hill name, region, and known stats, provide detailed practical information for a hillwalker training for a mountain summit. Return ONLY valid JSON — no markdown, no explanation:
-
-{
-  "description": string,
-  "startPoint": {
-    "name": string,
-    "lat": number,
-    "lng": number,
-    "postcode": string,
-    "directions": string,
-    "parkingNotes": string
-  },
-  "routes": [
-    {
-      "name": string,
-      "distance": number,
-      "elevationGain": number,
-      "difficulty": string,
-      "description": string,
-      "estimatedTime": string,
-      "isRecommended": boolean
-    }
-  ]
-}
-
-Rules:
-- description: 2-3 sentences about the hill's character, terrain and why it is good for training. Must be consistent with the known elevation gain and surface type provided in the user message.
-- startPoint.name: name of the car park, village, layby or trailhead
-- startPoint.lat/lng: accurate GPS coordinates of the start point (decimal degrees, 4 decimal places)
-- startPoint.postcode: the nearest UK postcode to the car park or trailhead (e.g. "BB7 3AJ"). If outside the UK, use the nearest ZIP/postal code. Always provide this — it is the primary navigation destination used by the app
-- startPoint.directions: 2-3 sentences on how to drive or get there by public transport
-- startPoint.parkingNotes: parking info — free/paid, spaces, any additional access notes
-- routes: provide 2-4 distinct route options (different approaches, loops, or distances)
-- routes[].name: short descriptive name e.g. "Standard Ascent", "Ridge Loop", "North Approach"
-- routes[].distance: round-trip distance in km
-- routes[].elevationGain: total elevation gain in metres — the standard ascent route's elevation gain must match the known elevation figure provided
-- routes[].difficulty: "Easy" | "Moderate" | "Hard" | "Alpine"
-- routes[].description: 1-2 sentences describing the route character and highlights
-- routes[].estimatedTime: e.g. "1.5–2 hours", "3–4 hours"
-- routes[].isRecommended: exactly one route must be true — the best one for hill training repeats
-- Use real place names, postcodes, and accurate coordinates`;
-
-const HillDetailRouteSchema = z.object({
-  name: z.string(),
-  distance: z.number(),
-  elevationGain: z.number(),
-  difficulty: z.string(),
-  description: z.string(),
-  estimatedTime: z.string(),
-  isRecommended: z.boolean(),
-});
-
-const HillDetailSchema = z.object({
-  description: z.string(),
-  startPoint: z.object({
-    name: z.string(),
-    lat: z.number(),
-    lng: z.number(),
-    postcode: z.string().default(""),
-    directions: z.string(),
-    parkingNotes: z.string(),
-  }),
-  routes: z.array(HillDetailRouteSchema),
-  summitLat: z.number().optional(),
-  summitLng: z.number().optional(),
-});
 
 router.post("/hills-search", async (req, res) => {
   const { hillName, location } = req.body as { hillName?: string; location?: string };
@@ -280,255 +215,9 @@ router.post("/hills-lookup", async (req, res) => {
   }
 });
 
-interface MapboxFeature {
-  center: [number, number];
-  text?: string;
-  place_name?: string;
-}
-interface MapboxGeoResponse { features?: MapboxFeature[] }
-
-interface WikiCoord { lat: number; lon: number }
-interface WikiPage { coordinates?: WikiCoord[] }
-interface WikiResponse { query?: { pages?: Record<string, WikiPage> } }
-
-interface NominatimResult { lat: string; lon: string; class: string; type: string }
-interface PostcodeIoResult {
-  status: number;
-  result?: { latitude: number; longitude: number; postcode?: string };
-}
-
-const GEO_UA = "SummitReady/1.0 (hill training app)";
-
-async function lookupWikipediaSummit(hillName: string, location?: string): Promise<{ lat: number; lng: number } | null> {
-  async function wikiQuery(title: string): Promise<{ lat: number; lng: number } | null> {
-    try {
-      const q = encodeURIComponent(title);
-      const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${q}&prop=coordinates&format=json&redirects=1`;
-      const res = await fetch(url, { headers: { "User-Agent": GEO_UA } });
-      const data = await res.json() as WikiResponse;
-      const pages = data.query?.pages;
-      if (!pages) return null;
-      for (const page of Object.values(pages)) {
-        if (page.coordinates?.length) {
-          const { lat, lon } = page.coordinates[0];
-          return { lat, lng: lon };
-        }
-      }
-    } catch { /* fall through */ }
-    return null;
-  }
-
-  // Try with location context first — avoids matching a same-named hill in another country.
-  if (location && location !== "unknown location") {
-    const withLoc = await wikiQuery(`${hillName} ${location}`);
-    if (withLoc) return withLoc;
-  }
-  return wikiQuery(hillName);
-}
-
-/**
- * Nominatim (OpenStreetMap) — free, no API key, OSM data.
- * Returns the hill/place location based purely on its name.
- */
-async function nominatimLookup(query: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const q = encodeURIComponent(query);
-    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&countrycodes=gb&limit=5`;
-    const res = await fetch(url, { headers: { "User-Agent": GEO_UA } });
-    if (!res.ok) return null;
-    const data = await res.json() as NominatimResult[];
-    if (!data?.length) return null;
-    // Prefer natural features (peaks, hills, moors) over admin boundaries
-    const best = data.find(d => d.class === "natural") ?? data[0];
-    return { lat: parseFloat(best.lat), lng: parseFloat(best.lon) };
-  } catch { /* fall through */ }
-  return null;
-}
-
-/**
- * postcodes.io — free, no API key, exact centroid for any UK postcode.
- * The most precise source for trailhead / car park locations.
- */
-async function postcodeIoLookup(
-  postcode: string,
-): Promise<{ lat: number; lng: number; postcode: string } | null> {
-  if (!postcode?.trim()) return null;
-  try {
-    const q = encodeURIComponent(postcode.trim().toUpperCase());
-    const res = await fetch(`https://api.postcodes.io/postcodes/${q}`, {
-      headers: { "User-Agent": GEO_UA },
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as PostcodeIoResult;
-    if (data.result?.latitude) {
-      return {
-        lat: data.result.latitude,
-        lng: data.result.longitude,
-        postcode: data.result.postcode ?? postcode.trim().toUpperCase(),
-      };
-    }
-  } catch { /* fall through */ }
-  return null;
-}
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// A local hill's suggested start point must stay close to the confirmed summit.
-// Wider tolerances allowed unrelated nearby walking areas to be attached to
-// common names (for example, a Bull Hill car park being returned for Dry Hill).
-const MAX_START_DRIFT_KM = 5;
-// postcodes.io centroids are precise but the AI often picks the wrong postcode (e.g. town
-// centre instead of the car park). Only accept a postcode result if it is very close to the
-// Nominatim anchor so we don't end up in the wrong village.
-const MAX_POSTCODE_DRIFT_KM = 2;
-
-/**
- * Resolve reliable GPS coords for a hill's start point / car park.
- *
- * Strategy (most → least authoritative):
- *  1. Establish a trustworthy anchor using Nominatim (OSM) — independent of the AI.
- *  2. Mapbox POI search near the anchor — best source for named car parks / trailheads.
- *  3. postcodes.io for the AI's postcode, but only within 2 km of the anchor (AI postcodes
- *     are often for the nearest town, not the actual car park).
- *  4. Fall back to the Nominatim hill position itself (better than a wrong town centre).
- *  5. Last resort: whatever the AI generated.
- */
-async function geocodeStartPoint(
-  startName: string,
-  hillName: string,
-  postcode: string,
-  aiLat: number,
-  aiLng: number,
-  location?: string,
-  knownHillLat?: number,
-  knownHillLng?: number,
-): Promise<{
-  lat: number;
-  lng: number;
-  postcode: string;
-  source: "mapbox" | "nominatim-start" | "postcode" | "generated" | "hill" | "ai";
-  name?: string;
-}> {
-  const knownHill =
-    Number.isFinite(knownHillLat) &&
-    Number.isFinite(knownHillLng) &&
-    Math.abs(knownHillLat!) <= 90 &&
-    Math.abs(knownHillLng!) <= 180
-      ? { lat: knownHillLat!, lng: knownHillLng! }
-      : null;
-
-  // Step 1 — Establish a reliable anchor from OSM (not the AI).
-  // Trusted coordinates supplied by the expedition take precedence over name search.
-  const [nominatimFull, nominatimShort, nominatimStart] = await Promise.all([
-    knownHill ? Promise.resolve(null) : nominatimLookup(location ? `${hillName} ${location}` : hillName),
-    knownHill || !location ? Promise.resolve(null) : nominatimLookup(hillName),
-    nominatimLookup(location ? `${startName} ${location}` : startName),
-  ]);
-  const nominatimAnchor = knownHill ?? nominatimFull ?? nominatimShort;
-
-  // Use the OSM anchor when available; only fall back to AI coords if OSM returns nothing.
-  const anchorLat = nominatimAnchor?.lat ?? aiLat;
-  const anchorLng = nominatimAnchor?.lng ?? aiLng;
-
-  function withinRange(lat: number, lng: number, maxKm = MAX_START_DRIFT_KM): boolean {
-    return haversineKm(anchorLat, anchorLng, lat, lng) <= maxKm;
-  }
-
-  // Step 2 — Mapbox POI / address search near the OSM anchor (best for named car parks).
-  const token = process.env.MAPBOX_TOKEN;
-  if (token) {
-    try {
-      const proximity = `${anchorLng},${anchorLat}`;
-      const q = encodeURIComponent(`${startName} ${hillName}`);
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=GB&proximity=${proximity}&types=poi,address&limit=3`;
-      const data = await fetch(url).then(r => r.json()) as MapboxGeoResponse;
-      for (const feature of data.features ?? []) {
-        const [lng, lat] = feature.center;
-        if (withinRange(lat, lng)) {
-          return {
-            lat,
-            lng,
-            postcode: "",
-            source: "mapbox",
-            name: feature.text ?? feature.place_name?.split(",")[0],
-          };
-        }
-      }
-    } catch { /* fall through */ }
-  }
-
-  // Step 3 — postcodes.io: exact centroid for the AI's postcode, but only accept it if it
-  // is within 2 km of the anchor. AI-generated postcodes are often for the nearest town
-  // (e.g. Haslingden) rather than the actual car park (e.g. Crowthorn Road).
-  if (postcode) {
-    const pc = await postcodeIoLookup(postcode);
-    if (pc && withinRange(pc.lat, pc.lng, MAX_POSTCODE_DRIFT_KM)) {
-      // The AI-supplied postcode is useful only as a nearby coordinate hint.
-      // Do not display or navigate by the text because it has not been tied to
-      // an actual car park or trailhead.
-      return { lat: pc.lat, lng: pc.lng, postcode: "", source: "postcode" };
-    }
-  }
-
-  // Step 4 — Accept a mapped start point only when it is close to the known hill.
-  if (nominatimStart && withinRange(nominatimStart.lat, nominatimStart.lng)) {
-    return {
-      ...nominatimStart,
-      postcode: "",
-      source: "nominatim-start",
-      name: startName,
-    };
-  }
-
-  // Step 5 — AI start coordinates may still be useful, but only near the known hill.
-  if (
-    Number.isFinite(aiLat) &&
-    Number.isFinite(aiLng) &&
-    withinRange(aiLat, aiLng)
-  ) {
-    return { lat: aiLat, lng: aiLng, postcode: "", source: "generated" };
-  }
-
-  // Step 6 — Return the trusted hill position rather than searching by an ambiguous name.
-  if (nominatimAnchor) {
-    return { ...nominatimAnchor, postcode: "", source: "hill" };
-  }
-
-  // Step 7 — Last resort: trust the generated coordinates, but never its unverified postcode.
-  return { lat: aiLat, lng: aiLng, postcode: "", source: "ai" };
-}
-
-// In-memory cache for hill-detail responses. Location and coordinates are part of
-// the identity because common hill names occur in multiple countries and regions.
-const hillDetailCache = new Map<string, { data: unknown; ts: number }>();
-const HILL_DETAIL_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function hillDetailCacheKey(
-  hillName: string,
-  location: string,
-  summitLat?: number,
-  summitLng?: number,
-): string {
-  const slug = (value: string) =>
-    value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const coords =
-    Number.isFinite(summitLat) && Number.isFinite(summitLng)
-      ? `${summitLat!.toFixed(3)},${summitLng!.toFixed(3)}`
-      : "no-coords";
-  return `v3:${slug(hillName)}:${slug(location) || "unknown"}:${coords}`;
-}
-
 router.post("/hill-detail", async (req, res) => {
-  const { hillName, location, summitLat, summitLng, elevation, grade, surface } = req.body as {
+  const { hillName, location, summitLat, summitLng, elevation, grade, surface,
+    routeDistance, estimatedTime, difficulty, routeType, routeIdentityKey } = req.body as {
     hillName?: string;
     location?: string;
     summitLat?: number;
@@ -536,6 +225,11 @@ router.post("/hill-detail", async (req, res) => {
     elevation?: number;
     grade?: string;
     surface?: string;
+    routeDistance?: number;
+    estimatedTime?: string;
+    difficulty?: string;
+    routeType?: string;
+    routeIdentityKey?: string;
   };
 
   if (!hillName || typeof hillName !== "string" || hillName.trim().length < 2) {
@@ -543,125 +237,19 @@ router.post("/hill-detail", async (req, res) => {
     return;
   }
 
-  const loc = location?.trim() || "unknown location";
-  const knownSummit =
-    typeof summitLat === "number" &&
-    typeof summitLng === "number" &&
-    Number.isFinite(summitLat) &&
-    Number.isFinite(summitLng) &&
-    Math.abs(summitLat) <= 90 &&
-    Math.abs(summitLng) <= 180
-      ? { lat: summitLat, lng: summitLng }
-      : null;
-  const cacheKey = hillDetailCacheKey(
-    hillName.trim(),
-    loc,
-    knownSummit?.lat,
-    knownSummit?.lng,
-  );
-
-  // Serve from cache if fresh
-  const cached = hillDetailCache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < HILL_DETAIL_CACHE_TTL_MS) {
-    res.json(cached.data);
-    return;
-  }
-
-  // Build context line from known stats so description stays consistent
-  const contextParts: string[] = [];
-  if (elevation) contextParts.push(`known elevation gain per climb: ${elevation}m`);
-  if (grade) contextParts.push(`grade: ${grade}`);
-  if (surface) contextParts.push(`surface: ${surface}`);
-  const contextLine = contextParts.length
-    ? ` Known stats for this hill — ${contextParts.join(", ")}. The description must be consistent with these figures.`
-    : "";
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 1000,
-      messages: [
-        { role: "system", content: HILL_DETAIL_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Provide detailed information for hillwalkers about: "${hillName.trim()}" near ${loc}.${contextLine}`,
-        },
-      ],
+    const normalizedRouteIdentityKey = typeof routeIdentityKey === "string"
+      ? routeIdentityKey.trim() || undefined
+      : undefined;
+    const detail = await buildHillDetail({
+      hillName: hillName.trim(), location, summitLat, summitLng, elevation, grade,
+      surface, routeDistance, estimatedTime, difficulty, routeType,
+      routeIdentityKey: normalizedRouteIdentityKey,
+    }, {
+      findRouteFacts: findDatabaseRouteFacts,
+      development: process.env.NODE_ENV === "development",
     });
-
-    const content = response.choices?.[0]?.message?.content;
-    if (!content) {
-      res.status(500).json({ error: "No response from AI" });
-      return;
-    }
-
-    const cleaned = content
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (!match) {
-        res.status(500).json({ error: "Could not parse hill detail" });
-        return;
-      }
-      parsed = JSON.parse(match[0]);
-    }
-
-    const validated = HillDetailSchema.parse(parsed);
-
-    // Run Wikipedia summit lookup + start-point geocoding in parallel.
-    // geocodeStartPoint uses Nominatim + postcodes.io as authoritative anchors.
-    const [summit, geocoded] = await Promise.all([
-      knownSummit
-        ? Promise.resolve(knownSummit)
-        : lookupWikipediaSummit(hillName.trim(), loc),
-      geocodeStartPoint(
-        validated.startPoint.name,
-        hillName.trim(),
-        validated.startPoint.postcode,
-        validated.startPoint.lat,
-        validated.startPoint.lng,
-        loc,
-        knownSummit?.lat,
-        knownSummit?.lng,
-      ),
-    ]);
-
-    if (summit) {
-      validated.summitLat = summit.lat;
-      validated.summitLng = summit.lng;
-    }
-    validated.startPoint.lat = geocoded.lat;
-    validated.startPoint.lng = geocoded.lng;
-    validated.startPoint.postcode = geocoded.postcode;
-    if (geocoded.name) validated.startPoint.name = geocoded.name;
-    if (
-      geocoded.source === "generated" ||
-      geocoded.source === "postcode" ||
-      geocoded.source === "ai"
-    ) {
-      validated.startPoint.name = `${hillName.trim()} suggested route start`;
-      validated.startPoint.directions =
-        "Open the mapped coordinates to review this suggested route start before travelling.";
-      validated.startPoint.parkingNotes =
-        "A named car park could not be independently verified. Check local access restrictions and parking signs.";
-    } else if (geocoded.source === "hill") {
-      validated.startPoint.name = `${hillName.trim()} mapped hill location`;
-      validated.startPoint.directions =
-        "A verified trailhead could not be found. Use the mapped hill location to plan your approach before travelling.";
-      validated.startPoint.parkingNotes =
-        "A dedicated car park has not been verified. Check local access restrictions and parking signs.";
-    }
-
-    // Store in 24-hour in-memory cache
-    hillDetailCache.set(cacheKey, { data: validated, ts: Date.now() });
-
-    res.json(validated);
+    res.json(detail);
   } catch (err) {
     req.log.error({ err }, "Hill detail failed");
     const msg = err instanceof Error ? err.message : "Unknown error";

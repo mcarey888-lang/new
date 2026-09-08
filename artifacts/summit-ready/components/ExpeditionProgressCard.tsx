@@ -20,6 +20,7 @@ import Svg, {
 
 import { T } from "@/constants/theme";
 import type { NearbyHill } from "@/context/AppContext";
+import { isRouteCompleted } from "@/utils/stateReliability";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained }
       {/* Stage markers + callouts */}
       {stages.map((st, i) => {
         const pt   = pts[i + 1];
-        const done = completedRoutes.includes(st.name);
+        const done = isRouteCompleted(completedRoutes, st);
         const above = pt.y >= P.top + PH * 0.48;
         const elev  = Math.round(st.elevation * st.repeats);
         const name  = clip(st.name, 15);
@@ -329,14 +330,14 @@ export interface ExpeditionProgressCardProps {
   totalElev:       number;
   /** Cumulative elevation trained so far */
   totalTrained:    number;
-  /** Called when the user taps a stage card — pass the hill name */
-  onStagePress?:   (hillName: string) => void;
+  /** Called when the user taps a stage card. */
+  onStagePress?:   (hill: NearbyHill) => void;
 }
 
 export function ExpeditionProgressCard({
   stages, completedRoutes, totalElev, totalTrained, onStagePress,
 }: ExpeditionProgressCardProps) {
-  const completedCount = completedRoutes.filter(r => stages.some(s => s.name === r)).length;
+  const completedCount = stages.filter(stage => isRouteCompleted(completedRoutes, stage)).length;
   const remaining      = Math.max(0, totalElev - totalTrained);
   const pct            = totalElev > 0 ? Math.min(100, Math.round(totalTrained / totalElev * 100)) : 0;
 
@@ -385,8 +386,8 @@ export function ExpeditionProgressCard({
               stage={st}
               index={i}
               completedCount={completedCount}
-              done={completedRoutes.includes(st.name)}
-              onPress={() => onStagePress?.(st.name)}
+              done={isRouteCompleted(completedRoutes, st)}
+              onPress={() => onStagePress?.(st)}
             />
           ))}
         </ScrollView>

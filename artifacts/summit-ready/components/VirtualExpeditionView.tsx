@@ -27,6 +27,14 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import type { NearbyHill, SimulationScoreBreakdown, SummitGoal, TargetMountain } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import {
+  VerifiedRouteChooser,
+  type VerifiedTargetRouteChoice,
+} from "@/components/VerifiedRouteChooser";
+import {
+  VerifiedMountainChooser,
+  type VerifiedMountainChoice,
+} from "@/components/VerifiedMountainChooser";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -70,6 +78,17 @@ interface VirtualExpeditionResponse {
   recommendedHills: NearbyHill[];
   simulationScore: number;
   scoreBreakdown: SimulationScoreBreakdown;
+  provenance?: SummitGoal["virtualExpeditionProvenance"];
+}
+
+interface PendingVirtualExpeditionRequest {
+  targetMountain: string;
+  userLocation: string;
+  radius: number;
+  requireVerifiedRouteSelection: true;
+  targetRouteIdentityKey?: string;
+  targetCountry?: string;
+  targetRegion?: string;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -92,31 +111,79 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   // immediately on the first frame, before useEffect fires the fetch.
   const [loading, setLoading] = useState(!hasCachedData);
   const [error, setError] = useState<string | null>(null);
+  const [routeChoices, setRouteChoices] = useState<VerifiedTargetRouteChoice[]>([]);
+  const [routeChooserOpen, setRouteChooserOpen] = useState<boolean>(false);
+  const [pendingRequest, setPendingRequest] = useState<PendingVirtualExpeditionRequest | null>(null);
+  const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
+  const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
 
-  async function fetchExpedition(force = false) {
+  async function fetchExpedition(
+    force = false,
+    retryRequest?: PendingVirtualExpeditionRequest,
+  ) {
     if (!force && hasCachedData) return;
     setLoading(true);
     setError(null);
     try {
+      const selectedRouteKey = summitGoal.virtualExpeditionProvenance
+        ?.selectedTargetRouteIdentityKey ?? undefined;
+      const requestBody: PendingVirtualExpeditionRequest = retryRequest ?? {
+        targetMountain: summitGoal.mountainName,
+        userLocation: summitGoal.location,
+        radius: summitGoal.maxRadius ?? 30,
+        requireVerifiedRouteSelection: true,
+        ...(selectedRouteKey ? { targetRouteIdentityKey: selectedRouteKey } : {}),
+      };
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetMountain: summitGoal.mountainName,
-          userLocation: summitGoal.location,
-          radius: summitGoal.maxRadius ?? 30,
-        }),
+        body: JSON.stringify(requestBody),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = await res.json().catch(() => ({})) as {
+          error?: string;
+          code?: string;
+          routes?: VerifiedTargetRouteChoice[];
+          candidates?: VerifiedMountainChoice[];
+        };
+        if (
+          res.status === 409
+          && body.code === "AMBIGUOUS_MOUNTAIN"
+          && Array.isArray(body.candidates)
+          && body.candidates.length > 0
+        ) {
+          setMountainChoices(body.candidates);
+          setPendingRequest(requestBody);
+          setMountainChooserOpen(true);
+          return;
+        }
+        if (
+          res.status === 409
+          && body.code === "TARGET_ROUTE_SELECTION_REQUIRED"
+          && Array.isArray(body.routes)
+          && body.routes.length > 0
+        ) {
+          setRouteChoices(body.routes);
+          setPendingRequest(requestBody);
+          setRouteChooserOpen(true);
+          return;
+        }
         throw new Error(body.error ?? `Server error ${res.status}`);
       }
       const data: VirtualExpeditionResponse = await res.json();
+      setRouteChooserOpen(false);
+      setRouteChoices([]);
+      setPendingRequest(null);
+      setMountainChooserOpen(false);
+      setMountainChoices([]);
       await patchGoal({
         targetMountain: data.targetProfile,
         simulationScore: data.simulationScore,
         simulationScoreBreakdown: data.scoreBreakdown,
         virtualHills: data.recommendedHills,
+        ...(data.provenance
+          ? { virtualExpeditionProvenance: data.provenance }
+          : {}),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load expedition data. Check your connection.");
@@ -131,10 +198,59 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
   const botPad = Platform.OS === "web" ? 120 : insets.bottom + 120;
 
+  const routeChooser = (
+    <VerifiedRouteChooser
+      visible={routeChooserOpen}
+      routes={routeChoices}
+      onClose={() => {
+        if (hasCachedData) setRouteChooserOpen(false);
+      }}
+      onSelect={(route) => {
+        if (!pendingRequest) return;
+        setRouteChooserOpen(false);
+        void fetchExpedition(true, {
+          ...pendingRequest,
+          targetRouteIdentityKey: route.identityKey,
+        });
+      }}
+    />
+  );
+  const mountainChooser = (
+    <VerifiedMountainChooser
+      visible={mountainChooserOpen}
+      candidates={mountainChoices}
+      onClose={() => {
+        setMountainChooserOpen(false);
+        setPendingRequest(null);
+        if (!hasCachedData) setError("Mountain selection cancelled.");
+      }}
+      onSelect={(candidate) => {
+        if (!pendingRequest) return;
+        setMountainChooserOpen(false);
+        void fetchExpedition(true, {
+          ...pendingRequest,
+          targetCountry: candidate.country,
+          ...(candidate.region ? { targetRegion: candidate.region } : {}),
+        });
+      }}
+    />
+  );
+
+  if ((routeChooserOpen || mountainChooserOpen) && !hasCachedData) {
+    return (
+      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        {routeChooser}
+        {mountainChooser}
+      </LinearGradient>
+    );
+  }
+
   // ── Loading state ────────────────────────────────────────────────────────────
   if (loading && !hasCachedData) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        {routeChooser}
+        {mountainChooser}
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16 }}>
           <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
             <Mountain size={26} color={T.blue} />
@@ -152,6 +268,8 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   if (error && !hasCachedData) {
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+        {routeChooser}
+        {mountainChooser}
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 32 }}>
           <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: T.redDim, alignItems: "center", justifyContent: "center" }}>
             <AlertTriangle size={26} color={T.red} />
@@ -188,6 +306,8 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      {routeChooser}
+      {mountainChooser}
       <ScrollView
         contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 14 }}
         showsVerticalScrollIndicator={false}

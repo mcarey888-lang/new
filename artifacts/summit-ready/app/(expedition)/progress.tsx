@@ -16,6 +16,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { isRouteCompleted } from "@/utils/stateReliability";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { mergeActivityKinds } from "@/utils/activityReliability";
@@ -74,7 +75,7 @@ export default function ExpeditionProgressScreen() {
     : 0;
 
   const completedCount = useMemo(
-    () => new Set(completedRoutes.filter(r => stages.some(s => s.name === r))).size,
+    () => stages.filter(stage => isRouteCompleted(completedRoutes, stage)).length,
     [completedRoutes, stages],
   );
   const remaining = Math.max(0, totalElevGoal - totalTrained);
@@ -156,11 +157,12 @@ export default function ExpeditionProgressScreen() {
             completedRoutes={completedRoutes}
             totalElev={totalElevGoal}
             totalTrained={totalTrained}
-            onStagePress={(hillName) =>
+            onStagePress={(hill) =>
               router.push({
                 pathname: "/hike-tracking" as any,
                 params: {
-                  hillName,
+                  hillName: hill.name,
+                  routeIdentityKey: hill.routeIdentityKey ?? "",
                   trackingMode: "expedition-route",
                   expeditionId: activeExpedition.id,
                 },

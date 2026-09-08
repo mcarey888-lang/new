@@ -657,11 +657,15 @@ export default function TrackScreen() {
                         pathname: "/hill-detail",
                         params: {
                           name: hill.name,
+                          routeIdentityKey: hill.routeIdentityKey ?? "",
                           location: summitGoal?.location ?? "",
                           lat: hill.lat?.toString() ?? "",
                           lng: hill.lng?.toString() ?? "",
                           elevation: hill.elevation.toString(),
                           distance: hill.distance.toString(),
+                          routeDistance: hill.routeDistance?.toString() ?? "",
+                          estimatedTime: hill.estimatedTime ?? "",
+                          routeType: hill.routeType ?? "",
                           grade: hill.grade,
                           surface: hill.surface,
                           emoji: hill.emoji,
@@ -760,7 +764,7 @@ export default function TrackScreen() {
                   <TouchableOpacity
                     style={styles.detailsBtn}
                     activeOpacity={0.7}
-                    onPress={() => router.push({ pathname: "/hill-detail", params: { name: hill.name, location: summitGoal?.location ?? "", lat: hill.lat?.toString() ?? "", lng: hill.lng?.toString() ?? "", elevation: hill.elevation.toString(), distance: hill.distance.toString(), grade: hill.grade, surface: hill.surface, emoji: hill.emoji } })}
+                    onPress={() => router.push({ pathname: "/hill-detail", params: { name: hill.name, routeIdentityKey: hill.routeIdentityKey ?? "", location: summitGoal?.location ?? "", lat: hill.lat?.toString() ?? "", lng: hill.lng?.toString() ?? "", elevation: hill.elevation.toString(), distance: hill.distance.toString(), routeDistance: hill.routeDistance?.toString() ?? "", estimatedTime: hill.estimatedTime ?? "", routeType: hill.routeType ?? "", grade: hill.grade, surface: hill.surface, emoji: hill.emoji } })}
                   >
                     <Info size={14} color={T.purple} /><Text style={styles.detailsBtnText}>Details</Text>
                   </TouchableOpacity>

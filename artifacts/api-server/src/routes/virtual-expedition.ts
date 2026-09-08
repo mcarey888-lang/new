@@ -1,22 +1,23 @@
 /**
  * POST /api/virtual-expedition
  *
- * Mountain Guide Edition — replaced the elevation-calculator Step 3 with an
- * AI expedition builder that selects routes by Route DNA character match.
+ * Data Engine Edition — verified target resolution, database-first local
+ * candidates, deterministic route matching, and additive provenance.
  *
- * Input:  { targetMountain, userLocation, radius? }
+ * Input:  { targetMountain, userLocation, radius?, targetRouteIdentityKey? }
  * Output: { targetProfile, expedition, recommendedHills, adventureScore,
  *            dnaMatchScore, simulationScore, scoreBreakdown }
  *
- * Step 1 — Mountain profile + Route DNA (GPT-4o, DB-cached 7-day TTL).
- * Step 2 — Local hill discovery (Overpass + terrain pipeline, AI fallback).
- * Step 3 — Expedition builder: GPT designs a mini adventure by DNA match.
- * Step 4 — Scores: Adventure + DNA Match + Physical Simulation (compat).
+ * Step 1 — Verified canonical target and route facts; labelled fallback only
+ *          where verified route facts are unavailable.
+ * Step 2 — Local DB candidates first; Overpass/terrain only for genuine gaps.
+ * Step 3 — Deterministic, explainable route matching and ascent validation.
+ * Step 4 — Physical and DNA scores with development timing diagnostics.
  *
  * Training Mode is NOT affected by any of these changes.
  */
 
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, cachedMountains } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -35,7 +36,29 @@ import {
   parseAIJson,
   normalizeLocation,
   englishPlaceName,
+  haversineKm,
 } from "./hills-unified";
+import {
+  lookupVerifiedCanonicalMountain,
+} from "../services/mountain/canonicalMountainLookup";
+import {
+  canonicalRouteToTargetProfile,
+  selectVerifiedRoute,
+  verifiedRouteChoices,
+} from "../services/virtualExpedition/canonicalTargetProfile";
+import {
+  bridgeElevationGap,
+  matchDeterministicExpedition,
+  type DeterministicExpeditionMatch,
+} from "../services/virtualExpedition/deterministicMatcher";
+import {
+  loadLocalDatabaseCandidates,
+} from "../services/virtualExpedition/localCandidates";
+import {
+  createVirtualExpeditionHandler,
+} from "../services/virtualExpedition/virtualExpeditionHandler";
+
+export { bridgeElevationGap };
 
 const router: IRouter = Router();
 
@@ -310,6 +333,7 @@ Return ONLY valid JSON with no markdown:
 
 const ExpeditionDayRouteSchema = z.object({
   name: z.string(),
+  routeIdentityKey: z.string().min(1).optional(),
   why:  z.string(),
 });
 
@@ -458,12 +482,20 @@ export function targetAcceptsSeriousExposedScramble(dna: RouteDna): boolean {
  */
 export function prepareCandidateHills(hills: Hill[], dna: RouteDna): Hill[] {
   const compatible = targetAcceptsSeriousExposedScramble(dna);
-  const seen = new Set<string>();
+  const seen: Array<{ key: string; lat?: number; lng?: number }> = [];
   return hills.flatMap(rawHill => {
     const hill = { ...rawHill, name: englishPlaceName(rawHill.name) };
     const key = hillNameKey(hill.name);
-    if (seen.has(key)) return [];
-    seen.add(key);
+    const duplicate = seen.some(existing => {
+      if (existing.key !== key) return false;
+      if (
+        existing.lat == null || existing.lng == null
+        || hill.lat == null || hill.lng == null
+      ) return true;
+      return haversineKm(existing.lat, existing.lng, hill.lat, hill.lng) <= 2;
+    });
+    if (duplicate) return [];
+    seen.push({ key, lat: hill.lat, lng: hill.lng });
     if (!isCribGoch(hill.name)) return [hill];
     if (!compatible) return [];
     return [{
@@ -596,9 +628,12 @@ export function reconcileExpeditionDays(
     .map(day => ({ ...day, routes: [] }));
 
   for (const hill of recommendedHills.slice(0, 9)) {
-    const source = sourceRoutes.find(({ route }) => {
+    const source = sourceRoutes.find(({ route }) =>
+      Boolean(hill.routeIdentityKey) && route.routeIdentityKey === hill.routeIdentityKey
+    ) ?? sourceRoutes.find(({ route }) => {
       const matched = fuzzyMatchHill(route.name, recommendedHills);
-      return matched?.name === hill.name;
+      return matched?.name === hill.name &&
+        (!matched.routeIdentityKey || matched.routeIdentityKey === hill.routeIdentityKey);
     });
 
     let destination = source?.dayIndex ?? -1;
@@ -619,6 +654,7 @@ export function reconcileExpeditionDays(
 
     days[destination].routes.push({
       name: hill.name,
+      routeIdentityKey: hill.routeIdentityKey,
       why: source?.route.why
         ?? "Adds the closest available ascent match to the target expedition.",
     });
@@ -639,7 +675,7 @@ export function reconcileExpeditionDays(
  *
  * If total gain is already ≥ 90 % of target, nothing changes.
  */
-export function bridgeElevationGap(
+function legacyBridgeElevationGap(
   selectedHills: Hill[],
   allHills:      Hill[],
   targetGain:    number,
@@ -770,9 +806,134 @@ function nearestMatch(hills: Hill[], targetGain: number, exclude?: string): Hill
     })[0];
 }
 
+// ── Deterministic expedition narrative ────────────────────────────────────────
+
+function buildDeterministicExpedition(
+  profile: TargetMountainProfile,
+  match: DeterministicExpeditionMatch,
+): MiniExpedition {
+  const scoreByName = new Map(match.rankedCandidates.map(candidate => [candidate.name, candidate]));
+  const dayCount = profile.estimatedDays === 2 ? 2 : 1;
+  const days: MiniExpedition["days"] = Array.from({ length: dayCount }, (_, index) => ({
+    label: dayCount === 1 ? "Expedition day" : `Day ${index + 1}`,
+    title: index === 0 ? "Primary ascent day" : "Back-to-back endurance day",
+    focus: index === 0 ? "sustained climbing and terrain match" : "recovery under continued ascent",
+    routes: [],
+  }));
+  const dayAscent = new Array(dayCount).fill(0) as number[];
+
+  for (const hill of match.selectedHills) {
+    const destination = dayAscent.indexOf(Math.min(...dayAscent));
+    const ranked = scoreByName.get(hill.name);
+    const source = hill.dataSource ? ` Source: ${hill.dataSource.replaceAll("_", " ")}.` : "";
+    days[destination].routes.push({
+      name: hill.name,
+      why: `${hill.elevation.toLocaleString()}m route ascent${hill.repeats > 1 ? ` × ${hill.repeats} repeats` : ""}; deterministic fit ${ranked?.score ?? 0}%.${source}`,
+    });
+    dayAscent[destination] += hill.elevation * hill.repeats;
+  }
+
+  const selectedNames = new Set(match.selectedHills.map(hill => hill.name));
+  const alternatives = match.rankedCandidates
+    .filter(candidate => !selectedNames.has(candidate.name) && candidate.compatible)
+    .slice(0, 3)
+    .map(candidate => candidate.name);
+
+  return {
+    title: `${profile.name}: local simulation`,
+    concept: `A deterministic local route combination targeting ${profile.totalElevationGain.toLocaleString()}m of verified or explicitly labelled route ascent.`,
+    days: days.filter(day => day.routes.length > 0),
+    alternatives: Object.fromEntries(
+      match.selectedHills.map(hill => [hill.name, alternatives]),
+    ),
+    adventureScore: match.deterministicScore,
+    dnaMatchScore: match.deterministicScore,
+    dnaMatchNotes: `Selected by ${match.matchMethod}; ${match.achievedAscent.toLocaleString()}m of ${profile.totalElevationGain.toLocaleString()}m target ascent (${Math.round(match.targetRatio * 100)}%).`,
+  };
+}
+
 // ── Route ─────────────────────────────────────────────────────────────────────
 
-router.post("/virtual-expedition", async (req, res) => {
+const dataEngineVirtualExpeditionHandler = createVirtualExpeditionHandler({
+  resolveFallbackProfile: async targetMountain => {
+    const slug = mountainSlug(targetMountain);
+    const overrideKey = targetMountain
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const reviewedOverride = VERIFIED_MOUNTAIN_PROFILE_OVERRIDES[overrideKey];
+    const metricSources = (baseSource: string): Record<string, string> => ({
+      name: baseSource,
+      country: baseSource,
+      summitElevation: reviewedOverride?.summitElevation
+        ? "reviewed_profile_override"
+        : baseSource,
+      totalElevationGain: reviewedOverride?.totalElevationGain
+        ? "reviewed_profile_override"
+        : baseSource,
+      totalDistance: reviewedOverride?.totalDistance
+        ? "reviewed_profile_override"
+        : baseSource,
+      typicalDuration: baseSource,
+      estimatedDays: reviewedOverride?.estimatedDays
+        ? "reviewed_profile_override"
+        : baseSource,
+      dailyElevationGain: (
+        reviewedOverride?.day1ElevationGain
+        || reviewedOverride?.day2ElevationGain
+        || reviewedOverride?.maxDailyElevation
+      )
+        ? "reviewed_profile_override"
+        : baseSource,
+      difficulty: baseSource,
+      altitudeExposure: baseSource,
+      routeDna: baseSource,
+      notes: baseSource,
+    });
+    const cached = await getProfileFromCache(slug);
+    if (cached) {
+      return {
+        profile: applyVerifiedMountainProfile(targetMountain, cached),
+        // Every virt-mt-v3 cache row originated in the legacy AI profile
+        // path. A cache hit avoids a new model call, but it does not make the
+        // underlying route facts verified or non-AI in origin.
+        source: reviewedOverride
+          ? "legacy_ai_profile_cache_with_reviewed_override"
+          : "legacy_ai_profile_cache",
+        cached: true,
+        usedAi: true,
+        metricSources: metricSources("legacy_ai_profile_cache"),
+      };
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 900,
+      messages: [
+        { role: "system", content: MOUNTAIN_SYSTEM_PROMPT },
+        { role: "user", content: `Return the full climbing profile including Route DNA for: "${targetMountain}"` },
+      ],
+    });
+    const content = completion.choices?.[0]?.message?.content;
+    if (!content) throw new Error("No target route profile returned");
+    const parsed = TargetMountainProfileSchema.parse(parseAIJson(content));
+    const corrected = applyVerifiedMountainProfile(targetMountain, parsed);
+    void saveProfileToCache(slug, corrected);
+    return {
+      profile: corrected,
+      source: reviewedOverride
+        ? "ai_estimated_profile_with_reviewed_override"
+        : "ai_estimated_profile",
+      cached: false,
+      usedAi: true,
+      metricSources: metricSources("ai_estimated_profile"),
+    };
+  },
+  prepareCandidateHills,
+  computePhysicalScore,
+});
+
+async function legacyVirtualExpeditionHandler(req: Request, res: Response) {
   const body = req.body as {
     targetMountain?: string;
     userLocation?:   string;
@@ -1010,6 +1171,8 @@ router.post("/virtual-expedition", async (req, res) => {
     const msg = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: `Virtual expedition failed: ${msg}` });
   }
-});
+}
+
+router.post("/virtual-expedition", dataEngineVirtualExpeditionHandler);
 
 export default router;

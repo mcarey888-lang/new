@@ -100,7 +100,7 @@ describe("English place names", () => {
 });
 
 describe("elevation bridge", () => {
-  it("prunes a redundant summit from a 3371m selection toward a 2400m target", () => {
+  it("prunes redundant summits into a compact in-band 2400m plan", () => {
     const selected = [
       hill("Snowdon", 980),
       hill("Helvellyn", 760),
@@ -113,7 +113,9 @@ describe("elevation bridge", () => {
     const gain = result.reduce((sum, route) => sum + route.elevation * route.repeats, 0);
 
     expect(gain).toBe(2_391);
-    expect(result.map(route => route.name)).not.toContain("Snowdon");
+    expect(result.map(route => route.name)).not.toContain("Kinder Scout");
+    expect(result.map(route => route.name)).not.toContain("Mam Tor");
+    expect(result).toHaveLength(3);
     expect(gain).toBeGreaterThanOrEqual(2_160);
     expect(gain).toBeLessThanOrEqual(2_640);
     expect(result.length).toBeLessThanOrEqual(8);
@@ -154,7 +156,8 @@ describe("elevation bridge", () => {
     const plannedNames = days.flatMap(day => day.routes.map(route => route.name));
 
     expect(plannedNames).toEqual(recommended.map(route => route.name));
-    expect(plannedNames).not.toContain("Snowdon");
+    expect(plannedNames).not.toContain("Kinder Scout");
+    expect(plannedNames).not.toContain("Mam Tor");
   });
 });
 

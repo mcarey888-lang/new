@@ -71,24 +71,40 @@ export function selectShellGoal<T>(
   return mode === "expedition" ? expeditionGoal : trainingGoal;
 }
 
+export type ExpeditionRouteIdentity = { name: string; routeIdentityKey?: string };
+
+export function routeCompletionKey(route: ExpeditionRouteIdentity): string {
+  return route.routeIdentityKey || route.name;
+}
+
+export function isRouteCompleted(
+  completedRoutes: readonly string[],
+  route: ExpeditionRouteIdentity,
+): boolean {
+  return completedRoutes.includes(routeCompletionKey(route)) ||
+    Boolean(route.routeIdentityKey && completedRoutes.includes(route.name));
+}
+
 export function requiredExpeditionStageNames(expedition: {
-  virtualHills?: Array<{ name: string }>;
-  expeditionPlan?: { days: Array<{ routes: Array<{ name: string }> }> } | null;
+  virtualHills?: ExpeditionRouteIdentity[];
+  expeditionPlan?: { days: Array<{ routes: ExpeditionRouteIdentity[] }> } | null;
 }): string[] {
-  const names = expedition.virtualHills?.map(hill => hill.name)
-    ?? expedition.expeditionPlan?.days?.flatMap(day => day.routes.map(route => route.name))
+  const names = expedition.virtualHills?.map(routeCompletionKey)
+    ?? expedition.expeditionPlan?.days?.flatMap(day => day.routes.map(routeCompletionKey))
     ?? [];
   return [...new Set(names.filter(Boolean))];
 }
 
 export function isExpeditionComplete(expedition: {
   completedRoutes: string[];
-  virtualHills?: Array<{ name: string }>;
-  expeditionPlan?: { days: Array<{ routes: Array<{ name: string }> }> } | null;
+  virtualHills?: ExpeditionRouteIdentity[];
+  expeditionPlan?: { days: Array<{ routes: ExpeditionRouteIdentity[] }> } | null;
 }): boolean {
-  const required = requiredExpeditionStageNames(expedition);
-  const completed = new Set(expedition.completedRoutes);
-  return required.length > 0 && required.every(name => completed.has(name));
+  const routes = expedition.virtualHills
+    ?? expedition.expeditionPlan?.days?.flatMap(day => day.routes)
+    ?? [];
+  return routes.length > 0 &&
+    routes.every(route => isRouteCompleted(expedition.completedRoutes, route));
 }
 
 export function addUniqueCompletedRoute(completedRoutes: string[], routeName: string): string[] {

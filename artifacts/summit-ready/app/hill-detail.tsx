@@ -46,22 +46,22 @@ interface HillDetail {
   description: string;
   startPoint: {
     name: string;
-    lat: number;
-    lng: number;
+    lat: number | null;
+    lng: number | null;
     postcode?: string;
     directions: string;
     parkingNotes: string;
   };
   routes: HillRoute[];
-  summitLat?: number;
-  summitLng?: number;
+  summitLat: number | null;
+  summitLng: number | null;
 }
 
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { name, location, lat, lng, elevation, distance, grade, surface, emoji, expeditionMode, expeditionId } =
+  const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -69,11 +69,15 @@ export default function HillDetailScreen() {
       lng?: string;
       elevation?: string;
       distance?: string;
+      routeDistance?: string;
+      estimatedTime?: string;
+      routeType?: string;
       grade?: string;
       surface?: string;
       emoji?: string;
       expeditionMode?: string;
       expeditionId?: string;
+      routeIdentityKey?: string;
     }>();
 
   const isExpeditionMode = expeditionMode === "true";
@@ -109,10 +113,14 @@ export default function HillDetailScreen() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             hillName: name,
+            routeIdentityKey: routeIdentityKey || undefined,
             location: location ?? "",
             summitLat: Number.isFinite(hillLat) ? hillLat : undefined,
             summitLng: Number.isFinite(hillLng) ? hillLng : undefined,
             elevation: elevation ? parseFloat(elevation) : undefined,
+            routeDistance: routeDistance ? parseFloat(routeDistance) : undefined,
+            estimatedTime: estimatedTime || undefined,
+            routeType: routeType || undefined,
             grade: grade ?? undefined,
             surface: surface ?? undefined,
           }),
@@ -128,7 +136,7 @@ export default function HillDetailScreen() {
     }
 
     fetchDetail();
-  }, [name, location, lat, lng, elevation, grade, surface]);
+  }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey]);
 
   // Load any saved user correction for this hill's start point
   useEffect(() => {
@@ -180,7 +188,7 @@ export default function HillDetailScreen() {
       Number.isFinite(startPoint.lat) &&
       Number.isFinite(startPoint.lng)
     ) {
-      openMapDirections(startPoint.lat, startPoint.lng, startPoint.name);
+      openMapDirections(startPoint.lat!, startPoint.lng!, startPoint.name);
     } else if (startPoint?.postcode) {
       openDirectionsToPostcode(startPoint.postcode, startPoint.name);
     } else {
@@ -264,9 +272,9 @@ export default function HillDetailScreen() {
               <TouchableOpacity
                 style={styles.mapActionBtn}
                 onPress={() => {
-                  if (detail?.summitLat && detail?.summitLng) {
+                  if (Number.isFinite(detail?.summitLat) && Number.isFinite(detail?.summitLng)) {
                     // Prefer AI-enriched summit pin when available
-                    openMapPin(detail.summitLat, detail.summitLng, name ?? "");
+                    openMapPin(detail!.summitLat!, detail!.summitLng!, name ?? "");
                   } else if (hillLat && hillLng) {
                     // Fall back to the hill's own Overpass/terrain coordinates
                     openMapPin(hillLat, hillLng, name ?? "");
@@ -343,11 +351,11 @@ export default function HillDetailScreen() {
                         <Text style={styles.startName}>{startPoint!.name}</Text>
                         {startPoint!.postcode ? (
                           <Text style={styles.startCoords}>{startPoint!.postcode}</Text>
-                        ) : (
+                        ) : Number.isFinite(startPoint!.lat) && Number.isFinite(startPoint!.lng) ? (
                           <Text style={styles.startCoords}>
-                            {startPoint!.lat.toFixed(5)}, {startPoint!.lng.toFixed(5)}
+                            {startPoint!.lat!.toFixed(5)}, {startPoint!.lng!.toFixed(5)}
                           </Text>
-                        )}
+                        ) : null}
                       </View>
                       <TouchableOpacity
                         style={styles.editStartBtn}
@@ -455,8 +463,8 @@ export default function HillDetailScreen() {
                           onPress={() => {
                             if (startPoint?.postcode) {
                               openDirectionsToPostcode(startPoint.postcode, startPoint.name);
-                            } else if (startPoint) {
-                              openMapDirections(startPoint.lat, startPoint.lng, startPoint.name);
+                            } else if (startPoint && Number.isFinite(startPoint.lat) && Number.isFinite(startPoint.lng)) {
+                              openMapDirections(startPoint.lat!, startPoint.lng!, startPoint.name);
                             }
                           }}
                           activeOpacity={0.8}
@@ -485,6 +493,7 @@ export default function HillDetailScreen() {
                 pathname: "/hike-tracking" as any,
                 params: {
                   hillName: name,
+                  routeIdentityKey: routeIdentityKey ?? "",
                   ...(isExpeditionMode ? {
                     trackingMode: "expedition-route",
                     expeditionId: expeditionId ?? "",

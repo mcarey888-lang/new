@@ -22,6 +22,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
 import { englishPlaceName } from "@/utils/placeNames";
+import { isRouteCompleted } from "@/utils/stateReliability";
 
 function useActiveHike() {
   const { isLoaded: authLoaded, userId } = useAuth();
@@ -133,7 +134,7 @@ export default function TrackScreen() {
   );
 
   const nextHill = activeExpedition?.virtualHills?.find(
-    hill => !activeExpedition.completedRoutes.includes(hill.name),
+    hill => !isRouteCompleted(activeExpedition.completedRoutes, hill),
   );
 
   if (!activeExpedition) {

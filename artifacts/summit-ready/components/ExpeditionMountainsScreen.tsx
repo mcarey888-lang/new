@@ -42,8 +42,16 @@ import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
 import { VIRTUAL_BUNDLES, FREE_BUNDLE_IDS, type VirtualBundle } from "@/data/virtualBundles";
 import type {
-  NearbyHill, SimulationScoreBreakdown, TargetMountain,
+  NearbyHill, SimulationScoreBreakdown, TargetMountain, VirtualExpeditionProvenance,
 } from "@/context/AppContext";
+import {
+  VerifiedRouteChooser,
+  type VerifiedTargetRouteChoice,
+} from "@/components/VerifiedRouteChooser";
+import {
+  VerifiedMountainChooser,
+  type VerifiedMountainChoice,
+} from "@/components/VerifiedMountainChooser";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -94,12 +102,24 @@ interface ExpeditionResult {
   adventureScore?:  number;
   dnaMatchScore?:   number;
   scoreBreakdown:   SimulationScoreBreakdown;
+  provenance?: VirtualExpeditionProvenance;
   expedition?: {
     title: string; concept: string;
     days: Array<{ label: string; title: string; focus: string; routes: Array<{ name: string; why: string }> }>;
     alternatives: Record<string, string[]>;
     adventureScore: number; dnaMatchScore: number; dnaMatchNotes: string;
   } | null;
+}
+
+interface PendingExpeditionRequest {
+  mountain: string;
+  region: string;
+  radius: number;
+  daysOverride?: 1 | 2;
+  includeSignatureChallenge: boolean;
+  targetRouteIdentityKey?: string;
+  targetCountry?: string;
+  targetRegion?: string;
 }
 
 interface SigStage {
@@ -213,6 +233,11 @@ export default function ExpeditionMountainsScreen() {
   // fetch state
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [routeChoices, setRouteChoices] = useState<VerifiedTargetRouteChoice[]>([]);
+  const [routeChooserOpen, setRouteChooserOpen] = useState<boolean>(false);
+  const [pendingRouteRequest, setPendingRouteRequest] = useState<PendingExpeditionRequest | null>(null);
+  const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
+  const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
 
   // score accordion
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -289,6 +314,9 @@ export default function ExpeditionMountainsScreen() {
     radius        = searchRadius,
     daysOverride?: 1 | 2,
     includeSignatureChallenge = false,
+    targetRouteIdentityKey?: string,
+    targetCountry?: string,
+    targetRegion?: string,
   ) {
     setLoading(true);
     setFetchError(null);
@@ -299,6 +327,32 @@ export default function ExpeditionMountainsScreen() {
       setSigExpanded(false);
     }
     try {
+      const requestedMountain = mountain.trim().toLowerCase();
+      const activeMountainNames = [
+        activeExpedition?.challengeName,
+        activeExpedition?.targetMountainName,
+        activeExpedition?.targetMountain?.name,
+      ].filter((name): name is string => !!name).map(name => name.trim().toLowerCase());
+      const activeRouteKey = activeMountainNames.includes(requestedMountain)
+        ? activeExpedition?.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey ?? undefined
+        : undefined;
+      const currentResultRouteKey =
+        results?.targetProfile.name.trim().toLowerCase() === requestedMountain
+          ? results.provenance?.selectedTargetRouteIdentityKey ?? undefined
+          : undefined;
+      const persistedRouteKey = activeRouteKey ?? currentResultRouteKey;
+      const request: PendingExpeditionRequest = {
+        mountain,
+        region,
+        radius,
+        ...(daysOverride ? { daysOverride } : {}),
+        includeSignatureChallenge,
+        ...(targetRouteIdentityKey ?? persistedRouteKey
+          ? { targetRouteIdentityKey: targetRouteIdentityKey ?? persistedRouteKey }
+          : {}),
+        ...(targetCountry ? { targetCountry } : {}),
+        ...(targetRegion ? { targetRegion } : {}),
+      };
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -307,10 +361,48 @@ export default function ExpeditionMountainsScreen() {
           userLocation:   region,
           radius,
           ...(daysOverride ? { daysOverride } : {}),
+          requireVerifiedRouteSelection: true,
+          ...(request.targetRouteIdentityKey
+            ? { targetRouteIdentityKey: request.targetRouteIdentityKey }
+            : {}),
+          ...(request.targetCountry ? { targetCountry: request.targetCountry } : {}),
+          ...(request.targetRegion ? { targetRegion: request.targetRegion } : {}),
         }),
       });
-      const body = await res.json() as ExpeditionResult & { error?: string };
+      const body = await res.json() as ExpeditionResult & {
+        error?: string;
+        code?: string;
+        routes?: VerifiedTargetRouteChoice[];
+        candidates?: VerifiedMountainChoice[];
+      };
+      if (
+        res.status === 409
+        && body.code === "AMBIGUOUS_MOUNTAIN"
+        && Array.isArray(body.candidates)
+        && body.candidates.length > 0
+      ) {
+        setMountainChoices(body.candidates);
+        setPendingRouteRequest(request);
+        setMountainChooserOpen(true);
+        return;
+      }
+      if (
+        res.status === 409
+        && body.code === "TARGET_ROUTE_SELECTION_REQUIRED"
+        && Array.isArray(body.routes)
+        && body.routes.length > 0
+      ) {
+        setRouteChoices(body.routes);
+        setPendingRouteRequest(request);
+        setRouteChooserOpen(true);
+        return;
+      }
       if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
+      setRouteChooserOpen(false);
+      setRouteChoices([]);
+      setPendingRouteRequest(null);
+      setMountainChooserOpen(false);
+      setMountainChoices([]);
       setResults(body);
       if (includeSignatureChallenge) {
         void fetchSigChallenge(mountain); // non-blocking — curated bundles only
@@ -404,6 +496,9 @@ export default function ExpeditionMountainsScreen() {
       simulationScore:          results.dnaMatchScore ?? results.simulationScore,
       simulationScoreBreakdown: results.scoreBreakdown,
       expeditionPlan:           results.expedition ?? null,
+      ...(results.provenance
+        ? { virtualExpeditionProvenance: results.provenance }
+        : {}),
       location,
       maxRadius:                searchRadius,
       fitnessLevel:             activeExpedition?.fitnessLevel ?? "Average",
@@ -459,6 +554,54 @@ export default function ExpeditionMountainsScreen() {
       </LinearGradient>
     );
   }
+
+  const routeChooser = (
+    <VerifiedRouteChooser
+      visible={routeChooserOpen}
+      routes={routeChoices}
+      onClose={() => setRouteChooserOpen(false)}
+      onSelect={(route) => {
+        const pending = pendingRouteRequest;
+        if (!pending) return;
+        setRouteChooserOpen(false);
+        void fetchExpedition(
+          pending.mountain,
+          pending.region,
+          pending.radius,
+          pending.daysOverride,
+          pending.includeSignatureChallenge,
+          route.identityKey,
+          pending.targetCountry,
+          pending.targetRegion,
+        );
+      }}
+    />
+  );
+  const mountainChooser = (
+    <VerifiedMountainChooser
+      visible={mountainChooserOpen}
+      candidates={mountainChoices}
+      onClose={() => {
+        setMountainChooserOpen(false);
+        setPendingRouteRequest(null);
+      }}
+      onSelect={(candidate) => {
+        const pending = pendingRouteRequest;
+        if (!pending) return;
+        setMountainChooserOpen(false);
+        void fetchExpedition(
+          pending.mountain,
+          pending.region,
+          pending.radius,
+          pending.daysOverride,
+          pending.includeSignatureChallenge,
+          pending.targetRouteIdentityKey,
+          candidate.country,
+          candidate.region ?? undefined,
+        );
+      }}
+    />
+  );
 
   // ── Results view ─────────────────────────────────────────────────────────────
   if (view === "results" && results) {
@@ -1023,6 +1166,8 @@ export default function ExpeditionMountainsScreen() {
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      {routeChooser}
+      {mountainChooser}
       <ScrollView ref={browseScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
         {/* ── Page header ─────────────────────────────────────────────────── */}

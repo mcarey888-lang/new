@@ -67,7 +67,11 @@ import {
   discardActiveHike,
 } from "@/utils/activeHikeSession";
 import { enqueueSyncFailure, enqueueSyncPending, markSyncComplete, retrySyncOutbox } from "@/utils/syncOutbox";
-import { addUniqueCompletedRoute, isExpeditionComplete } from "@/utils/stateReliability";
+import {
+  addUniqueCompletedRoute,
+  isExpeditionComplete,
+  routeCompletionKey,
+} from "@/utils/stateReliability";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -237,10 +241,12 @@ export default function HikeTrackingScreen() {
     trackingMode?: string;
     expeditionId?: string;
     routeId?: string;
+    routeIdentityKey?: string;
   }>();
   const [expeditionTracking, setExpeditionTracking] = useState({
     trackingMode: params.trackingMode ?? null,
     expeditionId: params.expeditionId ?? null,
+    routeIdentityKey: params.routeIdentityKey?.trim() || undefined,
   });
   const hillMeta = {
     sessionKey:          params.hillSessionKey    ?? null,
@@ -250,6 +256,7 @@ export default function HikeTrackingScreen() {
     estimatedTotalGain:  params.estimatedTotalGain  ? parseInt(params.estimatedTotalGain, 10)  : null,
     trackingMode:        expeditionTracking.trackingMode,
     expeditionId:        expeditionTracking.expeditionId,
+    routeIdentityKey:     expeditionTracking.routeIdentityKey,
   };
   const trackedExpedition = hillMeta.expeditionId
     ? expeditions.find(expedition => expedition.id === hillMeta.expeditionId) ?? null
@@ -588,6 +595,7 @@ export default function HikeTrackingScreen() {
           estimatedTotalGain:  hillMeta.estimatedTotalGain,
           trackingMode:        hillMeta.trackingMode,
           expeditionId:        hillMeta.expeditionId,
+          routeIdentityKey:     hillMeta.routeIdentityKey,
         },
         routeId: routeIdRef.current,
         savedAt: Date.now(),
@@ -600,7 +608,8 @@ export default function HikeTrackingScreen() {
       await write;
     } catch { /* ignore — non-critical */ }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
-      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode, hillMeta.expeditionId, userId]);
+      hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode,
+      hillMeta.expeditionId, hillMeta.routeIdentityKey, userId]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -665,9 +674,13 @@ export default function HikeTrackingScreen() {
         if (session.routeName) setRouteName(session.routeName);
         if (session.routeId) routeIdRef.current = session.routeId;
         if (session.trackingMode || session.expeditionId) {
+          const restoredIdentity = typeof session.hillMeta?.routeIdentityKey === "string"
+            ? session.hillMeta.routeIdentityKey.trim() || undefined
+            : undefined;
           setExpeditionTracking(current => ({
             trackingMode: session.trackingMode ?? current.trackingMode,
             expeditionId: session.expeditionId ?? current.expeditionId,
+            routeIdentityKey: restoredIdentity ?? current.routeIdentityKey,
           }));
         }
         setNameLocked(true);
@@ -1314,7 +1327,10 @@ export default function HikeTrackingScreen() {
                   onPress={async () => {
                     const expId = hillMeta.expeditionId;
                     if (!expId || !trackedExpedition) return;
-                    const toMark = hillMeta.hillName ?? routeName;
+                    const toMark = routeCompletionKey({
+                      name: hillMeta.hillName ?? routeName,
+                      routeIdentityKey: hillMeta.routeIdentityKey,
+                    });
                     const newCompleted = addUniqueCompletedRoute(
                       trackedExpedition.completedRoutes ?? [],
                       toMark,
