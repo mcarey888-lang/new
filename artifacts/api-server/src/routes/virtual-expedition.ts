@@ -91,7 +91,7 @@ export const TargetMountainProfileSchema = z.object({
   summitElevation:    z.number().positive(),
   totalElevationGain: z.number().positive(),
   totalDistance:      z.number().positive(),
-  estimatedDays:      z.number().int().positive().transform(d => (d >= 2 ? 2 : 1) as 1 | 2),
+  estimatedDays:      z.number().int().positive().transform(d => (d >= 3 ? 3 : d >= 2 ? 2 : 1) as 1 | 2 | 3),
   day1ElevationGain:  z.number().positive().optional().nullable(),
   day2ElevationGain:  z.number().positive().optional().nullable(),
   maxDailyElevation:  z.number().positive(),

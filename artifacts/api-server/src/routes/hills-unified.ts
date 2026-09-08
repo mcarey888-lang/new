@@ -43,6 +43,8 @@ export const HillSchema = z.object({
   name: z.string().transform(englishPlaceName),
   /** Stable public route identity. Never contains a private tracked-route ID. */
   routeIdentityKey: z.string().min(1).optional(),
+  /** Human-readable attached route label; summit name remains `name`. */
+  routeName: z.string().min(1).optional(),
   elevation: z.number(),
   distance: z.number(),
   repeats: z.number(),
@@ -61,7 +63,7 @@ export const HillSchema = z.object({
   safetyWarning: z.string().optional(),
   hazardLevel: z.enum(["low", "moderate", "high", "severe"]).optional(),
   /** Additive provenance used by custom-expedition matching. */
-  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass"]).optional(),
+  dataSource: z.enum(["legacy_cache", "seeded_osm", "osm_overpass", "canonical_verified"]).optional(),
   routeDataStatus: z.enum([
     "unverified_cache",
     "seeded_estimate",
@@ -72,6 +74,9 @@ export const HillSchema = z.object({
    *  Only present on hills that came through the Overpass pipeline; absent on DB-cached hits.
    *  Used by virtual-expedition altitude scoring to avoid re-querying topo at AI lat/lng. */
   summitElevationASL: z.number().positive().optional(),
+  /** Stable summit identity, distinct from a route identity where available. */
+  summitIdentityKey: z.string().min(1).optional(),
+  summitProminenceM: z.number().positive().optional(),
 });
 
 export type Hill = z.infer<typeof HillSchema>;
@@ -672,11 +677,15 @@ export async function osmPeaksToHills(
   const SAMPLE_RADIUS_M = 1_500;
   const MAX_PEAKS = 19; // 19 × (1 + 4) = 95 pts — within 100-pt topo limit
 
-  // Keep only named peaks within range, take the N closest ones
+  // Keep only named peaks within range. Elevation is the objective ordering;
+  // distance is only a stable final tie-break, never a proxy for summit merit.
   const inRange = peaks
     .map(p => ({ ...p, distKm: haversineKm(userLat, userLng, p.lat, p.lng) }))
     .filter(p => p.distKm <= radiusKm * 1.4)
-    .sort((a, b) => a.distKm - b.distKm)
+    .sort((a, b) =>
+      (Number.isFinite(b.ele) ? b.ele! : -1) - (Number.isFinite(a.ele) ? a.ele! : -1)
+      || a.name.localeCompare(b.name, "en")
+      || a.id - b.id)
     .slice(0, MAX_PEAKS);
 
   if (!inRange.length) return [];
@@ -722,6 +731,11 @@ export async function osmPeaksToHills(
     if (gain < minElevation) continue;
 
     const distance = Math.round(peak.distKm * 10) / 10;
+    // This is a bounded planning loop around the sampled summit terrain, not
+    // a route from the user's location or a claimed trailhead. The radial
+    // samples are 1.5km out, so use that local geometry plus climbing demand.
+    const routeDistance = Math.round((SAMPLE_RADIUS_M / 500 + Math.min(9, gain / 250)) * 10) / 10;
+    const estimatedHours = Math.max(1, Math.round((routeDistance / 4 + gain / 600) * 2) / 2);
     const repeats = gain > 350 ? 1 : gain > 200 ? 2 : 3;
     const grade = gradeFromGain(gain);
 
@@ -734,6 +748,7 @@ export async function osmPeaksToHills(
         peak.lng,
         `node:${peak.id}`,
       ),
+      routeName: "Terrain-estimated summit circuit",
       elevation: gain,
       distance,
       repeats,
@@ -744,16 +759,22 @@ export async function osmPeaksToHills(
       lat: peak.lat,
       lng: peak.lng,
       routeType: "hill",
-      routeDistance: null,
-      estimatedTime: null,
+      routeDistance,
+      estimatedTime: `${estimatedHours} h (terrain estimate)`,
       // Store the authoritative summit ASL (OSM ele tag preferred, topo fallback).
       // This comes from a real surveyed/satellite source at the correct OSM peak position,
       // not from AI-guessed lat/lng, so altitude scoring stays accurate.
       summitElevationASL: Math.round(summitElev),
+      summitIdentityKey: `osm:node:${peak.id}`,
+      dataSource: "osm_overpass",
+      routeDataStatus: "terrain_calculated",
     });
   }
 
-  return hills.sort((a, b) => a.distance - b.distance).slice(0, 10);
+  return hills.sort((a, b) =>
+    (b.summitElevationASL ?? 0) - (a.summitElevationASL ?? 0)
+    || a.name.localeCompare(b.name, "en")
+    || (a.routeIdentityKey ?? "").localeCompare(b.routeIdentityKey ?? "")).slice(0, 10);
 }
 
 // ── In-memory area lookup cache (keyed by "location|radius") ─────────────────

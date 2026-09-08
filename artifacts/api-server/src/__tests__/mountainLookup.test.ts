@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestHandler } from "express";
 import {
+  lookupVerifiedCanonicalSummitsInArea,
   lookupVerifiedCanonicalMountain,
   normalizeMountainLookupTerm,
   type CanonicalLookupResult,
@@ -390,6 +391,60 @@ describe("lookupVerifiedCanonicalMountain", () => {
       expect(result.matches).toHaveLength(2);
     }
     expect(query).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("lookupVerifiedCanonicalSummitsInArea", () => {
+  it("uses a bounded verified geographic query and attaches only verified routes", async () => {
+    const lowerSummit = {
+      ...candidate,
+      id: "22222222-2222-2222-2222-222222222222",
+      name: "Lower Summit",
+      elevationM: 800,
+      prominenceM: 120,
+    };
+    const query = queryMockWith(
+      [candidate, lowerSummit],
+      [{
+        mountainId: candidate.id,
+        identityKey: verifiedRoute.identityKey,
+        name: verifiedRoute.name,
+        aliases: verifiedRoute.aliases,
+        description: verifiedRoute.description,
+        startName: verifiedRoute.startName,
+        startElevationM: verifiedRoute.startElevationM,
+        summitElevationM: verifiedRoute.summitElevationM,
+        distanceKm: verifiedRoute.distanceKm,
+        totalAscentM: verifiedRoute.totalAscentM,
+        totalDescentM: verifiedRoute.totalDescentM,
+        typicalDurationHours: verifiedRoute.typicalDurationHours,
+        publisher: verifiedRoute.evidence.publisher,
+        evidenceTitle: verifiedRoute.evidence.title,
+        evidenceUrl: verifiedRoute.evidence.url,
+      }],
+    );
+
+    const summits = await lookupVerifiedCanonicalSummitsInArea({
+      centerLat: 46.465,
+      centerLng: 7.993,
+      radiusKm: 30,
+      limit: 2,
+    }, query);
+
+    expect(summits.map(summit => summit.name)).toEqual([
+      "Aletschhorn",
+      "Lower Summit",
+    ]);
+    expect(summits[0].routes).toEqual([verifiedRoute]);
+    expect(summits[1].routes).toEqual([]);
+    expect(query.mock.calls[0][0]).toContain("ST_DWithin");
+    expect(query.mock.calls[0][0]).toContain("m.status = 'verified'");
+    expect(query.mock.calls[0][0]).toContain("m.canonical_source_key IS NOT NULL");
+    expect(query.mock.calls[0][1]).toEqual([46.465, 7.993, 30_000, 2]);
+    expect(query.mock.calls[1][0]).toContain("ri.status = 'verified'");
+    expect(query.mock.calls[1][0]).toContain("rd.status = 'verified'");
+    expect(query.mock.calls[1][0]).toContain("rf.status = 'verified'");
+    expect(query.mock.calls[1][1]).toEqual([[candidate.id, lowerSummit.id]]);
   });
 });
 

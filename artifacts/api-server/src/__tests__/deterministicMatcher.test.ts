@@ -4,6 +4,7 @@ import type { TargetMountainProfile } from "../routes/virtual-expedition.js";
 import {
   bridgeElevationGap,
   matchDeterministicExpedition,
+  matchQuickestHighSummits,
 } from "../services/virtualExpedition/deterministicMatcher.js";
 
 function hill(name: string, elevation: number, overrides: Partial<Hill> = {}): Hill {
@@ -62,6 +63,65 @@ const candidates = [
 ];
 
 describe("deterministic expedition matcher", () => {
+  it("selects at most the requested number of distinct highest safe summits without repeats", () => {
+    const result = matchQuickestHighSummits([
+      hill("Highest", 300, { summitElevationASL: 1_200, summitIdentityKey: "highest" }),
+      hill("Second", 400, { summitElevationASL: 1_100, summitIdentityKey: "second" }),
+      hill("Third", 900, { summitElevationASL: 1_000, summitIdentityKey: "third" }),
+      hill("Alternate highest route", 500, { summitElevationASL: 1_200, summitIdentityKey: "highest" }),
+    ], profile({ estimatedDays: 2, totalElevationGain: 5_000 }));
+
+    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["Highest", "Second"]);
+    expect(result.selectedHills.every(candidate => candidate.repeats === 1)).toBe(true);
+    expect(result.targetRatio).toBeLessThan(.9);
+    expect(result.warnings.join(" ")).toContain("advisory");
+  });
+
+  it("does not count a nearby subsidiary peak as another principal summit", () => {
+    const result = matchQuickestHighSummits([
+      hill("Principal Summit", 700, {
+        summitIdentityKey: "summit:principal",
+        summitElevationASL: 1_000,
+        lat: 54.45,
+        lng: -3.21,
+      }),
+      hill("Subsidiary Top", 300, {
+        summitIdentityKey: "summit:subsidiary",
+        summitElevationASL: 990,
+        lat: 54.454,
+        lng: -3.21,
+      }),
+      hill("Independent Summit", 650, {
+        summitIdentityKey: "summit:independent",
+        summitElevationASL: 950,
+        lat: 54.48,
+        lng: -3.21,
+      }),
+    ], profile({ estimatedDays: 2 }));
+
+    expect(result.selectedHills.map(candidate => candidate.name))
+      .toEqual(["Principal Summit", "Independent Summit"]);
+    expect(result.rankedCandidates.find(candidate =>
+      candidate.name === "Subsidiary Top")?.rejectionReasons[0])
+      .toContain("subsidiary peak");
+  });
+
+  it("caps quickest-high-summits mode at three days and records unsafe higher summits", () => {
+    const result = matchQuickestHighSummits([
+      hill("Unsafe highest", 900, {
+        summitElevationASL: 1_500, summitIdentityKey: "unsafe", hazardLevel: "severe",
+      }),
+      hill("One", 300, { summitElevationASL: 1_400, summitIdentityKey: "one" }),
+      hill("Two", 300, { summitElevationASL: 1_300, summitIdentityKey: "two" }),
+      hill("Three", 300, { summitElevationASL: 1_200, summitIdentityKey: "three" }),
+      hill("Four", 300, { summitElevationASL: 1_100, summitIdentityKey: "four" }),
+    ], profile({ estimatedDays: 3 }));
+
+    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["One", "Two", "Three"]);
+    expect(result.selectedHills).toHaveLength(3);
+    expect(result.rankedCandidates[0].rejectionReasons).toContain("hazard incompatible with target DNA");
+  });
+
   it("returns a stable result using candidate names and complete score components", () => {
     const first = matchDeterministicExpedition(candidates, profile());
     const second = matchDeterministicExpedition(candidates, profile());
@@ -347,6 +407,7 @@ describe("deterministic expedition matcher", () => {
     });
     const walkingRoute = hill("Moel Siabod Walk", 600, {
       hazardLevel: "low",
+      grade: "Moderate",
       routeDistance: 8,
       estimatedTime: "3.5 h",
       surface: "grass mountain path",
@@ -379,10 +440,12 @@ describe("deterministic expedition matcher", () => {
     const technical = matchDeterministicExpedition(
       [walkingRoute, technicalRoute],
       technicalTarget,
+      "Alpine",
     );
     const walking = matchDeterministicExpedition(
       [technicalRoute, walkingRoute],
       walkingTarget,
+      "Moderate",
     );
 
     expect(technical.selectedHills[0].name).toBe("Tryfan North Ridge");

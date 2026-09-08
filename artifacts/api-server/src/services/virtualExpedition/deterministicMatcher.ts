@@ -2,6 +2,7 @@ import type { Hill } from "../../routes/hills-unified.js";
 import type { TargetMountainProfile } from "../../routes/virtual-expedition.js";
 
 export const DETERMINISTIC_MATCH_METHOD = "deterministic_route_facts_v1" as const;
+export const QUICKEST_HIGH_SUMMITS_MATCH_METHOD = "quickest_high_summits_v1" as const;
 
 export interface CandidateScoreComponents {
   ascentContribution: number;
@@ -31,7 +32,7 @@ export interface DeterministicExpeditionMatch {
   achievedAscent: number;
   targetRatio: number;
   warnings: string[];
-  matchMethod: typeof DETERMINISTIC_MATCH_METHOD;
+  matchMethod: typeof DETERMINISTIC_MATCH_METHOD | typeof QUICKEST_HIGH_SUMMITS_MATCH_METHOD;
   /** Additive aggregate route facts used by deterministic explanations. */
   achievedDistance: number;
   distanceRatio: number;
@@ -42,10 +43,17 @@ export interface DeterministicExpeditionMatch {
   strongestAlternative?: string;
 }
 
+function summitIdentity(hill: Hill): string {
+  if (hill.summitIdentityKey) return hill.summitIdentityKey;
+  const name = normaliseName(hill.name);
+  return validCoordinates(hill) ? `${name}@${hill.lat},${hill.lng}` : name;
+}
+
 const OPTIMISATION_POOL_SIZE = 36;
 const SAME_ROUTE_DISTANCE_KM = 2;
 const MAX_DISTINCT_ROUTES = 8;
 const MAX_REPEATS = 3;
+const PRINCIPAL_SUMMIT_SEPARATION_KM = 0.75;
 
 function normaliseName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -140,6 +148,29 @@ function hazardScore(hill: Hill, profile: TargetMountainProfile): { score: numbe
   };
 }
 
+function abilityCompatibility(
+  hill: Hill,
+  difficultyPreference?: string | null,
+): { compatible: boolean; reason?: string } {
+  const abilityLevel = difficultyLevel(difficultyPreference);
+  if (abilityLevel === 0) return { compatible: true };
+
+  const routeLevel = difficultyLevel(hill.grade);
+  const hazardLevel = {
+    low: 1,
+    moderate: 2,
+    high: 3,
+    severe: 4,
+  }[hill.hazardLevel ?? "low"];
+  if (routeLevel > abilityLevel || hazardLevel > abilityLevel) {
+    return {
+      compatible: false,
+      reason: `route exceeds the user's ${difficultyPreference} difficulty preference`,
+    };
+  }
+  return { compatible: true };
+}
+
 /** Route facts are deliberately stricter than legacy display Hill facts. */
 function routeEvidence(hill: Hill): { eligible: boolean; quality: number; reasons: string[] } {
   const reasons: string[] = [];
@@ -213,6 +244,7 @@ function scoreCandidate(
 ): RankedCandidateRecord {
   const minutes = parseEstimatedMinutes(hill.estimatedTime) ?? 0;
   const hazard = hazardScore(hill, profile);
+  const ability = abilityCompatibility(hill, difficultyPreference);
   const evidence = routeEvidence(hill);
   const components: CandidateScoreComponents = {
     ascentContribution: proximityScore(hill.elevation, profile.totalElevationGain / 4),
@@ -235,11 +267,13 @@ function scoreCandidate(
     routeIdentityKey: hill.routeIdentityKey,
     score,
     components,
-    compatible: hazard.compatible,
-    eligible: evidence.eligible && hazard.compatible, objectiveQuality: evidence.quality,
+    compatible: hazard.compatible && ability.compatible,
+    eligible: evidence.eligible && hazard.compatible && ability.compatible,
+    objectiveQuality: evidence.quality,
     rejectionReasons: [
       ...evidence.reasons,
       ...(hazard.compatible ? [] : ["hazard incompatible with target DNA"]),
+      ...(ability.reason ? [ability.reason] : []),
     ],
   };
 }
@@ -561,6 +595,80 @@ export function matchDeterministicExpedition(
     strongestAlternative: alternativeRoutes && alternativeReason
       ? `${alternativeRoutes}: ${alternativeReason}`
       : undefined,
+  };
+}
+
+/**
+ * Objective-first expedition mode. It deliberately does not optimise ascent:
+ * the requested number of distinct, safe genuine summits is the hard cap and
+ * route gain/distance are advisory diagnostics only.
+ */
+export function matchQuickestHighSummits(
+  candidates: Hill[],
+  profile: TargetMountainProfile,
+  difficultyPreference?: string | null,
+): DeterministicExpeditionMatch {
+  const scored = candidates
+    .filter(hill => Number.isFinite(hill.elevation) && hill.elevation > 0)
+    .map(hill => ({ hill, record: scoreCandidate(hill, profile, difficultyPreference) }));
+  const ranked = scored.sort((a, b) =>
+    (b.hill.summitElevationASL ?? -1) - (a.hill.summitElevationASL ?? -1)
+    || (b.hill.summitProminenceM ?? -1) - (a.hill.summitProminenceM ?? -1)
+    || b.record.components.terrainRouteType - a.record.components.terrainRouteType
+    || a.hill.elevation - b.hill.elevation
+    || (a.hill.routeDistance ?? Number.POSITIVE_INFINITY) - (b.hill.routeDistance ?? Number.POSITIVE_INFINITY)
+    || stableHillCompare(a.hill, b.hill));
+  const selected: typeof ranked = [];
+  const seenSummits = new Set<string>();
+  for (const candidate of ranked) {
+    if (!candidate.record.eligible) continue;
+    const identity = summitIdentity(candidate.hill);
+    if (seenSummits.has(identity)) continue;
+    const nearbyPrincipal = selected.find(selectedCandidate =>
+      validCoordinates(candidate.hill)
+      && validCoordinates(selectedCandidate.hill)
+      && haversineKm(candidate.hill, selectedCandidate.hill) < PRINCIPAL_SUMMIT_SEPARATION_KM);
+    if (nearbyPrincipal) {
+      candidate.record.eligible = false;
+      candidate.record.rejectionReasons.push(
+        `subsidiary peak is within ${PRINCIPAL_SUMMIT_SEPARATION_KM} km of selected principal summit ${nearbyPrincipal.hill.name}`,
+      );
+      continue;
+    }
+    seenSummits.add(identity);
+    selected.push(candidate);
+    if (selected.length >= profile.estimatedDays) break;
+  }
+  const selectedHills = selected.map(candidate => materialiseHill(candidate.hill, 1));
+  const achievedAscent = selectedHills.reduce((sum, hill) => sum + hill.elevation, 0);
+  const achievedDistance = selectedHills.reduce((sum, hill) => sum + (hill.routeDistance ?? 0), 0);
+  const achievedDurationMinutes = selectedHills.reduce(
+    (sum, hill) => sum + (parseEstimatedMinutes(hill.estimatedTime) ?? 0), 0);
+  const targetRatio = profile.totalElevationGain > 0 ? achievedAscent / profile.totalElevationGain : 0;
+  const distanceRatio = profile.totalDistance > 0 ? achievedDistance / profile.totalDistance : 0;
+  const warnings: string[] = [];
+  if (selected.length < profile.estimatedDays) {
+    warnings.push(`Only ${selected.length} safe eligible distinct summit${selected.length === 1 ? "" : "s"} were available for ${profile.estimatedDays} day${profile.estimatedDays === 1 ? "" : "s"}; no fillers were added.`);
+  }
+  if (targetRatio < .9 || targetRatio > 1.1) {
+    warnings.push(`Route ascent is advisory in quickest-high-summits mode (${Math.round(targetRatio * 100)}% of target), not a reason to add lower objectives.`);
+  }
+  return {
+    rankedCandidates: ranked.map(candidate => candidate.record),
+    selectedHills,
+    deterministicScore: selected.length
+      ? clampScore(selected.reduce((sum, candidate) => sum + candidate.record.score, 0) / selected.length)
+      : 0,
+    achievedAscent,
+    targetRatio,
+    warnings,
+    matchMethod: QUICKEST_HIGH_SUMMITS_MATCH_METHOD,
+    achievedDistance,
+    distanceRatio,
+    achievedDurationMinutes,
+    outingCount: selected.length,
+    distinctRouteCount: selected.length,
+    planSummary: `${selected.length} distinct principal summits; ascent and distance are advisory.`,
   };
 }
 
