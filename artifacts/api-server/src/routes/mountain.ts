@@ -140,18 +140,17 @@ async function lookupWithAi(name: string): Promise<MountainResponse> {
 function canonicalResponse(
   mountain: VerifiedCanonicalMountain,
   matchedTerm: string,
-  routes: MountainResponse["routes"],
-  routeSource: "cache" | "ai" | "unavailable",
 ) {
   return {
     source: "canonical" as const,
     mountainName: mountain.name,
     country: mountain.country,
     region: mountain.region,
-    // The legacy route shape remains available for existing clients, but its
-    // source is explicit and never overrides the trusted catalogue facts.
-    routes,
-    routeSource,
+    routes: mountain.routes,
+    routeSource:
+      mountain.routes.length > 0
+        ? ("canonical" as const)
+        : ("unavailable" as const),
     canonicalIdentity: {
       id: mountain.id,
       sourceFeatureId: mountain.sourceFeatureId,
@@ -237,59 +236,7 @@ export function createMountainLookupHandler(
         },
         "Canonical mountain catalogue hit",
       );
-      const canonicalSlug = mountainSlug(canonical.mountain.name);
-      try {
-        const cached = await dependencies.cacheLookup(canonicalSlug);
-        if (cached) {
-          res.json(
-            canonicalResponse(
-              canonical.mountain,
-              input.name,
-              cached.routes,
-              "cache",
-            ),
-          );
-          return;
-        }
-      } catch (err) {
-        req.log.warn(
-          { err, slug: canonicalSlug },
-          "Canonical route cache read failed, falling back to AI",
-        );
-      }
-
-      try {
-        const generated = await dependencies.aiLookup(canonical.mountain.name);
-        try {
-          await dependencies.cacheStore(canonicalSlug, generated);
-        } catch (err) {
-          req.log.warn(
-            { err, slug: canonicalSlug },
-            "Canonical route cache write failed",
-          );
-        }
-        res.json(
-          canonicalResponse(
-            canonical.mountain,
-            input.name,
-            generated.routes,
-            "ai",
-          ),
-        );
-      } catch (err) {
-        req.log.warn(
-          { err },
-          "Canonical identity resolved but legacy route enrichment failed",
-        );
-        res.json(
-          canonicalResponse(
-            canonical.mountain,
-            input.name,
-            [],
-            "unavailable",
-          ),
-        );
-      }
+      res.json(canonicalResponse(canonical.mountain, input.name));
       return;
     }
 

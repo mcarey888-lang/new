@@ -117,6 +117,7 @@ SELECT
 FROM summit_data_engine.mountain_aliases AS a
 JOIN summit_data_engine.mountains AS m ON m.id = a.mountain_id
 WHERE m.status = 'verified'
+  AND a.status = 'verified'
   AND m.canonical_source_key IS NOT NULL
   AND a.normalized_name = $1
 ORDER BY "name", "country" NULLS LAST, "region" NULLS LAST, "id"

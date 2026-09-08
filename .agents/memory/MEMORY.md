@@ -33,4 +33,4 @@
 - [Active hike ownership](active-hike-ownership.md) — cold-start restoration must reject checkpoints without the current authenticated user ID.
 - [Virtual expedition response consistency](virtual-expedition-response-consistency.md) — narrative day routes must match the final post-processed recommendation set.
 - [English place-name display](english-place-name-display.md) — use recognised English equivalents in user-facing route and region names; retain Welsh names without one.
-- [Canonical alias trust boundary](canonical-alias-trust-boundary.md) — aliases identify verified mountains but are not themselves exposed as verified facts.
+- [Canonical mountain trust boundary](canonical-mountain-trust-boundary.md) — only verified aliases resolve canonically; canonical routes never use cache or AI.

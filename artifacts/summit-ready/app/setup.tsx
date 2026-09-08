@@ -44,11 +44,33 @@ interface RouteOption {
   startingPoint?: string;
 }
 
+interface VerifiedRouteOption {
+  identityKey: string;
+  name: string;
+  aliases: string[];
+  description: string;
+  startName?: string;
+  startElevationM?: number;
+  summitElevationM?: number;
+  distanceKm?: number;
+  totalAscentM?: number;
+  totalDescentM?: number;
+  typicalDurationHours?: number;
+}
+
 interface MountainResult {
   mountainName: string;
   country?: string;
   region?: string;
-  routes: RouteOption[];
+  source?: "canonical" | "cache" | "ai";
+  routeSource?: "canonical" | "unavailable";
+  routes: Array<RouteOption | VerifiedRouteOption>;
+}
+
+function isLegacyRouteOption(
+  route: RouteOption | VerifiedRouteOption,
+): route is RouteOption {
+  return "difficulty" in route;
 }
 
 const DIFF_ICONS: Record<Difficulty, string> = {
@@ -291,6 +313,10 @@ export default function SetupScreen() {
       });
       if (!res.ok) throw new Error("Lookup failed");
       const data: MountainResult = await res.json();
+      if (data.source === "canonical" && data.mountainName !== mountainName) {
+        skipLookupRef.current = true;
+        setName(data.mountainName);
+      }
       setMountainResult(data); setLookupState("results");
     } catch {
       setLookupError("Could not look up route data. Fill in manually.");
@@ -654,43 +680,68 @@ export default function SetupScreen() {
                       )}
                     </View>
                     <View style={[styles.routeCountBadge, { backgroundColor: T.greenDim }]}>
-                      <Text style={[styles.routeCountText, { color: T.green }]}>{mountainResult.routes.length} routes</Text>
+                      <Text style={[styles.routeCountText, { color: T.green }]}>
+                        {mountainResult.routes.length}{" "}
+                        {mountainResult.source === "canonical"
+                          ? `verified route${mountainResult.routes.length === 1 ? "" : "s"}`
+                          : `route${mountainResult.routes.length === 1 ? "" : "s"}`}
+                      </Text>
                     </View>
                   </View>
                 </View>
-                <Text style={styles.routePickerLabel}>Select a route to auto-fill details:</Text>
-                {mountainResult.routes.map((route, i) => {
-                  const isSelected = selectedRoute?.name === route.name;
-                  const dc = DIFF_COLORS[route.difficulty];
-                  return (
-                    <TouchableOpacity key={i} onPress={() => selectRoute(route)} activeOpacity={0.8}
-                      style={[styles.routeCard, isSelected && { borderColor: dc, borderWidth: 1.5 }]}
-                    >
-                      <LinearGradient colors={isSelected ? [dc + "12", "transparent"] : ["transparent", "transparent"]} style={StyleSheet.absoluteFill} />
-                      <View style={styles.routeCardTop}>
-                        <Text style={styles.routeEmoji}>{DIFF_ICONS[route.difficulty]}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.routeName}>{route.name}</Text>
-                          {route.startingPoint && <Text style={styles.routeStart}>From {route.startingPoint}</Text>}
-                        </View>
-                        <View style={[styles.diffBadge, { backgroundColor: dc + "20" }]}>
-                          <Text style={[styles.diffBadgeText, { color: dc }]}>{route.difficulty}</Text>
-                        </View>
-                        {isSelected && (
-                          <View style={[styles.checkMark, { backgroundColor: dc }]}>
-                            <Check size={12} color="#fff" />
+                {mountainResult.source === "canonical" ? (
+                  <View style={styles.verifiedRouteNotice}>
+                    <Info size={16} color={T.blue} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.verifiedRouteNoticeTitle}>
+                        {mountainResult.routes.length > 0
+                          ? "Verified route data found"
+                          : "No verified routes available yet"}
+                      </Text>
+                      <Text style={styles.verifiedRouteNoticeText}>
+                        {mountainResult.routes.length > 0
+                          ? "These catalogue routes do not include a verified difficulty rating, so enter your training details manually below."
+                          : "Enter the route distance, ascent, altitude and difficulty manually below."}
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={styles.routePickerLabel}>Select a route to auto-fill details:</Text>
+                    {mountainResult.routes.filter(isLegacyRouteOption).map((route, i) => {
+                      const isSelected = selectedRoute?.name === route.name;
+                      const dc = DIFF_COLORS[route.difficulty];
+                      return (
+                        <TouchableOpacity key={i} onPress={() => selectRoute(route)} activeOpacity={0.8}
+                          style={[styles.routeCard, isSelected && { borderColor: dc, borderWidth: 1.5 }]}
+                        >
+                          <LinearGradient colors={isSelected ? [dc + "12", "transparent"] : ["transparent", "transparent"]} style={StyleSheet.absoluteFill} />
+                          <View style={styles.routeCardTop}>
+                            <Text style={styles.routeEmoji}>{DIFF_ICONS[route.difficulty]}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.routeName}>{route.name}</Text>
+                              {route.startingPoint && <Text style={styles.routeStart}>From {route.startingPoint}</Text>}
+                            </View>
+                            <View style={[styles.diffBadge, { backgroundColor: dc + "20" }]}>
+                              <Text style={[styles.diffBadgeText, { color: dc }]}>{route.difficulty}</Text>
+                            </View>
+                            {isSelected && (
+                              <View style={[styles.checkMark, { backgroundColor: dc }]}>
+                                <Check size={12} color="#fff" />
+                              </View>
+                            )}
                           </View>
-                        )}
-                      </View>
-                      <Text style={styles.routeDesc} numberOfLines={2}>{route.description}</Text>
-                      <View style={styles.routeStats}>
-                        <RouteStatPill icon={Map} val={`${route.distance}km`} color={T.blue} />
-                        <RouteStatPill icon={TrendingUp} val={`${route.elevationGain}m`} color={T.orange} />
-                        <RouteStatPill icon={Navigation} val={`${route.highestAltitude}m asl`} color={T.purple} />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                          <Text style={styles.routeDesc} numberOfLines={2}>{route.description}</Text>
+                          <View style={styles.routeStats}>
+                            <RouteStatPill icon={Map} val={`${route.distance}km`} color={T.blue} />
+                            <RouteStatPill icon={TrendingUp} val={`${route.elevationGain}m`} color={T.orange} />
+                            <RouteStatPill icon={Navigation} val={`${route.highestAltitude}m asl`} color={T.purple} />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
+                )}
               </Animated.View>
             )}
           </Section>
@@ -1469,6 +1520,18 @@ const styles = StyleSheet.create({
   routeCountBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   routeCountText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   routePickerLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  verifiedRouteNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: T.blue + "10",
+    borderWidth: 1,
+    borderColor: T.blue + "30",
+    borderRadius: 12,
+    padding: 12,
+  },
+  verifiedRouteNoticeTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white, marginBottom: 3 },
+  verifiedRouteNoticeText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
   routeCard: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 8, overflow: "hidden", gap: 8 },
   routeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   routeEmoji: { fontSize: 20 },
