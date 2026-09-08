@@ -17,6 +17,7 @@ function hill(name: string, elevation: number, overrides: Partial<Hill> = {}): H
     grade: "Hard",
     emoji: "mountain",
     routeType: "hill",
+    routeDistance: 8,
     estimatedTime: "3 h",
     ...overrides,
   };
@@ -218,8 +219,8 @@ describe("deterministic expedition matcher", () => {
       lat: 52,
       lng: -4,
       grade: "Easy",
-      surface: "Unknown",
-      routeDistance: undefined,
+      surface: "Rocky path",
+      routeDistance: 8,
       estimatedTime: "30 min",
     });
     const input = [...distractors, largeRoute];
@@ -250,8 +251,8 @@ describe("deterministic expedition matcher", () => {
       lat: 54,
       lng: -5,
       grade: "Easy",
-      surface: "Unknown",
-      routeDistance: undefined,
+      surface: "Rocky path",
+      routeDistance: 8,
       estimatedTime: "30 min",
     });
     const result = matchDeterministicExpedition(
@@ -264,5 +265,320 @@ describe("deterministic expedition matcher", () => {
     expect(result.targetRatio).toBeGreaterThanOrEqual(0.9);
     expect(result.targetRatio).toBeLessThanOrEqual(1.1);
     expect(result.selectedHills.some(selected => selected.name === relevant.name)).toBe(true);
+  });
+
+  it("rejects incomplete routes and weak generic Ways, while retaining a structurally strong Way", () => {
+    const result = matchDeterministicExpedition([
+      hill("Incomplete Ridge", 500, { routeDistance: undefined }),
+      hill("Riverside Way", 80, {
+        routeType: "out-and-back", routeDistance: 12, estimatedTime: "3 h",
+        grade: "Easy", surface: "gravel trail", summitElevationASL: 120,
+      }),
+      hill("Summit Way", 500, {
+        routeType: "out-and-back", routeDistance: 7, estimatedTime: "3 h",
+        grade: "Hard", surface: "rocky ridge", summitElevationASL: 900,
+      }),
+    ], profile({ totalElevationGain: 1_000 }));
+
+    expect(result.rankedCandidates.find(candidate => candidate.name === "Incomplete Ridge")?.eligible).toBe(false);
+    expect(result.rankedCandidates.find(candidate => candidate.name === "Riverside Way")?.eligible).toBe(false);
+    expect(result.rankedCandidates.find(candidate => candidate.name === "Summit Way")?.eligible).toBe(true);
+    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["Summit Way"]);
+  });
+
+  it("accepts a substantial named summit route when a legacy seed lacks summit altitude", () => {
+    const result = matchDeterministicExpedition([
+      hill("Castle Crag Route", 240, {
+        routeType: "circular",
+        routeDistance: 8,
+        estimatedTime: "2 h 48 min",
+        surface: "mountain",
+        summitElevationASL: undefined,
+        routeDataStatus: "seeded_estimate",
+      }),
+      hill("Eamont Way", 537, {
+        routeType: "out-and-back",
+        routeDistance: 17.9,
+        estimatedTime: "6 h 16 min",
+        surface: "mountain",
+        summitElevationASL: undefined,
+        routeDataStatus: "seeded_estimate",
+      }),
+    ], profile({ totalElevationGain: 1_000 }));
+
+    expect(result.rankedCandidates.find(candidate =>
+      candidate.name === "Castle Crag Route")?.eligible).toBe(true);
+    expect(result.rankedCandidates.find(candidate =>
+      candidate.name === "Eamont Way")?.eligible).toBe(false);
+    expect(result.selectedHills.map(selected => selected.name))
+      .toEqual(["Castle Crag Route"]);
+  });
+
+  it("uses local summit altitude only as objective quality, never as route ascent", () => {
+    const result = matchDeterministicExpedition([
+      hill("High summit route", 300, { summitElevationASL: 1_500, routeDistance: 6 }),
+      hill("Low summit route", 300, { summitElevationASL: 250, routeDistance: 6 }),
+    ], profile({ totalElevationGain: 900 }));
+
+    expect(result.achievedAscent).toBe(900);
+    expect(result.selectedHills[0].name).toBe("High summit route");
+  });
+
+  it("excludes incompatible hazards but permits compatible technical route DNA", () => {
+    const technical = hill("Technical ridge", 900, {
+      hazardLevel: "high", routeDistance: 10, surface: "rocky scrambling ridge",
+    });
+    const incompatible = matchDeterministicExpedition([technical], profile({
+      routeDna: { ...profile().routeDna, exposure: 2, scrambling: 2, technicalMovement: 2 },
+    }));
+    const compatible = matchDeterministicExpedition([technical], profile());
+
+    expect(incompatible.selectedHills).toHaveLength(0);
+    expect(incompatible.rankedCandidates[0].rejectionReasons).toContain("hazard incompatible with target DNA");
+    expect(compatible.selectedHills).toHaveLength(1);
+  });
+
+  it("selects technical terrain for a technical target but excludes it for a non-technical target", () => {
+    const technicalRoute = hill("Tryfan North Ridge", 600, {
+      hazardLevel: "high",
+      routeDistance: 8,
+      estimatedTime: "3.5 h",
+      surface: "rocky scrambling ridge",
+    });
+    const walkingRoute = hill("Moel Siabod Walk", 600, {
+      hazardLevel: "low",
+      routeDistance: 8,
+      estimatedTime: "3.5 h",
+      surface: "grass mountain path",
+    });
+    const technicalTarget = profile({
+      totalElevationGain: 1_200,
+      totalDistance: 16,
+      estimatedDays: 1,
+      routeDna: {
+        ...profile().routeDna,
+        exposure: 8,
+        scrambling: 8,
+        ridgeTravel: 8,
+        technicalMovement: 8,
+      },
+    });
+    const walkingTarget = profile({
+      totalElevationGain: 1_200,
+      totalDistance: 16,
+      estimatedDays: 1,
+      routeDna: {
+        ...profile().routeDna,
+        exposure: 1,
+        scrambling: 1,
+        ridgeTravel: 2,
+        technicalMovement: 1,
+      },
+    });
+
+    const technical = matchDeterministicExpedition(
+      [walkingRoute, technicalRoute],
+      technicalTarget,
+    );
+    const walking = matchDeterministicExpedition(
+      [technicalRoute, walkingRoute],
+      walkingTarget,
+    );
+
+    expect(technical.selectedHills[0].name).toBe("Tryfan North Ridge");
+    expect(walking.selectedHills[0].name).toBe("Moel Siabod Walk");
+    expect(walking.rankedCandidates.find(candidate =>
+      candidate.name === "Tryfan North Ridge")?.compatible).toBe(false);
+  });
+
+  it("does not force an unsuitable trail into the ascent band", () => {
+    const result = matchDeterministicExpedition([
+      hill("Suitable ascent", 700, { routeDistance: 9 }),
+      hill("Long valley trail", 1_200, {
+        routeType: "out-and-back", routeDistance: 30, estimatedTime: "8 h",
+        grade: "Easy", surface: "gravel trail", summitElevationASL: 150,
+      }),
+    ], profile({ totalElevationGain: 1_000 }));
+
+    expect(result.targetRatio).toBeLessThan(0.9);
+    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["Suitable ascent"]);
+  });
+
+  it("does not let several generic Ways beat a compact mountain combination", () => {
+    const ways = Array.from({ length: 4 }, (_, index) =>
+      hill(`Generic Valley Way ${index + 1}`, 500, {
+        routeType: "circular",
+        routeDistance: 16.7,
+        estimatedTime: "4 h",
+        grade: "Moderate",
+        surface: "mountain",
+        summitElevationASL: undefined,
+        routeDataStatus: "seeded_estimate",
+      }));
+    const result = matchDeterministicExpedition([
+      ...ways,
+      hill("High Fell North", 900, {
+        routeDistance: 15,
+        summitElevationASL: 950,
+      }),
+      hill("High Fell South", 900, {
+        routeDistance: 15,
+        summitElevationASL: 900,
+      }),
+    ], profile({ totalElevationGain: 2_000, totalDistance: 30 }));
+
+    expect(result.selectedHills.map(selected => selected.name).sort())
+      .toEqual(["High Fell North", "High Fell South"]);
+    expect(ways.every(way =>
+      result.rankedCandidates.find(candidate =>
+        candidate.name === way.name)?.eligible === false)).toBe(true);
+  });
+
+  it("reports a bounded runner-up combination and its lexicographic reason", () => {
+    const result = matchDeterministicExpedition([
+      hill("Primary A", 500, { routeDistance: 8 }),
+      hill("Primary B", 500, { routeDistance: 8 }),
+      hill("Alternative A", 450, { routeDistance: 8 }),
+      hill("Alternative B", 500, { routeDistance: 8 }),
+    ], profile({ totalElevationGain: 1_000 }));
+
+    expect(result.strongestAlternative).toMatch(/(outings|repeat|quality|distance|duration|DNA|score|tie-break)/);
+    expect(result.strongestAlternative).toContain(",");
+    expect(result.outingCount).toBe(2);
+    expect(result.distinctRouteCount).toBe(2);
+  });
+
+  it("prefers two substantial in-band routes over four routes with an exact ascent total", () => {
+    const compact = [
+      hill("High Mountain North", 900, { summitElevationASL: 950, routeDistance: 15 }),
+      hill("High Mountain South", 900, { summitElevationASL: 900, routeDistance: 15 }),
+    ];
+    const fragmented = Array.from({ length: 4 }, (_, index) =>
+      hill(`Lower Hill ${index + 1}`, 500, {
+        summitElevationASL: 300,
+        routeDistance: 7.5,
+      }));
+
+    const result = matchDeterministicExpedition(
+      [...fragmented, ...compact],
+      profile({ totalElevationGain: 2_000, totalDistance: 30 }),
+    );
+
+    expect(result.selectedHills.map(selected => selected.name).sort())
+      .toEqual(["High Mountain North", "High Mountain South"]);
+    expect(result.outingCount).toBe(2);
+    expect(result.targetRatio).toBe(0.9);
+  });
+
+  it("uses total distance before lower-priority DNA differences", () => {
+    const result = matchDeterministicExpedition([
+      hill("Distance Match North", 800, {
+        routeDistance: 16,
+        estimatedTime: "3.5 h",
+        summitElevationASL: 900,
+        routeDataStatus: "external_route",
+      }),
+      hill("Distance Match South", 800, {
+        routeDistance: 16,
+        estimatedTime: "3.5 h",
+        summitElevationASL: 900,
+        routeDataStatus: "external_route",
+      }),
+      hill("Short Route North", 800, {
+        routeDistance: 8,
+        estimatedTime: "3.5 h",
+        summitElevationASL: 900,
+        routeDataStatus: "external_route",
+      }),
+      hill("Short Route South", 800, {
+        routeDistance: 8,
+        estimatedTime: "3.5 h",
+        summitElevationASL: 900,
+        routeDataStatus: "external_route",
+      }),
+    ], profile({ totalElevationGain: 1_600, totalDistance: 32, estimatedDays: 1 }));
+
+    expect(result.selectedHills.map(selected => selected.name).sort())
+      .toEqual(["Distance Match North", "Distance Match South"]);
+    expect(result.distanceRatio).toBe(1);
+  });
+
+  it("uses total duration after compactness, objective quality and distance", () => {
+    const result = matchDeterministicExpedition([
+      hill("Duration Match North", 500, { routeDistance: 16, estimatedTime: "3.5 h" }),
+      hill("Duration Match South", 500, { routeDistance: 16, estimatedTime: "3.5 h" }),
+      hill("Short Day North", 500, { routeDistance: 16, estimatedTime: "1 h" }),
+      hill("Short Day South", 500, { routeDistance: 16, estimatedTime: "1 h" }),
+    ], profile({ totalElevationGain: 1_000, totalDistance: 32, estimatedDays: 1 }));
+
+    expect(result.selectedHills.map(selected => selected.name).sort())
+      .toEqual(["Duration Match North", "Duration Match South"]);
+    expect(result.achievedDurationMinutes).toBe(7 * 60);
+  });
+
+  it("uses technical terrain similarity after physical plan facts", () => {
+    const technicalProfile = profile({
+      totalElevationGain: 1_000,
+      totalDistance: 16,
+      estimatedDays: 1,
+      routeDna: {
+        ...profile().routeDna,
+        scrambling: 8,
+        exposure: 7,
+        ridgeTravel: 8,
+        technicalMovement: 8,
+      },
+    });
+    const result = matchDeterministicExpedition([
+      hill("Rock Ridge North", 500, { routeDistance: 8, estimatedTime: "3.5 h", surface: "rocky scrambling ridge" }),
+      hill("Rock Ridge South", 500, { routeDistance: 8, estimatedTime: "3.5 h", surface: "rocky scrambling ridge" }),
+      hill("Grass Path North", 500, { routeDistance: 8, estimatedTime: "3.5 h", surface: "grass path" }),
+      hill("Grass Path South", 500, { routeDistance: 8, estimatedTime: "3.5 h", surface: "grass path" }),
+    ], technicalProfile);
+
+    expect(result.selectedHills.map(selected => selected.name).sort())
+      .toEqual(["Rock Ridge North", "Rock Ridge South"]);
+  });
+
+  it("avoids repeat outings when an equally compact distinct-route plan exists", () => {
+    const result = matchDeterministicExpedition([
+      hill("Repeatable Mountain", 500, { routeDistance: 8, estimatedTime: "3.5 h" }),
+      hill("Distinct Mountain North", 500, { routeDistance: 8, estimatedTime: "3.5 h" }),
+      hill("Distinct Mountain South", 500, { routeDistance: 8, estimatedTime: "3.5 h" }),
+    ], profile({ totalElevationGain: 1_000, totalDistance: 16, estimatedDays: 1 }));
+
+    expect(result.outingCount).toBe(2);
+    expect(result.distinctRouteCount).toBe(2);
+    expect(result.selectedHills.every(selected => selected.repeats === 1)).toBe(true);
+  });
+
+  it("keeps the new lexicographic result stable under candidate permutation", () => {
+    const input = [
+      hill("Compact West", 900, {
+        routeIdentityKey: "route:v1:test:compact-west:54.1,-3.1",
+        summitElevationASL: 900,
+        routeDistance: 15,
+      }),
+      hill("Compact East", 900, {
+        routeIdentityKey: "route:v1:test:compact-east:54.2,-3.2",
+        summitElevationASL: 850,
+        routeDistance: 15,
+      }),
+      ...Array.from({ length: 4 }, (_, index) =>
+        hill(`Fragment ${index + 1}`, 500, {
+          routeIdentityKey: `route:v1:test:fragment-${index + 1}:54.${index + 3},-3.3`,
+          routeDistance: 7.5,
+        })),
+    ];
+    const target = profile({ totalElevationGain: 2_000, totalDistance: 30 });
+    const first = matchDeterministicExpedition(input, target);
+    const reversed = matchDeterministicExpedition([...input].reverse(), target);
+
+    expect(first.selectedHills).toEqual(reversed.selectedHills);
+    expect(first.selectedHills.map(selected => selected.routeIdentityKey))
+      .toEqual([
+        "route:v1:test:compact-east:54.2,-3.2",
+        "route:v1:test:compact-west:54.1,-3.1",
+      ]);
   });
 });

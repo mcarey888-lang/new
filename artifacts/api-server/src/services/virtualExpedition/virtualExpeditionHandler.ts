@@ -157,11 +157,39 @@ function buildDeterministicPlan(
     const ranked = (hill.routeIdentityKey
       ? scoreByIdentity.get(hill.routeIdentityKey)
       : undefined) ?? scoreByName.get(hill.name);
-    const source = hill.dataSource ? ` Source: ${hill.dataSource.replaceAll("_", " ")}.` : "";
+    const summit = hill.summitElevationASL != null
+      ? ` Summit ${hill.summitElevationASL.toLocaleString()}m ASL.`
+      : "";
+    const routeDistance = hill.routeDistance != null
+      ? ` Distance ${hill.routeDistance.toLocaleString()}km.`
+      : "";
+    const duration = hill.estimatedTime ? ` Duration ${hill.estimatedTime}.` : "";
+    const terrainFit = ranked
+      ? ` Terrain/technical fit ${ranked.components.terrainRouteType}%.`
+      : "";
+    const routeFactStatus = hill.routeDataStatus === "external_route"
+      ? "verified route facts"
+      : hill.routeDataStatus === "terrain_calculated"
+        ? "calculated terrain route facts"
+        : hill.routeDataStatus === "seeded_estimate"
+          ? "estimated seeded route facts"
+          : hill.routeDataStatus === "unverified_cache"
+            ? "unverified cached route facts"
+            : "route fact status unknown";
+    const sourceLabel = hill.dataSource === "legacy_cache"
+      ? "legacy route cache"
+      : hill.dataSource === "seeded_osm"
+        ? "seeded OSM catalogue"
+        : hill.dataSource
+          ? hill.dataSource.replaceAll("_", " ")
+          : "source not recorded";
+    const source = ` Source: ${sourceLabel}; ${routeFactStatus}.`;
     days[destination].routes.push({
       name: hill.name,
       routeIdentityKey: hill.routeIdentityKey,
-      why: `${hill.elevation.toLocaleString()}m route ascent${hill.repeats > 1 ? ` × ${hill.repeats} repeats` : ""}; deterministic fit ${ranked?.score ?? 0}%.${source}`,
+      why: `${hill.elevation.toLocaleString()}m route ascent${hill.repeats > 1 ? ` × ${hill.repeats} repeats` : ""}.`
+        + `${summit}${routeDistance}${duration}${terrainFit}`
+        + ` deterministic fit ${ranked?.score ?? 0}%.${source}`,
     });
     dayAscent[destination] += hill.elevation * hill.repeats;
   }
@@ -174,6 +202,16 @@ function buildDeterministicPlan(
       candidate.compatible)
     .slice(0, 3)
     .map(candidate => candidate.name);
+  const highestLocalSummit = Math.max(
+    0,
+    ...match.selectedHills.flatMap(hill =>
+      hill.summitElevationASL != null ? [hill.summitElevationASL] : []),
+  );
+  const altitudeNote = highestLocalSummit === 0
+    ? " Local candidates do not provide summit altitude, so the target's absolute altitude cannot be reproduced or compared."
+    : profile.summitElevation >= highestLocalSummit + 500
+      ? " The target's absolute summit altitude cannot be reproduced locally."
+      : "";
 
   return {
     title: `${profile.name}: local simulation`,
@@ -185,7 +223,7 @@ function buildDeterministicPlan(
     ])),
     adventureScore: match.deterministicScore,
     dnaMatchScore: match.deterministicScore,
-    dnaMatchNotes: `Selected by ${match.matchMethod}; ${match.achievedAscent.toLocaleString()}m of ${profile.totalElevationGain.toLocaleString()}m target ascent (${Math.round(match.targetRatio * 100)}%).`,
+    dnaMatchNotes: `Selected by ${match.matchMethod}: ${match.outingCount} outings across ${match.distinctRouteCount} distinct routes; ${match.achievedAscent.toLocaleString()}m of ${profile.totalElevationGain.toLocaleString()}m ascent (${Math.round(match.targetRatio * 100)}%) and ${match.achievedDistance.toLocaleString()}km of ${profile.totalDistance.toLocaleString()}km (${Math.round(match.distanceRatio * 100)}%). Summit altitude is local route context and is not substituted for ascent.${altitudeNote} Prominence is unavailable because local route facts do not contain prominence.${match.strongestAlternative ? ` Strongest alternative combination: ${match.strongestAlternative}` : ""}`,
   };
 }
 

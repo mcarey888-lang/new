@@ -9,6 +9,8 @@ Last-resort target-profile fallback is allowed only after verified route facts a
 
 Local candidates come from public/database route records first, then bounded OSM/terrain enrichment only when the deterministic matcher cannot form a safe 90–110% combination. Seeded OSM estimates must be labelled as estimates, and user-owned tracked routes must never be reused globally. Seeded route coordinates may be relation centres or representative points: they may support identity/matching, but must never be presented as verified trailheads, parking, or driving destinations.
 
+Some legacy seeded trail catalogues use a coarse fixed ascent-density estimate and do not link routes to summit altitude. Treat those rows as estimates: require complete route facts and structured mountain terrain, then use generic summit-objective wording only as corroboration. Generic Ways, valley walks, coast paths, and sightseeing routes must not qualify merely because their aggregate ascent helps a plan reach the target band.
+
 Every new local route carries a stable public geographic identity through recommendations, plans, tracking, hill details, and completion. Older saved expeditions without an identity continue using the visible route name as a compatibility fallback.
 
 **Why:** Target routes can differ materially, legacy cache facts may originate from AI, same-named local routes can be geographically distinct, summit altitude must never be mistaken for route ascent, and an OSM relation centre can resolve to an unrelated building rather than the public route start.
