@@ -3,6 +3,11 @@ import type { TargetMountainProfile } from "../../routes/virtual-expedition.js";
 
 export const DETERMINISTIC_MATCH_METHOD = "deterministic_route_facts_v1" as const;
 export const QUICKEST_HIGH_SUMMITS_MATCH_METHOD = "quickest_high_summits_v1" as const;
+/** Aggregate objective tolerances used by the minimum-summit matcher. */
+export const QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE = 0.15;
+export const QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE = 0.20;
+export const QUICK_SUMMIT_WIDE_ASCENT_TOLERANCE = 0.30;
+export const QUICK_SUMMIT_WIDE_DISTANCE_TOLERANCE = 0.35;
 
 export interface CandidateScoreComponents {
   ascentContribution: number;
@@ -41,12 +46,28 @@ export interface DeterministicExpeditionMatch {
   distinctRouteCount: number;
   planSummary?: string;
   strongestAlternative?: string;
+  /** Additive objective-fit diagnostics for API consumers. */
+  toleranceMode: "normal" | "widened" | "approximate" | "none";
+  toleranceLimits: { ascent: number; distance: number };
+  selectionReason: string;
+  matchDiagnostics: {
+    targetAscent: number;
+    plannedAscent: number;
+    targetDistance: number;
+    plannedDistance: number;
+    ascentRatio: number;
+    distanceRatio: number;
+    withinNormal: boolean;
+    withinWidened: boolean;
+  };
 }
 
 function summitIdentity(hill: Hill): string {
   if (hill.summitIdentityKey) return hill.summitIdentityKey;
-  const name = normaliseName(hill.name);
-  return validCoordinates(hill) ? `${name}@${hill.lat},${hill.lng}` : name;
+  // A route is not a new summit merely because its trailhead/record
+  // coordinates differ. Explicit summit keys can distinguish genuinely
+  // separate objectives with the same display name.
+  return normaliseName(hill.name);
 }
 
 const OPTIMISATION_POOL_SIZE = 36;
@@ -150,10 +171,23 @@ function hazardScore(hill: Hill, profile: TargetMountainProfile): { score: numbe
 
 function abilityCompatibility(
   hill: Hill,
+  profile: TargetMountainProfile,
   difficultyPreference?: string | null,
 ): { compatible: boolean; reason?: string } {
   const abilityLevel = difficultyLevel(difficultyPreference);
   if (abilityLevel === 0) return { compatible: true };
+
+  // A difficulty preference is a ranking preference, not proof that the user
+  // cannot scramble. When the selected target route itself has strong
+  // scrambling/exposure DNA (for example Matterhorn), target-DNA hazard
+  // compatibility is the authoritative safety gate so relevant routes such as
+  // Tryfan or Crib Goch are not incorrectly discarded as merely "Hard".
+  const technicalTarget = Math.max(
+    profile.routeDna.scrambling,
+    profile.routeDna.technicalMovement,
+    profile.routeDna.exposure,
+  ) >= 7;
+  if (technicalTarget && abilityLevel > 1) return { compatible: true };
 
   const routeLevel = difficultyLevel(hill.grade);
   const hazardLevel = {
@@ -244,7 +278,7 @@ function scoreCandidate(
 ): RankedCandidateRecord {
   const minutes = parseEstimatedMinutes(hill.estimatedTime) ?? 0;
   const hazard = hazardScore(hill, profile);
-  const ability = abilityCompatibility(hill, difficultyPreference);
+  const ability = abilityCompatibility(hill, profile, difficultyPreference);
   const evidence = routeEvidence(hill);
   const components: CandidateScoreComponents = {
     ascentContribution: proximityScore(hill.elevation, profile.totalElevationGain / 4),
@@ -595,13 +629,31 @@ export function matchDeterministicExpedition(
     strongestAlternative: alternativeRoutes && alternativeReason
       ? `${alternativeRoutes}: ${alternativeReason}`
       : undefined,
+    toleranceMode: "normal",
+    toleranceLimits: {
+      ascent: QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE,
+      distance: QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE,
+    },
+    selectionReason: "Legacy deterministic route optimisation.",
+    matchDiagnostics: {
+      targetAscent: profile.totalElevationGain,
+      plannedAscent: achievedAscent,
+      targetDistance: profile.totalDistance,
+      plannedDistance: achievedDistance,
+      ascentRatio: targetRatio,
+      distanceRatio,
+      withinNormal: Math.abs(targetRatio - 1) <= QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE
+        && Math.abs(distanceRatio - 1) <= QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE,
+      withinWidened: Math.abs(targetRatio - 1) <= QUICK_SUMMIT_WIDE_ASCENT_TOLERANCE
+        && Math.abs(distanceRatio - 1) <= QUICK_SUMMIT_WIDE_DISTANCE_TOLERANCE,
+    },
   };
 }
 
 /**
- * Objective-first expedition mode. It deliberately does not optimise ascent:
- * the requested number of distinct, safe genuine summits is the hard cap and
- * route gain/distance are advisory diagnostics only.
+ * Objective-first expedition mode. It searches the fewest distinct, safe
+ * genuine summits that match both route ascent and distance; requested days
+ * are a maximum rather than a target summit count.
  */
 export function matchQuickestHighSummits(
   candidates: Hill[],
@@ -618,46 +670,171 @@ export function matchQuickestHighSummits(
     || a.hill.elevation - b.hill.elevation
     || (a.hill.routeDistance ?? Number.POSITIVE_INFINITY) - (b.hill.routeDistance ?? Number.POSITIVE_INFINITY)
     || stableHillCompare(a.hill, b.hill));
-  const selected: typeof ranked = [];
-  const seenSummits = new Set<string>();
-  for (const candidate of ranked) {
-    if (!candidate.record.eligible) continue;
-    const identity = summitIdentity(candidate.hill);
-    if (seenSummits.has(identity)) continue;
-    const nearbyPrincipal = selected.find(selectedCandidate =>
-      validCoordinates(candidate.hill)
-      && validCoordinates(selectedCandidate.hill)
-      && haversineKm(candidate.hill, selectedCandidate.hill) < PRINCIPAL_SUMMIT_SEPARATION_KM);
-    if (nearbyPrincipal) {
-      candidate.record.eligible = false;
-      candidate.record.rejectionReasons.push(
-        `subsidiary peak is within ${PRINCIPAL_SUMMIT_SEPARATION_KM} km of selected principal summit ${nearbyPrincipal.hill.name}`,
-      );
-      continue;
+  // Technical targets should not lose a route merely because its catalogue label
+  // says Moderate. Explicitly unsafe hazards still fail the safety gate.
+  const technicalTarget = Math.max(profile.routeDna.scrambling, profile.routeDna.technicalMovement) >= 7;
+  const generallyEligible = ranked.filter(candidate => {
+    if (candidate.record.eligible) return true;
+    if (!technicalTarget || !candidate.record.compatible) return false;
+    const technicalRoute = /(rock|scrambl|boulder|ridge|scree)/i.test(candidate.hill.surface)
+      || candidate.hill.routeType === "hill";
+    if (technicalRoute && candidate.record.rejectionReasons?.some(reason => reason.includes("difficulty preference"))) {
+      candidate.record.eligible = true;
+      candidate.record.rejectionReasons = candidate.record.rejectionReasons.filter(reason =>
+        !reason.includes("difficulty preference"));
+      return true;
     }
-    seenSummits.add(identity);
-    selected.push(candidate);
-    if (selected.length >= profile.estimatedDays) break;
+    return false;
+  });
+  const hasTechnicalEvidence = (candidate: typeof ranked[number]) =>
+    candidate.hill.hazardLevel === "high"
+    || candidate.hill.hazardLevel === "severe"
+    || /(scrambl|technical rock|knife-edge)/i.test(candidate.hill.surface);
+  const technicalEligible = generallyEligible.filter(hasTechnicalEvidence);
+  const eligible = technicalTarget && technicalEligible.length
+    ? technicalEligible
+    : generallyEligible;
+  if (technicalTarget && technicalEligible.length) {
+    for (const candidate of generallyEligible) {
+      if (hasTechnicalEvidence(candidate)) continue;
+      candidate.record.eligible = false;
+      candidate.record.rejectionReasons = [
+        ...(candidate.record.rejectionReasons ?? []),
+        "lacks known technical-route evidence for this strongly technical target",
+      ];
+    }
   }
-  const selectedHills = selected.map(candidate => materialiseHill(candidate.hill, 1));
+  const safeCandidates = eligible.slice(0, OPTIMISATION_POOL_SIZE);
+  type QuickCombo = typeof safeCandidates;
+  const combos: QuickCombo[] = [];
+  const addCombos = (start: number, wanted: number, picked: QuickCombo): void => {
+    if (picked.length === wanted) {
+      combos.push(picked);
+      return;
+    }
+    for (let i = start; i < safeCandidates.length; i += 1) {
+      const candidate = safeCandidates[i];
+      if (picked.some(existing => summitIdentity(existing.hill) === summitIdentity(candidate.hill))) continue;
+      if (picked.some(existing => validCoordinates(existing.hill) && validCoordinates(candidate.hill)
+        && haversineKm(existing.hill, candidate.hill) < PRINCIPAL_SUMMIT_SEPARATION_KM)) continue;
+      addCombos(i + 1, wanted, [...picked, candidate]);
+    }
+  };
+  const maxCardinality = Math.min(Math.max(1, profile.estimatedDays), safeCandidates.length);
+  for (let cardinality = 1; cardinality <= maxCardinality; cardinality += 1) addCombos(0, cardinality, []);
+
+  const comboFacts = (combo: QuickCombo) => {
+    const ascent = combo.reduce((sum, item) => sum + item.hill.elevation, 0);
+    const distance = combo.reduce((sum, item) => sum + (item.hill.routeDistance ?? 0), 0);
+    const ascentError = profile.totalElevationGain > 0
+      ? Math.abs(ascent / profile.totalElevationGain - 1) : Number.POSITIVE_INFINITY;
+    const distanceError = profile.totalDistance > 0
+      ? Math.abs(distance / profile.totalDistance - 1) : Number.POSITIVE_INFINITY;
+    return { ascent, distance, ascentError, distanceError };
+  };
+  const inTolerance = (combo: QuickCombo, ascentTolerance: number, distanceTolerance: number) => {
+    const facts = comboFacts(combo);
+    return facts.ascentError <= ascentTolerance && facts.distanceError <= distanceTolerance;
+  };
+  const sourceRank = (item: QuickCombo[number]) =>
+    item.hill.routeDataStatus === "external_route" ? 3
+      : item.hill.dataSource === "canonical_verified" ? 2
+        : item.hill.routeDataStatus === "terrain_calculated" ? 1 : 0;
+  const lexicographicNumbers = (combo: QuickCombo, field: "summitElevationASL" | "summitProminenceM") =>
+    combo.map(item => item.hill[field] ?? -1).sort((a, b) => b - a);
+  const compareCombos = (a: QuickCombo, b: QuickCombo): number => {
+    const af = comboFacts(a); const bf = comboFacts(b);
+    const ae = lexicographicNumbers(a, "summitElevationASL");
+    const be = lexicographicNumbers(b, "summitElevationASL");
+    const combinedElevation = b.reduce((sum, item) => sum + (item.hill.summitElevationASL ?? -1), 0)
+      - a.reduce((sum, item) => sum + (item.hill.summitElevationASL ?? -1), 0);
+    if (combinedElevation) return combinedElevation;
+    for (let i = 0; i < Math.max(ae.length, be.length); i += 1) {
+      if ((be[i] ?? -1) !== (ae[i] ?? -1)) return (be[i] ?? -1) - (ae[i] ?? -1);
+    }
+    const ap = lexicographicNumbers(a, "summitProminenceM");
+    const bp = lexicographicNumbers(b, "summitProminenceM");
+    const combinedProminence = b.reduce((sum, item) => sum + (item.hill.summitProminenceM ?? -1), 0)
+      - a.reduce((sum, item) => sum + (item.hill.summitProminenceM ?? -1), 0);
+    if (combinedProminence) return combinedProminence;
+    for (let i = 0; i < Math.max(ap.length, bp.length); i += 1) {
+      if ((bp[i] ?? -1) !== (ap[i] ?? -1)) return (bp[i] ?? -1) - (ap[i] ?? -1);
+    }
+    const sourceDifference = b.reduce((sum, item) => sum + sourceRank(item), 0)
+      - a.reduce((sum, item) => sum + sourceRank(item), 0);
+    return sourceDifference
+      || (af.ascentError + af.distanceError) - (bf.ascentError + bf.distanceError)
+      || b.reduce((sum, item) => sum + item.record.components.terrainRouteType, 0)
+        - a.reduce((sum, item) => sum + item.record.components.terrainRouteType, 0)
+      || a.map(item => summitIdentity(item.hill)).sort().join("|")
+        .localeCompare(b.map(item => summitIdentity(item.hill)).sort().join("|"));
+  };
+  // Cardinality is primary only for normal and widened matches. Approximation
+  // must genuinely be the closest safe plan, even when that means another day.
+  const normal = combos.filter(combo => inTolerance(
+    combo, QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE, QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE));
+  const wide = combos.filter(combo => inTolerance(
+    combo, QUICK_SUMMIT_WIDE_ASCENT_TOLERANCE, QUICK_SUMMIT_WIDE_DISTANCE_TOLERANCE));
+  const bestByCardinality = (pool: QuickCombo[]) => pool.length
+    ? pool.filter(combo => combo.length === Math.min(...pool.map(item => item.length))).sort(compareCombos)[0]
+    : undefined;
+  const selected = bestByCardinality(normal) ?? bestByCardinality(wide)
+    ?? (combos.length ? combos.sort((a, b) =>
+      (comboFacts(a).ascentError + comboFacts(a).distanceError)
+      - (comboFacts(b).ascentError + comboFacts(b).distanceError)
+      || b.reduce((sum, item) => sum + (item.record.objectiveQuality ?? 0), 0)
+        - a.reduce((sum, item) => sum + (item.record.objectiveQuality ?? 0), 0)
+      || compareCombos(a, b))[0] : undefined);
+  // Keep diagnostics useful: candidates suppressed by the principal/subsidiary
+  // rule are explicitly explained even though they passed the initial safety
+  // and route-evidence gates.
+  if (selected) {
+    for (const candidate of eligible) {
+      if (selected.some(item => summitIdentity(item.hill) === summitIdentity(candidate.hill))) continue;
+      const principal = selected.find(item => validCoordinates(item.hill) && validCoordinates(candidate.hill)
+        && haversineKm(item.hill, candidate.hill) < PRINCIPAL_SUMMIT_SEPARATION_KM);
+      if (principal) {
+        candidate.record.eligible = false;
+        candidate.record.rejectionReasons = candidate.record.rejectionReasons ?? [];
+        candidate.record.rejectionReasons.push(
+          `subsidiary peak is within ${PRINCIPAL_SUMMIT_SEPARATION_KM} km of selected principal summit ${principal.hill.name}`,
+        );
+      }
+    }
+  }
+  const selectedHills = (selected ?? []).map(candidate => materialiseHill(candidate.hill, 1));
   const achievedAscent = selectedHills.reduce((sum, hill) => sum + hill.elevation, 0);
   const achievedDistance = selectedHills.reduce((sum, hill) => sum + (hill.routeDistance ?? 0), 0);
   const achievedDurationMinutes = selectedHills.reduce(
     (sum, hill) => sum + (parseEstimatedMinutes(hill.estimatedTime) ?? 0), 0);
   const targetRatio = profile.totalElevationGain > 0 ? achievedAscent / profile.totalElevationGain : 0;
   const distanceRatio = profile.totalDistance > 0 ? achievedDistance / profile.totalDistance : 0;
+  const withinNormal = Math.abs(targetRatio - 1) <= QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE
+    && Math.abs(distanceRatio - 1) <= QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE;
+  const withinWidened = Math.abs(targetRatio - 1) <= QUICK_SUMMIT_WIDE_ASCENT_TOLERANCE
+    && Math.abs(distanceRatio - 1) <= QUICK_SUMMIT_WIDE_DISTANCE_TOLERANCE;
+  const toleranceMode: DeterministicExpeditionMatch["toleranceMode"] = !selected
+    ? "none" : normal.includes(selected) ? "normal" : wide.includes(selected) ? "widened" : "approximate";
   const warnings: string[] = [];
-  if (selected.length < profile.estimatedDays) {
-    warnings.push(`Only ${selected.length} safe eligible distinct summit${selected.length === 1 ? "" : "s"} were available for ${profile.estimatedDays} day${profile.estimatedDays === 1 ? "" : "s"}; no fillers were added.`);
+  const selectedCount = selected?.length ?? 0;
+  if (toleranceMode === "widened") warnings.push("No normal-tolerance match; selected the minimum-cardinality widened-tolerance match.");
+  if (toleranceMode === "approximate") warnings.push("No widened-tolerance match; tolerance could not be met, so the closest safe quality approximation was selected.");
+  if (selectedCount < profile.estimatedDays) {
+    warnings.push(`Selected ${selectedCount} distinct summit${selectedCount === 1 ? "" : "s"} within the ${profile.estimatedDays}-day maximum; no filler summits were added.`);
   }
-  if (targetRatio < .9 || targetRatio > 1.1) {
-    warnings.push(`Route ascent is advisory in quickest-high-summits mode (${Math.round(targetRatio * 100)}% of target), not a reason to add lower objectives.`);
-  }
+  if (!selected) warnings.push("No eligible safe summit candidates were available; no route was matched.");
+  const selectionReason = toleranceMode === "normal"
+    ? "Minimum-cardinality combination within normal ascent and distance tolerances."
+    : toleranceMode === "widened"
+      ? "Minimum-cardinality combination within widened ascent and distance tolerances."
+      : toleranceMode === "approximate"
+        ? "Closest safe two-axis approximation; no widened-tolerance combination was available."
+        : "No eligible safe summit combination was available.";
   return {
     rankedCandidates: ranked.map(candidate => candidate.record),
     selectedHills,
-    deterministicScore: selected.length
-      ? clampScore(selected.reduce((sum, candidate) => sum + candidate.record.score, 0) / selected.length)
+    deterministicScore: selectedCount
+      ? clampScore(selected!.reduce((sum, candidate) => sum + candidate.record.score, 0) / selectedCount)
       : 0,
     achievedAscent,
     targetRatio,
@@ -666,9 +843,30 @@ export function matchQuickestHighSummits(
     achievedDistance,
     distanceRatio,
     achievedDurationMinutes,
-    outingCount: selected.length,
-    distinctRouteCount: selected.length,
-    planSummary: `${selected.length} distinct principal summits; ascent and distance are advisory.`,
+    outingCount: selectedCount,
+    distinctRouteCount: selectedCount,
+    planSummary: `${selectedCount} distinct principal summits; ${Math.round(targetRatio * 100)}% of target ascent, `
+      + `${Math.round(distanceRatio * 100)}% of target distance (${toleranceMode} tolerance).`,
+    toleranceMode,
+    toleranceLimits: {
+      ascent: toleranceMode === "normal"
+        ? QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE
+        : toleranceMode === "none" ? 0 : QUICK_SUMMIT_WIDE_ASCENT_TOLERANCE,
+      distance: toleranceMode === "normal"
+        ? QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE
+        : toleranceMode === "none" ? 0 : QUICK_SUMMIT_WIDE_DISTANCE_TOLERANCE,
+    },
+    selectionReason,
+    matchDiagnostics: {
+      targetAscent: profile.totalElevationGain,
+      plannedAscent: achievedAscent,
+      targetDistance: profile.totalDistance,
+      plannedDistance: achievedDistance,
+      ascentRatio: targetRatio,
+      distanceRatio,
+      withinNormal,
+      withinWidened,
+    },
   };
 }
 

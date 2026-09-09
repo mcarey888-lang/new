@@ -161,32 +161,40 @@ function canonicalSummitToHills(mountain: VerifiedCanonicalMountain): Hill[] {
   // Verified route facts take precedence. No trailhead coordinates are exposed:
   // the mountain coordinate remains the summit identity only.
   return mountain.routes
-    .filter(candidate => candidate.totalAscentM && candidate.distanceKm && candidate.typicalDurationHours)
+    .filter(candidate =>
+      typeof candidate.totalAscentM === "number"
+      && typeof candidate.distanceKm === "number"
+      && typeof candidate.typicalDurationHours === "number")
     .sort((a, b) =>
       `${a.description} ${a.name}`.localeCompare(`${b.description} ${b.name}`, "en")
       || a.identityKey.localeCompare(b.identityKey))
-    .map(route => ({
-    name: mountain.name,
-    routeIdentityKey: route.identityKey,
-    routeName: route.name,
-    summitIdentityKey: mountain.canonicalSourceKey,
-    summitProminenceM: mountain.prominenceM,
-    elevation: route.totalAscentM,
-    distance: route.distanceKm,
-    repeats: 1,
-    totalElevation: route.totalAscentM,
-    surface: `${route.description} ${route.name}`.trim() || "mountain route",
-    grade: route.totalAscentM >= 1_000 ? "Hard" : "Moderate",
-    emoji: "mountain",
-    lat: mountain.latitude,
-    lng: mountain.longitude,
-    routeType: "hill",
-    routeDistance: route.distanceKm,
-    estimatedTime: `${route.typicalDurationHours} h`,
-    summitElevationASL: route.summitElevationM ?? mountain.elevationM,
-    dataSource: "canonical_verified",
-    routeDataStatus: "external_route",
-  }));
+    .map(route => {
+      const totalAscentM = route.totalAscentM!;
+      const distanceKm = route.distanceKm!;
+      const typicalDurationHours = route.typicalDurationHours!;
+      return {
+        name: mountain.name,
+        routeIdentityKey: route.identityKey,
+        routeName: route.name,
+        summitIdentityKey: mountain.canonicalSourceKey,
+        summitProminenceM: mountain.prominenceM,
+        elevation: totalAscentM,
+        distance: distanceKm,
+        repeats: 1,
+        totalElevation: totalAscentM,
+        surface: `${route.description} ${route.name}`.trim() || "mountain route",
+        grade: totalAscentM >= 1_000 ? "Hard" : "Moderate",
+        emoji: "mountain",
+        lat: mountain.latitude,
+        lng: mountain.longitude,
+        routeType: "hill",
+        routeDistance: distanceKm,
+        estimatedTime: `${typicalDurationHours} h`,
+        summitElevationASL: route.summitElevationM ?? mountain.elevationM,
+        dataSource: "canonical_verified",
+        routeDataStatus: "external_route",
+      };
+    });
 }
 
 function buildDeterministicPlan(
@@ -197,7 +205,11 @@ function buildDeterministicPlan(
     .filter(candidate => candidate.routeIdentityKey)
     .map(candidate => [candidate.routeIdentityKey!, candidate]));
   const scoreByName = new Map(match.rankedCandidates.map(candidate => [candidate.name, candidate]));
-  const dayCount = Math.min(3, Math.max(1, profile.estimatedDays));
+  // Quickest-high-summits is a minimum-cardinality plan: each selected
+  // summit gets one day, and never gets an empty filler day.
+  const dayCount = match.matchMethod === "quickest_high_summits_v1"
+    ? Math.max(1, match.selectedHills.length)
+    : Math.min(3, Math.max(1, profile.estimatedDays));
   const days: ExpeditionPlan["days"] = Array.from({ length: dayCount }, (_, index) => ({
     label: dayCount === 1 ? "Expedition day" : `Day ${index + 1}`,
     title: index === 0 ? "Primary ascent day" : "Back-to-back endurance day",
@@ -269,7 +281,7 @@ function buildDeterministicPlan(
 
   return {
     title: `${profile.name}: local simulation`,
-    concept: `A deterministic local route combination of the highest suitable local summit objectives for this timeframe, using verified route facts or clearly labelled terrain-calculated estimates.`,
+    concept: `The smallest deterministic combination of genuine local summit objectives that matches the target route's elevation gain and distance, using verified route facts or clearly labelled terrain-calculated estimates.`,
     days: days.filter(day => day.routes.length > 0),
     alternatives: Object.fromEntries(match.selectedHills.map(hill => [
       hill.routeIdentityKey ?? hill.name,
@@ -516,8 +528,78 @@ export function createVirtualExpeditionHandler(
         userLat = coords.lat;
         userLng = coords.lng;
         const canonicalSummits = await timed("localDatabaseLookup", () =>
-          canonicalAreaLookup({ centerLat: userLat, centerLng: userLng, radiusKm, limit: 20 }));
+          canonicalAreaLookup({ centerLat: userLat, centerLng: userLng, radiusKm, limit: 50 }));
         const canonicalHills = canonicalSummits.flatMap(canonicalSummitToHills);
+        // A canonical summit remains the identity authority even when its
+        // catalogue has no complete route facts.  Ask the injected terrain
+        // estimator for a route-shaped estimate at the canonical coordinate,
+        // then restore every identity field from the canonical record.  This
+        // deliberately does not turn the estimate into a verified route.
+        const routeLessSummits = canonicalSummits.filter(summit =>
+          !canonicalHills.some(hill => hill.summitIdentityKey === summit.canonicalSourceKey)
+          && typeof summit.latitude === "number" && Number.isFinite(summit.latitude)
+          && typeof summit.longitude === "number" && Number.isFinite(summit.longitude)
+          && typeof summit.elevationM === "number" && Number.isFinite(summit.elevationM));
+        const syntheticId = (sourceKey: string): number => {
+          const hash = [...sourceKey].reduce(
+            (value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 2_166_136_261);
+          return hash || 1;
+        };
+        const syntheticPeaks = routeLessSummits.map(summit => ({
+          id: syntheticId(summit.canonicalSourceKey),
+          lat: summit.latitude as number,
+          lng: summit.longitude as number,
+          name: summit.name,
+          ele: summit.elevationM as number,
+        }));
+        let estimatedTerrain: Hill[] = [];
+        if (syntheticPeaks.length) {
+          try {
+            // OpenTopoData accepts at most 100 points; the estimator samples
+            // five points per summit. Process the full canonical shortlist in
+            // deterministic bounded batches rather than truncating it.
+            estimatedTerrain = await timed("elevationEnrichment", async () => {
+              const routes: Hill[] = [];
+              for (let start = 0; start < syntheticPeaks.length; start += 19) {
+                routes.push(...await peaksToHills(
+                  syntheticPeaks.slice(start, start + 19),
+                  userLat,
+                  userLng,
+                  radiusKm,
+                  0,
+                ));
+              }
+              return routes;
+            });
+          } catch (error) {
+            log?.warn?.({ err: error }, "Canonical summit terrain estimation failed");
+          }
+        }
+        const terrainBySyntheticId = new Map(estimatedTerrain.map(hill => [
+          hill.summitIdentityKey?.replace(/^osm:node:/, ""),
+          hill,
+        ]));
+        const canonicalTerrainHills: Hill[] = [];
+        for (const summit of routeLessSummits) {
+          const id = String(syntheticId(summit.canonicalSourceKey));
+          const route = terrainBySyntheticId.get(id)
+            ?? estimatedTerrain.find(hill => hill.name === summit.name);
+          if (!route) continue;
+          const summitElevationM = summit.elevationM as number;
+          canonicalTerrainHills.push({
+            ...route,
+            name: summit.name,
+            summitIdentityKey: summit.canonicalSourceKey,
+            summitProminenceM: summit.prominenceM,
+            summitElevationASL: summitElevationM,
+            lat: summit.latitude as number,
+            lng: summit.longitude as number,
+            routeIdentityKey: `route:terrain:${summit.canonicalSourceKey}`,
+            dataSource: "canonical_verified",
+            routeDataStatus: "terrain_calculated",
+          });
+        }
+        const canonicalCandidateHills = [...canonicalHills, ...canonicalTerrainHills];
         canonicalSummitShortlist = canonicalSummits.map(summit => ({
           name: summit.name,
           summitElevationASL: summit.elevationM ?? null,
@@ -525,17 +607,17 @@ export function createVirtualExpeditionHandler(
           summitIdentityKey: summit.canonicalSourceKey,
           routeCount: summit.routes.length,
           source: "canonical_verified",
-          routeAvailable: canonicalHills.some(hill =>
+          routeAvailable: canonicalCandidateHills.some(hill =>
             hill.summitIdentityKey === summit.canonicalSourceKey),
-          skippedReason: canonicalHills.some(hill =>
+          skippedReason: canonicalCandidateHills.some(hill =>
             hill.summitIdentityKey === summit.canonicalSourceKey)
             ? null
-            : "No complete verified route facts are available for this canonical summit.",
+            : "No complete verified route facts or usable terrain estimate are available for this canonical summit.",
         }));
         // Default discovery never begins with generic cached route rows.
         // They are queried only for exclusion diagnostics after summit sources
         // are depleted, and are never promoted to candidates.
-        localHills = canonicalHills;
+        localHills = canonicalCandidateHills;
         localQueriedRows = { cachedHills: 0, seededTrails: 0 };
         const preparedDatabaseHills = dependencies.prepareCandidateHills(
           localHills,
@@ -543,13 +625,22 @@ export function createVirtualExpeditionHandler(
         );
         const compatibleDatabaseHills = preparedDatabaseHills.filter(hill =>
           isDeterministicCandidateCompatible(hill, effectiveProfile));
-        discoveryDiagnostics = {
-          preparedDatabaseCandidates: compatibleDatabaseHills.length,
-          databaseCandidatesFeasible: isDeterministicTargetFeasible(
+        const databaseMatch = input.expeditionStyle === "quickest_high_summits"
+          ? matchQuickestHighSummits(
             compatibleDatabaseHills,
             effectiveProfile,
             input.difficultyPreference,
-          ),
+          )
+          : null;
+        discoveryDiagnostics = {
+          preparedDatabaseCandidates: compatibleDatabaseHills.length,
+          databaseCandidatesFeasible: databaseMatch
+            ? databaseMatch.selectedHills.length > 0
+            : isDeterministicTargetFeasible(
+              compatibleDatabaseHills,
+              effectiveProfile,
+              input.difficultyPreference,
+            ),
           maxAttainableSafeAscent: maxAttainableAscent(compatibleDatabaseHills),
           targetAscentThreshold: effectiveProfile.totalElevationGain * 0.9,
           externalEnrichmentAttempted: false,
@@ -690,7 +781,9 @@ export function createVirtualExpeditionHandler(
         (input.expeditionStyle === "quickest_high_summits"
           ? matchQuickestHighSummits
           : matchCandidates)(candidateHills, effectiveProfile, input.difficultyPreference));
-      warnings.push(...match.warnings);
+       warnings.push(...match.warnings.map(warning => warning
+         .replace("Route ascent is advisory in quickest-high-summits mode", "Route ascent is a fit diagnostic in quickest-high-summits mode")
+         .replace("ascent and distance are advisory.", "ascent and distance are fit diagnostics.")));
       if (!match.selectedHills.length) {
         return res.status(404).json({
           error: "No safe route combination could be built from the available candidates.",
@@ -809,7 +902,9 @@ export function createVirtualExpeditionHandler(
             summitIdentityKey: hill.summitIdentityKey ?? null,
             summitElevationASL: hill.summitElevationASL ?? null,
             reasons: ranked?.eligible
-              ? ["Not selected after the requested distinct-summit cap."]
+              ? [match.selectedHills.length < effectiveProfile.estimatedDays
+                ? "Not needed because a smaller summit combination matched the target route profile."
+                : "Not selected after the available-day maximum was reached."]
               : ranked?.rejectionReasons ?? ["No eligible route facts."],
           });
         }
@@ -845,6 +940,23 @@ export function createVirtualExpeditionHandler(
         excludedLongTrails: excludedLocalRoutes,
         principalSummitCount: match.selectedHills.length,
         requestedDays: effectiveProfile.estimatedDays,
+        targetAscent: match.matchDiagnostics.targetAscent,
+        plannedAscent: match.matchDiagnostics.plannedAscent,
+        targetDistance: match.matchDiagnostics.targetDistance,
+        plannedDistance: match.matchDiagnostics.plannedDistance,
+        ascentPercentage: Math.round(match.matchDiagnostics.ascentRatio * 100),
+        distancePercentage: Math.round(match.matchDiagnostics.distanceRatio * 100),
+        toleranceMode: match.toleranceMode,
+        toleranceLimits: match.toleranceLimits,
+        selectionReason: match.selectionReason,
+        confidence: match.toleranceMode === "normal"
+          ? "high"
+          : match.toleranceMode === "widened"
+            ? "medium"
+            : match.toleranceMode === "approximate"
+              ? "low"
+              : "none",
+        // Retained additively for clients that still consume the old name.
         advisoryRatios: { ascent: match.targetRatio, distance: match.distanceRatio },
         localQueriedRows,
         localDiscovery: discoveryDiagnostics,

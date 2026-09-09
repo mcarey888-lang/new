@@ -774,7 +774,7 @@ export async function osmPeaksToHills(
   return hills.sort((a, b) =>
     (b.summitElevationASL ?? 0) - (a.summitElevationASL ?? 0)
     || a.name.localeCompare(b.name, "en")
-    || (a.routeIdentityKey ?? "").localeCompare(b.routeIdentityKey ?? "")).slice(0, 10);
+    || (a.routeIdentityKey ?? "").localeCompare(b.routeIdentityKey ?? "")).slice(0, MAX_PEAKS);
 }
 
 // ── In-memory area lookup cache (keyed by "location|radius") ─────────────────

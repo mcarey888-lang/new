@@ -196,6 +196,52 @@ describe("lookupVerifiedCanonicalMountain", () => {
     expect(query.mock.calls[3][0]).toContain("rf.status = 'verified'");
   });
 
+  it("trusts an imported DoBIH mountain only through its trusted source record", async () => {
+    const dobihCandidate = {
+      ...candidate,
+      sourceFeatureId: "20501",
+      canonicalSourceKey: "dobih:20501",
+      name: "Scafell Pike",
+      country: "United Kingdom",
+      region: "Cumbria",
+    };
+    const query = queryMockWith(
+      [],
+      [dobihCandidate],
+      [dobihCandidate],
+      [],
+    );
+
+    const result = await lookupVerifiedCanonicalMountain(
+      { name: "Scafell Pike" },
+      query,
+    );
+
+    expect(result).toMatchObject({
+      kind: "match",
+      mountain: {
+        name: "Scafell Pike",
+        canonicalSourceKey: "dobih:20501",
+        matchedBy: "canonical_name",
+      },
+    });
+    for (const [sql, params] of query.mock.calls.slice(0, 3)) {
+      expect(sql).toContain("EXISTS");
+      expect(sql).toContain("msr.mountain_id = m.id");
+      expect(sql).toContain(
+        "msr.source_dataset = 'Database of British and Irish Hills (DoBIH)'",
+      );
+      expect(sql).toContain("msr.source_trust = 'trusted_source'");
+      expect(sql).toContain("msr.final_verification_status = 'trusted_source'");
+      expect(sql).toContain("msr.qa_status IN ('pass', 'info')");
+      expect(sql).not.toContain("msr.ai_fallback_allowed");
+      expect(params).toEqual(
+        sql.includes("normalized_name") ? ["scafellpike"] :
+        sql.includes("ANY($1::uuid[])") ? [[dobihCandidate.id]] : [],
+      );
+    }
+  });
+
   it("maps verified route identity, definition, fact and evidence data", async () => {
     const query = queryMockWith(
       [],
@@ -445,6 +491,37 @@ describe("lookupVerifiedCanonicalSummitsInArea", () => {
     expect(query.mock.calls[1][0]).toContain("rd.status = 'verified'");
     expect(query.mock.calls[1][0]).toContain("rf.status = 'verified'");
     expect(query.mock.calls[1][1]).toEqual([[candidate.id, lowerSummit.id]]);
+  });
+
+  it("includes trusted DoBIH records in the bounded area query", async () => {
+    const dobihCandidate = {
+      ...candidate,
+      sourceFeatureId: "20501",
+      canonicalSourceKey: "dobih:20501",
+      name: "Scafell Pike",
+    };
+    const query = queryMockWith([dobihCandidate], []);
+
+    const summits = await lookupVerifiedCanonicalSummitsInArea(
+      {
+        centerLat: 54.454,
+        centerLng: -3.213,
+        radiusKm: 20,
+        limit: 1,
+      },
+      query,
+    );
+
+    expect(summits).toMatchObject([
+      { name: "Scafell Pike", canonicalSourceKey: "dobih:20501" },
+    ]);
+    expect(query.mock.calls[0][0]).toContain("EXISTS");
+    expect(query.mock.calls[0][0]).toContain(
+      "msr.source_dataset = 'Database of British and Irish Hills (DoBIH)'",
+    );
+    expect(query.mock.calls[0][0]).toContain("msr.final_verification_status = 'trusted_source'");
+    expect(query.mock.calls[0][1]).toEqual([54.454, -3.213, 20_000, 1]);
+    expect(query.mock.calls[1][1]).toEqual([[dobihCandidate.id]]);
   });
 });
 

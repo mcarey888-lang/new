@@ -63,7 +63,7 @@ const candidates = [
 ];
 
 describe("deterministic expedition matcher", () => {
-  it("selects at most the requested number of distinct highest safe summits without repeats", () => {
+  it("uses the available day maximum for the closest approximation when no tolerance match exists", () => {
     const result = matchQuickestHighSummits([
       hill("Highest", 300, { summitElevationASL: 1_200, summitIdentityKey: "highest" }),
       hill("Second", 400, { summitElevationASL: 1_100, summitIdentityKey: "second" }),
@@ -71,10 +71,10 @@ describe("deterministic expedition matcher", () => {
       hill("Alternate highest route", 500, { summitElevationASL: 1_200, summitIdentityKey: "highest" }),
     ], profile({ estimatedDays: 2, totalElevationGain: 5_000 }));
 
-    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["Highest", "Second"]);
+    expect(result.selectedHills.map(candidate => candidate.name)).toEqual(["Alternate highest route", "Third"]);
     expect(result.selectedHills.every(candidate => candidate.repeats === 1)).toBe(true);
     expect(result.targetRatio).toBeLessThan(.9);
-    expect(result.warnings.join(" ")).toContain("advisory");
+    expect(result.toleranceMode).toBe("approximate");
   });
 
   it("does not count a nearby subsidiary peak as another principal summit", () => {
@@ -440,7 +440,7 @@ describe("deterministic expedition matcher", () => {
     const technical = matchDeterministicExpedition(
       [walkingRoute, technicalRoute],
       technicalTarget,
-      "Alpine",
+      "Moderate",
     );
     const walking = matchDeterministicExpedition(
       [technicalRoute, walkingRoute],
@@ -643,5 +643,100 @@ describe("deterministic expedition matcher", () => {
         "route:v1:test:compact-east:54.2,-3.2",
         "route:v1:test:compact-west:54.1,-3.1",
       ]);
+  });
+  it("accepts a normal one-summit match before a closer two-summit plan", () => {
+    const result = matchQuickestHighSummits([
+      hill("Single Summit", 1_000, { summitIdentityKey: "single", summitElevationASL: 2_000, routeDistance: 20 }),
+      hill("Pair A", 510, { summitIdentityKey: "pair-a", summitElevationASL: 1_500, routeDistance: 10 }),
+      hill("Pair B", 490, { summitIdentityKey: "pair-b", summitElevationASL: 1_400, routeDistance: 10 }),
+    ], profile({ estimatedDays: 2, totalElevationGain: 1_000, totalDistance: 20 }));
+    expect(result.selectedHills.map(selected => selected.name)).toEqual(["Single Summit"]);
+    expect(result.toleranceMode).toBe("normal");
+  });
+
+  it("does not fill beyond available summits or the requested day maximum", () => {
+    const result = matchQuickestHighSummits([
+      hill("Only Summit", 1_000, { summitIdentityKey: "only", summitElevationASL: 1_000 }),
+    ], profile({ estimatedDays: 3, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(result.selectedHills).toHaveLength(1);
+    expect(result.warnings.join(" ")).toContain("no filler summits");
+  });
+
+  it("uses distance independently when ascent is tied", () => {
+    const result = matchQuickestHighSummits([
+      hill("Short Route", 1_000, { summitIdentityKey: "short", summitElevationASL: 1_100, routeDistance: 8 }),
+      hill("Target Route", 1_000, { summitIdentityKey: "target", summitElevationASL: 1_000, routeDistance: 20 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 20 }));
+    expect(result.selectedHills.map(selected => selected.name)).toEqual(["Target Route"]);
+    expect(result.matchDiagnostics.distanceRatio).toBe(1);
+  });
+
+  it("chooses different combinations for different target profiles", () => {
+    const input = [
+      hill("Endurance East", 700, { summitIdentityKey: "east", summitElevationASL: 1_100, routeDistance: 14 }),
+      hill("Endurance West", 500, { summitIdentityKey: "west", summitElevationASL: 1_000, routeDistance: 10 }),
+      hill("Compact North", 800, { summitIdentityKey: "north", summitElevationASL: 900, routeDistance: 8 }),
+      hill("Compact South", 400, { summitIdentityKey: "south", summitElevationASL: 800, routeDistance: 4 }),
+    ];
+    const endurance = matchQuickestHighSummits(input, profile({ estimatedDays: 2, totalElevationGain: 1_200, totalDistance: 24 }));
+    const compact = matchQuickestHighSummits(input, profile({ estimatedDays: 2, totalElevationGain: 1_200, totalDistance: 12 }));
+    expect(endurance.selectedHills.map(selected => selected.name)).toEqual(["Endurance East", "Endurance West"]);
+    expect(compact.selectedHills.map(selected => selected.name)).toEqual(["Compact North", "Compact South"]);
+  });
+
+  it("applies elevation, prominence and verified-source tie breakers", () => {
+    const elevation = matchQuickestHighSummits([
+      hill("Lower", 1_000, { summitIdentityKey: "lower", summitElevationASL: 900, routeDistance: 8 }),
+      hill("Higher", 1_000, { summitIdentityKey: "higher", summitElevationASL: 1_000, routeDistance: 8 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(elevation.selectedHills[0].name).toBe("Higher");
+    const prominence = matchQuickestHighSummits([
+      hill("Low Prominence", 1_000, { summitIdentityKey: "low-p", summitElevationASL: 1_000, summitProminenceM: 100, routeDistance: 8 }),
+      hill("High Prominence", 1_000, { summitIdentityKey: "high-p", summitElevationASL: 1_000, summitProminenceM: 200, routeDistance: 8 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(prominence.selectedHills[0].name).toBe("High Prominence");
+    const verified = matchQuickestHighSummits([
+      hill("Unverified", 1_000, { summitIdentityKey: "unverified", summitElevationASL: 1_000, routeDistance: 8 }),
+      hill("Verified", 1_000, { summitIdentityKey: "verified", summitElevationASL: 1_000, routeDistance: 8, dataSource: "canonical_verified" }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(verified.selectedHills[0].name).toBe("Verified");
+  });
+
+  it("reports normal, widened, approximate and no-candidate diagnostics", () => {
+    const normal = matchQuickestHighSummits([
+      hill("Normal", 1_000, { summitIdentityKey: "normal", summitElevationASL: 1_000, routeDistance: 8 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(normal.toleranceMode).toBe("normal");
+    expect(normal.matchDiagnostics.withinNormal).toBe(true);
+    const widened = matchQuickestHighSummits([
+      hill("Wide", 1_290, { summitIdentityKey: "wide", summitElevationASL: 1_000, routeDistance: 10.2 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(widened.toleranceMode).toBe("widened");
+    expect(widened.matchDiagnostics.withinWidened).toBe(true);
+    const approximate = matchQuickestHighSummits([
+      hill("Approx", 1_500, { summitIdentityKey: "approx", summitElevationASL: 1_000, routeDistance: 14 }),
+    ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8 }));
+    expect(approximate.toleranceMode).toBe("approximate");
+    expect(approximate.warnings.join(" ")).toContain("could not be met");
+    expect(approximate.matchDiagnostics.withinWidened).toBe(false);
+    const none = matchQuickestHighSummits([], profile({ estimatedDays: 1 }));
+    expect(none.toleranceMode).toBe("none");
+  });
+
+  it("permits target-compatible technical routes for Moderate preference but rejects them for Easy", () => {
+    const technical = hill("Crib-like Ridge", 1_000, {
+      summitIdentityKey: "crib", summitElevationASL: 1_000, surface: "Rock scramble ridge",
+      grade: "Hard", hazardLevel: "severe", routeDistance: 8,
+    });
+    const technicalTarget = profile({
+      estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8,
+      routeDna: { ...profile().routeDna, scrambling: 9, technicalMovement: 9, exposure: 9 },
+    });
+    expect(matchQuickestHighSummits([technical], technicalTarget, "Moderate").selectedHills).toHaveLength(1);
+    expect(matchQuickestHighSummits([technical], technicalTarget, "Easy").selectedHills).toHaveLength(0);
+    expect(matchQuickestHighSummits([technical], profile({
+      estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 8,
+      routeDna: { ...profile().routeDna, scrambling: 1, technicalMovement: 1, exposure: 1 },
+    }), "Easy").selectedHills).toHaveLength(0);
   });
 });

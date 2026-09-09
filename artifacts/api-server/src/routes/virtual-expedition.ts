@@ -460,6 +460,8 @@ function formatDna(dna: RouteDna): string {
 
 const CRIB_GOCH_WARNING =
   "SEVERE EXPOSURE WARNING: Crib Goch is a serious, committing Grade 1 scramble with sustained knife-edge exposure and consequential falls. Attempt only with suitable skills, conditions and judgement.";
+const TRYFAN_WARNING =
+  "SCRAMBLING WARNING: Tryfan's principal ridges involve hands-on scrambling, route-finding and consequential terrain. Attempt only with suitable skills, conditions and judgement.";
 
 function hillNameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -468,6 +470,10 @@ function hillNameKey(name: string): string {
 function isCribGoch(name: string): boolean {
   const key = hillNameKey(name);
   return /\bcrib (?:goch|gough)\b/.test(key);
+}
+
+function isTryfanMainSummit(name: string): boolean {
+  return hillNameKey(name) === "tryfan";
 }
 
 /** Serious exposed scrambles are candidates only for targets that demand them. */
@@ -496,12 +502,15 @@ export function prepareCandidateHills(hills: Hill[], dna: RouteDna): Hill[] {
     });
     if (duplicate) return [];
     seen.push({ key, lat: hill.lat, lng: hill.lng });
-    if (!isCribGoch(hill.name)) return [hill];
+    const cribGoch = isCribGoch(hill.name);
+    const tryfan = isTryfanMainSummit(hill.name);
+    if (!cribGoch && !tryfan) return [hill];
     if (!compatible) return [];
     return [{
       ...hill,
-      safetyWarning: CRIB_GOCH_WARNING,
-      hazardLevel: "severe" as const,
+      surface: `${hill.surface}; known scrambling ridge terrain`,
+      safetyWarning: cribGoch ? CRIB_GOCH_WARNING : TRYFAN_WARNING,
+      hazardLevel: cribGoch ? "severe" as const : "high" as const,
     }];
   });
 }

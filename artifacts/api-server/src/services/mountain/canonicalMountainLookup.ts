@@ -121,6 +121,23 @@ interface AreaRouteRow extends RouteRow {
   mountainId: string;
 }
 
+// DoBIH imports deliberately retain mountains as `imported` (rather than
+// changing the importer-owned status to `verified`).  The source record is
+// the authority for this narrow exception; in particular, this must not make
+// an imported record from any other dataset canonical-trusted.
+const CANONICAL_TRUST_SQL = `(
+  m.status = 'verified'
+  OR EXISTS (
+    SELECT 1
+    FROM summit_data_engine.mountain_source_records AS msr
+    WHERE msr.mountain_id = m.id
+      AND msr.source_dataset = 'Database of British and Irish Hills (DoBIH)'
+      AND msr.source_trust = 'trusted_source'
+      AND msr.final_verification_status = 'trusted_source'
+      AND msr.qa_status IN ('pass', 'info')
+  )
+)`;
+
 const VERIFIED_ALIAS_CANDIDATES_SQL = `
 SELECT
   DISTINCT m.id::text AS "id",
@@ -129,7 +146,7 @@ SELECT
   m.region AS "region"
 FROM summit_data_engine.mountain_aliases AS a
 JOIN summit_data_engine.mountains AS m ON m.id = a.mountain_id
-WHERE m.status = 'verified'
+WHERE ${CANONICAL_TRUST_SQL}
   AND a.status = 'verified'
   AND m.canonical_source_key IS NOT NULL
   AND a.normalized_name = $1
@@ -143,7 +160,7 @@ SELECT
   m.country AS "country",
   m.region AS "region"
 FROM summit_data_engine.mountains AS m
-WHERE m.status = 'verified'
+WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
 ORDER BY m.id
 `;
@@ -167,7 +184,7 @@ SELECT
   ST_X(m.geom)::float8 AS "longitude",
   m.provenance_version AS "provenanceVersion"
 FROM summit_data_engine.mountains AS m
-WHERE m.status = 'verified'
+WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
   AND m.id = ANY($1::uuid[])
 ORDER BY m.name, m.country NULLS LAST, m.region NULLS LAST, m.id
@@ -222,7 +239,7 @@ SELECT
   ST_X(m.geom)::float8 AS "longitude",
   m.provenance_version AS "provenanceVersion"
 FROM summit_data_engine.mountains AS m
-WHERE m.status = 'verified'
+WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
   AND m.geom IS NOT NULL
   AND ST_DWithin(

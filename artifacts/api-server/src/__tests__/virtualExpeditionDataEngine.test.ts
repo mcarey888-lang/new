@@ -208,6 +208,37 @@ describe("virtual expedition summit-first data engine", () => {
     expect(response.body.provenance.principalSummitCount).toBe(3);
   });
 
+  it("uses exactly one plan day when one summit matches a three-day override", async () => {
+    const response = await invoke(deps({
+      peaksToHills: vi.fn(async () => [summits[0]]),
+    }), { daysOverride: 3 });
+    expect(response.statusCode).toBe(200);
+    expect(response.body.recommendedHills).toHaveLength(1);
+    expect(response.body.expedition.days).toHaveLength(1);
+    expect(response.body.provenance.principalSummitCount).toBe(1);
+  });
+
+  it("returns two-axis planned metrics and tolerance diagnostics", async () => {
+    const response = await invoke(deps());
+    expect(response.statusCode).toBe(200);
+    expect(response.body.provenance).toMatchObject({
+      targetAscent: expect.any(Number),
+      plannedAscent: expect.any(Number),
+      targetDistance: expect.any(Number),
+      plannedDistance: expect.any(Number),
+      ascentPercentage: expect.any(Number),
+      distancePercentage: expect.any(Number),
+      toleranceMode: expect.stringMatching(/normal|widened|approximate|none/),
+      toleranceLimits: {
+        ascent: expect.any(Number),
+        distance: expect.any(Number),
+      },
+      selectionReason: expect.any(String),
+      confidence: expect.stringMatching(/high|medium|low|none/),
+      advisoryRatios: expect.any(Object),
+    });
+  });
+
   it("uses verified canonical area summit routes before OSM fallback", async () => {
     const localSummit = {
       ...mountain(),
@@ -233,6 +264,54 @@ describe("virtual expedition summit-first data engine", () => {
     });
   });
 
+  it("does not call OSM when usable canonical terrain candidates exist", async () => {
+    const routeLess = { ...mountain(), routes: [], name: "Canonical Terrain Summit" };
+    const fetchPeaks = vi.fn();
+    const peaksToHills = vi.fn(async (peaks: any[]) => [hill(peaks[0].name, peaks[0].ele)]);
+    const response = await invoke(deps({
+      canonicalAreaLookup: vi.fn(async () => [routeLess]),
+      fetchPeaks,
+      peaksToHills,
+    }));
+    expect(response.statusCode).toBe(200);
+    expect(fetchPeaks).not.toHaveBeenCalled();
+    expect(response.body.recommendedHills[0]).toMatchObject({
+      name: "Canonical Terrain Summit",
+      summitIdentityKey: "canonical:one",
+      routeDataStatus: "terrain_calculated",
+    });
+  });
+
+  it("labels named OSM candidates when canonical coverage is absent", async () => {
+    const response = await invoke(deps({
+      canonicalAreaLookup: vi.fn(async () => []),
+    }));
+    expect(response.statusCode).toBe(200);
+    expect(response.body.recommendedHills[0]).toMatchObject({
+      dataSource: "osm_overpass",
+      routeDataStatus: "terrain_calculated",
+    });
+  });
+
+  it("changes the selected combination when the target profile changes", async () => {
+    const first = await invoke(deps({
+      resolveFallbackProfile: vi.fn(async () => ({
+        profile: profile({ totalElevationGain: 600, totalDistance: 8, estimatedDays: 1 }),
+        source: "legacy_profile_cache", cached: true, usedAi: false,
+      })),
+    }), { userLocation: "profile-comparison-one" });
+    const second = await invoke(deps({
+      resolveFallbackProfile: vi.fn(async () => ({
+        profile: profile({ totalElevationGain: 1_800, totalDistance: 24, estimatedDays: 2 }),
+        source: "legacy_profile_cache", cached: true, usedAi: false,
+      })),
+    }), { userLocation: "profile-comparison-two" });
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(first.body.recommendedHills.map((hill: Hill) => hill.name))
+      .not.toEqual(second.body.recommendedHills.map((hill: Hill) => hill.name));
+  });
+
   it("deduplicates a canonical multi-route summit in the eligible shortlist", async () => {
     const local = {
       ...mountain(),
@@ -250,18 +329,22 @@ describe("virtual expedition summit-first data engine", () => {
     });
   });
 
-  it("reports a canonical summit without complete route facts as skipped", async () => {
+  it("uses canonical identity for terrain-estimated summits without complete route facts", async () => {
     const routeLess = { ...mountain(), routes: [], name: "Route-less Canonical" };
     const response = await invoke(deps({
       canonicalAreaLookup: vi.fn(async () => [routeLess]),
+      peaksToHills: vi.fn(async (peaks: any[]) => [hill(peaks[0].name, peaks[0].ele)]),
     }));
     expect(response.statusCode).toBe(200);
-    expect(response.body.provenance.skippedHigherSummits).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        name: "Route-less Canonical",
-        reasons: ["No complete verified route facts are available for this canonical summit."],
-      }),
-    ]));
+    expect(response.body.recommendedHills[0]).toMatchObject({
+      name: "Route-less Canonical",
+      summitIdentityKey: "canonical:one",
+      routeIdentityKey: "route:terrain:canonical:one",
+      dataSource: "canonical_verified",
+      routeDataStatus: "terrain_calculated",
+    });
+    expect(response.body.provenance.selectedCandidateProvenance[0].routeDataStatus)
+      .toBe("terrain_calculated");
   });
 
   it("reports excluded generic local Ways after successful OSM discovery", async () => {
@@ -361,21 +444,21 @@ describe("virtual expedition summit-first data engine", () => {
     const first = await invoke(deps(), { userLocation: "Stable narration A" });
     const second = await invoke(deps(), { userLocation: "Stable narration B" });
     expect(first.statusCode).toBe(200);
-    expect(first.body.expedition.concept).toContain("highest suitable local summit objectives");
+    expect(first.body.expedition.concept).toContain("smallest deterministic combination");
     expect(first.body.expedition.days.flatMap((day: any) => day.routes)
       .every((planned: any) => planned.why.includes("deterministic fit"))).toBe(true);
     expect(first.body.recommendedHills).toEqual(second.body.recommendedHills);
     expect(first.body.provenance.aiUsage.narration).toBe(false);
   });
 
-  it("reports elevation-ordered shortlist, advisory ratios, and skipped cap reasons", async () => {
+  it("reports elevation-ordered shortlist, retained ratios, and skipped day-maximum reasons", async () => {
     const response = await invoke(deps());
     expect(response.body.provenance.eligibleSummitShortlist.map((entry: any) => entry.summitElevationASL))
       .toEqual([1_200, 1_000, 800]);
     expect(response.body.provenance.advisoryRatios).toEqual({
       ascent: expect.any(Number), distance: expect.any(Number),
     });
-    expect(response.body.provenance.skippedHigherSummits[0].reasons[0]).toContain("cap");
+    expect(response.body.provenance.skippedHigherSummits[0].reasons[0]).toContain("maximum");
   });
 
   it("caches successful named-OSM evidence and its post-discovery exclusions", async () => {
