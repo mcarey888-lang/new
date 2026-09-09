@@ -160,7 +160,44 @@ function fallbackMetricSources(source: FallbackProfileResult["source"]): Record<
   };
 }
 
-function canonicalSummitToHills(mountain: VerifiedCanonicalMountain): Hill[] {
+export function filterCanonicalPrincipalSummits(
+  summits: VerifiedCanonicalMountain[],
+): VerifiedCanonicalMountain[] {
+  const normalize = (value: string) => value.normalize("NFKC").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  const owners = new Map<string, Set<string>>();
+  const addOwner = (label: string, summitIdentity: string) => {
+    const key = normalize(label);
+    const identities = owners.get(key) ?? new Set<string>();
+    identities.add(summitIdentity);
+    owners.set(key, identities);
+  };
+  for (const summit of summits) {
+    for (const route of summit.routes) {
+      addOwner(route.name, summit.canonicalSourceKey);
+      for (const alias of route.aliases) addOwner(alias, summit.canonicalSourceKey);
+    }
+  }
+  return summits.filter(summit => {
+    const routeOwners = owners.get(normalize(summit.name));
+    if (routeOwners && [...routeOwners].some(owner => owner !== summit.canonicalSourceKey)) return false;
+    const feature = normalize(summit.summitFeature ?? "");
+    if (/\b(ridge|edge|path|trail|way|route)\b/.test(feature)) return false;
+    // Some trusted legacy rows predate structured entity classification. When
+    // no parent route can be established, a route-feature label is negative
+    // evidence only; names are never used as positive summit evidence.
+    return !/\b(ridge|edge|path|trail|way)\b/.test(normalize(summit.name));
+  });
+}
+
+function canonicalSummitToHills(
+  mountain: VerifiedCanonicalMountain,
+  routeOwners?: Map<string, string>,
+): Hill[] {
+  const normalize = (value: string) => value.normalize("NFKC").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  const owner = routeOwners?.get(normalize(mountain.name));
+  if (owner && owner !== mountain.canonicalSourceKey) return [];
   // Verified route facts take precedence. No trailhead coordinates are exposed:
   // the mountain coordinate remains the summit identity only.
   return mountain.routes
@@ -177,8 +214,12 @@ function canonicalSummitToHills(mountain: VerifiedCanonicalMountain): Hill[] {
       const typicalDurationHours = route.typicalDurationHours!;
       return {
         name: mountain.name,
+        summitName: mountain.name,
+        summitId: mountain.canonicalSourceKey,
         routeIdentityKey: route.identityKey,
+        routeId: route.identityKey,
         routeName: route.name,
+        entityType: "summit",
         summitIdentityKey: mountain.canonicalSourceKey,
         summitProminenceM: mountain.prominenceM,
         elevation: totalAscentM,
@@ -532,13 +573,26 @@ export function createVirtualExpeditionHandler(
         userLng = coords.lng;
         const canonicalSummits = await timed("localDatabaseLookup", () =>
           canonicalAreaLookup({ centerLat: userLat, centerLng: userLng, radiusKm, limit: 50 }));
-        const canonicalHills = canonicalSummits.flatMap(canonicalSummitToHills);
+        const normalizeRouteLabel = (value: string) => value.normalize("NFKC").toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ").trim();
+        const routeOwners = new Map<string, string>();
+        for (const summit of canonicalSummits) {
+          for (const route of summit.routes) {
+            routeOwners.set(normalizeRouteLabel(route.name), summit.canonicalSourceKey);
+            for (const alias of route.aliases) {
+              routeOwners.set(normalizeRouteLabel(alias), summit.canonicalSourceKey);
+            }
+          }
+        }
+        const principalCanonicalSummits = filterCanonicalPrincipalSummits(canonicalSummits);
+        const canonicalHills = principalCanonicalSummits.flatMap(summit =>
+          canonicalSummitToHills(summit, routeOwners));
         // A canonical summit remains the identity authority even when its
         // catalogue has no complete route facts.  Ask the injected terrain
         // estimator for a route-shaped estimate at the canonical coordinate,
         // then restore every identity field from the canonical record.  This
         // deliberately does not turn the estimate into a verified route.
-        const routeLessSummits = canonicalSummits.filter(summit =>
+        const routeLessSummits = principalCanonicalSummits.filter(summit =>
           !canonicalHills.some(hill => hill.summitIdentityKey === summit.canonicalSourceKey)
           && typeof summit.latitude === "number" && Number.isFinite(summit.latitude)
           && typeof summit.longitude === "number" && Number.isFinite(summit.longitude)
@@ -592,18 +646,22 @@ export function createVirtualExpeditionHandler(
           canonicalTerrainHills.push({
             ...route,
             name: summit.name,
+            summitName: summit.name,
+            summitId: summit.canonicalSourceKey,
             summitIdentityKey: summit.canonicalSourceKey,
             summitProminenceM: summit.prominenceM,
             summitElevationASL: summitElevationM,
             lat: summit.latitude as number,
             lng: summit.longitude as number,
             routeIdentityKey: `route:terrain:${summit.canonicalSourceKey}`,
+            routeId: `route:terrain:${summit.canonicalSourceKey}`,
+            entityType: "summit",
             dataSource: "canonical_verified",
             routeDataStatus: "terrain_calculated",
           });
         }
         const canonicalCandidateHills = [...canonicalHills, ...canonicalTerrainHills];
-        canonicalSummitShortlist = canonicalSummits.map(summit => ({
+        canonicalSummitShortlist = principalCanonicalSummits.map(summit => ({
           name: summit.name,
           summitElevationASL: summit.elevationM ?? null,
           prominenceM: summit.prominenceM ?? null,
@@ -651,7 +709,7 @@ export function createVirtualExpeditionHandler(
           externalRoutesAdded: 0,
           externalEnrichmentStatus: "not_needed",
           summitElevationEnrichmentStatus: "not_needed",
-          canonicalSummitsFound: canonicalSummits.length,
+          canonicalSummitsFound: principalCanonicalSummits.length,
         };
       }
 
@@ -996,6 +1054,7 @@ export function createVirtualExpeditionHandler(
           projected: additionalSummit.projected,
           provenance: additionalSummit.provenance,
           scheduleFit: additionalSummit.scheduleFit,
+          scheduleAssignments: additionalSummit.scheduleAssignments,
         } : null,
       };
 

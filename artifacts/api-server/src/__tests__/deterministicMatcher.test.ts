@@ -350,6 +350,8 @@ describe("deterministic expedition matcher", () => {
   it("accepts a substantial named summit route when a legacy seed lacks summit altitude", () => {
     const result = matchDeterministicExpedition([
       hill("Castle Crag Route", 240, {
+        entityType: "summit",
+        summitIdentityKey: "legacy-summit:castle-crag",
         routeType: "circular",
         routeDistance: 8,
         estimatedTime: "2 h 48 min",
@@ -358,6 +360,7 @@ describe("deterministic expedition matcher", () => {
         routeDataStatus: "seeded_estimate",
       }),
       hill("Eamont Way", 537, {
+        entityType: "way",
         routeType: "out-and-back",
         routeDistance: 17.9,
         estimatedTime: "6 h 16 min",
@@ -471,6 +474,7 @@ describe("deterministic expedition matcher", () => {
   it("does not let several generic Ways beat a compact mountain combination", () => {
     const ways = Array.from({ length: 4 }, (_, index) =>
       hill(`Generic Valley Way ${index + 1}`, 500, {
+        entityType: "way",
         routeType: "circular",
         routeDistance: 16.7,
         estimatedTime: "4 h",
@@ -702,6 +706,61 @@ describe("deterministic expedition matcher", () => {
         + Math.abs(projectedDistance / target.totalDistance - 1);
       return error < recommendation!.current.error;
     })).toBe(true);
+  });
+
+  it("uses structured principal identity rather than route keywords", () => {
+    const result = matchQuickestHighSummits([
+      hill("Summit Way", 700, {
+        entityType: "summit", routeType: "hill", summitIdentityKey: "summit:valid",
+      }),
+      hill("North Ridge", 700, { entityType: "ridge", summitIdentityKey: "summit:ridge" }),
+      hill("Valley Way", 700, { entityType: "way", summitIdentityKey: "summit:way" }),
+      hill("Subsidiary Peak", 700, {
+        entityType: "subsidiary_summit", summitIdentityKey: "summit:sub",
+      }),
+    ], profile({ totalElevationGain: 700, estimatedDays: 1 }));
+    expect(result.selectedHills.map(h => h.name)).toEqual(["Summit Way"]);
+    expect(result.rankedCandidates.find(r => r.name === "North Ridge")?.eligible).toBe(false);
+    expect(result.rankedCandidates.find(r => r.name === "Valley Way")?.eligible).toBe(false);
+    expect(result.rankedCandidates.find(r => r.name === "Subsidiary Peak")?.eligible).toBe(false);
+  });
+
+  it("deduplicates alternative routes by summit identity", () => {
+    const input = [
+      hill("Peak", 300, { summitIdentityKey: "summit:p", routeIdentityKey: "route:a", entityType: "summit" }),
+      hill("Peak", 500, { summitIdentityKey: "summit:p", routeIdentityKey: "route:b", entityType: "summit" }),
+      hill("Other Peak", 300, { summitIdentityKey: "summit:o", routeIdentityKey: "route:o", entityType: "summit" }),
+    ];
+    const match = matchQuickestHighSummits(input, profile({ totalElevationGain: 1_200, estimatedDays: 1 }));
+    const recommendation = recommendAdditionalSummit(input, match, profile({ totalElevationGain: 2_000, estimatedDays: 1 }));
+    if (recommendation) {
+      expect(new Set(recommendation.eligibleAlternatives.map(h => h.summitIdentityKey)).size)
+        .toBe(recommendation.eligibleAlternatives.length);
+    }
+  });
+
+  it("keeps disconnected and geometry-unknown objectives separate and estimated", () => {
+    const current = hill("Current", 500, {
+      summitIdentityKey: "summit:current", routeIdentityKey: "route:current",
+      entityType: "summit", lat: 54, lng: -3,
+    });
+    const candidate = hill("Candidate", 300, {
+      summitIdentityKey: "summit:candidate", routeIdentityKey: "route:candidate",
+      entityType: "summit", lat: 55, lng: -4,
+    });
+    const assignments = (recommendAdditionalSummit(
+      [current], {
+        selectedHills: [current],
+        rankedCandidates: [{ name: candidate.name, routeIdentityKey: candidate.routeIdentityKey, score: 90,
+          components: { ascentContribution: 1, duration: 1, gradeDifficulty: 1, terrainRouteType: 1, distance: 1, hazardCompatibility: 1 },
+          compatible: true, eligible: true }],
+      }, profile({ totalElevationGain: 2_000, estimatedDays: 1 }),
+    ) as any)?.scheduleAssignments;
+    if (assignments) {
+      expect(assignments.at(-1).relationship).toBe("separate_objective");
+      expect(assignments.at(-1).confidence).toBe("estimated");
+      expect(assignments.at(-1).day).toBe(2);
+    }
   });
 
   it("chooses different combinations for different target profiles", () => {

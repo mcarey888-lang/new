@@ -43,6 +43,13 @@ export const HillSchema = z.object({
   name: z.string().transform(englishPlaceName),
   /** Stable public route identity. Never contains a private tracked-route ID. */
   routeIdentityKey: z.string().min(1).optional(),
+  /** Additive display/API identities; summit identity is never a route identity. */
+  summitId: z.string().min(1).optional(),
+  routeId: z.string().min(1).optional(),
+  summitName: z.string().min(1).optional(),
+  /** Structured source classification. Do not infer this from display names. */
+  entityType: z.enum(["summit", "peak", "hill", "subsidiary_summit", "route", "ridge", "edge", "path", "trail", "way"]).optional(),
+  canonicalParentIdentityKey: z.string().min(1).optional(),
   /** Human-readable attached route label; summit name remains `name`. */
   routeName: z.string().min(1).optional(),
   elevation: z.number(),
@@ -741,6 +748,8 @@ export async function osmPeaksToHills(
 
     hills.push({
       name: englishPlaceName(peak.name),
+      summitName: englishPlaceName(peak.name),
+      summitId: `osm:node:${peak.id}`,
       routeIdentityKey: routeIdentityKeyFor(
         "osm_overpass",
         peak.name,
@@ -749,6 +758,13 @@ export async function osmPeaksToHills(
         `node:${peak.id}`,
       ),
       routeName: "Terrain-estimated summit circuit",
+      routeId: routeIdentityKeyFor(
+        "osm_overpass",
+        peak.name,
+        peak.lat,
+        peak.lng,
+        `node:${peak.id}`,
+      ),
       elevation: gain,
       distance,
       repeats,
@@ -766,6 +782,7 @@ export async function osmPeaksToHills(
       // not from AI-guessed lat/lng, so altitude scoring stays accurate.
       summitElevationASL: Math.round(summitElev),
       summitIdentityKey: `osm:node:${peak.id}`,
+      entityType: "summit",
       dataSource: "osm_overpass",
       routeDataStatus: "terrain_calculated",
     });

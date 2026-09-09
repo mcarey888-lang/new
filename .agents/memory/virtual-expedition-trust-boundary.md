@@ -15,6 +15,10 @@ The headline match score is the equal-weight average of symmetric gain and dista
 
 When an automatic plan remains below normal tolerance, an optional extra summit may be recommended from the already eligible local pool only. It must strictly reduce combined normalized gain/distance error, preserve canonical identity/provenance and safety exclusions, and never be added automatically. A duration increase requires explicit confirmation.
 
+Summit and route identity are separate: objective cards, GPS completion, and saved expeditions use the canonical summit ID, name, and coordinates. An attached route keeps its own ID, name, metrics, geometry, and provenance and is displayed as secondary “via” information. Deduplicate alternatives by summit, not route.
+
+Same-day scheduling requires trusted combined-route identity or reliable route-boundary/trailhead compatibility. Summit coordinates are never substitutes for trailheads. Without reliable geometry, keep objectives separate, mark scheduling estimated, recommend another day, and never add transition distance to route totals.
+
 Difficulty labels are ranking preferences, not automatic proof that a Moderate user cannot scramble. For a strongly technical target, known technical-route evidence may be required when available; Moderate can retain target-compatible high/severe objectives, while Easy is an explicit veto. Nontechnical target DNA still excludes incompatible hazards.
 
 Canonical DoBIH summits without verified route facts retain canonical identity and prominence but receive clearly labelled `terrain_calculated` estimates at canonical coordinates. Such estimates never become verified route facts or borrow a specific route name such as “North Face.”
@@ -23,6 +27,6 @@ Some legacy seeded trail catalogues use coarse estimates and lack summit linkage
 
 Every new local route carries a stable public geographic identity through recommendations, plans, tracking, hill details, and completion. Older saved expeditions without an identity continue using the visible route name as a compatibility fallback.
 
-**Why:** Route-first arithmetic previously allowed generic Ways and filler outings to displace genuine summits; highest-first selection then ignored materially different target route profiles. Imported DoBIH identities were also hidden by mountain status and by treating an informational QA flag as failure. Target routes can differ materially, legacy cache facts may originate from AI, and summit altitude must never be mistaken for route ascent.
+**Why:** Route-first arithmetic previously allowed generic Ways, route features, and filler outings to displace genuine summits. Separate identities prevent routes from masquerading as mountains; explicit schedule evidence prevents disconnected outings from being presented as one continuous walk.
 
 **How to apply:** Preserve per-field provenance, require explicit target-route selection, evaluate every combination at each cardinality before moving to the next, and expose target/planned/projected ascent, distance, percentages, tolerance mode, and mismatch reason. Exclude known sub-30m-prominence subsidiary tops from principal objectives. Keep GPS directions separate: open coordinates only for a verified trailhead; otherwise search by route name plus catalogue area.

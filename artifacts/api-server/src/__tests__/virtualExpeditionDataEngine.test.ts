@@ -5,7 +5,11 @@ import type { Hill } from "../routes/hills-unified.js";
 import type { TargetMountainProfile } from "../routes/virtual-expedition.js";
 import type { TrustedCanonicalRoute, VerifiedCanonicalMountain } from "../services/mountain/canonicalMountainLookup.js";
 import { matchDeterministicExpedition } from "../services/virtualExpedition/deterministicMatcher.js";
-import { createVirtualExpeditionHandler, type VirtualExpeditionHandlerDependencies } from "../services/virtualExpedition/virtualExpeditionHandler.js";
+import {
+  createVirtualExpeditionHandler,
+  filterCanonicalPrincipalSummits,
+  type VirtualExpeditionHandlerDependencies,
+} from "../services/virtualExpedition/virtualExpeditionHandler.js";
 
 const profile = (overrides: Partial<TargetMountainProfile> = {}): TargetMountainProfile => ({
   name: "Target", country: "Test", summitElevation: 3_000, totalElevationGain: 2_000,
@@ -77,6 +81,36 @@ async function invoke(dependencies: VirtualExpeditionHandlerDependencies, body: 
 }
 
 describe("virtual expedition summit-first data engine", () => {
+  it("filters a route-named canonical feature to its authoritative parent summit", () => {
+    const parent = {
+      ...mountain(), canonicalSourceKey: "summit:helvellyn", name: "Helvellyn",
+      routes: [{ ...route(), identityKey: "route:striding-edge", name: "Striding Edge", aliases: ["The Edge"] }],
+    };
+    const routeFeature = {
+      ...mountain(), canonicalSourceKey: "summit:striding-edge", name: "Striding Edge",
+      routes: [{ ...route(), name: "Striding Edge", aliases: ["The Edge"] }],
+    };
+    expect(filterCanonicalPrincipalSummits([parent, routeFeature]).map(s => s.name))
+      .toEqual(["Helvellyn"]);
+  });
+
+  it("preserves separate summit and route identity and summit GPS coordinates", async () => {
+    const local = {
+      ...mountain(), id: "helvellyn-id", canonicalSourceKey: "summit:helvellyn",
+      name: "Helvellyn", latitude: 54.526, longitude: -3.017,
+      routes: [{ ...route(), identityKey: "route:striding-edge", name: "Striding Edge" }],
+    };
+    const response = await invoke(deps({
+      canonicalAreaLookup: vi.fn(async () => [local]),
+    }), { daysOverride: 1 });
+    expect(response.body.recommendedHills[0]).toMatchObject({
+      name: "Helvellyn", summitName: "Helvellyn", summitId: "summit:helvellyn",
+      routeName: "Striding Edge", routeId: "route:striding-edge",
+      summitIdentityKey: "summit:helvellyn", routeIdentityKey: "route:striding-edge",
+      lat: 54.526, lng: -3.017,
+    });
+  });
+
   it("returns canonical ambiguity before profile or local discovery", async () => {
     const resolveFallbackProfile = vi.fn();
     const fetchPeaks = vi.fn();

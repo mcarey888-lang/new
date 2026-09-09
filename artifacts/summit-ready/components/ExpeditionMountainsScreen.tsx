@@ -106,7 +106,7 @@ interface ExpeditionResult {
   provenance?: VirtualExpeditionProvenance;
   expedition?: {
     title: string; concept: string;
-    days: Array<{ label: string; title: string; focus: string; routes: Array<{ name: string; why: string }> }>;
+    days: Array<{ label: string; title: string; focus: string; routes: Array<{ name: string; routeIdentityKey?: string; routeId?: string; routeName?: string; why: string }> }>;
     alternatives: Record<string, string[]>;
     adventureScore: number; dnaMatchScore: number; dnaMatchNotes: string;
   } | null;
@@ -128,8 +128,26 @@ interface ImproveYourMatch {
     fitsExistingSchedule?: boolean;
     assessment?: string;
     additionalDayRecommended?: boolean;
+    assignments?: ScheduleAssignment[];
   };
+  scheduleAssignments?: ScheduleAssignment[];
   eligibleAlternatives?: NearbyHill[];
+}
+
+interface ScheduleAssignment {
+  day: number;
+  summitName: string;
+  summitIdentityKey?: string;
+  routeIdentityKey?: string | null;
+  routeName?: string | null;
+  gain: number;
+  distance?: number | null;
+  dataSource?: string | null;
+  routeDataStatus?: string | null;
+  relationship?: "continuous_combined_route" | "separate_objective";
+  confidence?: string;
+  reason?: string;
+  transitionConsideration?: string;
 }
 
 function hillGain(hill: NearbyHill): number {
@@ -149,6 +167,30 @@ function matchPercent(gain: number, distance: number, target: TargetMountain): n
     actual > 0 && targetValue > 0 ? Math.min(actual, targetValue) / Math.max(actual, targetValue) : 0;
   return Math.round(((axisMatch(gain, target.totalElevationGain)
     + axisMatch(distance, target.totalDistance)) / 2) * 100);
+}
+
+function summitLabel(hill: NearbyHill): string {
+  return hill.summitName ?? hill.name;
+}
+function routeLabel(hill: NearbyHill): string {
+  const route = hill.routeName ?? hill.name;
+  return route && route !== summitLabel(hill) ? route : "";
+}
+function summitIdentity(hill: NearbyHill): string {
+  return hill.summitIdentityKey ?? hill.canonicalParentIdentityKey ?? hill.summitId ?? summitLabel(hill).trim().toLowerCase();
+}
+function assignmentText(assignments: ScheduleAssignment[]): string {
+  const grouped = new Map<number, ScheduleAssignment[]>();
+  assignments.forEach(item => grouped.set(item.day, [...(grouped.get(item.day) ?? []), item]));
+  return [...grouped.entries()].sort((a, b) => a[0] - b[0]).map(([day, items]) => {
+    const lines = items.map(item => {
+      const route = item.routeName && item.routeName !== item.summitName ? ` via ${item.routeName}` : "";
+      const provenance = [item.dataSource, item.routeDataStatus].filter(Boolean).join(" / ") || "provenance unavailable";
+      const relationship = item.relationship === "continuous_combined_route" ? "continuous combined route" : "separate objective";
+      return `• ${item.summitName}${route} — +${item.gain.toLocaleString()}m / ${item.distance == null ? "distance unavailable" : `${item.distance.toFixed(1)}km`} · ${provenance} · ${relationship} · ${item.confidence ?? "unknown"} confidence\n  ${item.reason ?? "No scheduling reason provided."}${item.transitionConsideration ? ` ${item.transitionConsideration}` : ""}`;
+    });
+    return `Day ${day}\n${lines.join("\n")}`;
+  }).join("\n\n");
 }
 
 interface PendingExpeditionRequest {
@@ -554,40 +596,91 @@ export default function ExpeditionMountainsScreen() {
     if (!results) return;
     const projected = plannedTotals([...results.recommendedHills, hill]);
     const rec = results.improveYourMatch;
-    const isRecommended = rec?.recommendedSummit?.routeIdentityKey === hill.routeIdentityKey
-      || rec?.recommendedSummit?.name === hill.name;
+    const isRecommended = !!rec?.recommendedSummit && (
+      (rec.recommendedSummit.routeIdentityKey && rec.recommendedSummit.routeIdentityKey === hill.routeIdentityKey)
+      || summitIdentity(rec.recommendedSummit) === summitIdentity(hill)
+    );
     const targetDays = results.targetProfile.estimatedDays;
-    // Alternatives do not have server schedule assessments. Be conservative:
-    // only call one a same-day fit when its route is no larger than an average
-    // target day and there is room in the existing plan.
-    const alternativeFits = results.recommendedHills.length < targetDays
-      && hillGain(hill) <= results.targetProfile.totalElevationGain / targetDays
-      && hillDistance(hill) <= results.targetProfile.totalDistance / targetDays;
-    const extraDay = isRecommended
-      ? rec?.scheduleFit?.additionalDayRecommended === true || rec?.scheduleFit?.fitsExistingSchedule === false
-      : !alternativeFits;
-    if (extraDay) {
-      const confirmed = await new Promise<boolean>(resolve => {
-        Alert.alert(
-          "Add another day?",
-          `${hill.name} does not reasonably fit the existing ${targetDays}-day schedule. Add it with an additional day?`,
-          [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-            { text: "Confirm duration change", onPress: () => resolve(true) }],
-          { cancelable: true, onDismiss: () => resolve(false) },
-        );
-      });
-      if (!confirmed) return;
-    }
+    // The API's assignments are authoritative for the primary recommendation.
+    // Alternatives intentionally get a new day unless the exact route identity
+    // proves that they are the same continuous objective. Summit coordinates
+    // are never treated as trailheads.
+    const serverAssignments = isRecommended
+      ? (rec?.scheduleAssignments ?? rec?.scheduleFit?.assignments ?? [])
+      : [];
+    const assignments: ScheduleAssignment[] = serverAssignments.length > 0
+      ? serverAssignments
+      : [
+        ...results.recommendedHills.map((existing, index): ScheduleAssignment => ({
+          day: index + 1,
+          summitName: summitLabel(existing),
+          summitIdentityKey: summitIdentity(existing),
+          routeIdentityKey: existing.routeIdentityKey ?? null,
+          routeName: routeLabel(existing) || null,
+          gain: hillGain(existing),
+          distance: hillDistance(existing),
+          dataSource: undefined,
+          routeDataStatus: undefined,
+          relationship: "separate_objective",
+          confidence: "high",
+          reason: "Current objective receives a stable dedicated day.",
+          transitionConsideration: "No transition distance is added to route totals.",
+        })),
+        (() => {
+          const relatedIndex = results.recommendedHills.findIndex(existing =>
+            !!existing.routeIdentityKey && existing.routeIdentityKey === hill.routeIdentityKey);
+          return {
+            day: relatedIndex >= 0 ? relatedIndex + 1 : results.recommendedHills.length + 1,
+            summitName: summitLabel(hill),
+            summitIdentityKey: summitIdentity(hill),
+            routeIdentityKey: hill.routeIdentityKey ?? null,
+            routeName: routeLabel(hill) || null,
+            gain: hillGain(hill),
+            distance: hillDistance(hill),
+            dataSource: undefined,
+            routeDataStatus: undefined,
+            relationship: relatedIndex >= 0 ? "continuous_combined_route" : "separate_objective",
+            confidence: relatedIndex >= 0 ? "medium" : "estimated",
+            reason: relatedIndex >= 0
+              ? "The exact route identity supports a continuous combined route."
+              : "Alternative has no trustworthy same-route/trailhead evidence; keep it as a separate objective.",
+            transitionConsideration: relatedIndex >= 0
+              ? "Same route identity; no additional trailhead transition assumed."
+              : "Summit coordinates are not trailheads; transition evidence is unavailable.",
+          } satisfies ScheduleAssignment;
+        })(),
+      ];
+    const maxAssignedDay = assignments.reduce((max, item) => Math.max(max, item.day), 0);
+    const extraDay = maxAssignedDay > targetDays;
+    const scheduleSummary = assignmentText(assignments);
+    const confirmed = await new Promise<boolean>(resolve => {
+      Alert.alert(
+        extraDay ? "Add another day?" : "Confirm schedule change",
+        `${scheduleSummary}\n\n${extraDay
+          ? `This reaches day ${maxAssignedDay}, beyond the current ${targetDays}-day target.`
+          : "Review the assigned objectives before changing your plan."}`,
+        [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: extraDay ? "Confirm duration change" : "Confirm addition", onPress: () => resolve(true) }],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+    if (!confirmed) return;
     const nextHills = [...results.recommendedHills, hill];
     const nextTarget = extraDay
-      ? { ...results.targetProfile, estimatedDays: targetDays + 1 }
+      ? { ...results.targetProfile, estimatedDays: maxAssignedDay }
       : results.targetProfile;
     const nextScore = matchPercent(projected.gain, projected.distance, nextTarget);
     const axisScore = (actual: number, targetValue: number) =>
       actual > 0 && targetValue > 0
         ? Math.round(100 * Math.min(actual, targetValue) / Math.max(actual, targetValue))
         : 0;
-    const route = { name: hill.name, why: "Confirmed optional match improvement", routeIdentityKey: hill.routeIdentityKey };
+    const route = {
+      name: routeLabel(hill) || hill.name,
+      routeName: routeLabel(hill) || undefined,
+      routeId: hill.routeId,
+      why: "Confirmed optional match improvement",
+      routeIdentityKey: hill.routeIdentityKey,
+    };
     const nextPlan = results.expedition
       ? { ...results.expedition, days: extraDay
           ? [...results.expedition.days, { label: `Day ${results.expedition.days.length + 1}`, title: hill.name, focus: "Additional summit", routes: [route] }]
@@ -1091,7 +1184,8 @@ export default function ExpeditionMountainsScreen() {
               ratio == null ? Math.round(total > 0 ? total / Math.max(1, target) * 100 : 0) : Math.round(ratio <= 1 ? ratio * 100 : ratio);
             const gainPct = ratioPercent(recommendation.projected?.gainRatio, projected.gain, gainTarget);
             const distancePct = ratioPercent(recommendation.projected?.distanceRatio, projected.distance, distanceTarget);
-            const alternatives = recommendation.eligibleAlternatives ?? [];
+            const alternatives = (recommendation.eligibleAlternatives ?? []).filter((alternative, index, all) =>
+              all.findIndex(item => summitIdentity(item) === summitIdentity(alternative)) === index);
             const currentGainPct = ratioPercent(recommendation.current?.gainRatio, gain, gainTarget);
             const currentDistancePct = ratioPercent(recommendation.current?.distanceRatio, distance, distanceTarget);
             return (
@@ -1112,9 +1206,11 @@ export default function ExpeditionMountainsScreen() {
                 </View>
                 <View style={s.improveCandidate}>
                   <Text style={s.improveCandidateLabel}>RECOMMENDED SUMMIT</Text>
-                  <Text style={s.improveCandidateName}>{candidate.name}</Text>
+                   <Text style={s.improveCandidateName}>{summitLabel(candidate)}</Text>
+                   {routeLabel(candidate) ? <Text style={s.improveCandidateMeta}>via {routeLabel(candidate)}</Text> : null}
                   <Text style={s.improveCandidateMeta}>+{hillGain(candidate).toLocaleString()}m gain · +{hillDistance(candidate).toFixed(1)}km · projected {projected.gain.toLocaleString()}m ({gainPct}%), {projected.distance.toFixed(1)}km ({distancePct}%)</Text>
-                  <Text style={s.improveCandidateMeta}>{recommendation.scheduleFit?.additionalDayRecommended ? "Needs an additional day" : recommendation.scheduleFit?.assessment ?? (recommendation.scheduleFit?.fitsExistingSchedule === false ? "Does not fit the existing schedule" : "Fits the existing schedule")} · {recommendation.provenance?.dataSource ?? "Route source not provided"} · {recommendation.provenance?.routeDataStatus ?? "status not provided"}{recommendation.provenance?.confidence ? ` · ${recommendation.provenance.confidence} confidence` : ""}</Text>
+                   <Text style={s.improveCandidateMeta}>{recommendation.scheduleFit?.additionalDayRecommended ? "Needs an additional day" : recommendation.scheduleFit?.assessment ?? (recommendation.scheduleFit?.fitsExistingSchedule === false ? "Does not fit the existing schedule" : "Fits the existing schedule")} · {recommendation.provenance?.dataSource ?? "Route source not provided"} · {recommendation.provenance?.routeDataStatus ?? "status not provided"}{recommendation.provenance?.confidence ? ` · ${recommendation.provenance.confidence} confidence` : ""}</Text>
+                   <Text style={s.improveCandidateMeta}>Summit {candidate.summitId ?? candidate.summitIdentityKey ?? "identity unavailable"} · route {candidate.routeId ?? candidate.routeIdentityKey ?? "identity unavailable"}</Text>
                 </View>
                 <TouchableOpacity onPress={() => void handleAddImprovement(candidate)} style={s.improvePrimary} activeOpacity={0.85}>
                   <Plus size={15} color="#fff" /><Text style={s.improvePrimaryText}>Add recommended summit</Text>
@@ -1125,9 +1221,10 @@ export default function ExpeditionMountainsScreen() {
                       <Text style={s.improveSecondaryText}>Choose another summit</Text>
                     </TouchableOpacity>
                     {alternativeOpen && alternatives.map(alternative => (
-                      <TouchableOpacity key={alternative.routeIdentityKey ?? alternative.name} onPress={() => void handleAddImprovement(alternative)} style={s.alternativeRow}>
-                        <Text style={s.alternativeName}>{alternative.name}</Text>
-                        <Text style={s.alternativeMeta}>+{hillGain(alternative).toLocaleString()}m · +{hillDistance(alternative).toFixed(1)}km</Text>
+                      <TouchableOpacity key={summitIdentity(alternative)} onPress={() => void handleAddImprovement(alternative)} style={s.alternativeRow}>
+                        <Text style={s.alternativeName}>{summitLabel(alternative)}</Text>
+                        <Text style={s.alternativeMeta}>{routeLabel(alternative) ? `via ${routeLabel(alternative)} · ` : ""}+{hillGain(alternative).toLocaleString()}m · +{hillDistance(alternative).toFixed(1)}km</Text>
+                        <Text style={s.alternativeMeta}>Summit {alternative.summitId ?? alternative.summitIdentityKey ?? "identity unavailable"} · route {alternative.routeId ?? alternative.routeIdentityKey ?? "identity unavailable"} · {alternative.dataSource ?? "provenance unavailable"} · {alternative.confidence ?? recommendation.provenance?.confidence ?? "estimated"} confidence</Text>
                       </TouchableOpacity>
                     ))}
                   </>

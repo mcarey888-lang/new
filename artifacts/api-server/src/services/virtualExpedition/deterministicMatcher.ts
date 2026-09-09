@@ -92,7 +92,26 @@ export interface AdditionalSummitRecommendation {
     fitsExistingSchedule: boolean;
     assessment: string;
     additionalDayRecommended: boolean;
+    /** Deterministic per-objective schedule contract (scheduleFit is retained for compatibility). */
+    assignments: ScheduleAssignment[];
   };
+  scheduleAssignments: ScheduleAssignment[];
+}
+
+export interface ScheduleAssignment {
+  day: number;
+  summitName: string;
+  summitIdentityKey: string;
+  routeIdentityKey: string | null;
+  routeName: string | null;
+  gain: number;
+  distance: number | null;
+  dataSource: string | null;
+  routeDataStatus: string | null;
+  relationship: "continuous_combined_route" | "separate_objective";
+  confidence: "high" | "medium" | "estimated" | "low";
+  reason: string;
+  transitionConsideration: string;
 }
 
 function summitIdentity(hill: Hill): string {
@@ -124,7 +143,15 @@ function validCoordinates(hill: Hill): hill is Hill & { lat: number; lng: number
     && hill.lng <= 180;
 }
 
-function haversineKm(a: Hill & { lat: number; lng: number }, b: Hill & { lat: number; lng: number }): number {
+function validTrailhead(hill: Hill): hill is Hill & { trailheadLat: number; trailheadLng: number } {
+  return typeof hill.trailheadLat === "number" && Number.isFinite(hill.trailheadLat)
+    && typeof hill.trailheadLng === "number" && Number.isFinite(hill.trailheadLng);
+}
+
+function haversineKm(
+  a: Pick<Hill, "lat" | "lng"> & { lat: number; lng: number },
+  b: Pick<Hill, "lat" | "lng"> & { lat: number; lng: number },
+): number {
   const radians = Math.PI / 180;
   const deltaLat = (b.lat - a.lat) * radians;
   const deltaLng = (b.lng - a.lng) * radians;
@@ -149,6 +176,32 @@ function geographicIdentity(hill: Hill): string {
   return validCoordinates(hill)
     ? `${name}@${hill.lat},${hill.lng}`
     : `${name}@unknown`;
+}
+
+/**
+ * Route records are never objectives merely because their names contain summit
+ * words. Structured entity type and canonical linkage are authoritative.
+ * Legacy records without either field remain eligible only when they have
+ * complete, substantial route facts.
+ */
+function principalSummitEvidence(hill: Hill): { eligible: boolean; reason?: string } {
+  if (["route", "ridge", "edge", "path", "trail", "way", "subsidiary_summit"].includes(hill.entityType ?? "")) {
+    return { eligible: false, reason: "route-only or subsidiary entity is not a principal summit" };
+  }
+  if (hill.canonicalParentIdentityKey && hill.canonicalParentIdentityKey !== hill.summitIdentityKey) {
+    return { eligible: false, reason: "canonical parent relationship is not reliable" };
+  }
+  // A route-shaped record cannot promote itself to a summit by attaching an
+  // arbitrary summit key. Canonical/normalised summit records use routeType
+  // "hill"; explicit route-shaped entity types were rejected above.
+  if (hill.summitIdentityKey && hill.entityType == null && hill.routeType !== "hill") {
+    return { eligible: false, reason: "route-shaped feature is not a principal summit" };
+  }
+  if (hill.entityType === "summit" || hill.entityType === "peak" || hill.entityType === "hill") {
+    return { eligible: true };
+  }
+  if (hill.summitIdentityKey) return { eligible: true };
+  return { eligible: true };
 }
 
 function stableHillCompare(a: Hill, b: Hill): number {
@@ -234,19 +287,31 @@ export function recommendAdditionalSummit(
     || additionalRouteEvidenceRank(b.candidate) - additionalRouteEvidenceRank(a.candidate)
     || terrainScore(b.candidate, profile) - terrainScore(a.candidate, profile)
     || stableHillCompare(a.candidate, b.candidate));
-  const winner = ranked[0];
-  const selectedWithCoordinates = match.selectedHills.filter(validCoordinates);
-  const geographicallyCompatible = !validCoordinates(winner.candidate) || selectedWithCoordinates.length === 0
-    || selectedWithCoordinates.some(selected => haversineKm(selected, winner.candidate) <= 50);
+  // A summit may have several verified routes, but it is one objective.
+  // Retain the best route according to the same deterministic ordering used
+  // for the recommendation, rather than exposing duplicate alternatives.
+  const uniqueSummits = new Set<string>();
+  const dedupedRanked = ranked.filter(item => {
+    const identity = summitIdentity(item.candidate);
+    if (uniqueSummits.has(identity)) return false;
+    uniqueSummits.add(identity);
+    return true;
+  });
+  const winner = dedupedRanked[0];
+  if (!winner) return undefined;
+  const scheduleAssignments = buildScheduleAssignments(match.selectedHills, winner.candidate, profile);
+  const candidateAssignment = scheduleAssignments[scheduleAssignments.length - 1];
+  const geographicallyCompatible = candidateAssignment.relationship === "continuous_combined_route";
   const currentMinutes = match.selectedHills.reduce(
     (sum, hill) => sum + (parseEstimatedMinutes(hill.estimatedTime) ?? 0) * hill.repeats, 0);
+  const candidateMinutes = parseEstimatedMinutes(winner.candidate.estimatedTime) ?? 0;
   const fits = geographicallyCompatible
+    && candidateAssignment.day <= profile.estimatedDays
     && currentGain + winner.candidate.elevation <= profile.maxDailyElevation * profile.estimatedDays
-    && currentMinutes + (parseEstimatedMinutes(winner.candidate.estimatedTime) ?? 0)
-      <= profile.estimatedDays * 7 * 60;
+    && currentMinutes + candidateMinutes <= profile.estimatedDays * 7 * 60;
   return {
     candidate: materialiseHill(winner.candidate, 1),
-    eligibleAlternatives: ranked
+    eligibleAlternatives: dedupedRanked
       .slice(1, 5)
       .map(item => materialiseHill(item.candidate, 1)),
     deterministicIdentity: summitIdentity(winner.candidate),
@@ -266,15 +331,18 @@ export function recommendAdditionalSummit(
     },
     scheduleFit: {
       fitsExistingSchedule: fits,
-      assessment: fits ? "Fits within the existing schedule." : "An additional day is recommended; duration will not increase without confirmation.",
+      assessment: fits
+        ? "Fits within the existing schedule using trusted route/trailhead compatibility."
+        : "An additional day is recommended; independent or uncertain routes remain separate.",
       additionalDayRecommended: !fits,
+      assignments: scheduleAssignments,
     },
+    scheduleAssignments,
   };
 }
 
 function isNamedSummitCandidate(hill: Hill): boolean {
-  return Boolean(hill.summitIdentityKey)
-    && !/\b(way|valley|visitor|trail|path|walk|coast|reserve)\b/i.test(hill.name);
+  return principalSummitEvidence(hill).eligible;
 }
 
 function proximityScore(actual: number, desired: number): number {
@@ -290,6 +358,80 @@ function parseEstimatedMinutes(value: string | null | undefined): number | null 
   if (hours) return Number(hours[1]) * 60;
   const minutes = value.match(/(\d+)\s*min/i);
   return minutes ? Number(minutes[1]) : null;
+}
+
+function scheduleRelationship(a: Hill, b: Hill): {
+  relationship: ScheduleAssignment["relationship"];
+  confidence: ScheduleAssignment["confidence"];
+  reason: string;
+} {
+  if (a.routeIdentityKey && b.routeIdentityKey && a.routeIdentityKey === b.routeIdentityKey) {
+    return {
+      relationship: "continuous_combined_route",
+      confidence: "high",
+      reason: "Trusted identical route identity establishes a combined route.",
+    };
+  }
+  if (validTrailhead(a) && validTrailhead(b)) {
+    const distance = haversineKm(
+      { lat: a.trailheadLat, lng: a.trailheadLng },
+      { lat: b.trailheadLat, lng: b.trailheadLng },
+    );
+    if (distance <= 15) return {
+      relationship: "continuous_combined_route",
+      confidence: "medium",
+      reason: `Reliable trailheads are ${distance.toFixed(1)} km apart.`,
+    };
+  }
+  return {
+    relationship: "separate_objective",
+    confidence: validTrailhead(a) || validTrailhead(b) ? "low" : "estimated",
+    reason: validCoordinates(a) && validCoordinates(b)
+      ? "Summit coordinates are not trailheads; no trusted route boundary or trailhead compatibility exists."
+      : "Route geometry and trailheads are unavailable, so independent objectives remain separate.",
+  };
+}
+
+function buildScheduleAssignments(current: Hill[], candidate: Hill, profile: TargetMountainProfile): ScheduleAssignment[] {
+  const assignments: ScheduleAssignment[] = [];
+  current.forEach((hill, index) => {
+    assignments.push({
+      day: index + 1,
+      summitName: hill.summitName ?? hill.name,
+      summitIdentityKey: summitIdentity(hill),
+      routeIdentityKey: hill.routeIdentityKey ?? null,
+      routeName: hill.routeName ?? null,
+      gain: hill.elevation * hill.repeats,
+      distance: hill.routeDistance ?? null,
+      dataSource: hill.dataSource ?? null,
+      routeDataStatus: hill.routeDataStatus ?? null,
+      relationship: "separate_objective",
+      confidence: "high",
+      reason: "Current objective receives a stable dedicated day.",
+      transitionConsideration: "No transition distance is added to route totals.",
+    });
+  });
+  const related = current.find(hill => scheduleRelationship(hill, candidate).relationship === "continuous_combined_route");
+  const relationship = related ? scheduleRelationship(related, candidate) : scheduleRelationship(
+    current[0] ?? candidate, candidate,
+  );
+  const day = related ? assignments[current.indexOf(related)].day : assignments.length + 1;
+  assignments.push({
+    day,
+    summitName: candidate.summitName ?? candidate.name,
+    summitIdentityKey: summitIdentity(candidate),
+    routeIdentityKey: candidate.routeIdentityKey ?? null,
+    routeName: candidate.routeName ?? null,
+    gain: candidate.elevation * candidate.repeats,
+    distance: candidate.routeDistance ?? null,
+    dataSource: candidate.dataSource ?? null,
+    routeDataStatus: candidate.routeDataStatus ?? null,
+    relationship: relationship.relationship,
+    confidence: relationship.confidence,
+    reason: relationship.reason,
+    transitionConsideration: "Transitions are considered for scheduling only; they are not route distance or ascent.",
+  });
+  return assignments;
 }
 function difficultyLevel(value: string | null | undefined): number {
   const text = (value ?? "").toLowerCase();
@@ -357,6 +499,8 @@ function abilityCompatibility(
 /** Route facts are deliberately stricter than legacy display Hill facts. */
 function routeEvidence(hill: Hill): { eligible: boolean; quality: number; reasons: string[] } {
   const reasons: string[] = [];
+  const principal = principalSummitEvidence(hill);
+  if (!principal.eligible) reasons.push(principal.reason ?? "not a principal summit");
   const duration = parseEstimatedMinutes(hill.estimatedTime);
   const terrain = hill.surface.trim().toLowerCase();
   const distance = hill.routeDistance;
@@ -370,33 +514,28 @@ function routeEvidence(hill: Hill): { eligible: boolean; quality: number; reason
   const substantial = hill.elevation >= 200 || density >= 55;
   const nonHill = hill.routeType !== "hill";
   const mountainTerrain = /\b(mountain|fell|ridge|rock|scrambl|scree|boulder)\b/.test(terrain);
-  const namedSummitObjective =
-    /\b(mount|mountain|fell|fells|pike|peak|summit|crag|tor|ben|beinn|carn|ridge)\b/i
-      .test(hill.name);
-  const genericLowLevelObjective =
-    /\b(way|valley|visitor|sightseeing|heritage|ramble|coast path|accessible|stroll|nature reserve|picnic|wood trail)\b/i
-      .test(hill.name);
+  // Names are display data, not evidence of a summit objective.
   const corroboratedMountainObjective = substantial
     && mountainTerrain
-    && namedSummitObjective
-    && !genericLowLevelObjective;
+    && (hill.summitIdentityKey != null
+      || hill.entityType === "summit" || hill.entityType === "peak" || hill.entityType === "hill");
   // A long low-altitude non-hill route with little climbing density is not made
   // summit-like merely by a large, potentially aggregate ascent figure. For
   // older seeded rows without summit linkage, mountain terrain plus a generic
   // named summit objective may corroborate otherwise complete route facts.
+  const legacyStructuredSummit = nonHill && hill.entityType == null
+    && hill.summitIdentityKey == null && substantial && mountainTerrain;
   const weakStructured = nonHill
     && (summit == null || summit < 350)
     && density < 55
-    && !corroboratedMountainObjective;
+    && !corroboratedMountainObjective
+    && !legacyStructuredSummit;
   if (weakStructured) reasons.push("weak non-summit route evidence");
   // Names are only corroboration: without the structured weak evidence this never rejects a route.
-  if (weakStructured && genericLowLevelObjective) {
-    reasons.push("weak objective name corroboration");
-  }
   let quality = (substantial ? 45 : 15) + Math.min(25, Math.round(density / 4));
   if (summit != null && Number.isFinite(summit)) quality += summit >= 900 ? 30 : summit >= 500 ? 20 : summit >= 300 ? 10 : 0;
   if (corroboratedMountainObjective) quality += 15;
-  if (genericLowLevelObjective) quality -= 20;
+  if (!principal.eligible) quality -= 30;
   if (hill.routeType === "hill") quality += 10;
   if (hill.routeDataStatus === "external_route") quality += 5;
   return { eligible: reasons.length === 0, quality: clampScore(quality), reasons };

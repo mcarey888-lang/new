@@ -147,7 +147,7 @@ export interface SummitGoal {
       label:  string;
       title:  string;
       focus:  string;
-      routes: Array<{ name: string; routeIdentityKey?: string; why: string }>;
+      routes: Array<{ name: string; routeIdentityKey?: string; routeId?: string; routeName?: string; why: string }>;
     }>;
     alternatives:  Record<string, string[]>;
     adventureScore: number;
@@ -251,6 +251,16 @@ export interface NearbyHill {
   name: string;
   /** Stable geographic route identity; absent on legacy AsyncStorage records. */
   routeIdentityKey?: string;
+  summitId?: string;
+  routeId?: string;
+  summitName?: string;
+  routeName?: string;
+  entityType?: "summit" | "peak" | "hill" | "subsidiary_summit" | "route" | "ridge" | "edge" | "path" | "trail" | "way";
+  canonicalParentIdentityKey?: string;
+  summitIdentityKey?: string;
+  dataSource?: string;
+  routeDataStatus?: string;
+  confidence?: string;
   elevation: number;
   distance: number;
   repeats: number;
@@ -260,6 +270,8 @@ export interface NearbyHill {
   emoji: string;
   lat?: number;
   lng?: number;
+  trailheadLat?: number;
+  trailheadLng?: number;
   routeType?: "hill" | "circular" | "out-and-back";
   routeDistance?: number;
   estimatedTime?: string;
