@@ -48,6 +48,8 @@ export interface CompletedGoal {
 export interface SimulationScoreBreakdown {
   overall: number;
   elevation: number;
+  distance?: number;
+  technicalSuitability?: number;
   gradient: number;
   duration: number;
   altitude: number;
@@ -73,7 +75,8 @@ export interface TargetMountain {
   summitElevation: number;
   totalElevationGain: number;
   totalDistance: number;
-  estimatedDays: 1 | 2;
+  /** Automatic plans use the requested maximum; confirmed optional additions may extend it. */
+  estimatedDays: number;
   day1ElevationGain?: number;
   day2ElevationGain?: number;
   difficulty: "Easy" | "Moderate" | "Hard" | "Alpine";

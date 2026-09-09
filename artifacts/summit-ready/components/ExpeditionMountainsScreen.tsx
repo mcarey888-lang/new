@@ -21,6 +21,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -109,6 +110,45 @@ interface ExpeditionResult {
     alternatives: Record<string, string[]>;
     adventureScore: number; dnaMatchScore: number; dnaMatchNotes: string;
   } | null;
+  /** Optional server-provided improvement suggestion (older API responses omit it). */
+  improveYourMatch?: ImproveYourMatch | null;
+}
+
+interface ImproveYourMatch {
+  recommendedSummit?: NearbyHill;
+  current?: { gain?: number; distance?: number; gainRatio?: number; distanceRatio?: number };
+  projected?: { gain?: number; distance?: number; gainRatio?: number; distanceRatio?: number };
+  provenance?: {
+    dataSource?: string;
+    routeDataStatus?: string;
+    confidence?: string;
+    [key: string]: unknown;
+  };
+  scheduleFit?: {
+    fitsExistingSchedule?: boolean;
+    assessment?: string;
+    additionalDayRecommended?: boolean;
+  };
+  eligibleAlternatives?: NearbyHill[];
+}
+
+function hillGain(hill: NearbyHill): number {
+  return hill.totalElevation || (hill.elevation * Math.max(1, hill.repeats || 1));
+}
+function hillDistance(hill: NearbyHill): number {
+  return hill.routeDistance ?? hill.distance * Math.max(1, hill.repeats || 1);
+}
+function plannedTotals(hills: NearbyHill[]) {
+  return hills.reduce((totals, hill) => ({
+    gain: totals.gain + hillGain(hill),
+    distance: totals.distance + hillDistance(hill),
+  }), { gain: 0, distance: 0 });
+}
+function matchPercent(gain: number, distance: number, target: TargetMountain): number {
+  const axisMatch = (actual: number, targetValue: number) =>
+    actual > 0 && targetValue > 0 ? Math.min(actual, targetValue) / Math.max(actual, targetValue) : 0;
+  return Math.round(((axisMatch(gain, target.totalElevationGain)
+    + axisMatch(distance, target.totalDistance)) / 2) * 100);
 }
 
 interface PendingExpeditionRequest {
@@ -213,6 +253,8 @@ export default function ExpeditionMountainsScreen() {
   // view state
   const [view, setView] = useState<ViewMode>("browse");
   const [results, setResults] = useState<ExpeditionResult | null>(null);
+  const [improvementDismissed, setImprovementDismissed] = useState(false);
+  const [alternativeOpen, setAlternativeOpen] = useState(false);
   const [activeBundle, setActiveBundle] = useState<VirtualBundle | null>(null);
   const [activeSearch, setActiveSearch] = useState<{ mountain: string; region: string } | null>(null);
 
@@ -404,6 +446,8 @@ export default function ExpeditionMountainsScreen() {
       setMountainChooserOpen(false);
       setMountainChoices([]);
       setResults(body);
+      setImprovementDismissed(false);
+      setAlternativeOpen(false);
       if (includeSignatureChallenge) {
         void fetchSigChallenge(mountain); // non-blocking — curated bundles only
       }
@@ -493,8 +537,8 @@ export default function ExpeditionMountainsScreen() {
       targetMountainName:       results.targetProfile.name ?? mountainName,
       targetMountain:           results.targetProfile,
       virtualHills:             results.recommendedHills,
-      simulationScore:          results.dnaMatchScore ?? results.simulationScore,
-      simulationScoreBreakdown: results.scoreBreakdown,
+      simulationScore:          matchPercent(plannedTotals(results.recommendedHills).gain, plannedTotals(results.recommendedHills).distance, results.targetProfile),
+      simulationScoreBreakdown: { ...results.scoreBreakdown, overall: matchPercent(plannedTotals(results.recommendedHills).gain, plannedTotals(results.recommendedHills).distance, results.targetProfile) },
       expeditionPlan:           results.expedition ?? null,
       ...(results.provenance
         ? { virtualExpeditionProvenance: results.provenance }
@@ -504,6 +548,72 @@ export default function ExpeditionMountainsScreen() {
       fitnessLevel:             activeExpedition?.fitnessLevel ?? "Average",
     });
     router.replace("/(expedition)/base-camp" as any);
+  }
+
+  async function handleAddImprovement(hill: NearbyHill) {
+    if (!results) return;
+    const projected = plannedTotals([...results.recommendedHills, hill]);
+    const rec = results.improveYourMatch;
+    const isRecommended = rec?.recommendedSummit?.routeIdentityKey === hill.routeIdentityKey
+      || rec?.recommendedSummit?.name === hill.name;
+    const targetDays = results.targetProfile.estimatedDays;
+    // Alternatives do not have server schedule assessments. Be conservative:
+    // only call one a same-day fit when its route is no larger than an average
+    // target day and there is room in the existing plan.
+    const alternativeFits = results.recommendedHills.length < targetDays
+      && hillGain(hill) <= results.targetProfile.totalElevationGain / targetDays
+      && hillDistance(hill) <= results.targetProfile.totalDistance / targetDays;
+    const extraDay = isRecommended
+      ? rec?.scheduleFit?.additionalDayRecommended === true || rec?.scheduleFit?.fitsExistingSchedule === false
+      : !alternativeFits;
+    if (extraDay) {
+      const confirmed = await new Promise<boolean>(resolve => {
+        Alert.alert(
+          "Add another day?",
+          `${hill.name} does not reasonably fit the existing ${targetDays}-day schedule. Add it with an additional day?`,
+          [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            { text: "Confirm duration change", onPress: () => resolve(true) }],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        );
+      });
+      if (!confirmed) return;
+    }
+    const nextHills = [...results.recommendedHills, hill];
+    const nextTarget = extraDay
+      ? { ...results.targetProfile, estimatedDays: targetDays + 1 }
+      : results.targetProfile;
+    const nextScore = matchPercent(projected.gain, projected.distance, nextTarget);
+    const axisScore = (actual: number, targetValue: number) =>
+      actual > 0 && targetValue > 0
+        ? Math.round(100 * Math.min(actual, targetValue) / Math.max(actual, targetValue))
+        : 0;
+    const route = { name: hill.name, why: "Confirmed optional match improvement", routeIdentityKey: hill.routeIdentityKey };
+    const nextPlan = results.expedition
+      ? { ...results.expedition, days: extraDay
+          ? [...results.expedition.days, { label: `Day ${results.expedition.days.length + 1}`, title: hill.name, focus: "Additional summit", routes: [route] }]
+          : results.expedition.days.map((day, index) =>
+            index === results.expedition!.days.length - 1
+              ? { ...day, routes: [...day.routes, route] }
+              : day) }
+      : results.expedition;
+    setResults({
+      ...results,
+      targetProfile: nextTarget,
+      recommendedHills: nextHills,
+      simulationScore: nextScore,
+      dnaMatchScore: nextScore,
+      scoreBreakdown: {
+        ...results.scoreBreakdown,
+        overall: nextScore,
+        elevation: axisScore(projected.gain, nextTarget.totalElevationGain),
+        distance: axisScore(projected.distance, nextTarget.totalDistance),
+      },
+      expedition: nextPlan,
+    });
+    setImprovementDismissed(true);
+    setAlternativeOpen(false);
+    // This remains a prospective result. The user still controls activation
+    // with the existing Set as my Virtual Goal action.
   }
 
   // ── Log hike ─────────────────────────────────────────────────────────────────
@@ -607,7 +717,8 @@ export default function ExpeditionMountainsScreen() {
   if (view === "results" && results) {
     const tp = results.targetProfile;
     const hills = results.recommendedHills;
-    const score = results.simulationScore;
+    const currentTotals = plannedTotals(hills);
+    const score = matchPercent(currentTotals.gain, currentTotals.distance, tp);
     const bd = results.scoreBreakdown;
     const isWeekend = hills.length >= 2;
     const sc = scoreColor(score);
@@ -931,15 +1042,14 @@ export default function ExpeditionMountainsScreen() {
             </TouchableOpacity>
             {scoreOpen && (
               <Animated.View entering={FadeInDown.duration(220)} style={[s.card, { marginTop: 6 }]}>
-                {(
-                  [
-                    { key: "elevation" as const,       label: "Elevation gain",    emoji: "▲" },
-                    { key: "duration" as const,        label: "Duration",          emoji: "⏱" },
-                    { key: "altitude" as const,        label: "Altitude",          emoji: "⛰" },
-                    { key: "consecutiveDays" as const, label: "Consecutive days",  emoji: "📅" },
-                  ] as Array<{ key: keyof SimulationScoreBreakdown; label: string; emoji: string }>
-                ).map((dim, idx, arr) => {
-                  const val = (bd[dim.key] as number) ?? 0;
+                {[
+                  { key: "elevation", label: "Elevation gain match", emoji: "▲", value: bd.elevation },
+                  { key: "distance", label: "Distance match", emoji: "↔", value: bd.distance ?? bd.gradient },
+                  ...(bd.technicalSuitability != null
+                    ? [{ key: "technical", label: "Technical suitability", emoji: "⛰", value: bd.technicalSuitability }]
+                    : []),
+                ].map((dim, idx, arr) => {
+                  const val = dim.value ?? 0;
                   const dc = val >= 70 ? T.green : val >= 40 ? T.orange : T.red;
                   return (
                     <View key={dim.key} style={[s.dimRow, idx < arr.length - 1 && s.dimRowBorder]}>
@@ -954,9 +1064,80 @@ export default function ExpeditionMountainsScreen() {
                     </View>
                   );
                 })}
+                <Text style={[s.improveCandidateMeta, { marginTop: 8 }]}>
+                  Schedule: {tp.estimatedDays} day{tp.estimatedDays === 1 ? "" : "s"}
+                  {bd.duration != null ? ` · duration suitability ${bd.duration}%` : ""}
+                </Text>
               </Animated.View>
             )}
           </Animated.View>
+
+          {/* Optional server recommendation; the automatic plan is untouched until confirmation. */}
+          {(() => {
+            const recommendation = results.improveYourMatch;
+            const candidate = recommendation?.recommendedSummit;
+            const gainTarget = tp.totalElevationGain;
+            const distanceTarget = tp.totalDistance;
+            const gain = recommendation?.current?.gain ?? currentTotals.gain;
+            const distance = recommendation?.current?.distance ?? currentTotals.distance;
+            const belowTarget = gain < gainTarget * 0.9 || distance < distanceTarget * 0.9;
+            if (!recommendation || !candidate || improvementDismissed || !belowTarget) return null;
+            const calculatedProjected = plannedTotals([...hills, candidate]);
+            const projected = {
+              gain: recommendation.projected?.gain ?? calculatedProjected.gain,
+              distance: recommendation.projected?.distance ?? calculatedProjected.distance,
+            };
+            const ratioPercent = (ratio: number | undefined, total: number, target: number) =>
+              ratio == null ? Math.round(total > 0 ? total / Math.max(1, target) * 100 : 0) : Math.round(ratio <= 1 ? ratio * 100 : ratio);
+            const gainPct = ratioPercent(recommendation.projected?.gainRatio, projected.gain, gainTarget);
+            const distancePct = ratioPercent(recommendation.projected?.distanceRatio, projected.distance, distanceTarget);
+            const alternatives = recommendation.eligibleAlternatives ?? [];
+            const currentGainPct = ratioPercent(recommendation.current?.gainRatio, gain, gainTarget);
+            const currentDistancePct = ratioPercent(recommendation.current?.distanceRatio, distance, distanceTarget);
+            return (
+              <Animated.View entering={FadeInDown.duration(220)} style={s.improveCard}>
+                <Text style={s.improveTitle}>Improve your match</Text>
+                <Text style={s.improveIntro}>Your current plan is below the normal target range.</Text>
+                <View style={s.improveMetrics}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.improveMetricLabel}>Elevation gain</Text>
+                    <Text style={s.improveMetricValue}>{gain.toLocaleString()}m / {gainTarget.toLocaleString()}m</Text>
+                    <Text style={s.improveRemaining}>{Math.max(0, gainTarget - gain).toLocaleString()}m remaining · {currentGainPct}% achieved</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.improveMetricLabel}>Distance</Text>
+                    <Text style={s.improveMetricValue}>{distance.toFixed(1)}km / {distanceTarget}km</Text>
+                    <Text style={s.improveRemaining}>{Math.max(0, distanceTarget - distance).toFixed(1)}km remaining · {currentDistancePct}% achieved</Text>
+                  </View>
+                </View>
+                <View style={s.improveCandidate}>
+                  <Text style={s.improveCandidateLabel}>RECOMMENDED SUMMIT</Text>
+                  <Text style={s.improveCandidateName}>{candidate.name}</Text>
+                  <Text style={s.improveCandidateMeta}>+{hillGain(candidate).toLocaleString()}m gain · +{hillDistance(candidate).toFixed(1)}km · projected {projected.gain.toLocaleString()}m ({gainPct}%), {projected.distance.toFixed(1)}km ({distancePct}%)</Text>
+                  <Text style={s.improveCandidateMeta}>{recommendation.scheduleFit?.additionalDayRecommended ? "Needs an additional day" : recommendation.scheduleFit?.assessment ?? (recommendation.scheduleFit?.fitsExistingSchedule === false ? "Does not fit the existing schedule" : "Fits the existing schedule")} · {recommendation.provenance?.dataSource ?? "Route source not provided"} · {recommendation.provenance?.routeDataStatus ?? "status not provided"}{recommendation.provenance?.confidence ? ` · ${recommendation.provenance.confidence} confidence` : ""}</Text>
+                </View>
+                <TouchableOpacity onPress={() => void handleAddImprovement(candidate)} style={s.improvePrimary} activeOpacity={0.85}>
+                  <Plus size={15} color="#fff" /><Text style={s.improvePrimaryText}>Add recommended summit</Text>
+                </TouchableOpacity>
+                {alternatives.length > 0 && (
+                  <>
+                    <TouchableOpacity onPress={() => setAlternativeOpen(v => !v)} style={s.improveSecondary} activeOpacity={0.8}>
+                      <Text style={s.improveSecondaryText}>Choose another summit</Text>
+                    </TouchableOpacity>
+                    {alternativeOpen && alternatives.map(alternative => (
+                      <TouchableOpacity key={alternative.routeIdentityKey ?? alternative.name} onPress={() => void handleAddImprovement(alternative)} style={s.alternativeRow}>
+                        <Text style={s.alternativeName}>{alternative.name}</Text>
+                        <Text style={s.alternativeMeta}>+{hillGain(alternative).toLocaleString()}m · +{hillDistance(alternative).toFixed(1)}km</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+                <TouchableOpacity onPress={() => setImprovementDismissed(true)} style={s.improveSecondary} activeOpacity={0.8}>
+                  <Text style={s.improveSecondaryText}>Keep current plan</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })()}
 
           {/* CTA */}
           <Animated.View entering={FadeInDown.delay(180).duration(350)}>
@@ -1809,6 +1990,27 @@ const s = StyleSheet.create({
   dimPct: { fontSize: 12, fontFamily: "Inter_700Bold" },
   dimBarTrack: { height: 4, backgroundColor: "#142236", borderRadius: 3, overflow: "hidden" },
   dimBarFill: { height: 4, borderRadius: 3 },
+  improveCard: {
+    backgroundColor: "#10243A", borderRadius: 16, borderWidth: 1,
+    borderColor: T.green + "55", padding: 15, gap: 10,
+  },
+  improveTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
+  improveIntro: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  improveMetrics: { flexDirection: "row", gap: 10 },
+  improveMetricLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, textTransform: "uppercase", letterSpacing: 0.6 },
+  improveMetricValue: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, marginTop: 3 },
+  improveRemaining: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  improveCandidate: { backgroundColor: "#142236", borderRadius: 11, padding: 11, gap: 3 },
+  improveCandidateLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1 },
+  improveCandidateName: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  improveCandidateMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, backgroundColor: T.green, borderRadius: 11, paddingVertical: 11 },
+  improvePrimaryText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  improveSecondary: { alignItems: "center", paddingVertical: 8 },
+  improveSecondaryText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue },
+  alternativeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#142236", borderRadius: 9, padding: 10, marginTop: -4 },
+  alternativeName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.white, flex: 1 },
+  alternativeMeta: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   // CTA
   setGoalBtn: {

@@ -5,6 +5,7 @@ import {
   bridgeElevationGap,
   matchDeterministicExpedition,
   matchQuickestHighSummits,
+  recommendAdditionalSummit,
 } from "../services/virtualExpedition/deterministicMatcher.js";
 
 function hill(name: string, elevation: number, overrides: Partial<Hill> = {}): Hill {
@@ -669,6 +670,38 @@ describe("deterministic expedition matcher", () => {
     ], profile({ estimatedDays: 1, totalElevationGain: 1_000, totalDistance: 20 }));
     expect(result.selectedHills.map(selected => selected.name)).toEqual(["Target Route"]);
     expect(result.matchDiagnostics.distanceRatio).toBe(1);
+  });
+
+  it("offers only deterministic, strictly improving eligible alternatives", () => {
+    const input = [
+      hill("Current Peak", 500, { summitIdentityKey: "current", lat: 54, lng: -3 }),
+      hill("Better Peak", 350, { summitIdentityKey: "better", lat: 54.2, lng: -3 }),
+      hill("Another Peak", 300, { summitIdentityKey: "another", lat: 54.3, lng: -3 }),
+      hill("Unsafe Peak", 700, { summitIdentityKey: "unsafe", hazardLevel: "severe", lat: 54.4, lng: -3 }),
+      hill("Valley Way", 700, { summitIdentityKey: "way", surface: "gravel trail", routeType: "out-and-back" }),
+      hill("Subsidiary Peak", 700, {
+        summitIdentityKey: "subsidiary", summitProminenceM: 8, lat: 54.004, lng: -3,
+      }),
+    ];
+    const target = profile({ totalElevationGain: 2_000, totalDistance: 40, estimatedDays: 1 });
+    const match = matchQuickestHighSummits(input, target);
+    const recommendation = recommendAdditionalSummit(input, match, target);
+    expect(recommendation).toBeDefined();
+    expect(recommendation!.eligibleAlternatives.length).toBeGreaterThan(0);
+    expect(recommendation!.eligibleAlternatives.map(candidate => candidate.name))
+      .not.toContain("Current Peak");
+    expect(recommendation!.eligibleAlternatives.map(candidate => candidate.name))
+      .not.toEqual(expect.arrayContaining(["Unsafe Peak", "Valley Way", "Subsidiary Peak"]));
+    expect(recommendation!.candidate.name).not.toBe("Subsidiary Peak");
+    expect(recommendation!.eligibleAlternatives.every(candidate =>
+      candidate.routeIdentityKey || candidate.summitIdentityKey)).toBe(true);
+    expect(recommendation!.eligibleAlternatives.every(candidate => {
+      const projectedGain = recommendation!.current.gain + candidate.elevation;
+      const projectedDistance = recommendation!.current.distance + (candidate.routeDistance ?? 0);
+      const error = Math.abs(projectedGain / target.totalElevationGain - 1)
+        + Math.abs(projectedDistance / target.totalDistance - 1);
+      return error < recommendation!.current.error;
+    })).toBe(true);
   });
 
   it("chooses different combinations for different target profiles", () => {

@@ -379,6 +379,8 @@ function targetMinutes(profile: TargetMountainProfile): number {
 interface ScoreBreakdown {
   overall:        number;
   elevation:      number;
+  distance?:      number;
+  technicalSuitability?: number;
   duration:       number;
   altitude:       number;
   consecutiveDays: number;
@@ -393,7 +395,12 @@ function computePhysicalScore(
   hasWeekendPairing: boolean,
 ): ScoreBreakdown {
   const combinedGain = recommendedHills.reduce((sum, h) => sum + h.elevation * h.repeats, 0);
-  const elevation    = Math.min(100, Math.round((combinedGain / profile.totalElevationGain) * 100));
+  const axisMatch = (actual: number, target: number) =>
+    actual > 0 && target > 0 ? Math.round(100 * Math.min(actual, target) / Math.max(actual, target)) : 0;
+  const elevation = axisMatch(combinedGain, profile.totalElevationGain);
+  const combinedDistance = recommendedHills.reduce(
+    (sum, h) => sum + (h.routeDistance ?? 0) * h.repeats, 0);
+  const distance = axisMatch(combinedDistance, profile.totalDistance);
 
   const localMins = recommendedHills.reduce((sum, h) => {
     const fromTag = parseEstimatedMinutes(h.estimatedTime ?? null);
@@ -410,14 +417,11 @@ function computePhysicalScore(
 
   const consecutiveDays = (profile.estimatedDays === 1 || hasWeekendPairing) ? 100 : 0;
 
-  const overall = Math.round(
-    elevation       * (0.35 / 0.80) +
-    duration        * (0.20 / 0.80) +
-    altitude        * (0.15 / 0.80) +
-    consecutiveDays * (0.10 / 0.80),
-  );
+  // Headline route matching uses gain and distance only. Altitude and
+  // consecutive days remain informational scheduling dimensions.
+  const overall = Math.round((elevation + distance) / 2);
 
-  return { overall, elevation, duration, altitude, consecutiveDays };
+  return { overall, elevation, distance, duration, altitude, consecutiveDays };
 }
 
 // ── Expedition builder helpers ────────────────────────────────────────────────

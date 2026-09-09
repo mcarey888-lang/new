@@ -62,6 +62,39 @@ export interface DeterministicExpeditionMatch {
   };
 }
 
+export interface AdditionalSummitRecommendation {
+  candidate: Hill;
+  eligibleAlternatives: Hill[];
+  deterministicIdentity: string;
+  current: {
+    gain: number;
+    distance: number;
+    gainRatio: number;
+    distanceRatio: number;
+    error: number;
+  };
+  projected: {
+    gain: number;
+    distance: number;
+    gainRatio: number;
+    distanceRatio: number;
+    error: number;
+    improvement: number;
+  };
+  provenance: {
+    dataSource: string;
+    routeDataStatus: string;
+    routeIdentityKey: string | null;
+    summitIdentityKey: string | null;
+    confidence: "verified" | "calculated" | "estimated" | "unknown";
+  };
+  scheduleFit: {
+    fitsExistingSchedule: boolean;
+    assessment: string;
+    additionalDayRecommended: boolean;
+  };
+}
+
 function summitIdentity(hill: Hill): string {
   if (hill.summitIdentityKey) return hill.summitIdentityKey;
   // A route is not a new summit merely because its trailhead/record
@@ -75,6 +108,7 @@ const SAME_ROUTE_DISTANCE_KM = 2;
 const MAX_DISTINCT_ROUTES = 8;
 const MAX_REPEATS = 3;
 const PRINCIPAL_SUMMIT_SEPARATION_KM = 0.75;
+const MIN_KNOWN_PRINCIPAL_PROMINENCE_M = 30;
 
 function normaliseName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -126,6 +160,121 @@ function stableHillCompare(a: Hill, b: Hill): number {
 
 function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function matchError(gain: number, distance: number, profile: Pick<TargetMountainProfile, "totalElevationGain" | "totalDistance">): number {
+  return (profile.totalElevationGain > 0 ? Math.abs(gain / profile.totalElevationGain - 1) : 0)
+    + (profile.totalDistance > 0 ? Math.abs(distance / profile.totalDistance - 1) : 0);
+}
+
+function routeConfidence(hill: Hill): "verified" | "calculated" | "estimated" | "unknown" {
+  if (hill.routeDataStatus === "external_route") return "verified";
+  if (hill.routeDataStatus === "terrain_calculated") return "calculated";
+  if (hill.routeDataStatus === "seeded_estimate") return "estimated";
+  return "unknown";
+}
+
+function additionalRouteEvidenceRank(hill: Hill): number {
+  if (hill.routeDataStatus === "external_route") return 3;
+  if (hill.dataSource === "canonical_verified") return 2;
+  if (hill.routeDataStatus === "terrain_calculated") return 1;
+  return 0;
+}
+
+/**
+ * Suggests, but never selects, one more summit from the already discovered
+ * candidate pool. This deliberately has no discovery or database fallback.
+ */
+export function recommendAdditionalSummit(
+  candidates: Hill[],
+  match: Pick<DeterministicExpeditionMatch, "selectedHills" | "rankedCandidates">,
+  profile: TargetMountainProfile,
+  difficultyPreference?: string | null,
+): AdditionalSummitRecommendation | undefined {
+  const currentGain = match.selectedHills.reduce((sum, hill) => sum + hill.elevation * hill.repeats, 0);
+  const currentDistance = match.selectedHills.reduce((sum, hill) => sum + (hill.routeDistance ?? 0) * hill.repeats, 0);
+  const currentError = matchError(currentGain, currentDistance, profile);
+  const currentGainRatio = profile.totalElevationGain > 0 ? currentGain / profile.totalElevationGain : 0;
+  const currentDistanceRatio = profile.totalDistance > 0 ? currentDistance / profile.totalDistance : 0;
+  // An in-tolerance plan should not prominently recommend an addition.
+  if (Math.abs(currentGainRatio - 1) <= QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE
+    && Math.abs(currentDistanceRatio - 1) <= QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE) return undefined;
+
+  const selectedSummits = new Set(match.selectedHills.map(summitIdentity));
+  const selectedRoutes = new Set(match.selectedHills.map(geographicIdentity));
+  const records = new Map(match.rankedCandidates.map(record =>
+    [record.routeIdentityKey ?? normaliseName(record.name), record]));
+  const eligible = candidates
+    .filter(hill => Number.isFinite(hill.elevation) && hill.elevation > 0)
+    .filter(hill => !selectedSummits.has(summitIdentity(hill)) && !selectedRoutes.has(geographicIdentity(hill)))
+    .filter(hill => {
+      const record = records.get(hill.routeIdentityKey ?? normaliseName(hill.name));
+      return record?.eligible === true && isNamedSummitCandidate(hill)
+        && routeEvidence(hill).eligible
+        && hazardScore(hill, profile).compatible
+        && abilityCompatibility(hill, profile, difficultyPreference).compatible;
+    })
+    .sort((a, b) => stableHillCompare(a, b));
+  const ranked = eligible.map(candidate => {
+    const gain = currentGain + candidate.elevation;
+    const distance = currentDistance + (candidate.routeDistance ?? 0);
+    const error = matchError(gain, distance, profile);
+    const gainRatio = profile.totalElevationGain > 0 ? gain / profile.totalElevationGain : 0;
+    const distanceRatio = profile.totalDistance > 0 ? distance / profile.totalDistance : 0;
+    const withinNormal = Math.abs(gainRatio - 1) <= QUICK_SUMMIT_NORMAL_ASCENT_TOLERANCE
+      && Math.abs(distanceRatio - 1) <= QUICK_SUMMIT_NORMAL_DISTANCE_TOLERANCE;
+    return { candidate, gain, distance, error, withinNormal };
+  }).filter(item => item.error < currentError);
+  if (!ranked.length) return undefined;
+  ranked.sort((a, b) =>
+    a.error - b.error
+    || Number(b.withinNormal) - Number(a.withinNormal)
+    || (b.candidate.summitElevationASL ?? -1) - (a.candidate.summitElevationASL ?? -1)
+    || (b.candidate.summitProminenceM ?? -1) - (a.candidate.summitProminenceM ?? -1)
+    || additionalRouteEvidenceRank(b.candidate) - additionalRouteEvidenceRank(a.candidate)
+    || terrainScore(b.candidate, profile) - terrainScore(a.candidate, profile)
+    || stableHillCompare(a.candidate, b.candidate));
+  const winner = ranked[0];
+  const selectedWithCoordinates = match.selectedHills.filter(validCoordinates);
+  const geographicallyCompatible = !validCoordinates(winner.candidate) || selectedWithCoordinates.length === 0
+    || selectedWithCoordinates.some(selected => haversineKm(selected, winner.candidate) <= 50);
+  const currentMinutes = match.selectedHills.reduce(
+    (sum, hill) => sum + (parseEstimatedMinutes(hill.estimatedTime) ?? 0) * hill.repeats, 0);
+  const fits = geographicallyCompatible
+    && currentGain + winner.candidate.elevation <= profile.maxDailyElevation * profile.estimatedDays
+    && currentMinutes + (parseEstimatedMinutes(winner.candidate.estimatedTime) ?? 0)
+      <= profile.estimatedDays * 7 * 60;
+  return {
+    candidate: materialiseHill(winner.candidate, 1),
+    eligibleAlternatives: ranked
+      .slice(1, 5)
+      .map(item => materialiseHill(item.candidate, 1)),
+    deterministicIdentity: summitIdentity(winner.candidate),
+    current: { gain: currentGain, distance: currentDistance, gainRatio: currentGainRatio, distanceRatio: currentDistanceRatio, error: currentError },
+    projected: {
+      gain: winner.gain, distance: winner.distance,
+      gainRatio: profile.totalElevationGain > 0 ? winner.gain / profile.totalElevationGain : 0,
+      distanceRatio: profile.totalDistance > 0 ? winner.distance / profile.totalDistance : 0,
+      error: winner.error, improvement: currentError - winner.error,
+    },
+    provenance: {
+      dataSource: winner.candidate.dataSource ?? "unknown",
+      routeDataStatus: winner.candidate.routeDataStatus ?? "unknown",
+      routeIdentityKey: winner.candidate.routeIdentityKey ?? null,
+      summitIdentityKey: winner.candidate.summitIdentityKey ?? null,
+      confidence: routeConfidence(winner.candidate),
+    },
+    scheduleFit: {
+      fitsExistingSchedule: fits,
+      assessment: fits ? "Fits within the existing schedule." : "An additional day is recommended; duration will not increase without confirmation.",
+      additionalDayRecommended: !fits,
+    },
+  };
+}
+
+function isNamedSummitCandidate(hill: Hill): boolean {
+  return Boolean(hill.summitIdentityKey)
+    && !/\b(way|valley|visitor|trail|path|walk|coast|reserve)\b/i.test(hill.name);
 }
 
 function proximityScore(actual: number, desired: number): number {
@@ -563,21 +712,10 @@ export function matchDeterministicExpedition(
   const targetRatio = profile.totalElevationGain > 0
     ? achievedAscent / profile.totalElevationGain
     : 0;
-  const totalRepeats = selectedHills.reduce(
-    (sum, hill) => sum + hill.repeats,
-    0,
-  );
-  const scoreMap = new Map(ranked.map(candidate => [
-    geographicIdentity(candidate.hill),
-    candidate.record.score,
-  ]));
-  const deterministicScore = totalRepeats
-    ? clampScore(selectedHills.reduce(
-      (sum, hill) =>
-        sum + (scoreMap.get(geographicIdentity(hill)) ?? 0) * hill.repeats,
-      0,
-    ) / totalRepeats)
-    : 0;
+  // The headline match is route-performance only: gain and distance. Route
+  // technical fit remains available in ranked candidate components.
+  const deterministicScore = clampScore((proximityScore(achievedAscent, profile.totalElevationGain)
+    + proximityScore(selection.best?.distance ?? 0, profile.totalDistance)) / 2);
   const warnings: string[] = [];
   if (targetRatio < 0.9) {
     warnings.push(
@@ -674,6 +812,17 @@ export function matchQuickestHighSummits(
   // says Moderate. Explicitly unsafe hazards still fail the safety gate.
   const technicalTarget = Math.max(profile.routeDna.scrambling, profile.routeDna.technicalMovement) >= 7;
   const generallyEligible = ranked.filter(candidate => {
+    if (
+      candidate.hill.summitProminenceM != null
+      && candidate.hill.summitProminenceM < MIN_KNOWN_PRINCIPAL_PROMINENCE_M
+    ) {
+      candidate.record.eligible = false;
+      candidate.record.rejectionReasons = [
+        ...(candidate.record.rejectionReasons ?? []),
+        `subsidiary top has less than ${MIN_KNOWN_PRINCIPAL_PROMINENCE_M}m known prominence`,
+      ];
+      return false;
+    }
     if (candidate.record.eligible) return true;
     if (!technicalTarget || !candidate.record.compatible) return false;
     const technicalRoute = /(rock|scrambl|boulder|ridge|scree)/i.test(candidate.hill.surface)
@@ -833,9 +982,10 @@ export function matchQuickestHighSummits(
   return {
     rankedCandidates: ranked.map(candidate => candidate.record),
     selectedHills,
-    deterministicScore: selectedCount
-      ? clampScore(selected!.reduce((sum, candidate) => sum + candidate.record.score, 0) / selectedCount)
-      : 0,
+    // Do not let summit altitude, technical labels, or day count inflate the
+    // primary numerical match score.
+    deterministicScore: clampScore((proximityScore(achievedAscent, profile.totalElevationGain)
+      + proximityScore(achievedDistance, profile.totalDistance)) / 2),
     achievedAscent,
     targetRatio,
     warnings,

@@ -11,6 +11,10 @@ The default custom-expedition style is summit-first: discover canonical-trusted 
 
 Match target-route total ascent and distance using the smallest valid number of distinct principal summits: normal tolerances are ±15% ascent and ±20% distance, widened fallback is ±30% and ±35%, and only then may the closest safe two-axis approximation be used. Requested days are a maximum, with no repeats or filler. Within the first valid cardinality, prefer summit elevation, prominence, established route evidence, numeric fit, Route DNA, then stable identity. Near-coincident subsidiary tops do not count separately.
 
+The headline match score is the equal-weight average of symmetric gain and distance proximity, so both under- and overshooting reduce the score. Summit altitude and consecutive days are informational only; technical suitability is secondary and scheduling is shown separately.
+
+When an automatic plan remains below normal tolerance, an optional extra summit may be recommended from the already eligible local pool only. It must strictly reduce combined normalized gain/distance error, preserve canonical identity/provenance and safety exclusions, and never be added automatically. A duration increase requires explicit confirmation.
+
 Difficulty labels are ranking preferences, not automatic proof that a Moderate user cannot scramble. For a strongly technical target, known technical-route evidence may be required when available; Moderate can retain target-compatible high/severe objectives, while Easy is an explicit veto. Nontechnical target DNA still excludes incompatible hazards.
 
 Canonical DoBIH summits without verified route facts retain canonical identity and prominence but receive clearly labelled `terrain_calculated` estimates at canonical coordinates. Such estimates never become verified route facts or borrow a specific route name such as “North Face.”
@@ -21,4 +25,4 @@ Every new local route carries a stable public geographic identity through recomm
 
 **Why:** Route-first arithmetic previously allowed generic Ways and filler outings to displace genuine summits; highest-first selection then ignored materially different target route profiles. Imported DoBIH identities were also hidden by mountain status and by treating an informational QA flag as failure. Target routes can differ materially, legacy cache facts may originate from AI, and summit altitude must never be mistaken for route ascent.
 
-**How to apply:** Preserve per-field provenance, require explicit target-route selection, evaluate every combination at each cardinality before moving to the next, and expose target/planned ascent, distance, percentages, tolerance mode, and mismatch reason. Keep GPS directions separate: open coordinates only for a verified trailhead; otherwise search by route name plus catalogue area.
+**How to apply:** Preserve per-field provenance, require explicit target-route selection, evaluate every combination at each cardinality before moving to the next, and expose target/planned/projected ascent, distance, percentages, tolerance mode, and mismatch reason. Exclude known sub-30m-prominence subsidiary tops from principal objectives. Keep GPS directions separate: open coordinates only for a verified trailhead; otherwise search by route name plus catalogue area.

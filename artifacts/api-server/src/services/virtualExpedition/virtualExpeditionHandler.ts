@@ -27,6 +27,7 @@ import {
   isDeterministicTargetFeasible,
   matchDeterministicExpedition,
   matchQuickestHighSummits,
+  recommendAdditionalSummit,
   type DeterministicExpeditionMatch,
 } from "./deterministicMatcher.js";
 import {
@@ -36,6 +37,8 @@ import {
 interface ScoreBreakdown {
   overall: number;
   elevation: number;
+  distance?: number;
+  technicalSuitability?: number;
   duration: number;
   altitude: number;
   consecutiveDays: number;
@@ -792,6 +795,12 @@ export function createVirtualExpeditionHandler(
       }
 
       const recommendedHills = match.selectedHills;
+      const additionalSummit = recommendAdditionalSummit(
+        candidateHills,
+        match,
+        effectiveProfile,
+        input.difficultyPreference,
+      );
       const expedition = buildDeterministicPlan(effectiveProfile, match);
       const summitElevations: Array<number | null> = recommendedHills.map(
         hill => hill.summitElevationASL ?? null,
@@ -838,6 +847,15 @@ export function createVirtualExpeditionHandler(
         effectiveProfile,
         effectiveProfile.estimatedDays === 1 || expedition.days.length >= 2,
       );
+      const selectedRouteKeys = new Set(recommendedHills.map(hill => hill.routeIdentityKey));
+      const selectedTerrainScores = match.rankedCandidates
+        .filter(candidate => selectedRouteKeys.has(candidate.routeIdentityKey))
+        .map(candidate => candidate.components.terrainRouteType);
+      if (selectedTerrainScores.length) {
+        physicalScore.technicalSuitability = Math.round(
+          selectedTerrainScores.reduce((sum, score) => sum + score, 0) / selectedTerrainScores.length,
+        );
+      }
       physicalScore.adventureScore = match.deterministicScore;
       physicalScore.dnaMatchScore = match.deterministicScore;
 
@@ -971,6 +989,14 @@ export function createVirtualExpeditionHandler(
         metricSources,
         rankedCandidateScores: match.rankedCandidates,
         warnings,
+        additionalSummit: additionalSummit ? {
+          deterministicIdentity: additionalSummit.deterministicIdentity,
+          eligibleAlternatives: additionalSummit.eligibleAlternatives,
+          current: additionalSummit.current,
+          projected: additionalSummit.projected,
+          provenance: additionalSummit.provenance,
+          scheduleFit: additionalSummit.scheduleFit,
+        } : null,
       };
 
       if (process.env.NODE_ENV !== "production") {
@@ -988,6 +1014,10 @@ export function createVirtualExpeditionHandler(
         targetProfile: effectiveProfile,
         expedition,
         recommendedHills,
+        improveYourMatch: additionalSummit ? {
+          ...additionalSummit,
+          recommendedSummit: additionalSummit.candidate,
+        } : null,
         alternatives: expedition.alternatives,
         adventureScore: match.deterministicScore,
         dnaMatchScore: match.deterministicScore,
