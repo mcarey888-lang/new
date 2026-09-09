@@ -503,7 +503,7 @@ export default function ExpeditionMountainsScreen() {
       maxRadius:                searchRadius,
       fitnessLevel:             activeExpedition?.fitnessLevel ?? "Average",
     });
-    setView("progress");
+    router.replace("/(expedition)/base-camp" as any);
   }
 
   // ── Log hike ─────────────────────────────────────────────────────────────────
