@@ -653,17 +653,21 @@ export default function ExpeditionMountainsScreen() {
     const maxAssignedDay = assignments.reduce((max, item) => Math.max(max, item.day), 0);
     const extraDay = maxAssignedDay > targetDays;
     const scheduleSummary = assignmentText(assignments);
-    const confirmed = await new Promise<boolean>(resolve => {
-      Alert.alert(
-        extraDay ? "Add another day?" : "Confirm schedule change",
-        `${scheduleSummary}\n\n${extraDay
-          ? `This reaches day ${maxAssignedDay}, beyond the current ${targetDays}-day target.`
-          : "Review the assigned objectives before changing your plan."}`,
-        [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-          { text: extraDay ? "Confirm duration change" : "Confirm addition", onPress: () => resolve(true) }],
-        { cancelable: true, onDismiss: () => resolve(false) },
-      );
-    });
+    const confirmationTitle = extraDay ? "Add another day?" : "Confirm schedule change";
+    const confirmationMessage = `${scheduleSummary}\n\n${extraDay
+      ? `This reaches day ${maxAssignedDay}, beyond the current ${targetDays}-day target.`
+      : "Review the assigned objectives before changing your plan."}`;
+    const confirmed = Platform.OS === "web"
+      ? window.confirm(`${confirmationTitle}\n\n${confirmationMessage}`)
+      : await new Promise<boolean>(resolve => {
+          Alert.alert(
+            confirmationTitle,
+            confirmationMessage,
+            [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: extraDay ? "Confirm duration change" : "Confirm addition", onPress: () => resolve(true) }],
+            { cancelable: true, onDismiss: () => resolve(false) },
+          );
+        });
     if (!confirmed) return;
     const nextHills = [...results.recommendedHills, hill];
     const nextTarget = extraDay
