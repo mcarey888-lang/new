@@ -242,11 +242,15 @@ export default function HikeTrackingScreen() {
     expeditionId?: string;
     routeId?: string;
     routeIdentityKey?: string;
+    summitIdentityKey?: string;
+    objectiveType?: string;
   }>();
   const [expeditionTracking, setExpeditionTracking] = useState({
     trackingMode: params.trackingMode ?? null,
     expeditionId: params.expeditionId ?? null,
     routeIdentityKey: params.routeIdentityKey?.trim() || undefined,
+    summitIdentityKey: params.summitIdentityKey?.trim() || undefined,
+    objectiveType: params.objectiveType === "manual_summit" ? "manual_summit" : undefined,
   });
   const hillMeta = {
     sessionKey:          params.hillSessionKey    ?? null,
@@ -257,6 +261,8 @@ export default function HikeTrackingScreen() {
     trackingMode:        expeditionTracking.trackingMode,
     expeditionId:        expeditionTracking.expeditionId,
     routeIdentityKey:     expeditionTracking.routeIdentityKey,
+    summitIdentityKey:    expeditionTracking.summitIdentityKey,
+    objectiveType:        expeditionTracking.objectiveType,
   };
   const trackedExpedition = hillMeta.expeditionId
     ? expeditions.find(expedition => expedition.id === hillMeta.expeditionId) ?? null
@@ -596,6 +602,8 @@ export default function HikeTrackingScreen() {
           trackingMode:        hillMeta.trackingMode,
           expeditionId:        hillMeta.expeditionId,
           routeIdentityKey:     hillMeta.routeIdentityKey,
+          summitIdentityKey:    hillMeta.summitIdentityKey,
+          objectiveType:        hillMeta.objectiveType,
         },
         routeId: routeIdRef.current,
         savedAt: Date.now(),
@@ -681,6 +689,10 @@ export default function HikeTrackingScreen() {
             trackingMode: session.trackingMode ?? current.trackingMode,
             expeditionId: session.expeditionId ?? current.expeditionId,
             routeIdentityKey: restoredIdentity ?? current.routeIdentityKey,
+            summitIdentityKey: typeof session.hillMeta?.summitIdentityKey === "string"
+              ? session.hillMeta.summitIdentityKey : current.summitIdentityKey,
+            objectiveType: session.hillMeta?.objectiveType === "manual_summit"
+              ? "manual_summit" : current.objectiveType,
           }));
         }
         setNameLocked(true);
@@ -1330,6 +1342,8 @@ export default function HikeTrackingScreen() {
                     const toMark = routeCompletionKey({
                       name: hillMeta.hillName ?? routeName,
                       routeIdentityKey: hillMeta.routeIdentityKey,
+                      summitIdentityKey: hillMeta.summitIdentityKey,
+                      objectiveType: hillMeta.objectiveType === "manual_summit" ? "manual_summit" : undefined,
                     });
                     const newCompleted = addUniqueCompletedRoute(
                       trackedExpedition.completedRoutes ?? [],

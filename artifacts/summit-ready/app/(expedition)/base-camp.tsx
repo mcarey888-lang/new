@@ -236,6 +236,8 @@ interface FeaturedChallenge {
 interface StageData {
   name: string;
   routeIdentityKey?: string;
+  summitIdentityKey?: string;
+  objectiveType?: "manual_summit";
   region: string;
   distance?: number;
   elevation?: number;
@@ -415,7 +417,8 @@ export default function BaseCampScreen() {
     const hills = summitGoal?.virtualHills;
     if (hills && hills.length > 0) {
       return hills.map(h => ({
-        name: h.name, routeIdentityKey: h.routeIdentityKey, region: "",
+        name: h.name, routeIdentityKey: h.routeIdentityKey, summitIdentityKey: h.summitIdentityKey,
+        objectiveType: h.objectiveType, region: "",
         distance: h.distance, elevation: h.elevation,
       }));
     }
@@ -1128,6 +1131,8 @@ export default function BaseCampScreen() {
                   expeditionMode: "true",
                   expeditionId: activeExpeditionId ?? "",
                   routeIdentityKey: hill.routeIdentityKey ?? "",
+                  summitIdentityKey: hill.summitIdentityKey ?? "",
+                  objectiveType: hill.objectiveType ?? "",
                 },
               });
             }}
@@ -1333,6 +1338,8 @@ export default function BaseCampScreen() {
                       params: {
                         hillName: stage.name,
                         routeIdentityKey: stage.routeIdentityKey ?? "",
+                        summitIdentityKey: stage.summitIdentityKey ?? "",
+                        objectiveType: stage.objectiveType ?? "",
                         trackingMode: "expedition-route",
                         expeditionId: activeExpeditionId,
                       },

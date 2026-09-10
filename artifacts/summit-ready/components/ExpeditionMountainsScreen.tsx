@@ -53,6 +53,17 @@ import {
   VerifiedMountainChooser,
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
+import {
+  calculateManualDna, canShowManualChoices, requiresExtraDay, hydrateManualSnapshot,
+  normalizeManualTechnicalTarget,
+  buildManualSaveSnapshot,
+  CUSTOM_EXPEDITION_LABELS,
+  dispatchCreationChoice,
+  applySelectionChange,
+  assignObjectiveDay,
+  confirmSuggestionFlow,
+  confirmExtraDayFlow,
+} from "@/utils/manualExpedition";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -97,6 +108,8 @@ function challengeMatchesRegion(regions: string | null, region: string): boolean
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ExpeditionResult {
+  resolutionOnly?: boolean;
+  routeSelectionRequired?: boolean;
   targetProfile:    TargetMountain & { notes?: string | null };
   recommendedHills: NearbyHill[];
   simulationScore:  number;
@@ -112,6 +125,50 @@ interface ExpeditionResult {
   } | null;
   /** Optional server-provided improvement suggestion (older API responses omit it). */
   improveYourMatch?: ImproveYourMatch | null;
+  manualBuilder?: ManualBuilder | null;
+  eligibleSummitPool?: ManualSummitGroup[];
+  targetDna?: ManualBuilder["targetDna"];
+  suggestNextSummit?: ManualBuilder["suggestion"];
+}
+
+interface ManualRoute {
+  summitName: string;
+  summitIdentityKey: string;
+  summitId?: string | null;
+  summitElevationASL?: number | null;
+  routeName?: string | null;
+  routeIdentityKey: string;
+  routeId?: string | null;
+  routeGainM: number;
+  routeDistanceKm?: number | null;
+  estimatedAverageGradientPercent?: number | null;
+  gradientIsEstimated?: boolean;
+  difficulty?: string | null;
+  technicalCharacter?: string | null;
+  provenance?: { dataSource?: string; routeDataStatus?: string; confidence?: string };
+  distanceFromSearchLocationKm?: number | null;
+}
+interface ManualSummitGroup {
+  summitName: string;
+  summitIdentityKey: string;
+  summitElevationASL?: number | null;
+  routes: ManualRoute[];
+}
+interface ManualBuilder {
+  eligibleSummitPool: ManualSummitGroup[];
+  selectedRouteIdentityKeys: string[];
+  targetDna: {
+    elevationGainM: number; distanceKm: number;
+    averageGradientPercent?: number | null; technicalCharacter?: string | null;
+  };
+  liveDna: {
+    combinedGainM: number; combinedDistanceKm: number;
+    gainMatchPercentage: number; distanceMatchPercentage: number;
+    overallScore: number; estimatedAverageGradientPercent?: number | null;
+    gradientSimilarityPercentage: number; technicalSuitabilityPercentage: number;
+    remainingGainM: number; remainingDistanceKm: number; range: string;
+  };
+  suggestion?: { recommendedSummit?: NearbyHill; projectedTotals?: { gain?: number; distance?: number }; requiresConfirmation?: boolean; eligibleAlternatives?: NearbyHill[] } | null;
 }
 
 interface ImproveYourMatch {
@@ -179,6 +236,17 @@ function routeLabel(hill: NearbyHill): string {
 function summitIdentity(hill: NearbyHill): string {
   return hill.summitIdentityKey ?? hill.canonicalParentIdentityKey ?? hill.summitId ?? summitLabel(hill).trim().toLowerCase();
 }
+function routeTechnicalSuitability(route: ManualRoute, targetCharacter?: string | null): number {
+  const text = `${route.technicalCharacter ?? ""} ${route.difficulty ?? ""}`.toLowerCase();
+  const target = (targetCharacter ?? "").toLowerCase();
+  const level = text.includes("alpine") || text.includes("technical") ? 5
+    : text.includes("scramble") || text.includes("hard") || text.includes("exposed") ? 4
+      : text.includes("moderate") ? 3 : 2;
+  const targetLevel = target.includes("alpine") || target.includes("technical") ? 5
+    : target.includes("scramble") || target.includes("hard") ? 4
+      : target.includes("moderate") ? 3 : 2;
+  return Math.round((1 - Math.abs(level - targetLevel) / 5) * 100);
+}
 function assignmentText(assignments: ScheduleAssignment[]): string {
   const grouped = new Map<number, ScheduleAssignment[]>();
   assignments.forEach(item => grouped.set(item.day, [...(grouped.get(item.day) ?? []), item]));
@@ -197,11 +265,14 @@ interface PendingExpeditionRequest {
   mountain: string;
   region: string;
   radius: number;
-  daysOverride?: 1 | 2;
+  daysOverride?: 1 | 2 | 3;
   includeSignatureChallenge: boolean;
   targetRouteIdentityKey?: string;
   targetCountry?: string;
   targetRegion?: string;
+  mode?: "automatic" | "manual";
+  selectedRouteIdentityKeys?: string[];
+  resolveOnly?: boolean;
 }
 
 interface SigStage {
@@ -308,7 +379,7 @@ export default function ExpeditionMountainsScreen() {
   /** Radius in km for the hill search — shown as chips in both browse + results. */
   const [searchRadius, setSearchRadius] = useState<number>(30);
   /** Override the mountain's natural day count (null = use mountain's default). */
-  const [customDays, setCustomDays] = useState<1 | 2 | null>(null);
+  const [customDays, setCustomDays] = useState<1 | 2 | 3 | null>(null);
   /** Whether the customise panel is expanded in the results view. */
   const [customOpen, setCustomOpen] = useState(false);
   /** Editable location shown inside the results customise panel. */
@@ -322,6 +393,11 @@ export default function ExpeditionMountainsScreen() {
   const [pendingRouteRequest, setPendingRouteRequest] = useState<PendingExpeditionRequest | null>(null);
   const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
   const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
+  const [manualSelectedKeys, setManualSelectedKeys] = useState<string[]>([]);
+  const [manualDayAssignments, setManualDayAssignments] = useState<Record<string, number>>({});
+  const [manualSearch, setManualSearch] = useState("");
+  const [manualFilter, setManualFilter] = useState<"all" | "verified">("all");
+  const [manualSuggestedKey, setManualSuggestedKey] = useState<string | null>(null);
 
   // score accordion
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -342,6 +418,8 @@ export default function ExpeditionMountainsScreen() {
 
   // custom search expand/collapse
   const [customSearchOpen, setCustomSearchOpen] = useState(false);
+  const [creationChoice, setCreationChoice] = useState<"automatic" | "manual" | null>(null);
+  const [setupResolved, setSetupResolved] = useState(false);
 
   // region filter pill — can be pre-set by navigation param
   const [selectedRegion, setSelectedRegion] = useState("All Regions");
@@ -390,17 +468,26 @@ export default function ExpeditionMountainsScreen() {
   const botPad = Platform.OS === "web" ? 120 : insets.bottom + 100;
 
   const isExpeditionActive = !!activeExpedition;
+  // One normalized target character is shared by the live builder and save path.
+  const normalizedManualTechnicalTarget = normalizeManualTechnicalTarget(
+    results?.manualBuilder?.targetDna?.technicalCharacter
+      ?? results?.targetDna?.technicalCharacter
+      ?? results?.targetProfile.difficulty,
+  );
 
   // ── Fetch expedition ─────────────────────────────────────────────────────────
   async function fetchExpedition(
     mountain:     string,
     region:       string,
     radius        = searchRadius,
-    daysOverride?: 1 | 2,
+    daysOverride?: 1 | 2 | 3,
     includeSignatureChallenge = false,
     targetRouteIdentityKey?: string,
     targetCountry?: string,
     targetRegion?: string,
+    mode: "automatic" | "manual" = "automatic",
+    selectedRouteIdentityKeys: string[] = [],
+    resolveOnly = false,
   ) {
     setLoading(true);
     setFetchError(null);
@@ -436,6 +523,9 @@ export default function ExpeditionMountainsScreen() {
           : {}),
         ...(targetCountry ? { targetCountry } : {}),
         ...(targetRegion ? { targetRegion } : {}),
+        mode,
+        selectedRouteIdentityKeys,
+        resolveOnly,
       };
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
@@ -451,6 +541,9 @@ export default function ExpeditionMountainsScreen() {
             : {}),
           ...(request.targetCountry ? { targetCountry: request.targetCountry } : {}),
           ...(request.targetRegion ? { targetRegion: request.targetRegion } : {}),
+          mode,
+          ...(selectedRouteIdentityKeys.length ? { selectedRouteIdentityKeys } : {}),
+          resolveOnly,
         }),
       });
       const body = await res.json() as ExpeditionResult & {
@@ -487,7 +580,19 @@ export default function ExpeditionMountainsScreen() {
       setPendingRouteRequest(null);
       setMountainChooserOpen(false);
       setMountainChoices([]);
-      setResults(body);
+       setResults({ ...body, resolutionOnly: resolveOnly });
+       if (resolveOnly) {
+         setSetupResolved(true);
+         setCreationChoice(null);
+       }
+       if (mode === "manual") {
+         const suggestion = body.manualBuilder?.suggestion ?? body.suggestNextSummit;
+         setManualSuggestedKey(
+           suggestion?.recommendedSummit?.routeIdentityKey
+           ?? suggestion?.recommendedSummit?.routeId
+           ?? null,
+         );
+       }
       setImprovementDismissed(false);
       setAlternativeOpen(false);
       if (includeSignatureChallenge) {
@@ -550,7 +655,36 @@ export default function ExpeditionMountainsScreen() {
     setActiveBundle(null);
     setActiveSearch({ mountain: searchMountain.trim(), region: searchRegion.trim() });
     setCustomLocation(searchRegion.trim());
-    void fetchExpedition(searchMountain.trim(), searchRegion.trim(), searchRadius, customDays ?? undefined);
+    setCreationChoice(null);
+    setSetupResolved(false);
+  }
+
+  function chooseCreationMode(mode: "automatic" | "manual") {
+    if (!results || !canShowManualChoices({
+      targetMountain: results.targetProfile.name,
+      targetRouteIdentityKey: results.provenance?.selectedTargetRouteIdentityKey,
+      days: customDays,
+      routeSelectionRequired: results.provenance?.routeSelectionRequired ?? results.routeSelectionRequired ?? false,
+    })) return;
+    setCreationChoice(mode);
+    const setup = {
+      targetMountain: results.targetProfile.name,
+      targetRouteIdentityKey: results.provenance?.selectedTargetRouteIdentityKey,
+      days: customDays,
+      routeSelectionRequired: results.provenance?.routeSelectionRequired ?? results.routeSelectionRequired ?? false,
+    };
+    void dispatchCreationChoice({ ...setup, location: customLocation || searchRegion, radius: searchRadius }, async payload => {
+      await fetchExpedition(results.targetProfile.name, customLocation || searchRegion,
+        searchRadius, payload.daysOverride as 1 | 2 | 3, false,
+        payload.targetRouteIdentityKey ?? undefined, undefined, undefined,
+        payload.mode, [], payload.resolveOnly);
+    }, mode);
+  }
+
+  function resolveTarget() {
+    if (searchMountain.trim().length < 2 || searchRegion.trim().length < 2 || customDays == null) return;
+    void fetchExpedition(searchMountain.trim(), searchRegion.trim(), searchRadius,
+      customDays ?? undefined, false, undefined, undefined, undefined, "manual", [], true);
   }
 
   // ── Regenerate with custom params ────────────────────────────────────────────
@@ -590,6 +724,263 @@ export default function ExpeditionMountainsScreen() {
       fitnessLevel:             activeExpedition?.fitnessLevel ?? "Average",
     });
     router.replace("/(expedition)/base-camp" as any);
+  }
+
+  function openManualBuilder() {
+    if (!results) return;
+    const saved = activeExpedition?.manualBuilderState;
+    const targetRouteKey = results.provenance?.selectedTargetRouteIdentityKey ?? null;
+    const canRestore = !!saved
+      && (saved.targetRouteIdentityKey ?? null) === targetRouteKey;
+    const restored = canRestore ? hydrateManualSnapshot({
+      selectedRouteIdentityKeys: saved?.selectedRouteIdentityKeys ?? [],
+      dayAssignments: saved?.dayAssignments ?? {},
+      dna: {} as any,
+      routes: [],
+    }) : { keys: [], assignments: {} };
+    const restoredKeys = restored.keys;
+    setManualSelectedKeys(restored.keys);
+    setManualDayAssignments(restored.assignments);
+    setManualSearch("");
+    void fetchExpedition(
+      activeBundle?.goalMountain ?? activeSearch?.mountain ?? results.targetProfile.name,
+      customLocation || activeBundle?.region || activeSearch?.region || "",
+      searchRadius, customDays ?? undefined, false,
+      results.provenance?.selectedTargetRouteIdentityKey ?? undefined,
+       undefined, undefined, "manual", restoredKeys,
+    );
+  }
+
+  function manualRouteForKey(key: string): ManualRoute | null {
+    const groups = results?.manualBuilder?.eligibleSummitPool ?? results?.eligibleSummitPool ?? [];
+    for (const group of groups) {
+      const route = group.routes.find(item => item.routeIdentityKey === key);
+      if (route) return route;
+    }
+    return null;
+  }
+
+  function manualControllerState() {
+    const groups = results?.manualBuilder?.eligibleSummitPool ?? results?.eligibleSummitPool ?? [];
+    const routes = Object.fromEntries(groups.flatMap(group => group.routes.map(route => [
+      route.routeIdentityKey,
+      {
+        gainM: route.routeGainM,
+        distanceKm: route.routeDistanceKm ?? 0,
+        averageGradientPercent: route.estimatedAverageGradientPercent,
+        technicalSuitability: routeTechnicalSuitability(route, normalizedManualTechnicalTarget),
+        summitIdentityKey: route.summitIdentityKey,
+      },
+    ])));
+    const targetDna = results?.manualBuilder?.targetDna ?? results?.targetDna;
+    return {
+      keys: manualSelectedKeys,
+      assignments: manualDayAssignments,
+      routes,
+      target: {
+        gainM: targetDna?.elevationGainM ?? results?.targetProfile.totalElevationGain ?? 0,
+        distanceKm: targetDna?.distanceKm ?? results?.targetProfile.totalDistance ?? 0,
+        averageGradientPercent: targetDna?.averageGradientPercent,
+      },
+    };
+  }
+
+  function applyManualSelection(
+    action: { type: "add" | "remove" | "replace" | "reorder"; key: string; replacementKey?: string; direction?: -1 | 1 },
+  ) {
+    const next = applySelectionChange(manualControllerState(), action);
+    setManualSelectedKeys(next.keys);
+    setManualDayAssignments(next.assignments);
+  }
+
+  function toggleManualRoute(route: ManualRoute) {
+    const current = manualSelectedKeys;
+    const sameSummit = current.some(key => manualRouteForKey(key)?.summitIdentityKey === route.summitIdentityKey);
+    if (current.includes(route.routeIdentityKey)) {
+      applyManualSelection({ type: "remove", key: route.routeIdentityKey });
+    } else if (sameSummit) {
+      // A summit remains one objective; selecting another route replaces its route.
+      const previousKey = current.find(key =>
+        manualRouteForKey(key)?.summitIdentityKey === route.summitIdentityKey);
+      if (previousKey) {
+        applyManualSelection({
+          type: "replace",
+          key: previousKey,
+          replacementKey: route.routeIdentityKey,
+        });
+      }
+    } else {
+      applyManualSelection({ type: "add", key: route.routeIdentityKey });
+    }
+  }
+
+  function moveManualRoute(key: string, direction: -1 | 1) {
+    applyManualSelection({ type: "reorder", key, direction });
+  }
+
+  function assignManualDay(routeKey: string, day: number) {
+    const next = assignObjectiveDay({
+      assignments: manualDayAssignments,
+      selectedKeys: manualSelectedKeys,
+      days: customDays ?? results?.targetProfile.estimatedDays ?? 1,
+    }, routeKey, day);
+    if (!next.accepted) {
+      setFetchError("reason" in next
+        ? next.reason
+        : "These routes must remain separate objectives.");
+      return;
+    }
+    setManualDayAssignments(next.assignments);
+  }
+
+  function suggestManualRoute() {
+    if (!results) return;
+    void fetchExpedition(
+      activeBundle?.goalMountain ?? activeSearch?.mountain ?? results.targetProfile.name,
+      customLocation || activeBundle?.region || activeSearch?.region || "",
+      searchRadius, customDays ?? undefined, false,
+      results.provenance?.selectedTargetRouteIdentityKey ?? undefined,
+      undefined, undefined, "manual", manualSelectedKeys,
+    );
+  }
+
+  function saveManualExpedition() {
+    if (!results) return;
+    void (async () => {
+      const selected = manualSelectedKeys.map(manualRouteForKey).filter((item): item is ManualRoute => !!item);
+      const hills = selected.map((route): NearbyHill => ({
+        name: route.summitName,
+        summitName: route.summitName,
+        summitIdentityKey: route.summitIdentityKey,
+        objectiveType: "manual_summit",
+        summitId: route.summitId ?? route.summitIdentityKey,
+        routeName: route.routeName ?? undefined,
+        routeIdentityKey: route.routeIdentityKey,
+        routeId: route.routeId ?? route.routeIdentityKey,
+        elevation: route.routeGainM, totalElevation: route.routeGainM,
+        distance: route.routeDistanceKm ?? 0, routeDistance: route.routeDistanceKm ?? undefined,
+        repeats: 1, surface: route.technicalCharacter ?? "summit route",
+        grade: route.difficulty ?? "Unknown", emoji: "⛰️",
+        summitElevationASL: route.summitElevationASL ?? undefined,
+        dataSource: route.provenance?.dataSource, routeDataStatus: route.provenance?.routeDataStatus,
+        confidence: route.provenance?.confidence,
+      }));
+      const totals = plannedTotals(hills);
+      const targetDna = results.manualBuilder?.targetDna ?? results.targetDna;
+      const targetGradient = targetDna?.averageGradientPercent ?? (
+        results.targetProfile.totalDistance > 0
+          ? results.targetProfile.totalElevationGain / (results.targetProfile.totalDistance * 10) : null);
+      const dna = calculateManualDna(selected.map(route => ({
+        gainM: route.routeGainM,
+        distanceKm: route.routeDistanceKm ?? 0,
+        averageGradientPercent: route.estimatedAverageGradientPercent,
+        technicalSuitability: routeTechnicalSuitability(route, normalizedManualTechnicalTarget),
+      })), {
+        gainM: results.targetProfile.totalElevationGain,
+        distanceKm: results.targetProfile.totalDistance,
+        averageGradientPercent: targetGradient,
+      });
+      const score = dna.overall;
+      const maxDay = selected.reduce((max, route, index) =>
+        Math.max(max, manualDayAssignments[route.routeIdentityKey] ?? index + 1), 1);
+      const selectedAssignments = Object.fromEntries(selected
+        .filter(route => manualDayAssignments[route.routeIdentityKey] != null)
+        .map(route => [route.routeIdentityKey, manualDayAssignments[route.routeIdentityKey]]));
+      const saveSnapshot = buildManualSaveSnapshot({
+        selectedRouteIdentityKeys: selected.map(route => route.routeIdentityKey),
+        dayAssignments: selectedAssignments,
+        dna,
+        routes: selected.map(route => ({
+          routeIdentityKey: route.routeIdentityKey,
+          summitIdentityKey: route.summitIdentityKey,
+          dataSource: route.provenance?.dataSource,
+          confidence: route.provenance?.confidence,
+        })),
+      });
+      const requiresConfirmedExtraDay = requiresExtraDay(
+        manualDayAssignments, selected.map(route => route.routeIdentityKey), results.targetProfile.estimatedDays);
+      if (requiresConfirmedExtraDay) {
+        const prompt = `This plan uses day ${maxDay}, beyond the selected ${results.targetProfile.estimatedDays}-day duration. Add the extra day?`;
+        const confirmed = await confirmExtraDayFlow(
+          maxDay,
+          results.targetProfile.estimatedDays,
+          () => Platform.OS === "web"
+            ? window.confirm(prompt)
+            : new Promise<boolean>(resolve => Alert.alert("Add another day?", prompt, [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Add day", onPress: () => resolve(true) },
+            ], { cancelable: true, onDismiss: () => resolve(false) })),
+        );
+        if (!confirmed) return;
+      }
+      const days = Array.from({ length: maxDay }, (_, dayIndex) => ({
+        label: maxDay === 1 ? "Expedition day" : `Day ${dayIndex + 1}`,
+        title: dayIndex === 0 ? "Primary ascent day" : "Summit objective day",
+        focus: "selected summit route objective",
+        routes: selected
+          .filter(route => (manualDayAssignments[route.routeIdentityKey] ?? selected.indexOf(route) + 1) === dayIndex + 1)
+          .map(route => ({
+            name: route.summitName,
+            routeName: route.routeName ?? undefined,
+            routeId: route.routeId ?? route.routeIdentityKey,
+            routeIdentityKey: route.routeIdentityKey,
+            assignmentDay: dayIndex + 1,
+            relationship: "separate_objective" as const,
+            schedulingConfidence: "estimated" as const,
+            provenance: route.provenance?.dataSource,
+            confidence: route.provenance?.confidence,
+            why: `+${route.routeGainM}m · ${route.routeDistanceKm ?? "distance unavailable"}km · ${route.provenance?.confidence ?? "unknown"} confidence · separate objective`,
+          })),
+      })).filter(day => day.routes.length > 0);
+      await startExpedition({
+        challengeName: results.targetProfile.name,
+        targetMountainName: results.targetProfile.name,
+        targetMountain: results.targetProfile,
+        virtualHills: hills,
+        simulationScore: score,
+         simulationScoreBreakdown: {
+           overall: dna.overall, elevation: dna.gainMatch, distance: dna.distanceMatch,
+           gradient: dna.gradientSimilarity, technicalSuitability: dna.technicalSuitability,
+           duration: dna.range === "within" || dna.range === "within_widened" ? 100 : 50,
+           altitude: 0, consecutiveDays: 0,
+         },
+        expeditionPlan: {
+          title: `${results.targetProfile.name}: selected summits`,
+          concept: "A user-selected expedition using trusted summit and route identities.",
+          days,
+          alternatives: {},
+          adventureScore: score,
+          dnaMatchScore: score,
+           dnaMatchNotes: `Manual DNA snapshot: ${dna.gainMatch}% gain, ${dna.distanceMatch}% distance, ${dna.gradientSimilarity}% gradient similarity, ${dna.technicalSuitability}% technical suitability; ${dna.range}.`,
+        },
+        virtualExpeditionProvenance: results.provenance
+          ? { ...results.provenance, matchMethod: "manual_builder_v1",
+              manualSnapshot: {
+                selectedRouteIdentityKeys: selected.map(route => route.routeIdentityKey),
+                routes: selected.map(route => ({
+                  routeIdentityKey: route.routeIdentityKey,
+                  summitIdentityKey: route.summitIdentityKey,
+                  dataSource: route.provenance?.dataSource,
+                  confidence: route.provenance?.confidence,
+                })),
+              } }
+          : undefined,
+        manualBuilderState: {
+          selectedRouteIdentityKeys: saveSnapshot.selectedRouteIdentityKeys,
+          dayAssignments: saveSnapshot.dayAssignments,
+          targetRouteIdentityKey: results.provenance?.selectedTargetRouteIdentityKey,
+          dnaBreakdown: {
+            overall: score, gainMatch: dna.gainMatch, distanceMatch: dna.distanceMatch,
+            gradientSimilarity: dna.gradientSimilarity, technicalSuitability: dna.technicalSuitability,
+            estimatedAverageGradientPercent: dna.averageGradientPercent, range: dna.range,
+          },
+        },
+        location: customLocation || activeSearch?.region || "",
+        maxRadius: searchRadius,
+        fitnessLevel: activeExpedition?.fitnessLevel ?? "Average",
+      });
+      router.replace("/(expedition)/base-camp" as any);
+    })().catch(err => setFetchError(err instanceof Error ? err.message : "Could not save expedition."));
   }
 
   async function handleAddImprovement(hill: NearbyHill) {
@@ -745,7 +1136,7 @@ export default function ExpeditionMountainsScreen() {
   // ── Loading overlay ──────────────────────────────────────────────────────────
   if (loading) {
     const label = activeBundle
-      ? `Finding hills in ${activeBundle.regionDisplay}…`
+      ? `Finding summits in ${activeBundle.regionDisplay}…`
       : `Searching ${activeSearch?.region ?? ""}…`;
     return (
       <LinearGradient colors={T.bgGrad} style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 20, padding: 32 }}>
@@ -780,6 +1171,9 @@ export default function ExpeditionMountainsScreen() {
           route.identityKey,
           pending.targetCountry,
           pending.targetRegion,
+          pending.mode,
+          pending.selectedRouteIdentityKeys,
+           pending.resolveOnly,
         );
       }}
     />
@@ -805,6 +1199,9 @@ export default function ExpeditionMountainsScreen() {
           pending.targetRouteIdentityKey,
           candidate.country,
           candidate.region ?? undefined,
+          pending.mode,
+          pending.selectedRouteIdentityKeys,
+          pending.resolveOnly,
         );
       }}
     />
@@ -814,6 +1211,177 @@ export default function ExpeditionMountainsScreen() {
   if (view === "results" && results) {
     const tp = results.targetProfile;
     const hills = results.recommendedHills;
+    const manual = results.manualBuilder;
+    if (results.resolutionOnly && setupResolved && !creationChoice) {
+      return (
+        <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 14 }}>
+            <View style={[s.card, { gap: 8 }]}>
+              <Text style={s.mountainTitle}>{tp.name}</Text>
+              <Text style={s.mountainSub}>Target route: {results.provenance?.selectedTargetRouteName ?? "verified route selected"}</Text>
+              <Text style={s.improveCandidateMeta}>Area: {customLocation || searchRegion} · {searchRadius}km · {tp.estimatedDays} day{tp.estimatedDays === 1 ? "" : "s"}</Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
+                <Text style={s.choiceTitle}>Find Equivalent Summits</Text><Text style={s.choiceCopy}>Launch the unchanged deterministic automatic planner.</Text>
+              </TouchableOpacity>
+              <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
+                <Text style={s.choiceTitle}>Choose Your Own Summits</Text><Text style={s.choiceCopy}>Open the manual builder with this resolved target route.</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      );
+    }
+    if (manual) {
+      const pool = (manual.eligibleSummitPool ?? results.eligibleSummitPool ?? [])
+        .filter(group => manualSearch.trim().length === 0
+          || group.summitName.toLowerCase().includes(manualSearch.trim().toLowerCase())
+          || group.routes.some(route => (route.routeName ?? "").toLowerCase().includes(manualSearch.trim().toLowerCase())))
+        .filter(group => manualFilter === "all" || group.routes.some(route => route.provenance?.confidence === "verified"));
+      const selected = manualSelectedKeys.map(manualRouteForKey).filter((item): item is ManualRoute => !!item);
+      const dna = calculateManualDna(selected.map(route => ({
+        gainM: route.routeGainM, distanceKm: route.routeDistanceKm ?? 0,
+        averageGradientPercent: route.estimatedAverageGradientPercent,
+        technicalSuitability: routeTechnicalSuitability(route, normalizedManualTechnicalTarget),
+      })), {
+        gainM: manual.targetDna.elevationGainM,
+        distanceKm: manual.targetDna.distanceKm,
+        averageGradientPercent: manual.targetDna.averageGradientPercent,
+      });
+      const { gainM: gain, distanceKm: distance, gainMatch, distanceMatch, overall } = dna;
+      return (
+        <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 12 }}>
+            <TouchableOpacity onPress={() => { setView("browse"); setResults(null); }} style={s.backRow}>
+              <ArrowLeft size={16} color={T.textMuted} /><Text style={s.backText}>Back to choices</Text>
+            </TouchableOpacity>
+            <View style={[s.card, { gap: 8 }]}>
+              <Text style={s.mountainTitle}>{tp.name}</Text>
+              <Text style={s.mountainSub}>Target route: {results.provenance?.selectedTargetRouteName ?? "selected route facts unavailable"}</Text>
+              <Text style={s.mountainSub}>Target route DNA · {tp.totalElevationGain.toLocaleString()}m gain · {tp.totalDistance}km</Text>
+              <Text style={s.improveCandidateMeta}>Target average gradient: {manual.targetDna.averageGradientPercent == null ? "unavailable" : `${manual.targetDna.averageGradientPercent}% (estimated)`}</Text>
+              <Text style={s.improveCandidateMeta}>Target technical character: {manual.targetDna.technicalCharacter ?? "unavailable"}</Text>
+            </View>
+            <View style={[s.card, { gap: 8 }]}>
+              <Text style={s.sectionTitle}>Live expedition DNA</Text>
+              <Text style={s.manualHeadline}>{overall}% match</Text>
+              <Text style={s.improveCandidateMeta}>Gain {gain.toLocaleString()}m / {manual.targetDna.elevationGainM.toLocaleString()}m · {gainMatch}% · {gain < manual.targetDna.elevationGainM ? `${Math.round(manual.targetDna.elevationGainM - gain)}m gain remaining` : "gain above target"}</Text>
+              <Text style={s.improveCandidateMeta}>Distance {distance.toFixed(1)}km / {manual.targetDna.distanceKm}km · {distanceMatch}% · {distance < manual.targetDna.distanceKm ? `${(manual.targetDna.distanceKm - distance).toFixed(1)}km remaining` : "distance above target"}</Text>
+              <Text style={s.improveCandidateMeta}>Estimated average gradient {dna.averageGradientPercent == null ? "unavailable" : `${dna.averageGradientPercent}%`} · Gradient similarity {dna.gradientSimilarity}% · Technical suitability {dna.technicalSuitability}%</Text>
+              <Text style={s.improveCandidateMeta}>{gain === 0 ? "No summits selected yet." : dna.range === "within" ? "Within the preferred range." : dna.range === "within_widened" ? "Within the widened preferred range." : dna.range === "below" ? "Below the preferred range." : "Above the preferred range."}</Text>
+            </View>
+            <View style={s.card}>
+              <Text style={s.sectionTitle}>Selected Summits</Text>
+              {selected.length === 0
+                ? <Text style={s.improveCandidateMeta}>No selected summits yet. Add an eligible summit route below.</Text>
+                : selected.map((route, index) => (
+                  <View key={route.routeIdentityKey} style={s.manualRouteRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.manualRouteName}>{route.summitName} · via {route.routeName ?? "summit route"}</Text>
+                      <Text style={s.improveCandidateMeta}>Day {manualDayAssignments[route.routeIdentityKey] ?? index + 1} · {route.routeGainM}m · {route.routeDistanceKm ?? "—"}km</Text>
+                    </View>
+                    <TouchableOpacity testID={`move-up-${route.routeIdentityKey}`} onPress={() => moveManualRoute(route.routeIdentityKey, -1)}><ChevronUp size={16} color={T.blue} /></TouchableOpacity>
+                    <TouchableOpacity testID={`move-down-${route.routeIdentityKey}`} onPress={() => moveManualRoute(route.routeIdentityKey, 1)}><ChevronDown size={16} color={T.blue} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => assignManualDay(route.routeIdentityKey, Math.max(1, (manualDayAssignments[route.routeIdentityKey] ?? index + 1) - 1))}><Text style={s.manualAdd}>Day −</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => assignManualDay(route.routeIdentityKey, (manualDayAssignments[route.routeIdentityKey] ?? index + 1) + 1)}><Text style={s.manualAdd}>Day +</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      setManualSelectedKeys(current => current.filter(key => key !== route.routeIdentityKey));
+                      setManualDayAssignments(current => {
+                        const next = { ...current }; delete next[route.routeIdentityKey]; return next;
+                      });
+                    }}><Text style={s.manualAdd}>Remove</Text></TouchableOpacity>
+                  </View>
+                ))}
+            </View>
+            <View style={s.searchRow}>
+              <Search size={14} color={T.blue} />
+              <TextInput value={manualSearch} onChangeText={setManualSearch} placeholder="Search summits or routes" placeholderTextColor={T.textDim} style={[s.searchInput, { flex: 1 }]} />
+            </View>
+            <View style={s.chipRow}>
+              {(["all", "verified"] as const).map(filter => (
+                <TouchableOpacity key={filter} onPress={() => setManualFilter(filter)} style={[s.chip, manualFilter === filter && s.chipActive]}>
+                  <Text style={[s.chipText, manualFilter === filter && s.chipTextActive]}>{filter === "all" ? "All eligible summits" : "Verified facts"}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {pool.length === 0 ? (
+              <View style={s.card}><Text style={s.sectionTitle}>No eligible summits found</Text><Text style={s.improveCandidateMeta}>There are no safe canonical summit routes matching this area and filter. Try a wider radius.</Text></View>
+            ) : pool.map(group => (
+              <View key={group.summitIdentityKey} style={s.card}>
+                <Text style={s.hillName}>{group.summitName}</Text>
+                <Text style={s.hillMeta}>{group.summitElevationASL == null ? "Summit elevation unavailable" : `${group.summitElevationASL.toLocaleString()}m summit elevation`}</Text>
+                {group.routes.map(route => {
+                  const chosen = manualSelectedKeys.includes(route.routeIdentityKey);
+                  return (
+                    <TouchableOpacity key={route.routeIdentityKey} onPress={() => toggleManualRoute(route)} style={[s.manualRouteRow, chosen && s.manualRouteChosen]}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={s.manualRouteName}>{route.routeName ? `via ${route.routeName}` : "Summit route"}</Text>
+                        <Text style={s.improveCandidateMeta}>▲ {route.routeGainM}m · {route.routeDistanceKm == null ? "distance unavailable" : `${route.routeDistanceKm}km`} · {route.estimatedAverageGradientPercent == null ? "gradient unavailable" : `${route.estimatedAverageGradientPercent}% estimated gradient`}</Text>
+                        <Text style={s.improveCandidateMeta}>{route.difficulty ?? "Difficulty unavailable"} · {route.provenance?.dataSource ?? "provenance unavailable"} · {route.provenance?.confidence ?? "unknown"} confidence</Text>
+                        <Text style={s.improveCandidateMeta}>{route.distanceFromSearchLocationKm == null ? "Distance from search location unavailable" : `${route.distanceFromSearchLocationKm}km from search location`}</Text>
+                      </View>
+                      <Text style={s.manualAdd}>{chosen ? "Remove" : "Add"}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+            <TouchableOpacity onPress={suggestManualRoute} style={s.improveSecondary}>
+              <Compass size={15} color={T.blue} /><Text style={s.improveSecondaryText}>Suggest My Next Summit</Text>
+            </TouchableOpacity>
+            {manual.suggestion?.recommendedSummit && (
+              <View style={s.improveCard}>
+                <Text style={s.improveTitle}>Suggest My Next Summit</Text>
+                <Text style={s.improveCandidateName}>{summitLabel(manual.suggestion.recommendedSummit)}</Text>
+                <Text style={s.improveCandidateMeta}>
+                  Projected totals: {manual.suggestion.projectedTotals?.gain ?? "—"}m gain · {manual.suggestion.projectedTotals?.distance ?? "—"}km · server-authoritative deterministic suggestion.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => void (async () => {
+                    const key = manualSuggestedKey ?? manual.suggestion?.recommendedSummit?.routeIdentityKey;
+                    const route = key ? manualRouteForKey(key) : null;
+                    if (!route) { setFetchError("Suggested route is no longer available in the eligible pool."); return; }
+                    const state = manualControllerState();
+                    const controllerRoute = state.routes[route.routeIdentityKey];
+                    if (!controllerRoute) {
+                      setFetchError("Suggested route metrics are no longer available.");
+                      return;
+                    }
+                    const message = `Add ${route.summitName}${route.routeName ? ` via ${route.routeName}` : ""}?`;
+                    const next = await confirmSuggestionFlow(
+                      state,
+                      { key: route.routeIdentityKey, route: controllerRoute },
+                      () => Platform.OS === "web"
+                        ? window.confirm(message)
+                        : new Promise<boolean>(resolve => Alert.alert("Confirm suggested summit", message, [
+                          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                          { text: "Add summit", onPress: () => resolve(true) },
+                        ], { cancelable: true, onDismiss: () => resolve(false) })),
+                    );
+                    if (next.keys.length !== state.keys.length) {
+                      setManualSelectedKeys(next.keys);
+                      setManualDayAssignments(next.assignments);
+                    }
+                  })()}
+                  style={s.improvePrimary}
+                >
+                  <Plus size={15} color="#fff" /><Text style={s.improvePrimaryText}>Confirm and add summit</Text>
+                </TouchableOpacity>
+                {(manual.suggestion.eligibleAlternatives ?? []).slice(0, 3).map(alternative => (
+                  <Text key={alternative.routeIdentityKey ?? alternative.name} style={s.improveCandidateMeta}>
+                    Alternative: {summitLabel(alternative)}{routeLabel(alternative) ? ` via ${routeLabel(alternative)}` : ""} · projected route facts supplied by server
+                  </Text>
+                ))}
+              </View>
+            )}
+            <TouchableOpacity onPress={saveManualExpedition} disabled={selected.length === 0} style={[s.setGoalBtn, selected.length === 0 && { opacity: 0.45 }]}>
+              <CheckCircle size={17} color="#fff" /><Text style={s.setGoalBtnText}>Save My Expedition</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </LinearGradient>
+      );
+    }
     const currentTotals = plannedTotals(hills);
     const score = matchPercent(currentTotals.gain, currentTotals.distance, tp);
     const bd = results.scoreBreakdown;
@@ -873,13 +1441,13 @@ export default function ExpeditionMountainsScreen() {
               <MapPin size={14} color={T.green} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: T.text }}>
-                  Equivalent hills in{" "}
+                  Equivalent summits in{" "}
                   <Text style={{ color: T.green, fontFamily: "Inter_700Bold" }}>
                     {customLocation || activeBundle?.regionDisplay || activeSearch?.region}
                   </Text>
                 </Text>
                 <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>
-                  {searchRadius}km radius · {tp.estimatedDays === 1 ? "1 day" : "2 days"}{customDays ? " (custom)" : ""}
+                  {searchRadius}km radius · {tp.estimatedDays} {tp.estimatedDays === 1 ? "day" : "days"}{customDays ? " (custom)" : ""}
                 </Text>
               </View>
               <View style={s.customisePill}>
@@ -928,7 +1496,8 @@ export default function ExpeditionMountainsScreen() {
                     { label: "Mountain default", value: null },
                     { label: "1 day",            value: 1 as const },
                     { label: "2 days",            value: 2 as const },
-                  ] as Array<{ label: string; value: 1 | 2 | null }>).map(opt => {
+                    { label: "3 days",            value: 3 as const },
+                  ] as Array<{ label: string; value: 1 | 2 | 3 | null }>).map(opt => {
                     const active = customDays === opt.value;
                     return (
                       <TouchableOpacity
@@ -955,6 +1524,20 @@ export default function ExpeditionMountainsScreen() {
               </Animated.View>
             )}
           </Animated.View>
+
+          {/* Creation choices: automatic remains the default deterministic flow. */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity testID="find-equivalent-summits" onPress={() => { /* current result is already the automatic plan */ }} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
+              <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
+              <Text style={s.choiceCopy}>Build the closest local match from trusted summit and route data.</Text>
+              <Text style={s.choiceActive}>Current automatic plan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity testID="choose-your-own-summits" onPress={openManualBuilder} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
+              <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
+              <Text style={s.choiceCopy}>Select routes you know and watch your expedition DNA update.</Text>
+              <Text style={s.choiceActive}>Open manual builder</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* ── Signature Challenge card ────────────────────────────────────── */}
           {activeBundle && (sigLoading || sigChallenge) && (
@@ -1079,7 +1662,7 @@ export default function ExpeditionMountainsScreen() {
           {hills.length > 0 && (
             <View style={{ gap: 0 }}>
               <Text style={[s.sectionTitle, { paddingHorizontal: 4, marginBottom: 6, fontSize: 11, color: T.textMuted }]}>
-                NEARBY TRAINING HILLS
+                NEARBY TRAINING SUMMITS
               </Text>
             </View>
           )}
@@ -1116,7 +1699,7 @@ export default function ExpeditionMountainsScreen() {
                 </View>
                 {hill.routeType ? (
                   <Text style={s.routeType}>
-                    {hill.routeType === "circular" ? "🔄 Circular" : hill.routeType === "out-and-back" ? "↔️ Out & back" : "⛰ Hill repeats"}
+                    {hill.routeType === "circular" ? "🔄 Circular" : hill.routeType === "out-and-back" ? "↔️ Out & back" : "⛰ Summit repeats"}
                     {hill.estimatedTime ? `  ·  ~${hill.estimatedTime}` : ""}
                   </Text>
                 ) : null}
@@ -1131,7 +1714,7 @@ export default function ExpeditionMountainsScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <ProgressRing score={score} size={52} strokeWidth={5} color={sc} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.dimLabel}>Local hill match score</Text>
+                  <Text style={s.dimLabel}>Local summit match score</Text>
                   <Text style={[s.scoreCaption, { color: sc }]}>{scoreLabel(score)} — {score}% of {tp.name}'s demands replicated locally</Text>
                 </View>
                 {scoreOpen ? <ChevronUp size={15} color={T.textDim} /> : <ChevronDown size={15} color={T.textDim} />}
@@ -1342,7 +1925,7 @@ export default function ExpeditionMountainsScreen() {
           {/* Hills */}
           {hills.length > 0 && (
             <Animated.View entering={FadeInDown.delay(80).duration(350)} style={{ gap: 8 }}>
-              <Text style={s.sectionTitle}>YOUR EQUIVALENT HILLS</Text>
+              <Text style={s.sectionTitle}>{CUSTOM_EXPEDITION_LABELS.equivalent}</Text>
               {hills.slice(0, 2).map((hill, idx) => (
                 <View key={hill.name} style={s.hillCard}>
                   <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -1374,7 +1957,7 @@ export default function ExpeditionMountainsScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                   <ProgressRing score={score} size={48} strokeWidth={5} color={sc} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.sectionLabel}>HILL MATCH SCORE</Text>
+                    <Text style={s.sectionLabel}>{CUSTOM_EXPEDITION_LABELS.matchScore}</Text>
                     <Text style={[s.scoreCaption, { color: sc }]}>{scoreLabel(score)} — {score}% match</Text>
                   </View>
                 </View>
@@ -1557,7 +2140,7 @@ export default function ExpeditionMountainsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.createRouteTitle}>Create Custom Route</Text>
-              <Text style={s.createRouteSub}>Choose your hills, set your goals{"\n"}and build your own expedition.</Text>
+              <Text style={s.createRouteSub}>Choose your summits, set your goals{"\n"}and build your own expedition.</Text>
             </View>
             <ChevronRight size={16} color={T.blue} />
           </TouchableOpacity>
@@ -1604,14 +2187,45 @@ export default function ExpeditionMountainsScreen() {
                   ))}
                 </View>
               </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
+                <View style={s.chipRow}>
+                  {[1, 2, 3].map(day => (
+                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
+                      style={[s.chip, customDays === day && s.chipActive]}>
+                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
+                    <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
+                    <Text style={s.choiceCopy}>Use the unchanged deterministic planner and trusted route data.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
+                    <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
+                    <Text style={s.choiceCopy}>Build your route list and watch DNA update as you choose.</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
+                <>
+                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
+                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue / Resolve Target</Text>
+                </TouchableOpacity>
+                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
+                </>
+              )}
               <TouchableOpacity
                 onPress={handleSearch}
-                disabled={searchMountain.trim().length < 2 || searchRegion.trim().length < 2}
+                disabled
                 style={[s.searchBtn, (searchMountain.trim().length < 2 || searchRegion.trim().length < 2) && { opacity: 0.4 }]}
                 activeOpacity={0.85}
               >
                 <Search size={15} color="#fff" />
-                <Text style={s.searchBtnText}>Find Equivalent Hills</Text>
+                <Text style={s.searchBtnText}>Resolve target before choosing</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1921,6 +2535,15 @@ function HillStat({ value, label }: { value: string; label: string }) {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  choiceCard: { flex: 1, minHeight: 132, borderWidth: 1, borderRadius: 14, backgroundColor: "rgba(20,34,54,0.9)", padding: 13, gap: 7 },
+  choiceTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 17 },
+  choiceCopy: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  choiceActive: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
+  manualHeadline: { fontSize: 30, fontFamily: "Inter_700Bold", color: T.green },
+  manualRouteRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
+  manualRouteChosen: { borderColor: T.green + "99", backgroundColor: T.greenDim },
+  manualRouteName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
+  manualAdd: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.blue },
   // Header
   heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
   heroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17, marginTop: 3 },

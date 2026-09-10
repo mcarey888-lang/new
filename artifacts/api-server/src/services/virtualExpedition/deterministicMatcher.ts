@@ -191,6 +191,9 @@ function principalSummitEvidence(hill: Hill): { eligible: boolean; reason?: stri
   if (hill.canonicalParentIdentityKey && hill.canonicalParentIdentityKey !== hill.summitIdentityKey) {
     return { eligible: false, reason: "canonical parent relationship is not reliable" };
   }
+  if (hill.summitProminenceM != null && hill.summitProminenceM < MIN_KNOWN_PRINCIPAL_PROMINENCE_M) {
+    return { eligible: false, reason: "known prominence is below the principal summit threshold" };
+  }
   // A route-shaped record cannot promote itself to a summit by attaching an
   // arbitrary summit key. Canonical/normalised summit records use routeType
   // "hill"; explicit route-shaped entity types were rejected above.
@@ -542,6 +545,21 @@ function routeEvidence(hill: Hill): { eligible: boolean; quality: number; reason
 }
 export function isDeterministicCandidateCompatible(hill: Hill, profile: TargetMountainProfile): boolean {
   return routeEvidence(hill).eligible && hazardScore(hill, profile).compatible;
+}
+
+/**
+ * Full suitability gate used when a caller is selecting from the ranked pool.
+ * Keep this separate from the legacy compatibility helper: compatibility is
+ * the historical hazard/evidence gate, while manual selection must also honor
+ * the user's explicit ability preference and the target's technical DNA.
+ */
+export function isDeterministicCandidateSuitable(
+  hill: Hill,
+  profile: TargetMountainProfile,
+  difficultyPreference?: string | null,
+): boolean {
+  if (!isDeterministicCandidateCompatible(hill, profile)) return false;
+  return abilityCompatibility(hill, profile, difficultyPreference).compatible;
 }
 
 function terrainScore(hill: Hill, profile: TargetMountainProfile): number {

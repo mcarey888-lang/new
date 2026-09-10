@@ -71,10 +71,19 @@ export function selectShellGoal<T>(
   return mode === "expedition" ? expeditionGoal : trainingGoal;
 }
 
-export type ExpeditionRouteIdentity = { name: string; routeIdentityKey?: string };
+export type ExpeditionRouteIdentity = {
+  name: string;
+  routeIdentityKey?: string;
+  summitIdentityKey?: string;
+  objectiveType?: "manual_summit";
+};
 
 export function routeCompletionKey(route: ExpeditionRouteIdentity): string {
-  return route.routeIdentityKey || route.name;
+  // Manual plans complete against the canonical summit, never a route/ridge key.
+  // Legacy and automatic plans retain their historical route-key behaviour.
+  return route.objectiveType === "manual_summit"
+    ? route.summitIdentityKey || route.name
+    : route.routeIdentityKey || route.name;
 }
 
 export function isRouteCompleted(

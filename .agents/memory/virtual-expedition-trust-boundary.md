@@ -19,6 +19,12 @@ Summit and route identity are separate: objective cards, GPS completion, and sav
 
 Same-day scheduling requires trusted combined-route identity or reliable route-boundary/trailhead compatibility. Summit coordinates are never substitutes for trailheads. Without reliable geometry, keep objectives separate, mark scheduling estimated, recommend another day, and never add transition distance to route totals.
 
+Manual Custom Expeditions use a profile-only target-resolution step before either planner runs. Users choose available days and any required verified target route first, then explicitly choose deterministic equivalents or the manual builder. Route-incomplete targets may continue when no route choice is required.
+
+The manual builder must use the same eligible canonical/safe pool and symmetric gain-distance score as automatic matching. Live and saved DNA share one calculation and normalized technical target; weighted gradient is derived from route gain/distance, never added. Tested production controllers own selection, scheduling, confirmation, and save/hydrate transitions.
+
+Manual saves remain compatible with the existing expedition format while preserving ordered summit/route identities, route provenance/confidence, day assignments, scheduling evidence, and the final DNA snapshot. GPS completion uses canonical summit identity for manual objectives; legacy automatic records retain route-key fallback.
+
 Difficulty labels are ranking preferences, not automatic proof that a Moderate user cannot scramble. For a strongly technical target, known technical-route evidence may be required when available; Moderate can retain target-compatible high/severe objectives, while Easy is an explicit veto. Nontechnical target DNA still excludes incompatible hazards.
 
 Canonical DoBIH summits without verified route facts retain canonical identity and prominence but receive clearly labelled `terrain_calculated` estimates at canonical coordinates. Such estimates never become verified route facts or borrow a specific route name such as “North Face.”

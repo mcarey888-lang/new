@@ -8,6 +8,7 @@ import { matchDeterministicExpedition } from "../services/virtualExpedition/dete
 import {
   createVirtualExpeditionHandler,
   filterCanonicalPrincipalSummits,
+  symmetricMatchPercentage,
   type VirtualExpeditionHandlerDependencies,
 } from "../services/virtualExpedition/virtualExpeditionHandler.js";
 
@@ -71,8 +72,8 @@ function deps(overrides: Partial<VirtualExpeditionHandlerDependencies> = {}): Vi
 async function invoke(dependencies: VirtualExpeditionHandlerDependencies, body: Record<string, unknown> = {}) {
   const res = {
     statusCode: 200, body: undefined as any,
-    status(code: number) { this.statusCode = code; return this; },
-    json(value: any) { this.body = value; return this; },
+    status(this: { statusCode: number }, code: number) { this.statusCode = code; return this; },
+    json(this: { body: any }, value: any) { this.body = value; return this; },
   } as unknown as Response & { statusCode: number; body: any };
   await createVirtualExpeditionHandler(dependencies)({
     body: { targetMountain: "Target", userLocation: `Test ${Math.random()}`, radius: 30, ...body },
@@ -81,6 +82,12 @@ async function invoke(dependencies: VirtualExpeditionHandlerDependencies, body: 
 }
 
 describe("virtual expedition summit-first data engine", () => {
+  it("uses a symmetric score for both under- and over-shoots", () => {
+    expect(symmetricMatchPercentage(50, 100)).toBe(50);
+    expect(symmetricMatchPercentage(200, 100)).toBe(50);
+    expect(symmetricMatchPercentage(100, 100)).toBe(100);
+  });
+
   it("filters a route-named canonical feature to its authoritative parent summit", () => {
     const parent = {
       ...mountain(), canonicalSourceKey: "summit:helvellyn", name: "Helvellyn",
@@ -91,6 +98,23 @@ describe("virtual expedition summit-first data engine", () => {
       routes: [{ ...route(), name: "Striding Edge", aliases: ["The Edge"] }],
     };
     expect(filterCanonicalPrincipalSummits([parent, routeFeature]).map(s => s.name))
+      .toEqual(["Helvellyn"]);
+  });
+
+  it("excludes known subsidiary tops while retaining the principal summit in manual pool", async () => {
+    const principal = {
+      ...mountain(), canonicalSourceKey: "dobih:helvellyn", name: "Helvellyn",
+      prominenceM: 671, routes: [{ ...route(), identityKey: "route:helvellyn", name: "Helvellyn route" }],
+    };
+    const subsidiary = {
+      ...mountain(), canonicalSourceKey: "dobih:2516", name: "Helvellyn Lower Man",
+      prominenceM: 12, routes: [{ ...route(), identityKey: "route:lower-man", name: "Lower Man route" }],
+    };
+    const response = await invoke(deps({
+      canonicalAreaLookup: vi.fn(async () => [principal, subsidiary]),
+    }), { mode: "manual" });
+    expect(response.statusCode).toBe(200);
+    expect(response.body.manualBuilder.eligibleSummitPool.map((summit: any) => summit.summitName))
       .toEqual(["Helvellyn"]);
   });
 
@@ -121,7 +145,7 @@ describe("virtual expedition summit-first data engine", () => {
           { id: "a", sourceFeatureId: "a", canonicalSourceKey: "a", name: "Twin", country: "A" },
           { id: "b", sourceFeatureId: "b", canonicalSourceKey: "b", name: "Twin", country: "B" },
         ],
-      })),
+      })) as any,
       resolveFallbackProfile,
       fetchPeaks,
     }));
@@ -131,12 +155,40 @@ describe("virtual expedition summit-first data engine", () => {
     expect(fetchPeaks).not.toHaveBeenCalled();
   });
 
+  it("resolves target profile and route facts without discovering or matching", async () => {
+    const canonicalAreaLookup = vi.fn();
+    const loadLocalCandidates = vi.fn();
+    const matchCandidates = vi.fn();
+    const response = await invoke(deps({
+      canonicalAreaLookup,
+      loadLocalCandidates,
+      matchCandidates,
+      canonicalLookup: vi.fn(async () => ({ kind: "match" as const, mountain: mountain() })),
+    }), {
+      resolveOnly: true,
+      targetRouteIdentityKey: "verified-ridge",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body.resolutionOnly).toBe(true);
+    expect(response.body.targetProfile.totalElevationGain).toBe(1_650);
+    expect(response.body.targetRoute).toMatchObject({
+      identityKey: "verified-ridge",
+      name: "Verified Ridge",
+      factsAvailable: true,
+    });
+    expect(canonicalAreaLookup).not.toHaveBeenCalled();
+    expect(loadLocalCandidates).not.toHaveBeenCalled();
+    expect(matchCandidates).not.toHaveBeenCalled();
+    expect(response.body).not.toHaveProperty("recommendedHills");
+    expect(response.body).not.toHaveProperty("manualBuilder");
+  });
+
   it("requires selection among multiple verified target routes and returns evidence", async () => {
     const other = { ...route(), identityKey: "other-route", name: "Other route" };
     const response = await invoke(deps({
       canonicalLookup: vi.fn(async () => ({
         kind: "match" as const, mountain: { ...mountain(), routes: [route(), other] },
-      })),
+      })) as any,
     }));
     expect(response.statusCode).toBe(409);
     expect(response.body.code).toBe("TARGET_ROUTE_SELECTION_REQUIRED");
@@ -191,7 +243,7 @@ describe("virtual expedition summit-first data engine", () => {
     const response = await invoke(deps({
       resolveFallbackProfile: vi.fn(async () => ({
         profile: profile(), source: "ai_estimated_profile", cached: false, usedAi: true,
-      })),
+      })) as any,
     }));
     expect(response.statusCode).toBe(200);
     expect(response.body.provenance).toMatchObject({
@@ -207,9 +259,9 @@ describe("virtual expedition summit-first data engine", () => {
     }));
     const fetchPeaks = vi.fn(async () => [{ id: 1 } as any]);
     const response = await invoke(deps({
-      loadLocalCandidates: vi.fn(async () => ({
-        hills: ways, sources: ["seeded_osm"], queriedRows: { cachedHills: 0, seededTrails: ways.length },
-      })),
+      loadLocalCandidates: vi.fn(async (_lat: number, _lng: number, _radius: number) => ({
+        hills: ways as any, sources: ["seeded_osm"], queriedRows: { cachedHills: 0, seededTrails: ways.length },
+      })) as any,
       fetchPeaks,
     }));
     expect(response.statusCode).toBe(200);
@@ -224,9 +276,9 @@ describe("virtual expedition summit-first data engine", () => {
     const ways = [hill("Long Valley Way", 100, { surface: "gravel trail", routeDistance: 25 })];
     const response = await invoke(deps({
       fetchPeaks: vi.fn(async () => []),
-      loadLocalCandidates: vi.fn(async () => ({
-        hills: ways, sources: ["seeded_osm"], queriedRows: { cachedHills: 0, seededTrails: 1 },
-      })),
+      loadLocalCandidates: vi.fn(async (_lat: number, _lng: number, _radius: number) => ({
+        hills: ways as any, sources: ["seeded_osm"], queriedRows: { cachedHills: 0, seededTrails: 1 },
+      })) as any,
     }));
     expect(response.statusCode).toBe(404);
     expect(response.body.error).toContain("Insufficient verified or named summit evidence");
@@ -383,11 +435,11 @@ describe("virtual expedition summit-first data engine", () => {
 
   it("reports excluded generic local Ways after successful OSM discovery", async () => {
     const response = await invoke(deps({
-      loadLocalCandidates: vi.fn(async () => ({
-        hills: [hill("Coast Way sightseeing trail", 100, { routeDistance: 28 })],
+      loadLocalCandidates: vi.fn(async (_lat: number, _lng: number, _radius: number) => ({
+        hills: [hill("Coast Way sightseeing trail", 100, { routeDistance: 28 })] as any,
         sources: ["seeded_osm"],
         queriedRows: { cachedHills: 0, seededTrails: 1 },
-      })),
+      })) as any,
     }));
     expect(response.statusCode).toBe(200);
     expect(response.body.provenance.excludedLongTrails[0]).toMatchObject({
@@ -508,5 +560,51 @@ describe("virtual expedition summit-first data engine", () => {
     expect(fetchPeaks).toHaveBeenCalledOnce();
     expect(loadLocalCandidates).toHaveBeenCalledOnce();
     expect(second.body._meta.areaCacheHit).toBe(true);
+  });
+
+  it("supports a compatible manual request and groups multiple routes under one summit", async () => {
+    const local = {
+      ...mountain(),
+      routes: [
+        { ...route(), identityKey: "manual-route-a", name: "North Route" },
+        { ...route(), identityKey: "manual-route-b", name: "South Route" },
+      ],
+    };
+    const response = await invoke(deps({
+      canonicalAreaLookup: vi.fn(async () => [local]),
+    }), {
+      mode: "manual",
+      targetRouteIdentityKey: "verified-ridge",
+      selectedRouteIdentityKeys: ["manual-route-a"],
+      daysOverride: 1,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body.manualBuilder.eligibleSummitPool).toHaveLength(1);
+    expect(response.body.manualBuilder.eligibleSummitPool[0].routes).toHaveLength(2);
+    expect(response.body.manualBuilder.selectedRouteIdentityKeys).toEqual(["manual-route-a"]);
+    expect(response.body.recommendedHills.map((hill: Hill) => hill.routeIdentityKey))
+      .toEqual(["manual-route-a"]);
+  });
+
+  it("rejects unsafe or ineligible manual route keys and duplicate summit selections", async () => {
+    const local = {
+      ...mountain(),
+      routes: [
+        { ...route(), identityKey: "manual-route-a", name: "North Route" },
+        { ...route(), identityKey: "manual-route-b", name: "South Route" },
+      ],
+    };
+    const dependencies = deps({ canonicalAreaLookup: vi.fn(async () => [local]) });
+    const unknown = await invoke(dependencies, {
+      mode: "manual", selectedRouteIdentityKeys: ["not-in-pool"],
+    });
+    expect(unknown.statusCode).toBe(422);
+    expect(unknown.body.code).toBe("SELECTED_ROUTE_NOT_ELIGIBLE");
+
+    const duplicate = await invoke(dependencies, {
+      mode: "manual", selectedRouteIdentityKeys: ["manual-route-a", "manual-route-b"],
+    });
+    expect(duplicate.statusCode).toBe(422);
+    expect(duplicate.body.code).toBe("DUPLICATE_SUMMIT_SELECTION");
   });
 });

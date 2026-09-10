@@ -99,6 +99,17 @@ export interface VirtualExpeditionProvenance {
   usedAi: boolean;
   metricSources?: Record<string, string>;
   warnings?: string[];
+  manualSnapshot?: {
+    selectedRouteIdentityKeys: string[];
+    routes: Array<{ routeIdentityKey: string; summitIdentityKey: string; dataSource?: string; confidence?: string }>;
+  };
+}
+
+export interface ManualBuilderState {
+  selectedRouteIdentityKeys: string[];
+  dayAssignments: Record<string, number>;
+  dnaBreakdown?: Record<string, number | string | null>;
+  targetRouteIdentityKey?: string | null;
 }
 
 export interface SummitGoal {
@@ -135,6 +146,8 @@ export interface SummitGoal {
   virtualHills?: NearbyHill[];
   /** Optional data lineage for the generated custom expedition. */
   virtualExpeditionProvenance?: VirtualExpeditionProvenance;
+  /** Additive snapshot for manually assembled expeditions; absent on legacy saves. */
+  manualBuilderState?: ManualBuilderState;
   /**
    * Virtual / Expedition mode: the AI-designed mini expedition plan returned
    * by the Mountain Guide expedition builder. Stored for display and editing.
@@ -147,7 +160,7 @@ export interface SummitGoal {
       label:  string;
       title:  string;
       focus:  string;
-      routes: Array<{ name: string; routeIdentityKey?: string; routeId?: string; routeName?: string; why: string }>;
+      routes: Array<{ name: string; routeIdentityKey?: string; routeId?: string; routeName?: string; why: string; assignmentDay?: number; relationship?: "continuous_combined_route" | "separate_objective"; schedulingConfidence?: "verified" | "calculated" | "estimated"; provenance?: string; confidence?: string }>;
     }>;
     alternatives:  Record<string, string[]>;
     adventureScore: number;
@@ -189,6 +202,7 @@ export interface SavedExpedition {
   simulationScoreBreakdown?: SimulationScoreBreakdown;
   /** Optional data lineage; absent on legacy saved expeditions. */
   virtualExpeditionProvenance?: VirtualExpeditionProvenance;
+  manualBuilderState?: ManualBuilderState;
   /** Routes the user has explicitly confirmed completing. */
   completedRoutes: string[];
   expeditionStatus: "saved" | "active" | "complete";
@@ -258,6 +272,8 @@ export interface NearbyHill {
   entityType?: "summit" | "peak" | "hill" | "subsidiary_summit" | "route" | "ridge" | "edge" | "path" | "trail" | "way";
   canonicalParentIdentityKey?: string;
   summitIdentityKey?: string;
+  /** Manual expedition objectives complete by canonical summit identity. */
+  objectiveType?: "manual_summit";
   dataSource?: string;
   routeDataStatus?: string;
   confidence?: string;
@@ -1264,7 +1280,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const expeditionFields = [
         "virtualHills", "expeditionPlan", "simulationScore",
         "simulationScoreBreakdown", "targetMountain", "virtualHikeProgress", "completedRoutes",
-        "virtualExpeditionProvenance",
+        "virtualExpeditionProvenance", "manualBuilderState",
       ] as const;
       const expUpdates: Partial<SavedExpedition> = {};
       for (const field of expeditionFields) {
@@ -1317,6 +1333,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       simulationScore:          data.simulationScore,
       simulationScoreBreakdown: data.simulationScoreBreakdown,
       virtualExpeditionProvenance: data.virtualExpeditionProvenance,
+      manualBuilderState: data.manualBuilderState,
       expeditionPlan:           data.expeditionPlan ?? null,
       virtualHikeProgress:      { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 },
       completedRoutes:          [],

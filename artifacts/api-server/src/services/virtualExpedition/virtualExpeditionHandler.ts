@@ -24,6 +24,7 @@ import {
 } from "./canonicalTargetProfile.js";
 import {
   isDeterministicCandidateCompatible,
+  isDeterministicCandidateSuitable,
   isDeterministicTargetFeasible,
   matchDeterministicExpedition,
   matchQuickestHighSummits,
@@ -117,6 +118,53 @@ type DiscoveryDiagnostics = {
   canonicalSummitsFound?: number;
 };
 
+function distanceKmBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r;
+  const dLng = (b.lng - a.lng) * r;
+  const v = Math.sin(dLat / 2) ** 2
+    + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.atan2(Math.sqrt(v), Math.sqrt(1 - v));
+}
+
+/** Symmetric two-axis match: both undershoot and overshoot reduce the score. */
+export function symmetricMatchPercentage(actual: number, target: number): number {
+  return actual > 0 && target > 0
+    ? Math.round(Math.min(actual, target) / Math.max(actual, target) * 100) : 0;
+}
+
+function manualRouteRecord(hill: Hill, userLat: number, userLng: number): Record<string, unknown> {
+  const distance = hill.routeDistance ?? 0;
+  const gain = hill.elevation;
+  return {
+    summitName: hill.summitName ?? hill.name,
+    summitIdentityKey: hill.summitIdentityKey ?? hill.summitId ?? hill.name,
+    summitId: hill.summitId ?? hill.summitIdentityKey ?? null,
+    summitElevationASL: hill.summitElevationASL ?? null,
+    routeName: hill.routeName ?? null,
+    routeIdentityKey: hill.routeIdentityKey ?? hill.routeId ?? null,
+    routeId: hill.routeId ?? hill.routeIdentityKey ?? null,
+    routeGainM: gain,
+    routeDistanceKm: hill.routeDistance ?? null,
+    estimatedAverageGradientPercent: distance > 0 ? Math.round(gain / (distance * 10) * 100) / 100 : null,
+    gradientIsEstimated: true,
+    difficulty: hill.grade,
+    technicalCharacter: hill.surface,
+    provenance: {
+      dataSource: hill.dataSource ?? "unknown",
+      routeDataStatus: hill.routeDataStatus ?? "unknown",
+      confidence: hill.routeDataStatus === "external_route" ? "verified"
+        : hill.routeDataStatus === "terrain_calculated" ? "calculated" : "estimated",
+    },
+    distanceFromSearchLocationKm: typeof hill.lat === "number" && typeof hill.lng === "number"
+      ? Math.round(distanceKmBetween({ lat: userLat, lng: userLng }, { lat: hill.lat, lng: hill.lng }) * 100) / 100
+      : null,
+  };
+}
+
 const areaCache = new Map<string, CachedArea>();
 const AREA_CACHE_TTL_MS = 30 * 60 * 1_000;
 
@@ -179,6 +227,10 @@ export function filterCanonicalPrincipalSummits(
     }
   }
   return summits.filter(summit => {
+    // A known sub-30m prominence feature is a subsidiary top, not a
+    // selectable principal summit. Unknown prominence remains eligible so
+    // trusted legacy/principal DoBIH records are not discarded.
+    if (summit.prominenceM != null && summit.prominenceM < 30) return false;
     const routeOwners = owners.get(normalize(summit.name));
     if (routeOwners && [...routeOwners].some(owner => owner !== summit.canonicalSourceKey)) return false;
     const feature = normalize(summit.summitFeature ?? "");
@@ -380,6 +432,12 @@ export function createVirtualExpeditionHandler(
 
     try {
       const input = z.object({
+        mode: z.enum(["automatic", "manual", "manual_builder"]).optional().default("automatic"),
+        resolveOnly: z.boolean().optional().default(false),
+        profileOnly: z.boolean().optional().default(false),
+        // Additive aliases make the builder contract tolerant of older clients.
+        manualBuilder: z.boolean().optional().default(false),
+        builderMode: z.enum(["automatic", "manual"]).optional(),
         targetMountain: z.string().trim().min(2).max(200),
         targetCountry: z.string().trim().min(2).max(120).optional(),
         targetRegion: z.string().trim().min(2).max(160).optional(),
@@ -390,7 +448,14 @@ export function createVirtualExpeditionHandler(
         difficultyPreference: z.string().optional().nullable(),
         targetRouteIdentityKey: z.string().trim().min(1).max(200).optional().nullable(),
         requireVerifiedRouteSelection: z.boolean().optional().default(false),
+        selectedRouteIdentityKeys: z.array(z.string().trim().min(1).max(240)).max(32)
+          .optional().default([]),
+        selectedRoutes: z.array(z.object({
+          routeIdentityKey: z.string().trim().min(1).max(240),
+        })).max(32).optional().default([]),
       }).parse(req.body);
+      const manualMode = input.mode !== "automatic" || input.manualBuilder
+        || input.builderMode === "manual";
       const userLocation = normalizeLocation(input.userLocation);
       const radiusKm = Math.min(100, Math.max(5, input.radius));
       const warnings: string[] = [];
@@ -538,6 +603,48 @@ export function createVirtualExpeditionHandler(
         ? { ...targetProfile, estimatedDays: input.daysOverride }
         : targetProfile;
       if (input.daysOverride) metricSources.estimatedDays = "user_override";
+
+      // Setup screens can resolve the canonical target and route without
+      // paying for (or accidentally triggering) local discovery and matching.
+      // This is intentionally after route-selection validation and fallback
+      // profile resolution so the response remains useful for summaries.
+      if (input.resolveOnly || input.profileOnly) {
+        timings.total = Math.round(performance.now() - startedAt);
+        return res.json({
+          resolutionOnly: true,
+          targetProfile: effectiveProfile,
+          targetRoute: {
+            identityKey: selectedTargetRouteIdentityKey,
+            name: selectedTargetRouteName,
+            status: routeDataStatus,
+            factsAvailable: Boolean(selectedCanonicalRoute && targetRouteSource
+              === "summit_data_engine_verified_route"),
+          },
+          targetMountain: canonicalMountain ? {
+            id: canonicalMountain.id,
+            canonicalSourceKey: canonicalMountain.canonicalSourceKey,
+            canonicalName: canonicalMountain.name,
+            matchedBy: canonicalMountain.matchedBy,
+          } : null,
+          availableVerifiedRoutes,
+          provenance: {
+            targetMountainSource,
+            targetRouteSource,
+            routeDataStatus,
+            selectedTargetRouteIdentityKey,
+            selectedTargetRouteName,
+            metricSources,
+            usedAi,
+            aiUsage: { targetProfile: usedAi, localCandidateDiscovery: false, routeSelection: false, narration: false },
+          },
+          _meta: {
+            resolutionOnly: true,
+            profileCached,
+            daysOverrideApplied: Boolean(input.daysOverride),
+            timingsMs: process.env.NODE_ENV === "production" ? undefined : timings,
+          },
+        });
+      }
 
       const areaKey = `${userLocation.toLowerCase()}|${radiusKm}|${input.expeditionStyle}`;
       const cachedArea = areaCache.get(areaKey);
@@ -838,14 +945,82 @@ export function createVirtualExpeditionHandler(
         });
       }
 
-      const match = await timed("deterministicMatching", () =>
+      // Manual mode deliberately uses the same safety-filtered pool and matcher
+      // evidence as automatic mode, but never lets the matcher add objectives.
+      const automaticMatch = await timed("deterministicMatching", () =>
         (input.expeditionStyle === "quickest_high_summits"
           ? matchQuickestHighSummits
           : matchCandidates)(candidateHills, effectiveProfile, input.difficultyPreference));
+      const requestedRouteKeys = new Set([
+        ...input.selectedRouteIdentityKeys,
+        ...input.selectedRoutes.map(route => route.routeIdentityKey),
+      ]);
+      const eligibleSelectionPool = candidateHills.filter(hill =>
+        isDeterministicCandidateSuitable(
+          hill, effectiveProfile, input.difficultyPreference));
+      const selectedManual = manualMode
+        ? eligibleSelectionPool.filter(hill =>
+          requestedRouteKeys.has(hill.routeIdentityKey ?? hill.routeId ?? ""))
+        : automaticMatch.selectedHills;
+      if (manualMode) {
+        const selectedSummits = new Set<string>();
+        for (const hill of selectedManual) {
+          const identity = hill.summitIdentityKey ?? hill.summitId ?? hill.name;
+          if (selectedSummits.has(identity)) {
+            return res.status(422).json({
+              error: "Only one route per summit can be selected. Choose a route or replace the existing route.",
+              code: "DUPLICATE_SUMMIT_SELECTION",
+              summitIdentityKey: identity,
+            });
+          }
+          selectedSummits.add(identity);
+        }
+        const unknown = [...requestedRouteKeys].filter(key =>
+          !eligibleSelectionPool.some(hill => (hill.routeIdentityKey ?? hill.routeId) === key));
+        if (unknown.length) {
+          return res.status(422).json({
+            error: "One or more selected routes are unavailable, unsafe, or outside the eligible summit pool.",
+            code: "SELECTED_ROUTE_NOT_ELIGIBLE",
+            routeIdentityKeys: unknown,
+          });
+        }
+      }
+      const manualGain = selectedManual.reduce((sum, hill) => sum + hill.elevation * hill.repeats, 0);
+      const manualDistance = selectedManual.reduce((sum, hill) => sum + (hill.routeDistance ?? 0) * hill.repeats, 0);
+      const manualGainRatio = effectiveProfile.totalElevationGain > 0
+        ? manualGain / effectiveProfile.totalElevationGain : 0;
+      const manualDistanceRatio = effectiveProfile.totalDistance > 0
+        ? manualDistance / effectiveProfile.totalDistance : 0;
+      const manualGainScore = symmetricMatchPercentage(
+        manualGain, effectiveProfile.totalElevationGain) / 100;
+      const manualDistanceScore = symmetricMatchPercentage(
+        manualDistance, effectiveProfile.totalDistance) / 100;
+      const match = manualMode
+        ? {
+          ...automaticMatch,
+          selectedHills: selectedManual,
+          deterministicScore: Math.round((manualGainScore + manualDistanceScore) * 50),
+          achievedAscent: manualGain,
+          achievedDistance: manualDistance,
+          targetRatio: manualGainRatio,
+          distanceRatio: manualDistanceRatio,
+          matchDiagnostics: {
+            ...automaticMatch.matchDiagnostics,
+            plannedAscent: manualGain,
+            plannedDistance: manualDistance,
+            ascentRatio: manualGainRatio,
+            distanceRatio: manualDistanceRatio,
+            withinNormal: Math.abs(manualGainRatio - 1) <= 0.15
+              && Math.abs(manualDistanceRatio - 1) <= 0.20,
+            withinWidened: Math.abs(manualGainRatio - 1) <= 0.30
+              && Math.abs(manualDistanceRatio - 1) <= 0.35,
+          },
+        }
+        : automaticMatch;
        warnings.push(...match.warnings.map(warning => warning
          .replace("Route ascent is advisory in quickest-high-summits mode", "Route ascent is a fit diagnostic in quickest-high-summits mode")
          .replace("ascent and distance are advisory.", "ascent and distance are fit diagnostics.")));
-      if (!match.selectedHills.length) {
+      if (!match.selectedHills.length && !manualMode) {
         return res.status(404).json({
           error: "No safe route combination could be built from the available candidates.",
           warnings,
@@ -854,7 +1029,7 @@ export function createVirtualExpeditionHandler(
 
       const recommendedHills = match.selectedHills;
       const additionalSummit = recommendAdditionalSummit(
-        candidateHills,
+        eligibleSelectionPool,
         match,
         effectiveProfile,
         input.difficultyPreference,
@@ -923,6 +1098,46 @@ export function createVirtualExpeditionHandler(
       const localCandidateRouteDataStatuses = [
         ...new Set(candidateHills.map(hill => hill.routeDataStatus ?? "unknown")),
       ];
+      const eligibleManualRoutes = candidateHills
+        .filter(hill => isDeterministicCandidateSuitable(
+          hill, effectiveProfile, input.difficultyPreference))
+        .sort((a, b) =>
+          (a.summitName ?? a.name).localeCompare(b.summitName ?? b.name, "en")
+          || (a.routeName ?? "").localeCompare(b.routeName ?? "", "en")
+          || (a.routeIdentityKey ?? "").localeCompare(b.routeIdentityKey ?? ""));
+      const manualSummits = new Map<string, {
+        summitName: string;
+        summitIdentityKey: string;
+        summitElevationASL: number | null;
+        routes: Array<Record<string, unknown>>;
+      }>();
+      for (const hill of eligibleManualRoutes) {
+        const identity = hill.summitIdentityKey ?? hill.summitId ?? hill.name;
+        const existing = manualSummits.get(identity) ?? {
+          summitName: hill.summitName ?? hill.name,
+          summitIdentityKey: identity,
+          summitElevationASL: hill.summitElevationASL ?? null,
+          routes: [],
+        };
+        existing.routes.push(manualRouteRecord(hill, userLat, userLng));
+        manualSummits.set(identity, existing);
+      }
+      const eligibleSummitPool = [...manualSummits.values()];
+      const selectedGainForGradient = recommendedHills.reduce(
+        (sum, hill) => sum + hill.elevation * hill.repeats, 0);
+      const selectedDistanceForGradient = recommendedHills.reduce(
+        (sum, hill) => sum + (hill.routeDistance ?? 0) * hill.repeats, 0);
+      const selectedGradient = selectedDistanceForGradient > 0
+        ? selectedGainForGradient / (selectedDistanceForGradient * 10) : null;
+      const targetGradient = effectiveProfile.totalDistance > 0
+        ? effectiveProfile.totalElevationGain / (effectiveProfile.totalDistance * 10) : null;
+      const gradientSimilarity = selectedGradient != null && targetGradient != null && targetGradient > 0
+        ? Math.round(Math.min(selectedGradient / targetGradient, targetGradient / selectedGradient) * 100)
+        : 0;
+      const selectedTechnicalScores = recommendedHills
+        .map(hill => match.rankedCandidates.find(candidate =>
+          candidate.routeIdentityKey === hill.routeIdentityKey)?.components.terrainRouteType)
+        .filter((score): score is number => typeof score === "number");
       const selectedCandidateSources = [
         ...new Set(recommendedHills.map(hill => hill.dataSource ?? "unknown")),
       ];
@@ -1056,6 +1271,42 @@ export function createVirtualExpeditionHandler(
           scheduleFit: additionalSummit.scheduleFit,
           scheduleAssignments: additionalSummit.scheduleAssignments,
         } : null,
+        manualBuilder: manualMode ? {
+          eligibleSummitPool,
+          selectedRouteIdentityKeys: recommendedHills.map(hill => hill.routeIdentityKey ?? hill.routeId),
+          targetDna: {
+            elevationGainM: effectiveProfile.totalElevationGain,
+            distanceKm: effectiveProfile.totalDistance,
+            averageGradientPercent: effectiveProfile.totalDistance > 0
+              ? Math.round(effectiveProfile.totalElevationGain / (effectiveProfile.totalDistance * 10) * 100) / 100
+              : null,
+            technicalCharacter: effectiveProfile.technicalGrade,
+            routeDna: effectiveProfile.routeDna,
+          },
+          liveDna: {
+            combinedGainM: manualGain,
+            combinedDistanceKm: manualDistance,
+            gainMatchPercentage: Math.round(manualGainScore * 100),
+            distanceMatchPercentage: Math.round(manualDistanceScore * 100),
+            overallScore: match.deterministicScore,
+            estimatedAverageGradientPercent: selectedGradient != null
+              ? Math.round(selectedGradient * 100) / 100 : null,
+            gradientSimilarityPercentage: gradientSimilarity,
+            technicalSuitabilityPercentage: selectedTechnicalScores.length
+              ? Math.round(selectedTechnicalScores.reduce((sum, score) => sum + score, 0)
+                / selectedTechnicalScores.length) : 0,
+            remainingGainM: effectiveProfile.totalElevationGain - manualGain,
+            remainingDistanceKm: effectiveProfile.totalDistance - manualDistance,
+            range: match.matchDiagnostics.withinNormal ? "within"
+              : match.matchDiagnostics.withinWidened ? "within_widened" : manualGainRatio < 1 || manualDistanceRatio < 1 ? "below" : "above",
+          },
+          suggestion: additionalSummit ? {
+            ...additionalSummit,
+            recommendedSummit: additionalSummit.candidate,
+            projectedTotals: additionalSummit.projected,
+            requiresConfirmation: true,
+          } : null,
+        } : undefined,
       };
 
       if (process.env.NODE_ENV !== "production") {
@@ -1083,6 +1334,12 @@ export function createVirtualExpeditionHandler(
         simulationScore: physicalScore.overall,
         scoreBreakdown: physicalScore,
         provenance,
+        manualBuilder: manualMode ? provenance.manualBuilder : undefined,
+        // Top-level aliases keep the builder usable by clients that do not
+        // retain the nested manualBuilder object between selection changes.
+        eligibleSummitPool: manualMode ? eligibleSummitPool : undefined,
+        targetDna: manualMode ? provenance.manualBuilder?.targetDna : undefined,
+        suggestNextSummit: manualMode ? provenance.manualBuilder?.suggestion : undefined,
         _meta: {
           profileCached,
           areaCacheHit,

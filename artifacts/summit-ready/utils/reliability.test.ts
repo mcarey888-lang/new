@@ -23,6 +23,21 @@ import {
 } from "./stateReliability";
 import { syncOutboxKey } from "./syncOutbox";
 
+describe("manual summit completion identity", () => {
+  it("uses canonical summit identity while preserving legacy route fallback", () => {
+    const objective = {
+      name: "Helvellyn",
+      routeIdentityKey: "route:striding-edge",
+      summitIdentityKey: "summit:helvellyn",
+      objectiveType: "manual_summit" as const,
+    };
+    expect(routeCompletionKey(objective)).toBe("summit:helvellyn");
+    expect(isRouteCompleted(["summit:helvellyn"], objective)).toBe(true);
+    expect(isRouteCompleted(["route:striding-edge"], objective)).toBe(false);
+    expect(routeCompletionKey({ name: "Legacy", routeIdentityKey: "route:legacy" })).toBe("route:legacy");
+  });
+});
+
 describe("GPS queue reliability", () => {
   it("acks only processed immutable batches", () => {
     expect(acknowledgeBatchKeys(["a", "b", "concurrent"], ["a", "b"])).toEqual(["concurrent"]);

@@ -66,7 +66,7 @@ import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHil
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey } =
+  const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
     useLocalSearchParams<{
       name: string;
       location: string;
@@ -83,6 +83,8 @@ export default function HillDetailScreen() {
       expeditionMode?: string;
       expeditionId?: string;
       routeIdentityKey?: string;
+      summitIdentityKey?: string;
+      objectiveType?: string;
     }>();
 
   const isExpeditionMode = expeditionMode === "true";
@@ -497,6 +499,8 @@ export default function HillDetailScreen() {
                 params: {
                   hillName: name,
                   routeIdentityKey: routeIdentityKey ?? "",
+                  summitIdentityKey: summitIdentityKey ?? "",
+                  objectiveType: objectiveType ?? "",
                   ...(isExpeditionMode ? {
                     trackingMode: "expedition-route",
                     expeditionId: expeditionId ?? "",

@@ -6,6 +6,7 @@ import {
   matchDeterministicExpedition,
   matchQuickestHighSummits,
   recommendAdditionalSummit,
+  isDeterministicCandidateSuitable,
 } from "../services/virtualExpedition/deterministicMatcher.js";
 
 function hill(name: string, elevation: number, overrides: Partial<Hill> = {}): Hill {
@@ -103,7 +104,7 @@ describe("deterministic expedition matcher", () => {
     expect(result.selectedHills.map(candidate => candidate.name))
       .toEqual(["Principal Summit", "Independent Summit"]);
     expect(result.rankedCandidates.find(candidate =>
-      candidate.name === "Subsidiary Top")?.rejectionReasons[0])
+      candidate.name === "Subsidiary Top")?.rejectionReasons?.[0])
       .toContain("subsidiary peak");
   });
 
@@ -456,6 +457,29 @@ describe("deterministic expedition matcher", () => {
     expect(walking.selectedHills[0].name).toBe("Moel Siabod Walk");
     expect(walking.rankedCandidates.find(candidate =>
       candidate.name === "Tryfan North Ridge")?.compatible).toBe(false);
+  });
+
+  it("applies the same ability suitability gate to manual-pool candidates", () => {
+    const scrambling = hill("Moderate Scramble", 600, {
+      grade: "Hard",
+      hazardLevel: "low",
+      surface: "rocky scrambling ridge",
+    });
+    const easyTarget = profile({
+      routeDna: {
+        ...profile().routeDna, exposure: 1, scrambling: 1, technicalMovement: 1,
+      },
+    });
+    expect(isDeterministicCandidateSuitable(scrambling, easyTarget, "Easy")).toBe(false);
+
+    const moderateTechnicalTarget = profile({
+      routeDna: {
+        ...profile().routeDna, exposure: 8, scrambling: 8, technicalMovement: 8,
+      },
+    });
+    // Target DNA permits this route even when the preference is Moderate.
+    expect(isDeterministicCandidateSuitable(scrambling, moderateTechnicalTarget, "Moderate"))
+      .toBe(true);
   });
 
   it("does not force an unsuitable trail into the ascent band", () => {
