@@ -20,6 +20,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
+import { MOUNTAINS } from "@/constants/mountains";
 import { logReadinessTestCompleted, useScreenView } from "@/lib/analytics";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -71,49 +72,6 @@ const LOCATIONS = [
   "Cusco, Peru", "Cape Town, South Africa", "Nairobi, Kenya",
 ];
 
-const MOUNTAINS = [
-  // Scottish Munros & Corbetts
-  "Ben Nevis", "Ben Macdui", "Braeriach", "Cairn Toul", "Cairn Gorm",
-  "Aonach Beag", "Aonach Mòr", "Carn Mòr Dearg", "Ben Lawers", "Creag Meagaidh",
-  "Ben Lomond", "Schiehallion", "Ben Vorlich", "The Cobbler", "Ben More",
-  "Ben Cruachan", "Buachaille Etive Mòr", "Glencoe Pap", "Beinn Alligin",
-  "An Teallach", "Liathach", "Torridon", "Cul Mor", "Stac Pollaidh",
-  "Ben Hope", "Ben Wyvis", "Lochnagar", "Balmoral", "Beinn Eighe",
-  // Lake District
-  "Helvellyn", "Scafell Pike", "Scafell", "Great Gable", "Blencathra",
-  "Skiddaw", "Cross Fell", "Pillar", "High Street", "Fairfield",
-  "Bowfell", "Crinkle Crags", "Langdale Pikes", "Red Pike", "Dale Head",
-  "Haystacks", "Kirk Fell", "Coniston Old Man",
-  // Yorkshire Dales
-  "Whernside", "Ingleborough", "Pen-y-ghent", "Great Whernside",
-  // Peak District
-  "Kinder Scout", "Mam Tor", "Bleaklow", "Black Hill", "Lose Hill",
-  // Wales
-  "Snowdon", "Pen y Fan", "Cadair Idris", "Tryfan", "Glyder Fawr",
-  "Glyder Fach", "Y Garn", "Carnedd Llewelyn", "Carnedd Dafydd",
-  "Pen Pumlumon Fawr", "Brecon Beacons",
-  // Ireland
-  "Carrauntoohil", "Brandon Mountain", "Lugnaquilla", "Slieve Donard",
-  // Alps
-  "Mont Blanc", "Matterhorn", "Monte Rosa", "Dufourspitze", "Dom",
-  "Weisshorn", "Liskamm", "Grandes Jorasses", "Aiguille Verte",
-  "Eiger", "Jungfrau", "Mönch", "Gran Paradiso", "Ortler",
-  "Grossglockner", "Zugspitze", "Dolomites", "Tre Cime di Lavaredo",
-  // North America
-  "Denali", "Mount Rainier", "Mount Whitney", "Mount Shasta", "Mount Hood",
-  "Grand Teton", "Longs Peak", "Mount Elbert", "Pikes Peak",
-  "Mount Washington", "Humphreys Peak",
-  // Africa
-  "Kilimanjaro", "Mount Kenya", "Ras Dashen",
-  // South America
-  "Aconcagua", "Huascarán", "Chimborazo", "Cotopaxi",
-  // High Asia
-  "Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu",
-  "Cho Oyu", "Dhaulagiri", "Manaslu", "Annapurna", "Nanga Parbat",
-  "Ama Dablam", "Island Peak", "Mera Peak", "Lobuche East",
-  // Other Europe
-  "Vesuvius", "Etna", "Olympus", "Triglav", "Rysy",
-];
 type Equipment = "gym" | "weights" | "bands" | "none";
 
 // ─── Shared sub-components ────────────────────────────────────────────────────

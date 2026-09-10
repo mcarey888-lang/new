@@ -1,0 +1,48 @@
+# Dependencies and generated output
+node_modules/
+dist/
+tmp/
+out-tsc/
+*.tsbuildinfo
+.expo/
+.expo-shared/
+coverage/
+
+# Local tooling and caches
+.cache/
+.local/
+.pythonlibs/
+.config/
+.canvas/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local credentials
+.env
+.env*.local
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+google-play-key.json
+
+# Large repository assets unrelated to the SummitReady mobile build
+attached_assets/
+screenshots/
+summit-data-engine/
+custom-expedition-pre-manual-builder.bundle
+virtual-expeditions-mode-backup.bundle
+
+# Other independently built artifacts
+artifacts/api-server/
+artifacts/artwork-admin/
+artifacts/atlas-media-studio/
+artifacts/mockup-sandbox/
+artifacts/summit-landing/
+artifacts/tryfan-3d-prototype/

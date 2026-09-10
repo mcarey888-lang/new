@@ -64,6 +64,7 @@ import {
   confirmSuggestionFlow,
   confirmExtraDayFlow,
 } from "@/utils/manualExpedition";
+import { mountainSuggestions } from "@/constants/mountains";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -374,6 +375,7 @@ export default function ExpeditionMountainsScreen() {
   // search inputs
   const [searchMountain, setSearchMountain] = useState("");
   const [searchRegion, setSearchRegion] = useState("");
+  const [showMountainSuggestions, setShowMountainSuggestions] = useState(false);
 
   // ── Customisation state ──────────────────────────────────────────────────────
   /** Radius in km for the hill search — shown as chips in both browse + results. */
@@ -474,6 +476,21 @@ export default function ExpeditionMountainsScreen() {
       ?? results?.targetDna?.technicalCharacter
       ?? results?.targetProfile.difficulty,
   );
+  const matchingMountains = mountainSuggestions(searchMountain);
+
+  function updateSearchMountain(value: string) {
+    setSearchMountain(value);
+    setShowMountainSuggestions(true);
+    setSetupResolved(false);
+    setCreationChoice(null);
+  }
+
+  function selectSearchMountain(value: string) {
+    setSearchMountain(value);
+    setShowMountainSuggestions(false);
+    setSetupResolved(false);
+    setCreationChoice(null);
+  }
 
   // ── Fetch expedition ─────────────────────────────────────────────────────────
   async function fetchExpedition(
@@ -2154,12 +2171,33 @@ export default function ExpeditionMountainsScreen() {
                 <TextInput
                   style={[s.searchInput, { flex: 1 }]}
                   value={searchMountain}
-                  onChangeText={setSearchMountain}
+                  onChangeText={updateSearchMountain}
+                  onFocus={() => setShowMountainSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowMountainSuggestions(false), 180)}
                   placeholder="Goal mountain (e.g. Mont Blanc)"
                   placeholderTextColor={T.textDim}
                   returnKeyType="next"
+                  autoCorrect={false}
                 />
               </View>
+              {showMountainSuggestions && matchingMountains.length > 0 && (
+                <View style={s.mountainSuggestions}>
+                  {matchingMountains.map((name, index) => (
+                    <TouchableOpacity
+                      key={name}
+                      activeOpacity={0.72}
+                      onPress={() => selectSearchMountain(name)}
+                      style={[
+                        s.mountainSuggestionRow,
+                        index < matchingMountains.length - 1 && s.mountainSuggestionBorder,
+                      ]}
+                    >
+                      <Mountain size={13} color={T.blue} />
+                      <Text style={s.mountainSuggestionText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <View style={[s.searchRow, { marginTop: 10 }]}>
                 <MapPin size={14} color={T.green} />
                 <TextInput
@@ -2596,6 +2634,31 @@ const s = StyleSheet.create({
   },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)", paddingBottom: 10 },
   searchInput: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.white },
+  mountainSuggestions: {
+    backgroundColor: "#14263D",
+    borderWidth: 1,
+    borderColor: T.blue + "40",
+    borderRadius: 12,
+    marginTop: 6,
+    overflow: "hidden",
+  },
+  mountainSuggestionRow: {
+    minHeight: 42,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingHorizontal: 12,
+  },
+  mountainSuggestionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.07)",
+  },
+  mountainSuggestionText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: T.white,
+  },
   searchBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: T.blue, borderRadius: 12,
