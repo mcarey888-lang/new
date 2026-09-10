@@ -44,6 +44,23 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+/**
+ * Resolve the current bearer token from the registered getter, or `null` when
+ * no getter is set or it fails.
+ *
+ * Exposed for call sites that use the platform `fetch` directly rather than the
+ * generated client, so they can attach the same `Authorization` header instead
+ * of silently issuing unauthenticated requests against token-gated routes.
+ */
+export async function getAuthToken(): Promise<string | null> {
+  if (!_authTokenGetter) return null;
+  try {
+    return (await _authTokenGetter()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }

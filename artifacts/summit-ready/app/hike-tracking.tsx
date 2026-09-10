@@ -18,6 +18,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getAuthToken } from "@workspace/api-client-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -950,9 +951,14 @@ export default function HikeTrackingScreen() {
       // 4 ── If this was launched from a hill training session, save hill session data
       if (hillMeta.hillName) {
         try {
+          // /hill-session is token-gated on the server; see plan.tsx.
+          const hsToken = await getAuthToken();
           await fetch(`${API_BASE}/hill-session/save-tracked`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(hsToken ? { Authorization: `Bearer ${hsToken}` } : {}),
+            },
             body: JSON.stringify({
               plannedHillName:      hillMeta.hillName,
               plannedRouteName:     name,

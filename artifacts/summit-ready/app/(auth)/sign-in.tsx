@@ -25,6 +25,19 @@ import { logLogin, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
 
+/**
+ * Pulls a human-readable message out of a Clerk error, whatever shape it
+ * arrives in (a thrown error, or the `error` field returned by finalize()).
+ * Every auth failure must reach the user: a silently swallowed one leaves the
+ * button appearing to do nothing, with no indication of why.
+ */
+export function clerkErrorMessage(err: unknown, fallback: string): string {
+  if (!err) return fallback;
+  const e = err as Record<string, unknown>;
+  const first = (e?.errors as Array<{ longMessage?: string; message?: string }>)?.[0];
+  return first?.longMessage ?? first?.message ?? (e?.message as string) ?? fallback;
+}
+
 export default function SignInScreen() {
   useScreenView("sign_in");
   const insets = useSafeAreaInsets();
@@ -64,19 +77,28 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(
+      // Prefer the status on the awaited result; fall back to the hook object
+      // for older Clerk builds that mutate the resource in place.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await withTimeout(
         signIn.password({ emailAddress: email.trim(), password }),
         20000,
-      );
-      if (signIn.status === "complete") {
+      ) as any;
+      const status = res?.status ?? signIn.status;
+
+      if (status === "complete") {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) {
-          void logLogin("email");
-          router.replace("/(tabs)/dashboard" as any);
+        if (error) {
+          setError(clerkErrorMessage(error, "Couldn't complete sign-in — please try again."));
+          return;
         }
-      } else if (signIn.status === "needs_second_factor") {
+        void logLogin("email");
+        router.replace("/(tabs)/dashboard" as any);
+      } else if (status === "needs_second_factor") {
         await withTimeout(signIn.mfa.sendEmailCode(), 20000);
         setNeedsMFA(true);
+      } else if (status === "needs_first_factor") {
+        setError("This account needs a different sign-in method. If you signed up with Google or Apple, use the buttons above.");
       } else {
         setError("Sign-in failed — please try again.");
       }
@@ -109,13 +131,16 @@ export default function SignInScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(signIn.mfa.verifyEmailCode({ code: verifyCode }), 20000);
-      if (signIn.status === "complete") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await withTimeout(signIn.mfa.verifyEmailCode({ code: verifyCode }), 20000) as any;
+      if ((res?.status ?? signIn.status) === "complete") {
         const { error } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!error) {
-          void logLogin("email_mfa");
-          router.replace("/(tabs)/dashboard" as any);
+        if (error) {
+          setError(clerkErrorMessage(error, "Couldn't complete sign-in — please try again."));
+          return;
         }
+        void logLogin("email_mfa");
+        router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Verification failed — please try again.");
       }
@@ -185,10 +210,12 @@ export default function SignInScreen() {
       ) as any;
       if (result.status === "complete") {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!finalizeErr) {
-          void logLogin("apple");
-          router.replace("/(tabs)/dashboard" as any);
+        if (finalizeErr) {
+          setError(clerkErrorMessage(finalizeErr, "Couldn't complete Apple sign-in — please try again."));
+          return;
         }
+        void logLogin("apple");
+        router.replace("/(tabs)/dashboard" as any);
       } else if (result.status === "needs_transfer") {
         // No Clerk account yet — transfer to sign-up path
         const signUpResult = await withTimeout(
@@ -197,10 +224,12 @@ export default function SignInScreen() {
         ) as any;
         if (signUpResult.status === "complete") {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
-          if (!finalizeErr) {
-            void logLogin("apple");
-            router.replace("/(tabs)/dashboard" as any);
+          if (finalizeErr) {
+            setError(clerkErrorMessage(finalizeErr, "Couldn't complete Apple sign-in — please try again."));
+            return;
           }
+          void logLogin("apple");
+          router.replace("/(tabs)/dashboard" as any);
         } else {
           setError("Apple sign-in didn't complete — please try again.");
         }

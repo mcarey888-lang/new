@@ -214,9 +214,16 @@ export default function AccountScreen() {
     setDeletingAccount(true);
     const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk";
     try {
+      // DELETE on tracked-routes requires auth and ownership. Without the
+      // token these requests 401, the routes survive on the server, and they
+      // reappear on the user's next sign-in — while the account itself is gone.
+      const routeToken = await getToken().catch(() => null);
       await Promise.allSettled(
         exploreHikes.map(h =>
-          fetch(`https://${domain}/api/tracked-routes/${h.id}`, { method: "DELETE" })
+          fetch(`https://${domain}/api/tracked-routes/${h.id}`, {
+            method: "DELETE",
+            ...(routeToken ? { headers: { Authorization: `Bearer ${routeToken}` } } : {}),
+          })
         )
       );
     } catch {}

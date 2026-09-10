@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Flag, Minus, Plus, Check, X, ChevronDown, ChevronUp, ChevronLeft, TrendingUp, Zap, Heart, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Layers, Activity, Square, Package, Anchor, Droplet, Wind, Mountain, Play } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { getAuthToken } from "@workspace/api-client-react";
 import { router } from "expo-router";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
@@ -74,9 +75,16 @@ function HillActionCard({
       onMarkComplete();
       // Fire-and-forget: save estimated completion to backend
       try {
+        // /hill-session is token-gated on the server; without this header the
+        // request 401s and the failure is swallowed below, so the session
+        // silently never reaches the backend.
+        const token = await getAuthToken();
         await fetch(`${PLAN_API_BASE}/hill-session/complete`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             plannedHillName: hillName ?? sessionKey,
             trainingSessionId: sessionKey,

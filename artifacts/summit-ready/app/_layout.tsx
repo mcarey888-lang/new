@@ -92,11 +92,14 @@ function ClerkLoadedOrTimeout({ children }: { children: React.ReactNode }) {
     }
     // After 8 s without a connection, surface the "still connecting" label.
     const slowTimer = setTimeout(() => setSlowConnection(true), 8000);
-    // After 30 s give up waiting and show the auth screens anyway.
-    const hardTimer = setTimeout(async () => {
-      try {
-        await clerkTokenCache.clearAll();
-      } catch {}
+    // After 30 s stop blocking on Clerk and show the app anyway.
+    //
+    // Deliberately does NOT clear the token cache. A slow or flaky network is
+    // the common reason for reaching this point, and wiping the cache here
+    // signed the user out for the sole crime of having poor signal. Clerk
+    // retains the stored session and retries on its own; if the token really
+    // is invalid Clerk will reject it and the auth screens are shown anyway.
+    const hardTimer = setTimeout(() => {
       setTimedOut(true);
     }, 30000);
     return () => {

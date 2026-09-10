@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { withTimeout } from "@/utils/withTimeout";
+import { clerkErrorMessage } from "./sign-in";
 import { logSignUp, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -97,13 +98,16 @@ export default function SignUpScreen() {
     setLoading(true);
     setError(null);
     try {
-      await withTimeout(signUp.verifications.verifyEmailCode({ code: verifyCode }), 20000);
-      if (signUp.status === "complete") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await withTimeout(signUp.verifications.verifyEmailCode({ code: verifyCode }), 20000) as any;
+      if ((res?.status ?? signUp.status) === "complete") {
         const { error } = await withTimeout(signUp.finalize(), 20000) as any;
-        if (!error) {
-          void logSignUp("email");
-          router.replace("/(tabs)/dashboard" as any);
+        if (error) {
+          setError(clerkErrorMessage(error, "Couldn't complete sign-up — please try again."));
+          return;
         }
+        void logSignUp("email");
+        router.replace("/(tabs)/dashboard" as any);
       } else {
         setError("Verification failed — please try again.");
       }
@@ -174,10 +178,12 @@ export default function SignUpScreen() {
       if (result.status === "complete") {
         // Existing Clerk account — sign in directly
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
-        if (!finalizeErr) {
-          void logSignUp("apple");
-          router.replace("/(tabs)/dashboard" as any);
+        if (finalizeErr) {
+          setError(clerkErrorMessage(finalizeErr, "Couldn't complete Apple sign-in — please try again."));
+          return;
         }
+        void logSignUp("apple");
+        router.replace("/(tabs)/dashboard" as any);
       } else if (result.status === "needs_transfer") {
         // No Clerk account yet — create a new one via transfer
         const signUpResult = await withTimeout(
@@ -186,10 +192,12 @@ export default function SignUpScreen() {
         ) as any;
         if (signUpResult.status === "complete") {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
-          if (!finalizeErr) {
-            void logSignUp("apple");
-            router.replace("/(tabs)/dashboard" as any);
+          if (finalizeErr) {
+            setError(clerkErrorMessage(finalizeErr, "Couldn't complete Apple sign-up — please try again."));
+            return;
           }
+          void logSignUp("apple");
+          router.replace("/(tabs)/dashboard" as any);
         } else {
           setError("Apple sign-up didn't complete — please try again.");
         }
