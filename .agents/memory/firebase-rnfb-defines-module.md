@@ -19,9 +19,11 @@ end
 
 The plugin lives at `artifacts/summit-ready/plugins/allowNonModularIncludes.js` and is registered in `app.json` plugins list. The guard string is `RNFB_DEFINES_MODULE_OFF`.
 
+Because SummitReady commits its native `ios/` directory, EAS can build the checked-in Podfile without running the config plugin. Keep the same guarded RNFB block directly in the native Podfile as well as in the plugin.
+
 **Why:** `use_frameworks! :linkage => :static` (required for Firebase pod install) sets `DEFINES_MODULE=YES` for ALL pods, making them strict "framework modules". In RN 0.81.5, `React-Core` is declared WITHOUT `:modular_headers => true`, so when RNFBApp (a framework module) does `#import <React/RCTConvert.h>`, Clang rejects it as a non-modular include inside a framework module. Setting `DEFINES_MODULE=NO` for RNFB* pods removes the "framework module" designation, lifting the restriction. The pods remain compiled as static frameworks (required for linking), they just don't have a module map.
 
-**How to apply:** Whenever react-native-firebase pods fail to compile with "non-modular header inside framework module 'RNFBApp.*'", check that this plugin is in `app.json`. If a new RNFB* pod is added (e.g. RNFBCrashlytics), it is automatically covered since the fix targets all `RNFB*`-prefixed targets.
+**How to apply:** Whenever react-native-firebase pods fail to compile with "non-modular header inside framework module 'RNFBApp.*'", check both the plugin registration and the checked-in native Podfile. If a new RNFB* pod is added, it is automatically covered since the fix targets all `RNFB*`-prefixed targets.
 
 ## What does NOT work (Xcode 15 + RN 0.81.5)
 
