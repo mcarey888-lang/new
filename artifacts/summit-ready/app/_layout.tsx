@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -174,6 +174,8 @@ function RootLayoutNav() {
       <Stack.Screen name="challenge-detail" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="challenge-complete" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="mountain-demo" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="onboarding-demo" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="mobile/onboarding-demo" options={{ headerShown: false, presentation: "card" }} />
     </Stack>
   );
 }
@@ -197,6 +199,27 @@ function RootApp() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
+
+  const rawWebPath =
+    Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.pathname
+      : "";
+  const canonicalWebPath = rawWebPath.replace(/^\/mobile(?=\/|$)/, "");
+  const isIsolatedOnboardingDemo =
+    canonicalWebPath === "/onboarding-demo" ||
+    canonicalWebPath.startsWith("/onboarding-demo/");
+
+  if (isIsolatedOnboardingDemo) {
+    return (
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <RootLayoutNav />
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
