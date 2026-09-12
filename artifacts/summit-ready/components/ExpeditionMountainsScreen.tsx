@@ -2251,20 +2251,11 @@ export default function ExpeditionMountainsScreen() {
               {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
                 <>
                 <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
-                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue / Resolve Target</Text>
+                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
                 </TouchableOpacity>
                 {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
                 </>
               )}
-              <TouchableOpacity
-                onPress={handleSearch}
-                disabled
-                style={[s.searchBtn, (searchMountain.trim().length < 2 || searchRegion.trim().length < 2) && { opacity: 0.4 }]}
-                activeOpacity={0.85}
-              >
-                <Search size={15} color="#fff" />
-                <Text style={s.searchBtnText}>Resolve target before choosing</Text>
-              </TouchableOpacity>
             </View>
           )}
         </Animated.View>
