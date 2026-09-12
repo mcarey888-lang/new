@@ -1567,11 +1567,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, readinessScore, submittedPlanSessions, unlockedAchievements, exploreHikes, checkAndNotifyAchievements]);
 
   const updateSession = useCallback(async (id: string, updates: Partial<Session>) => {
-    const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
+    const updated = sessionsRef.current.map(s => s.id === id ? { ...s, ...updates } : s);
+    sessionsRef.current = updated;
     setSessions(updated);
     if (summitGoal) setReadinessScore(calculateReadiness(summitGoal, trainingPlan, updated, { sessionReps, assignedHills, completedGoals, exploreHikes }));
     await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
-  }, [sessions, summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
+  }, [summitGoal, trainingPlan, sessionReps, assignedHills, completedGoals, exploreHikes]);
 
   const deleteSession = useCallback(async (id: string) => {
     const updated = sessions.filter(s => s.id !== id);

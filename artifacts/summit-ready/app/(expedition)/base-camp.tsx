@@ -28,6 +28,7 @@ import type { SigChallenge } from "@/components/ChallengeDetailSheet";
 import type { Session, SummitGoal, NearbyHill } from "@/context/AppContext";
 import { englishPlaceName } from "@/utils/placeNames";
 import { isRouteCompleted } from "@/utils/stateReliability";
+import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
   VerifiedMountainChooser,
   type VerifiedMountainChoice,
@@ -286,7 +287,7 @@ export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
   const { summitGoal: publicGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
-          startExpedition, expeditions, activeExpeditionId, activeExpedition } = useApp();
+          startExpedition, expeditions, activeExpeditionId, activeExpedition, exploreHikes } = useApp();
   const summitGoal: SummitGoal | null = activeExpedition
     ? {
         ...(publicGoal ?? {
@@ -359,7 +360,16 @@ export default function BaseCampScreen() {
 
   // Use explicit activeExpedition progress for true expedition mode progress.
   const activeProgress = activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
-  const totalTrained = activeProgress?.elevationGained ?? 0;
+  const linkedExpeditionElevation = useMemo(() => {
+    if (!activeExpeditionId) return 0;
+    return mergeActivityKinds(
+      sessions.filter(item => item.expeditionId === activeExpeditionId),
+      exploreHikes.filter(item => item.expeditionId === activeExpeditionId),
+    ).reduce((sum, activity) => sum + Math.max(0, activity.elevationGain ?? 0), 0);
+  }, [activeExpeditionId, exploreHikes, sessions]);
+  // Linked activities are the live source of truth. Keep the persisted aggregate
+  // as a compatibility floor for older GPS hikes that predate activity linking.
+  const totalTrained = Math.max(activeProgress?.elevationGained ?? 0, linkedExpeditionElevation);
 
   const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
 

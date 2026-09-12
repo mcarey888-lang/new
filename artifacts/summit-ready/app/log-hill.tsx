@@ -31,6 +31,7 @@ import { useSubscription } from "@/lib/revenuecat";
 import { logHillSessionCompleted } from "@/lib/analytics";
 import {
   addUniqueCompletedRoute,
+  creditExpeditionHike,
   expeditionRouteIdentityMatches,
   mergeExpeditionRoutes,
   routeCompletionKey,
@@ -141,7 +142,7 @@ export default function LogHillScreen() {
       );
       const expeditionId = params.expeditionId || (expeditionRoute ? activeExpedition?.id : undefined);
       const creditedRoute = expeditionRoute ?? logTarget;
-      await addSession({
+      const sessionId = await addSession({
         date: now.toISOString(),
         type: "hill",
         distance: dist,
@@ -163,6 +164,12 @@ export default function LogHillScreen() {
           completedRoutes: addUniqueCompletedRoute(
             activeExpedition.completedRoutes ?? [],
             routeCompletionKey(creditedRoute),
+          ),
+          virtualHikeProgress: creditExpeditionHike(
+            activeExpedition.virtualHikeProgress,
+            sessionId,
+            elevGain,
+            dist,
           ),
         });
       }

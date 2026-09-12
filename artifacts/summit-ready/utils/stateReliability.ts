@@ -120,6 +120,30 @@ export function addUniqueCompletedRoute(completedRoutes: string[], routeName: st
   return [...new Set([...completedRoutes, routeName].filter(Boolean))];
 }
 
+export type ExpeditionHikeProgress = {
+  elevationGained: number;
+  distanceCovered: number;
+  hikesLogged: number;
+  creditedHikeIds?: string[];
+};
+
+export function creditExpeditionHike(
+  progress: ExpeditionHikeProgress | undefined,
+  activityId: string,
+  elevationGain: number,
+  distance: number,
+): ExpeditionHikeProgress {
+  const current = progress ?? { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 };
+  const creditedHikeIds = current.creditedHikeIds ?? [];
+  if (creditedHikeIds.includes(activityId)) return current;
+  return {
+    elevationGained: current.elevationGained + Math.max(0, elevationGain),
+    distanceCovered: current.distanceCovered + Math.max(0, distance),
+    hikesLogged: current.hikesLogged + 1,
+    creditedHikeIds: [...creditedHikeIds.slice(-99), activityId],
+  };
+}
+
 export function expeditionRouteIdentityMatches(
   first: ExpeditionRouteIdentity,
   second: ExpeditionRouteIdentity,

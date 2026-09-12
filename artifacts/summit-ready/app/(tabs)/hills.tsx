@@ -29,6 +29,7 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import {
   addUniqueCompletedRoute,
+  creditExpeditionHike,
   expeditionRouteIdentityMatches,
   mergeExpeditionRoutes,
   routeCompletionKey,
@@ -185,7 +186,7 @@ export default function MyHillsScreen() {
       const expeditionRoute = activeExpedition?.virtualHills.find(route =>
         expeditionRouteIdentityMatches(route, logTarget)
       );
-      await addSession({
+      const sessionId = await addSession({
         date: now.toISOString(),
         type: "hill",
         distance: dist,
@@ -207,6 +208,12 @@ export default function MyHillsScreen() {
           completedRoutes: addUniqueCompletedRoute(
             activeExpedition.completedRoutes ?? [],
             routeCompletionKey(expeditionRoute),
+          ),
+          virtualHikeProgress: creditExpeditionHike(
+            activeExpedition.virtualHikeProgress,
+            sessionId,
+            elevGain,
+            dist,
           ),
         });
       }

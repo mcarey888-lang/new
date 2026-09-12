@@ -15,6 +15,7 @@ import {
   isRouteCompleted,
   canonicalShellRoot,
   countCompletedPlanWeeks,
+  creditExpeditionHike,
   ensurePlanSessionIds,
   expeditionRouteIdentityMatches,
   isExpeditionComplete,
@@ -146,6 +147,20 @@ it("counts final route completion uniquely", () => {
     completedRoutes,
     virtualHills: [{ name: "A" }, { name: "B" }],
   })).toBe(true);
+});
+
+it("credits manual expedition elevation once per saved session", () => {
+  const first = creditExpeditionHike(undefined, "session-1", 903, 12);
+  const duplicate = creditExpeditionHike(first, "session-1", 903, 12);
+  const second = creditExpeditionHike(duplicate, "session-2", 760, 9);
+
+  expect(duplicate).toEqual(first);
+  expect(second).toMatchObject({
+    elevationGained: 1663,
+    distanceCovered: 21,
+    hikesLogged: 2,
+    creditedHikeIds: ["session-1", "session-2"],
+  });
 });
 
 it("keeps distant same-name expedition completion identities distinct", () => {
