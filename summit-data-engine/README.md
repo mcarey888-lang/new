@@ -18,7 +18,11 @@ without modification. It has no pnpm package, no Atlas imports, no workspace
 dependencies and no production SummitReady integration.
 
 The database layer reads only `ENGINE_DATABASE_URL`. It never reads or falls
-back to a generic `DATABASE_URL`.
+back to a generic `DATABASE_URL`. Engine-owned data tables and enum types live
+in PostgreSQL's `public` schema so the API can use the normal shared search
+path. The legacy `summit_data_engine` schema is retained only for
+`alembic_version`, which keeps the existing revision chain and blank-database
+bootstrap compatible.
 
 ## Inputs used by the Tryfan proof of concept
 
@@ -56,7 +60,10 @@ alembic upgrade head
 ```
 
 PostGIS must be available in the engine database. Never point the migration at
-the Atlas or production SummitReady database.
+the Atlas or production SummitReady database. Revision `0007` transactionally
+moves the tables, enum types, and immutable-field trigger function from the
+legacy schema to `public`; it performs collision checks first and can be
+reversed with `alembic downgrade 0006_international_catalogue`.
 
 ## Reviewed DoBIH master import
 

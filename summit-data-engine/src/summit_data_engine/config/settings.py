@@ -19,7 +19,7 @@ class EngineSettings(BaseSettings):
     )
 
     engine_database_url: str | None = Field(default=None, alias="ENGINE_DATABASE_URL")
-    engine_db_schema: str = Field(default="summit_data_engine", alias="ENGINE_DB_SCHEMA")
+    engine_db_schema: str = Field(default="public", alias="ENGINE_DB_SCHEMA")
     raw_data_dir: Path = Field(default=Path("data/raw"), alias="RAW_DATA_DIR")
     processed_data_dir: Path = Field(default=Path("data/processed"), alias="PROCESSED_DATA_DIR")
     validation_policy_path: Path = Field(

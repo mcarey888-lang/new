@@ -5,7 +5,10 @@ from __future__ import annotations
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
 
-SCHEMA = "summit_data_engine"
+# Engine-owned data is published in PostgreSQL's shared public schema.  The
+# Alembic version table intentionally remains in the legacy engine schema; see
+# alembic/env.py.
+SCHEMA = "public"
 
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_name)s",

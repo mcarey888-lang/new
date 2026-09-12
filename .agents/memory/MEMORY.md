@@ -38,3 +38,4 @@
 - [Virtual expedition trust boundary](virtual-expedition-trust-boundary.md) — verified targets/routes first; explicit fallback lineage; deterministic local routes with stable optional identities.
 - [iOS marketing version source](ios-marketing-version-source.md) — committed native iOS projects must keep Info.plist and Expo versions aligned before EAS builds.
 - [Onboarding prototype preservation](onboarding-prototype-preservation.md) — keep new onboarding concepts as named, versioned prototypes until the user explicitly approves removal.
+- [Summit Data Engine production schema](summit-engine-public-schema.md) — engine data tables belong in public for managed production copies; legacy provenance labels remain stable.

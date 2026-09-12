@@ -85,8 +85,8 @@ def validate_database(
                OR ST_X(r.geom) NOT BETWEEN -180 AND 180
                OR ST_Y(r.geom) NOT BETWEEN -90 AND 90
           ) AS invalid_spatial_records
-        FROM summit_data_engine.mountain_source_records r
-        JOIN summit_data_engine.mountains m ON m.id = r.mountain_id
+        FROM public.mountain_source_records r
+        JOIN public.mountains m ON m.id = r.mountain_id
         WHERE r.source_dataset = :dataset AND r.source_version = :version
         """,
         params,
@@ -95,7 +95,7 @@ def validate_database(
         session,
         """
         SELECT r.country, count(*) AS record_count
-        FROM summit_data_engine.mountain_source_records r
+        FROM public.mountain_source_records r
         WHERE r.source_dataset = :dataset AND r.source_version = :version
         GROUP BY r.country
         ORDER BY r.country
@@ -106,7 +106,7 @@ def validate_database(
         session,
         """
         SELECT r.final_verification_status, r.qa_status, count(*) AS record_count
-        FROM summit_data_engine.mountain_source_records r
+        FROM public.mountain_source_records r
         WHERE r.source_dataset = :dataset AND r.source_version = :version
         GROUP BY r.final_verification_status, r.qa_status
         ORDER BY r.final_verification_status, r.qa_status
@@ -117,8 +117,8 @@ def validate_database(
         session,
         """
         SELECT c.classification_code, count(*) AS record_count
-        FROM summit_data_engine.mountain_classifications c
-        JOIN summit_data_engine.mountain_source_records r ON r.id = c.source_record_id
+        FROM public.mountain_classifications c
+        JOIN public.mountain_source_records r ON r.id = c.source_record_id
         WHERE r.source_dataset = :dataset AND r.source_version = :version
         GROUP BY c.classification_code
         ORDER BY c.classification_code
@@ -135,8 +135,8 @@ def validate_database(
           min(b.licence) AS licence,
           min(r.source_file_sha256) AS original_source_sha256,
           count(DISTINCT r.source_file_sha256) AS original_source_hash_count
-        FROM summit_data_engine.mountain_source_records r
-        JOIN summit_data_engine.source_bundles b ON b.id = r.source_bundle_id
+        FROM public.mountain_source_records r
+        JOIN public.source_bundles b ON b.id = r.source_bundle_id
         WHERE r.source_dataset = :dataset AND r.source_version = :version
         """,
         params,
@@ -155,7 +155,7 @@ def validate_database(
           r.qa_status,
           r.qa_flags,
           r.needs_review_reason
-        FROM summit_data_engine.mountain_source_records r
+        FROM public.mountain_source_records r
         WHERE r.source_dataset = :dataset
           AND r.source_version = :version
           AND r.source_feature_id IN ('15584', '1965')
@@ -176,7 +176,7 @@ def validate_database(
         """
         SELECT tablename, indexname
         FROM pg_indexes
-        WHERE schemaname = 'summit_data_engine'
+        WHERE schemaname = 'public'
           AND tablename IN (
             'mountains',
             'mountain_source_records',
@@ -269,10 +269,10 @@ SELECT
   r.final_verification_status AS supplied_status,
   COALESCE(classes.codes, ARRAY[]::varchar[]) AS classifications,
   count(*) OVER () AS exact_name_matches
-FROM summit_data_engine.mountain_source_records r
+FROM public.mountain_source_records r
 LEFT JOIN LATERAL (
   SELECT array_agg(c.classification_code ORDER BY c.classification_code) AS codes
-  FROM summit_data_engine.mountain_classifications c
+  FROM public.mountain_classifications c
   WHERE c.source_record_id = r.id
 ) classes ON true
 WHERE r.source_version = :version AND r.name = :name
@@ -282,8 +282,8 @@ LIMIT 1
 
 EXACT_ID_SQL = """
 SELECT r.source_feature_id
-FROM summit_data_engine.mountain_source_records r
-JOIN summit_data_engine.mountains m ON m.id = r.mountain_id
+FROM public.mountain_source_records r
+JOIN public.mountains m ON m.id = r.mountain_id
 WHERE r.source_version = :version AND m.canonical_source_key = :canonical_key
 """
 
@@ -300,7 +300,7 @@ SELECT
     r.geom,
     ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)
   ) AS distance_m
-FROM summit_data_engine.mountain_source_records r
+FROM public.mountain_source_records r
 WHERE r.source_version = :version
 ORDER BY r.geom <-> ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)
 LIMIT 5

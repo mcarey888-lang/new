@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from summit_data_engine.db import Base, VerificationStatus
+from summit_data_engine.config import EngineSettings
+from summit_data_engine.db import SCHEMA, Base, VerificationStatus
 
 MIGRATIONS = sorted((Path(__file__).parents[1] / "alembic" / "versions").glob("*.py"))
 
@@ -35,6 +36,9 @@ def test_expected_tables_and_statuses_are_declared() -> None:
         "route_elevation_profile_sources",
     }
     assert {table.name for table in Base.metadata.tables.values()} == expected
+    assert SCHEMA == "public"
+    assert {table.schema for table in Base.metadata.tables.values()} == {"public"}
+    assert EngineSettings().engine_db_schema == "public"
     assert {status.value for status in VerificationStatus} == {
         "imported",
         "processed",
@@ -67,7 +71,8 @@ def test_alembic_bootstraps_its_owned_version_table_schema() -> None:
     assert "CREATE SCHEMA IF NOT EXISTS" in env
     assert "version_num VARCHAR(128)" in env
     assert "ALTER COLUMN version_num TYPE VARCHAR(128)" in env
-    assert "version_table_schema=SCHEMA" in env
+    assert 'VERSION_SCHEMA = "summit_data_engine"' in env
+    assert "version_table_schema=VERSION_SCHEMA" in env
 
 
 def test_0002_follows_0001_and_preserves_version_fields() -> None:
@@ -128,6 +133,21 @@ def test_0006_adds_nullable_international_facts_aliases_and_routes() -> None:
     assert "nullable=True" in migration
     assert "trg_route_facts_immutable" not in migration
     assert '_immutable(\n        "route_facts"' in migration
+
+
+def test_0007_publishes_all_model_tables_and_preserves_legacy_version_table() -> None:
+    migration = next(path for path in MIGRATIONS if path.name.startswith("0007_")).read_text()
+    assert 'down_revision: str | Sequence[str] | None = "0006_international_catalogue"' in migration
+    assert 'LEGACY_SCHEMA = "summit_data_engine"' in migration
+    assert 'TARGET_SCHEMA = "public"' in migration
+    assert "ALTER TABLE" in migration
+    assert "SET SCHEMA" in migration
+    assert 'version_table_schema' not in migration
+    for table in Base.metadata.tables.values():
+        assert f'"{table.name}"' in migration
+    assert "verification_status" in migration
+    assert "rights_classification" in migration
+    assert "reject_immutable_field_update" in migration
 
 
 def test_models_include_btree_and_gist_indexes() -> None:

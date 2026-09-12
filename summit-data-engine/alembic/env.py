@@ -15,10 +15,11 @@ if config.config_file_name:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+VERSION_SCHEMA = "summit_data_engine"
 
 
 def include_name(name: str | None, type_: str, parent_names: dict[str, str | None]) -> bool:
-    """Exclude every schema except the one owned by this application."""
+    """Autogenerate only public engine data objects."""
     if type_ == "schema":
         return name == SCHEMA
     schema_name = parent_names.get("schema_name")
@@ -34,7 +35,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         include_schemas=True,
         include_name=include_name,
-        version_table_schema=SCHEMA,
+        version_table_schema=VERSION_SCHEMA,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -48,17 +49,17 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         # Alembic creates its version table before the first revision runs, so
         # a blank database needs the owned schema bootstrapped first.
-        connection.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}"')
+        connection.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{VERSION_SCHEMA}"')
         connection.exec_driver_sql(
             f"""
-            CREATE TABLE IF NOT EXISTS "{SCHEMA}".alembic_version (
+            CREATE TABLE IF NOT EXISTS "{VERSION_SCHEMA}".alembic_version (
               version_num VARCHAR(128) NOT NULL PRIMARY KEY
             )
             """
         )
         connection.exec_driver_sql(
             f"""
-            ALTER TABLE "{SCHEMA}".alembic_version
+            ALTER TABLE "{VERSION_SCHEMA}".alembic_version
             ALTER COLUMN version_num TYPE VARCHAR(128)
             """
         )
@@ -68,7 +69,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             include_schemas=True,
             include_name=include_name,
-            version_table_schema=SCHEMA,
+            version_table_schema=VERSION_SCHEMA,
         )
         with context.begin_transaction():
             context.run_migrations()

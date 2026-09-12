@@ -129,7 +129,7 @@ const CANONICAL_TRUST_SQL = `(
   m.status = 'verified'
   OR EXISTS (
     SELECT 1
-    FROM summit_data_engine.mountain_source_records AS msr
+    FROM public.mountain_source_records AS msr
     WHERE msr.mountain_id = m.id
       AND msr.source_dataset = 'Database of British and Irish Hills (DoBIH)'
       AND msr.source_trust = 'trusted_source'
@@ -144,8 +144,8 @@ SELECT
   m.name AS "name",
   m.country AS "country",
   m.region AS "region"
-FROM summit_data_engine.mountain_aliases AS a
-JOIN summit_data_engine.mountains AS m ON m.id = a.mountain_id
+FROM public.mountain_aliases AS a
+JOIN public.mountains AS m ON m.id = a.mountain_id
 WHERE ${CANONICAL_TRUST_SQL}
   AND a.status = 'verified'
   AND m.canonical_source_key IS NOT NULL
@@ -159,7 +159,7 @@ SELECT
   m.name AS "name",
   m.country AS "country",
   m.region AS "region"
-FROM summit_data_engine.mountains AS m
+FROM public.mountains AS m
 WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
 ORDER BY m.id
@@ -183,7 +183,7 @@ SELECT
   ST_Y(m.geom)::float8 AS "latitude",
   ST_X(m.geom)::float8 AS "longitude",
   m.provenance_version AS "provenanceVersion"
-FROM summit_data_engine.mountains AS m
+FROM public.mountains AS m
 WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
   AND m.id = ANY($1::uuid[])
@@ -206,12 +206,12 @@ SELECT
   e.publisher AS "publisher",
   e.title AS "evidenceTitle",
   e.url AS "evidenceUrl"
-FROM summit_data_engine.route_identities AS ri
-JOIN summit_data_engine.route_definitions AS rd
+FROM public.route_identities AS ri
+JOIN public.route_definitions AS rd
   ON rd.route_identity_id = ri.id
-JOIN summit_data_engine.route_facts AS rf
+JOIN public.route_facts AS rf
   ON rf.route_definition_id = rd.id
-JOIN summit_data_engine.evidence_sources AS e
+JOIN public.evidence_sources AS e
   ON e.id = rf.evidence_source_id
 WHERE ri.mountain_id = $1::uuid
   AND ri.status = 'verified'
@@ -238,7 +238,7 @@ SELECT
   ST_Y(m.geom)::float8 AS "latitude",
   ST_X(m.geom)::float8 AS "longitude",
   m.provenance_version AS "provenanceVersion"
-FROM summit_data_engine.mountains AS m
+FROM public.mountains AS m
 WHERE ${CANONICAL_TRUST_SQL}
   AND m.canonical_source_key IS NOT NULL
   AND m.geom IS NOT NULL
@@ -272,12 +272,12 @@ SELECT
   e.publisher AS "publisher",
   e.title AS "evidenceTitle",
   e.url AS "evidenceUrl"
-FROM summit_data_engine.route_identities AS ri
-JOIN summit_data_engine.route_definitions AS rd
+FROM public.route_identities AS ri
+JOIN public.route_definitions AS rd
   ON rd.route_identity_id = ri.id
-JOIN summit_data_engine.route_facts AS rf
+JOIN public.route_facts AS rf
   ON rf.route_definition_id = rd.id
-JOIN summit_data_engine.evidence_sources AS e
+JOIN public.evidence_sources AS e
   ON e.id = rf.evidence_source_id
 WHERE ri.mountain_id = ANY($1::uuid[])
   AND ri.status = 'verified'
