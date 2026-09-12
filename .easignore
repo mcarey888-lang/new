@@ -46,3 +46,8 @@ artifacts/atlas-media-studio/
 artifacts/mockup-sandbox/
 artifacts/summit-landing/
 artifacts/tryfan-3d-prototype/
+
+# Development-only onboarding reconstruction — never ship in store builds
+artifacts/summit-ready/app/onboarding-demo/
+artifacts/summit-ready/app/mobile/onboarding-demo/
+artifacts/summit-ready/components/onboarding-demo/
