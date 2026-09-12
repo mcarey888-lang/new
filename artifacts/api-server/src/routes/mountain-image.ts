@@ -1,4 +1,6 @@
 import { Router, type IRouter } from "express";
+import { cachedMountains } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -26,6 +28,8 @@ interface ImageResult {
 }
 
 const imageCache = new Map<string, ImageResult>();
+const imageRequests = new Map<string, Promise<ImageResult>>();
+const HERO_CACHE_VERSION = "v3";
 
 // ── 0. Curated Commons files for known mountains ──────────────────────────────
 //
@@ -85,6 +89,11 @@ const CURATED_MOUNTAIN_FILES: Record<string, string[]> = {
     "Mount_Toubkal,_Atlas_Mountains,_Morocco.jpg",
     "Trekking_Toubkal_2019.jpg",
     "Toubkal_summer.jpg",
+  ],
+  "helvellyn": [
+    "Striding_Edge,_Helvellyn,_and_Red_Tarn_-_geograph.org.uk_-_7304227.jpg",
+    "Late_Winter_on_the_Ridge_to_Helvellyn_Summit,_Lake_District_–_March_2025.jpg",
+    "March_Light_over_the_Eastern_Fells_from_the_Slopes_of_Helvellyn,_Lake_District_–_2025.jpg",
   ],
 };
 
@@ -149,13 +158,17 @@ async function getCuratedImage(name: string): Promise<string | null> {
 
 // ── Name cleaning ─────────────────────────────────────────────────────────────
 
-function cleanName(raw: string): string {
+export function canonicalImageSubject(raw: string): string {
   return raw
     .replace(/\s*\(.*?\)\s*/g, "")
+    .split(/\b(?:via|from|by way of|approach from)\b/i)[0]
     .replace(/\b(circular|loop|route|walk|trail|path|way|hike|horseshoe|round|ridge|traverse|tour)\b/gi, "")
+    .replace(/\s+(?:and|&)\s+$/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
+
+const cleanName = canonicalImageSubject;
 
 // ── Image suitability filter ──────────────────────────────────────────────────
 
@@ -181,7 +194,10 @@ const REJECT_PATTERNS = [
   // People
   /\bperson\b/i, /\bpeople\b/i,
   // SVG / non-photo formats
-  /\.svg$/i, /\.gif$/i,
+  /\.svg$/i, /\.gif$/i, /\.pdf\b/i, /\.djvu\b/i,
+  // Scanned publications and other weak hero subjects
+  /\balbum\b/i, /\bliterature\b/i, /\bbook\b/i, /\bjournal\b/i, /\bmagazine\b/i,
+  /\bintroduction.to\b/i, /\bworks.of\b/i, /\btourist\b/i,
   // Named painters ("by John Smith")
   /_by_[A-Z]/i,
 ];
@@ -202,6 +218,24 @@ interface CommonsImageInfo {
   width?:    number;
   height?:   number;
   mime?:     string;
+}
+
+export function scenicCandidateScore(
+  title: string,
+  summitName: string,
+  width?: number,
+  height?: number,
+): number {
+  const normalizedTitle = title.toLowerCase().replace(/[_-]+/g, " ");
+  const normalizedSummit = summitName.toLowerCase();
+  if (!normalizedTitle.includes(normalizedSummit)) return -1000;
+  const ratio = width && height ? width / height : 1;
+  let score = Math.min(45, ratio * 18);
+  if (ratio >= 1.5) score += 35;
+  if ((width ?? 0) >= 2400) score += 12;
+  if (/\b(?:landscape|panorama|view|valley|fells|ridge|massif|sunrise|sunset|winter|snow)\b/i.test(title)) score += 18;
+  if (/\b(?:close.?up|path|trail|cairn|car park|sign|slopes?)\b/i.test(title)) score -= 22;
+  return score;
 }
 
 async function searchCommons(query: string): Promise<string | null> {
@@ -230,20 +264,19 @@ async function searchCommons(query: string): Promise<string | null> {
 
   const pages = data.query?.pages ?? [];
 
-  for (const page of pages) {
-    const info = page.imageinfo?.[0];
-    if (!info) continue;
-
-    const mime = info.mime ?? "";
-    if (!mime.startsWith("image/jpeg") && !mime.startsWith("image/png") && !mime.startsWith("image/webp")) continue;
-
-    const thumb = info.thumburl ?? info.url;
-    if (!thumb) continue;
-
-    if (isImageSuitable(thumb, info.width, info.height)) return thumb;
-  }
-
-  return null;
+  const summitName = cleanName(query.replace(/\b(?:wide|scenic|distant|mountain|summit|landscape|panorama|photograph|view)\b/gi, ""));
+  return pages
+    .flatMap(page => {
+      const info = page.imageinfo?.[0];
+      const thumb = info?.thumburl ?? info?.url;
+      const mime = info?.mime ?? "";
+      if (!info || !thumb ||
+          (!mime.startsWith("image/jpeg") && !mime.startsWith("image/png") && !mime.startsWith("image/webp")) ||
+          !isImageSuitable(`${page.title} ${thumb}`, info.width, info.height)) return [];
+      return [{ thumb, score: scenicCandidateScore(page.title, summitName, info.width, info.height) }];
+    })
+    .filter(candidate => candidate.score > -100)
+    .sort((a, b) => b.score - a.score)[0]?.thumb ?? null;
 }
 
 async function getCommonsImage(name: string, location?: string): Promise<string | null> {
@@ -251,11 +284,10 @@ async function getCommonsImage(name: string, location?: string): Promise<string 
 
   // Lead with "photograph" to strongly bias toward actual photos, not artwork.
   const queries = [
-    `${cleaned} mountain photograph`,
-    `${cleaned} mountain landscape photograph`,
-    `${cleaned} summit photograph`,
-    `${cleaned} mountain landscape`,
-    `${cleaned} peak photograph`,
+    `${cleaned} wide mountain landscape photograph`,
+    `${cleaned} scenic distant view photograph`,
+    `${cleaned} mountain panorama photograph`,
+    `${cleaned} summit landscape photograph`,
     `${cleaned}`,
   ];
   if (location) {
@@ -339,41 +371,65 @@ async function getWikipediaData(name: string): Promise<ImageResult> {
 // ── Master lookup (cached) ────────────────────────────────────────────────────
 
 async function getImageData(name: string, location?: string): Promise<ImageResult> {
-  const cacheKey = `${name}::${location ?? ""}`;
+  const canonicalName = cleanName(name) || cleanName(location ?? "") || name;
+  const cacheKey = `${canonicalName.toLowerCase()}::${cleanName(location ?? "").toLowerCase()}`;
   const cached   = imageCache.get(cacheKey);
   if (cached !== undefined) return cached;
+  const inFlight = imageRequests.get(cacheKey);
+  if (inFlight) return inFlight;
 
-  // Step 1: try the curated map first — authoritative photos, never paintings
-  const curatedUrl = await getCuratedImage(name).catch(() => null);
+  const request = (async () => {
+    const { db } = await import("@workspace/db");
+    const persistentKey = `hero-image:${HERO_CACHE_VERSION}:${cacheKey}`;
+    const [stored] = await db.select({ data: cachedMountains.data })
+      .from(cachedMountains)
+      .where(eq(cachedMountains.slug, persistentKey))
+      .limit(1);
+    if (stored?.data) {
+      try {
+        const parsed = JSON.parse(stored.data) as ImageResult;
+        if (parsed.thumbUrl) {
+          imageCache.set(cacheKey, parsed);
+          return parsed;
+        }
+      } catch { /* regenerate invalid legacy cache data */ }
+    }
 
-  let thumbUrl: string | null = curatedUrl;
-  let coord:    Coord  | null = null;
+    // Step 1: try the curated map first — authoritative photos, never paintings
+    const curatedUrl = await getCuratedImage(canonicalName).catch(() => null);
+    let thumbUrl: string | null = curatedUrl;
+    let coord: Coord | null = null;
 
-  if (!thumbUrl) {
-    // Step 2+3: Commons search + Wikipedia in parallel (for coords + fallback image)
-    const [commonsRes, wikiRes] = await Promise.allSettled([
-      getCommonsImage(name, location),
-      getWikipediaData(name),
-    ]);
+    if (!thumbUrl) {
+      // Step 2+3: Commons search + Wikipedia in parallel (for coords + fallback image)
+      const [commonsRes, wikiRes] = await Promise.allSettled([
+        getCommonsImage(canonicalName, location),
+        getWikipediaData(canonicalName),
+      ]);
 
-    thumbUrl =
-      (commonsRes.status === "fulfilled" ? commonsRes.value : null) ??
-      (wikiRes.status    === "fulfilled" ? wikiRes.value.thumbUrl : null);
+      thumbUrl =
+        (commonsRes.status === "fulfilled" ? commonsRes.value : null) ??
+        (wikiRes.status === "fulfilled" ? wikiRes.value.thumbUrl : null);
 
-    if (wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
-  } else {
-    // Still fetch coords for the Mapbox fallback, without waiting for image
-    getWikipediaData(name).then(r => {
-      if (r.coord) {
-        const existing = imageCache.get(cacheKey);
-        if (existing && !existing.coord) imageCache.set(cacheKey, { ...existing, coord: r.coord });
-      }
-    }).catch(() => {/* ignore */});
-  }
+      if (wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
+    }
 
-  const result: ImageResult = { thumbUrl, coord };
-  imageCache.set(cacheKey, result);
-  return result;
+    const result: ImageResult = { thumbUrl, coord };
+    imageCache.set(cacheKey, result);
+    if (thumbUrl) {
+      await db.insert(cachedMountains).values({
+        slug: persistentKey,
+        data: JSON.stringify(result),
+      }).onConflictDoUpdate({
+        target: cachedMountains.slug,
+        set: { data: JSON.stringify(result), cachedAt: new Date() },
+      });
+    }
+    return result;
+  })().finally(() => imageRequests.delete(cacheKey));
+
+  imageRequests.set(cacheKey, request);
+  return request;
 }
 
 // ── Mapbox geocoding fallback ─────────────────────────────────────────────────

@@ -106,7 +106,7 @@ export default function HillDetailScreen() {
   const hillLng = lng ? parseFloat(lng) : null;
 
   const heroImageUri = name && !imageError
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}`
+    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location ?? "")}&width=960&height=520`
     : null;
 
   useEffect(() => {
