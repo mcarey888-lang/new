@@ -393,12 +393,6 @@ export default function BaseCampScreen() {
 
   // ── DNA Match Breakdown ──────────────────────────────────────────────────────
   const suggestedHills = summitGoal?.virtualHills ?? [];
-  const completedSummitNames = [...new Set(
-    suggestedHills
-      .filter(hill => isRouteCompleted(completedRoutes, hill))
-      .map(hill => hill.name.trim())
-      .filter(Boolean),
-  )];
   const suggestedGain = suggestedHills.reduce(
     (acc, h) => acc + (h.totalElevation ?? h.elevation * Math.max(1, h.repeats ?? 1)),
     0,
@@ -467,6 +461,12 @@ export default function BaseCampScreen() {
   // Falls back to summitGoal.completedRoutes (migrated goals) then empty array.
   const completedRoutes: string[] = activeExpedition?.completedRoutes
     ?? summitGoal?.completedRoutes ?? [];
+  const completedSummitNames = [...new Set(
+    suggestedHills
+      .filter(hill => isRouteCompleted(completedRoutes, hill))
+      .map(hill => hill.name.trim())
+      .filter(Boolean),
+  )];
   const completedStages = stages.filter(s => isRouteCompleted(completedRoutes, s)).length;
   // Route-completion percentage drives the progress ring and stage dots.
   const routePct = stages.length > 0
