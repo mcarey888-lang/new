@@ -119,3 +119,30 @@ export function isExpeditionComplete(expedition: {
 export function addUniqueCompletedRoute(completedRoutes: string[], routeName: string): string[] {
   return [...new Set([...completedRoutes, routeName].filter(Boolean))];
 }
+
+export function expeditionRouteIdentityMatches(
+  first: ExpeditionRouteIdentity,
+  second: ExpeditionRouteIdentity,
+): boolean {
+  const firstCompletionKey = routeCompletionKey(first);
+  const secondCompletionKey = routeCompletionKey(second);
+  const firstHasIdentity = Boolean(first.routeIdentityKey || first.summitIdentityKey);
+  const secondHasIdentity = Boolean(second.routeIdentityKey || second.summitIdentityKey);
+
+  if (firstHasIdentity && secondHasIdentity) {
+    return firstCompletionKey === secondCompletionKey ||
+      Boolean(first.routeIdentityKey && first.routeIdentityKey === second.routeIdentityKey) ||
+      Boolean(first.summitIdentityKey && first.summitIdentityKey === second.summitIdentityKey);
+  }
+  return first.name.trim().toLowerCase() === second.name.trim().toLowerCase();
+}
+
+export function mergeExpeditionRoutes<T extends ExpeditionRouteIdentity>(
+  existing: readonly T[],
+  expeditionRoutes: readonly T[],
+): T[] {
+  return [...expeditionRoutes, ...existing].filter(
+    (route, index, all) =>
+      all.findIndex(candidate => expeditionRouteIdentityMatches(route, candidate)) === index,
+  );
+}

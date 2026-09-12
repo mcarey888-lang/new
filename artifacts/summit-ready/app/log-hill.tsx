@@ -5,7 +5,7 @@ import {
   ChevronLeft, Filter, ChevronDown, ChevronRight, X,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
@@ -29,6 +29,12 @@ import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logHillSessionCompleted } from "@/lib/analytics";
+import {
+  addUniqueCompletedRoute,
+  expeditionRouteIdentityMatches,
+  mergeExpeditionRoutes,
+  routeCompletionKey,
+} from "@/utils/stateReliability";
 
 const FREE_HILLS_LIMIT = 3;
 const SUGGESTED_COUNT = 3;
@@ -73,7 +79,24 @@ export default function LogHillScreen() {
   const {
     summitGoal, trainingPlan, nearbyHills, hillsLoading, hillsError,
     fetchNearbyHills, myHills, addToMyHills, addToNearbyHills, addSession,
+    activeExpedition, patchExpedition,
   } = useApp();
+  const params = useLocalSearchParams<{
+    manualHillName?: string;
+    location?: string;
+    elevation?: string;
+    distance?: string;
+    routeDistance?: string;
+    estimatedTime?: string;
+    routeType?: string;
+    grade?: string;
+    surface?: string;
+    emoji?: string;
+    routeIdentityKey?: string;
+    summitIdentityKey?: string;
+    objectiveType?: string;
+    expeditionId?: string;
+  }>();
 
   const { isSubscribed } = useSubscription();
 
@@ -113,6 +136,11 @@ export default function LogHillScreen() {
       const dateStr = now.toISOString().split("T")[0];
       const elevGain = logTarget.elevation * reps;
       const dist = Math.round(logTarget.distance * reps * 2 * 10) / 10;
+      const expeditionRoute = activeExpedition?.virtualHills.find(route =>
+        expeditionRouteIdentityMatches(route, logTarget)
+      );
+      const expeditionId = params.expeditionId || (expeditionRoute ? activeExpedition?.id : undefined);
+      const creditedRoute = expeditionRoute ?? logTarget;
       await addSession({
         date: now.toISOString(),
         type: "hill",
@@ -125,7 +153,19 @@ export default function LogHillScreen() {
         weekNumber: 0,
         hillName: logTarget.name,
         reps,
+        expeditionId,
+        routeIdentityKey: creditedRoute.routeIdentityKey,
+        summitIdentityKey: creditedRoute.summitIdentityKey,
+        objectiveType: creditedRoute.objectiveType,
       });
+      if (expeditionId && activeExpedition?.id === expeditionId) {
+        await patchExpedition(expeditionId, {
+          completedRoutes: addUniqueCompletedRoute(
+            activeExpedition.completedRoutes ?? [],
+            routeCompletionKey(creditedRoute),
+          ),
+        });
+      }
       const hillName = logTarget.name;
       void logHillSessionCompleted({ hill_name: hillName, elevation_gain: elevGain, reps, source: "manual" });
       setLoggedHill(hillName);
@@ -163,6 +203,35 @@ export default function LogHillScreen() {
     }
   }, [searchResult]);
 
+  useEffect(() => {
+    if (!params.manualHillName) return;
+    const matchingRoute = activeExpedition?.virtualHills.find(route =>
+      expeditionRouteIdentityMatches(route, {
+        name: params.manualHillName!,
+        routeIdentityKey: params.routeIdentityKey,
+        summitIdentityKey: params.summitIdentityKey,
+        objectiveType: params.objectiveType === "manual_summit" ? "manual_summit" : undefined,
+      })
+    );
+    const hill: NearbyHill = matchingRoute ?? {
+      name: params.manualHillName,
+      routeIdentityKey: params.routeIdentityKey || undefined,
+      summitIdentityKey: params.summitIdentityKey || undefined,
+      objectiveType: params.objectiveType === "manual_summit" ? "manual_summit" : undefined,
+      elevation: Number(params.elevation) || 0,
+      distance: Number(params.distance) || 0,
+      routeDistance: Number(params.routeDistance) || undefined,
+      estimatedTime: params.estimatedTime || undefined,
+      routeType: params.routeType === "circular" || params.routeType === "out-and-back" ? params.routeType : "hill",
+      grade: params.grade || "Moderate",
+      surface: params.surface || "Trail",
+      emoji: params.emoji || "⛰️",
+      repeats: 1,
+      totalElevation: Number(params.elevation) || 0,
+    };
+    openLogModal(hill);
+  }, [params.manualHillName]);
+
   const radiusChanged = userChangedRadius && localRadius !== (summitGoal?.maxRadius ?? 25);
   const settingsChanged = radiusChanged || (userChangedMinElev && minElevation !== 0);
 
@@ -172,7 +241,10 @@ export default function LogHillScreen() {
   });
   const weekTarget = currentWeek?.targetElevation ?? Math.round((summitGoal?.elevationGain ?? 1000) * 0.5);
 
-  const allSortedHills = useMemo(() => sortHills(nearbyHills, sortBy), [nearbyHills, sortBy]);
+  const allSortedHills = useMemo(
+    () => sortHills(mergeExpeditionRoutes(nearbyHills, activeExpedition?.virtualHills ?? []), sortBy),
+    [nearbyHills, activeExpedition?.virtualHills, sortBy],
+  );
 
   function stepRadius(dir: 1 | -1) {
     setUserChangedRadius(true);
@@ -589,6 +661,8 @@ export default function LogHillScreen() {
                         params: {
                           name: hill.name,
                           routeIdentityKey: hill.routeIdentityKey ?? "",
+                          summitIdentityKey: hill.summitIdentityKey ?? "",
+                          objectiveType: hill.objectiveType ?? "",
                           location: summitGoal?.location ?? "",
                           lat: hill.lat?.toString() ?? "",
                           lng: hill.lng?.toString() ?? "",

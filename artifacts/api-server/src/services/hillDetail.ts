@@ -5,6 +5,7 @@ import { knownGainForHill, routeIdentityKeyFor } from "../routes/hills-unified.j
 export interface HillDetailRequest {
   hillName: string;
   routeIdentityKey?: string;
+  summitIdentityKey?: string;
   location?: string;
   summitLat?: number;
   summitLng?: number;
@@ -220,8 +221,21 @@ function hasExplicitRouteIdentity(name: string): boolean {
 }
 
 function deterministicDescription(facts: ResolvedHillDetailFacts): string {
-  const terrain = facts.terrain ? ` The selected route uses ${facts.terrain.toLowerCase()}.` : "";
-  return `${facts.name} is a hillwalking training destination near ${facts.location}.${terrain}`.trim();
+  const location = facts.location === "unknown location" ? "" : ` in ${facts.location}`;
+  const character = [
+    facts.difficulty ? `${facts.difficulty.toLowerCase()} hillwalking` : "hillwalking",
+    facts.terrain ? `over ${facts.terrain.toLowerCase()}` : "",
+  ].filter(Boolean).join(" ");
+  const routeFacts = [
+    facts.ascent ? `${Math.round(facts.ascent)}m of ascent` : "",
+    facts.routeDistance ? `${facts.routeDistance}km` : "",
+    facts.duration ? facts.duration : "",
+  ].filter(Boolean).join(", ");
+  return [
+    `${facts.name} is a summit${location} offering ${character}.`,
+    routeFacts ? `The selected approach is approximately ${routeFacts}.` : "",
+    facts.safetyWarning || "",
+  ].filter(Boolean).join(" ");
 }
 
 export async function buildHillDetail(

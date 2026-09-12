@@ -1,9 +1,103 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
-import { buildHillDetail, findDatabaseRouteFacts } from "../services/hillDetail.js";
+import { and, eq } from "drizzle-orm";
+import { hillDescriptions } from "@workspace/db/schema";
+import { buildHillDetail, findDatabaseRouteFacts, normalizeHillName, type ResolvedHillDetailFacts } from "../services/hillDetail.js";
 
 const router: IRouter = Router();
+const HILL_DESCRIPTION_PROMPT_VERSION = "summit-detail-v1";
+const HILL_DESCRIPTION_MODEL = "gpt-4o-mini";
+const descriptionRequests = new Map<string, Promise<string>>();
+
+function descriptionCacheKey(input: {
+  hillName: string;
+  routeIdentityKey?: string;
+  summitIdentityKey?: string;
+  location?: string;
+  summitLat?: number;
+  summitLng?: number;
+}): string {
+  if (input.routeIdentityKey) return `route:${input.routeIdentityKey}`;
+  if (input.summitIdentityKey) return `summit:${input.summitIdentityKey}`;
+  const coordinates = Number.isFinite(input.summitLat) && Number.isFinite(input.summitLng)
+    ? `${Number(input.summitLat).toFixed(3)},${Number(input.summitLng).toFixed(3)}`
+    : "";
+  return `fallback:${normalizeHillName(input.hillName)}:${normalizeHillName(input.location ?? "")}:${coordinates}`;
+}
+
+async function sharedSummitDescription(input: {
+  cacheKey: string;
+  summitIdentityKey?: string;
+  routeIdentityKey?: string;
+  facts: Readonly<ResolvedHillDetailFacts>;
+}): Promise<string> {
+  const existingRequest = descriptionRequests.get(input.cacheKey);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    const { db } = await import("@workspace/db");
+    const [cached] = await db.select({ description: hillDescriptions.description })
+      .from(hillDescriptions)
+      .where(and(
+        eq(hillDescriptions.cacheKey, input.cacheKey),
+        eq(hillDescriptions.promptVersion, HILL_DESCRIPTION_PROMPT_VERSION),
+      ))
+      .limit(1);
+    if (cached?.description) return cached.description;
+
+    const knownFacts = {
+      summit: input.facts.name,
+      location: input.facts.location === "unknown location" ? null : input.facts.location,
+      ascentMetres: input.facts.ascent ?? null,
+      routeDistanceKm: input.facts.routeDistance ?? null,
+      estimatedDuration: input.facts.duration ?? null,
+      difficulty: input.facts.difficulty ?? null,
+      terrain: input.facts.terrain ?? null,
+      routeType: input.facts.routeType ?? null,
+      safetyWarning: input.facts.safetyWarning ?? null,
+    };
+    const completion = await openai.chat.completions.create({
+      model: HILL_DESCRIPTION_MODEL,
+      max_completion_tokens: 300,
+      messages: [
+        {
+          role: "system",
+          content: "Write a specific, useful summit overview for a hiking app. Use only the supplied facts and well-established geographic knowledge about the named summit. Cover its landscape character, what the ascent feels like, notable terrain or views, and why it is useful expedition training. Do not invent parking, trailheads, access rights, coordinates, distances, ascent figures, weather, or safety claims. Return plain text only, 3-5 concise sentences, maximum 900 characters.",
+        },
+        { role: "user", content: JSON.stringify(knownFacts) },
+      ],
+    });
+    const generated = completion.choices?.[0]?.message?.content
+      ?.replace(/^```(?:text)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 900);
+    if (!generated || generated.length < 80) {
+      throw new Error("AI returned an empty or insufficient summit description");
+    }
+
+    await db.insert(hillDescriptions).values({
+      cacheKey: input.cacheKey,
+      summitIdentityKey: input.summitIdentityKey,
+      routeIdentityKey: input.routeIdentityKey,
+      summitName: input.facts.name,
+      location: input.facts.location === "unknown location" ? null : input.facts.location,
+      description: generated,
+      promptVersion: HILL_DESCRIPTION_PROMPT_VERSION,
+      model: HILL_DESCRIPTION_MODEL,
+    }).onConflictDoNothing({ target: hillDescriptions.cacheKey });
+    const [stored] = await db.select({ description: hillDescriptions.description })
+      .from(hillDescriptions)
+      .where(eq(hillDescriptions.cacheKey, input.cacheKey))
+      .limit(1);
+    return stored?.description || generated;
+  })().finally(() => descriptionRequests.delete(input.cacheKey));
+
+  descriptionRequests.set(input.cacheKey, request);
+  return request;
+}
 
 const HillSchema = z.object({
   name: z.string(),
@@ -217,7 +311,7 @@ router.post("/hills-lookup", async (req, res) => {
 
 router.post("/hill-detail", async (req, res) => {
   const { hillName, location, summitLat, summitLng, elevation, grade, surface,
-    routeDistance, estimatedTime, difficulty, routeType, routeIdentityKey } = req.body as {
+    routeDistance, estimatedTime, difficulty, routeType, routeIdentityKey, summitIdentityKey } = req.body as {
     hillName?: string;
     location?: string;
     summitLat?: number;
@@ -230,6 +324,7 @@ router.post("/hill-detail", async (req, res) => {
     difficulty?: string;
     routeType?: string;
     routeIdentityKey?: string;
+    summitIdentityKey?: string;
   };
 
   if (!hillName || typeof hillName !== "string" || hillName.trim().length < 2) {
@@ -241,12 +336,32 @@ router.post("/hill-detail", async (req, res) => {
     const normalizedRouteIdentityKey = typeof routeIdentityKey === "string"
       ? routeIdentityKey.trim() || undefined
       : undefined;
+    const normalizedSummitIdentityKey = typeof summitIdentityKey === "string"
+      ? summitIdentityKey.trim() || undefined
+      : undefined;
+    const cacheKey = descriptionCacheKey({
+      hillName: hillName.trim(),
+      routeIdentityKey: normalizedRouteIdentityKey,
+      summitIdentityKey: normalizedSummitIdentityKey,
+      location,
+      summitLat,
+      summitLng,
+    });
     const detail = await buildHillDetail({
       hillName: hillName.trim(), location, summitLat, summitLng, elevation, grade,
       surface, routeDistance, estimatedTime, difficulty, routeType,
       routeIdentityKey: normalizedRouteIdentityKey,
+      summitIdentityKey: normalizedSummitIdentityKey,
     }, {
       findRouteFacts: findDatabaseRouteFacts,
+      narrate: async facts => ({
+        description: await sharedSummitDescription({
+          cacheKey,
+          summitIdentityKey: normalizedSummitIdentityKey,
+          routeIdentityKey: normalizedRouteIdentityKey,
+          facts,
+        }),
+      }),
       development: process.env.NODE_ENV === "development",
     });
     res.json(detail);

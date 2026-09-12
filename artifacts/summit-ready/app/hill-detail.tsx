@@ -1,4 +1,4 @@
-import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle, Play } from "lucide-react-native";
+import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info, Compass, Star, Clock, Pencil, RotateCcw, CheckCircle, Play, PlusCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -121,6 +121,7 @@ export default function HillDetailScreen() {
           body: JSON.stringify({
             hillName: name,
             routeIdentityKey: routeIdentityKey || undefined,
+            summitIdentityKey: summitIdentityKey || undefined,
             location: location ?? "",
             summitLat: Number.isFinite(hillLat) ? hillLat : undefined,
             summitLng: Number.isFinite(hillLng) ? hillLng : undefined,
@@ -143,7 +144,7 @@ export default function HillDetailScreen() {
     }
 
     fetchDetail();
-  }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey]);
+  }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey, summitIdentityKey]);
 
   // Load any saved user correction for this hill's start point
   useEffect(() => {
@@ -328,7 +329,7 @@ export default function HillDetailScreen() {
               {/* Description */}
               <Animated.View entering={FadeInDown.delay(80).duration(400)}>
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>About this hill</Text>
+              <Text style={styles.sectionTitle}>About this summit</Text>
                   <Text style={styles.descriptionText}>{detail.description}</Text>
                 </View>
               </Animated.View>
@@ -487,9 +488,37 @@ export default function HillDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Expedition mode — sticky Start Stage CTA ── */}
+      {/* ── Expedition mode — tracking and manual completion CTAs ── */}
       {isExpeditionMode && (
         <View style={[styles.expeditionCtaBar, { paddingBottom: Platform.OS === "web" ? 20 : insets.bottom + 8 }]}>
+          <TouchableOpacity
+            style={styles.manualLogBtn}
+            activeOpacity={0.8}
+            onPress={() =>
+              router.push({
+                pathname: "/log-hill" as any,
+                params: {
+                  manualHillName: name,
+                  location: location ?? "",
+                  elevation: elevation ?? "",
+                  distance: distance ?? "",
+                  routeDistance: routeDistance ?? "",
+                  estimatedTime: estimatedTime ?? "",
+                  routeType: routeType ?? "",
+                  grade: grade ?? "",
+                  surface: surface ?? "",
+                  emoji: emoji ?? "",
+                  routeIdentityKey: routeIdentityKey ?? "",
+                  summitIdentityKey: summitIdentityKey ?? "",
+                  objectiveType: objectiveType ?? "",
+                  expeditionId: expeditionId ?? "",
+                },
+              })
+            }
+          >
+            <PlusCircle size={17} color={T.green} />
+            <Text style={styles.manualLogText}>Log manually</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.expeditionStartBtn}
             activeOpacity={0.85}
@@ -1018,6 +1047,23 @@ const styles = StyleSheet.create({
   expeditionStartBtn: {
     borderRadius:  16,
     overflow:      "hidden",
+  },
+  manualLogBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: T.green + "70",
+    backgroundColor: T.greenDim,
+  },
+  manualLogText: {
+    color: T.green,
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
   expeditionStartGrad: {
     flexDirection:  "row",

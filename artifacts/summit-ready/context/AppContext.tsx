@@ -317,6 +317,9 @@ export interface Session {
   stepperFloors?: number;
   activityId?: string;
   expeditionId?: string;
+  routeIdentityKey?: string;
+  summitIdentityKey?: string;
+  objectiveType?: "manual_summit";
 }
 
 export const PENDING_PAST_HIKES_KEY = "summitready_pending_past_hikes";

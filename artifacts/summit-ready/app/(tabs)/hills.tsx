@@ -5,7 +5,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { openMapsForHill } from "@/utils/openMaps";
 import {
   ActivityIndicator,
@@ -27,6 +27,12 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { AddToChallengeSheet } from "@/components/AddToChallengeSheet";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
+import {
+  addUniqueCompletedRoute,
+  expeditionRouteIdentityMatches,
+  mergeExpeditionRoutes,
+  routeCompletionKey,
+} from "@/utils/stateReliability";
 
 const GRADE_COLOR: Record<string, string> = {
   "Easy": T.green,
@@ -98,11 +104,15 @@ function HikeDetailSheet({ hike, onClose }: { hike: ExploreHike; onClose: () => 
 export default function MyHillsScreen() {
   useScreenView("hills");
   const insets = useSafeAreaInsets();
-  const { myHills, removeFromMyHills, addSession, summitGoal, sessions, exploreHikes, deleteExploreHike, addToMyHills, addToNearbyHills } = useApp();
+  const { myHills, removeFromMyHills, addSession, summitGoal, sessions, exploreHikes, deleteExploreHike, addToMyHills, addToNearbyHills, activeExpedition, patchExpedition } = useApp();
   const { activeChallenges } = useChallenges();
   const location = summitGoal?.location ?? "";
 
   const hillSessions = sessions.filter((s: Session) => s.type === "hill");
+  const visibleHills = useMemo(
+    () => mergeExpeditionRoutes(myHills, activeExpedition?.virtualHills ?? []),
+    [myHills, activeExpedition?.virtualHills],
+  );
 
   const [logTarget, setLogTarget] = useState<NearbyHill | null>(null);
   const [reps, setReps] = useState(1);
@@ -172,6 +182,9 @@ export default function MyHillsScreen() {
       const dateStr = now.toISOString().split("T")[0];
       const elevGain = logTarget.elevation * reps;
       const dist = Math.round(logTarget.distance * reps * 2 * 10) / 10;
+      const expeditionRoute = activeExpedition?.virtualHills.find(route =>
+        expeditionRouteIdentityMatches(route, logTarget)
+      );
       await addSession({
         date: now.toISOString(),
         type: "hill",
@@ -184,7 +197,19 @@ export default function MyHillsScreen() {
         weekNumber: 0,
         hillName: logTarget.name,
         reps,
+        expeditionId: expeditionRoute ? activeExpedition?.id : undefined,
+        routeIdentityKey: (expeditionRoute ?? logTarget).routeIdentityKey,
+        summitIdentityKey: (expeditionRoute ?? logTarget).summitIdentityKey,
+        objectiveType: (expeditionRoute ?? logTarget).objectiveType,
       });
+      if (expeditionRoute && activeExpedition) {
+        await patchExpedition(activeExpedition.id, {
+          completedRoutes: addUniqueCompletedRoute(
+            activeExpedition.completedRoutes ?? [],
+            routeCompletionKey(expeditionRoute),
+          ),
+        });
+      }
       const hillName = logTarget.name;
       setLoggedHill(hillName);
       closeLogModal();
@@ -398,7 +423,7 @@ export default function MyHillsScreen() {
         )}
 
         {/* Hill cards */}
-        {myHills.map((hill, i) => {
+        {visibleHills.map((hill, i) => {
           const gc = GRADE_COLOR[hill.grade] ?? T.blue;
           const wasJustLogged = loggedHill === hill.name;
 
@@ -476,6 +501,8 @@ export default function MyHillsScreen() {
                         params: {
                           name:      hill.name,
                           routeIdentityKey: hill.routeIdentityKey ?? "",
+                           summitIdentityKey: hill.summitIdentityKey ?? "",
+                           objectiveType: hill.objectiveType ?? "",
                           location,
                           lat:       hill.lat?.toString()       ?? "",
                           lng:       hill.lng?.toString()       ?? "",

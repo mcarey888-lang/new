@@ -16,7 +16,9 @@ import {
   canonicalShellRoot,
   countCompletedPlanWeeks,
   ensurePlanSessionIds,
+  expeditionRouteIdentityMatches,
   isExpeditionComplete,
+  mergeExpeditionRoutes,
   migratePlanKeyedRecord,
   routeCompletionKey,
   selectShellGoal,
@@ -35,6 +37,26 @@ describe("manual summit completion identity", () => {
     expect(isRouteCompleted(["summit:helvellyn"], objective)).toBe(true);
     expect(isRouteCompleted(["route:striding-edge"], objective)).toBe(false);
     expect(routeCompletionKey({ name: "Legacy", routeIdentityKey: "route:legacy" })).toBe("route:legacy");
+  });
+
+  it("matches a manual log to its canonical expedition objective", () => {
+    const objective = {
+      name: "Scafell Pike",
+      routeIdentityKey: "route:scafell-corridor",
+      summitIdentityKey: "summit:scafell-pike",
+      objectiveType: "manual_summit" as const,
+    };
+    expect(expeditionRouteIdentityMatches(objective, {
+      ...objective,
+      routeIdentityKey: "route:scafell-lingmell",
+    })).toBe(true);
+    expect(routeCompletionKey(objective)).toBe("summit:scafell-pike");
+  });
+
+  it("preloads expedition hills without collapsing distinct same-name routes", () => {
+    const west = { name: "Twin Peak", routeIdentityKey: "route:west" };
+    const east = { name: "Twin Peak", routeIdentityKey: "route:east" };
+    expect(mergeExpeditionRoutes([west], [west, east])).toEqual([west, east]);
   });
 });
 

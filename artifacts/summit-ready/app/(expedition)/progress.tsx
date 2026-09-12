@@ -7,7 +7,7 @@
 import { TrendingUp } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Dimensions, Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
@@ -16,7 +16,12 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { isRouteCompleted } from "@/utils/stateReliability";
+import {
+  addUniqueCompletedRoute,
+  expeditionRouteIdentityMatches,
+  isRouteCompleted,
+  routeCompletionKey,
+} from "@/utils/stateReliability";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { mergeActivityKinds } from "@/utils/activityReliability";
@@ -47,11 +52,54 @@ function insightMsg(done: number, total: number, remainM: number) {
 export default function ExpeditionProgressScreen() {
   useScreenView("expedition_progress");
   const insets = useSafeAreaInsets();
-  const { sessions, exploreHikes, activeExpedition } = useApp();
+  const { sessions, exploreHikes, activeExpedition, patchExpedition, updateSession } = useApp();
+  const recoveredSessionIds = useRef(new Set<string>());
 
   const target  = activeExpedition?.targetMountain;
   const stages  = activeExpedition?.virtualHills ?? [];
   const completedRoutes: string[] = activeExpedition?.completedRoutes ?? [];
+
+  useEffect(() => {
+    if (!activeExpedition) return;
+    const expeditionStartedAt = Date.parse(activeExpedition.startedAt ?? activeExpedition.savedAt);
+    const recoverable = sessions.flatMap(session => {
+      if (
+        session.expeditionId ||
+        session.type !== "hill" ||
+        !session.hillName ||
+        recoveredSessionIds.current.has(session.id) ||
+        (Number.isFinite(expeditionStartedAt) && Date.parse(session.date) < expeditionStartedAt)
+      ) return [];
+      const route = activeExpedition.virtualHills.find(candidate =>
+        expeditionRouteIdentityMatches(candidate, {
+          name: session.hillName!,
+          routeIdentityKey: session.routeIdentityKey,
+          summitIdentityKey: session.summitIdentityKey,
+          objectiveType: session.objectiveType,
+        })
+      );
+      return route ? [{ session, route }] : [];
+    });
+    if (recoverable.length === 0) return;
+
+    recoverable.forEach(({ session }) => recoveredSessionIds.current.add(session.id));
+    void (async () => {
+      await Promise.all(recoverable.map(({ session, route }) =>
+        updateSession(session.id, {
+          expeditionId: activeExpedition.id,
+          routeIdentityKey: route.routeIdentityKey,
+          summitIdentityKey: route.summitIdentityKey,
+          objectiveType: route.objectiveType,
+        })
+      ));
+      const recoveredCompleted = recoverable.reduce(
+        (completed, { route }) => addUniqueCompletedRoute(completed, routeCompletionKey(route)),
+        activeExpedition.completedRoutes ?? [],
+      );
+      await patchExpedition(activeExpedition.id, { completedRoutes: recoveredCompleted });
+    })();
+  }, [activeExpedition, patchExpedition, sessions, updateSession]);
+
   const linkedActivities = useMemo(() => {
     if (!activeExpedition) return [];
     return mergeActivityKinds(
