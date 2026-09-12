@@ -360,16 +360,28 @@ export default function BaseCampScreen() {
 
   // Use explicit activeExpedition progress for true expedition mode progress.
   const activeProgress = activeExpedition?.virtualHikeProgress ?? summitGoal?.virtualHikeProgress;
-  const linkedExpeditionElevation = useMemo(() => {
-    if (!activeExpeditionId) return 0;
+  const linkedExpeditionActivities = useMemo(() => {
+    if (!activeExpeditionId) return [];
     return mergeActivityKinds(
       sessions.filter(item => item.expeditionId === activeExpeditionId),
       exploreHikes.filter(item => item.expeditionId === activeExpeditionId),
-    ).reduce((sum, activity) => sum + Math.max(0, activity.elevationGain ?? 0), 0);
+    );
   }, [activeExpeditionId, exploreHikes, sessions]);
+  const linkedExpeditionElevation = linkedExpeditionActivities.reduce(
+    (sum, activity) => sum + Math.max(0, activity.elevationGain ?? 0),
+    0,
+  );
+  const linkedExpeditionDistance = linkedExpeditionActivities.reduce(
+    (sum, activity) => sum + Math.max(0, activity.distance ?? 0),
+    0,
+  );
   // Linked activities are the live source of truth. Keep the persisted aggregate
   // as a compatibility floor for older GPS hikes that predate activity linking.
   const totalTrained = Math.max(activeProgress?.elevationGained ?? 0, linkedExpeditionElevation);
+  const totalDistanceCovered = Math.max(
+    activeProgress?.distanceCovered ?? 0,
+    linkedExpeditionDistance,
+  );
 
   const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
 
@@ -381,6 +393,12 @@ export default function BaseCampScreen() {
 
   // ── DNA Match Breakdown ──────────────────────────────────────────────────────
   const suggestedHills = summitGoal?.virtualHills ?? [];
+  const completedSummitNames = [...new Set(
+    suggestedHills
+      .filter(hill => isRouteCompleted(completedRoutes, hill))
+      .map(hill => hill.name.trim())
+      .filter(Boolean),
+  )];
   const suggestedGain = suggestedHills.reduce(
     (acc, h) => acc + (h.totalElevation ?? h.elevation * Math.max(1, h.repeats ?? 1)),
     0,
@@ -1461,6 +1479,8 @@ export default function BaseCampScreen() {
       preload={cinematicActive}
       expeditionName={expTitle ?? "Your Expedition"}
       totalElevationM={totalTrained}
+      totalDistanceKm={totalDistanceCovered}
+      summitNames={completedSummitNames}
       onContinue={handleCompletionContinue}
     />
     </>

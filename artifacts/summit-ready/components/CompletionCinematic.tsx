@@ -60,6 +60,10 @@ interface CompletionCinematicProps {
   expeditionName: string;
   /** Total elevation in metres, shown in the overlay */
   totalElevationM: number;
+  /** Total distance from activities linked to this expedition */
+  totalDistanceKm: number;
+  /** Distinct expedition stages the user completed */
+  summitNames: string[];
   /** Called once the user taps "Continue" — parent should dismiss */
   onContinue: () => void;
 }
@@ -71,6 +75,8 @@ export function CompletionCinematic({
   preload = false,
   expeditionName,
   totalElevationM,
+  totalDistanceKm,
+  summitNames,
   onContinue,
 }: CompletionCinematicProps) {
   const insets = useSafeAreaInsets();
@@ -158,13 +164,15 @@ export function CompletionCinematic({
       await Share.share({
         message:
           `🏔️ I just completed the ${expeditionName} expedition on SummitReady!\n` +
-          `Total elevation climbed: ${Math.round(totalElevationM).toLocaleString()}m`,
+          `Elevation climbed: ${Math.round(totalElevationM).toLocaleString()}m\n` +
+          `Distance covered: ${totalDistanceKm.toFixed(1)}km` +
+          (summitNames.length > 0 ? `\nSummits climbed: ${summitNames.join(", ")}` : ""),
         title: "Expedition Complete!",
       });
     } catch {
       // cancelled
     }
-  }, [expeditionName, totalElevationM]);
+  }, [expeditionName, summitNames, totalDistanceKm, totalElevationM]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -268,7 +276,26 @@ export function CompletionCinematic({
                 <Text style={styles.statLabel}>Total elevation climbed</Text>
               </View>
 
-              <View style={styles.divider} />
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryStat}>
+                  <Text style={styles.summaryValue}>{totalDistanceKm.toFixed(1)}km</Text>
+                  <Text style={styles.summaryLabel}>Distance covered</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryStat}>
+                  <Text style={styles.summaryValue}>{summitNames.length}</Text>
+                  <Text style={styles.summaryLabel}>
+                    {summitNames.length === 1 ? "Summit climbed" : "Summits climbed"}
+                  </Text>
+                </View>
+              </View>
+
+              {summitNames.length > 0 && (
+                <View style={styles.summitsCard}>
+                  <Text style={styles.summitsHeading}>MOUNTAINS CLIMBED</Text>
+                  <Text style={styles.summitsList}>{summitNames.join("  •  ")}</Text>
+                </View>
+              )}
 
               <TouchableOpacity
                 style={styles.shareBtn}
@@ -334,7 +361,7 @@ const styles = StyleSheet.create({
   },
   statRow: {
     alignItems:   "center",
-    marginBottom: 28,
+    marginBottom: 18,
   },
   statValue: {
     fontSize:      52,
@@ -353,6 +380,56 @@ const styles = StyleSheet.create({
     height:          1,
     backgroundColor: "rgba(255,255,255,0.15)",
     marginBottom:    28,
+  },
+  summaryRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  summaryStat: {
+    flex: 1,
+    alignItems: "center",
+  },
+  summaryValue: {
+    color: "#fff",
+    fontSize: 21,
+    fontWeight: "800",
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    marginTop: 3,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  summitsCard: {
+    width: "100%",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(61,211,127,0.28)",
+    backgroundColor: "rgba(5,18,14,0.62)",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  summitsHeading: {
+    color: T.green,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    marginBottom: 5,
+  },
+  summitsList: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+    textAlign: "center",
   },
   shareBtn: {
     width:           "100%",
