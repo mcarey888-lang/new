@@ -7,7 +7,7 @@ import { useUser } from "@clerk/expo";
 import {
   Mountain, Search, SlidersHorizontal, Bookmark, Heart,
   ChevronRight, TrendingUp, Camera, Plus, Trophy, Clock,
-  MapPin, RefreshCw, AlertTriangle, Play,
+  Footprints, RefreshCw, AlertTriangle, Play,
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1118,7 +1118,7 @@ export default function BaseCampScreen() {
                 end={{ x: 1, y: 0 }}
                 style={s.quickStartGrad}
               >
-                <MapPin size={14} color="#071428" />
+                <Footprints size={14} color="#071428" />
                 <Text style={[s.quickStartText, { color: "#071428" }]}>Free Hike</Text>
               </LinearGradient>
             </TouchableOpacity>
