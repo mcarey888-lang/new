@@ -4,17 +4,19 @@
  */
 
 import { useUser } from "@clerk/expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import {
   Mountain, Search, SlidersHorizontal, Bookmark, Heart,
   ChevronRight, TrendingUp, Camera, Plus, Trophy, Clock,
-  Footprints, RefreshCw, AlertTriangle, Play,
+  Footprints, RefreshCw, AlertTriangle, Play, Trash2, X,
 } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, Modal, Platform, ScrollView, StyleSheet,
+  ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
@@ -130,6 +132,12 @@ type CommunityStats = {
   topRouteElev: number;
   mostRepeatedName: string | null;
   mostRepeatedCount: number | null;
+};
+
+type JournalPhoto = {
+  id: string;
+  uri: string;
+  addedAt: string;
 };
 
 function CommunityActivityCard({
@@ -325,6 +333,84 @@ export default function BaseCampScreen() {
   const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
   const [communityStats, setCommunityStats] = useState<CommunityStats | null>(null);
   const [communityLoading, setCommunityLoading] = useState(true);
+  const [journalPhotos, setJournalPhotos] = useState<JournalPhoto[]>([]);
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [journalPicking, setJournalPicking] = useState(false);
+  const journalStorageKey = user?.id && activeExpeditionId
+    ? `summitready:expedition-journal:${user.id}:${activeExpeditionId}`
+    : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    setJournalPhotos([]);
+    if (!journalStorageKey) return () => { cancelled = true; };
+    AsyncStorage.getItem(journalStorageKey)
+      .then(raw => {
+        if (cancelled || !raw) return;
+        const saved: unknown = JSON.parse(raw);
+        if (Array.isArray(saved)) {
+          setJournalPhotos(saved.filter(
+            (item): item is JournalPhoto =>
+              !!item && typeof item.id === "string" && typeof item.uri === "string",
+          ));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setJournalPhotos([]);
+      });
+    return () => { cancelled = true; };
+  }, [journalStorageKey]);
+
+  const saveJournalPhotos = useCallback(async (photos: JournalPhoto[]) => {
+    setJournalPhotos(photos);
+    if (journalStorageKey) {
+      await AsyncStorage.setItem(journalStorageKey, JSON.stringify(photos));
+    }
+  }, [journalStorageKey]);
+
+  const addJournalPhotos = useCallback(async () => {
+    if (!activeExpeditionId || journalPicking) return;
+    setJournalPicking(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow SummitReady to access your photos to add pictures to this expedition journal.",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        selectionLimit: 6,
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      const now = Date.now();
+      const additions: JournalPhoto[] = result.assets.map((asset, index) => ({
+        id: `${now}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        uri: asset.uri,
+        addedAt: new Date(now).toISOString(),
+      }));
+      await saveJournalPhotos([...journalPhotos, ...additions]);
+    } catch {
+      Alert.alert("Photo not added", "We couldn't add that photo. Please try again.");
+    } finally {
+      setJournalPicking(false);
+    }
+  }, [activeExpeditionId, journalPhotos, journalPicking, saveJournalPhotos]);
+
+  const removeJournalPhoto = useCallback((photo: JournalPhoto) => {
+    Alert.alert("Remove photo?", "This removes the picture from this expedition journal.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => void saveJournalPhotos(journalPhotos.filter(item => item.id !== photo.id)),
+      },
+    ]);
+  }, [journalPhotos, saveJournalPhotos]);
 
   // Keep artwork + fallback errors separate so artwork failure silently
   // falls back to the Wikimedia mountain photo rather than going blank.
@@ -479,9 +565,6 @@ export default function BaseCampScreen() {
   const nextEst  = nextHill
     ? `Est. ${Math.round(nextHill.distance / 5)}–${Math.round(nextHill.distance / 3)}h`
     : "";
-  const journalUrls  = (summitGoal?.virtualHills ?? []).slice(0, 3).map(
-    h => `${API_BASE}/mountain-image?name=${encodeURIComponent(h.name)}&width=200&height=200`,
-  );
   // AI expedition concept (shown below title when present)
   const concept = (summitGoal as any)?.expeditionPlan?.concept as string | undefined;
 
@@ -1279,19 +1362,24 @@ export default function BaseCampScreen() {
           <View style={[s.card, { flex: 1 }]}>
             <View style={[s.sectionRow, { marginBottom: 10 }]}>
               <Text style={s.sectionLabel}>EXPEDITION{"\n"}JOURNAL</Text>
-              <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setJournalOpen(true)}>
+                <Text style={s.viewAllLink}>View all</Text>
+              </TouchableOpacity>
             </View>
             <View style={{ flexDirection: "row", gap: 5 }}>
-              {journalUrls.map((uri, i) => (
-                <View key={i} style={s.journalThumb}>
-                  <ExpoImage source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                </View>
+              {journalPhotos.slice(0, 2).map(photo => (
+                <TouchableOpacity key={photo.id} style={s.journalThumb} onPress={() => setJournalOpen(true)}>
+                  <ExpoImage source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                </TouchableOpacity>
               ))}
               <TouchableOpacity
                 style={[s.journalThumb, s.journalAdd]}
-                onPress={() => router.push("/(expedition)/track" as any)}
+                onPress={() => void addJournalPhotos()}
+                disabled={journalPicking || !activeExpeditionId}
               >
-                <Plus size={16} color="rgba(255,255,255,0.5)" />
+                {journalPicking
+                  ? <ActivityIndicator size="small" color={T.blue} />
+                  : <Plus size={16} color="rgba(255,255,255,0.5)" />}
                 <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
                   Add Photo
                 </Text>
@@ -1323,6 +1411,47 @@ export default function BaseCampScreen() {
             )}
           </View>
         </Animated.View>
+
+        <Modal visible={journalOpen} animationType="slide" transparent onRequestClose={() => setJournalOpen(false)}>
+          <View style={s.journalModalBackdrop}>
+            <View style={[s.journalModal, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+              <View style={s.journalModalHeader}>
+                <View>
+                  <Text style={s.journalModalTitle}>Expedition Journal</Text>
+                  <Text style={s.journalModalCount}>
+                    {journalPhotos.length === 1 ? "1 photo" : `${journalPhotos.length} photos`}
+                  </Text>
+                </View>
+                <TouchableOpacity style={s.journalClose} onPress={() => setJournalOpen(false)}>
+                  <X size={20} color={T.white} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={s.journalGrid}>
+                {journalPhotos.map(photo => (
+                  <View key={photo.id} style={s.journalGridPhoto}>
+                    <ExpoImage source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    <TouchableOpacity style={s.journalDelete} onPress={() => removeJournalPhoto(photo)}>
+                      <Trash2 size={15} color={T.white} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {journalPhotos.length === 0 && (
+                  <View style={s.journalEmpty}>
+                    <Camera size={34} color={T.textDim} />
+                    <Text style={s.journalEmptyTitle}>No journal photos yet</Text>
+                    <Text style={s.journalEmptyText}>Add moments from your training and expedition.</Text>
+                  </View>
+                )}
+              </ScrollView>
+              <TouchableOpacity style={s.journalAddButton} onPress={() => void addJournalPhotos()} disabled={journalPicking}>
+                {journalPicking
+                  ? <ActivityIndicator size="small" color="#071428" />
+                  : <Plus size={18} color="#071428" />}
+                <Text style={s.journalAddButtonText}>Add photos</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <CommunityActivityCard stats={communityStats} loading={communityLoading} />
 
@@ -1716,6 +1845,42 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderStyle: "dashed",
   },
+  journalModalBackdrop: {
+    flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(1,7,18,0.72)",
+  },
+  journalModal: {
+    maxHeight: "82%", minHeight: "52%", padding: 18,
+    backgroundColor: T.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+  },
+  journalModalHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18,
+  },
+  journalModalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
+  journalModalCount: { marginTop: 3, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  journalClose: {
+    width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  journalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 18 },
+  journalGridPhoto: {
+    width: "48.5%", aspectRatio: 1, borderRadius: 12, overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  journalDelete: {
+    position: "absolute", top: 8, right: 8, width: 30, height: 30, borderRadius: 15,
+    alignItems: "center", justifyContent: "center", backgroundColor: "rgba(3,10,24,0.72)",
+  },
+  journalEmpty: { width: "100%", alignItems: "center", paddingVertical: 50, paddingHorizontal: 20 },
+  journalEmptyTitle: { marginTop: 12, fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  journalEmptyText: {
+    marginTop: 5, fontSize: 12, lineHeight: 17, textAlign: "center",
+    fontFamily: "Inter_400Regular", color: T.textMuted,
+  },
+  journalAddButton: {
+    height: 48, borderRadius: 14, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 7, backgroundColor: T.blue,
+  },
+  journalAddButtonText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#071428" },
 
   // Achievements
   achieveBadge: {
