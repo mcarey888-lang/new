@@ -30,6 +30,22 @@ interface ImageResult {
 const imageCache = new Map<string, ImageResult>();
 const imageRequests = new Map<string, Promise<ImageResult>>();
 const HERO_CACHE_VERSION = "v3";
+const APPROVED_HERO_VERSION = "v1";
+
+function approvedHeroKey(name: string): string {
+  return `hero-approved:${APPROVED_HERO_VERSION}:${canonicalImageSubject(name).toLowerCase()}`;
+}
+
+export function clearMountainImageMemoryCache(name?: string): void {
+  if (!name) {
+    imageCache.clear();
+    return;
+  }
+  const normalized = canonicalImageSubject(name).toLowerCase();
+  for (const key of imageCache.keys()) {
+    if (key.startsWith(`${normalized}::`)) imageCache.delete(key);
+  }
+}
 
 // ── 0. Curated Commons files for known mountains ──────────────────────────────
 //
@@ -380,6 +396,21 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
 
   const request = (async () => {
     const { db } = await import("@workspace/db");
+    const [approved] = await db.select({ data: cachedMountains.data })
+      .from(cachedMountains)
+      .where(eq(cachedMountains.slug, approvedHeroKey(canonicalName)))
+      .limit(1);
+    if (approved?.data) {
+      try {
+        const record = JSON.parse(approved.data) as { imageUrl?: string };
+        if (record.imageUrl) {
+          const result = { thumbUrl: record.imageUrl, coord: null };
+          imageCache.set(cacheKey, result);
+          return result;
+        }
+      } catch { /* ignore invalid approval data */ }
+    }
+
     const persistentKey = `hero-image:${HERO_CACHE_VERSION}:${cacheKey}`;
     const [stored] = await db.select({ data: cachedMountains.data })
       .from(cachedMountains)

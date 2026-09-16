@@ -12,7 +12,7 @@ import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { DevToolsModal } from "@/components/DevToolsModal";
 import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
-import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
+import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
 
 const DEV_TAPS_REQUIRED = 5;
 const DEV_TAP_WINDOW_MS = 2000;
@@ -62,12 +62,9 @@ export default function LandingScreen() {
     // If so, route back to the tracking screen instead of the dashboard.
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
-        if (raw) {
-          const session = JSON.parse(raw);
-          if (!userId || session.userId !== userId) {
-            await discardActiveHike(session);
-          } else {
+        if (userId) {
+          const session = await readActiveHike<any>(userId);
+          if (session) {
             const ageMs = Date.now() - (session.savedAt ?? 0);
             if (ageMs < 24 * 60 * 60 * 1000) {
               // Recent session — send the user back to the hike screen to restore it

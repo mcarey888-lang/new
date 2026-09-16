@@ -15,6 +15,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
+import * as Crypto from "expo-crypto";
 import * as TaskManager from "expo-task-manager";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -60,13 +61,20 @@ import {
   type HikeCheckpoint,
   type PointBatch,
 } from "@/utils/hikeReliability";
-import { authenticatedJsonHeaders, responseError } from "@/utils/authRequest";
 import {
-  ACTIVE_HIKE_KEY,
   HIKE_LOCATION_TASK,
+  clearActiveHike,
   discardActiveHike,
+  readActiveHike,
+  readBackgroundActiveHike,
+  writeActiveHike,
 } from "@/utils/activeHikeSession";
-import { enqueueSyncFailure, enqueueSyncPending, markSyncComplete, retrySyncOutbox } from "@/utils/syncOutbox";
+import { enqueueSyncPending, retrySyncOutbox } from "@/utils/syncOutbox";
+import {
+  clearPendingHikeSelection,
+  readPendingHikeSelection,
+  savePendingHikeSelection,
+} from "@/utils/pendingHikeSelection";
 import {
   addUniqueCompletedRoute,
   isExpeditionComplete,
@@ -78,6 +86,17 @@ import {
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
+
+function localActivityTitle(date = new Date()): string {
+  return `Hike – ${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}, ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -194,9 +213,8 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
   const { locations } = data as { locations: Location.LocationObject[] };
   if (!locations?.length) return;
   try {
-    const activeRaw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
-    if (!activeRaw) return;
-    const active = JSON.parse(activeRaw) as { routeId?: string; status?: string };
+    const active = await readBackgroundActiveHike<{ routeId?: string; status?: string }>();
+    if (!active) return;
     if (!active.routeId || active.status !== "tracking") return;
     const points: TrackPoint[] = [];
     for (const loc of locations) {
@@ -244,6 +262,7 @@ export default function HikeTrackingScreen() {
     routeIdentityKey?: string;
     summitIdentityKey?: string;
     objectiveType?: string;
+    stageSnapshot?: string;
   }>();
   const [expeditionTracking, setExpeditionTracking] = useState({
     trackingMode: params.trackingMode ?? null,
@@ -252,12 +271,19 @@ export default function HikeTrackingScreen() {
     summitIdentityKey: params.summitIdentityKey?.trim() || undefined,
     objectiveType: params.objectiveType === "manual_summit" ? "manual_summit" : undefined,
   });
+  const [restoredHillMeta, setRestoredHillMeta] = useState<{
+    sessionKey?: string | null;
+    hillName?: string | null;
+    targetReps?: number | null;
+    estimatedGainPerRep?: number | null;
+    estimatedTotalGain?: number | null;
+  }>({});
   const hillMeta = {
-    sessionKey:          params.hillSessionKey    ?? null,
-    hillName:            params.hillName          ?? null,
-    targetReps:          params.targetReps          ? parseInt(params.targetReps, 10)          : null,
-    estimatedGainPerRep: params.estimatedGainPerRep ? parseInt(params.estimatedGainPerRep, 10) : null,
-    estimatedTotalGain:  params.estimatedTotalGain  ? parseInt(params.estimatedTotalGain, 10)  : null,
+    sessionKey:          params.hillSessionKey    ?? restoredHillMeta.sessionKey ?? null,
+    hillName:            params.hillName          ?? restoredHillMeta.hillName ?? null,
+    targetReps:          params.targetReps ? parseInt(params.targetReps, 10) : restoredHillMeta.targetReps ?? null,
+    estimatedGainPerRep: params.estimatedGainPerRep ? parseInt(params.estimatedGainPerRep, 10) : restoredHillMeta.estimatedGainPerRep ?? null,
+    estimatedTotalGain:  params.estimatedTotalGain ? parseInt(params.estimatedTotalGain, 10) : restoredHillMeta.estimatedTotalGain ?? null,
     trackingMode:        expeditionTracking.trackingMode,
     expeditionId:        expeditionTracking.expeditionId,
     routeIdentityKey:     expeditionTracking.routeIdentityKey,
@@ -269,7 +295,9 @@ export default function HikeTrackingScreen() {
     : null;
 
   // ── Route name (mandatory, locked once tracking starts) ──────────────────
-  const [routeName, setRouteName]       = useState(params.hillName ?? params.referenceRouteName ?? "");
+  const [routeName, setRouteName]       = useState(
+    params.hillName?.trim() || params.referenceRouteName?.trim() || localActivityTitle(),
+  );
   const [nameLocked, setNameLocked]     = useState(false);
   const [nameError, setNameError]       = useState(false);
 
@@ -282,6 +310,7 @@ export default function HikeTrackingScreen() {
   const [currentAltM, setCurrentAltM]     = useState<number | null>(null);
   const [currentSpeedKmh, setCurrentSpeedKmh] = useState(0);
   const [gpsReady, setGpsReady]           = useState(false);
+  const [isOffline, setIsOffline]         = useState(false);
   const [permDenied, setPermDenied]       = useState(false);
   const [saving, setSaving]               = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
@@ -306,8 +335,14 @@ export default function HikeTrackingScreen() {
   const iframeRef          = useRef<any>(null);
   const saveInFlightRef    = useRef(false);
   const routeIdRef         = useRef(
-    "tracked_" + Date.now().toString() + Math.random().toString(36).slice(2, 6),
+    Crypto.randomUUID(),
   );
+  const stageSnapshotRef = useRef<Record<string, unknown> | undefined>(undefined);
+  if (!stageSnapshotRef.current && params.stageSnapshot) {
+    try {
+      stageSnapshotRef.current = JSON.parse(params.stageSnapshot) as Record<string, unknown>;
+    } catch {}
+  }
 
   // ── Timestamp refs for background-safe timer ─────────────────────────────
   // Timer computed as Date.now() - trackStartMsRef - totalPausedMsRef
@@ -338,6 +373,100 @@ export default function HikeTrackingScreen() {
   useEffect(() => {
     if (userId) void retrySyncOutbox(userId, getToken);
   }, [getToken, userId]);
+
+  // Connectivity is advisory only. Tracking never waits for this probe.
+  useEffect(() => {
+    let cancelled = false;
+    let wasOffline = false;
+    async function checkConnectivity() {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4_000);
+        const response = await fetch(`${API_BASE}/healthz`, {
+          method: "GET",
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (cancelled) return;
+        setIsOffline(!response.ok);
+        if (wasOffline && response.ok && userId) {
+          void retrySyncOutbox(userId, getToken);
+        }
+        wasOffline = !response.ok;
+      } catch {
+        if (!cancelled) {
+          wasOffline = true;
+          setIsOffline(true);
+        }
+      }
+    }
+    void checkConnectivity();
+    const interval = setInterval(checkConnectivity, 15_000);
+    const appState = AppState.addEventListener("change", state => {
+      if (state === "active") void checkConnectivity();
+    });
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      appState.remove();
+    };
+  }, [getToken, userId]);
+
+  // Cache the selected expedition stage independently of network and navigation state.
+  useEffect(() => {
+    if (!userId || params.restore === "1") return;
+    const hasExplicitSelection = !!(
+      params.hillName ||
+      params.referenceRouteName ||
+      params.trackingMode ||
+      params.expeditionId ||
+      params.stageSnapshot
+    );
+    if (!hasExplicitSelection) return;
+    let stageSnapshot: Record<string, unknown> | undefined;
+    if (params.stageSnapshot) {
+      try { stageSnapshot = JSON.parse(params.stageSnapshot) as Record<string, unknown>; } catch {}
+    }
+    void savePendingHikeSelection({
+      userId,
+      routeName,
+      trackingMode: hillMeta.trackingMode,
+      expeditionId: hillMeta.expeditionId,
+      routeIdentityKey: hillMeta.routeIdentityKey,
+      summitIdentityKey: hillMeta.summitIdentityKey,
+      objectiveType: hillMeta.objectiveType,
+      stageSnapshot,
+      savedAt: Date.now(),
+    });
+  }, [
+    userId,
+    params.restore,
+    params.stageSnapshot,
+    routeName,
+    hillMeta.trackingMode,
+    hillMeta.expeditionId,
+    hillMeta.routeIdentityKey,
+    hillMeta.summitIdentityKey,
+    hillMeta.objectiveType,
+  ]);
+
+  useEffect(() => {
+    if (!userId || params.hillName || params.referenceRouteName || params.restore === "1") return;
+    void readPendingHikeSelection(userId).then(selection => {
+      if (!selection) return;
+      stageSnapshotRef.current = selection.stageSnapshot;
+      setRouteName(selection.routeName || localActivityTitle());
+      setExpeditionTracking(current => ({
+        trackingMode: selection.trackingMode ?? current.trackingMode,
+        expeditionId: selection.expeditionId ?? current.expeditionId,
+        routeIdentityKey: selection.routeIdentityKey ?? current.routeIdentityKey,
+        summitIdentityKey: selection.summitIdentityKey ?? current.summitIdentityKey,
+        objectiveType: selection.objectiveType === "manual_summit"
+          ? "manual_summit"
+          : current.objectiveType,
+      }));
+    });
+  }, [params.hillName, params.referenceRouteName, params.restore, userId]);
 
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
@@ -592,6 +721,7 @@ export default function HikeTrackingScreen() {
         pauseStartMs: pauseStartMsRef.current,
         trackingMode: hillMeta.trackingMode,
         expeditionId: hillMeta.expeditionId,
+        syncState: isOffline ? "queued" : "local_only",
         userId: userId ?? undefined,
         hillMeta: {
           sessionKey:          hillMeta.sessionKey,
@@ -604,20 +734,22 @@ export default function HikeTrackingScreen() {
           routeIdentityKey:     hillMeta.routeIdentityKey,
           summitIdentityKey:    hillMeta.summitIdentityKey,
           objectiveType:        hillMeta.objectiveType,
+          stageSnapshot:        stageSnapshotRef.current,
         },
         routeId: routeIdRef.current,
         savedAt: Date.now(),
       };
       const write = checkpointWriteRef.current.then(async () => {
         if (statusRef.current !== "tracking" && statusRef.current !== "paused") return;
-        await AsyncStorage.setItem(ACTIVE_HIKE_KEY, JSON.stringify(session));
+        await writeActiveHike(session);
       });
       checkpointWriteRef.current = write.catch(() => {});
       await write;
     } catch { /* ignore — non-critical */ }
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
       hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode,
-      hillMeta.expeditionId, hillMeta.routeIdentityKey, userId]);
+      hillMeta.expeditionId, hillMeta.routeIdentityKey, hillMeta.summitIdentityKey,
+      hillMeta.objectiveType, userId, isOffline]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -632,18 +764,14 @@ export default function HikeTrackingScreen() {
   // Reads persisted metadata + background GPS points and resumes seamlessly.
   useEffect(() => {
     if (!userId) return;
+    const ownerUserId = userId;
     if (restoreAttempted.current) return;
     restoreAttempted.current = true;
 
     async function doRestore() {
       try {
-        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
-        if (!raw) return;
-        const session = JSON.parse(raw) as HikeCheckpoint;
-        if (session.userId !== userId) {
-          await discardActiveHike(session);
-          return;
-        }
+        const session = await readActiveHike<HikeCheckpoint>(ownerUserId);
+        if (!session) return;
         const ageMs = Date.now() - (session.savedAt ?? 0);
         if (ageMs > 24 * 60 * 60 * 1000) {
           // Stale — discard and let the user start fresh
@@ -681,6 +809,19 @@ export default function HikeTrackingScreen() {
         // Restore route name (may differ from hillName for custom-named routes)
         if (session.routeName) setRouteName(session.routeName);
         if (session.routeId) routeIdRef.current = session.routeId;
+        const savedHillMeta = session.hillMeta ?? {};
+        const numberOrNull = (value: unknown): number | null =>
+          typeof value === "number" && Number.isFinite(value) ? value : null;
+        setRestoredHillMeta({
+          sessionKey: typeof savedHillMeta.sessionKey === "string" ? savedHillMeta.sessionKey : null,
+          hillName: typeof savedHillMeta.hillName === "string" ? savedHillMeta.hillName : null,
+          targetReps: numberOrNull(savedHillMeta.targetReps),
+          estimatedGainPerRep: numberOrNull(savedHillMeta.estimatedGainPerRep),
+          estimatedTotalGain: numberOrNull(savedHillMeta.estimatedTotalGain),
+        });
+        if (savedHillMeta.stageSnapshot && typeof savedHillMeta.stageSnapshot === "object") {
+          stageSnapshotRef.current = savedHillMeta.stageSnapshot as Record<string, unknown>;
+        }
         if (session.trackingMode || session.expeditionId) {
           const restoredIdentity = typeof session.hillMeta?.routeIdentityKey === "string"
             ? session.hillMeta.routeIdentityKey.trim() || undefined
@@ -770,6 +911,10 @@ export default function HikeTrackingScreen() {
     doRestore();
   }, [syncBgPoints, sendPointToMap, replayTrackOnMap, params.restore, params.routeId, userId]);
 
+  useEffect(() => {
+    restoreAttempted.current = false;
+  }, [userId]);
+
   // ── Auto-expand drawer when tracking starts ───────────────────────────────
   useEffect(() => {
     if (status === "tracking") setDrawerOpen(true);
@@ -778,10 +923,40 @@ export default function HikeTrackingScreen() {
   // ── Core tracking logic ──────────────────────────────────────────────────
 
   const startTrackingImpl = useCallback(async () => {
-    if (!routeName.trim()) { setNameError(true); return; }
+    if (statusRef.current !== "idle") return;
+    const effectiveName = routeName.trim() || localActivityTitle();
+    if (effectiveName !== routeName) setRouteName(effectiveName);
     setNameLocked(true);
     setNameError(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Commit the permanent client activity ID and initial checkpoint before
+    // permissions, GPS fixes, map tiles, geocoding, or any server work.
+    statusRef.current = "tracking";
+    setStatus("tracking");
+    trackStartMsRef.current = Date.now();
+    totalPausedMsRef.current = 0;
+    await saveActiveSession();
+
+    const snapshot = stageSnapshotRef.current;
+    const start = snapshot && typeof snapshot === "object"
+      ? {
+          lat: Number(snapshot.startLat ?? snapshot.startLatitude ??
+            (snapshot.startPoint as Record<string, unknown> | undefined)?.latitude),
+          lon: Number(snapshot.startLng ?? snapshot.startLongitude ??
+            (snapshot.startPoint as Record<string, unknown> | undefined)?.longitude),
+        }
+      : null;
+    if (
+      start && Number.isFinite(start.lat) && Number.isFinite(start.lon) &&
+      initialPosRef.current &&
+      haversineKm(initialPosRef.current.lat, initialPosRef.current.lon, start.lat, start.lon) > 1
+    ) {
+      Alert.alert(
+        "You’re away from the expected start",
+        "Tracking will continue. Check your route before setting off.",
+      );
+    }
 
     // Request background location permission (needed for lock-screen tracking)
     if (Platform.OS !== "web") {
@@ -795,20 +970,11 @@ export default function HikeTrackingScreen() {
       }
     }
 
-    statusRef.current = "tracking";
-    setStatus("tracking");
-
     if (hillMeta.sessionKey) {
       void logHillSessionStarted({ hill_name: hillMeta.hillName ?? undefined });
     }
 
     // Timestamp-based timer — survives OS throttling of JS intervals
-    trackStartMsRef.current  = Date.now();
-    totalPausedMsRef.current = 0;
-
-    // Persist session metadata so it can be restored if the OS kills the app
-    await saveActiveSession();
-
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor(
         (Date.now() - trackStartMsRef.current - totalPausedMsRef.current) / 1000
@@ -995,8 +1161,8 @@ export default function HikeTrackingScreen() {
     setStatus("finished");
     // Clear the persisted session — hike finished cleanly, nothing to restore
     await checkpointWriteRef.current;
-    await AsyncStorage.removeItem(ACTIVE_HIKE_KEY);
-  }, [drainBgPoints]);
+    await clearActiveHike(userId ?? undefined);
+  }, [drainBgPoints, userId]);
   const finishHike = useCallback(
     () => serialize(finishHikeImpl),
     [serialize, finishHikeImpl],
@@ -1031,6 +1197,7 @@ export default function HikeTrackingScreen() {
         trackPoints: trackPoints.current,
         activityId: routeId,
         expeditionId: hillMeta.expeditionId ?? undefined,
+        syncState: isOffline ? "queued" : "local_only",
       });
       void logHikeTracked({ distance_km: distKm, elevation_gain: elevGain, duration_min: Math.round(elapsedSecs / 60) });
 
@@ -1097,25 +1264,8 @@ export default function HikeTrackingScreen() {
             trackPoints: trackPoints.current,
             notes: `Avg speed: ${elapsedSecs > 0 && distKm > 0 ? (distKm / (elapsedSecs / 3600)).toFixed(1) : "0"} km/h.`,
           };
-      try {
-        if (!userId) throw new Error("Authentication required");
+      if (userId) {
         await enqueueSyncPending(userId, {
-          id: routeSyncId,
-          kind: "community-route",
-          url: routeUrl,
-          method: "POST",
-          body: routeBody,
-        });
-        const token = await getToken();
-        const res = await fetch(routeUrl, {
-          method: "POST",
-          headers: authenticatedJsonHeaders(token),
-          body: JSON.stringify(routeBody),
-        });
-        if (!res.ok) throw await responseError(res, "Could not publish route");
-        await markSyncComplete(userId, routeSyncId);
-      } catch {
-        if (userId) await enqueueSyncFailure(userId, {
           id: routeSyncId,
           kind: "community-route",
           url: routeUrl,
@@ -1128,6 +1278,7 @@ export default function HikeTrackingScreen() {
       if (hillMeta.hillName) {
         const hillSyncId = `hill-session:${routeId}`;
         const hillBody = {
+          activityId: routeId,
           plannedHillName: hillMeta.hillName,
           plannedRouteName: name,
           trainingSessionId: hillMeta.sessionKey ?? undefined,
@@ -1139,25 +1290,8 @@ export default function HikeTrackingScreen() {
           recordedDurationSeconds: elapsedSecs,
           rawGpsTrack: trackPoints.current,
         };
-        try {
-          if (!userId) throw new Error("Authentication required");
+        if (userId) {
           await enqueueSyncPending(userId, {
-            id: hillSyncId,
-            kind: "hill-session",
-            url: `${API_BASE}/hill-session/save-tracked`,
-            method: "POST",
-            body: hillBody,
-          });
-          const token = await getToken();
-          const res = await fetch(`${API_BASE}/hill-session/save-tracked`, {
-            method: "POST",
-            headers: authenticatedJsonHeaders(token),
-            body: JSON.stringify(hillBody),
-          });
-          if (!res.ok) throw await responseError(res, "Could not sync hill session");
-          await markSyncComplete(userId, hillSyncId);
-        } catch {
-          if (userId) await enqueueSyncFailure(userId, {
             id: hillSyncId,
             kind: "hill-session",
             url: `${API_BASE}/hill-session/save-tracked`,
@@ -1172,7 +1306,15 @@ export default function HikeTrackingScreen() {
         });
       }
 
+      if (userId) {
+        await clearPendingHikeSelection(userId);
+        if (!isOffline) void retrySyncOutbox(userId, getToken);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Activity saved",
+        "Activity saved. It will sync automatically when you’re online.",
+      );
       // Free Hike: direct expedition credit without checking off stages
       if (hillMeta.trackingMode === "freehike" && hillMeta.expeditionId) {
         const exp = expeditions.find(e => e.id === hillMeta.expeditionId);
@@ -1201,7 +1343,7 @@ export default function HikeTrackingScreen() {
       setSaving(false);
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-      addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical]);
+       addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline]);
 
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
@@ -1389,7 +1531,7 @@ export default function HikeTrackingScreen() {
   const isTracking = status === "tracking";
   const isPaused   = status === "paused";
   const isIdle     = status === "idle";
-  const canStart   = gpsReady && routeName.trim().length > 0;
+  const canStart   = true;
 
   return (
     <View style={s.root}>
@@ -1453,13 +1595,20 @@ export default function HikeTrackingScreen() {
         </View>
       </View>
 
+      {isOffline && !isIdle && (
+        <View style={[s.offlineBanner, { top: insets.top + 68 }]}>
+          <WifiOff size={13} color={T.orange} />
+          <Text style={s.offlineBannerText}>Offline — activity saved on this device</Text>
+        </View>
+      )}
+
       {/* ── Route name card — floats over map, only visible when idle ── */}
       {isIdle && (
         <Animated.View
           entering={FadeInDown.delay(50).duration(400)}
           style={[s.nameOverlay, { top: insets.top + 70 }]}
         >
-          <Text style={s.nameLabel}>Route name <Text style={s.nameRequired}>*</Text></Text>
+          <Text style={s.nameLabel}>Activity title</Text>
           <TextInput
             style={[s.nameInput, nameError && s.nameInputError]}
             value={routeName}
@@ -1534,18 +1683,18 @@ export default function HikeTrackingScreen() {
             {!gpsReady ? (
               <View style={s.gpsNote}>
                 <WifiOff size={13} color={T.textMuted} />
-                <Text style={s.gpsNoteText}>Waiting for GPS — go outdoors for best accuracy</Text>
+                <Text style={s.gpsNoteText}>GPS is warming up — you can start now</Text>
               </View>
             ) : (
               <View style={s.gpsNote}>
                 <Wifi size={13} color={T.green} />
                 <Text style={[s.gpsNoteText, { color: "rgba(62,207,117,0.8)" }]}>
-                  GPS ready — name your route above
+                  GPS ready — tracking is available offline
                 </Text>
               </View>
             )}
             <TouchableOpacity
-              style={[s.startBtn, !canStart && { opacity: 0.45 }]}
+              style={s.startBtn}
               onPress={startTracking}
               disabled={!canStart}
               activeOpacity={0.85}
@@ -1557,11 +1706,7 @@ export default function HikeTrackingScreen() {
               >
                 <Play size={20} color="#fff" fill="#fff" />
                 <Text style={s.startBtnText}>
-                  {!gpsReady
-                    ? "Acquiring GPS…"
-                    : !routeName.trim()
-                      ? "Name your route first"
-                      : "Start Tracking"}
+                  Start Tracking
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1734,6 +1879,25 @@ export default function HikeTrackingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  offlineBanner: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.orange,
+  },
+  offlineBannerText: {
+    color: T.text,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
   root: { flex: 1, backgroundColor: "#050D1A" },
 
   // Top gradient overlay for header legibility

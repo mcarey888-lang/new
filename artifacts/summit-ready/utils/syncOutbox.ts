@@ -3,6 +3,7 @@ import { tokenBelongsToUser } from "./authRequest";
 
 export const LEGACY_SYNC_OUTBOX_KEY = "summitready_sync_outbox_v1";
 const mutations = new Map<string, Promise<unknown>>();
+const retries = new Map<string, Promise<void>>();
 
 export function syncOutboxKey(userId: string): string {
   return `${LEGACY_SYNC_OUTBOX_KEY}_${userId}`;
@@ -91,39 +92,71 @@ export async function retrySyncOutbox(
   userId: string,
   getToken: () => Promise<string | null>,
 ): Promise<void> {
-  return serializeOutboxMutation(userId, async () => {
-  const stored = await readOutbox(userId);
-  const current = stored.filter(item => item.ownerUserId === userId);
-  if (current.length === 0) return;
-  // Unknown/unowned records are deliberately retained but never sent.
-  const remaining: SyncOutboxItem[] = stored.filter(item => item.ownerUserId !== userId);
-  for (const item of current) {
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("Authentication required");
-      // getToken is live: a Clerk account switch can occur while it is pending.
-      // Never authorize an old user's queued payload with a new user's token.
-      if (!tokenBelongsToUser(token, userId)) {
-        throw new Error("Authentication identity changed");
+  const existingRetry = retries.get(userId);
+  if (existingRetry) return existingRetry;
+
+  const retry = (async () => {
+    // Snapshot under the storage lock, then release it before any network work.
+    const current = await serializeOutboxMutation(userId, async () => {
+      const stored = await readOutbox(userId);
+      return stored.filter(item => item.ownerUserId === userId);
+    });
+    if (current.length === 0) return;
+
+    const outcomes = new Map<string, { updatedAt: number; succeeded: boolean }>();
+    for (const item of current) {
+      let succeeded = false;
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Authentication required");
+        if (!tokenBelongsToUser(token, userId)) {
+          throw new Error("Authentication identity changed");
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8_000);
+        try {
+          const res = await fetch(item.url, {
+            method: item.method,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(item.body),
+            signal: controller.signal,
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          succeeded = true;
+        } finally {
+          clearTimeout(timeout);
+        }
+      } catch {
+        succeeded = false;
       }
-      const res = await fetch(item.url, {
-        method: item.method,
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(item.body),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
-      remaining.push({
-        ...item,
-        state: "failed",
-        attempts: item.attempts + 1,
-        updatedAt: Date.now(),
-      });
+      outcomes.set(item.id, { updatedAt: item.updatedAt, succeeded });
     }
-  }
-  await AsyncStorage.setItem(syncOutboxKey(userId), JSON.stringify(remaining));
+
+    // Reconcile under the lock. Never remove an item that was replaced with a
+    // newer payload while its previous version was in flight.
+    await serializeOutboxMutation(userId, async () => {
+      const latest = await readOutbox(userId);
+      const next = latest.flatMap(item => {
+        if (item.ownerUserId !== userId) return [item];
+        const outcome = outcomes.get(item.id);
+        if (!outcome || outcome.updatedAt !== item.updatedAt) return [item];
+        if (outcome.succeeded) return [];
+        return [{
+          ...item,
+          state: "failed" as const,
+          attempts: item.attempts + 1,
+          updatedAt: Date.now(),
+        }];
+      });
+      await AsyncStorage.setItem(syncOutboxKey(userId), JSON.stringify(next));
+    });
+  })();
+
+  retries.set(userId, retry);
+  return retry.finally(() => {
+    if (retries.get(userId) === retry) retries.delete(userId);
   });
 }

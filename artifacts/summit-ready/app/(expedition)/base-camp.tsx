@@ -1499,6 +1499,10 @@ export default function BaseCampScreen() {
                         objectiveType: stage.objectiveType ?? "",
                         trackingMode: "expedition-route",
                         expeditionId: activeExpeditionId,
+                          stageSnapshot: JSON.stringify({
+                            ...stage,
+                            expeditionProgress: activeExpedition?.virtualHikeProgress,
+                          }),
                       },
                     });
                   }}

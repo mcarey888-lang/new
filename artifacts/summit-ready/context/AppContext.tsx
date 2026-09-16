@@ -344,6 +344,7 @@ export interface ExploreHike {
   trackPoints?: Array<{ lat: number; lon: number }>;
   activityId?: string;
   expeditionId?: string;
+  syncState?: "local_only" | "queued" | "synced";
 }
 
 interface AppState {

@@ -30,6 +30,7 @@ export interface HikeCheckpoint {
   pauseStartMs: number;
   trackingMode: string | null;
   expeditionId: string | null;
+  syncState?: "local_only" | "queued" | "synced";
   hillMeta: Record<string, unknown>;
   savedAt: number;
 }

@@ -28,10 +28,68 @@ import { streamArtworkImage, type CropType } from "../services/artwork/artworkSt
 import { buildExpeditionPrompt } from "../services/artwork/promptBuilder.js";
 import { db, signatureChallenges, challengeStages } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import {
+  approveMountainHero,
+  findMountainHeroCandidates,
+  listMountainHeroReviews,
+  rejectMountainHeroCandidate,
+} from "../services/artwork/mountainHeroReview.js";
 
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
+
+artworkRouter.get("/mountains", async (req, res) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(48, Math.max(6, Number(req.query.pageSize) || 24));
+    const status = ["pending", "approved"].includes(String(req.query.status))
+      ? String(req.query.status) as "pending" | "approved"
+      : "all";
+    return res.json(await listMountainHeroReviews({
+      page,
+      pageSize,
+      search: String(req.query.search ?? ""),
+      status,
+    }));
+  } catch (err) {
+    console.error("[artwork/mountains]", err);
+    return res.status(500).json({ error: "Failed to load mountain hero queue" });
+  }
+});
+
+artworkRouter.post("/mountains/:id/candidates", async (req, res) => {
+  try {
+    return res.json(await findMountainHeroCandidates(req.params.id));
+  } catch (err) {
+    console.error("[artwork/mountains/candidates]", err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Candidate search failed" });
+  }
+});
+
+artworkRouter.post("/mountains/:id/approve", async (req, res) => {
+  try {
+    if (!req.body?.candidate?.imageUrl) {
+      return res.status(400).json({ error: "Candidate image is required" });
+    }
+    return res.json(await approveMountainHero(req.params.id, req.body.candidate));
+  } catch (err) {
+    console.error("[artwork/mountains/approve]", err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Approval failed" });
+  }
+});
+
+artworkRouter.post("/mountains/:id/reject", async (req, res) => {
+  try {
+    if (typeof req.body?.imageUrl !== "string") {
+      return res.status(400).json({ error: "Image URL is required" });
+    }
+    return res.json(await rejectMountainHeroCandidate(req.params.id, req.body.imageUrl));
+  } catch (err) {
+    console.error("[artwork/mountains/reject]", err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Rejection failed" });
+  }
+});
 
 // ── GET /api/artwork/status ────────────────────────────────────────────────────
 artworkRouter.get("/status", async (_req, res) => {

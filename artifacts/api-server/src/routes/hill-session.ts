@@ -175,6 +175,7 @@ router.post("/complete", async (req, res) => {
 // Called when user finishes GPS tracking with hill metadata
 
 const SaveTrackedSchema = z.object({
+  activityId:             z.string().min(8).max(128),
   plannedHillName:        z.string(),
   plannedRouteName:       z.string().optional(),
   hillId:                 z.number().int().optional(),
@@ -216,8 +217,27 @@ router.post("/save-tracked", async (req, res) => {
   const usedForVerification = dataQualityScore >= 70 && matchConfidence >= 70;
 
   try {
+    {
+      const [existing] = await db.select({
+        id: trackedHillSessions.id,
+        dataQualityScore: trackedHillSessions.dataQualityScore,
+        matchConfidence: trackedHillSessions.matchConfidence,
+        usedForVerification: trackedHillSessions.usedForVerification,
+      }).from(trackedHillSessions)
+        .where(eq(trackedHillSessions.activityId, d.activityId))
+        .limit(1);
+      if (existing) {
+        return res.status(200).json({
+          ...existing,
+          completionType: "tracked_gps",
+          deduplicated: true,
+        });
+      }
+    }
+
     const [row] = await db.insert(trackedHillSessions).values({
       userId:                 userId ?? null,
+      activityId:             d.activityId,
       hillId:                 d.hillId ?? null,
       routeId:                d.routeId ?? null,
       trainingPlanId:         d.trainingPlanId ?? null,
@@ -239,7 +259,28 @@ router.post("/save-tracked", async (req, res) => {
       matchConfidence,
       usedForVerification,
       completedAt:            new Date(),
+    }).onConflictDoNothing({
+      target: trackedHillSessions.activityId,
     }).returning({ id: trackedHillSessions.id });
+
+    if (!row) {
+      const [existing] = await db.select({
+        id: trackedHillSessions.id,
+        dataQualityScore: trackedHillSessions.dataQualityScore,
+        matchConfidence: trackedHillSessions.matchConfidence,
+        usedForVerification: trackedHillSessions.usedForVerification,
+      }).from(trackedHillSessions)
+        .where(eq(trackedHillSessions.activityId, d.activityId))
+        .limit(1);
+      if (existing) {
+        return res.status(200).json({
+          ...existing,
+          completionType: "tracked_gps",
+          deduplicated: true,
+        });
+      }
+      throw new Error("Idempotent hill session insert did not return a row");
+    }
 
     // Recalculate stats for this hill if we have a canonical record
     if (d.hillId && usedForVerification) {

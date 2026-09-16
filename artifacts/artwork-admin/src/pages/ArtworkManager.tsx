@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link } from "wouter";
 import {
   useGetArtworkStatus,
   getGetArtworkStatusQueryKey,
@@ -158,11 +159,19 @@ export default function ArtworkManager() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div>
+        <div className="flex items-center gap-6">
           <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" />
             SummitReady <span className="text-muted-foreground font-normal">Artwork Admin</span>
           </h1>
+          <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-md">
+            <Link href="/" className="px-3 py-1.5 text-sm font-medium rounded bg-background text-foreground shadow-sm">
+              Signatures
+            </Link>
+            <Link href="/mountains" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              Mountain Heroes
+            </Link>
+          </nav>
         </div>
         <div className="flex items-center gap-4">
           <Button onClick={startBulkGeneration} disabled={isBulkGenerating} className="gap-2 font-medium">

@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Image, Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,6 +25,7 @@ import { SubscriptionProvider } from "@/lib/revenuecat";
 import { logAppOpen, logFirstOpenForReddit } from "@/lib/analytics";
 import { clerkTokenCache } from "@/utils/clerkTokenCache";
 import { installGlobalErrorHandler } from "@/utils/globalErrorHandler";
+import { retrySyncOutbox } from "@/utils/syncOutbox";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 installGlobalErrorHandler();
@@ -62,6 +63,26 @@ function AuthBridge() {
       setAuthTokenGetter(null);
     };
   }, [isSignedIn, getToken]);
+
+  return null;
+}
+
+function SyncOutboxBridge() {
+  const { getToken, isLoaded, userId } = useAuth();
+
+  useEffect(() => {
+    if (!isLoaded || !userId) return;
+    const retry = () => { void retrySyncOutbox(userId, getToken); };
+    retry();
+    const interval = setInterval(retry, 30_000);
+    const appState = AppState.addEventListener("change", state => {
+      if (state === "active") retry();
+    });
+    return () => {
+      clearInterval(interval);
+      appState.remove();
+    };
+  }, [getToken, isLoaded, userId]);
 
   return null;
 }
@@ -224,6 +245,7 @@ function RootApp() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
       <AuthBridge />
+      <SyncOutboxBridge />
       <ClerkLoadedOrTimeout>
         <NativeServicesGate>
           <SafeAreaProvider>

@@ -20,7 +20,8 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ACTIVE_HIKE_KEY, discardActiveHike } from "@/utils/activeHikeSession";
+import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
+import { readPendingHikeSelection, type PendingHikeSelection } from "@/utils/pendingHikeSelection";
 import { englishPlaceName } from "@/utils/placeNames";
 import { isRouteCompleted } from "@/utils/stateReliability";
 
@@ -33,19 +34,14 @@ function useActiveHike() {
       setActiveHike(null);
       return;
     }
+    const ownerUserId = userId;
     let mounted = true;
     async function check() {
       try {
-        const raw = await AsyncStorage.getItem(ACTIVE_HIKE_KEY);
+        const session = await readActiveHike<any>(ownerUserId);
         if (!mounted) return;
-        if (!raw) {
+        if (!session) {
           setActiveHike(null);
-          return;
-        }
-        const session = JSON.parse(raw);
-        if (session.userId !== userId) {
-          await discardActiveHike(session);
-          if (mounted) setActiveHike(null);
           return;
         }
         const ageMs = Date.now() - (session.savedAt ?? 0);
@@ -64,6 +60,31 @@ function useActiveHike() {
   }, [authLoaded, userId]);
 
   return activeHike;
+}
+
+function usePendingHikeSelection() {
+  const { isLoaded: authLoaded, userId } = useAuth();
+  const [selection, setSelection] = useState<PendingHikeSelection | null>(null);
+
+  useEffect(() => {
+    if (!authLoaded || !userId) {
+      setSelection(null);
+      return;
+    }
+    let mounted = true;
+    async function check() {
+      const pending = await readPendingHikeSelection(userId!);
+      if (mounted) setSelection(pending);
+    }
+    void check();
+    const id = setInterval(check, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [authLoaded, userId]);
+
+  return selection;
 }
 
 import { useApp } from "@/context/AppContext";
@@ -97,6 +118,7 @@ export default function TrackScreen() {
   const insets = useSafeAreaInsets();
   const { sessions, exploreHikes, activeExpedition, activeExpeditionId } = useApp();
   const activeHike = useActiveHike();
+  const pendingHike = usePendingHikeSelection();
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
@@ -189,6 +211,36 @@ export default function TrackScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.resumeTitle}>Tracking active</Text>
                 <Text style={s.resumeSub} numberOfLines={1}>{activeHike.routeName || "Hike in progress"}</Text>
+              </View>
+              <ChevronRight size={18} color={T.green} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {!activeHike && pendingHike && pendingHike.expeditionId === activeExpeditionId && (
+          <Animated.View entering={FadeInDown.delay(30).duration(350)} style={{ marginHorizontal: 14, marginBottom: 12 }}>
+            <TouchableOpacity
+              onPress={() => router.push({
+                pathname: "/hike-tracking",
+                params: {
+                  hillName: pendingHike.routeName,
+                  trackingMode: pendingHike.trackingMode ?? "",
+                  expeditionId: pendingHike.expeditionId ?? "",
+                  routeIdentityKey: pendingHike.routeIdentityKey ?? "",
+                  summitIdentityKey: pendingHike.summitIdentityKey ?? "",
+                  objectiveType: pendingHike.objectiveType ?? "",
+                  stageSnapshot: pendingHike.stageSnapshot
+                    ? JSON.stringify(pendingHike.stageSnapshot)
+                    : "",
+                },
+              })}
+              style={s.resumeBanner}
+              activeOpacity={0.88}
+            >
+              <View style={s.resumeDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.resumeTitle}>Ready to track offline</Text>
+                <Text style={s.resumeSub} numberOfLines={1}>{pendingHike.routeName}</Text>
               </View>
               <ChevronRight size={18} color={T.green} />
             </TouchableOpacity>

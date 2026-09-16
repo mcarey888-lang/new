@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, timestamp, jsonb, serial, boolean, index, check } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, timestamp, jsonb, serial, boolean, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -53,6 +53,7 @@ export const canonicalHillRoutes = pgTable("canonical_hill_routes", {
 export const trackedHillSessions = pgTable("tracked_hill_sessions", {
   id:                     serial("id").primaryKey(),
   userId:                 text("user_id"),
+  activityId:             text("activity_id"),
   hillId:                 integer("hill_id"),
   routeId:                integer("route_id"),
   trainingPlanId:         text("training_plan_id"),
@@ -78,6 +79,7 @@ export const trackedHillSessions = pgTable("tracked_hill_sessions", {
   completedAt:            timestamp("completed_at", { withTimezone: true }),
 }, (t) => [
   index("tracked_hill_sessions_user_id_idx").on(t.userId),
+  uniqueIndex("tracked_hill_sessions_activity_uidx").on(t.activityId),
   index("tracked_hill_sessions_hill_id_idx").on(t.hillId),
   check("chk_tracked_sessions_completion_type", sql`${t.completionType} IN ('estimated_manual', 'tracked_gps')`),
 ]);

@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import ArtworkManager from './pages/ArtworkManager';
+import MountainQueue from './pages/MountainQueue';
+import { Toaster } from '@/components/ui/sonner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +28,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={ArtworkManager} />
+      <Route path="/mountains" component={MountainQueue} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -36,6 +39,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <Router />
+        <Toaster />
       </WouterRouter>
     </QueryClientProvider>
   );

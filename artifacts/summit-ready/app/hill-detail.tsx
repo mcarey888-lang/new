@@ -530,6 +530,17 @@ export default function HillDetailScreen() {
                   routeIdentityKey: routeIdentityKey ?? "",
                   summitIdentityKey: summitIdentityKey ?? "",
                   objectiveType: objectiveType ?? "",
+                    stageSnapshot: JSON.stringify({
+                      name,
+                      location,
+                      elevation,
+                      distance,
+                      routeDistance,
+                      estimatedTime,
+                      routeType,
+                      grade,
+                      surface,
+                    }),
                   ...(isExpeditionMode ? {
                     trackingMode: "expedition-route",
                     expeditionId: expeditionId ?? "",
