@@ -299,7 +299,8 @@ export default function BaseCampScreen() {
   useScreenView("expedition_base_camp");
   const insets = useSafeAreaInsets();
   const { summitGoal: publicGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
-          startExpedition, expeditions, activeExpeditionId, activeExpedition, exploreHikes } = useApp();
+          startExpedition, expeditions, activeExpeditionId, activeExpedition, exploreHikes,
+          trainingPlan, setShellMode } = useApp();
   const summitGoal: SummitGoal | null = activeExpedition
     ? {
         ...(publicGoal ?? {
@@ -474,6 +475,7 @@ export default function BaseCampScreen() {
   );
 
   const trailTime    = useMemo(() => calcTrailTime(sessions), [sessions]);
+  const hasTrainingPlan = trainingPlan.length > 0;
 
   const target    = summitGoal?.targetMountain;
   const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
@@ -1338,19 +1340,36 @@ export default function BaseCampScreen() {
           <View style={[s.card, { flex: 1 }]}>
             <Text style={[s.sectionLabel, { marginBottom: 10 }]}>PREPARE FOR SUCCESS</Text>
             <Text style={s.coachText} numberOfLines={5}>
-              {pct < 25
-                ? "Build your base. Focus on consistent hill sessions with good elevation gain."
-                : pct < 50
-                  ? "Good work! Keep your leg strength and hydration high for your next stage."
-                  : pct < 80
-                    ? "You're making great progress. Add longer days to sharpen your endurance."
-                    : "You're nearly there! Taper well and trust your training before the final push."}
+              {hasTrainingPlan
+                ? pct < 25
+                  ? "Build your base. Focus on consistent hill sessions with good elevation gain."
+                  : pct < 50
+                    ? "Good work! Keep your leg strength and hydration high for your next stage."
+                    : pct < 80
+                      ? "You're making great progress. Add longer days to sharpen your endurance."
+                      : "You're nearly there! Taper well and trust your training before the final push."
+                : "Training for a real mountain? Build a personalised plan around your summit, schedule and local hills."}
             </Text>
             <TouchableOpacity
               style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}
-              onPress={() => router.push("/(tabs)/plan" as any)}
+              onPress={() => {
+                void (async () => {
+                  try {
+                    await setShellMode("training");
+                    router.replace(hasTrainingPlan ? "/(tabs)/plan" : "/setup" as any);
+                  } catch (switchError) {
+                    console.error("[base-camp] Could not open Training mode", switchError);
+                    Alert.alert(
+                      "Couldn't open Training",
+                      "SummitReady couldn't switch to Training mode. Please try again.",
+                    );
+                  }
+                })();
+              }}
             >
-              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>View Training Plan</Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>
+                {hasTrainingPlan ? "View Training Plan" : "Start Mountain Training"}
+              </Text>
               <ChevronRight size={12} color={T.blue} />
             </TouchableOpacity>
           </View>
