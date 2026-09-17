@@ -1,9 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Sun, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/ThemeContext";
 import logoPath from "../assets/logo.gif";
+
+/** Editorial nav link — plain type, hairline underline on active/hover. */
+function NavLink({
+  to, href, active, children,
+}: {
+  to?: string; href?: string; active?: boolean; children: React.ReactNode;
+}) {
+  const cls = [
+    "relative inline-flex items-center min-h-[44px] text-[0.9375rem] font-medium transition-colors duration-200",
+    "after:absolute after:left-0 after:right-0 after:bottom-[10px] after:h-px after:origin-left after:transition-transform after:duration-300",
+    active
+      ? "text-foreground after:bg-primary after:scale-x-100"
+      : "text-muted-foreground hover:text-foreground after:bg-foreground/40 after:scale-x-0 hover:after:scale-x-100",
+  ].join(" ");
+
+  if (to) return <Link to={to} className={cls}>{children}</Link>;
+  return <a href={href} className={cls}>{children}</a>;
+}
 
 export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -24,78 +41,96 @@ export function SiteNav() {
   }, [pathname]);
 
   const ctaHref = isHome ? "#get-started" : "/#get-started";
+  const solid = scrolled || !isHome || mobileOpen;
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled || !isHome || mobileOpen
-        ? "bg-background/90 backdrop-blur-xl border-b border-border py-4"
-        : "bg-transparent py-6"
-    }`}>
-      <div className="container mx-auto px-6 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3 shrink-0">
-          <img src={logoPath} alt="SummitReady" className="h-10 w-auto" />
-          <span className="font-display font-bold text-xl tracking-tight text-foreground">SummitReady</span>
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,border-color,padding] duration-300 ${
+        solid
+          ? "bg-background/92 backdrop-blur-xl border-b sr-hairline py-4"
+          : "bg-transparent border-b border-transparent py-6"
+      }`}
+    >
+      <div className="sr-shell flex items-center justify-between gap-8">
+        {/* Wordmark */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+          <img src={logoPath} alt="" aria-hidden="true" className="h-8 w-auto" />
+          <span className="font-display font-semibold text-[1.0625rem] tracking-[-0.01em] text-foreground">
+            SummitReady
+          </span>
         </Link>
 
-        <div className="hidden lg:flex items-center gap-6 text-sm font-medium text-muted-foreground">
+        {/* Primary navigation */}
+        <div className="hidden lg:flex items-center gap-9">
           {isHome && (
             <>
-              <a href="#problem" className="hover:text-primary transition-colors min-h-[44px] inline-flex items-center">The Reality</a>
-              <a href="#features" className="hover:text-primary transition-colors min-h-[44px] inline-flex items-center">Features</a>
-              <a href="#how-it-works" className="hover:text-primary transition-colors min-h-[44px] inline-flex items-center">How it Works</a>
-              <span className="text-foreground/15 select-none">|</span>
+              <NavLink href="#problem">The Reality</NavLink>
+              <NavLink href="#features">Features</NavLink>
+              <NavLink href="#how-it-works">How it Works</NavLink>
             </>
           )}
-          <Link to="/training-guides" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/training-guides") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Training Guides</Link>
-          <Link to="/can-i-climb" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/can-i-climb") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Am I Ready?</Link>
-          <Link to="/mountains" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/mountains") ? "border-primary/50 text-primary bg-primary/10" : "border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"}`}>Mountains</Link>
-          <Link to="/readiness-check" className={`px-3 py-1.5 rounded-full border transition-all min-h-[44px] inline-flex items-center text-sm font-semibold ${pathname.startsWith("/readiness-check") ? "border-primary/50 text-primary bg-primary/10" : "border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"}`}>Readiness Check</Link>
+          <NavLink to="/training-guides" active={pathname.startsWith("/training-guides")}>
+            Training Guides
+          </NavLink>
+          <NavLink to="/can-i-climb" active={pathname.startsWith("/can-i-climb")}>
+            Am I Ready?
+          </NavLink>
+          <NavLink to="/mountains" active={pathname.startsWith("/mountains")}>
+            Mountains
+          </NavLink>
+          <NavLink to="/readiness-check" active={pathname.startsWith("/readiness-check")}>
+            Readiness Check
+          </NavLink>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Actions */}
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={toggle}
             aria-label="Toggle light/dark mode"
-            className="p-2 rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-all border border-foreground/15 hover:border-foreground/30"
+            className="h-10 w-10 inline-flex items-center justify-center rounded-md border sr-hairline text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-          <a href={ctaHref} className="hidden sm:block">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(62,207,117,0.3)]">
-              Get Started
-            </Button>
+
+          <a
+            href={ctaHref}
+            className="hidden sm:inline-flex items-center justify-center h-12 px-6 rounded-lg bg-primary text-primary-foreground text-[0.9375rem] font-semibold tracking-[-0.005em] transition-colors duration-200 hover:bg-[hsl(var(--accent))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Get Started
           </a>
+
           <button
-            className="lg:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="lg:hidden h-10 w-10 inline-flex items-center justify-center rounded-md border sr-hairline text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle navigation menu"
+            aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-xl">
-          <div className="container mx-auto px-6 py-5 flex flex-col gap-0.5">
+        <div className="lg:hidden border-t sr-hairline bg-background/97 backdrop-blur-xl">
+          <div className="sr-shell py-4 flex flex-col">
             {isHome && (
               <>
-                <a href="#problem" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">The Reality</a>
-                <a href="#features" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Features</a>
-                <a href="#how-it-works" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">How it Works</a>
+                <a href="#problem" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">The Reality</a>
+                <a href="#features" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">Features</a>
+                <a href="#how-it-works" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">How it Works</a>
               </>
             )}
-            <Link to="/training-guides" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Training Guides</Link>
-            <Link to="/can-i-climb" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Am I Ready?</Link>
-            <Link to="/mountains" className="py-3 text-muted-foreground hover:text-primary transition-colors font-medium border-b border-border">Mountains</Link>
-            <Link to="/readiness-check" className="py-3 text-primary font-semibold border-b border-border">Readiness Check</Link>
-            <div className="pt-4">
-              <a href={ctaHref} className="block">
-                <Button className="w-full bg-primary text-primary-foreground font-semibold rounded-full">
-                  Get Started
-                </Button>
-              </a>
-            </div>
+            <Link to="/training-guides" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">Training Guides</Link>
+            <Link to="/can-i-climb" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">Am I Ready?</Link>
+            <Link to="/mountains" className="py-3.5 text-muted-foreground hover:text-foreground transition-colors font-medium border-b sr-hairline">Mountains</Link>
+            <Link to="/readiness-check" className="py-3.5 text-foreground font-semibold border-b sr-hairline">Readiness Check</Link>
+            <a
+              href={ctaHref}
+              className="mt-5 inline-flex items-center justify-center h-12 px-6 rounded-lg bg-primary text-primary-foreground font-semibold"
+            >
+              Get Started
+            </a>
           </div>
         </div>
       )}

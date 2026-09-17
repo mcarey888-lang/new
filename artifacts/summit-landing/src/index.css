@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;650;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -59,40 +59,49 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 220 64% 6%;
-  --foreground: 210 40% 98%;
-  --border: 217 32% 17%;
+  /* Premium outdoor palette — #07111B / #0D1823 / #14212C / #F7F8F6 / #AEB8BF / #5BE58C */
+  --background: 210 59% 7%;        /* #07111B primary dark   */
+  --foreground: 90 13% 97%;        /* #F7F8F6 primary light  */
+  --border: 208 38% 16%;
 
-  --card: 220 64% 8%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 217 32% 17%;
+  --card: 210 46% 9%;              /* #0D1823 deep surface   */
+  --card-foreground: 90 13% 97%;
+  --card-border: 208 38% 16%;
 
-  --popover: 220 64% 6%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 217 32% 17%;
+  --popover: 210 46% 9%;
+  --popover-foreground: 90 13% 97%;
+  --popover-border: 208 38% 16%;
 
-  --primary: 143 62% 53%;
-  --primary-foreground: 220 64% 6%;
+  --primary: 141 73% 63%;          /* #5BE58C SummitReady green */
+  --primary-foreground: 210 59% 7%;
 
-  --secondary: 217 32% 17%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 208 38% 13%;        /* #14212C raised dark    */
+  --secondary-foreground: 90 13% 97%;
 
-  --muted: 217 32% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 208 38% 13%;
+  --muted-foreground: 205 12% 72%; /* #AEB8BF secondary text */
 
-  --accent: 143 62% 53%;
-  --accent-foreground: 220 64% 6%;
+  --accent: 144 50% 50%;           /* #3FBF73 muted green    */
+  --accent-foreground: 210 59% 7%;
 
   --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 90 13% 97%;
 
-  --input: 217 32% 17%;
-  --ring: 143 62% 53%;
+  --input: 208 38% 16%;
+  --ring: 141 73% 63%;
 
-  --section-alt: 220 60% 5%;
+  --section-alt: 210 46% 9%;
+
+  /* Named brand tokens for section-level composition */
+  --sr-dark: 210 59% 7%;
+  --sr-surface: 210 46% 9%;
+  --sr-raised: 208 38% 13%;
+  --sr-offwhite: 43 24% 94%;       /* #F4F2ED warm off-white */
+  --sr-ink: 210 33% 9%;            /* #101820 dark text      */
+  --sr-hairline: rgba(255,255,255,0.10);
 
   --app-font-sans: 'Inter', sans-serif;
-  --app-font-display: 'Space Grotesk', sans-serif;
+  --app-font-display: 'Inter', sans-serif;
   --radius: 0.5rem;
 
   --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.5);
@@ -114,19 +123,19 @@ html.light {
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
 
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 88%;
+  --background: 43 24% 94%;        /* #F4F2ED warm off-white */
+  --foreground: 210 33% 9%;        /* #101820 dark text      */
+  --border: 40 12% 84%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 88%;
+  --card: 40 30% 97%;
+  --card-foreground: 210 33% 9%;
+  --card-border: 40 12% 84%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 88%;
+  --popover: 40 30% 97%;
+  --popover-foreground: 210 33% 9%;
+  --popover-border: 40 12% 84%;
 
-  --primary: 143 55% 40%;
+  --primary: 144 50% 38%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 214 32% 94%;
@@ -189,5 +198,120 @@ html.light .hero-overlay-h { background: linear-gradient(to right, hsl(0 0% 100%
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
+  }
+}
+
+/* ── Editorial system ──────────────────────────────────────────────────────
+   Shared primitives for the premium outdoor treatment. Kept as plain CSS so
+   they can be reused section by section without touching component logic. */
+
+/* Small uppercase editorial label — replaces decorative pills */
+.sr-eyebrow {
+  font-size: 0.6875rem;              /* 11px */
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+@media (min-width: 768px) {
+  .sr-eyebrow { font-size: 0.75rem; }  /* 12px */
+}
+
+/* Cinematic display heading — tight leading, balanced wrap */
+.sr-display {
+  font-size: clamp(2.625rem, 5.4vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.0;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+/* Editorial body copy */
+.sr-lede {
+  font-size: 1.0625rem;              /* 17px */
+  line-height: 1.6;
+  max-width: 46ch;
+}
+@media (min-width: 768px) {
+  .sr-lede { font-size: 1.125rem; }  /* 18px */
+}
+
+/* Content shell: 1400px max, 5–7vw gutters */
+.sr-shell {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 5.5vw, 5.5rem);
+}
+
+/* Directional scrim so hero type stays legible over photography */
+.sr-scrim-h {
+  /* Mobile: content is full-width, so the scrim must darken uniformly. */
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--sr-dark) / 0.86) 0%,
+    hsl(var(--sr-dark) / 0.78) 45%,
+    hsl(var(--sr-dark) / 0.70) 100%
+  );
+}
+/* Desktop: directional scrim so the photograph stays open on the right. */
+@media (min-width: 768px) {
+  .sr-scrim-h {
+    background: linear-gradient(
+      100deg,
+      hsl(var(--sr-dark) / 0.94) 0%,
+      hsl(var(--sr-dark) / 0.82) 28%,
+      hsl(var(--sr-dark) / 0.35) 58%,
+      hsl(var(--sr-dark) / 0.15) 100%
+    );
+  }
+}
+.sr-scrim-v {
+  background: linear-gradient(
+    to top,
+    hsl(var(--sr-dark)) 0%,
+    hsl(var(--sr-dark) / 0.55) 14%,
+    transparent 45%
+  );
+}
+html.light .sr-scrim-h {
+  background: linear-gradient(100deg,
+    hsl(var(--sr-offwhite) / 0.95) 0%,
+    hsl(var(--sr-offwhite) / 0.82) 30%,
+    hsl(var(--sr-offwhite) / 0.28) 62%,
+    transparent 100%);
+}
+html.light .sr-scrim-v {
+  background: linear-gradient(to top,
+    hsl(var(--sr-offwhite)) 0%,
+    hsl(var(--sr-offwhite) / 0.5) 14%,
+    transparent 45%);
+}
+
+/* Hairline rule used between editorial blocks */
+.sr-hairline { border-color: var(--sr-hairline); }
+html.light .sr-hairline { border-color: rgba(0,0,0,0.10); }
+
+/* Restrained section reveal */
+@keyframes sr-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.sr-rise {
+  animation: sr-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Slow cinematic settle on the hero photograph */
+@keyframes sr-settle {
+  from { transform: scale(1.06); }
+  to   { transform: scale(1); }
+}
+.sr-settle { animation: sr-settle 2.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sr-rise, .sr-settle {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
 }
