@@ -52,5 +52,8 @@ Thumbs.db
 *.tar.gz
 *.tar.xz
 *.zip
+/custom-expedition-pre-manual-builder.bundle
+/virtual-expeditions-mode-backup.bundle
+/backups/production-data-pre-overwrite-2026-09-11.json
 attached_assets/
 screenshots/
