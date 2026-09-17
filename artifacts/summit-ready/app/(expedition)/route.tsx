@@ -76,7 +76,7 @@ function StatChip({ label, value }: { label: string; value: string }) {
 }
 
 function SectionRow({
-  index, name, sub, why, warning, color, isLast,
+  index, name, sub, why, warning, color, isLast, onPress,
 }: {
   index: number;
   name: string;
@@ -85,33 +85,42 @@ function SectionRow({
   warning?: string;
   color: string;
   isLast: boolean;
+  onPress: () => void;
 }) {
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(350)} style={[s.sectionRow, isLast && { borderBottomWidth: 0 }]}>
-      {/* Timeline dot + line */}
-      <View style={{ alignItems: "center", width: 28 }}>
-        <View style={[s.timelineDot, { backgroundColor: color + "22", borderColor: color + "60" }]}>
-          <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color }}>{index + 1}</Text>
-        </View>
-        {!isLast && <View style={s.timelineLine} />}
-      </View>
-
-      {/* Content */}
-      <View style={{ flex: 1, paddingBottom: 18 }}>
-        <Text style={s.rowName}>{name}</Text>
-        <Text style={s.rowSub}>{sub}</Text>
-        {why && (
-          <Text style={s.rowWhy} numberOfLines={2}>{why}</Text>
-        )}
-        {warning && (
-          <View style={s.warningRow}>
-            <AlertTriangle size={13} color={T.orange} />
-            <Text style={s.warningText}>{warning}</Text>
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(350)}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.72}
+        accessibilityRole="button"
+        accessibilityLabel={`View details for ${name}`}
+        style={[s.sectionRow, isLast && { borderBottomWidth: 0 }]}
+      >
+        {/* Timeline dot + line */}
+        <View style={{ alignItems: "center", width: 28 }}>
+          <View style={[s.timelineDot, { backgroundColor: color + "22", borderColor: color + "60" }]}>
+            <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color }}>{index + 1}</Text>
           </View>
-        )}
-      </View>
+          {!isLast && <View style={s.timelineLine} />}
+        </View>
 
-      <ChevronRight size={14} color={T.textDim} style={{ marginTop: 2 }} />
+        {/* Content */}
+        <View style={{ flex: 1, paddingBottom: 18 }}>
+          <Text style={s.rowName}>{name}</Text>
+          <Text style={s.rowSub}>{sub}</Text>
+          {why && (
+            <Text style={s.rowWhy} numberOfLines={2}>{why}</Text>
+          )}
+          {warning && (
+            <View style={s.warningRow}>
+              <AlertTriangle size={13} color={T.orange} />
+              <Text style={s.warningText}>{warning}</Text>
+            </View>
+          )}
+        </View>
+
+        <ChevronRight size={14} color={T.textDim} style={{ marginTop: 2 }} />
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -121,7 +130,7 @@ function SectionRow({
 export default function RouteScreen() {
   useScreenView("expedition_route");
   const insets = useSafeAreaInsets();
-  const { activeExpedition } = useApp();
+  const { activeExpedition, activeExpeditionId } = useApp();
   const [activeTab,    setActiveTab]    = useState<TabKey>("route");
   const [artworkError,  setArtworkError]  = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
@@ -197,7 +206,7 @@ export default function RouteScreen() {
   // Build section list — prefer AI expedition plan, fall back to virtual hills
   const routeSections = (() => {
     if (activeTab === "route" && plan?.days && plan.days.length > 0) {
-      const sections: Array<{ name: string; sub: string; why?: string; warning?: string; color: string }> = [];
+      const sections: Array<{ name: string; sub: string; why?: string; warning?: string; color: string; hill?: NearbyHill }> = [];
       plan.days.forEach((day: any) => {
         (day.routes ?? []).forEach((r: any) => {
           const routeName = englishPlaceName(String(r.name ?? "Route section"));
@@ -208,6 +217,7 @@ export default function RouteScreen() {
             why:   r.why,
             warning: hill?.safetyWarning,
             color: T.green,
+            hill,
           });
         });
       });
@@ -220,6 +230,7 @@ export default function RouteScreen() {
       why:   undefined,
       warning: h.safetyWarning,
       color: routeTypeColor(h),
+      hill: h,
     }));
   })();
 
@@ -360,6 +371,32 @@ export default function RouteScreen() {
                 warning={sec.warning}
                 color={sec.color}
                 isLast={i === routeSections.length - 1}
+                onPress={() => {
+                  const hill = sec.hill ?? hills[i];
+                  if (!hill) return;
+                  router.push({
+                    pathname: "/hill-detail",
+                    params: {
+                      name: hill.name,
+                      location: activeExpedition?.location ?? "",
+                      lat: hill.lat?.toString() ?? "",
+                      lng: hill.lng?.toString() ?? "",
+                      elevation: hill.elevation.toString(),
+                      distance: hill.distance.toString(),
+                      routeDistance: (hill.routeDistance ?? hill.distance).toString(),
+                      estimatedTime: hill.estimatedTime ?? "",
+                      routeType: hill.routeType ?? "",
+                      grade: hill.grade ?? "",
+                      surface: hill.surface ?? "",
+                      emoji: hill.emoji ?? "⛰️",
+                      expeditionMode: "true",
+                      expeditionId: activeExpeditionId ?? "",
+                      routeIdentityKey: hill.routeIdentityKey ?? "",
+                      summitIdentityKey: hill.summitIdentityKey ?? "",
+                      objectiveType: hill.objectiveType ?? "",
+                    },
+                  });
+                }}
               />
             ))
           )}
