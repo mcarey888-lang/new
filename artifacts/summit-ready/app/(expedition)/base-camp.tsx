@@ -32,6 +32,10 @@ import { englishPlaceName } from "@/utils/placeNames";
 import { isRouteCompleted } from "@/utils/stateReliability";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
+  signatureStageToNearbyHill,
+  signatureStageTotals,
+} from "@/utils/signatureExpedition";
+import {
   VerifiedMountainChooser,
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
@@ -484,9 +488,9 @@ export default function BaseCampScreen() {
     0,
   );
   const hasCompleteRouteDistance = suggestedHills.length > 0
-    && suggestedHills.every(h => (h.routeDistance ?? 0) > 0);
+    && suggestedHills.every(h => (h.routeDistance ?? h.distance ?? 0) > 0);
   const suggestedDist = suggestedHills.reduce(
-    (acc, h) => acc + ((h.routeDistance ?? 0) * Math.max(1, h.repeats ?? 1)),
+    (acc, h) => acc + ((h.routeDistance ?? h.distance ?? 0) * Math.max(1, h.repeats ?? 1)),
     0,
   );
 
@@ -965,17 +969,8 @@ export default function BaseCampScreen() {
             setSelectedChallengeId(null);
             // Build the goal IMMEDIATELY from challenge data so the active state
             // renders instantly with no API round-trip.
-            const hills: NearbyHill[] = ch.stages.map(s => ({
-              name:           s.routeName,
-              elevation:      s.ascentM ?? 0,
-              distance:       s.distanceKm ?? 0,
-              repeats:        1,
-              totalElevation: s.ascentM ?? 0,
-              surface:        "mixed",
-              grade:          s.difficulty ?? "Hard",
-              emoji:          "⛰️",
-              estimatedTime:  s.estimatedHours ? `${Math.floor(s.estimatedHours)}h` : undefined,
-            }));
+            const hills: NearbyHill[] = ch.stages.map(signatureStageToNearbyHill);
+            const stageTotals = signatureStageTotals(ch.stages);
             // Add to Adventure Library and make active — preserves all existing progress.
             void startExpedition({
               challengeId:        ch.challengeId,
@@ -986,8 +981,8 @@ export default function BaseCampScreen() {
                 name:               ch.targetMountainName,
                 country:            ch.regions?.split(/[,/]/)[0]?.trim() ?? "United Kingdom",
                 summitElevation:    0,
-                totalElevationGain: ch.totalAscentM ?? 0,
-                totalDistance:      ch.totalDistanceKm ?? 0,
+                totalElevationGain: ch.totalAscentM ?? stageTotals.ascentM,
+                totalDistance:      ch.totalDistanceKm ?? stageTotals.distanceKm,
                 estimatedDays:      (Math.min(2, Math.max(1, ch.recommendedDays)) as 1 | 2),
                 difficulty:         (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
                 altitudeExposure:   "None" as const,

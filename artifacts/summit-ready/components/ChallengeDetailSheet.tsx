@@ -48,6 +48,7 @@ function diffColor(d: string | null) {
 
 interface SigStage {
   stageOrder: number;
+  routeKey: string | null;
   routeName: string;
   region: string | null;
   distanceKm: number | null;

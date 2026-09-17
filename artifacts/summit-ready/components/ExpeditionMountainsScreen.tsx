@@ -65,6 +65,10 @@ import {
   confirmExtraDayFlow,
 } from "@/utils/manualExpedition";
 import { mountainSuggestions } from "@/constants/mountains";
+import {
+  signatureStageToNearbyHill,
+  signatureStageTotals,
+} from "@/utils/signatureExpedition";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -278,6 +282,7 @@ interface PendingExpeditionRequest {
 
 interface SigStage {
   stageOrder: number;
+  routeKey: string | null;
   routeName: string;
   region: string | null;
   distanceKm: number | null;
@@ -2500,19 +2505,8 @@ export default function ExpeditionMountainsScreen() {
           const region = challenge.regions?.split(/[,/]/)[0]?.trim()
             ?? activeExpedition?.location
             ?? "United Kingdom";
-          const hills: NearbyHill[] = challenge.stages.map(s => ({
-            name:           s.routeName,
-            elevation:      s.ascentM ?? 0,
-            distance:       s.distanceKm ?? 0,
-            repeats:        1,
-            totalElevation: s.ascentM ?? 0,
-            surface:        "mixed",
-            grade:          s.difficulty ?? "Hard",
-            emoji:          "⛰️",
-            estimatedTime:  s.estimatedHours
-              ? `${Math.floor(s.estimatedHours)}h`
-              : undefined,
-          }));
+          const hills: NearbyHill[] = challenge.stages.map(signatureStageToNearbyHill);
+          const stageTotals = signatureStageTotals(challenge.stages);
           void startExpedition({
             challengeId:        challenge.challengeId,
             challengeName:      challenge.challengeName,
@@ -2521,8 +2515,8 @@ export default function ExpeditionMountainsScreen() {
               name:               challenge.targetMountainName,
               country:            region,
               summitElevation:    0,
-              totalElevationGain: challenge.totalAscentM ?? 0,
-              totalDistance:      challenge.totalDistanceKm ?? 0,
+              totalElevationGain: challenge.totalAscentM ?? stageTotals.ascentM,
+              totalDistance:      challenge.totalDistanceKm ?? stageTotals.distanceKm,
               estimatedDays:      Math.min(2, Math.max(1, challenge.recommendedDays)) as 1 | 2,
               difficulty:         (challenge.difficulty as TargetMountain["difficulty"]) ?? "Hard",
               altitudeExposure:   "None" as const,
@@ -2532,7 +2526,7 @@ export default function ExpeditionMountainsScreen() {
             location:        region,
             maxRadius:       searchRadius,
             fitnessLevel:    activeExpedition?.fitnessLevel ?? "Average",
-          }).then(() => setView("progress"));
+          }).then(() => router.replace("/(expedition)/base-camp" as any));
         }}
       />
     </LinearGradient>
