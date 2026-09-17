@@ -478,7 +478,6 @@ export default function BaseCampScreen() {
   const target    = summitGoal?.targetMountain;
   const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
   const targetDist = target?.totalDistance ?? summitGoal?.distance ?? 0;
-  const score     = summitGoal?.simulationScore ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
   // ── DNA Match Breakdown ──────────────────────────────────────────────────────
@@ -506,6 +505,12 @@ export default function BaseCampScreen() {
   const steepnessMatch = hasCompleteRouteDistance
     ? metricMatchPercent(suggestedSteepness, targetSteepness)
     : null;
+  const visibleDnaMatches = [elevMatch, distMatch, steepnessMatch].filter(
+    (value): value is number => value !== null,
+  );
+  const score = visibleDnaMatches.length > 0
+    ? Math.round(visibleDnaMatches.reduce((sum, value) => sum + value, 0) / visibleDnaMatches.length)
+    : summitGoal?.simulationScore ?? 0;
 
   const steepnessRatio = suggestedSteepness > 0 ? `1:${Math.round(1 / suggestedSteepness)}` : "—";
   const targetSteepnessRatio = targetSteepness > 0 ? `1:${Math.round(1 / targetSteepness)}` : "—";
