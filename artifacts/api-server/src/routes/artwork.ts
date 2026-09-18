@@ -34,10 +34,16 @@ import {
   listMountainHeroReviews,
   rejectMountainHeroCandidate,
 } from "../services/artwork/mountainHeroReview.js";
+import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
+
+// Normalise Express route params (string in real requests, string | string[] in Express 5 types).
+function param(value: string | string[]): string {
+  return Array.isArray(value) ? value[0]! : value;
+}
 
 artworkRouter.get("/mountains", async (req, res) => {
   try {
@@ -58,33 +64,33 @@ artworkRouter.get("/mountains", async (req, res) => {
   }
 });
 
-artworkRouter.post("/mountains/:id/candidates", async (req, res) => {
+artworkRouter.post("/mountains/:id/candidates", requireAdminKey, async (req, res) => {
   try {
-    return res.json(await findMountainHeroCandidates(req.params.id));
+    return res.json(await findMountainHeroCandidates(param(req.params.id)));
   } catch (err) {
     console.error("[artwork/mountains/candidates]", err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Candidate search failed" });
   }
 });
 
-artworkRouter.post("/mountains/:id/approve", async (req, res) => {
+artworkRouter.post("/mountains/:id/approve", requireAdminKey, async (req, res) => {
   try {
     if (!req.body?.candidate?.imageUrl) {
       return res.status(400).json({ error: "Candidate image is required" });
     }
-    return res.json(await approveMountainHero(req.params.id, req.body.candidate));
+    return res.json(await approveMountainHero(param(req.params.id), req.body.candidate));
   } catch (err) {
     console.error("[artwork/mountains/approve]", err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Approval failed" });
   }
 });
 
-artworkRouter.post("/mountains/:id/reject", async (req, res) => {
+artworkRouter.post("/mountains/:id/reject", requireAdminKey, async (req, res) => {
   try {
     if (typeof req.body?.imageUrl !== "string") {
       return res.status(400).json({ error: "Image URL is required" });
     }
-    return res.json(await rejectMountainHeroCandidate(req.params.id, req.body.imageUrl));
+    return res.json(await rejectMountainHeroCandidate(param(req.params.id), req.body.imageUrl));
   } catch (err) {
     console.error("[artwork/mountains/reject]", err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Rejection failed" });
@@ -123,7 +129,7 @@ artworkRouter.get("/image/:challengeId/:crop", async (req, res) => {
 // ── GET /api/artwork/prompt/:challengeId ──────────────────────────────────────
 // Returns the auto-built prompt without generating an image.
 artworkRouter.get("/prompt/:challengeId", async (req, res) => {
-  const { challengeId } = req.params;
+  const challengeId = param(req.params.challengeId);
   try {
     const rows = await db
       .select()
@@ -150,8 +156,8 @@ artworkRouter.get("/prompt/:challengeId", async (req, res) => {
 
 // ── POST /api/artwork/generate/:challengeId ────────────────────────────────────
 // Body: { force?: boolean }
-artworkRouter.post("/generate/:challengeId", async (req, res) => {
-  const { challengeId } = req.params;
+artworkRouter.post("/generate/:challengeId", requireAdminKey, async (req, res) => {
+  const challengeId = param(req.params.challengeId);
   const force = req.body?.force === true;
 
   try {
@@ -173,7 +179,7 @@ artworkRouter.post("/generate/:challengeId", async (req, res) => {
 // Each event is a JSON object: { index, total, result: GenerateResult }
 // Final event: { done: true, report: BulkResult }
 // Body: { force?: boolean }
-artworkRouter.post("/bulk", async (req, res) => {
+artworkRouter.post("/bulk", requireAdminKey, async (req, res) => {
   const force = req.body?.force === true;
 
   // SSE setup
@@ -204,8 +210,8 @@ artworkRouter.post("/bulk", async (req, res) => {
 });
 
 // ── POST /api/artwork/approve/:challengeId ─────────────────────────────────────
-artworkRouter.post("/approve/:challengeId", async (req, res) => {
-  const { challengeId } = req.params;
+artworkRouter.post("/approve/:challengeId", requireAdminKey, async (req, res) => {
+  const challengeId = param(req.params.challengeId);
   try {
     await approveChallengeArtwork(challengeId);
     return res.json({ challengeId, approved: true });
@@ -216,8 +222,8 @@ artworkRouter.post("/approve/:challengeId", async (req, res) => {
 });
 
 // ── POST /api/artwork/reject/:challengeId ──────────────────────────────────────
-artworkRouter.post("/reject/:challengeId", async (req, res) => {
-  const { challengeId } = req.params;
+artworkRouter.post("/reject/:challengeId", requireAdminKey, async (req, res) => {
+  const challengeId = param(req.params.challengeId);
   try {
     await rejectChallengeArtwork(challengeId);
     return res.json({ challengeId, approved: false, status: "rejected" });
@@ -229,8 +235,8 @@ artworkRouter.post("/reject/:challengeId", async (req, res) => {
 
 // ── DELETE /api/artwork/:challengeId ───────────────────────────────────────────
 // Removes all stored images (GCS + DB fields).
-artworkRouter.delete("/:challengeId", async (req, res) => {
-  const { challengeId } = req.params;
+artworkRouter.delete("/:challengeId", requireAdminKey, async (req, res) => {
+  const challengeId = param(req.params.challengeId);
   try {
     await clearChallengeArtwork(challengeId);
     return res.json({ challengeId, cleared: true });

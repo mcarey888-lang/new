@@ -47,6 +47,7 @@ import {
   getPublishQueue,
 } from "../services/atlas/atlasGitHubService.js";
 import type { AtlasCropName } from "../services/atlas/atlasCropService.js";
+import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 
 export const atlasRouter = Router();
 
@@ -106,7 +107,7 @@ atlasRouter.get("/image/:assetId/:crop", async (req, res) => {
 });
 
 // ── POST /api/atlas/assets ────────────────────────────────────────────────────
-atlasRouter.post("/assets", async (req, res) => {
+atlasRouter.post("/assets", requireAdminKey, async (req, res) => {
   const { brandId, assetTypeId, sceneVars } = req.body ?? {};
   if (!brandId || !assetTypeId) {
     return res.status(400).json({ error: "brandId and assetTypeId are required" });
@@ -126,7 +127,7 @@ function param(p: string | string[]): string {
 }
 
 // ── POST /api/atlas/generate/:assetId ────────────────────────────────────────
-atlasRouter.post("/generate/:assetId", async (req, res) => {
+atlasRouter.post("/generate/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   const force = req.body?.force === true;
   try {
@@ -140,7 +141,7 @@ atlasRouter.post("/generate/:assetId", async (req, res) => {
 });
 
 // ── POST /api/atlas/upload/:assetId ──────────────────────────────────────────
-atlasRouter.post("/upload/:assetId", async (req, res) => {
+atlasRouter.post("/upload/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   const { data, mimeType } = req.body ?? {};
   if (!data || typeof data !== "string") {
@@ -157,7 +158,7 @@ atlasRouter.post("/upload/:assetId", async (req, res) => {
 });
 
 // ── POST /api/atlas/bulk ──────────────────────────────────────────────────────
-atlasRouter.post("/bulk", async (req, res) => {
+atlasRouter.post("/bulk", requireAdminKey, async (req, res) => {
   const force = req.body?.force === true;
   const brandId = req.body?.brandId ? Number(req.body.brandId) : null;
 
@@ -184,7 +185,7 @@ atlasRouter.post("/bulk", async (req, res) => {
 });
 
 // ── POST /api/atlas/approve/:assetId ─────────────────────────────────────────
-atlasRouter.post("/approve/:assetId", async (req, res) => {
+atlasRouter.post("/approve/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await approveAtlasAsset(assetId);
@@ -196,7 +197,7 @@ atlasRouter.post("/approve/:assetId", async (req, res) => {
 });
 
 // ── POST /api/atlas/reject/:assetId ──────────────────────────────────────────
-atlasRouter.post("/reject/:assetId", async (req, res) => {
+atlasRouter.post("/reject/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await rejectAtlasAsset(assetId);
@@ -208,7 +209,7 @@ atlasRouter.post("/reject/:assetId", async (req, res) => {
 });
 
 // ── POST /api/atlas/archive/:assetId ─────────────────────────────────────────
-atlasRouter.post("/archive/:assetId", async (req, res) => {
+atlasRouter.post("/archive/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await archiveAtlasAsset(assetId);
@@ -220,7 +221,7 @@ atlasRouter.post("/archive/:assetId", async (req, res) => {
 });
 
 // ── POST /api/atlas/publish/:assetId ─────────────────────────────────────────
-atlasRouter.post("/publish/:assetId", async (req, res) => {
+atlasRouter.post("/publish/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     const result = await publishAtlasAsset(assetId);
@@ -235,7 +236,7 @@ atlasRouter.post("/publish/:assetId", async (req, res) => {
 });
 
 // ── GET /api/atlas/github/status ─────────────────────────────────────────────
-atlasRouter.get("/github/status", async (_req, res) => {
+atlasRouter.get("/github/status", requireAdminKey, async (_req, res) => {
   try {
     const status = await getGitHubStatus();
     return res.json(status);
@@ -245,7 +246,7 @@ atlasRouter.get("/github/status", async (_req, res) => {
 });
 
 // ── GET /api/atlas/github/queue ───────────────────────────────────────────────
-atlasRouter.get("/github/queue", async (req, res) => {
+atlasRouter.get("/github/queue", requireAdminKey, async (req, res) => {
   const brandId = req.query.brandId ? Number(req.query.brandId) : undefined;
   try {
     const queue = await getPublishQueue(brandId);
@@ -258,7 +259,7 @@ atlasRouter.get("/github/queue", async (req, res) => {
 // ── POST /api/atlas/github/publish ────────────────────────────────────────────
 // Body: { assetIds?: string[], brandId?: number }
 // If assetIds is empty/omitted and brandId is set, publishes all approved for that brand.
-atlasRouter.post("/github/publish", async (req, res) => {
+atlasRouter.post("/github/publish", requireAdminKey, async (req, res) => {
   const assetIds: string[] = req.body?.assetIds ?? [];
   const brandId: number | undefined = req.body?.brandId ? Number(req.body.brandId) : undefined;
 
@@ -282,7 +283,7 @@ atlasRouter.post("/github/publish", async (req, res) => {
 });
 
 // ── PATCH /api/atlas/brands/:brandId/style-lock ───────────────────────────────
-atlasRouter.patch("/brands/:brandId/style-lock", async (req, res) => {
+atlasRouter.patch("/brands/:brandId/style-lock", requireAdminKey, async (req, res) => {
   const brandId = Number(req.params.brandId);
   const styleLock = req.body?.styleLock;
   if (!styleLock || typeof styleLock !== "object") {
@@ -298,7 +299,7 @@ atlasRouter.patch("/brands/:brandId/style-lock", async (req, res) => {
 });
 
 // ── DELETE /api/atlas/:assetId ────────────────────────────────────────────────
-atlasRouter.delete("/:assetId", async (req, res) => {
+atlasRouter.delete("/:assetId", requireAdminKey, async (req, res) => {
   const assetId = param(req.params.assetId);
   try {
     await clearAtlasAsset(assetId);

@@ -24,28 +24,9 @@ import {
   recalculateAllMatches,
   loadActiveWeights,
 } from "../services/routeMatching.js";
+import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 
 const router: IRouter = Router();
-
-// ── Admin key guard ───────────────────────────────────────────────────────────
-
-function adminKeyMiddleware(
-  req: import("express").Request,
-  res: import("express").Response,
-  next: import("express").NextFunction,
-) {
-  const provided = req.headers["x-vx-admin-key"];
-  const expected = process.env.VIRTUAL_ENGINE_ADMIN_KEY;
-  if (!expected) {
-    res.status(503).json({ error: "VIRTUAL_ENGINE_ADMIN_KEY not configured on server" });
-    return;
-  }
-  if (!provided || provided !== expected) {
-    res.status(401).json({ error: "Unauthorized — x-vx-admin-key header required" });
-    return;
-  }
-  next();
-}
 
 // ── GET /api/vx/expeditions ───────────────────────────────────────────────────
 
@@ -280,7 +261,7 @@ router.get("/vx/training-routes/:routeId", async (req, res) => {
 
 // ── GET /api/vx/admin/review-queue ────────────────────────────────────────────
 
-router.get("/vx/admin/review-queue", adminKeyMiddleware, async (req, res) => {
+router.get("/vx/admin/review-queue", requireAdminKey, async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -302,7 +283,7 @@ const RecalcDnaBodySchema = z.object({
   routeType: z.enum(["expedition", "training"]).optional(),
 }).optional();
 
-router.post("/vx/admin/recalculate-dna", adminKeyMiddleware, async (req, res) => {
+router.post("/vx/admin/recalculate-dna", requireAdminKey, async (req, res) => {
   const parsed = RecalcDnaBodySchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
@@ -405,7 +386,7 @@ router.post("/vx/admin/recalculate-dna", adminKeyMiddleware, async (req, res) =>
 
 // ── POST /api/vx/admin/recalculate-matches ────────────────────────────────────
 
-router.post("/vx/admin/recalculate-matches", adminKeyMiddleware, async (req, res) => {
+router.post("/vx/admin/recalculate-matches", requireAdminKey, async (req, res) => {
   try {
     const { created, updated } = await recalculateAllMatches();
 
