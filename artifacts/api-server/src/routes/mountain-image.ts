@@ -29,7 +29,7 @@ interface ImageResult {
 
 const imageCache = new Map<string, ImageResult>();
 const imageRequests = new Map<string, Promise<ImageResult>>();
-const HERO_CACHE_VERSION = "v3";
+const HERO_CACHE_VERSION = "v5";
 const APPROVED_HERO_VERSION = "v1";
 
 function approvedHeroKey(name: string): string {
@@ -113,6 +113,14 @@ const CURATED_MOUNTAIN_FILES: Record<string, string[]> = {
   ],
 };
 
+const CURATED_ROUTE_FILES: Record<string, string[]> = {
+  "crib goch": [
+    "Crib_Goch_-_geograph.org.uk_-_6890599.jpg",
+    "Crib_Goch,_Snowdon_massif_-_geograph.org.uk_-_4850771.jpg",
+    "Gaining_the_ridge_of_Crib_Goch_-_geograph.org.uk_-_6433229.jpg",
+  ],
+};
+
 async function lookupCommonsFile(filename: string): Promise<string | null> {
   const url =
     `https://commons.wikimedia.org/w/api.php?action=query` +
@@ -172,6 +180,21 @@ async function getCuratedImage(name: string): Promise<string | null> {
   return null;
 }
 
+async function getCuratedRouteImage(name: string): Promise<string | null> {
+  const subject = exactImageSubject(name).toLowerCase();
+  const match = Object.entries(CURATED_ROUTE_FILES)
+    .find(([key]) => subject.includes(key));
+  if (!match) return null;
+
+  for (const filename of match[1]) {
+    try {
+      const url = await lookupCommonsFile(filename);
+      if (url) return url;
+    } catch { /* try next candidate */ }
+  }
+  return null;
+}
+
 // ── Name cleaning ─────────────────────────────────────────────────────────────
 
 export function canonicalImageSubject(raw: string): string {
@@ -185,6 +208,37 @@ export function canonicalImageSubject(raw: string): string {
 }
 
 const cleanName = canonicalImageSubject;
+
+/** Keep route-defining words for exact route image searches. */
+export function exactImageSubject(raw: string): string {
+  return raw
+    .replace(/\s*\(.*?\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const ROUTE_TERMS = /\b(?:ridge|edge|route|trail|path|way|walk|hike|horseshoe|round|traverse|circuit|loop|approach|via)\b/i;
+
+export function isRouteSpecificImageRequest(name: string, routeIdentityKey?: string): boolean {
+  return Boolean(routeIdentityKey?.trim()) || ROUTE_TERMS.test(name);
+}
+
+function normalizedIdentity(value?: string): string {
+  return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+}
+
+export function mountainImageCacheKey(input: {
+  name: string;
+  location?: string;
+  routeIdentityKey?: string;
+  summitIdentityKey?: string;
+}): string {
+  const routeKey = normalizedIdentity(input.routeIdentityKey);
+  if (routeKey) return `route:${routeKey}`;
+  const summitKey = normalizedIdentity(input.summitIdentityKey);
+  if (summitKey) return `summit:${summitKey}`;
+  return `${exactImageSubject(input.name).toLowerCase()}::${cleanName(input.location ?? "").toLowerCase()}`;
+}
 
 // ── Image suitability filter ──────────────────────────────────────────────────
 
@@ -241,10 +295,27 @@ export function scenicCandidateScore(
   summitName: string,
   width?: number,
   height?: number,
+  requireExactRoute = false,
 ): number {
   const normalizedTitle = title.toLowerCase().replace(/[_-]+/g, " ");
-  const normalizedSummit = summitName.toLowerCase();
-  if (!normalizedTitle.includes(normalizedSummit)) return -1000;
+  const normalizedSummit = exactImageSubject(summitName).toLowerCase();
+  if (requireExactRoute) {
+    const genericRouteWords = new Set([
+      "route", "trail", "track", "path", "way", "walk", "hike", "ridge",
+      "edge", "traverse", "circuit", "loop", "round", "horseshoe",
+      "approach", "scramble", "gully", "face", "spur", "arete",
+    ]);
+    const routeTokens = normalizedSummit
+      .split(/[^a-z0-9]+/)
+      .filter(token =>
+        token.length > 2
+        && !["the", "and", "from", "with", "via"].includes(token)
+        && !genericRouteWords.has(token)
+      );
+    if (routeTokens.length === 0 || !routeTokens.every(token => normalizedTitle.includes(token))) return -1000;
+  } else if (!normalizedTitle.includes(normalizedSummit)) {
+    return -1000;
+  }
   const ratio = width && height ? width / height : 1;
   let score = Math.min(45, ratio * 18);
   if (ratio >= 1.5) score += 35;
@@ -254,7 +325,11 @@ export function scenicCandidateScore(
   return score;
 }
 
-async function searchCommons(query: string): Promise<string | null> {
+async function searchCommons(
+  query: string,
+  subject: string,
+  requireExactRoute: boolean,
+): Promise<string | null> {
   const apiUrl =
     `https://commons.wikimedia.org/w/api.php?action=query` +
     `&generator=search` +
@@ -280,7 +355,6 @@ async function searchCommons(query: string): Promise<string | null> {
 
   const pages = data.query?.pages ?? [];
 
-  const summitName = cleanName(query.replace(/\b(?:wide|scenic|distant|mountain|summit|landscape|panorama|photograph|view)\b/gi, ""));
   return pages
     .flatMap(page => {
       const info = page.imageinfo?.[0];
@@ -289,14 +363,18 @@ async function searchCommons(query: string): Promise<string | null> {
       if (!info || !thumb ||
           (!mime.startsWith("image/jpeg") && !mime.startsWith("image/png") && !mime.startsWith("image/webp")) ||
           !isImageSuitable(`${page.title} ${thumb}`, info.width, info.height)) return [];
-      return [{ thumb, score: scenicCandidateScore(page.title, summitName, info.width, info.height) }];
+      return [{ thumb, score: scenicCandidateScore(page.title, subject, info.width, info.height, requireExactRoute) }];
     })
     .filter(candidate => candidate.score > -100)
     .sort((a, b) => b.score - a.score)[0]?.thumb ?? null;
 }
 
-async function getCommonsImage(name: string, location?: string): Promise<string | null> {
-  const cleaned = cleanName(name);
+async function getCommonsImage(
+  name: string,
+  location?: string,
+  requireExactRoute = false,
+): Promise<string | null> {
+  const cleaned = requireExactRoute ? exactImageSubject(name) : cleanName(name);
 
   // Lead with "photograph" to strongly bias toward actual photos, not artwork.
   const queries = [
@@ -306,14 +384,16 @@ async function getCommonsImage(name: string, location?: string): Promise<string 
     `${cleaned} summit landscape photograph`,
     `${cleaned}`,
   ];
-  if (location) {
+  // Location-only searches are too weak for a known route: they can return any
+  // scenic photo in the surrounding region.
+  if (location && !requireExactRoute) {
     const cleanedLoc = cleanName(location);
     queries.push(`${cleanedLoc} mountain photograph`, `${cleanedLoc} mountain landscape`);
   }
 
   for (const q of queries) {
     try {
-      const result = await searchCommons(q);
+      const result = await searchCommons(q, cleaned, requireExactRoute);
       if (result) return result;
     } catch { /* fall through */ }
   }
@@ -355,13 +435,13 @@ async function queryWikipedia(title: string): Promise<ImageResult> {
   return { thumbUrl, coord };
 }
 
-async function getWikipediaData(name: string): Promise<ImageResult> {
-  const cleaned = cleanName(name);
+async function getWikipediaData(name: string, allowRelatedPages = true): Promise<ImageResult> {
+  const cleaned = allowRelatedPages ? cleanName(name) : exactImageSubject(name);
   let result: ImageResult = { thumbUrl: null, coord: null };
 
   try { result = await queryWikipedia(cleaned); } catch { /* fall through */ }
 
-  if (!result.thumbUrl || !result.coord) {
+  if (allowRelatedPages && (!result.thumbUrl || !result.coord)) {
     try {
       const searchUrl =
         `https://en.wikipedia.org/w/api.php?action=query` +
@@ -386,9 +466,20 @@ async function getWikipediaData(name: string): Promise<ImageResult> {
 
 // ── Master lookup (cached) ────────────────────────────────────────────────────
 
-async function getImageData(name: string, location?: string): Promise<ImageResult> {
+interface ImageLookupInput {
+  name: string;
+  location?: string;
+  routeIdentityKey?: string;
+  summitIdentityKey?: string;
+  coord?: Coord;
+}
+
+async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
+  const { name, location, routeIdentityKey, summitIdentityKey } = input;
   const canonicalName = cleanName(name) || cleanName(location ?? "") || name;
-  const cacheKey = `${canonicalName.toLowerCase()}::${cleanName(location ?? "").toLowerCase()}`;
+  const routeSubject = exactImageSubject(name);
+  const routeSpecific = isRouteSpecificImageRequest(name, routeIdentityKey);
+  const cacheKey = mountainImageCacheKey({ name, location, routeIdentityKey, summitIdentityKey });
   const cached   = imageCache.get(cacheKey);
   if (cached !== undefined) return cached;
   const inFlight = imageRequests.get(cacheKey);
@@ -396,19 +487,21 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
 
   const request = (async () => {
     const { db } = await import("@workspace/db");
-    const [approved] = await db.select({ data: cachedMountains.data })
-      .from(cachedMountains)
-      .where(eq(cachedMountains.slug, approvedHeroKey(canonicalName)))
-      .limit(1);
-    if (approved?.data) {
-      try {
-        const record = JSON.parse(approved.data) as { imageUrl?: string };
-        if (record.imageUrl) {
-          const result = { thumbUrl: record.imageUrl, coord: null };
-          imageCache.set(cacheKey, result);
-          return result;
-        }
-      } catch { /* ignore invalid approval data */ }
+    if (!routeSpecific) {
+      const [approved] = await db.select({ data: cachedMountains.data })
+        .from(cachedMountains)
+        .where(eq(cachedMountains.slug, approvedHeroKey(canonicalName)))
+        .limit(1);
+      if (approved?.data) {
+        try {
+          const record = JSON.parse(approved.data) as { imageUrl?: string };
+          if (record.imageUrl) {
+            const result = { thumbUrl: record.imageUrl, coord: input.coord ?? null };
+            imageCache.set(cacheKey, result);
+            return result;
+          }
+        } catch { /* ignore invalid approval data */ }
+      }
     }
 
     const persistentKey = `hero-image:${HERO_CACHE_VERSION}:${cacheKey}`;
@@ -427,22 +520,24 @@ async function getImageData(name: string, location?: string): Promise<ImageResul
     }
 
     // Step 1: try the curated map first — authoritative photos, never paintings
-    const curatedUrl = await getCuratedImage(canonicalName).catch(() => null);
+    const curatedUrl = routeSpecific
+      ? await getCuratedRouteImage(routeSubject).catch(() => null)
+      : await getCuratedImage(canonicalName).catch(() => null);
     let thumbUrl: string | null = curatedUrl;
-    let coord: Coord | null = null;
+    let coord: Coord | null = input.coord ?? null;
 
     if (!thumbUrl) {
       // Step 2+3: Commons search + Wikipedia in parallel (for coords + fallback image)
       const [commonsRes, wikiRes] = await Promise.allSettled([
-        getCommonsImage(canonicalName, location),
-        getWikipediaData(canonicalName),
+        getCommonsImage(routeSpecific ? routeSubject : canonicalName, location, routeSpecific),
+        getWikipediaData(routeSpecific ? routeSubject : canonicalName, !routeSpecific),
       ]);
 
       thumbUrl =
         (commonsRes.status === "fulfilled" ? commonsRes.value : null) ??
         (wikiRes.status === "fulfilled" ? wikiRes.value.thumbUrl : null);
 
-      if (wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
+      if (!coord && wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
     }
 
     const result: ImageResult = { thumbUrl, coord };
@@ -470,6 +565,7 @@ const UK_PEAKS: Record<string, Coord> = {
   "snowdon":         { lat: 53.068, lng: -4.076 },
   "scafell pike":    { lat: 54.454, lng: -3.211 },
   "helvellyn":       { lat: 54.527, lng: -3.016 },
+  "tryfan":          { lat: 53.114, lng: -3.998 },
   "cairn gorm":      { lat: 57.117, lng: -3.643 },
   "cairngorms":      { lat: 57.122, lng: -3.616 },
   "lake district":   { lat: 54.461, lng: -3.073 },
@@ -505,6 +601,18 @@ router.get("/mountain-image", async (req, res) => {
   const rawName     = typeof req.query["name"]     === "string" ? req.query["name"]     : "";
   const rawLocation = typeof req.query["location"] === "string" ? req.query["location"] : "";
   const name        = rawName || rawLocation;
+  const routeIdentityKey = typeof req.query["routeIdentityKey"] === "string"
+    ? req.query["routeIdentityKey"].trim() || undefined
+    : undefined;
+  const summitIdentityKey = typeof req.query["summitIdentityKey"] === "string"
+    ? req.query["summitIdentityKey"].trim() || undefined
+    : undefined;
+  const rawLat = typeof req.query["lat"] === "string" ? Number(req.query["lat"]) : NaN;
+  const rawLng = typeof req.query["lng"] === "string" ? Number(req.query["lng"]) : NaN;
+  const verifiedCoord = Number.isFinite(rawLat) && Number.isFinite(rawLng)
+    && rawLat >= -90 && rawLat <= 90 && rawLng >= -180 && rawLng <= 180
+    ? { lat: rawLat, lng: rawLng }
+    : undefined;
 
   const width  = Math.min(parseInt(String(req.query["width"]  ?? "800"), 10) || 800, 1280);
   const height = Math.min(parseInt(String(req.query["height"] ?? "400"), 10) || 400,  800);
@@ -512,7 +620,13 @@ router.get("/mountain-image", async (req, res) => {
   if (!name) { res.status(400).end(); return; }
 
   try {
-    const { thumbUrl, coord } = await getImageData(name, rawLocation || undefined);
+    const { thumbUrl, coord } = await getImageData({
+      name,
+      location: rawLocation || undefined,
+      routeIdentityKey,
+      summitIdentityKey,
+      coord: verifiedCoord,
+    });
 
     // ── Proxy the photo ───────────────────────────────────────────────────────
     if (thumbUrl) {

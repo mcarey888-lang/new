@@ -1520,7 +1520,7 @@ export default function PlanScreen() {
     : _missionGymEx === "weighted-stairs" ? require("@/assets/images/exercise-weighted-stairs.png")
     : _missionGymEx === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
     : _missionGymEx === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
-    : { uri: `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200` };
+    : { uri: `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200${selectedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(selectedHill.routeIdentityKey)}` : ""}${selectedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(selectedHill.summitIdentityKey)}` : ""}${selectedHill?.lat != null ? `&lat=${selectedHill.lat}` : ""}${selectedHill?.lng != null ? `&lng=${selectedHill.lng}` : ""}` };
 
   // Upcoming this week: rest of the week's sessions (not the selected one)
   const upcomingSessions = viewedWeek

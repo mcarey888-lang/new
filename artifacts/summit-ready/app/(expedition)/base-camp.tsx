@@ -1312,7 +1312,7 @@ export default function BaseCampScreen() {
                 <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
                   <View style={s.nextHillThumb}>
                     <ExpoImage
-                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=160&height=120` }}
+                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=160&height=120${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}` }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
                     />

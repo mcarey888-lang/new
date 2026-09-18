@@ -191,7 +191,7 @@ export default function TrailDetailScreen() {
 
   const heroImageUri = imageError
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=800&height=400`;
+    : `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=800&height=400&routeIdentityKey=${encodeURIComponent(trail.id)}${trail.lat != null ? `&lat=${trail.lat}` : ""}${trail.lng != null ? `&lng=${trail.lng}` : ""}`;
 
   const mapImageUri = mapImageError
     ? null

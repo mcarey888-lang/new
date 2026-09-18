@@ -361,7 +361,7 @@ export default function SessionDetailScreen() {
     : inferredGymExercise === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : heroSubject
-      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400` }
+      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
       : null
     : null;
 

@@ -25,6 +25,7 @@
 - [Plan tab redesign — Expedition Dashboard](plan-tab-redesign.md) — WeekCard sessions are tappable chips to session-detail; Plan tab has hero dashboard above Full Plan accordion; availableDays optional in SummitGoal.
 - [Virtual Expeditions Stage 3 — mode toggle + UI](virtual-expeditions-stage3.md) — floating pill over hero in dashboard; patchGoal for field-only updates; VirtualExpeditionView early-return in plan.tsx; shared confirmModeSwitch util.
 - [Mountain image loading pattern](mountain-image-api.md) — always remote URI via /api/mountain-image; never require() bundled assets; gradient behind ExpoImage as instant fallback.
+- [Route image identity](route-image-identity.md) — route imagery must preserve route identity and coordinates; never accept broad nearby-place matches for identified routes.
 - [Dual-shell navigation](dual-shell-navigation.md) — Training and Expedition shells persist separate goal snapshots; switching shells swaps the active goal without leaking selections.
 - [Expedition Library Architecture](expedition-library.md) — SavedExpedition library alongside summitGoal (dual-write); startExpedition never resets sessions; patchGoal auto-syncs to library; SigChallenge uses .challengeId not .id.
 - [MountainProgress — native only](mountain-progress-native-only.md) — component is native-only; never attempt .web.tsx variants or web preview; Platform.OS inline splits also break the Reanimated+SVG stack.
