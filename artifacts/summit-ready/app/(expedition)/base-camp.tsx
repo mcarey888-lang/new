@@ -1407,10 +1407,16 @@ export default function BaseCampScreen() {
           </View>
 
           {/* Achievements */}
-          <View style={[s.card, { flex: 1 }]}>
+          <TouchableOpacity
+            style={[s.card, { flex: 1 }]}
+            onPress={() => router.push("/(expedition)/profile" as any)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="View all achievements on your profile"
+          >
             <View style={[s.sectionRow, { marginBottom: 10 }]}>
               <Text style={s.sectionLabel}>RECENT{"\n"}ACHIEVEMENTS</Text>
-              <TouchableOpacity><Text style={s.viewAllLink}>View all</Text></TouchableOpacity>
+              <Text style={s.viewAllLink}>View all</Text>
             </View>
             {unlockedAchievements.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 8 }}>
@@ -1428,7 +1434,7 @@ export default function BaseCampScreen() {
                 ))}
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         </Animated.View>
 
         <Modal visible={journalOpen} animationType="slide" transparent onRequestClose={() => setJournalOpen(false)}>
