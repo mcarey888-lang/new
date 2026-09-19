@@ -222,6 +222,9 @@ export interface SavedExpedition {
   startedAt?: string;
   /** When the user completed this expedition. */
   completedAt?: string;
+  /** Local-only summit handoff state; used to recover cinematic interruption safely. */
+  summitTransitionState?: "not_ready" | "ready" | "started" | "completed";
+  summitTransitionUpdatedAt?: string;
   /** Frozen snapshot recorded at the moment of completion. */
   completionStats?: {
     totalElevationM: number;

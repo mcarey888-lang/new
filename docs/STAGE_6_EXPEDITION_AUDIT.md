@@ -1,7 +1,7 @@
 # Stage 6 Expedition Experience Audit
 
-**Checkpoint:** S6-C01 / S6-R01  
-**Audit commit:** `05ee329` (`docs: authorize Stage 6 expedition experience`)  
+**Checkpoint:** S6-C01 / S6-R01
+**Audit commit:** `05ee329` (`docs: authorize Stage 6 expedition experience`)
 **Scope:** read-only audit. No product, database, protected Progress Mountain, cinematic, release, or production files were changed.
 
 ## Status

@@ -52,7 +52,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
-import type { PlanSession } from "@/context/AppContext";
+import type { PlanSession, SavedExpedition } from "@/context/AppContext";
 import type { TrailBenefit } from "@/constants/trailData";
 import {
   batchStorageKey,
@@ -77,14 +77,10 @@ import {
   readPendingHikeSelection,
   savePendingHikeSelection,
 } from "@/utils/pendingHikeSelection";
-import {
-  addUniqueCompletedRoute,
-  isExpeditionComplete,
-  routeCompletionKey,
-} from "@/utils/stateReliability";
 import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
 import { buildActivityCompletionPresentation } from "@/utils/activityCompletionPresentation";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
+import { applyExpeditionStageContribution } from "@/utils/expeditionContribution";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -330,6 +326,7 @@ export default function HikeTrackingScreen() {
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
+  const [completionExpedition, setCompletionExpedition] = useState<SavedExpedition | null>(null);
   const [completionSaveStarted, setCompletionSaveStarted] = useState(false);
 
   // ── Nearby route picker ───────────────────────────────────────────────────
@@ -744,12 +741,12 @@ export default function HikeTrackingScreen() {
   // Saved every 15 s while tracking/paused so the session can be restored
   // if the OS terminates the process (screen off, memory pressure, etc.).
   const saveActiveSession = useCallback(async () => {
-    if (statusRef.current !== "tracking" && statusRef.current !== "paused") return;
+    if (statusRef.current !== "tracking" && statusRef.current !== "paused" && statusRef.current !== "finished") return;
     try {
       const session: HikeCheckpoint = {
         version: 2,
         routeName,
-        status: statusRef.current as "tracking" | "paused",
+        status: statusRef.current as "tracking" | "paused" | "finished",
         trackPoints: trackPoints.current,
         distanceKm: distanceRef.current,
         elevGainM: elevGainRef.current,
@@ -881,7 +878,9 @@ export default function HikeTrackingScreen() {
         setNameLocked(true);
 
         // Set tracking status (required before syncBgPoints will run)
-        const restoredStatus = session.status === "paused" ? "paused" : "tracking";
+        const restoredStatus = session.status === "finished"
+          ? "finished"
+          : session.status === "paused" ? "paused" : "tracking";
         statusRef.current = restoredStatus;
         setStatus(restoredStatus);
 
@@ -893,6 +892,11 @@ export default function HikeTrackingScreen() {
             );
             setElapsedSecs(Math.max(0, elapsed));
           }, 1000);
+        }
+
+        if (restoredStatus === "finished") {
+          setCompletionSaveStarted(true);
+          return;
         }
 
         // Replay all GPS points the background task buffered while the app was
@@ -1201,9 +1205,10 @@ export default function HikeTrackingScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     statusRef.current = "finished";
     setStatus("finished");
-    // Clear the persisted session — hike finished cleanly, nothing to restore
+    // Keep a finished checkpoint until Save acknowledges the local activity and
+    // any selected-stage consequence. This makes Finish crash-safe offline.
     await checkpointWriteRef.current;
-    await clearActiveHike(userId ?? undefined);
+    await saveActiveSession();
   }, [drainBgPoints, userId]);
   const finishHike = useCallback(
     () => serialize(finishHikeImpl),
@@ -1342,10 +1347,7 @@ export default function HikeTrackingScreen() {
         });
       }
 
-      if (userId) {
-        await clearPendingHikeSelection(userId);
-        if (!isOffline) void retrySyncOutbox(userId, getToken);
-      }
+      if (userId && !isOffline) void retrySyncOutbox(userId, getToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Activity saved",
@@ -1366,12 +1368,14 @@ export default function HikeTrackingScreen() {
             },
           });
         }
+        await clearActiveHike(userId ?? undefined);
         router.replace("/(tabs)/hikes" as any);
       } else if (hillMeta.trackingMode === "expedition-route" && trackedExpedition) {
         // In expedition mode ask "Did you complete this route?" before leaving.
         setShowExpeditionPrompt(true);
       } else {
         // In training mode navigate straight to hike history as before.
+        await clearActiveHike(userId ?? undefined);
         router.replace("/(tabs)/hikes" as any);
       }
     } catch {
@@ -1394,7 +1398,7 @@ export default function HikeTrackingScreen() {
     isOffline,
     elevationBank: elevationBankQuery.data,
     expeditionProgress: selectExpeditionPresentation(
-      trackedExpedition,
+      completionExpedition ?? trackedExpedition,
       isOffline ? "offline" : "ready",
     ),
   });
@@ -1471,7 +1475,7 @@ export default function HikeTrackingScreen() {
               </View>
             </View>
 
-            {(completionPresentation.expedition.status === "simulated" || elevationBankQuery.data) && (
+            {completionPresentation.elevationBank.status !== "not_eligible" && (
               <View style={s.consequenceCard} testID="completion-elevation-bank">
                 <View style={s.consequenceHeader}>
                   <TrendingUp size={16} color={T.green} />
@@ -1611,21 +1615,29 @@ export default function HikeTrackingScreen() {
                   onPress={async () => {
                     const expId = hillMeta.expeditionId;
                     if (!expId || !trackedExpedition) return;
-                    const toMark = routeCompletionKey({
-                      name: hillMeta.hillName ?? routeName,
+                    const contribution = applyExpeditionStageContribution(trackedExpedition, {
+                      activityId: routeIdRef.current,
                       routeIdentityKey: hillMeta.routeIdentityKey,
                       summitIdentityKey: hillMeta.summitIdentityKey,
-                      objectiveType: hillMeta.objectiveType === "manual_summit" ? "manual_summit" : undefined,
+                      stageName: hillMeta.hillName ?? routeName,
                     });
-                    const newCompleted = addUniqueCompletedRoute(
-                      trackedExpedition.completedRoutes ?? [],
-                      toMark,
-                    );
-                    await patchExpedition(expId, { completedRoutes: newCompleted });
-                    const isFinished = isExpeditionComplete({
+                    await patchExpedition(expId, {
+                      completedRoutes: contribution.completedRoutes,
+                      virtualHikeProgress: contribution.virtualHikeProgress,
+                    });
+                    setCompletionExpedition({
                       ...trackedExpedition,
-                      completedRoutes: newCompleted,
+                      completedRoutes: contribution.completedRoutes,
+                      virtualHikeProgress: contribution.virtualHikeProgress,
                     });
+                    if (userId) await clearPendingHikeSelection(userId);
+                    await clearActiveHike(userId ?? undefined);
+                    const isFinished = contribution.completedRoutes.length > 0 &&
+                      (selectExpeditionPresentation({
+                        ...trackedExpedition,
+                        completedRoutes: contribution.completedRoutes,
+                        virtualHikeProgress: contribution.virtualHikeProgress,
+                      }).progress.isComplete);
                     router.replace(
                       (isFinished && activeExpeditionId === expId
                         ? "/(expedition)/expedition-complete"

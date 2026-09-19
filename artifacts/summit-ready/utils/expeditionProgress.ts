@@ -87,6 +87,7 @@ export function selectExpeditionPresentation(
   const rawStages = Array.isArray(expedition.virtualHills) ? expedition.virtualHills : [];
   const completedRoutes = Array.isArray(expedition.completedRoutes) ? expedition.completedRoutes : [];
   const stages: ExpeditionPresentationStage[] = [];
+  const completedByIndex: boolean[] = [];
   let target = 0;
 
   rawStages.forEach((hill: NearbyHill) => {
@@ -94,6 +95,7 @@ export function selectExpeditionPresentation(
     const completionKey = routeCompletionKey(hill);
     const simulatedGain = finiteNonNegative(hill.totalElevation ?? hill.elevation);
     target += simulatedGain;
+    completedByIndex.push(isRouteCompleted(completedRoutes, hill));
     stages.push({
       index: stages.length,
       routeIdentityKey: completionKey,
@@ -106,14 +108,10 @@ export function selectExpeditionPresentation(
 
   const current = finiteNonNegative(expedition.virtualHikeProgress?.elevationGained);
   const completedStageCount = stages.reduce(
-    (count, stage, index) =>
-      count + (isRouteCompleted(completedRoutes, rawStages.find(hill => hill?.name === stage.name) ?? { name: stage.name }) ? 1 : 0),
+    (count, _stage, index) => count + (completedByIndex[index] ? 1 : 0),
     0,
   );
-  const currentStageIndex = stages.findIndex((stage, index) => {
-    const hill = rawStages.find(candidate => candidate?.name === stage.name);
-    return hill ? !isRouteCompleted(completedRoutes, hill) : false;
-  });
+  const currentStageIndex = stages.findIndex((_stage, index) => !completedByIndex[index]);
   const firstIncomplete = currentStageIndex < 0 ? null : currentStageIndex;
   const percent = target > 0 ? Math.min(1, current / target) : 0;
   const allStagesComplete = stages.length > 0 && completedStageCount === stages.length;
@@ -121,10 +119,7 @@ export function selectExpeditionPresentation(
 
   const presentedStages = stages.map((stage, index) => ({
     ...stage,
-    status: isRouteCompleted(
-      completedRoutes,
-      rawStages.find(hill => hill?.name === stage.name) ?? { name: stage.name },
-    )
+    status: completedByIndex[index]
       ? "completed" as const
       : index === firstIncomplete
         ? "current" as const
@@ -154,8 +149,10 @@ export function selectExpeditionPresentation(
     nextStage,
     summit: {
       eligible: isComplete,
-      transitionState: isComplete ? "ready" : "not_ready",
-      completionAwarded: expedition.expeditionStatus === "complete",
+      transitionState: expedition.expeditionStatus === "complete"
+        ? "completed"
+        : expedition.summitTransitionState ?? (isComplete ? "ready" : "not_ready"),
+      completionAwarded: expedition.expeditionStatus === "complete" || expedition.summitTransitionState === "completed",
     },
     availability: availability === "ready" && stages.length === 0 ? "unavailable" : availability,
   };

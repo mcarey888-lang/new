@@ -20,7 +20,7 @@ import Svg, {
 
 import { T } from "@/constants/theme";
 import type { NearbyHill } from "@/context/AppContext";
-import { isRouteCompleted } from "@/utils/stateReliability";
+import { isRouteCompleted, routeCompletionKey } from "@/utils/stateReliability";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -49,9 +49,10 @@ interface ChartProps {
   completedRoutes: string[];
   totalElev:       number;
   totalTrained:    number;
+  stagePresentation?: ReadonlyArray<{ routeIdentityKey: string; status: string }>;
 }
 
-function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained }: ChartProps) {
+function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained, stagePresentation }: ChartProps) {
   const n = stages.length;
   if (n === 0 || totalElev === 0) return null;
 
@@ -157,12 +158,14 @@ function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained }
       {/* Stage markers + callouts */}
       {stages.map((st, i) => {
         const pt   = pts[i + 1];
-        const done = isRouteCompleted(completedRoutes, st);
+        const done = stagePresentation
+          ? stagePresentation.find(item => item.routeIdentityKey === (st.routeIdentityKey ?? routeCompletionKey(st)))?.status === "completed"
+          : isRouteCompleted(completedRoutes, st);
         const above = pt.y >= P.top + PH * 0.48;
         const elev  = Math.round(st.elevation * st.repeats);
         const name  = clip(st.name, 15);
         return (
-          <G key={st.name}>
+          <G key={st.routeIdentityKey ?? routeCompletionKey(st)}>
             {above ? (
               <Line x1={pt.x} y1={pt.y - 12} x2={pt.x} y2={pt.y - 34}
                 stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
@@ -332,10 +335,11 @@ export interface ExpeditionProgressCardProps {
   totalTrained:    number;
   /** Called when the user taps a stage card. */
   onStagePress?:   (hill: NearbyHill) => void;
+  stagePresentation?: ReadonlyArray<{ routeIdentityKey: string; status: string }>;
 }
 
 export function ExpeditionProgressCard({
-  stages, completedRoutes, totalElev, totalTrained, onStagePress,
+  stages, completedRoutes, totalElev, totalTrained, onStagePress, stagePresentation,
 }: ExpeditionProgressCardProps) {
   const completedCount = stages.filter(stage => isRouteCompleted(completedRoutes, stage)).length;
   const remaining      = Math.max(0, totalElev - totalTrained);
@@ -363,6 +367,7 @@ export function ExpeditionProgressCard({
           completedRoutes={completedRoutes}
           totalElev={totalElev}
           totalTrained={totalTrained}
+          stagePresentation={stagePresentation}
         />
         {stages.length === 0 && (
           <View style={{ padding: 20, alignItems: "center" }}>

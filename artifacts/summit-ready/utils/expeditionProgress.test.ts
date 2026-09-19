@@ -56,6 +56,16 @@ describe("selectExpeditionPresentation", () => {
     expect(manual.progress.isComplete).toBe(true);
   });
 
+  it("tracks duplicate stage names by stable identity", () => {
+    const state = selectExpeditionPresentation(expedition({
+      virtualHills: [hill("Twin", 100, "route:twin-a"), hill("Twin", 200, "route:twin-b")],
+      completedRoutes: ["route:twin-b"],
+      virtualHikeProgress: { elevationGained: 300, distanceCovered: 2, hikesLogged: 2 },
+    }));
+    expect(state.stages.map(stage => stage.status)).toEqual(["current", "completed"]);
+    expect(state.nextStage?.routeIdentityKey).toBe("route:twin-a");
+  });
+
   it("is deterministic across reloads and handles missing or invalid data", () => {
     const first = selectExpeditionPresentation(expedition());
     const second = selectExpeditionPresentation(JSON.parse(JSON.stringify(expedition())));

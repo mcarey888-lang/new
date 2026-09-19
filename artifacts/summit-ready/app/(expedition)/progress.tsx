@@ -28,6 +28,7 @@ import {
   fmtM,
 } from "@/components/ExpeditionProgressCard";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
+import { buildExpeditionStageLaunchContext } from "@/utils/trackingLaunchContext";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -188,19 +189,20 @@ export default function ExpeditionProgressScreen() {
           <ExpeditionProgressCard
             stages={stages}
             completedRoutes={completedRoutes}
+            stagePresentation={presentation.stages}
             totalElev={totalElevGoal}
             totalTrained={totalTrained}
-            onStagePress={(hill) =>
+            onStagePress={(hill) => {
+              const launch = buildExpeditionStageLaunchContext(
+                hill,
+                activeExpedition.id,
+                activeExpedition.virtualHikeProgress,
+              );
               router.push({
                 pathname: "/hike-tracking" as any,
-                params: {
-                  hillName: hill.name,
-                  routeIdentityKey: hill.routeIdentityKey ?? "",
-                  trackingMode: "expedition-route",
-                  expeditionId: activeExpedition.id,
-                },
-              })
-            }
+                params: launch as any,
+              });
+            }}
           />
         </Animated.View>
 

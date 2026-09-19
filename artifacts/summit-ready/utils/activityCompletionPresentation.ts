@@ -34,7 +34,7 @@ export type CompletionPresentation = {
         everestEquivalent: number;
       }
     | {
-        status: "pending" | "unavailable";
+        status: "pending" | "unavailable" | "not_eligible";
       };
   training:
     | { status: "linked"; sessionKey: string }
@@ -81,7 +81,9 @@ export function buildActivityCompletionPresentation(
           everestEquivalent: input.elevationBank.everestEquivalent,
         }
       : {
-          status: input.elevationBank?.status === "unavailable"
+        status: !input.elevationBank
+          ? "not_eligible"
+          : input.elevationBank.status === "unavailable"
             ? "unavailable"
             : "pending",
         },

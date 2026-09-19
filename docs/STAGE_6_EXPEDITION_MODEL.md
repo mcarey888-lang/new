@@ -1,7 +1,7 @@
 # Stage 6 Expedition Presentation Model
 
-**Checkpoint:** S6-C02 / S6-R02  
-**Status:** COMPLETE  
+**Checkpoint:** S6-C02 / S6-R02
+**Status:** COMPLETE
 **Scope:** Documentation-only canonical presentation and state specification.
 
 This model follows the S6-C01 audit and does not replace the existing Expedition

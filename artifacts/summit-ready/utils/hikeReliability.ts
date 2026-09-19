@@ -18,7 +18,7 @@ export interface HikeCheckpoint {
   version: 2;
   routeId: string;
   routeName: string;
-  status: "tracking" | "paused";
+  status: "tracking" | "paused" | "finished";
   trackPoints: DurableTrackPoint[];
   distanceKm: number;
   elevGainM: number;
