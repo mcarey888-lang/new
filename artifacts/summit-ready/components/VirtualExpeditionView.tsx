@@ -35,6 +35,10 @@ import {
   VerifiedMountainChooser,
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
+import {
+  buildTrainingRouteIntelligence,
+  routeReferenceFromNearbyHill,
+} from "@/utils/routeConsumerAdapters";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -303,6 +307,14 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   // target is meaningfully higher than what local hills can replicate.
   const maxLocalASL = hills.reduce<number>((m, h) => Math.max(m, h.summitElevationASL ?? 0), 0);
   const showAltitudeNote = breakdown.altitude < 50 && target.summitElevation > 1500;
+  const targetRouteIdentityKey =
+    summitGoal.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey ?? null;
+  const targetRouteName =
+    summitGoal.virtualExpeditionProvenance?.selectedTargetRouteName ?? null;
+  const targetRouteIntelligence = buildTrainingRouteIntelligence(
+    targetRouteIdentityKey,
+    [],
+  );
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -351,6 +363,20 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
               <StatChip label="Days" value={`${target.estimatedDays}`} />
             </View>
 
+            <View style={s.routeReference}>
+              <Text style={s.routeReferenceLabel}>TARGET ROUTE REFERENCE</Text>
+              <Text style={s.routeReferenceValue}>
+                {targetRouteName ?? targetRouteIdentityKey ?? "No canonical route selected"}
+              </Text>
+              <Text style={s.routeReferenceHint}>
+                {targetRouteIdentityKey
+                  ? targetRouteIntelligence.matches.availability === "unavailable"
+                    ? "Mountain DNA unavailable until verified target and local route records are available."
+                    : "Mountain DNA recommendations are based on verified route facts."
+                  : "Choose a verified target route to compare local recommendations without name matching."}
+              </Text>
+            </View>
+
             {/* Route notes */}
             {target.notes ? (
               <Text style={s.notes}>{target.notes}</Text>
@@ -364,12 +390,12 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
           {isWeekend ? (
             <View style={{ gap: 8 }}>
               {hills.slice(0, 2).map((hill, idx) => (
-                <HillCard key={hill.name} hill={hill} dayLabel={idx === 0 ? "Saturday" : "Sunday"} />
+                <HillCard key={hill.routeIdentityKey ?? `${hill.name}-${idx}`} hill={hill} dayLabel={idx === 0 ? "Saturday" : "Sunday"} />
               ))}
             </View>
           ) : (
             hills.slice(0, 1).map(hill => (
-              <HillCard key={hill.name} hill={hill} />
+              <HillCard key={hill.routeIdentityKey ?? hill.name} hill={hill} />
             ))
           )}
         </Animated.View>
@@ -484,6 +510,7 @@ function StatChip({ label, value }: { label: string; value: string }) {
 }
 
 function HillCard({ hill, dayLabel }: { hill: NearbyHill; dayLabel?: string }) {
+  const reference = routeReferenceFromNearbyHill(hill);
   return (
     <View style={s.hillCard}>
       <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -497,6 +524,13 @@ function HillCard({ hill, dayLabel }: { hill: NearbyHill; dayLabel?: string }) {
         <View style={{ flex: 1 }}>
           <Text style={s.hillName}>{hill.name}</Text>
           <Text style={s.hillSub}>{hill.surface} · {hill.grade} · {hill.distance}km away</Text>
+          <Text style={[
+            s.routeTrust,
+            reference.status === "verified" && { color: T.green },
+            reference.status === "degraded" && { color: T.orange },
+          ]}>
+            {reference.label}
+          </Text>
         </View>
       </View>
       <View style={s.hillStats}>
@@ -583,6 +617,33 @@ const s = StyleSheet.create({
   notes: {
     fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19,
   },
+  routeReference: {
+    marginTop: 2,
+    padding: 11,
+    borderRadius: 10,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  routeReferenceLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: T.textDim,
+    letterSpacing: 1,
+  },
+  routeReferenceValue: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: T.text,
+  },
+  routeReferenceHint: {
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: "Inter_400Regular",
+    color: T.textMuted,
+  },
 
   // Hill card
   hillCard: {
@@ -604,6 +665,12 @@ const s = StyleSheet.create({
   },
   hillSub: {
     fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1,
+  },
+  routeTrust: {
+    marginTop: 3,
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: T.textDim,
   },
   hillStats: {
     flexDirection: "row", alignItems: "center",
