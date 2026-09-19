@@ -378,12 +378,14 @@ type MountainDnaInput = {
     facts: RouteFacts;
     profile?: RouteElevationProfile;
     trust: MountainVerification;
+    provenance: ProvenanceBundle;
   };
   candidate: {
     route: RouteVersion;
     facts: RouteFacts;
     profile?: RouteElevationProfile;
     trust: MountainVerification;
+    provenance: ProvenanceBundle;
   };
   evaluatorVersion: string;
 };
