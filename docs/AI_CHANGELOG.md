@@ -61,3 +61,15 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** Verified the documents contain no credentials, private user data, raw production data, or connection strings.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19T09:06:03.063Z — Phase 1 production Publish verification
+
+**Task:** Complete read-only verification after Replit Publish applied the reviewed Phase 1 production schema.
+
+**Implementation:** Confirmed that the Publish-generated diff is now empty; all five canonical activity tables, both nullable tracked-session bridge columns, all expected indexes, and the five intended foreign-key relationships are present. Canonical child rows cascade on activity deletion; the legacy bridge uses `ON DELETE SET NULL`.
+
+**Important files/schema:** Production now contains the Phase 1 additive schema. The four existing `tracked_hill_sessions` rows remain unchanged, with both new columns null. All five canonical tables contain zero rows. No direct SQL mutation, backfill, mobile build, or Stage 2 work was performed.
+
+**Tests/result:** Read-only production queries passed. Published `/api/healthz` returned `{"status":"ok"}` and the public mountain-image endpoint returned an image. Replit reports zero remaining schema-diff statements. The bridge environment override is absent, so deployed code uses its documented enabled default. Released-client compatibility was checked without submitting an authenticated write.
+
+**Commit:** Reported in the completion message after this entry is committed.

@@ -1,8 +1,8 @@
 # SummitReady AI handoff
 
-Updated: 2026-09-19 UTC  
+Updated: 2026-09-19T09:06:03.063Z
 Branch: `virtual-expeditions-mode`  
-Latest implementation commit at this refresh: `93be88dd2f4f0266582c6c6f24fada76de47e54e`
+Branch HEAD before this documentation update: `99c41a4abb2ee26ee03b43fd5320a3ca858b2a80`
 
 ## Current project state
 
@@ -10,13 +10,13 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Publish the reviewed Phase 1 production schema through Replit Publish, then run read-only verification. The Publish action has been offered but has **not** completed; Replit still reports the reviewed 24-statement diff as pending.
+Phase 1 production Publish and read-only verification are complete. Await ChatGPT review and a future Stage 2 task document in GitHub. Do not begin Stage 2 until that document exists.
 
-Pre-migration PITR marker recorded before the Publish prompt: `2026-09-19T08:29:30.681Z`. Production has seven-day point-in-time recovery and scheduled backups with 28-day retention, but no scheduled backup had completed at the last check.
+Pre-migration PITR marker: `2026-09-19T08:29:30.681Z`. Production has seven-day point-in-time recovery and scheduled backups with 28-day retention.
 
 ## Last completed task
 
-Created this permanent AI coordination workspace. The preceding completed development task was the Phase 1 canonical activity foundation in commit `bf831921c9ae2b901a25b29bdc60ab8e8af4f26c`.
+Verified the Phase 1 production Publish read-only. The reviewed 24-statement additive schema diff is fully applied, all legacy rows are preserved, and no backfill or mobile build was performed.
 
 ## Changes made
 
@@ -49,7 +49,7 @@ Coordination:
 
 ## Database/schema changes
 
-Development contains five new tables:
+Development and production contain five new tables:
 
 - `canonical_activities`
 - `canonical_activity_evidence`
@@ -59,7 +59,9 @@ Development contains five new tables:
 
 Development also adds nullable `tracked_hill_sessions.activity_id` and `tracked_hill_sessions.canonical_activity_id`, owner/source uniqueness, private-evidence constraints, typed links, qualification constraints, foreign keys, and indexes.
 
-Production migration status: **not applied**. The Publish-generated diff has 24 additive statements, no removals/truncations/renames/backfill, no structural data loss, and no backwards-compatibility warning. Production currently has four legacy `tracked_hill_sessions` rows; all are ownerless and must remain untouched.
+Production migration status: **applied and verified**. Replit now reports no development-to-production schema diff. All five canonical tables exist. Both new legacy columns are nullable with the expected types. All expected indexes exist. Canonical child foreign keys use `ON DELETE CASCADE`; the tracked-session bridge uses `ON DELETE SET NULL`.
+
+The four pre-existing `tracked_hill_sessions` rows remain. All four have `activity_id IS NULL` and `canonical_activity_id IS NULL`. All five canonical tables contain zero rows; no backfill occurred.
 
 ## Tests performed and results
 
@@ -67,21 +69,23 @@ Production migration status: **not applied**. The Publish-generated diff has 24 
 - Development DB integration: four passed, covering concurrent idempotency, cross-owner separation, conflict retention, and private evidence.
 - Database TypeScript build passed.
 - API production bundle build passed.
-- API health check returned `{"status":"ok"}`.
+- Published API health check at `/api/healthz` returned `{"status":"ok"}`.
+- Public mountain-image route returned an image successfully.
+- Released-client compatibility was verified from the additive nullable schema and deployed route contract. No authenticated write smoke test was run because verification was required to remain non-mutating.
 - Full API `tsc --noEmit` remains blocked by unrelated pre-existing object-storage typing and OpenAI declaration-build diagnostics; no Phase 1 file appears in those diagnostics.
 
 ## Production/deployment status
 
 - Live site: `https://summitready.uk`
-- Deployment type: autoscale; latest checked deployment was healthy and public.
-- Phase 1 production schema Publish is awaiting user confirmation.
+- Deployment type: autoscale; latest deployment is healthy and public.
+- Phase 1 production schema Publish completed successfully.
+- Publish-generated schema diff remaining: zero statements.
 - No direct production SQL was run.
 - No production backfill or mobile build was performed.
-- `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; current code therefore defaults the bridge to enabled after the new code is published.
+- `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; deployed code therefore uses its documented default of enabled.
 
 ## Known issues
 
-- Production lacks both tracked-session activity ID columns until Publish.
 - The legacy global unique activity ID remains a compatibility boundary; cross-owner collisions return `409` without leaking another owner's row.
 - Existing production rows have no owner and are intentionally not backfilled.
 - No fuzzy legacy reconciliation or correction API exists.
@@ -89,20 +93,20 @@ Production migration status: **not applied**. The Publish-generated diff has 24 
 
 ## Decisions requiring review
 
-- Confirm Publish of only the reviewed 24-statement additive diff.
-- After Publish, verify all canonical tables, foreign keys, indexes, four preserved legacy rows, and null values in both new legacy columns.
+- ChatGPT should review and accept the completed production verification.
 - Decide whether the bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
-- Do not begin Phase 2 until production verification is accepted.
+- Do not begin Stage 2 until its task document appears in GitHub.
 
 ## Recommended next action
 
-Confirm the pending Replit Publish action. Immediately after completion, run the agreed read-only production verification and compare against the PITR marker. Do not backfill, create a mobile build, or make unrelated production changes.
+Wait for ChatGPT's Stage 2 task document in GitHub. Do not backfill, create a mobile build, or begin Stage 2 early.
 
 ## Git branch and latest commit SHA
 
 - Repository: `mcarey888-lang/new`
 - Branch: `virtual-expeditions-mode`
-- Latest implementation SHA at handoff refresh: `93be88dd2f4f0266582c6c6f24fada76de47e54e`
+- Latest Phase 1 implementation SHA: `bf831921c9ae2b901a25b29bdc60ab8e8af4f26c`
+- Publish marker SHA: `99c41a4abb2ee26ee03b43fd5320a3ca858b2a80`
 
 The commit containing these coordination documents is reported in the completion message because a Git commit cannot embed its own final SHA without changing that SHA.
 
