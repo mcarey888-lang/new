@@ -2,6 +2,44 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S6-C10 Expedition Experience completion gate
+
+**Task:** Execute S6-C10 documentation-only completion for the authorized Stage
+6 Expedition Experience runbook.
+
+**Implementation/result:** Added `docs/STAGE_6_COMPLETION_REPORT.md` and updated
+`docs/AI_HANDOFF.md`. Stage 6 is COMPLETE under the runbook: Basecamp has a
+compact Progress Mountain that opens the preserved expanded experience; both
+consume `selectExpeditionPresentation`; the next-stage journey is explicit;
+selected-stage consequences are exactly-once and simulated-only; finished
+offline checkpoints recover before Save; real activity, simulated progress, and
+Elevation Bank consequences remain separate; and final-stage completion returns
+through Basecamp's protected summit/cinematic sequence.
+
+**Architect review:** The initial C03–C08 review returned FAIL. Commits
+`0efdc27` and `2dc1e16` fixed the reported progress/consequence, finished
+recovery, completed-state, summit durability/routing, completion eligibility,
+and expanded identity issues. The follow-up review returned PASS with no
+remaining concrete Stage 6 code blocker.
+
+**Verification:** SummitReady package tests **65/65**, additional
+Readiness/canonical regression **68/68**, initial bounded Expedition/Readiness
+suite **85/85**, final focused regression **37/37**, API regression **85/85**,
+SummitReady typecheck, API build, DB TypeScript check, and `git diff --check`
+passed. Native-device QA was **NOT RUN**.
+
+**Safety:** Production remains unchanged/default-safe. No production
+schema/migration/backfill/reconciliation/activation, SDE identity mutation,
+auth/privacy/payment change, mobile/store release, or Stage 7 work occurred.
+PA-A2 remains the parked unsafe Publish/migration issue and was not applied or
+used as a prerequisite. Protected mountain/cinematic implementations remain
+unchanged. Stage 6 is a runbook completion, not mobile release approval.
+
+**Files:** `docs/STAGE_6_COMPLETION_REPORT.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
 ## 2026-09-19 UTC — S5-C10 Readiness 2.0 completion gate
 
 **Task:** Execute S5-C10 documentation-only completion for the authorized Stage

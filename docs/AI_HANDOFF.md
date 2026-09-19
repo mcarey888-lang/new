@@ -2,7 +2,8 @@
 
 Updated: 2026-09-19 UTC
 Branch: `virtual-expeditions-mode`  
-Latest Stage 5 completion checkpoint: `393f559`
+Latest Stage 6 implementation checkpoint: `2dc1e16`
+Latest Stage 6 regression checkpoint: `4d93819`
 
 ## Current project state
 
@@ -10,11 +11,13 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 5 — Readiness 2.0 is **COMPLETE** through S5-C10 under the authorized
-runbook. The deterministic `readiness-v2.0.0` engine, stable target-demand
-resolver, next-action/projection service, Training Home surface, detailed
-“Am I Ready?” screen, and offline-safe activity evidence integration are
-implemented and documented. Stage 6 must not begin.
+Stage 6 — Expedition Experience is **COMPLETE** through S6-C10 under the
+authorized runbook. Basecamp now has a compact Progress Mountain backed by the
+same canonical typed presentation state as the preserved expanded Progress
+experience. The next local stage, offline-safe exactly-once simulated
+consequence, real/simulated/Elevation Bank separation, finished-checkpoint
+recovery, and protected summit/cinematic handoff are implemented and documented.
+This is a runbook completion, not mobile release approval.
 
 PA-A2 remains a parked **BLOCKED** parallel infrastructure issue. Replit
 Publish still omitted four required composite unique indexes from the unsafe
@@ -25,10 +28,11 @@ activation, or mobile release is authorized.
 
 ## Last completed task
 
-S5-C10 completed the Stage 5 gate. See
-`docs/STAGE_5_COMPLETION_REPORT.md` for the exact model, evidence sources,
-target fallback order, user-facing outcomes, tests, protected-boundary review,
-limitations, and native-device QA status.
+S6-C10 completed the Stage 6 gate. See
+`docs/STAGE_6_COMPLETION_REPORT.md` for the exact architecture, commands,
+regression evidence, protected-boundary review, limitations, and native-device
+QA status. Stage 5 remains complete under
+`docs/STAGE_5_COMPLETION_REPORT.md`.
 
 PA-A2-C01/C02 confirmed the reviewed migration hashes, applied its unchanged
 content to development only, and verified all five tables, constraints,
@@ -223,12 +227,37 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
   `CANONICAL_ACTIVITY_BRIDGE_ENABLED`; any production activation requires a
   separate owner-approved rollout.
 
+## Stage 6 completion handoff
+
+- The canonical journey is Expedition selection → Basecamp → next local stage
+  → Track → completion → expanded Progress → summit.
+- `selectExpeditionPresentation` is the sole compact/expanded simulated
+  progress derivation. It clamps persisted simulated elevation, derives stable
+  stage markers, and keeps linked physical activity facts separate.
+- Basecamp presents identity/status, compact mountain, NEXT LOCAL STAGE, one
+  primary Start Next Stage action, and concise journey history. The compact
+  mountain taps through to the existing expanded Progress route.
+- Selected-stage Finish/Save persists one physical activity plus one
+  idempotent simulated Expedition contribution keyed by stable activity and
+  route identities. A finished local checkpoint remains recoverable until Save
+  and consequence acknowledgement.
+- Final-stage completion returns to Basecamp so the protected
+  route→summit-transition→cinematic/live-3D→climber-summit→completion sequence
+  remains the owner of summit completion. Persisted expedition-scoped summit
+  state and canonical 100% gating prevent repeat awards.
+- Protected `MountainProgress.tsx`, `ExpeditionMountainProgress.tsx`, and
+  `CinematicPrototype.tsx` were unchanged. Production/default-safe state,
+  PA-A2 isolation, SDE identity/provenance, auth/privacy, payments, and release
+  boundaries remain unchanged.
+- Bounded suites, builds, typechecks, and architecture review passed. Native
+  device QA was **NOT RUN** and is required before any mobile release.
+
 ## Recommended next action
 
 Keep PA-A2 parked with production frozen/default-safe and await Replit support.
-For product work, use the Stage 5 completion report as the handoff. Before any
-mobile release, complete native-device offline QA and obtain the separately
-required release approval. Do not begin Stage 6.
+Do not begin Stage 7. Before any mobile release, complete native-device
+airplane-mode, process-termination, reduced-motion/non-3D, and protected
+cinematic QA, then obtain the separately required release approval.
 
 ## Git branch and latest commit SHA
 
@@ -239,7 +268,9 @@ required release approval. Do not begin Stage 6.
 - S2-C01 command SHA: `560e1fe3410d82af0abd20a0d3774555ce0ed48f`
 - S2-R01 implementation SHA: `a1cfd9fac19f7d30571a45c1d0de8f6929a60b10`
 - S2-C02 command SHA: `b3310b3dc30837df14a76fd79f8b3446430ac6e5`
-- Stage 5 completion SHA: `393f559` (documentation checkpoint follows)
+- Stage 5 completion SHA: `393f559`
+- Stage 6 implementation SHA: `2dc1e16`
+- Stage 6 regression SHA: `4d93819`
 
 ## S4-C09 readiness handoff
 
