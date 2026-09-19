@@ -1,5 +1,9 @@
 import { sql } from "drizzle-orm";
+// This boundary reads the deliberately published public SDE read copy through
+// @workspace/db. It must never use ENGINE_DATABASE_URL (the authoring DB).
+// Missing/unverified copy rows are intentionally returned as unavailable.
 import { db } from "@workspace/db";
+import type { CanonicalRouteRecord } from "../../../../summit-ready/utils/routeIntelligence";
 
 export type CanonicalRouteRecordStatus =
   | "available"
@@ -10,7 +14,7 @@ export type CanonicalRouteRecordStatus =
 export type CanonicalRouteRecordResponse = {
   status: CanonicalRouteRecordStatus;
   reasons: string[];
-  record: Record<string, unknown> | null;
+  record: CanonicalRouteRecord | null;
 };
 
 type RouteRecordRow = Record<string, unknown> & {
@@ -28,6 +32,7 @@ type RouteRecordRow = Record<string, unknown> & {
   definitionDescription?: string;
   definitionStatus?: string;
   factVersion?: string;
+  factStatus?: string;
   distanceKm?: number | null;
   totalAscentM?: number | null;
   totalDescentM?: number | null;
@@ -38,16 +43,19 @@ type RouteRecordRow = Record<string, unknown> & {
   publisher?: string;
   evidenceTitle?: string;
   evidenceUrl?: string;
+  evidenceStatus?: string;
   rightsClassification?: string;
   rightsStatement?: string | null;
   geometryReuseAllowed?: boolean;
   geometry?: { type?: string; coordinates?: unknown } | null;
   geometryVersion?: string | null;
   geometryDerivationMethod?: string | null;
+  geometrySourceMembers?: Array<Record<string, unknown>> | null;
   profileVersion?: string | null;
   profileSpacingM?: number | null;
   profileCalculationVersion?: string | null;
   profileNodataCount?: number | null;
+  profileSourceMembers?: Array<Record<string, unknown>> | null;
   profileSamples?: Array<{ distanceM: number; elevationM: number | null }> | null;
 };
 
@@ -73,6 +81,7 @@ const ROUTE_RECORD_SQL = sql`
     rd.description AS "definitionDescription",
     rd.status AS "definitionStatus",
     rf.version AS "factVersion",
+    rf.status AS "factStatus",
     rf.distance_km AS "distanceKm",
     rf.total_ascent_m AS "totalAscentM",
     rf.total_descent_m AS "totalDescentM",
@@ -83,16 +92,20 @@ const ROUTE_RECORD_SQL = sql`
     e.publisher AS "publisher",
     e.title AS "evidenceTitle",
     e.url AS "evidenceUrl",
+    e.status AS "evidenceStatus",
     e.rights_classification AS "rightsClassification",
     e.rights_statement AS "rightsStatement",
     e.geometry_reuse_allowed AS "geometryReuseAllowed",
-    CASE WHEN r.geom IS NULL THEN NULL ELSE ST_AsGeoJSON(r.geom)::jsonb END AS "geometry",
-    NULL::text AS "geometryVersion",
-    r.resolution_method AS "geometryDerivationMethod",
-    rep.calculation_version AS "profileVersion",
+    CASE WHEN geom.geom IS NULL OR geom.member_count = 0 THEN NULL
+      ELSE ST_AsGeoJSON(geom.geom)::jsonb END AS "geometry",
+    geom.geometry_version AS "geometryVersion",
+    geom.derivation_method AS "geometryDerivationMethod",
+    geom.source_members AS "geometrySourceMembers",
+    rep.profile_version AS "profileVersion",
     rep.sample_spacing_m AS "profileSpacingM",
     rep.calculation_version AS "profileCalculationVersion",
     rep.nodata_count AS "profileNodataCount",
+    rep.source_members AS "profileSourceMembers",
     (
       SELECT COALESCE(
         json_agg(
@@ -113,11 +126,49 @@ const ROUTE_RECORD_SQL = sql`
   JOIN public.route_facts AS rf
     ON rf.route_definition_id = rd.id AND rf.version = rd.version
   JOIN public.evidence_sources AS e ON e.id = rf.evidence_source_id
-  LEFT JOIN public.routes AS r ON r.id = rd.route_id
+    LEFT JOIN LATERAL (
+      SELECT
+        g.geom,
+        g.geometry_version,
+        g.derivation_method,
+        COUNT(gm.id)::int AS member_count,
+        COALESCE(json_agg(json_build_object(
+          'evidenceId', es.id::text,
+          'provider', es.publisher,
+          'sourceUrl', es.url,
+          'attribution', es.title
+        ) ORDER BY gm.sequence) FILTER (WHERE gm.id IS NOT NULL), '[]'::json) AS source_members
+      FROM public.route_geometries AS g
+      LEFT JOIN public.route_geometry_members AS gm ON gm.geometry_id = g.id
+      LEFT JOIN public.evidence_sources AS es ON es.id = gm.evidence_source_id
+      WHERE g.route_definition_id = rd.id
+        AND g.version = rd.version
+        AND g.status = 'verified'
+      GROUP BY g.id, g.geom, g.geometry_version, g.derivation_method
+      ORDER BY g.created_at DESC
+      LIMIT 1
+    ) AS geom ON TRUE
   LEFT JOIN LATERAL (
-    SELECT p.id, p.calculation_version, p.sample_spacing_m, p.nodata_count
+     SELECT p.id,
+       CASE WHEN EXISTS (
+         SELECT 1 FROM public.route_elevation_profile_sources AS ps
+         WHERE ps.profile_id = p.id
+       ) THEN p.calculation_version ELSE NULL END AS profile_version,
+       p.sample_spacing_m, p.nodata_count,
+       COALESCE((
+         SELECT json_agg(json_build_object(
+           'evidenceId', es.id::text,
+           'provider', es.publisher,
+           'sourceUrl', es.url,
+           'attribution', es.title
+         ) ORDER BY ps.id)
+         FROM public.route_elevation_profile_sources AS ps
+         JOIN public.evidence_sources AS es ON es.id = ps.evidence_source_id
+         WHERE ps.profile_id = p.id
+       ), '[]'::json) AS source_members
     FROM public.route_elevation_profiles AS p
-    WHERE p.route_id = r.id
+     WHERE p.route_id = rd.route_id
+       AND p.calculation_version = rd.version
     ORDER BY p.created_at DESC
     LIMIT 1
   ) AS rep ON TRUE
@@ -155,6 +206,12 @@ export function buildCanonicalRouteRecord(
     row.mountainStatus !== "verified" ||
     row.routeStatus !== "verified" ||
     row.definitionStatus !== "verified" ||
+    row.factStatus !== "verified" ||
+    row.evidenceStatus !== "verified" ||
+    !row.evidenceId ||
+    !row.publisher ||
+    !row.evidenceTitle ||
+    !row.evidenceUrl ||
     row.factVersion !== row.definitionVersion ||
     row.routeVersion !== row.definitionVersion
   ) {
@@ -175,6 +232,15 @@ export function buildCanonicalRouteRecord(
     evidenceType: "source",
     ...provenance,
   };
+  const geometrySources = (row.geometrySourceMembers ?? []).map(member => ({
+    ...evidence,
+    ...member,
+  }));
+  const profileSources = (row.profileSourceMembers ?? []).map(member => ({
+    ...evidence,
+    ...member,
+    evidenceType: "dem" as const,
+  }));
   const routeId = stableRouteId(row.routeIdentityKey!, row.routeVersion!);
   const mountainId = stableMountainId(row.mountainId!);
   const record = {
@@ -224,25 +290,25 @@ export function buildCanonicalRouteRecord(
       summitElevationM: row.summitElevationM ?? undefined,
       typicalDurationS: row.typicalDurationHours == null ? undefined : row.typicalDurationHours * 3600,
     },
-    geometry: row.geometry
+    geometry: row.geometry && geometrySources.length
       ? {
           geometryVersion: row.geometryVersion ?? row.definitionVersion,
           coordinateReferenceSystem: "EPSG:4326",
           coordinates: row.geometry.coordinates ?? [],
           direction: "unknown",
           derivationMethod: row.geometryDerivationMethod ?? "sde",
-          sourceMembers: [evidence],
+           sourceMembers: geometrySources,
           topologyStatus: "complete",
         }
       : undefined,
-    elevationProfile: row.profileVersion
+    elevationProfile: row.profileVersion && profileSources.length
       ? {
           profileVersion: row.profileVersion,
           samples: row.profileSamples ?? [],
           spacingM: row.profileSpacingM ?? undefined,
           calculationVersion: row.profileCalculationVersion ?? row.profileVersion,
           nodataCount: row.profileNodataCount ?? 0,
-          demSources: [evidence],
+           demSources: profileSources,
         }
       : undefined,
     trust: {
@@ -252,6 +318,8 @@ export function buildCanonicalRouteRecord(
       rightsClassification: row.rightsClassification ?? "unclear",
     },
     attribution: [provenance],
+    source: "canonical",
+    requestedVersion: row.routeVersion,
   };
   return {
     status: reasons.length ? "degraded" : "available",

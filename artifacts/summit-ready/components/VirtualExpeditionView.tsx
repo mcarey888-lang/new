@@ -94,6 +94,7 @@ interface PendingVirtualExpeditionRequest {
   radius: number;
   requireVerifiedRouteSelection: true;
   targetRouteIdentityKey?: string;
+  targetRouteId?: string;
   targetCountry?: string;
   targetRegion?: string;
 }
@@ -135,12 +136,15 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
     try {
       const selectedRouteKey = summitGoal.virtualExpeditionProvenance
         ?.selectedTargetRouteIdentityKey ?? undefined;
+      const selectedRouteId = summitGoal.virtualExpeditionProvenance
+        ?.selectedTargetRouteId ?? undefined;
       const requestBody: PendingVirtualExpeditionRequest = retryRequest ?? {
         targetMountain: summitGoal.mountainName,
         userLocation: summitGoal.location,
         radius: summitGoal.maxRadius ?? 30,
         requireVerifiedRouteSelection: true,
         ...(selectedRouteKey ? { targetRouteIdentityKey: selectedRouteKey } : {}),
+        ...(selectedRouteId ? { targetRouteId: selectedRouteId } : {}),
       };
       const res = await fetch(`${API_BASE}/virtual-expedition`, {
         method: "POST",
@@ -241,6 +245,7 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
         void fetchExpedition(true, {
           ...pendingRequest,
           targetRouteIdentityKey: route.identityKey,
+          ...(route.routeId ? { targetRouteId: route.routeId } : {}),
         });
       }}
     />

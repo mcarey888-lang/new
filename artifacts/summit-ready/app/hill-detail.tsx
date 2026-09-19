@@ -19,6 +19,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
+import type { NearbyHill } from "@/context/AppContext";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -516,12 +517,26 @@ export default function HillDetailScreen() {
             style={styles.expeditionStartBtn}
             activeOpacity={0.85}
             onPress={() => {
-              const hill = {
+              const hill: NearbyHill = {
                 name: name ?? "",
-                routeIdentityKey: routeIdentityKey ?? null,
-                summitIdentityKey: summitIdentityKey ?? null,
-                objectiveType: objectiveType ?? null,
-              } as any;
+                routeIdentityKey: routeIdentityKey || undefined,
+                routeId: routeIdentityKey || undefined,
+                summitIdentityKey: summitIdentityKey || undefined,
+                summitId: summitIdentityKey || undefined,
+                summitName: name ?? "",
+                routeName: routeType || undefined,
+                objectiveType: objectiveType === "manual_summit" ? "manual_summit" : undefined,
+                elevation: Number(elevation) || 0,
+                distance: Number(distance) || Number(routeDistance) || 0,
+                repeats: 1,
+                totalElevation: Number(elevation) || 0,
+                surface: surface || "unknown",
+                grade: grade || "Moderate",
+                emoji: emoji || "⛰️",
+                routeDistance: Number(routeDistance) || undefined,
+                estimatedTime: estimatedTime || undefined,
+                routeType: routeType === "circular" || routeType === "out-and-back" ? routeType : "hill",
+              };
               const launch = isExpeditionMode
                 ? buildExpeditionStageLaunchContext(hill, expeditionId ?? "", undefined)
                 : buildFreeHikeLaunchContext("training", expeditionId);

@@ -1,5 +1,8 @@
 import { pythonUnicode14Casefold } from "./unicodeCasefold";
 
+// Queries here are against the published public SDE read copy via @workspace/db;
+// authoring/ENGINE_DATABASE_URL is intentionally not part of runtime consumers.
+
 export interface CanonicalLookupInput {
   name: string;
   country?: string;
@@ -224,6 +227,8 @@ WHERE ri.mountain_id = $1::uuid
   AND ri.status = 'verified'
   AND rd.status = 'verified'
   AND rf.status = 'verified'
+  AND rd.version = ri.version
+  AND rf.version = rd.version
 ORDER BY ri.canonical_name, ri.identity_key
 `;
 
@@ -291,6 +296,8 @@ WHERE ri.mountain_id = ANY($1::uuid[])
   AND ri.status = 'verified'
   AND rd.status = 'verified'
   AND rf.status = 'verified'
+  AND rd.version = ri.version
+  AND rf.version = rd.version
 ORDER BY ri.mountain_id, ri.canonical_name, ri.identity_key
 `;
 

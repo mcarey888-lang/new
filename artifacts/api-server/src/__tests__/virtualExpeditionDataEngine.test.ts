@@ -122,15 +122,15 @@ describe("virtual expedition summit-first data engine", () => {
     const local = {
       ...mountain(), id: "helvellyn-id", canonicalSourceKey: "summit:helvellyn",
       name: "Helvellyn", latitude: 54.526, longitude: -3.017,
-      routes: [{ ...route(), identityKey: "route:striding-edge", name: "Striding Edge" }],
+      routes: [{ ...route(), identityKey: "route:striding-edge", version: "v1", mountainId: "helvellyn-id", routeId: "sde:route:route:striding-edge@v1", name: "Striding Edge" }],
     };
     const response = await invoke(deps({
       canonicalAreaLookup: vi.fn(async () => [local]),
     }), { daysOverride: 1 });
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Helvellyn", summitName: "Helvellyn", summitId: "summit:helvellyn",
-      routeName: "Striding Edge", routeId: "route:striding-edge",
-      summitIdentityKey: "summit:helvellyn", routeIdentityKey: "route:striding-edge",
+      routeName: "Striding Edge", routeId: "sde:route:route:striding-edge@v1",
+      summitIdentityKey: "sde:mountain:helvellyn-id", routeIdentityKey: "sde:route:route:striding-edge@v1",
       lat: 54.526, lng: -3.017,
     });
   });
@@ -344,7 +344,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Canonical Local Summit",
       routeName: "Verified Ridge",
-      summitIdentityKey: "canonical:local-one",
+      summitIdentityKey: "sde:mountain:local-one",
       dataSource: "canonical_verified",
       routeDataStatus: "external_route",
     });
@@ -363,7 +363,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(fetchPeaks).not.toHaveBeenCalled();
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Canonical Terrain Summit",
-      summitIdentityKey: "canonical:one",
+      summitIdentityKey: "sde:mountain:mountain-1",
       routeDataStatus: "terrain_calculated",
     });
   });
@@ -409,7 +409,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.provenance.eligibleSummitShortlist).toHaveLength(1);
     expect(response.body.provenance.eligibleSummitShortlist[0]).toMatchObject({
-      summitIdentityKey: "canonical:one",
+      summitIdentityKey: "sde:mountain:mountain-1",
       routeAvailable: true,
       source: "canonical_verified",
     });
@@ -424,7 +424,7 @@ describe("virtual expedition summit-first data engine", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.recommendedHills[0]).toMatchObject({
       name: "Route-less Canonical",
-      summitIdentityKey: "canonical:one",
+      summitIdentityKey: "sde:mountain:mountain-1",
       routeIdentityKey: "route:terrain:canonical:one",
       dataSource: "canonical_verified",
       routeDataStatus: "terrain_calculated",

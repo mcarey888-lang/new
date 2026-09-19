@@ -76,6 +76,7 @@ export const HillSchema = z.object({
     "seeded_estimate",
     "external_route",
     "terrain_calculated",
+    "verified",
   ]).optional(),
   /** Summit elevation in metres ASL — from OSM ele tag or OpenTopoData radial sampling.
    *  Only present on hills that came through the Overpass pipeline; absent on DB-cached hits.

@@ -268,11 +268,11 @@ function canonicalSummitToHills(
         name: mountain.name,
         summitName: mountain.name,
         summitId: mountain.canonicalSourceKey,
-        routeIdentityKey: route.identityKey,
-        routeId: route.identityKey,
+        routeIdentityKey: route.routeId ?? route.identityKey,
+        routeId: route.routeId ?? route.identityKey,
         routeName: route.name,
         entityType: "summit",
-        summitIdentityKey: mountain.canonicalSourceKey,
+        summitIdentityKey: `sde:mountain:${mountain.id}`,
         summitProminenceM: mountain.prominenceM,
         elevation: totalAscentM,
         distance: distanceKm,
@@ -447,6 +447,7 @@ export function createVirtualExpeditionHandler(
         expeditionStyle: z.literal("quickest_high_summits").optional().default("quickest_high_summits"),
         difficultyPreference: z.string().optional().nullable(),
         targetRouteIdentityKey: z.string().trim().min(1).max(200).optional().nullable(),
+        targetRouteId: z.string().regex(/^sde:route:[^@\s]+@[^@\s]+$/).optional().nullable(),
         requireVerifiedRouteSelection: z.boolean().optional().default(false),
         selectedRouteIdentityKeys: z.array(z.string().trim().min(1).max(240)).max(32)
           .optional().default([]),
@@ -507,7 +508,7 @@ export function createVirtualExpeditionHandler(
       }
 
       const selectedCanonicalRoute = canonicalMountain
-        ? selectVerifiedRoute(canonicalMountain, input.targetRouteIdentityKey)
+        ? selectVerifiedRoute(canonicalMountain, input.targetRouteIdentityKey, input.targetRouteId)
         : null;
       const routeSelectionRequired = Boolean(
         canonicalMountain && canonicalMountain.routes.length > 1 && !selectedCanonicalRoute,
@@ -692,6 +693,8 @@ export function createVirtualExpeditionHandler(
           }
         }
         const principalCanonicalSummits = filterCanonicalPrincipalSummits(canonicalSummits);
+        const canonicalMountainId = (summit: VerifiedCanonicalMountain) =>
+          `sde:mountain:${summit.id}`;
         const canonicalHills = principalCanonicalSummits.flatMap(summit =>
           canonicalSummitToHills(summit, routeOwners));
         // A canonical summit remains the identity authority even when its
@@ -700,7 +703,7 @@ export function createVirtualExpeditionHandler(
         // then restore every identity field from the canonical record.  This
         // deliberately does not turn the estimate into a verified route.
         const routeLessSummits = principalCanonicalSummits.filter(summit =>
-          !canonicalHills.some(hill => hill.summitIdentityKey === summit.canonicalSourceKey)
+          !canonicalHills.some(hill => hill.summitIdentityKey === canonicalMountainId(summit))
           && typeof summit.latitude === "number" && Number.isFinite(summit.latitude)
           && typeof summit.longitude === "number" && Number.isFinite(summit.longitude)
           && typeof summit.elevationM === "number" && Number.isFinite(summit.elevationM));
@@ -755,7 +758,7 @@ export function createVirtualExpeditionHandler(
             name: summit.name,
             summitName: summit.name,
             summitId: summit.canonicalSourceKey,
-            summitIdentityKey: summit.canonicalSourceKey,
+            summitIdentityKey: canonicalMountainId(summit),
             summitProminenceM: summit.prominenceM,
             summitElevationASL: summitElevationM,
             lat: summit.latitude as number,
@@ -764,7 +767,7 @@ export function createVirtualExpeditionHandler(
             routeId: `route:terrain:${summit.canonicalSourceKey}`,
             entityType: "summit",
             dataSource: "canonical_verified",
-            routeDataStatus: "terrain_calculated",
+        routeDataStatus: "terrain_calculated",
           });
         }
         const canonicalCandidateHills = [...canonicalHills, ...canonicalTerrainHills];
@@ -772,13 +775,13 @@ export function createVirtualExpeditionHandler(
           name: summit.name,
           summitElevationASL: summit.elevationM ?? null,
           prominenceM: summit.prominenceM ?? null,
-          summitIdentityKey: summit.canonicalSourceKey,
+          summitIdentityKey: canonicalMountainId(summit),
           routeCount: summit.routes.length,
           source: "canonical_verified",
           routeAvailable: canonicalCandidateHills.some(hill =>
-            hill.summitIdentityKey === summit.canonicalSourceKey),
+            hill.summitIdentityKey === canonicalMountainId(summit)),
           skippedReason: canonicalCandidateHills.some(hill =>
-            hill.summitIdentityKey === summit.canonicalSourceKey)
+            hill.summitIdentityKey === canonicalMountainId(summit))
             ? null
             : "No complete verified route facts or usable terrain estimate are available for this canonical summit.",
         }));

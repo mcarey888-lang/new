@@ -118,7 +118,11 @@ export function verifiedRouteChoices(
 export function selectVerifiedRoute(
   mountain: VerifiedCanonicalMountain,
   requestedIdentityKey?: string | null,
+  requestedRouteId?: string | null,
 ): TrustedCanonicalRoute | null {
+  if (requestedRouteId) {
+    return mountain.routes.find(route => route.routeId === requestedRouteId) ?? null;
+  }
   if (requestedIdentityKey) {
     return mountain.routes.find(route => route.identityKey === requestedIdentityKey) ?? null;
   }
