@@ -4,6 +4,7 @@ import {
   calculatePersonalElevationTotalsFromEvents,
   getPersonalElevationCreditEventsWithClient,
   writePersonalElevationCredit,
+  assertStage2LedgerWritesAvailable,
   type LedgerTotals,
   type PersonalElevationCreditWrite,
 } from "./stage2Ledgers";
@@ -148,8 +149,8 @@ export function evaluateElevationBankCredit(
   if (qualification.evidenceClass !== activity.evidenceState) {
     return { status: "ineligible", reason: "qualification_metric_mismatch" };
   }
-  const sourceAscent = activity.validatedAscentM ?? activity.recordedAscentM;
-  if (!Number.isInteger(sourceAscent) || sourceAscent <= 0) {
+  const sourceAscent = activity.validatedAscentM ?? activity.recordedAscentM ?? null;
+  if (sourceAscent === null || !Number.isInteger(sourceAscent) || sourceAscent <= 0) {
     return { status: "ineligible", reason: "zero_or_missing_ascent" };
   }
   if (qualification.creditedMetric !== sourceAscent) {
@@ -216,6 +217,7 @@ export async function getElevationBankSummary(
   ownerUserId: string,
   period?: { from?: Date; to?: Date },
 ): Promise<ElevationBankSummary> {
+  assertStage2LedgerWritesAvailable();
   return db.transaction(async (client) => {
     const rows = await getPersonalElevationCreditEventsWithClient(client, ownerUserId);
     return buildElevationBankSummary(rows, period);
@@ -226,6 +228,7 @@ export async function getRecentElevationBankCredits(
   ownerUserId: string,
   limit = 10,
 ) {
+  assertStage2LedgerWritesAvailable();
   const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
   return db.transaction(async (client) => {
     const rows = await getPersonalElevationCreditEventsWithClient(client, ownerUserId);

@@ -140,7 +140,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - S4-C04 focused Elevation Bank and Stage 2 planning tests passed 23/23, including wrong-purpose deletion, indoor-kind evidence, activity deletion versus explicit revocation, and safe revocation evidence fallback/rejection; DB TypeScript and API bundle build passed; `git diff --check` passed.
 - Manual Training and ExploreHike canonical adapters are implemented but default-off.
 - Existing visible history/readiness/elevation/Expedition consumers remain on legacy paths.
-- Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work.
+- Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work. S4-C05 adds `activityConsequences.ts` as an unwired pure planner plus injected effect boundary; Training/readiness, Expedition, challenge/achievement, and mountain/route persistence remain caller-owned until their existing legacy contracts are explicitly supplied. Review hardening now filters replayed qualifications by activity ID, binds Expedition effects and runs to exact links/IDs and canonical metrics, deduplicates identical ledger corrections/revocations, scopes unique-conflict retries to migration-defined indexes, and gates every exported Stage 2 write boundary outside production until schema availability is explicitly enabled.
 - Replit's Expo screenshot proxy can resolve the separate landing artifact at `/`; use Expo Go/native-device QA for authenticated visual release checks.
 
 ## Decisions requiring review
@@ -151,7 +151,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Proceed to S4-C05 review/implementation. Keep the Elevation Bank service unwired from routes/UI and do not apply `0002_stage2_activity_ledgers.sql` or activate production flags.
+Proceed to S4-C05 verification/review. Keep the consequence resolver and Elevation Bank service unwired from routes/UI and do not apply `0002_stage2_activity_ledgers.sql` or activate production flags.
 
 ## Git branch and latest commit SHA
 

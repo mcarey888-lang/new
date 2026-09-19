@@ -46,12 +46,26 @@ export type ExpeditionContributionWrite =
 
 const UNIQUE_VIOLATION = "23505";
 
-function isUniqueViolation(error: unknown): boolean {
+export function assertStage2LedgerWritesAvailable(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Stage 2 ledger writes are disabled in production pending release approval");
+  }
+  if (process.env.STAGE2_LEDGER_ENABLED !== "true") {
+    throw new Error("Stage 2 ledger schema availability gate is disabled");
+  }
+}
+
+function isAllowedUniqueViolation(
+  error: unknown,
+  allowedConstraints: readonly string[],
+): boolean {
   return Boolean(
     error &&
     typeof error === "object" &&
     "code" in error &&
-    (error as { code?: string }).code === UNIQUE_VIOLATION,
+    "constraint" in error &&
+    (error as { code?: string; constraint?: string }).code === UNIQUE_VIOLATION
+    && allowedConstraints.includes((error as { constraint?: string }).constraint ?? ""),
   );
 }
 
@@ -62,15 +76,25 @@ export type LedgerTransactionRunner = <T>(
 export async function withFreshTransactionRetry<T>(
   transaction: LedgerTransactionRunner,
   operation: (client: DbClient) => Promise<T>,
+  allowedConstraints: readonly string[],
   retries = 1,
 ): Promise<T> {
   try {
     return await transaction(operation);
   } catch (error) {
-    if (!isUniqueViolation(error) || retries <= 0) throw error;
-    return withFreshTransactionRetry(transaction, operation, retries - 1);
+    if (!isAllowedUniqueViolation(error, allowedConstraints) || retries <= 0) throw error;
+    return withFreshTransactionRetry(transaction, operation, allowedConstraints, retries - 1);
   }
 }
+
+const PERSONAL_ELEVATION_RETRY_CONSTRAINTS = [
+  "personal_elevation_credit_events_identity_uidx",
+  "personal_elevation_credit_events_lineage_uidx",
+] as const;
+const EXPEDITION_RETRY_CONSTRAINTS = [
+  "expedition_stage_contributions_identity_uidx",
+  "expedition_stage_contributions_lineage_uidx",
+] as const;
 
 async function lockLedgerIdentity(client: DbClient, identity: string): Promise<void> {
   // Transaction-scoped advisory locks serialize first credit/revision selection
@@ -131,6 +155,7 @@ export async function writePersonalElevationCreditWithClient(
   client: DbClient,
   input: ElevationCreditInput,
 ): Promise<PersonalElevationCreditWrite> {
+  assertStage2LedgerWritesAvailable();
   await lockLedgerIdentity(
     client,
     `personal-elevation:${input.ownerUserId}:${input.activityId}:${input.ruleVersion}`,
@@ -151,6 +176,9 @@ export async function writePersonalElevationCreditWithClient(
     ruleVersion: row.ruleVersion,
     revision: row.revision,
     status: row.status as ExistingElevationCredit["status"],
+    creditedAscentM: row.creditedAscentM,
+    evidenceClass: row.evidenceClass as ExistingElevationCredit["evidenceClass"],
+    effectiveAt: row.effectiveAt,
   }));
   const plan = planPersonalElevationCredit(input, existing);
   if (plan.status === "rejected") return plan;
@@ -195,9 +223,11 @@ export async function writePersonalElevationCreditWithClient(
 export async function writePersonalElevationCredit(
   input: ElevationCreditInput,
 ): Promise<PersonalElevationCreditWrite> {
+  assertStage2LedgerWritesAvailable();
   return withFreshTransactionRetry(
     (operation) => db.transaction(operation),
     (client) => writePersonalElevationCreditWithClient(client, input),
+    PERSONAL_ELEVATION_RETRY_CONSTRAINTS,
   );
 }
 
@@ -225,6 +255,7 @@ export async function getPersonalElevationTotals(
   ownerUserId: string,
   period?: { from?: Date; to?: Date },
 ): Promise<LedgerTotals> {
+  assertStage2LedgerWritesAvailable();
   return db.transaction((tx) => getPersonalElevationTotalsWithClient(tx, ownerUserId, period));
 }
 
@@ -232,6 +263,7 @@ export async function getOrCreateExpeditionRunWithClient(
   client: DbClient,
   input: ExpeditionRunInput,
 ) {
+  assertStage2LedgerWritesAvailable();
   if (!input.ownerUserId.trim() || !input.expeditionId.trim() || !input.runKey.trim()) {
     throw new Error("Expedition run owner, expedition, and run key are required");
   }
@@ -252,6 +284,7 @@ export async function getOrCreateExpeditionRunWithClient(
 }
 
 export async function getOrCreateExpeditionRun(input: ExpeditionRunInput) {
+  assertStage2LedgerWritesAvailable();
   return db.transaction((tx) => getOrCreateExpeditionRunWithClient(tx, input));
 }
 
@@ -259,9 +292,11 @@ export async function writeExpeditionStageContributionWithClient(
   client: DbClient,
   input: ExpeditionContributionInput,
 ): Promise<ExpeditionContributionWrite> {
+  assertStage2LedgerWritesAvailable();
   const run = await client.select().from(expeditionRuns).where(and(
     eq(expeditionRuns.id, input.runId),
     eq(expeditionRuns.ownerUserId, input.ownerUserId),
+    eq(expeditionRuns.expeditionId, input.expeditionId),
   )).limit(1);
   if (!run[0]) return { status: "rejected", reason: "Expedition run is not available to this owner" };
   if (!input.stageRule) return { status: "rejected", reason: "defined stage rule is required" };
@@ -285,6 +320,8 @@ export async function writeExpeditionStageContributionWithClient(
     scoreVersion: row.scoreVersion,
     revision: row.revision,
     status: row.status as ExistingExpeditionContribution["status"],
+    acceptedMetric: row.acceptedMetric,
+    acceptedElevationM: row.acceptedElevationM,
   }));
   const plan = planExpeditionStageContribution(input, existing);
   if (plan.status === "rejected") return plan;
@@ -327,8 +364,10 @@ export async function writeExpeditionStageContributionWithClient(
 export async function writeExpeditionStageContribution(
   input: ExpeditionContributionInput,
 ): Promise<ExpeditionContributionWrite> {
+  assertStage2LedgerWritesAvailable();
   return withFreshTransactionRetry(
     (operation) => db.transaction(operation),
     (client) => writeExpeditionStageContributionWithClient(client, input),
+    EXPEDITION_RETRY_CONSTRAINTS,
   );
 }

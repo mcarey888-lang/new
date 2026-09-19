@@ -306,3 +306,15 @@ All offline behaviors, SDE identities, and Route Engine features were preserved 
 **Tests/result:** COMPLETE. TypeScript check passed.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S4-R05 Canonical activity consequence resolver
+
+**Task:** Execute S4-C05: resolve completed canonical activities into explicit post-activity consequences.
+
+**Implementation:** Added a pure `planActivityConsequences` boundary and an injected `applyActivityConsequences` writer boundary. Explicit canonical links and qualification results now plan Elevation Bank, Training completion/readiness handoff, simulated Expedition contribution, challenge/achievement hooks, and mountain/route evidence. Effects carry deterministic idempotency keys and optional applied-key storage; Expedition effects are always simulated-only and never claim a Real Summit. Manual, indoor, and untrusted evidence cannot produce Elevation Bank or real-summit effects. No routes, UI, migrations, production flags, or legacy calculations were changed.
+
+**Important files/schema:** `artifacts/api-server/src/services/activityConsequences.ts`, `artifacts/api-server/src/__tests__/activityConsequences.test.ts`. No schema changes.
+
+**Tests/result:** Focused tests and final verification are pending parent-agent execution. Full API typecheck retains unrelated pre-existing failures; this change introduces no production activation.
+
+**C05 review hardening:** Added effective-state comparison for correction/revocation retries in both ledgers, qualification activity-ID replay filtering, exact Expedition link/rule/metric/elevation binding, constraint-scoped unique-conflict retries, and an explicit non-production/schema availability gate around every exported Stage 2 write boundary. Expedition contribution inputs now bind the run to the exact expedition ID. Focused affected suites now pass 32 tests; DB tsc, API build, and diff check pass. No migration or production flag was applied.

@@ -41,6 +41,9 @@ export interface ExistingElevationCredit {
   ruleVersion: string;
   revision: number;
   status: "credited" | "revoked" | "corrected";
+  creditedAscentM: number;
+  evidenceClass: ElevationLedgerEvidenceClass;
+  effectiveAt: Date;
 }
 
 export type ElevationCreditPlan =
@@ -72,6 +75,16 @@ export function planPersonalElevationCredit(
     (current, event) => !current || event.revision > current.revision ? event : current,
     undefined,
   );
+  const requestedStatus = input.revocation ? "revoked" : input.correction ? "corrected" : "credited";
+  if (
+    latest
+    && latest.status === requestedStatus
+    && latest.creditedAscentM === input.creditedAscentM
+    && latest.evidenceClass === input.evidenceClass
+    && latest.effectiveAt.getTime() === input.effectiveAt.getTime()
+  ) {
+    return { status: "deduplicated", revision: latest.revision };
+  }
   if (latest?.status === "credited" && !input.correction && !input.revocation) {
     return { status: "deduplicated", revision: latest.revision };
   }
@@ -109,6 +122,7 @@ export interface ExpeditionStageRule {
 export interface ExpeditionContributionInput {
   ownerUserId: string;
   runId: string;
+  expeditionId: string;
   activityId: string;
   stageRule?: ExpeditionStageRule;
   activityKind: string;
@@ -130,6 +144,8 @@ export interface ExistingExpeditionContribution {
   scoreVersion: string;
   revision: number;
   status: "accepted" | "revoked" | "corrected";
+  acceptedMetric: number;
+  acceptedElevationM: number | null;
 }
 
 export type ExpeditionContributionPlan =
@@ -151,8 +167,8 @@ export function planExpeditionStageContribution(
   input: ExpeditionContributionInput,
   existing: readonly ExistingExpeditionContribution[] = [],
 ): ExpeditionContributionPlan {
-  if (!input.ownerUserId.trim() || !input.runId.trim() || !input.activityId.trim()) {
-    return { status: "rejected", reason: "owner, run, and activity are required" };
+  if (!input.ownerUserId.trim() || !input.runId.trim() || !input.expeditionId.trim() || !input.activityId.trim()) {
+    return { status: "rejected", reason: "owner, expedition, run, and activity are required" };
   }
   if (!input.stageRule) return { status: "rejected", reason: "defined stage rule is required" };
   if (input.realSummitClaim === true) {
@@ -183,6 +199,15 @@ export function planExpeditionStageContribution(
     (current, contribution) => !current || contribution.revision > current.revision ? contribution : current,
     undefined,
   );
+  const requestedStatus = input.revocation ? "revoked" : input.correction ? "corrected" : "accepted";
+  if (
+    latest
+    && latest.status === requestedStatus
+    && latest.acceptedMetric === input.acceptedMetric
+    && latest.acceptedElevationM === (input.acceptedElevationM ?? null)
+  ) {
+    return { status: "deduplicated", revision: latest.revision };
+  }
   if (latest?.status === "accepted" && !input.correction && !input.revocation) {
     return { status: "deduplicated", revision: latest.revision };
   }
