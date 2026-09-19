@@ -78,7 +78,7 @@ async function lockLedgerIdentity(client: DbClient, identity: string): Promise<v
   await client.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${identity}, 0))`);
 }
 
-function latestElevationRows(
+export function selectLatestEffectivePersonalElevationCredits(
   rows: readonly (typeof personalElevationCreditEvents.$inferSelect)[],
 ): (typeof personalElevationCreditEvents.$inferSelect)[] {
   const latest = new Map<string, typeof rows[number]>();
@@ -88,6 +88,24 @@ function latestElevationRows(
     if (!current || row.revision > current.revision) latest.set(key, row);
   }
   return [...latest.values()];
+}
+
+export function calculatePersonalElevationTotalsFromEvents(
+  rows: readonly (typeof personalElevationCreditEvents.$inferSelect)[],
+  period?: { from?: Date; to?: Date },
+): LedgerTotals {
+  const credited = selectLatestEffectivePersonalElevationCredits(rows)
+    .filter((row) => row.status === "credited" || row.status === "corrected");
+  return {
+    lifetimeAscentM: credited.reduce((sum, row) => sum + row.creditedAscentM, 0),
+    periodAscentM: credited
+      .filter((row) =>
+        (!period?.from || row.effectiveAt >= period.from)
+        && (!period?.to || row.effectiveAt <= period.to),
+      )
+      .reduce((sum, row) => sum + row.creditedAscentM, 0),
+    creditedActivities: credited.length,
+  };
 }
 
 export async function getLatestPersonalElevationCreditWithClient(
@@ -191,15 +209,16 @@ export async function getPersonalElevationTotalsWithClient(
   const rows = await client.select().from(personalElevationCreditEvents).where(
     eq(personalElevationCreditEvents.ownerUserId, ownerUserId),
   );
-  const latest = latestElevationRows(rows);
-  const credited = latest.filter((row) => row.status === "credited" || row.status === "corrected");
-  return {
-    lifetimeAscentM: credited.reduce((sum, row) => sum + row.creditedAscentM, 0),
-    periodAscentM: credited
-      .filter((row) => (!period?.from || row.effectiveAt >= period.from) && (!period?.to || row.effectiveAt <= period.to))
-      .reduce((sum, row) => sum + row.creditedAscentM, 0),
-    creditedActivities: credited.length,
-  };
+  return calculatePersonalElevationTotalsFromEvents(rows, period);
+}
+
+export async function getPersonalElevationCreditEventsWithClient(
+  client: DbClient,
+  ownerUserId: string,
+) {
+  return client.select().from(personalElevationCreditEvents).where(
+    eq(personalElevationCreditEvents.ownerUserId, ownerUserId),
+  );
 }
 
 export async function getPersonalElevationTotals(

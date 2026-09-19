@@ -2,6 +2,18 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-C04 personal Elevation Bank service
+
+**Task:** Implement the additive personal Elevation Bank calculation/read boundary over the Stage 2 ledger without changing legacy totals or consumers.
+
+**Implementation:** Added pure qualification/credit decision logic requiring explicit `personal_elevation` qualification, matching eligible recorded GPS evidence, positive source ascent, and a non-simulated canonical activity. Manual, indoor, unavailable/untrusted, invalid/zero, unsupported competition evidence, and qualification/metric mismatches are rejected. Added append-only credit/revocation write orchestration, deterministic latest-effective lifetime/period totals, recent effective credit reads, and Everest-equivalent display math using 8,849m. No route, UI, consumer, migration, production flag, or public activation was added.
+
+**Tests/result:** Focused Elevation Bank plus Stage 2 planning tests passed **23/23**, including wrong-purpose deletion, indoor-kind evidence, activity deletion versus explicit revocation, and safe revocation evidence fallback/rejection. Database TypeScript check, API production bundle, and `git diff --check` passed. The service remains unwired and Stage 2 migration `0002_stage2_activity_ledgers.sql` remains unapplied.
+
+**Files:** `artifacts/api-server/src/services/elevationBank.ts`, `artifacts/api-server/src/services/stage2Ledgers.ts`, `artifacts/api-server/src/__tests__/elevationBank.test.ts`.
+
+**Commit:** Reported after this entry is committed.
+
 ## 2026-09-19 UTC — S4-R03 development activation boundary
 
 **Task:** Prove the five new canonical activity ingestion paths end-to-end in development/test boundaries without production activation.

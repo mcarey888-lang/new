@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 is active. S4-R03 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, and the five new ingestion paths are proven behind a development/test-only activation boundary. Proceed to S4-C04; do not apply production migration or flags.
+Stage 4 is active. S4-C04 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, and the personal Elevation Bank decision/read service is ready without consumer switching. Proceed to S4-C05; do not apply production migration or flags.
 
 ## Last completed task
 
-S4-R03 proved stable source identities, retry/conflict behavior, explicit multi-context reuse, private GPS evidence, manual evidence boundaries, offline/local UUID preservation, and owner separation for new canonical ingestion. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-C04 added pure Elevation Bank qualification/credit decisions requiring explicit personal-elevation qualification and eligible recorded GPS evidence, deterministic effective lifetime/period totals, 8,849m Everest-equivalent display math, recent effective-credit reads, and DB wrappers over the additive ledger. Corrections and revocations remain append-only; legacy totals and consumers remain authoritative. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 
@@ -43,6 +43,7 @@ S4-R03 proved stable source identities, retry/conflict behavior, explicit multi-
 - S3-R06 replaces disparate Track screens with a unified SharedTrackScreen offering context-appropriate tracking (Next Stage, Next Session, Free Hike) while preserving the offline GPS engine.
 - S3-R07 standardizes Profile (You) and Community headers and injects a "Current Context" banner (Training Goal / Active Expedition) into the Profile view.
 - S3-R08 verifies mode isolation, shared navigation boundaries, offline tracking compatibility, stable Training/Expedition completion handoff, protected files, and the unchanged/unapplied Stage 2 migration.
+- S4-C04 adds `elevationBank.ts` decision/read service and focused tests; manual, indoor, unavailable/untrusted, zero/invalid, simulated, and unsupported competition evidence cannot credit personal elevation.
 
 ## Files changed
 
@@ -60,6 +61,9 @@ Primary activity implementation:
 - `artifacts/api-server/src/__tests__/manualTrainingCanonicalAdapter.test.ts`
 - `artifacts/api-server/src/__tests__/exploreHikeCanonicalAdapter.test.ts`
 - `artifacts/api-server/src/__tests__/canonicalActivityLinks.test.ts`
+- `artifacts/api-server/src/services/stage2Ledgers.ts`
+- `artifacts/api-server/src/services/elevationBank.ts`
+- `artifacts/api-server/src/__tests__/elevationBank.test.ts`
 - `artifacts/api-server/src/routes/activities.ts`
 - `artifacts/api-server/src/routes/hill-session.ts`
 - `lib/db/src/schema/canonical-activities.ts`
@@ -133,6 +137,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Existing production rows have no owner and are intentionally not backfilled.
 - No fuzzy legacy reconciliation or correction API exists.
 - Full API typecheck has unrelated pre-existing failures noted above.
+- S4-C04 focused Elevation Bank and Stage 2 planning tests passed 23/23, including wrong-purpose deletion, indoor-kind evidence, activity deletion versus explicit revocation, and safe revocation evidence fallback/rejection; DB TypeScript and API bundle build passed; `git diff --check` passed.
 - Manual Training and ExploreHike canonical adapters are implemented but default-off.
 - Existing visible history/readiness/elevation/Expedition consumers remain on legacy paths.
 - Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work.
@@ -146,7 +151,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Stage 3 is complete. Await a new explicit command; do not begin Stage 4 automatically.
+Proceed to S4-C05 review/implementation. Keep the Elevation Bank service unwired from routes/UI and do not apply `0002_stage2_activity_ledgers.sql` or activate production flags.
 
 ## Git branch and latest commit SHA
 
