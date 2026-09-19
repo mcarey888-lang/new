@@ -54,9 +54,14 @@ describe("activity completion presentation", () => {
       status: "linked",
       sessionKey: "week-2-session-1",
     });
-    expect(presentation.expedition).toEqual({
+    expect(presentation.expedition).toMatchObject({
       status: "simulated",
       stageName: "North Ridge stage",
+      simulatedPercent: 0,
+      completedStageCount: 0,
+      totalStageCount: 0,
+      nextStageName: null,
+      isComplete: false,
     });
     expect(presentation).not.toHaveProperty("realSummit");
   });
@@ -118,5 +123,56 @@ describe("activity completion presentation", () => {
     expect(first.title).toBe(retry.title);
     expect(first.elevationBank.status).toBe("credited");
     expect(retry.elevationBank.status).toBe("pending");
+  });
+
+  it("keeps missing recorded metrics honest without inventing values", () => {
+    expect(base({
+      distanceKm: null,
+      ascentM: undefined,
+      durationSecs: null,
+      isOffline: true,
+      elevationBank: { status: "unavailable", reason: "offline" },
+    })).toMatchObject({
+      metrics: { distanceKm: 0, ascentM: 0, durationSecs: 0 },
+      elevationBank: { status: "unavailable" },
+      sync: "saved_locally",
+    });
+  });
+
+  it("carries a completed Expedition state without offering a next stage", () => {
+    const presentation = base({
+      expeditionId: "expedition-complete",
+      expeditionStageName: "Summit stage",
+      expeditionProgress: {
+        mode: "expedition",
+        status: "completed",
+        expeditionId: "expedition-complete",
+        challengeId: null,
+        challengeName: "Summit",
+        targetMountainName: "Summit",
+        progress: {
+          targetSimulatedElevationM: 1000,
+          currentSimulatedElevationM: 1000,
+          simulatedPercent: 1,
+          completedStageCount: 2,
+          totalStageCount: 2,
+          currentStageIndex: null,
+          nextStageIndex: null,
+          isComplete: true,
+        },
+        stages: [],
+        nextStage: null,
+        summit: { eligible: true, transitionState: "ready", completionAwarded: false },
+        availability: "ready",
+      },
+    });
+    expect(presentation.expedition).toMatchObject({
+      status: "simulated",
+      simulatedPercent: 1,
+      completedStageCount: 2,
+      totalStageCount: 2,
+      nextStageName: null,
+      isComplete: true,
+    });
   });
 });

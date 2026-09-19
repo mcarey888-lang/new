@@ -2,19 +2,21 @@ import type {
   ElevationBankResponse,
   ElevationBankUnavailable,
 } from "@workspace/api-client-react";
+import type { ExpeditionPresentationState } from "./expeditionProgress";
 
 export type CompletionPresentationInput = {
   activityId: string;
   title: string;
-  distanceKm: number;
-  ascentM: number;
-  durationSecs: number;
+  distanceKm?: number | null;
+  ascentM?: number | null;
+  durationSecs?: number | null;
   trackingMode?: string | null;
   trainingSessionKey?: string | null;
   expeditionId?: string | null;
   expeditionStageName?: string | null;
   isOffline: boolean;
   elevationBank?: ElevationBankResponse | ElevationBankUnavailable;
+  expeditionProgress?: ExpeditionPresentationState | null;
 };
 
 export type CompletionPresentation = {
@@ -38,7 +40,15 @@ export type CompletionPresentation = {
     | { status: "linked"; sessionKey: string }
     | { status: "not_linked" };
   expedition:
-    | { status: "simulated"; stageName: string }
+    | {
+        status: "simulated";
+        stageName: string;
+        simulatedPercent: number;
+        completedStageCount: number;
+        totalStageCount: number;
+        nextStageName: string | null;
+        isComplete: boolean;
+      }
     | { status: "not_linked" };
   sync: "saved_locally" | "ready_to_sync";
 };
@@ -46,6 +56,8 @@ export type CompletionPresentation = {
 export function buildActivityCompletionPresentation(
   input: CompletionPresentationInput,
 ): CompletionPresentation {
+  const safeMetric = (value: number | null | undefined): number =>
+    typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
   const credited = input.elevationBank?.status === "available"
     ? input.elevationBank.recentCredits.find(
     (credit) =>
@@ -57,9 +69,9 @@ export function buildActivityCompletionPresentation(
   return {
     title: input.title.trim() || "Hike",
     metrics: {
-      distanceKm: input.distanceKm,
-      ascentM: input.ascentM,
-      durationSecs: input.durationSecs,
+      distanceKm: safeMetric(input.distanceKm),
+      ascentM: safeMetric(input.ascentM),
+      durationSecs: safeMetric(input.durationSecs),
     },
     elevationBank: credited && input.elevationBank?.status === "available"
       ? {
@@ -80,6 +92,11 @@ export function buildActivityCompletionPresentation(
       ? {
           status: "simulated",
           stageName: input.expeditionStageName?.trim() || "Expedition stage",
+          simulatedPercent: input.expeditionProgress?.progress.simulatedPercent ?? 0,
+          completedStageCount: input.expeditionProgress?.progress.completedStageCount ?? 0,
+          totalStageCount: input.expeditionProgress?.progress.totalStageCount ?? 0,
+          nextStageName: input.expeditionProgress?.nextStage?.name ?? null,
+          isComplete: input.expeditionProgress?.progress.isComplete ?? false,
         }
       : { status: "not_linked" },
     sync: input.isOffline ? "saved_locally" : "ready_to_sync",

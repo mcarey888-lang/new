@@ -84,6 +84,7 @@ import {
 } from "@/utils/stateReliability";
 import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
 import { buildActivityCompletionPresentation } from "@/utils/activityCompletionPresentation";
+import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1392,6 +1393,10 @@ export default function HikeTrackingScreen() {
     expeditionStageName: hillMeta.hillName,
     isOffline,
     elevationBank: elevationBankQuery.data,
+    expeditionProgress: selectExpeditionPresentation(
+      trackedExpedition,
+      isOffline ? "offline" : "ready",
+    ),
   });
 
   // ── Render: permission denied ────────────────────────────────────────────
@@ -1430,6 +1435,7 @@ export default function HikeTrackingScreen() {
             </View>
             <Text style={s.summaryEyebrow}>ACTIVITY COMPLETE</Text>
             <Text style={s.summaryTitle} numberOfLines={2}>{completionPresentation.title}</Text>
+            <Text style={s.sectionHeading}>YOUR RECORDED ACTIVITY</Text>
 
             <View style={s.summaryGrid}>
               <View style={s.summaryCell}>
@@ -1465,21 +1471,30 @@ export default function HikeTrackingScreen() {
               </View>
             </View>
 
-            {completionPresentation.elevationBank.status === "credited" && (
+            {(completionPresentation.expedition.status === "simulated" || elevationBankQuery.data) && (
               <View style={s.consequenceCard} testID="completion-elevation-bank">
                 <View style={s.consequenceHeader}>
                   <TrendingUp size={16} color={T.green} />
-                  <Text style={s.consequenceEyebrow}>PERSONAL PROGRESS</Text>
+                  <Text style={s.consequenceEyebrow}>ELEVATION BANK</Text>
                 </View>
-                <Text style={s.bankValue}>
-                  +{fmtM(completionPresentation.elevationBank.creditedAscentM)} ELEVATION BANK
-                </Text>
-                <Text style={s.consequenceSub}>
-                  Lifetime {fmtM(completionPresentation.elevationBank.lifetimeAscentM)}
-                  {" · "}
-                  {completionPresentation.elevationBank.everestEquivalent.toFixed(1)} Everest equivalent
-                  {" · display only"}
-                </Text>
+                {completionPresentation.elevationBank.status === "credited" ? (
+                  <>
+                    <Text style={s.bankValue}>
+                      +{fmtM(completionPresentation.elevationBank.creditedAscentM)} recorded ascent credited
+                    </Text>
+                    <Text style={s.consequenceSub}>
+                      Lifetime {fmtM(completionPresentation.elevationBank.lifetimeAscentM)}
+                      {" · "}
+                      {completionPresentation.elevationBank.everestEquivalent.toFixed(1)} Everest equivalent
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={s.consequenceSub}>
+                    {completionPresentation.elevationBank.status === "unavailable"
+                      ? "Elevation Bank unavailable — your activity is still saved."
+                      : "Pending — this recorded activity will be checked when sync is available."}
+                  </Text>
+                )}
                 <Text style={s.recordedNote}>
                   Recorded ascent only — simulated Expedition elevation is separate.
                 </Text>
@@ -1499,12 +1514,24 @@ export default function HikeTrackingScreen() {
             )}
 
             {completionPresentation.expedition.status === "simulated" && (
-              <View style={s.consequenceRow} testID="completion-expedition">
+              <View style={s.expeditionConsequence} testID="completion-expedition">
                 <Mountain size={17} color={T.blue} />
                 <View style={s.consequenceCopy}>
-                  <Text style={s.consequenceTitle}>Expedition progress</Text>
+                  <Text style={s.consequenceTitle}>EXPEDITION PROGRESS</Text>
                   <Text style={s.consequenceSub}>
                     {completionPresentation.expedition.stageName} · simulated stage progress only
+                  </Text>
+                  <Text style={s.consequenceSub}>
+                    {Math.round(completionPresentation.expedition.simulatedPercent * 100)}% simulated ·{" "}
+                    {completionPresentation.expedition.completedStageCount}/
+                    {completionPresentation.expedition.totalStageCount} stages complete
+                  </Text>
+                  <Text style={s.consequenceSub}>
+                    {completionPresentation.expedition.isComplete
+                      ? "Summit reached — no next stage."
+                      : completionPresentation.expedition.nextStageName
+                        ? `Next stage: ${completionPresentation.expedition.nextStageName}`
+                        : "Next stage will appear after this activity is confirmed."}
                   </Text>
                 </View>
               </View>
@@ -2150,6 +2177,10 @@ const s = StyleSheet.create({
     fontSize: 10, fontFamily: "Inter_700Bold", color: T.green,
     letterSpacing: 1.4,
   },
+  sectionHeading: {
+    width: "100%", fontSize: 11, fontFamily: "Inter_700Bold",
+    color: T.textMuted, letterSpacing: 1.1, marginTop: 2,
+  },
   summaryTitle: { fontSize: 28, fontFamily: "Inter_700Bold", color: T.text },
   summaryTrail: {
     fontSize: 16, fontFamily: "Inter_400Regular", color: T.textMuted,
@@ -2182,6 +2213,11 @@ const s = StyleSheet.create({
     width: "100%", flexDirection: "row", alignItems: "center", gap: 10,
     borderRadius: 14, padding: 14, backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  expeditionConsequence: {
+    width: "100%", flexDirection: "row", alignItems: "flex-start", gap: 10,
+    borderRadius: 14, padding: 14, backgroundColor: "rgba(82,146,255,0.08)",
+    borderWidth: 1, borderColor: "rgba(82,146,255,0.22)",
   },
   consequenceCopy: { flex: 1, gap: 3 },
   consequenceTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
