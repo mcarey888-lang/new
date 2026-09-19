@@ -1145,18 +1145,18 @@ export default function BaseCampScreen() {
               {/* Overall progress — elevation-based */}
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", letterSpacing: 0.5, marginBottom: 2 }}>
-                  OVERALL PROGRESS
+                  SIMULATED ELEVATION
                 </Text>
                 <Text style={{ fontSize: 42, fontFamily: "Inter_700Bold", color: pct > 0 ? T.green : "rgba(255,255,255,0.85)", lineHeight: 46 }}>
                   {pct}%
                 </Text>
                 <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", marginTop: 1 }}>
-                  {totalTrained.toLocaleString()}m of {totalGoal.toLocaleString()}m
+                  {totalTrained.toLocaleString()}m climbed of {totalGoal.toLocaleString()}m target
                 </Text>
               </View>
             </View>
 
-            {/* Choose Route — opens picker so user can select any incomplete route */}
+            {/* Start Next Stage — opens picker so user can select any incomplete route */}
             <TouchableOpacity
               style={s.quickStartBtn}
               activeOpacity={0.85}
@@ -1178,8 +1178,8 @@ export default function BaseCampScreen() {
                 <Play size={14} color="#fff" fill="#fff" />
                 <Text style={s.quickStartText}>
                   {completedRoutes.length > 0 && !nextHill
-                    ? "View Expedition Completion 🎉"
-                    : "Choose Route"}
+                    ? "View Expedition Completion"
+                    : "Start Next Stage"}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1240,7 +1240,7 @@ export default function BaseCampScreen() {
                   routeType:      hill.routeType ?? "",
                   grade:          hill.grade   ?? "",
                   surface:        hill.surface ?? "",
-                  emoji:          hill.emoji   ?? "⛰️",
+                  emoji:          hill.emoji   ?? "",
                   expeditionMode: "true",
                   expeditionId: activeExpeditionId ?? "",
                   routeIdentityKey: hill.routeIdentityKey ?? "",
@@ -1306,7 +1306,7 @@ export default function BaseCampScreen() {
         <Animated.View entering={FadeInDown.delay(140).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
           {/* Next Up */}
           <View style={[s.card, { flex: 1 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>NEXT UP</Text>
+            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>NEXT LOCAL STAGE</Text>
             {nextHill ? (
               <>
                 <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>

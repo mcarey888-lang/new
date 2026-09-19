@@ -185,3 +185,15 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** COMPLETE. TypeScript check passed.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S3-R04 Expedition Home hierarchy
+
+**Task:** Execute S3-C04: Refine Expedition Home around adventure progress and the next stage.
+
+**Implementation:** Refined `base-camp.tsx` to strengthen the visual hierarchy: current expedition hero/context, clear simulated elevation progress ("SIMULATED ELEVATION", "climbed of Xm target"), and the primary "Start Next Stage" CTA. The protected Progress Mountain component remains completely untouched, as does the cinematic transition, expedition calculations, and SDE identity logic. Emoji fallbacks and unnecessary celebratory emojis were stripped. Reused existing content cards and layout tokens.
+
+**Important files/schema:** `artifacts/summit-ready/app/(expedition)/base-camp.tsx`.
+
+**Tests/result:** COMPLETE. TypeScript check passed.
+
+**Commit:** Reported in the completion message after this entry is committed.
