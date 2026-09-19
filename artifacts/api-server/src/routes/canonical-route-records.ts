@@ -8,6 +8,13 @@ import {
 const RouteId = z.string().regex(/^sde:route:[^@\s]+@[^@\s]+$/);
 const MountainId = z.string().regex(/^sde:mountain:[^:\s]+$/);
 
+export function canonicalRouteRecordsEnabled(
+  environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return environment.NODE_ENV !== "production" ||
+    environment.CANONICAL_ROUTE_RECORDS_ENABLED === "true";
+}
+
 export function parseCanonicalRouteRequest(query: unknown) {
   return z.object({ routeId: RouteId, mountainId: MountainId }).safeParse(query);
 }

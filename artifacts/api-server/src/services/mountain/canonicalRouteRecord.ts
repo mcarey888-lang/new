@@ -43,7 +43,6 @@ type RouteRecordRow = Record<string, unknown> & {
   publisher?: string;
   evidenceTitle?: string;
   evidenceUrl?: string;
-  evidenceStatus?: string;
   rightsClassification?: string;
   rightsStatement?: string | null;
   geometryReuseAllowed?: boolean;
@@ -58,6 +57,12 @@ type RouteRecordRow = Record<string, unknown> & {
   profileSourceMembers?: Array<Record<string, unknown>> | null;
   profileSamples?: Array<{ distanceM: number; elevationM: number | null }> | null;
 };
+
+export const CANONICAL_ROUTE_RECORD_TABLES = [
+  "route_geometries",
+  "route_geometry_members",
+  "source_bundles",
+] as const;
 
 export type CanonicalRouteRecordQuery = (
   identityKey: string,
@@ -92,33 +97,22 @@ const ROUTE_RECORD_SQL = sql`
     e.publisher AS "publisher",
     e.title AS "evidenceTitle",
     e.url AS "evidenceUrl",
-    e.status AS "evidenceStatus",
     e.rights_classification AS "rightsClassification",
     e.rights_statement AS "rightsStatement",
     e.geometry_reuse_allowed AS "geometryReuseAllowed",
-    CASE WHEN geom.geom IS NULL OR geom.member_count = 0 THEN NULL
+    CASE WHEN geom.geom IS NULL OR geom.member_count = 0
+      OR e.rights_classification <> 'reusable_geometry'
+      OR NOT e.geometry_reuse_allowed THEN NULL
       ELSE ST_AsGeoJSON(geom.geom)::jsonb END AS "geometry",
     geom.geometry_version AS "geometryVersion",
     geom.derivation_method AS "geometryDerivationMethod",
     geom.source_members AS "geometrySourceMembers",
-    rep.profile_version AS "profileVersion",
-    rep.sample_spacing_m AS "profileSpacingM",
-    rep.calculation_version AS "profileCalculationVersion",
-    rep.nodata_count AS "profileNodataCount",
-    rep.source_members AS "profileSourceMembers",
-    (
-      SELECT COALESCE(
-        json_agg(
-          json_build_object(
-            'distanceM', s.distance_m,
-            'elevationM', s.smoothed_elevation_m
-          ) ORDER BY s.sequence
-        ),
-        '[]'::json
-      )
-      FROM public.route_elevation_samples AS s
-      WHERE s.profile_id = rep.id
-    ) AS "profileSamples"
+    NULL::text AS "profileVersion",
+    NULL::float8 AS "profileSpacingM",
+    NULL::text AS "profileCalculationVersion",
+    NULL::int AS "profileNodataCount",
+    NULL::json AS "profileSourceMembers",
+    NULL::json AS "profileSamples"
   FROM public.route_identities AS ri
   JOIN public.mountains AS m ON m.id = ri.mountain_id
   JOIN public.route_definitions AS rd
@@ -129,49 +123,28 @@ const ROUTE_RECORD_SQL = sql`
     LEFT JOIN LATERAL (
       SELECT
         g.geom,
-        g.geometry_version,
+         g.version AS geometry_version,
         g.derivation_method,
-        COUNT(gm.id)::int AS member_count,
+        COUNT(sb.id)::int AS member_count,
         COALESCE(json_agg(json_build_object(
-          'evidenceId', es.id::text,
-          'provider', es.publisher,
-          'sourceUrl', es.url,
-          'attribution', es.title
-        ) ORDER BY gm.sequence) FILTER (WHERE gm.id IS NOT NULL), '[]'::json) AS source_members
+          'provider', sb.provider,
+          'sourceUrl', sb.source_url,
+          'licence', sb.licence,
+          'sourceHash', sb.sha256,
+          'retrievedAt', sb.retrieved_at,
+          'provenanceVersion', sb.provenance_version,
+          'rightsClassification', 'reusable_geometry',
+          'qaFlags', '[]'::json
+        ) ORDER BY gm.id) FILTER (WHERE sb.id IS NOT NULL), '[]'::json) AS source_members
       FROM public.route_geometries AS g
-      LEFT JOIN public.route_geometry_members AS gm ON gm.geometry_id = g.id
-      LEFT JOIN public.evidence_sources AS es ON es.id = gm.evidence_source_id
+      LEFT JOIN public.route_geometry_members AS gm ON gm.route_geometry_id = g.id
+      LEFT JOIN public.source_bundles AS sb ON sb.id = gm.source_bundle_id
       WHERE g.route_definition_id = rd.id
         AND g.version = rd.version
-        AND g.status = 'verified'
-      GROUP BY g.id, g.geom, g.geometry_version, g.derivation_method
-      ORDER BY g.created_at DESC
+      GROUP BY g.id, g.geom, g.version, g.derivation_method
+      ORDER BY g.id DESC
       LIMIT 1
     ) AS geom ON TRUE
-  LEFT JOIN LATERAL (
-     SELECT p.id,
-       CASE WHEN EXISTS (
-         SELECT 1 FROM public.route_elevation_profile_sources AS ps
-         WHERE ps.profile_id = p.id
-       ) THEN p.calculation_version ELSE NULL END AS profile_version,
-       p.sample_spacing_m, p.nodata_count,
-       COALESCE((
-         SELECT json_agg(json_build_object(
-           'evidenceId', es.id::text,
-           'provider', es.publisher,
-           'sourceUrl', es.url,
-           'attribution', es.title
-         ) ORDER BY ps.id)
-         FROM public.route_elevation_profile_sources AS ps
-         JOIN public.evidence_sources AS es ON es.id = ps.evidence_source_id
-         WHERE ps.profile_id = p.id
-       ), '[]'::json) AS source_members
-    FROM public.route_elevation_profiles AS p
-     WHERE p.route_id = rd.route_id
-       AND p.calculation_version = rd.version
-    ORDER BY p.created_at DESC
-    LIMIT 1
-  ) AS rep ON TRUE
 `;
 
 function stableRouteId(identityKey: string, version: string): string {
@@ -207,7 +180,6 @@ export function buildCanonicalRouteRecord(
     row.routeStatus !== "verified" ||
     row.definitionStatus !== "verified" ||
     row.factStatus !== "verified" ||
-    row.evidenceStatus !== "verified" ||
     !row.evidenceId ||
     !row.publisher ||
     !row.evidenceTitle ||
@@ -233,8 +205,9 @@ export function buildCanonicalRouteRecord(
     ...provenance,
   };
   const geometrySources = (row.geometrySourceMembers ?? []).map(member => ({
-    ...evidence,
+    ...provenance,
     ...member,
+    evidenceType: "source" as const,
   }));
   const profileSources = (row.profileSourceMembers ?? []).map(member => ({
     ...evidence,
@@ -290,7 +263,10 @@ export function buildCanonicalRouteRecord(
       summitElevationM: row.summitElevationM ?? undefined,
       typicalDurationS: row.typicalDurationHours == null ? undefined : row.typicalDurationHours * 3600,
     },
-    geometry: row.geometry && geometrySources.length
+    geometry: row.geometry &&
+      row.rightsClassification === "reusable_geometry" &&
+      row.geometryReuseAllowed === true &&
+      geometrySources.length
       ? {
           geometryVersion: row.geometryVersion ?? row.definitionVersion,
           coordinateReferenceSystem: "EPSG:4326",

@@ -19,7 +19,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
-import type { NearbyHill } from "@/context/AppContext";
+import { useApp, type NearbyHill } from "@/context/AppContext";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -65,13 +65,14 @@ interface HillDetail {
 
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
-import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
-import { fetchCanonicalRouteRecord, type CanonicalRouteApiResult } from "@/utils/canonicalRouteApi";
+import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, selectCanonicalRoute, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
+import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
 import { buildExpeditionStageLaunchContext, buildFreeHikeLaunchContext } from "@/utils/trackingLaunchContext";
 import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
+  const { activeExpedition } = useApp();
   const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
     useLocalSearchParams<{
       name: string;
@@ -99,8 +100,6 @@ export default function HillDetailScreen() {
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState(false);
   const [canonicalRecord, setCanonicalRecord] = useState<CanonicalRouteRecord | null>(null);
-  const [canonicalStatus, setCanonicalStatus] = useState<CanonicalRouteApiResult["status"]>("unavailable");
-  const [canonicalReasons, setCanonicalReasons] = useState<string[]>(["missing_identity"]);
 
   const [imageError, setImageError] = useState(false);
 
@@ -158,15 +157,11 @@ export default function HillDetailScreen() {
   useEffect(() => {
     if (!routeIdentityKey?.startsWith("sde:route:") || !summitIdentityKey?.startsWith("sde:mountain:")) {
       setCanonicalRecord(null);
-      setCanonicalStatus("unavailable");
-      setCanonicalReasons(["missing_identity"]);
       return;
     }
     void fetchCanonicalRouteRecord(routeIdentityKey, summitIdentityKey)
       .then(result => {
         setCanonicalRecord(result.record);
-        setCanonicalStatus(result.status);
-        setCanonicalReasons(result.reasons);
       });
   }, [routeIdentityKey, summitIdentityKey]);
 
@@ -233,24 +228,15 @@ export default function HillDetailScreen() {
   }
 
   const sdeResult: RouteReadResult<RouteIntelligence> = canonicalRecord
-    ? {
-        availability: canonicalStatus === "available" ? "available" : "degraded",
-        value: {
-          mountain: canonicalRecord.mountain,
-          route: canonicalRecord.route,
-          definition: canonicalRecord.definition ?? null,
-          facts: canonicalRecord.facts ?? null,
-          geometry: canonicalRecord.geometry ?? null,
-          elevationProfile: canonicalRecord.elevationProfile ?? null,
-          trust: canonicalRecord.mountain.verification,
-          attribution: canonicalRecord.mountain.provenance,
-        },
-        reasons: canonicalReasons as RouteReadResult<RouteIntelligence>["reasons"],
-      }
+    ? selectCanonicalRoute({
+        routeId: routeIdentityKey,
+        mountainId: summitIdentityKey,
+        candidates: [canonicalRecord],
+      })
     : {
         availability: "unavailable",
         value: null,
-      reasons: [routeIdentityKey ? "stale_compatibility_record" : "missing_identity"],
+        reasons: [routeIdentityKey ? "stale_compatibility_record" : "missing_identity"],
       };
 
   const trainingTarget = objectiveType === "training" ? mapTrainingTarget(sdeResult) : null;
@@ -538,7 +524,21 @@ export default function HillDetailScreen() {
                 routeType: routeType === "circular" || routeType === "out-and-back" ? routeType : "hill",
               };
               const launch = isExpeditionMode
-                ? buildExpeditionStageLaunchContext(hill, expeditionId ?? "", undefined)
+                ? buildExpeditionStageLaunchContext(hill, expeditionId ?? "", activeExpedition?.virtualHikeProgress
+                  ? {
+                      ...activeExpedition.virtualHikeProgress,
+                      completedRoutes: activeExpedition.completedRoutes,
+                      expeditionStatus: activeExpedition.expeditionStatus,
+                    }
+                  : undefined, {
+                    location: location ?? "",
+                    lat: hillLat,
+                    lng: hillLng,
+                    detail,
+                    startPoint,
+                    routeDistance: routeDistance ? Number(routeDistance) : undefined,
+                    estimatedTime,
+                  })
                 : buildFreeHikeLaunchContext("training", expeditionId);
               router.push({ pathname: "/hike-tracking" as any, params: launch as any });
             }}

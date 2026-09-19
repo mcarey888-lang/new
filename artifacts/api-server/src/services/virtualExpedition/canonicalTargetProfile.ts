@@ -121,10 +121,14 @@ export function selectVerifiedRoute(
   requestedRouteId?: string | null,
 ): TrustedCanonicalRoute | null {
   if (requestedRouteId) {
-    return mountain.routes.find(route => route.routeId === requestedRouteId) ?? null;
+    const route = mountain.routes.find(candidate => candidate.routeId === requestedRouteId);
+    if (!route) return null;
+    if (requestedIdentityKey && route.identityKey !== requestedIdentityKey) return null;
+    return route;
   }
   if (requestedIdentityKey) {
-    return mountain.routes.find(route => route.identityKey === requestedIdentityKey) ?? null;
+    const matches = mountain.routes.filter(route => route.identityKey === requestedIdentityKey);
+    return matches.length === 1 ? matches[0] : null;
   }
   return mountain.routes.length === 1 ? mountain.routes[0] : null;
 }

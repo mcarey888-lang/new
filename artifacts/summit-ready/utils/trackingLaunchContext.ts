@@ -33,6 +33,7 @@ export function buildExpeditionStageLaunchContext(
   nextHill: NearbyHill,
   activeExpeditionId: string,
   expeditionProgress: any | undefined,
+  snapshotExtra?: Record<string, unknown>,
 ): ExpeditionStageLaunchParams {
   return {
     hillName: nextHill.name,
@@ -43,6 +44,7 @@ export function buildExpeditionStageLaunchContext(
     expeditionId: activeExpeditionId,
     stageSnapshot: JSON.stringify({
       ...nextHill,
+      ...snapshotExtra,
       expeditionProgress,
     }),
   };

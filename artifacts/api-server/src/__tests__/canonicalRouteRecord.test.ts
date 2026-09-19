@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCanonicalRouteRecord } from "../services/mountain/canonicalRouteRecord";
-import { parseCanonicalRouteRequest } from "../routes/canonical-route-records";
+import { buildCanonicalRouteRecord, CANONICAL_ROUTE_RECORD_TABLES } from "../services/mountain/canonicalRouteRecord";
+import { canonicalRouteRecordsEnabled, parseCanonicalRouteRequest } from "../routes/canonical-route-records";
 import { selectVerifiedRoute } from "../services/virtualExpedition/canonicalTargetProfile";
 
 const row = (overrides: Record<string, unknown> = {}) => ({
@@ -29,7 +29,6 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   publisher: "OS",
   evidenceTitle: "Route source",
   evidenceUrl: "https://example.test/route",
-  evidenceStatus: "verified",
   rightsClassification: "reusable_geometry",
   rightsStatement: "Open use",
   geometryReuseAllowed: true,
@@ -47,6 +46,20 @@ const row = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("canonical route record boundary", () => {
+  it("guards the published-copy SQL shape to known schema tables", () => {
+    expect(CANONICAL_ROUTE_RECORD_TABLES).toEqual(expect.arrayContaining([
+      "route_geometries", "route_geometry_members", "source_bundles",
+    ]));
+  });
+
+  it("keeps production activation explicitly off by default", () => {
+    expect(canonicalRouteRecordsEnabled({ NODE_ENV: "production" })).toBe(false);
+    expect(canonicalRouteRecordsEnabled({
+      NODE_ENV: "production",
+      CANONICAL_ROUTE_RECORDS_ENABLED: "true",
+    })).toBe(true);
+    expect(canonicalRouteRecordsEnabled({ NODE_ENV: "test" })).toBe(true);
+  });
   it("selects chooser routes by exact full route ID while retaining identity compatibility", () => {
     const mountain = {
       id: "mountain-1", sourceFeatureId: "source-1", canonicalSourceKey: "mountain-1",
@@ -58,7 +71,7 @@ describe("canonical route record boundary", () => {
     };
     expect(selectVerifiedRoute(mountain, null, "sde:route:engine:tryfan:north@2026-01")?.version).toBe("2026-01");
     expect(selectVerifiedRoute(mountain, null, "sde:route:engine:tryfan:north@missing")).toBeNull();
-    expect(selectVerifiedRoute(mountain, "engine:tryfan:north")?.version).toBe("2026-01");
+    expect(selectVerifiedRoute(mountain, "engine:tryfan:north")).toBeNull();
   });
 
   it("accepts exact versioned IDs and rejects malformed or ambiguous IDs", () => {

@@ -39,7 +39,7 @@ import {
   buildExpeditionStageRouteIntelligence,
   buildTrainingRouteIntelligence,
 } from "@/utils/routeConsumerAdapters";
-import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
+import { fetchCanonicalRouteRecord, hydrateCanonicalRouteRecords } from "@/utils/canonicalRouteApi";
 import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -125,6 +125,21 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
   const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
   const [canonicalRecords, setCanonicalRecords] = useState<CanonicalRouteRecord[]>([]);
+
+  useEffect(() => {
+    if (!hasCachedData || canonicalRecords.length > 0) return;
+    const references = [
+      {
+        routeId: summitGoal.virtualExpeditionProvenance?.selectedTargetRouteId,
+        mountainId: summitGoal.virtualExpeditionProvenance?.targetMountainId,
+      },
+      ...(summitGoal.virtualHills ?? []).map(hill => ({
+        routeId: hill.routeIdentityKey?.startsWith("sde:route:") ? hill.routeIdentityKey : null,
+        mountainId: hill.summitIdentityKey?.startsWith("sde:mountain:") ? hill.summitIdentityKey : null,
+      })),
+    ];
+    void hydrateCanonicalRouteRecords(references).then(setCanonicalRecords);
+  }, [hasCachedData, canonicalRecords.length, summitGoal.virtualHills, summitGoal.virtualExpeditionProvenance]);
 
   async function fetchExpedition(
     force = false,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchCanonicalRouteRecord } from "./canonicalRouteApi";
+import { fetchCanonicalRouteRecord, hydrateCanonicalRouteRecords } from "./canonicalRouteApi";
 
 describe("canonical route API adapter", () => {
   it("preserves a verified versioned record", async () => {
@@ -25,6 +25,20 @@ describe("canonical route API adapter", () => {
     expect((await fetchCanonicalRouteRecord("sde:route:missing@1", "sde:mountain:m")).record).toBeNull();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     expect((await fetchCanonicalRouteRecord("sde:route:missing@1", "sde:mountain:m")).status).toBe("unavailable");
+    vi.unstubAllGlobals();
+  });
+
+  it("hydrates persisted target and candidate references after restart", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: "available", reasons: [], record: { source: "canonical" } }),
+    }));
+    const records = await hydrateCanonicalRouteRecords([
+      { routeId: "sde:route:target@1", mountainId: "sde:mountain:t" },
+      { routeId: null, mountainId: null },
+    ]);
+    expect(records).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
 });

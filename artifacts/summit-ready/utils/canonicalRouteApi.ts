@@ -34,3 +34,17 @@ export async function fetchCanonicalRouteRecord(
     return { status: "unavailable", reasons: ["unavailable"], record: null };
   }
 }
+
+export async function hydrateCanonicalRouteRecords(
+  references: readonly { routeId?: string | null; mountainId?: string | null }[],
+): Promise<CanonicalRouteRecord[]> {
+  const records = await Promise.all(
+    references
+      .filter((reference): reference is { routeId: string; mountainId: string } =>
+        Boolean(reference.routeId && reference.mountainId))
+      .map(reference => fetchCanonicalRouteRecord(reference.routeId, reference.mountainId)),
+  );
+  return records
+    .map(result => result.record)
+    .filter((record): record is CanonicalRouteRecord => Boolean(record));
+}

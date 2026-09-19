@@ -28,7 +28,7 @@ import activitiesRouter from "./activities";
 import exploreHikeCanonicalRouter from "./explore-hike-canonical";
 import elevationBankRouter from "./elevation-bank";
 import canonicalHistoryRouter from "./canonical-history";
-import canonicalRouteRecordsRouter from "./canonical-route-records";
+import canonicalRouteRecordsRouter, { canonicalRouteRecordsEnabled } from "./canonical-route-records";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -65,7 +65,12 @@ router.use(trackedRoutesRouter);
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
 router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);
-router.use("/canonical-routes", canonicalRouteRecordsRouter);
+// Canonical route records consume the already-published app-DB read copy.
+// Keep the boundary dark in production until explicitly activated; this does
+// not publish or migrate any SDE/authoring data.
+if (canonicalRouteRecordsEnabled()) {
+  router.use("/canonical-routes", canonicalRouteRecordsRouter);
+}
 router.use(requireAuth(), elevationBankRouter);
 router.use(requireAuth(), canonicalHistoryRouter);
 

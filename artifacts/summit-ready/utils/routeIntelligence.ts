@@ -79,7 +79,8 @@ export type ProvenanceBundle = {
 };
 
 export type EvidenceReference = ProvenanceBundle & {
-  evidenceId: string;
+  /** Optional for source-bundle provenance where the published copy exposes no evidence FK. */
+  evidenceId?: string;
   evidenceType: "source" | "activity" | "community" | "dem" | "qa";
 };
 
