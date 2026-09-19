@@ -26,6 +26,20 @@ export function useReadinessV2() {
 
     const result = evaluateReadiness(input);
 
+    const asOf7DaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const input7DaysAgo = createReadinessInput(
+      ownerId,
+      asOf7DaysAgo,
+      summitGoal,
+      sessions,
+      exploreHikes,
+      trainingPlan
+    );
+    const result7DaysAgo = evaluateReadiness(input7DaysAgo);
+    const trend = result.overallScore !== null && result7DaysAgo.overallScore !== null 
+      ? result.overallScore - result7DaysAgo.overallScore 
+      : null;
+
     const actionCandidates: ReadinessActionCandidate[] = [
       {
         actionId: "focus_endurance",
@@ -78,6 +92,6 @@ export function useReadinessV2() {
 
     const nextAction = selectReadinessNextAction(actionContext);
 
-    return { result, nextAction };
+    return { result, nextAction, trend, input };
   }, [summitGoal, sessions, trainingPlan, exploreHikes, userId]);
 }
