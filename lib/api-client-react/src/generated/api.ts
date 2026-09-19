@@ -23,6 +23,8 @@ import type {
   ArtworkPrompt,
   ArtworkRejectResult,
   ArtworkStatusList,
+  ElevationBankResponse,
+  ElevationBankUnavailable,
   GenerateArtworkInput,
   HealthStatus,
 } from "./api.schemas";
@@ -617,3 +619,80 @@ export const useClearArtwork = <
 > => {
   return useMutation(getClearArtworkMutationOptions(options));
 };
+
+/**
+ * Returns ledger-backed credited ascent when the development-only Stage 2 dependency is available.
+ * @summary Get the authenticated user's personal Elevation Bank
+ */
+export const getGetElevationBankUrl = () => {
+  return `/api/elevation-bank`;
+};
+
+export const getElevationBank = async (
+  options?: RequestInit,
+): Promise<ElevationBankResponse> => {
+  return customFetch<ElevationBankResponse>(getGetElevationBankUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetElevationBankQueryKey = () => {
+  return [`/api/elevation-bank`] as const;
+};
+
+export const getGetElevationBankQueryOptions = <
+  TData = Awaited<ReturnType<typeof getElevationBank>>,
+  TError = ErrorType<void | ElevationBankUnavailable>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getElevationBank>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetElevationBankQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getElevationBank>>
+  > = ({ signal }) => getElevationBank({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getElevationBank>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetElevationBankQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getElevationBank>>
+>;
+export type GetElevationBankQueryError =
+  ErrorType<void | ElevationBankUnavailable>;
+
+/**
+ * @summary Get the authenticated user's personal Elevation Bank
+ */
+
+export function useGetElevationBank<
+  TData = Awaited<ReturnType<typeof getElevationBank>>,
+  TError = ErrorType<void | ElevationBankUnavailable>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getElevationBank>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetElevationBankQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

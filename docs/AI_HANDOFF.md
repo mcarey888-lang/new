@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 is active. S4-C04 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, and the personal Elevation Bank decision/read service is ready without consumer switching. Proceed to S4-C05; do not apply production migration or flags.
+Stage 4 is active. S4-C06 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, the Elevation Bank decision/read service and consequence resolver are ready, and the first owner-scoped mobile/API presentation is safely unavailable until the development schema gate is enabled. Proceed to S4-C07; do not apply production migration or flags.
 
 ## Last completed task
 
-S4-C04 added pure Elevation Bank qualification/credit decisions requiring explicit personal-elevation qualification and eligible recorded GPS evidence, deterministic effective lifetime/period totals, 8,849m Everest-equivalent display math, recent effective-credit reads, and DB wrappers over the additive ledger. Corrections and revocations remain append-only; legacy totals and consumers remain authoritative. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-C06 added the authenticated owner-scoped `/elevation-bank` read contract, generated client hook, Home/Profile Elevation Bank card, and private Elevation History surface. The UI shows lifetime/current-month credited ascent, display-only 8,849m Everest equivalents, recent effective credits/corrections, loading/empty/error/unavailable states, and refreshes after local activity completion counts change. Legacy totals remain the sole visible fallback; no dual-source totals are shown. Stage 2 writes remain default-off and no migration, production flag, data mutation, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 

@@ -318,3 +318,15 @@ All offline behaviors, SDE identities, and Route Engine features were preserved 
 **Tests/result:** Focused tests and final verification are pending parent-agent execution. Full API typecheck retains unrelated pre-existing failures; this change introduces no production activation.
 
 **C05 review hardening:** Added effective-state comparison for correction/revocation retries in both ledgers, qualification activity-ID replay filtering, exact Expedition link/rule/metric/elevation binding, constraint-scoped unique-conflict retries, and an explicit non-production/schema availability gate around every exported Stage 2 write boundary. Expedition contribution inputs now bind the run to the exact expedition ID. Focused affected suites now pass 32 tests; DB tsc, API build, and diff check pass. No migration or production flag was applied.
+
+## 2026-09-19 UTC — S4-R06 Elevation Bank API and mobile experience
+
+**Task:** Execute S4-C06: present the personal Elevation Bank safely in authenticated API/mobile surfaces without enabling the Stage 2 production dependency.
+
+**Implementation:** Added the owner-scoped authenticated `GET /elevation-bank` contract and generated React Query client hook. The response combines effective ledger-backed lifetime/current-month ascent, display-only 8,849m Everest equivalent, and recent credited/corrected events; unavailable schema/flag state returns a stable 503 rather than fabricated zeros. Added Home/Profile cards and a private Elevation History surface using the existing SummitReady dark outdoor theme, with explicit loading, empty, error/unavailable, retry, correction, and manual/indoor/unverified wording. Legacy history/totals remain authoritative when the new dependency is unavailable, with no conflicting dual-source totals.
+
+**Important files:** `lib/api-spec/openapi.yaml`, `artifacts/api-server/src/routes/elevation-bank.ts`, `artifacts/summit-ready/components/ElevationBankCard.tsx`, `artifacts/summit-ready/app/elevation-history.tsx`, `artifacts/summit-ready/utils/elevationBankPresentation.ts`.
+
+**Tests/result:** API focused suites passed **42/42**; SummitReady Elevation Bank presentation tests passed **3/3**; mobile TypeScript passed; API production bundle passed. API full `tsc --noEmit` remains blocked only by pre-existing object-storage/OpenAI declaration-build/canonical projection diagnostics. API-spec codegen generated the client successfully, while its chained workspace typecheck retains the same unrelated pre-existing library diagnostics. No migration, write flag, production operation, or mobile release was performed.
+
+**C06 review fixes:** Refined mobile copy so recorded GPS ascent is accurately distinguished from manual, indoor, and unavailable/untrusted evidence. Added handler-boundary tests using injected dependencies and mocked Clerk auth for unauthenticated 401, authenticated owner propagation to both summary/recent reads, ignored query/body owner spoofing, stable gate-unavailable 503, and sanitized load failure. The mobile query now uses the generated Elevation Bank query key and shared authenticated fetcher contract.

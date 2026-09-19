@@ -35,6 +35,7 @@ import { getDaysRemaining, getWeeklyCompletion, isRequirementMet, getPeakExperie
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
+import { ElevationBankCard } from "@/components/ElevationBankCard";
 
 // Animated WebP supports transparency on all platforms via expo-image.
 // GIF on Android fills transparent pixels with black, so we never use it.
@@ -836,6 +837,8 @@ export default function DashboardScreen() {
           distance={summitGoal.distance}
           highestAltitude={summitGoal.highestAltitude}
         />
+
+        <ElevationBankCard onPress={() => router.push("/elevation-history")} />
 
         {/* Upgrade banner — shown only after user has seen their plan */}
         {hasViewedPlan && !isSubscribed && (

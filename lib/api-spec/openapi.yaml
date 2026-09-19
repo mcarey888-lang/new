@@ -145,6 +145,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/ArtworkClearResult"
 
+  /elevation-bank:
+    get:
+      operationId: getElevationBank
+      tags: [elevation]
+      summary: Get the authenticated user's personal Elevation Bank
+      description: Returns ledger-backed credited ascent when the development-only Stage 2 dependency is available.
+      responses:
+        "200":
+          description: Elevation Bank summary and recent effective credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElevationBankResponse"
+        "401":
+          description: Authentication required
+        "503":
+          description: Elevation Bank is not available in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElevationBankUnavailable"
+        "500":
+          description: Elevation Bank could not be loaded
+
 components:
   schemas:
     HealthStatus:
@@ -268,3 +292,55 @@ components:
           type: string
         cleared:
           type: boolean
+
+    ElevationBankCredit:
+      type: object
+      required: [activityId, revision, status, creditedAscentM, evidenceClass, ruleVersion, effectiveAt]
+      properties:
+        activityId:
+          type: string
+        revision:
+          type: integer
+        status:
+          type: string
+          enum: [credited, corrected]
+        creditedAscentM:
+          type: integer
+        evidenceClass:
+          type: string
+        ruleVersion:
+          type: string
+        effectiveAt:
+          type: string
+          format: date-time
+
+    ElevationBankResponse:
+      type: object
+      required: [status, lifetimeAscentM, periodAscentM, creditedActivities, everestEquivalent, recentCredits]
+      properties:
+        status:
+          type: string
+          enum: [available]
+        lifetimeAscentM:
+          type: integer
+        periodAscentM:
+          type: integer
+        creditedActivities:
+          type: integer
+        everestEquivalent:
+          type: number
+        recentCredits:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElevationBankCredit"
+
+    ElevationBankUnavailable:
+      type: object
+      required: [status, reason]
+      properties:
+        status:
+          type: string
+          enum: [unavailable]
+        reason:
+          type: string
+          enum: [development_dependency_unavailable, load_failed]

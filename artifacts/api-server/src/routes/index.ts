@@ -26,6 +26,7 @@ import { atlasRouter } from "./atlas";
 import redditConversionsRouter from "./reddit-conversions";
 import activitiesRouter from "./activities";
 import exploreHikeCanonicalRouter from "./explore-hike-canonical";
+import elevationBankRouter from "./elevation-bank";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -62,6 +63,7 @@ router.use(trackedRoutesRouter);
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
 router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);
+router.use(requireAuth(), elevationBankRouter);
 
 // User account management — requires auth.
 router.use(requireAuth(), userRouter);

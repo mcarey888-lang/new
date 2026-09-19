@@ -191,6 +191,7 @@ function RootLayoutNav() {
       <Stack.Screen name="trails-create" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hills-finder" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="past-activity" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="elevation-history" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hike-tracking" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="challenge-detail" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="challenge-complete" options={{ headerShown: false, presentation: "card" }} />

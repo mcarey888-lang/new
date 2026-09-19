@@ -84,3 +84,57 @@ export interface ArtworkClearResult {
   challengeId: string;
   cleared: boolean;
 }
+
+export type ElevationBankCreditStatus =
+  (typeof ElevationBankCreditStatus)[keyof typeof ElevationBankCreditStatus];
+
+export const ElevationBankCreditStatus = {
+  credited: "credited",
+  corrected: "corrected",
+} as const;
+
+export interface ElevationBankCredit {
+  activityId: string;
+  revision: number;
+  status: ElevationBankCreditStatus;
+  creditedAscentM: number;
+  evidenceClass: string;
+  ruleVersion: string;
+  effectiveAt: string;
+}
+
+export type ElevationBankResponseStatus =
+  (typeof ElevationBankResponseStatus)[keyof typeof ElevationBankResponseStatus];
+
+export const ElevationBankResponseStatus = {
+  available: "available",
+} as const;
+
+export interface ElevationBankResponse {
+  status: ElevationBankResponseStatus;
+  lifetimeAscentM: number;
+  periodAscentM: number;
+  creditedActivities: number;
+  everestEquivalent: number;
+  recentCredits: ElevationBankCredit[];
+}
+
+export type ElevationBankUnavailableStatus =
+  (typeof ElevationBankUnavailableStatus)[keyof typeof ElevationBankUnavailableStatus];
+
+export const ElevationBankUnavailableStatus = {
+  unavailable: "unavailable",
+} as const;
+
+export type ElevationBankUnavailableReason =
+  (typeof ElevationBankUnavailableReason)[keyof typeof ElevationBankUnavailableReason];
+
+export const ElevationBankUnavailableReason = {
+  development_dependency_unavailable: "development_dependency_unavailable",
+  load_failed: "load_failed",
+} as const;
+
+export interface ElevationBankUnavailable {
+  status: ElevationBankUnavailableStatus;
+  reason: ElevationBankUnavailableReason;
+}

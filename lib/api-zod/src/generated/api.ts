@@ -111,3 +111,26 @@ export const ClearArtworkResponse = zod.object({
   challengeId: zod.string(),
   cleared: zod.boolean(),
 });
+
+/**
+ * Returns ledger-backed credited ascent when the development-only Stage 2 dependency is available.
+ * @summary Get the authenticated user's personal Elevation Bank
+ */
+export const GetElevationBankResponse = zod.object({
+  status: zod.enum(["available"]),
+  lifetimeAscentM: zod.number(),
+  periodAscentM: zod.number(),
+  creditedActivities: zod.number(),
+  everestEquivalent: zod.number(),
+  recentCredits: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      revision: zod.number(),
+      status: zod.enum(["credited", "corrected"]),
+      creditedAscentM: zod.number(),
+      evidenceClass: zod.string(),
+      ruleVersion: zod.string(),
+      effectiveAt: zod.coerce.date(),
+    }),
+  ),
+});

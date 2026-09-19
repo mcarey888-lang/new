@@ -30,6 +30,7 @@ import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import { discardActiveHike } from "@/utils/activeHikeSession";
+import { ElevationBankCard } from "@/components/ElevationBankCard";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -342,6 +343,13 @@ export default function AccountScreen() {
               </Text>
             </View>
           </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(50).duration(400)}>
+          <ElevationBankCard
+            expanded
+            onPress={() => router.push("/elevation-history")}
+          />
         </Animated.View>
 
         {/* Log Session button */}
