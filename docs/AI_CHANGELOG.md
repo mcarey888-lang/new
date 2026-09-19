@@ -62,6 +62,30 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-19 UTC — S2-R03 Manual Training canonical adapter
+
+**Task:** Add stable idempotent canonical input for new manual Training completions while preserving released behavior.
+
+**Implementation:** Added a default-off, unwired adapter using `training_manual` completion identity, estimated/manual evidence, private visibility, and explicit Training plan/session links. It reuses the Phase 1 transactional ingestion boundary for later route activation. No backfill or legacy route change.
+
+**Tests/result:** COMPLETE. Focused adapter and canonical regression tests passed.
+
+## 2026-09-19 UTC — S2-R04 ExploreHike canonical adapter
+
+**Task:** Define canonicalization for new Free Hike/ExploreHike records without fuzzy deduplication.
+
+**Implementation:** Added a pure canonicalization planner using stable local `explore_hike` IDs. It reuses only an explicitly supplied canonical UUID; otherwise it plans one canonical ingest with classified evidence and explicit validated links. Existing offline/local history remains authoritative.
+
+**Tests/result:** COMPLETE. ID stability, retries, owner separation, explicit reuse, no metric/name dedupe, SDE links, and evidence classes passed.
+
+## 2026-09-19 UTC — S2-R05 idempotent contribution links
+
+**Task:** Attach one canonical activity to multiple purposes without copying it.
+
+**Implementation:** Added an owner-scoped service and deterministic planner for idempotent Training, Expedition, hill/route, SDE, community-route, and challenge links. Duplicate requests collapse to the persisted unique key; Expedition metadata cannot claim a real summit.
+
+**Tests/result:** COMPLETE. Combined S2-C03–C05 focused regression: 58 passed and four database integration tests skipped by default. No schema, UI, calculation, production, or protected-asset changes.
+
 ## 2026-09-19T09:06:03.063Z — Phase 1 production Publish verification
 
 **Task:** Complete read-only verification after Replit Publish applied the reviewed Phase 1 production schema.

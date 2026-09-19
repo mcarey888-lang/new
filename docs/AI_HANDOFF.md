@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-S2-C02 is complete. The canonical source, link-target, evidence-classification, and adapter contracts are implemented and documented. Stop before S2-C03 and execute no further Stage 2 work until ChatGPT writes the next numbered command to `docs/AI_TASK.md`.
+The Stage 2 master runbook is active. S2-C02 through S2-C05 are complete. Continue with S2-C06 qualification evaluation; stop only at a runbook RED gate or after S2-C10.
 
 ## Last completed task
 
-Completed the S2-C02 canonical contracts and stable-ID foundation. No user-facing behavior, schema, data, production, UI, release, or protected-asset changes were made.
+Completed S2-C03 through S2-C05: default-safe Manual Training and ExploreHike canonical adapters plus an owner-scoped idempotent contribution-link service. No user-facing behavior, schema, data, production, UI, release, or protected-asset changes were made.
 
 ## Changes made
 
@@ -27,6 +27,9 @@ Completed the S2-C02 canonical contracts and stable-ID foundation. No user-facin
 - S2-R01 maps current activity flows, qualification semantics, Summit Data Engine references, additive Stage 2 gaps, sequencing, and compatibility controls.
 - S2-R02 centralizes built-in and external source namespaces, deterministic identity keys, backwards-compatible link targets, SDE references, evidence storage mappings, and future adapter boundaries.
 - Existing `tracked_hill_session` source type and raw source ID persistence remain unchanged.
+- S2-R03 adds a default-off Manual Training canonical adapter with stable completion identity, manual evidence, and explicit plan/session links.
+- S2-R04 adds a pure ExploreHike canonicalization planner that reuses only explicit canonical IDs and never fuzzy-deduplicates.
+- S2-R05 adds owner-scoped, idempotent multi-purpose contribution links with SDE target validation and simulation/real-summit separation.
 
 ## Files changed
 
@@ -37,7 +40,13 @@ Primary activity implementation:
 - `artifacts/summit-ready/utils/syncOutbox.ts`
 - `artifacts/api-server/src/services/canonicalActivity.ts`
 - `artifacts/api-server/src/services/canonicalActivityContracts.ts`
+- `artifacts/api-server/src/services/manualTrainingCanonicalAdapter.ts`
+- `artifacts/api-server/src/services/exploreHikeCanonicalAdapter.ts`
+- `artifacts/api-server/src/services/canonicalActivityLinks.ts`
 - `artifacts/api-server/src/__tests__/canonicalActivityContracts.test.ts`
+- `artifacts/api-server/src/__tests__/manualTrainingCanonicalAdapter.test.ts`
+- `artifacts/api-server/src/__tests__/exploreHikeCanonicalAdapter.test.ts`
+- `artifacts/api-server/src/__tests__/canonicalActivityLinks.test.ts`
 - `artifacts/api-server/src/routes/activities.ts`
 - `artifacts/api-server/src/routes/hill-session.ts`
 - `lib/db/src/schema/canonical-activities.ts`
@@ -83,6 +92,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Isolated TypeScript check for `canonicalActivityContracts.ts` passed.
 - API production bundle build passed.
 - Full API typecheck still reports only the pre-existing object-storage response typing error and missing OpenAI declaration-build outputs; no S2-C02 file appears in those diagnostics.
+- S2-C03–C05 combined focused regression: 58 passed; four database integration tests skipped by default.
 
 ## Production/deployment status
 
@@ -106,13 +116,12 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Decisions requiring review
 
-- ChatGPT should review S2-R02 and issue the next numbered command.
-- Approve or revise the implemented source namespaces, encoded SDE target formats, Phase 1 evidence mappings, and adapter boundaries before adapter implementation.
+- Continue the approved master runbook with S2-C06.
 - Decide whether the canonical bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
 
 ## Recommended next action
 
-Wait for ChatGPT to review S2-R02 and update `docs/AI_TASK.md`. Do not begin S2-C03 early.
+Continue S2-C06 through S2-C10 while this Agent session remains active. Stop at any RED gate and do not begin Stage 3.
 
 ## Git branch and latest commit SHA
 
