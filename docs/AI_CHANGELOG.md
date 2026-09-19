@@ -62,6 +62,23 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-19 UTC — S3-R08 Stage 3 regression and completion gate
+
+**Task:** Execute S3-C08: run the bounded Stage 3 integration/regression pass, create the completion report, update coordination documents, commit, push, and stop before Stage 4.
+
+**Implementation:**
+- Added focused shared Track launch-contract tests and included them in the mobile test script.
+- Prevented Training Free Hikes from inheriting a preserved Expedition ID while retaining explicit Expedition-context Free Hike credit.
+- Resolved stable Training plan-session IDs against the current plan at GPS completion while preserving validated legacy `week-index` keys.
+- Audited the Stage 3 diff for protected SDE, Progress Mountain, cinematic/live-3D, schema, API, auth, payment, release, and privacy boundaries.
+- Added `docs/STAGE_3_COMPLETION_REPORT.md`.
+
+**Tests/result:** COMPLETE. SummitReady TypeScript passed. Targeted mobile tests passed 39/39. Expo restarted cleanly. Final architecture review passed. Stage 2 migration `0002_stage2_activity_ledgers.sql` retained the same Git blob and was not applied.
+
+**Known verification limitation:** Replit's Expo app-preview screenshot resolved the separate SummitReady landing artifact rather than the native app, so it was not treated as native mobile evidence.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
 ## 2026-09-19 UTC — S3-R01 current navigation/UX map
 
 **Task:** Execute S3-C01 as a targeted, read-only audit before changing the mobile runtime.

@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 3 Navigation + UX Cohesion is active. S3-R07 is COMPLETE; continue with S3-C08 regression and completion gate. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the current navigation graph, state boundaries, risks, protected surfaces, and low-risk direction for C02-C07.
+Stage 3 Navigation + UX Cohesion is COMPLETE through S3-R08. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the audited navigation/state boundaries; `docs/STAGE_3_COMPLETION_REPORT.md` records delivered changes, verification, known issues, pending migration/flags, and Stage 4 prerequisites. Stop before Stage 4 until a new command is provided.
 
 ## Last completed task
 
-S3-R01 completed as a read-only targeted navigation/UX audit. No runtime, schema, production, mobile release, authentication, or protected-asset change was made.
+S3-R08 completed the bounded Stage 3 regression gate and completion report. No production schema, publish, mobile release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 
@@ -42,6 +42,7 @@ S3-R01 completed as a read-only targeted navigation/UX audit. No runtime, schema
 - S3-R05 unifies Explore discovery across modes: Training adds target-relevant context banner and "Track Hike" entry; Expedition adds explicit "Real Summit" and "Simulated Gain" metric labels.
 - S3-R06 replaces disparate Track screens with a unified SharedTrackScreen offering context-appropriate tracking (Next Stage, Next Session, Free Hike) while preserving the offline GPS engine.
 - S3-R07 standardizes Profile (You) and Community headers and injects a "Current Context" banner (Training Goal / Active Expedition) into the Profile view.
+- S3-R08 verifies mode isolation, shared navigation boundaries, offline tracking compatibility, stable Training/Expedition completion handoff, protected files, and the unchanged/unapplied Stage 2 migration.
 
 ## Files changed
 
@@ -73,6 +74,8 @@ Coordination:
 
 - `docs/AI_HANDOFF.md`
 - `docs/AI_CHANGELOG.md`
+- `docs/STAGE_3_NAVIGATION_UX_MAP.md`
+- `docs/STAGE_3_COMPLETION_REPORT.md`
 
 ## Database/schema changes
 
@@ -108,6 +111,10 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - S2-C03–C05 combined focused regression: 58 passed; four database integration tests skipped by default.
 - Final Stage 2 focused regression: 93 passed; four optional database integration tests skipped by default.
 - Final architecture review passed with no blocking/high-impact findings.
+- Stage 3 SummitReady TypeScript passed.
+- Stage 3 targeted mobile regression passed: 39/39 tests.
+- Stage 3 final architecture review passed after correcting Training Free Hike isolation and stable plan-session completion resolution.
+- Expo restarted successfully with clean Metro/browser logs; the app-preview screenshot proxy rendered the separate landing artifact and was not treated as native mobile evidence.
 
 ## Production/deployment status
 
@@ -129,6 +136,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Manual Training and ExploreHike canonical adapters are implemented but default-off.
 - Existing visible history/readiness/elevation/Expedition consumers remain on legacy paths.
 - Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work.
+- Replit's Expo screenshot proxy can resolve the separate landing artifact at `/`; use Expo Go/native-device QA for authenticated visual release checks.
 
 ## Decisions requiring review
 
@@ -138,7 +146,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Execute S3-C08: run the bounded Stage 3 regression/completion gate, write the completion report, update coordination documents, push, and stop before Stage 4.
+Stage 3 is complete. Await a new explicit command; do not begin Stage 4 automatically.
 
 ## Git branch and latest commit SHA
 

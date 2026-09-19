@@ -23,7 +23,11 @@ import { useScreenView } from "@/lib/analytics";
 
 import { T } from "@/constants/theme";
 import { getCurrentWeek } from "@/utils/planGenerator";
-import { buildExpeditionStageLaunchContext, buildTrainingSessionLaunchContext } from "@/utils/trackingLaunchContext";
+import {
+  buildExpeditionStageLaunchContext,
+  buildFreeHikeLaunchContext,
+  buildTrainingSessionLaunchContext,
+} from "@/utils/trackingLaunchContext";
 
 
 function useActiveHike() {
@@ -314,7 +318,7 @@ export function SharedTrackScreen() {
             Free Hike
           </Text>
           <TouchableOpacity
-            onPress={() => handleStart({ trackingMode: "freehike", expeditionId: activeExpeditionId ?? "" })}
+            onPress={() => handleStart(buildFreeHikeLaunchContext(shellMode, activeExpeditionId))}
             style={s.startBtn}
             activeOpacity={0.88}
             disabled={starting}

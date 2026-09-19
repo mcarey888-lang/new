@@ -80,6 +80,7 @@ import {
   isExpeditionComplete,
   routeCompletionKey,
 } from "@/utils/stateReliability";
+import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1204,16 +1205,9 @@ export default function HikeTrackingScreen() {
       // Close the GPS gap: if this hike was launched from a plan session,
       // automatically tick it as complete so the user doesn't have to go back manually.
       if (hillMeta.sessionKey) {
-        const parts = hillMeta.sessionKey.split("-");
-        if (parts.length >= 2) {
-          const _weekNum    = parseInt(parts[0], 10);
-          const _sessionIdx = parseInt(parts[1], 10);
-          if (
-            !isNaN(_weekNum) && !isNaN(_sessionIdx) &&
-            !completedPlanSessions[hillMeta.sessionKey]
-          ) {
-            await togglePlanSession(_weekNum, _sessionIdx);
-          }
+        const location = resolveTrainingSessionLocation(trainingPlan, hillMeta.sessionKey);
+        if (location && !completedPlanSessions[hillMeta.sessionKey]) {
+          await togglePlanSession(location.weekNumber, location.sessionIndex);
         }
       }
 

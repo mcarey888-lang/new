@@ -1,4 +1,5 @@
-import { NearbyHill, PlanSession } from "@/context/AppContext";
+import type { NearbyHill, PlanSession, TrainingWeek } from "@/context/AppContext";
+import type { ShellMode } from "./stateReliability";
 
 export interface ExpeditionStageLaunchParams {
   trackingMode: "expedition-route";
@@ -20,7 +21,12 @@ export interface TrainingSessionLaunchParams {
 
 export interface FreeHikeLaunchParams {
   trackingMode: "freehike";
-  expeditionId: string;
+  expeditionId?: string;
+}
+
+export interface TrainingSessionLocation {
+  weekNumber: number;
+  sessionIndex: number;
 }
 
 export function buildExpeditionStageLaunchContext(
@@ -57,4 +63,30 @@ export function buildTrainingSessionLaunchContext(
     ),
     estimatedTotalGain: String(nextSession.targetElevation ?? 0),
   };
+}
+
+export function buildFreeHikeLaunchContext(
+  shellMode: ShellMode,
+  activeExpeditionId?: string | null,
+): FreeHikeLaunchParams {
+  return shellMode === "expedition" && activeExpeditionId
+    ? { trackingMode: "freehike", expeditionId: activeExpeditionId }
+    : { trackingMode: "freehike" };
+}
+
+export function resolveTrainingSessionLocation(
+  trainingPlan: TrainingWeek[],
+  sessionKey: string,
+): TrainingSessionLocation | null {
+  for (const week of trainingPlan) {
+    const sessionIndex = week.sessions.findIndex(session => session.id === sessionKey);
+    if (sessionIndex >= 0) return { weekNumber: week.weekNumber, sessionIndex };
+  }
+
+  const legacyMatch = sessionKey.match(/^(\d+)-(\d+)$/);
+  if (!legacyMatch) return null;
+  const weekNumber = Number(legacyMatch[1]);
+  const sessionIndex = Number(legacyMatch[2]);
+  const week = trainingPlan.find(item => item.weekNumber === weekNumber);
+  return week?.sessions[sessionIndex] ? { weekNumber, sessionIndex } : null;
 }
