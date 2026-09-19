@@ -62,6 +62,14 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-19 UTC — S3-R01 current navigation/UX map
+
+**Task:** Execute S3-C01 as a targeted, read-only audit before changing the mobile runtime.
+
+**Implementation:** Added `docs/STAGE_3_NAVIGATION_UX_MAP.md`, documenting the current Training and Expedition navigation graph, canonical shell state and Home resolver, duplicate redirect/stack ownership, ambiguous contexts, dead ends, header/back/deep-link/onboarding inconsistencies, shared versus mode-specific surfaces, component reuse opportunities, protected offline boundaries, and a low-risk direction for S3-C02 through S3-C07. Updated `docs/AI_HANDOFF.md` to make S3-C02 the next command.
+
+**Tests/result:** COMPLETE. Three focused repository audits covered navigation/shell state, Training/Expedition homes, and Explore/Track/Community/You plus onboarding/deep links. No runtime behavior changed.
+
 ## 2026-09-19 UTC — S2-R03 Manual Training canonical adapter
 
 **Task:** Add stable idempotent canonical input for new manual Training completions while preserving released behavior.
