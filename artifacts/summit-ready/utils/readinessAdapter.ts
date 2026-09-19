@@ -18,15 +18,24 @@ export function createReadinessInput(
 
   sessions.forEach(s => {
     if (!s.completed) return;
+    const isCanonicalGps = Boolean(s.activityId);
     evidence.push({
       evidenceId: s.id,
       ownerId,
-      source: (s.type === "cardio" && s.gymSubtype === "treadmill") || (s.type === "cardio" && s.gymSubtype === "stepper") ? "indoor" : "manual",
+      source: isCanonicalGps
+        ? "canonical_gps"
+        : (s.type === "cardio" && s.gymSubtype === "treadmill") || (s.type === "cardio" && s.gymSubtype === "stepper")
+          ? "indoor"
+          : "manual",
       completedAt: s.date,
       distanceKm: s.distance,
       ascentM: s.elevationGain,
       durationMinutes: s.duration,
       completed: s.completed,
+      canonicalActivityId: s.activityId,
+      stableSourceId: s.activityId ?? s.id,
+      gpsQuality: isCanonicalGps ? "trusted" : null,
+      expedition: Boolean(s.expeditionId),
     });
   });
 
@@ -42,6 +51,9 @@ export function createReadinessInput(
       completed: true,
       gpsQuality: "trusted",
       syncState: h.syncState,
+      canonicalActivityId: h.activityId,
+      stableSourceId: h.activityId ?? h.id,
+      expedition: Boolean(h.expeditionId),
     });
   });
 
