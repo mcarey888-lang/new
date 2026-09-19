@@ -12,6 +12,21 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 
 **Commit:** Reported after this entry is committed.
 
+## 2026-09-19 UTC — S4-R02 Stage 2 ledger and activation hardening
+
+**Task:** Harden the development-only Stage 2 ledger migration, planner contracts, canonical bridge activation, and transactional service boundaries without production application.
+
+**Implementation:**
+- Made `CANONICAL_ACTIVITY_BRIDGE_ENABLED` explicitly opt-in; unset and `false` preserve the legacy tracked-hill runtime.
+- Kept Manual Training and ExploreHike adapters default-off.
+- Added typed persisted-evidence mapping that rejects manual, indoor, and unavailable/untrusted personal elevation credit.
+- Added latest-effective reads/totals, owner-scoped personal credit writers, append-only correction lineage, Expedition run/contribution writers, simulated-only contribution enforcement, advisory identity serialization, and unique-conflict retry.
+- Added effective-revision indexes to the additive SQL/Drizzle ledger definitions and schema/migration contract tests.
+
+**Tests/result:** COMPLETE. Focused API suites passed **36/36**. DB package TypeScript passed. API `tsc --noEmit` retains only pre-existing object-storage/OpenAI declaration and canonical projection diagnostics; no C02 file appears in the diagnostics. Migration `0002_stage2_activity_ledgers.sql` remains unapplied; no routes, production flags, historical backfill, or production operations were performed.
+
+**Commit:** Reported after this entry is committed.
+
 ## 2026-09-16T13:09:56Z — Offline-first activity tracking
 
 **Task:** Make hike tracking resilient to interruption, offline operation, and delayed authenticated sync.

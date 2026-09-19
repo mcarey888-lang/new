@@ -32,6 +32,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "personal_elevation_credit_events_lineage_uidx
   ON "personal_elevation_credit_events" ("id", "owner_user_id", "activity_id", "rule_version", "revision");
 CREATE INDEX IF NOT EXISTS "personal_elevation_credit_events_activity_idx"
   ON "personal_elevation_credit_events" ("owner_user_id", "activity_id");
+CREATE INDEX IF NOT EXISTS "personal_elevation_credit_events_effective_idx"
+  ON "personal_elevation_credit_events" ("owner_user_id", "activity_id", "rule_version", "revision" DESC);
 CREATE INDEX IF NOT EXISTS "personal_elevation_credit_events_rule_idx"
   ON "personal_elevation_credit_events" ("owner_user_id", "rule_version", "status");
 
@@ -91,6 +93,8 @@ CREATE INDEX IF NOT EXISTS "expedition_stage_contributions_run_stage_idx"
   ON "expedition_stage_contributions" ("owner_user_id", "run_id", "stage_key");
 CREATE INDEX IF NOT EXISTS "expedition_stage_contributions_activity_idx"
   ON "expedition_stage_contributions" ("owner_user_id", "activity_id");
+CREATE INDEX IF NOT EXISTS "expedition_stage_contributions_effective_idx"
+  ON "expedition_stage_contributions" ("owner_user_id", "run_id", "stage_key", "activity_id", "rule_version", "score_version", "revision" DESC);
 
 CREATE TABLE IF NOT EXISTS "personal_elevation_credit_corrections" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

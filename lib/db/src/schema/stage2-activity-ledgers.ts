@@ -33,6 +33,8 @@ export const personalElevationCreditEvents = pgTable("personal_elevation_credit_
   uniqueIndex("personal_elevation_credit_events_lineage_uidx")
     .on(t.id, t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
   index("personal_elevation_credit_events_activity_idx").on(t.ownerUserId, t.activityId),
+  index("personal_elevation_credit_events_effective_idx")
+    .on(t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
   index("personal_elevation_credit_events_rule_idx").on(t.ownerUserId, t.ruleVersion, t.status),
   foreignKey({
     name: "personal_elevation_credit_events_activity_owner_fk",
@@ -86,6 +88,8 @@ export const expeditionStageContributions = pgTable("expedition_stage_contributi
     .on(t.id, t.ownerUserId, t.runId, t.stageKey, t.activityId, t.ruleVersion, t.scoreVersion, t.revision),
   index("expedition_stage_contributions_run_stage_idx").on(t.ownerUserId, t.runId, t.stageKey),
   index("expedition_stage_contributions_activity_idx").on(t.ownerUserId, t.activityId),
+  index("expedition_stage_contributions_effective_idx")
+    .on(t.ownerUserId, t.runId, t.stageKey, t.activityId, t.ruleVersion, t.scoreVersion, t.revision),
   foreignKey({
     name: "expedition_stage_contributions_run_owner_fk",
     columns: [t.ownerUserId, t.runId],

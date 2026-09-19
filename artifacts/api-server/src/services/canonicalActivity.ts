@@ -96,7 +96,9 @@ export function canonicalActivityPayloadHash(input: CanonicalActivityInput): str
 }
 
 export function canonicalActivityBridgeEnabled(): boolean {
-  return process.env.CANONICAL_ACTIVITY_BRIDGE_ENABLED !== "false";
+  // Canonical tables are still a development-only dependency. Keep the
+  // released legacy path unless activation is explicit.
+  return process.env.CANONICAL_ACTIVITY_BRIDGE_ENABLED === "true";
 }
 
 export async function ingestCanonicalActivityWithClient(

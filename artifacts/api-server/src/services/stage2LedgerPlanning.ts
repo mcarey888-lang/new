@@ -6,6 +6,23 @@ export type ElevationLedgerEvidenceClass =
   | "indoor_training"
   | "unavailable_untrusted";
 
+export const PERSISTED_ELEVATION_EVIDENCE_CLASSES = [
+  "recorded_unverified",
+  "quality_accepted",
+  "verified_activity",
+] as const;
+
+export type PersistedElevationEvidenceClass =
+  (typeof PERSISTED_ELEVATION_EVIDENCE_CLASSES)[number];
+
+export function toPersistedElevationEvidenceClass(
+  evidenceClass: ElevationLedgerEvidenceClass,
+): PersistedElevationEvidenceClass | null {
+  return (PERSISTED_ELEVATION_EVIDENCE_CLASSES as readonly string[]).includes(evidenceClass)
+    ? evidenceClass as PersistedElevationEvidenceClass
+    : null;
+}
+
 export interface ElevationCreditInput {
   ownerUserId: string;
   activityId: string;
@@ -41,7 +58,7 @@ export function planPersonalElevationCredit(
   if (!Number.isInteger(input.creditedAscentM) || input.creditedAscentM < 0) {
     return { status: "rejected", reason: "credited ascent must be a non-negative integer" };
   }
-  if (!["recorded_unverified", "quality_accepted", "verified_activity"].includes(input.evidenceClass)) {
+  if (!toPersistedElevationEvidenceClass(input.evidenceClass)) {
     return { status: "rejected", reason: "evidence class is not eligible for personal elevation credit" };
   }
   if (Number.isNaN(input.effectiveAt.getTime())) {
@@ -125,6 +142,7 @@ export type ExpeditionContributionPlan =
       stageKey: string;
       acceptedMetric: number;
       acceptedElevationM: number | null;
+      contributionStatus: "accepted" | "revoked" | "corrected";
     }
   | { status: "deduplicated"; revision: number }
   | { status: "rejected"; reason: string };
@@ -192,6 +210,7 @@ export function planExpeditionStageContribution(
     stageKey: input.stageRule.stageKey,
     acceptedMetric: input.acceptedMetric,
     acceptedElevationM: input.acceptedElevationM ?? null,
+    contributionStatus: input.revocation ? "revoked" : input.correction ? "corrected" : "accepted",
   };
 }
 
