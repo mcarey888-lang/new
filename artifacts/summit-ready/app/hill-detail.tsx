@@ -63,6 +63,8 @@ interface HillDetail {
 }
 
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
+import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
+import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -207,6 +209,21 @@ export default function HillDetailScreen() {
       openMapsForHill(null, null, name ?? "", true, mapSearchContext);
     }
   }
+
+  const sdeResult: RouteReadResult<RouteIntelligence> = {
+    availability: "unavailable",
+    value: null,
+    reasons: ["missing_identity"],
+  };
+
+  const trainingTarget = objectiveType === "training" ? mapTrainingTarget(sdeResult) : null;
+  const exploreTarget = (!objectiveType && !isExpeditionMode) ? mapExploreRoute(sdeResult) : null;
+  const expeditionTarget = isExpeditionMode ? mapExpeditionStage({
+    name: name ?? "",
+    simulatedElevationGainM: elevation ? parseFloat(elevation) : 0,
+    routeIdentityKey: routeIdentityKey ?? undefined,
+    summitIdentityKey: summitIdentityKey ?? undefined,
+  }, sdeResult) : null;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -408,80 +425,20 @@ export default function HillDetailScreen() {
 
               {/* Routes */}
               <Animated.View entering={FadeInDown.delay(160).duration(400)}>
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <Compass size={15} color={T.blue} />
-                    <Text style={styles.sectionTitle}>Route options</Text>
-                  </View>
-
-                  {detail.routes.map((route, i) => {
-                    const dc = DIFF_COLOR[route.difficulty] ?? T.blue;
-                    return (
-                      <View
-                        key={i}
-                        style={[
-                          styles.routeCard,
-                          route.isRecommended && styles.routeCardRecommended,
-                        ]}
-                      >
-                        {route.isRecommended && (
-                          <LinearGradient
-                            colors={[T.greenDim, "transparent"]}
-                            style={StyleSheet.absoluteFill}
-                          />
-                        )}
-                        <View style={styles.routeHeaderRow}>
-                          <View style={{ flex: 1, gap: 2 }}>
-                            {route.isRecommended && (
-                              <View style={styles.recommendedBadge}>
-                                <Star size={9} color={T.green} />
-                                <Text style={styles.recommendedText}>Best for training</Text>
-                              </View>
-                            )}
-                            <Text style={styles.routeName}>{route.name}</Text>
-                          </View>
-                          <View style={[styles.diffBadge, { backgroundColor: dc + "20" }]}>
-                            <Text style={[styles.diffText, { color: dc }]}>{route.difficulty}</Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.routeStats}>
-                          <View style={styles.routeStat}>
-                            <Map size={11} color={T.textMuted} />
-                            <Text style={styles.routeStatVal}>{route.distance}km</Text>
-                            <Text style={styles.routeStatLbl}>round trip</Text>
-                          </View>
-                          <View style={styles.routeStat}>
-                            <TrendingUp size={11} color={T.orange} />
-                            <Text style={styles.routeStatVal}>{route.elevationGain}m</Text>
-                            <Text style={styles.routeStatLbl}>ascent</Text>
-                          </View>
-                          <View style={styles.routeStat}>
-                            <Clock size={11} color={T.blue} />
-                            <Text style={styles.routeStatVal}>{route.estimatedTime}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.routeDescription}>{route.description}</Text>
-
-                        <TouchableOpacity
-                          style={styles.routeMapBtn}
-                          onPress={() => {
-                            if (startPoint?.postcode) {
-                              openDirectionsToPostcode(startPoint.postcode, startPoint.name);
-                            } else {
-                              openStartPointDirections();
-                            }
-                          }}
-                          activeOpacity={0.8}
-                        >
-                          <Navigation size={12} color={T.blue} />
-                          <Text style={styles.routeMapBtnText}>Navigate to start</Text>
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })}
-                </View>
+                <RouteIntelligencePresentation
+                  routes={detail.routes}
+                  objectiveType={objectiveType}
+                  trainingTarget={trainingTarget}
+                  expeditionStage={expeditionTarget}
+                  exploreRoute={exploreTarget}
+                  onNavigateToStart={() => {
+                    if (startPoint?.postcode) {
+                      openDirectionsToPostcode(startPoint.postcode, startPoint.name);
+                    } else {
+                      openStartPointDirections();
+                    }
+                  }}
+                />
               </Animated.View>
             </>
           )}
