@@ -93,7 +93,7 @@ export interface CanonicalActivityAdapterOutput {
 export interface TrainingManualAdapterInput {
   completionId: string;
   trainingPlanId?: string;
-  trainingSessionId: string;
+  trainingSessionId?: string;
   completedAt: Date;
   activityKind: string;
   durationSeconds?: number;

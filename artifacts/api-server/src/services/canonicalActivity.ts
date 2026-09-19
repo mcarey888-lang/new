@@ -12,6 +12,7 @@ import type {
   PersistedCanonicalEvidenceState,
   PersistedCanonicalEvidenceType,
 } from "./canonicalActivityContracts";
+import { planCanonicalActivityLinks } from "./canonicalActivityLinks";
 
 export type ActivityContext = "training" | "expedition" | "free_hike" | "mountain_simulation";
 export type ActivityLifecycle =
@@ -102,27 +103,36 @@ export async function ingestCanonicalActivityWithClient(
   client: DbClient,
   input: CanonicalActivityInput,
 ): Promise<CanonicalActivityIngestionResult> {
-  const payloadHash = canonicalActivityPayloadHash(input);
-  const [inserted] = await client.insert(canonicalActivities).values({
+  const validatedLinks = planCanonicalActivityLinks({
+    activityId: "ingestion",
     ownerUserId: input.ownerUserId,
-    sourceType: input.sourceType,
-    sourceId: input.sourceId,
-    sourceVersion: input.sourceVersion ?? null,
+    links: input.links ?? [],
+  }).links;
+  const normalizedInput = {
+    ...input,
+    links: validatedLinks,
+  };
+  const payloadHash = canonicalActivityPayloadHash(normalizedInput);
+  const [inserted] = await client.insert(canonicalActivities).values({
+    ownerUserId: normalizedInput.ownerUserId,
+    sourceType: normalizedInput.sourceType,
+    sourceId: normalizedInput.sourceId,
+    sourceVersion: normalizedInput.sourceVersion ?? null,
     sourcePayloadHash: payloadHash,
-    sourceSnapshot: input.sourceSnapshot ?? {},
-    primaryContext: input.primaryContext,
-    activityKind: input.activityKind,
-    occurredAt: input.occurredAt,
-    startedAt: input.startedAt ?? null,
-    endedAt: input.endedAt ?? null,
-    durationSeconds: input.durationSeconds ?? null,
-    distanceKm: input.distanceKm ?? null,
-    recordedAscentM: input.recordedAscentM ?? null,
-    validatedAscentM: input.validatedAscentM ?? null,
-    descentM: input.descentM ?? null,
-    lifecycle: input.lifecycle ?? "synced",
-    evidenceState: input.evidenceState ?? "recorded_unverified",
-    visibility: input.visibility ?? "private",
+    sourceSnapshot: normalizedInput.sourceSnapshot ?? {},
+    primaryContext: normalizedInput.primaryContext,
+    activityKind: normalizedInput.activityKind,
+    occurredAt: normalizedInput.occurredAt,
+    startedAt: normalizedInput.startedAt ?? null,
+    endedAt: normalizedInput.endedAt ?? null,
+    durationSeconds: normalizedInput.durationSeconds ?? null,
+    distanceKm: normalizedInput.distanceKm ?? null,
+    recordedAscentM: normalizedInput.recordedAscentM ?? null,
+    validatedAscentM: normalizedInput.validatedAscentM ?? null,
+    descentM: normalizedInput.descentM ?? null,
+    lifecycle: normalizedInput.lifecycle ?? "synced",
+    evidenceState: normalizedInput.evidenceState ?? "recorded_unverified",
+    visibility: normalizedInput.visibility ?? "private",
   }).onConflictDoNothing({
     target: [
       canonicalActivities.ownerUserId,
@@ -135,7 +145,7 @@ export async function ingestCanonicalActivityWithClient(
     if (input.evidence?.length) {
       await client.insert(canonicalActivityEvidence).values(input.evidence.map((evidence) => ({
         activityId: inserted.id,
-        ownerUserId: input.ownerUserId,
+        ownerUserId: normalizedInput.ownerUserId,
         evidenceType: evidence.evidenceType,
         payload: evidence.payload,
         visibility: "private",
@@ -143,9 +153,9 @@ export async function ingestCanonicalActivityWithClient(
       })));
     }
     if (input.links?.length) {
-      await client.insert(canonicalActivityLinks).values(input.links.map((link) => ({
+      await client.insert(canonicalActivityLinks).values(normalizedInput.links.map((link) => ({
         activityId: inserted.id,
-        ownerUserId: input.ownerUserId,
+        ownerUserId: normalizedInput.ownerUserId,
         linkType: link.linkType,
         targetId: link.targetId,
         metadata: link.metadata ?? {},
@@ -155,9 +165,9 @@ export async function ingestCanonicalActivityWithClient(
   }
 
   const [existing] = await client.select().from(canonicalActivities).where(and(
-    eq(canonicalActivities.ownerUserId, input.ownerUserId),
-    eq(canonicalActivities.sourceType, input.sourceType),
-    eq(canonicalActivities.sourceId, input.sourceId),
+    eq(canonicalActivities.ownerUserId, normalizedInput.ownerUserId),
+    eq(canonicalActivities.sourceType, normalizedInput.sourceType),
+    eq(canonicalActivities.sourceId, normalizedInput.sourceId),
   )).limit(1);
 
   if (!existing) {

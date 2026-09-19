@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
+  exploreHikeCanonicalAdapterEnabled,
   planExploreHikeCanonicalization,
   type ExploreHikeCanonicalAdapterInput,
 } from "../services/exploreHikeCanonicalAdapter";
+
+const exploreRouteSource = readFileSync(
+  new URL("../routes/explore-hike-canonical.ts", import.meta.url),
+  "utf8",
+);
 
 const localHike = (
   overrides: Partial<ExploreHikeCanonicalAdapterInput> = {},
@@ -21,6 +28,15 @@ const localHike = (
 });
 
 describe("ExploreHike canonical adapter", () => {
+  it("has an authenticated default-off server activation boundary", () => {
+    delete process.env.CANONICAL_EXPLORE_HIKE_ADAPTER_ENABLED;
+    expect(exploreHikeCanonicalAdapterEnabled()).toBe(false);
+    expect(exploreRouteSource).toMatch(/router\.post\("\/canonicalize"/);
+    expect(exploreRouteSource).toMatch(/getAuth\(req\)/);
+    expect(exploreRouteSource).toMatch(/db\.transaction\(\(tx\) => canonicalizeExploreHikeWithClient/);
+    expect(exploreRouteSource).toMatch(/status: "disabled"/);
+  });
+
   it("keeps a stable local ID across offline retries", () => {
     const first = planExploreHikeCanonicalization(localHike());
     const retry = planExploreHikeCanonicalization(localHike());

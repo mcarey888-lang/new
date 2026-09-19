@@ -40,6 +40,7 @@ export const canonicalActivities = pgTable("canonical_activities", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
 }, (t) => [
   uniqueIndex("canonical_activities_owner_source_uidx").on(t.ownerUserId, t.sourceType, t.sourceId),
+  uniqueIndex("canonical_activities_owner_id_uidx").on(t.ownerUserId, t.id),
   index("canonical_activities_owner_occurred_idx").on(t.ownerUserId, t.occurredAt),
   index("canonical_activities_context_idx").on(t.primaryContext),
   check("chk_canonical_activity_context", sql`${t.primaryContext} IN ('training', 'expedition', 'free_hike', 'mountain_simulation')`),

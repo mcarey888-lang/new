@@ -18,12 +18,44 @@ export type ManualTrainingCanonicalIngestionResult =
   | { status: "disabled" }
   | CanonicalActivityIngestionResult;
 
+export type ManualTrainingRetryDecision = "new" | "repeat" | "conflict";
+
+export function manualTrainingRetryDecision(
+  existing: { ownerUserId: string; sourcePayloadHash: string } | undefined,
+  ownerUserId: string,
+  incomingPayloadHash: string,
+): ManualTrainingRetryDecision {
+  if (!existing) return "new";
+  if (existing.ownerUserId !== ownerUserId) return "new";
+  return existing.sourcePayloadHash === incomingPayloadHash
+    ? "repeat"
+    : "conflict";
+}
+
 /**
  * Runtime activation is deliberately opt-in. The existing manual completion
- * route remains legacy-only until a later command wires this adapter in.
+ * route calls this adapter only when the flag and a stable completion ID exist.
  */
 export function manualTrainingCanonicalAdapterEnabled(): boolean {
   return process.env.CANONICAL_MANUAL_TRAINING_ADAPTER_ENABLED === "true";
+}
+
+export function manualTrainingSourceSnapshot(input: {
+  plannedHillName: string;
+  hillId?: number;
+  targetReps: number;
+  estimatedGainPerRepM: number;
+  estimatedTotalGainM: number;
+  legacyTrackedHillSessionId: number;
+}): Record<string, unknown> {
+  return {
+    plannedHillName: input.plannedHillName,
+    hillId: input.hillId ?? null,
+    targetReps: input.targetReps,
+    estimatedGainPerRepM: input.estimatedGainPerRepM,
+    estimatedTotalGainM: input.estimatedTotalGainM,
+    legacyTrackedHillSessionId: input.legacyTrackedHillSessionId,
+  };
 }
 
 export function manualTrainingCanonicalInput(
@@ -65,7 +97,9 @@ export function manualTrainingCanonicalInput(
       ...(completion.trainingPlanId
         ? [{ linkType: "training_plan" as const, targetId: completion.trainingPlanId }]
         : []),
-      { linkType: "training_session", targetId: completion.trainingSessionId },
+      ...(completion.trainingSessionId
+        ? [{ linkType: "training_session" as const, targetId: completion.trainingSessionId }]
+        : []),
     ],
   };
 }
@@ -75,7 +109,7 @@ type CanonicalActivityDbClient = Parameters<
 >[0];
 
 /**
- * Future route handlers should call this inside their existing transaction.
+ * The manual completion route calls this inside its existing transaction.
  * Disabled mode is an explicit no-op so released legacy behavior is unchanged.
  */
 export async function ingestManualTrainingCompletionWithClient(

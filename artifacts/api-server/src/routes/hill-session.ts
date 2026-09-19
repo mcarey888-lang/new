@@ -7,12 +7,21 @@ import {
   canonicalHillRoutes,
   trackedHillSessions,
   hillVerificationStats,
+  canonicalActivities,
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import {
   canonicalActivityBridgeEnabled,
+  canonicalActivityPayloadHash,
   ingestCanonicalActivityWithClient,
 } from "../services/canonicalActivity";
+import {
+  ingestManualTrainingCompletionWithClient,
+  manualTrainingCanonicalAdapterEnabled,
+  manualTrainingCanonicalInput,
+  manualTrainingSourceSnapshot,
+  manualTrainingRetryDecision,
+} from "../services/manualTrainingCanonicalAdapter";
 
 const router: IRouter = Router();
 
@@ -140,6 +149,7 @@ const CompleteSchema = z.object({
   estimatedTotalGainM:  z.number().int().min(1),
   trainingSessionId:    z.string().optional(),
   trainingPlanId:       z.string().optional(),
+  completionId:         z.string().min(1).max(256).optional(),
 });
 
 router.post("/complete", async (req, res) => {
@@ -153,23 +163,129 @@ router.post("/complete", async (req, res) => {
   const d = parsed.data;
 
   try {
-    const [row] = await db.insert(trackedHillSessions).values({
-      userId:               userId ?? null,
-      hillId:               d.hillId ?? null,
-      routeId:              null,
-      trainingPlanId:       d.trainingPlanId ?? null,
-      trainingSessionId:    d.trainingSessionId ?? null,
-      plannedHillName:      d.plannedHillName,
-      targetReps:           d.targetReps,
-      estimatedGainPerRepM: d.estimatedGainPerRepM,
-      estimatedTotalGainM:  d.estimatedTotalGainM,
-      completionType:       "estimated_manual",
-      usedForVerification:  false,
-      completedAt:          new Date(),
-    }).returning({ id: trackedHillSessions.id });
+    const result = await db.transaction(async (tx) => {
+      const completedAt = new Date();
+      if (
+        userId
+        && d.completionId
+        && manualTrainingCanonicalAdapterEnabled()
+      ) {
+        const [existingCanonical] = await tx.select({
+          id: canonicalActivities.id,
+          ownerUserId: canonicalActivities.ownerUserId,
+          sourcePayloadHash: canonicalActivities.sourcePayloadHash,
+          occurredAt: canonicalActivities.occurredAt,
+          sourceSnapshot: canonicalActivities.sourceSnapshot,
+        }).from(canonicalActivities).where(and(
+          eq(canonicalActivities.ownerUserId, userId),
+          eq(canonicalActivities.sourceType, "training_manual"),
+          eq(canonicalActivities.sourceId, d.completionId),
+        )).limit(1);
 
-    return res.status(201).json({ id: row.id, completionType: "estimated_manual" });
+        if (existingCanonical) {
+          const existingSnapshot = (
+            existingCanonical.sourceSnapshot
+            && typeof existingCanonical.sourceSnapshot === "object"
+          )
+            ? existingCanonical.sourceSnapshot as Record<string, unknown>
+            : {};
+          const legacyTrackedHillSessionId = Number(
+            existingSnapshot.legacyTrackedHillSessionId,
+          );
+          if (!Number.isInteger(legacyTrackedHillSessionId)) {
+            throw new Error("Canonical manual completion is missing legacy row identity");
+          }
+          const retryInput = manualTrainingCanonicalInput({
+            ownerUserId: userId,
+            completionId: d.completionId,
+            trainingPlanId: d.trainingPlanId,
+            trainingSessionId: d.trainingSessionId,
+            completedAt: existingCanonical.occurredAt,
+            activityKind: "hill_repetitions",
+            estimatedAscentM: d.estimatedTotalGainM,
+            sourceSnapshot: manualTrainingSourceSnapshot({
+              plannedHillName: d.plannedHillName,
+              hillId: d.hillId,
+              targetReps: d.targetReps,
+              estimatedGainPerRepM: d.estimatedGainPerRepM,
+              estimatedTotalGainM: d.estimatedTotalGainM,
+              legacyTrackedHillSessionId,
+            }),
+          });
+          const retryDecision = manualTrainingRetryDecision(
+            existingCanonical,
+            userId,
+            canonicalActivityPayloadHash(retryInput),
+          );
+          if (retryDecision === "conflict") {
+            const error = new Error("Source identity payload conflict");
+            error.name = "ManualTrainingCanonicalConflict";
+            throw error;
+          }
+          const [existingLegacy] = await tx.select({
+            id: trackedHillSessions.id,
+          }).from(trackedHillSessions).where(and(
+            eq(trackedHillSessions.id, legacyTrackedHillSessionId),
+            eq(trackedHillSessions.userId, userId),
+          )).limit(1);
+          if (!existingLegacy) {
+            throw new Error("Canonical manual completion is missing legacy row");
+          }
+          return existingLegacy;
+        }
+      }
+
+      const [row] = await tx.insert(trackedHillSessions).values({
+        userId:               userId ?? null,
+        hillId:               d.hillId ?? null,
+        routeId:              null,
+        trainingPlanId:       d.trainingPlanId ?? null,
+        trainingSessionId:    d.trainingSessionId ?? null,
+        plannedHillName:      d.plannedHillName,
+        targetReps:           d.targetReps,
+        estimatedGainPerRepM: d.estimatedGainPerRepM,
+        estimatedTotalGainM:  d.estimatedTotalGainM,
+        completionType:       "estimated_manual",
+        usedForVerification:  false,
+        completedAt,
+      }).returning({ id: trackedHillSessions.id });
+
+      if (userId && d.completionId) {
+        const canonical = await ingestManualTrainingCompletionWithClient(tx, {
+          ownerUserId: userId,
+          completionId: d.completionId,
+          trainingPlanId: d.trainingPlanId,
+          trainingSessionId: d.trainingSessionId,
+          completedAt,
+          activityKind: "hill_repetitions",
+          estimatedAscentM: d.estimatedTotalGainM,
+          sourceSnapshot: manualTrainingSourceSnapshot({
+            plannedHillName: d.plannedHillName,
+            hillId: d.hillId,
+            targetReps: d.targetReps,
+            estimatedGainPerRepM: d.estimatedGainPerRepM,
+            estimatedTotalGainM: d.estimatedTotalGainM,
+            legacyTrackedHillSessionId: row.id,
+          }),
+        });
+        if (canonical.status === "conflict") {
+          const error = new Error("Source identity payload conflict");
+          error.name = "ManualTrainingCanonicalConflict";
+          throw error;
+        }
+      }
+
+      return row;
+    });
+
+    return res.status(201).json({ id: result.id, completionType: "estimated_manual" });
   } catch (err) {
+    if (err instanceof Error && err.name === "ManualTrainingCanonicalConflict") {
+      return res.status(409).json({
+        error: "Source identity payload conflict",
+        conflict: true,
+      });
+    }
     req.log.error({ err }, "hill-session/complete failed");
     return res.status(500).json({ error: "Failed to save session" });
   }

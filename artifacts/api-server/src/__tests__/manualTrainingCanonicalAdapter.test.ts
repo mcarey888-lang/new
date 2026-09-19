@@ -1,11 +1,19 @@
 import { describe, expect, it, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   canonicalActivityPayloadHash,
 } from "../services/canonicalActivity";
 import {
   manualTrainingCanonicalAdapterEnabled,
   manualTrainingCanonicalInput,
+  manualTrainingRetryDecision,
+  manualTrainingSourceSnapshot,
 } from "../services/manualTrainingCanonicalAdapter";
+
+const hillSessionRouteSource = readFileSync(
+  new URL("../routes/hill-session.ts", import.meta.url),
+  "utf8",
+);
 
 const originalFlag = process.env.CANONICAL_MANUAL_TRAINING_ADAPTER_ENABLED;
 
@@ -28,6 +36,7 @@ function completion(overrides: Partial<Parameters<typeof manualTrainingCanonical
     durationSeconds: 1800,
     estimatedAscentM: 420,
     sourceSnapshot: {
+      plannedHillName: "Hill",
       targetReps: 6,
       estimatedGainPerRepM: 70,
     },
@@ -71,6 +80,70 @@ describe("manual Training canonical adapter", () => {
     expect(first.sourceId).toBe(retry.sourceId);
   });
 
+  it("simulates one transactional legacy/canonical store across first, retry, and conflict", () => {
+    const legacyRows: number[] = [];
+    let canonical: {
+      ownerUserId: string;
+      sourcePayloadHash: string;
+      occurredAt: Date;
+      sourceSnapshot: Record<string, unknown>;
+    } | undefined;
+
+    const save = (value: ReturnType<typeof completion>) => {
+      if (canonical) {
+        const legacyId = Number(canonical.sourceSnapshot.legacyTrackedHillSessionId);
+        const retry = manualTrainingCanonicalInput({
+          ...value,
+          completedAt: canonical.occurredAt,
+          sourceSnapshot: manualTrainingSourceSnapshot({
+            plannedHillName: value.sourceSnapshot.plannedHillName as string,
+            hillId: value.sourceSnapshot.hillId as number | undefined,
+            targetReps: value.sourceSnapshot.targetReps as number,
+            estimatedGainPerRepM: value.sourceSnapshot.estimatedGainPerRepM as number,
+            estimatedTotalGainM: value.sourceSnapshot.estimatedTotalGainM as number,
+            legacyTrackedHillSessionId: legacyId,
+          }),
+        });
+        const decision = manualTrainingRetryDecision(
+          canonical,
+          value.ownerUserId,
+          canonicalActivityPayloadHash(retry),
+        );
+        if (decision === "conflict") throw new Error("Source identity payload conflict");
+        return legacyId;
+      }
+
+      const legacyId = 1;
+      legacyRows.push(legacyId);
+      const input = manualTrainingCanonicalInput({
+        ...value,
+        sourceSnapshot: manualTrainingSourceSnapshot({
+          plannedHillName: value.sourceSnapshot.plannedHillName as string,
+          hillId: undefined,
+          targetReps: value.sourceSnapshot.targetReps as number,
+          estimatedGainPerRepM: value.sourceSnapshot.estimatedGainPerRepM as number,
+          estimatedTotalGainM: value.sourceSnapshot.estimatedTotalGainM as number,
+          legacyTrackedHillSessionId: legacyId,
+        }),
+      });
+      canonical = {
+        ownerUserId: value.ownerUserId,
+        sourcePayloadHash: canonicalActivityPayloadHash(input),
+        occurredAt: input.occurredAt,
+        sourceSnapshot: input.sourceSnapshot ?? {},
+      };
+      return legacyId;
+    };
+
+    const firstId = save(completion());
+    const retryId = save(completion());
+    expect(firstId).toBe(retryId);
+    expect(legacyRows).toHaveLength(1);
+    expect(() => save(completion({ estimatedAscentM: 999 })))
+      .toThrow("Source identity payload conflict");
+    expect(legacyRows).toHaveLength(1);
+  });
+
   it("stores manual evidence and never promotes it to GPS or competitive state", () => {
     const input = manualTrainingCanonicalInput(completion());
 
@@ -98,5 +171,34 @@ describe("manual Training canonical adapter", () => {
     expect(withoutPlan.links).toEqual([
       { linkType: "training_session", targetId: "session-3" },
     ]);
+  });
+
+  it("supports completion without optional plan/session links", () => {
+    const input = manualTrainingCanonicalInput(completion({
+      trainingPlanId: undefined,
+      trainingSessionId: undefined,
+    }));
+    expect(input.links).toEqual([]);
+  });
+
+  it("wires the adapter behind a default-off flag without changing the legacy response", () => {
+    expect(hillSessionRouteSource).toMatch(
+      /completionId:\s*z\.string\(\)\.min\(1\)\.max\(256\)\.optional\(\)/,
+    );
+    expect(hillSessionRouteSource).toMatch(/db\.transaction\(async \(tx\) =>/);
+    expect(hillSessionRouteSource).toMatch(
+      /ingestManualTrainingCompletionWithClient\(tx/,
+    );
+    expect(hillSessionRouteSource).toMatch(/canonicalActivityPayloadHash/);
+    expect(hillSessionRouteSource).toMatch(/manualTrainingRetryDecision/);
+    expect(hillSessionRouteSource).toMatch(/canonicalActivities\.sourceId/);
+    expect(hillSessionRouteSource).toMatch(
+      /return res\.status\(201\)\.json\(\{ id: result\.id, completionType: "estimated_manual" \}\)/,
+    );
+    expect(hillSessionRouteSource).toMatch(
+      /return res\.status\(409\)\.json\(\{\s*error: "Source identity payload conflict"/s,
+    );
+    delete process.env.CANONICAL_MANUAL_TRAINING_ADAPTER_ENABLED;
+    expect(manualTrainingCanonicalAdapterEnabled()).toBe(false);
   });
 });

@@ -25,6 +25,7 @@ import { artworkRouter } from "./artwork";
 import { atlasRouter } from "./atlas";
 import redditConversionsRouter from "./reddit-conversions";
 import activitiesRouter from "./activities";
+import exploreHikeCanonicalRouter from "./explore-hike-canonical";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -60,6 +61,7 @@ router.use(trackedRoutesRouter);
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
+router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);
 
 // User account management — requires auth.
 router.use(requireAuth(), userRouter);

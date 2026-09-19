@@ -10,6 +10,7 @@ export * from "./cached-alpine";
 export * from "./mountain-verification";
 export * from "./canonical-hills";
 export * from "./canonical-activities";
+export * from "./stage2-activity-ledgers";
 export * from "./virtual-expedition-engine";
 export * from "./signature-challenges";
 export * from "./atlas";

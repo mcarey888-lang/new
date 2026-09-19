@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-The Stage 2 master runbook is active. S2-C02 through S2-C05 are complete. Continue with S2-C06 qualification evaluation; stop only at a runbook RED gate or after S2-C10.
+Stage 2 is COMPLETE through S2-R10. `docs/STAGE_2_COMPLETION_REPORT.md` records implementation, checks, prepared-but-unpublished schema, flags, limitations, and Stage 3 prerequisites. Stop before Stage 3.
 
 ## Last completed task
 
-Completed S2-C03 through S2-C05: default-safe Manual Training and ExploreHike canonical adapters plus an owner-scoped idempotent contribution-link service. No user-facing behavior, schema, data, production, UI, release, or protected-asset changes were made.
+Completed the full Stage 2 master runbook. No production migration, data mutation, deployment, mobile build, UI redesign, public leaderboard activation, or protected-asset change was made.
 
 ## Changes made
 
@@ -30,6 +30,11 @@ Completed S2-C03 through S2-C05: default-safe Manual Training and ExploreHike ca
 - S2-R03 adds a default-off Manual Training canonical adapter with stable completion identity, manual evidence, and explicit plan/session links.
 - S2-R04 adds a pure ExploreHike canonicalization planner that reuses only explicit canonical IDs and never fuzzy-deduplicates.
 - S2-R05 adds owner-scoped, idempotent multi-purpose contribution links with SDE target validation and simulation/real-summit separation.
+- S2-R06 adds deterministic read-only qualification evaluation.
+- S2-R07 prepares an owner-safe personal Elevation Bank event ledger.
+- S2-R08 prepares an owner-safe simulated Expedition contribution ledger.
+- S2-R09 adds private canonical-history projections and mismatch reporting without switching consumers.
+- S2-R10 completes integration/regression review and the Stage 2 report.
 
 ## Files changed
 
@@ -55,6 +60,7 @@ Primary activity implementation:
 - `SUMMITREADY_2_PHASE_1_REPORT.txt`
 - `docs/STAGE_2_ARCHITECTURE_AUDIT.md`
 - `docs/CANONICAL_ACTIVITY_CONTRACTS.md`
+- `docs/STAGE_2_COMPLETION_REPORT.md`
 
 Coordination:
 
@@ -93,6 +99,8 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - API production bundle build passed.
 - Full API typecheck still reports only the pre-existing object-storage response typing error and missing OpenAI declaration-build outputs; no S2-C02 file appears in those diagnostics.
 - S2-C03–C05 combined focused regression: 58 passed; four database integration tests skipped by default.
+- Final Stage 2 focused regression: 93 passed; four optional database integration tests skipped by default.
+- Final architecture review passed with no blocking/high-impact findings.
 
 ## Production/deployment status
 
@@ -102,6 +110,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Publish-generated schema diff remaining: zero statements.
 - No direct production SQL was run.
 - No production backfill or mobile build was performed.
+- Stage 2 migration `0002_stage2_activity_ledgers.sql` is prepared but was not applied to development or production.
 - `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; deployed code therefore uses its documented default of enabled.
 
 ## Known issues
@@ -110,18 +119,19 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Existing production rows have no owner and are intentionally not backfilled.
 - No fuzzy legacy reconciliation or correction API exists.
 - Full API typecheck has unrelated pre-existing failures noted above.
-- Manual Training completion and local ExploreHike records do not yet share the idempotent canonical ingestion path used by GPS tracked hill sessions.
-- Durable Elevation Bank credits, Expedition run/stage contributions, real summit records, challenge lifecycle, and public/competitive governance remain additive future work.
-- S2-C02 defines adapter contracts but intentionally does not implement or activate Manual Training or ExploreHike adapters.
+- Manual Training and ExploreHike canonical adapters are implemented but default-off.
+- Existing visible history/readiness/elevation/Expedition consumers remain on legacy paths.
+- Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work.
 
 ## Decisions requiring review
 
-- Continue the approved master runbook with S2-C06.
+- Production publication of migration `0002_stage2_activity_ledgers.sql` requires separate owner approval through Replit Publish.
+- Adapter activation and consumer switching require a later approved release plan.
 - Decide whether the canonical bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
 
 ## Recommended next action
 
-Continue S2-C06 through S2-C10 while this Agent session remains active. Stop at any RED gate and do not begin Stage 3.
+Review `docs/STAGE_2_COMPLETION_REPORT.md`. Do not begin Stage 3 or publish the prepared schema without a new approved command.
 
 ## Git branch and latest commit SHA
 
