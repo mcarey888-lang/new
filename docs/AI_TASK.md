@@ -1,212 +1,327 @@
-# SummitReady AI Task — Stage 3 Master Runbook
+# SummitReady AI Task — Stage 4 Master Runbook
 
-## S3-MASTER — Navigation + UX Cohesion
+## S4-MASTER — Foundation Activation, Elevation Bank + Activity Completion
 
-Stage 2 is COMPLETE and accepted. Stage 3 is approved as a bounded development stage. Work sequentially through S3-C01 to S3-C08 in one active Agent session where possible. Do not wait for the owner between GREEN commands.
+Stages 1–3 are COMPLETE and accepted. Stage 4 is approved as a bounded development stage. Work sequentially through S4-C01 to S4-C10 in one active Agent session where possible. Do not wait for the owner between GREEN commands.
 
 ### Goal
-Make SummitReady feel like one premium outdoor product while preserving its two distinct journeys:
 
-- **Training:** “I have a mountain booked.” Target mountain + date → readiness → personalised preparation → arrive ready.
-- **Expedition:** “I want an adventure.” Choose expedition → local stages → track hikes → expedition progress → complete the simulated adventure.
-- **Explore/Free Hike:** a shared usage state, not a third mode.
+Turn the canonical activity foundation into a safe, understandable user experience:
 
-The architecture should make it obvious where the user is, what their current objective is, and what the next useful action is.
+**one physical activity → one canonical record → one personal elevation credit → multiple valid consequences**
+
+A completed hike may affect Training, Expedition progress, personal Elevation Bank, challenges and achievements without duplicating the physical activity or double-crediting elevation.
+
+Stage 4 must begin by closing/validating the deliberately unfinished Stage 2 integration boundaries. Do not assume the prepared ledgers or default-off adapters are production-ready.
 
 ### Operating protocol
 - Execute commands strictly in order.
-- Record S3-R01…S3-R08 in AI_CHANGELOG.md and keep AI_HANDOFF.md current.
+- Record S4-R01…S4-R10 in AI_CHANGELOG.md and keep AI_HANDOFF.md current.
 - Commit at safe checkpoints.
 - Use targeted inspection and normal/default Agent effort; do not repeatedly audit the whole repo.
-- Preserve backwards compatibility and existing data.
-- Prefer reuse/refactor of existing components over parallel replacement screens.
+- Prefer additive/backwards-compatible changes.
 - Continue automatically through GREEN commands.
-- Stop immediately for a RED gate, genuine blocker/failure, or after S3-R08.
-- No production Publish is required for Stage 3. Keep any pending migrations recorded and unapplied.
+- Stop for RED gate, genuine blocker/failure, or after S4-R10.
+- Never silently enable a production dependency.
+- If a production migration/flag is required, prepare and verify it, document the exact action, then STOP at the appropriate approval gate rather than applying it.
+- Do not start Stage 5.
 
 ### RED gates
-Stop for explicit owner approval before:
-- production DB migration/data mutation;
-- destructive migration/backfill/deletion;
+Explicit owner approval is required before:
+- production DB migration or production data mutation;
+- destructive migration/backfill/reconciliation/deletion;
+- production feature-flag/environment activation;
 - App Store/Play Store/mobile production release;
 - payments/subscriptions/pricing;
 - authentication/security model changes;
+- public privacy/competitive leaderboard activation;
 - destructive/replacement changes to Summit Data Engine;
-- removal/replacement/substantial redesign of Progress Mountain or cinematic/live-3D summit transition;
-- public privacy/competitive leaderboard activation.
+- removal/replacement/substantial redesign of Progress Mountain or cinematic/live-3D summit transition.
 
-### Protected product rules
-- Training and Expedition remain distinct journeys, not tabs that blur into one mode.
-- Preserve the 21,576-mountain Summit Data Engine and its stable identities.
-- Preserve Progress Mountain elevation-driven route fill and summit → cinematic/live-3D completion transition.
+### Protected rules
+- Training and Expedition remain distinct journeys.
+- Shared primary navigation remains Basecamp, Explore, Track, Community, You.
 - Preserve offline-first Start → Track → Pause → Resume → Finish → Save.
-- One physical activity remains one canonical activity with additive purposes.
+- Preserve the 21,576-mountain Summit Data Engine and stable identities.
+- Preserve Progress Mountain elevation fill and summit → cinematic/live-3D transition.
 - Real Summit, Expedition Completion and Mountain Simulation remain distinct.
-- Do not apply Stage 2 migration 0002 to production during this stage.
+- GPS activity evidence remains private unless an explicit later product/privacy rule says otherwise.
+- Manual/indoor activities must never be silently promoted to GPS verified, real-summit evidence or public competitive evidence.
+- No fuzzy deduplication by mountain name, route name, date, distance or elevation.
 
 ---
 
-## S3-C01 — Current navigation/UX map
+## S4-C01 — Stage 4 preflight and unfinished-foundation audit
 
-Perform a targeted implementation audit of current navigation, mode state, home/dashboard entry points, Explore, Track, Community/Profile, Training, Expedition, back behavior, deep links and existing onboarding handoffs.
+Perform a targeted preflight of the exact Stage 4 dependency chain.
 
-Deliver a concise internal map identifying:
-- duplicated or conflicting navigation;
-- screens with ambiguous Training/Expedition context;
-- dead ends;
-- inconsistent headers/back behavior;
-- screens that should become shared surfaces;
-- screens that must remain mode-specific;
-- current component reuse opportunities.
+Verify:
+- S2 manual Training adapter state and flag;
+- S2 ExploreHike adapter state and flag;
+- tracked-hill canonical bridge behavior;
+- canonical links and qualification evaluator;
+- canonical history projection;
+- Stage 2 ledger schema/code;
+- Stage 3 Shared Track completion handoff;
+- existing visible elevation totals and their sources;
+- existing Training completion/readiness handoff;
+- existing Expedition stage completion/progress handoff;
+- current challenge/achievement hooks;
+- current activity completion screens.
 
-Do not change runtime yet.
+Review 0002_stage2_activity_ledgers.sql against current schema and code. Identify any migration defect, naming mismatch, missing index/constraint, unsafe assumption, or runtime dependency before Stage 4 builds on it.
 
-Result: S3-R01. Continue automatically if COMPLETE.
+Do not change production, flags or user-visible behavior.
 
-## S3-C02 — Shared app shell and mode context
+Deliver docs/STAGE_4_PREFLIGHT.md with a concise dependency map and exact safe implementation sequence.
 
-Implement/refine the shared shell using the existing canonical shellMode/state architecture.
+Result: S4-R01. Continue automatically if COMPLETE.
 
-Target primary navigation:
-- Basecamp
-- Explore
-- Track
-- Community
-- You
+## S4-C02 — Harden Stage 2 ledger migration and service contracts
 
-Requirements:
-- mode context is visible where relevant but not intrusive;
-- The primary/home destination remains named **Basecamp**. Do not rename it to Home. Basecamp is the product concept and shared primary navigation label; its content is mode-aware, showing the distinct Training Basecamp or Expedition Basecamp experience as appropriate.
-- switching mode must not corrupt state or silently reset progress;
-- Track is a shared entry point and retains Free Hike plus context-aware Training/Expedition paths;
-- preserve deep links/back behavior;
-- avoid duplicate navigation stacks;
-- accessibility labels and safe-area behavior;
-- no onboarding redesign yet.
-
-If current navigation differs materially and changing all five tabs at once is high-risk, implement an additive shell/component boundary first and migrate incrementally in later commands.
-
-Result: S3-R02.
-
-## S3-C03 — Training Basecamp hierarchy
-
-Refine Training Basecamp around one dominant goal and next action. Keep the user-facing Basecamp naming; do not rename it Home.
-
-Priority hierarchy:
-1. target mountain + target date/days remaining;
-2. Readiness as primary Training metric;
-3. Today’s Mission / next training action;
-4. weekly progress;
-5. readiness breakdown / training hills;
-6. supporting community/challenge information.
+Using C01 findings, make any necessary additive corrections to the development-only Stage 2 ledger migration/schema/services.
 
 Requirements:
-- preserve current readiness calculations and training-plan logic;
-- no Readiness 2.0 algorithm changes;
-- reduce dashboard/card clutter where safely possible;
-- reuse existing content/components;
-- avoid tiny uppercase-label overload and excessive nested cards;
-- premium outdoor visual hierarchy, not generic SaaS dashboard;
-- no paywall/pricing changes.
+- owner-safe foreign keys;
+- append-only/correction lineage;
+- deterministic idempotency;
+- one current effective personal elevation credit per activity/rule;
+- no double-credit through multiple contexts;
+- Expedition contribution remains explicitly simulated;
+- correction/revocation supported without deleting evidence;
+- migration remains additive/backwards-compatible;
+- no production application.
 
-Result: S3-R03.
+Add/strengthen tests for migration planning and service invariants.
 
-## S3-C04 — Expedition Basecamp hierarchy
+If a destructive schema correction is required, STOP APPROVAL REQUIRED rather than proceeding.
 
-Refine Expedition Basecamp around adventure progress and the next stage. Keep the user-facing Basecamp naming; do not rename it Home.
+Result: S4-R02.
 
-Priority hierarchy:
-1. current expedition hero/context;
-2. expedition progress;
-3. next stage and primary CTA;
-4. protected Progress Mountain;
-5. stage list / Mountain DNA where available;
-6. supporting community/challenge information.
+## S4-C03 — Canonical adapter end-to-end development activation
 
-Requirements:
-- Progress Mountain remains prominent and functionally unchanged;
-- do not alter summit → cinematic/live-3D transition;
-- preserve current Expedition calculations/state;
-- clarify labels where simulated elevation could be confused with real mountain altitude/local route ascent;
-- use labels such as Elevation target / Elevation climbed where appropriate;
-- no Expedition rules changes.
+Prove NEW activity ingestion paths end-to-end in development/test boundaries without production activation.
 
-Result: S3-R04.
-
-## S3-C05 — Explore + mountain/route cohesion
-
-Refine Explore as the shared discovery surface.
+Cover:
+1. GPS tracked hill / Free Hike;
+2. Manual Training completion;
+3. ExploreHike where distinct from the shared tracker;
+4. Training-context GPS hike;
+5. Expedition-context GPS hike.
 
 Requirements:
-- Mountains, routes, local hills and Expeditions should be discoverable without duplicating canonical data;
-- Training can launch target-relevant discovery;
-- Expedition can launch stage/local-equivalent discovery;
-- Free Hike can discover a route and Track it;
-- SDE remains authoritative for canonical summit identity;
-- do not copy SDE data into a replacement model;
-- clearly distinguish real mountain altitude, route ascent/elevation gain and simulated expedition elevation;
-- preserve existing route/mountain functionality and offline requirements.
+- stable source identity;
+- retry does not duplicate;
+- changed-payload conflicts are retained/rejected safely;
+- one physical tracked hike is reused when linked to several contexts;
+- manual evidence remains manual;
+- offline/local UUID survives delayed sync;
+- owner separation;
+- no historical backfill;
+- no production flag changes.
 
-No Route Engine rebuild in this command.
+Where current adapters are default-off, use explicit test/development activation only. Do not alter production defaults yet.
 
-Result: S3-R05.
+Result: S4-R03.
 
-## S3-C06 — Shared Track entry and completion handoff
+## S4-C04 — Elevation Bank calculation and ledger service
 
-Unify the Track entry UX without changing the proven offline tracking engine.
+Implement the personal Elevation Bank service against the prepared ledger.
 
-Requirements:
-- shared Track entry offers contextually appropriate actions: Free Hike, Training session where applicable, Expedition stage where applicable;
-- starting a hike must never wait for network, route name, map tiles or reverse geocoding;
-- preserve local UUID/checkpoint/outbox behavior;
-- prevent duplicate Start actions;
-- completion hands the single physical activity to relevant contexts without duplicating the activity;
-- if Stage 2 canonical adapters are still default-off/unpublished, preserve legacy runtime and prepare the UI/service boundary without enabling unsafe writes;
-- no Stage 2 production migration.
-
-Result: S3-R06.
-
-## S3-C07 — Community/You cohesion and visual consistency
-
-Refine shared Community and You/Profile entry surfaces using existing features only.
+Definition:
+**Elevation Bank = the user's credited cumulative ascent from eligible physical activities.**
 
 Requirements:
-- do not activate public competitive functionality not already released;
-- Profile should communicate mountain identity: current goal/adventure, existing elevation/summits/achievements where already available;
-- Community should expose only existing safe/released content;
-- standardize page headers, spacing, card hierarchy, button hierarchy, empty/loading/error states and accessibility;
-- centralize reusable design tokens/components where practical;
-- preserve existing brand palette and avoid a wholesale visual rewrite.
+- source is canonical activity + qualification/evidence, not screen-local totals;
+- GPS/recorded outdoor ascent may be credited under a versioned rule;
+- manual/indoor handling must be explicit and conservative; never public/competitive;
+- simulated Expedition target elevation itself is never banked;
+- one physical activity credits at most once per active rule version regardless of Training/Expedition/challenge links;
+- corrections/revocations change effective totals without deleting history;
+- deterministic lifetime and period totals;
+- Everest-equivalent calculation uses 8,849m and is display-only;
+- no public leaderboard activation;
+- tests for duplicate links, retries, corrections, revocations, zero ascent, invalid/untrusted evidence and multi-owner isolation.
 
-Result: S3-R07.
+Keep existing user-visible totals authoritative until C06.
 
-## S3-C08 — Stage 3 regression/completion gate
+Result: S4-R04.
+
+## S4-C05 — Activity consequence resolver
+
+Create one post-activity consequence service that evaluates what a completed canonical activity affects.
+
+Possible consequences:
+- Elevation Bank credit;
+- Training session completion/link;
+- readiness impact using EXISTING readiness rules only;
+- Expedition stage contribution using EXISTING Expedition rules only;
+- challenge/achievement hooks only where existing released logic safely supports them;
+- mountain/route completion evidence without creating a Real Summit unless the explicit real-summit rule is satisfied.
+
+Requirements:
+- idempotent;
+- no duplicate awards on retry;
+- consequences are derived from explicit links/qualifications;
+- no fuzzy inference;
+- preserve legacy calculations where canonical replacement is not yet proven equivalent;
+- return a structured summary suitable for an activity completion screen;
+- tests for Training-only, Expedition-only, Free Hike, multi-context, manual and untrusted cases.
+
+Result: S4-R05.
+
+## S4-C06 — Elevation Bank user experience
+
+Add the first user-facing personal Elevation Bank experience using the new service only when its development/runtime dependency is safely available.
+
+Primary presentation:
+- lifetime credited elevation;
+- current month credited elevation where dates permit;
+- Everest equivalent;
+- recent credited activities/corrections where useful;
+- clear empty/loading/error states.
+
+Integrate into an appropriate existing surface (prefer You/Profile and/or completion summary) without adding a new primary navigation tab.
+
+Design direction:
+- premium outdoor achievement feel;
+- one dominant number;
+- restrained supporting metrics;
+- avoid generic finance/dashboard styling;
+- no public rank/leaderboard;
+- distinguish recorded ascent from simulated Expedition elevation.
+
+If production schema is required to make this live, implement the UI/service boundary with a safe unavailable/fallback state and leave production activation behind the RED gate.
+
+Result: S4-R06.
+
+## S4-C07 — Premium activity completion experience
+
+Create/refine the post-hike completion experience around one physical activity and its consequences.
+
+Target hierarchy:
+1. activity/mountain/route completion title;
+2. distance, ascent, duration;
+3. **+Xm Elevation Bank** and updated lifetime total when eligible;
+4. Training consequence/readiness impact when applicable;
+5. Expedition progress/stage consequence when applicable;
+6. existing challenge/achievement consequence when safely available;
+7. Share / View Activity actions where existing functionality supports them.
+
+Example information architecture only:
+TRYFAN COMPLETE
+704m climbed · 6.4km · 2h51
++704m ELEVATION BANK
+Lifetime 47,280m · Everest 5.3×
+Training session complete
+Everest Expedition 3,821 / 8,849m · 43%
+
+Requirements:
+- never fabricate consequence values;
+- hide sections with no valid consequence;
+- do not call simulated Expedition completion a real summit;
+- do not alter protected summit cinematic behavior;
+- offline completion must still succeed; consequences that require sync can show pending/sync-safe state;
+- preserve existing save/retry behavior;
+- no network requirement to finish/save;
+- accessibility and small-screen handling.
+
+Result: S4-R07.
+
+## S4-C08 — Canonical history/read projection integration
+
+Integrate the canonical read projection into user-facing private history where equivalence has been demonstrated.
+
+Requirements:
+- one physical activity appears once in All;
+- filters/labels can expose Training, Expedition and Free Hike purposes without duplicating the activity;
+- preserve access to legacy records not yet canonicalized;
+- no destructive historical reconciliation;
+- do not hide old activities simply because they lack canonical IDs;
+- clear evidence/status labels where useful;
+- safe fallback to legacy projection if canonical dependency unavailable;
+- compare totals/counts before switching any existing consumer.
+
+If equivalence cannot be proven, leave the new projection shadowed and document the mismatch rather than forcing a switch.
+
+Result: S4-R08.
+
+## S4-C09 — Stage 4 development migration + activation readiness gate
+
+Perform the final non-production readiness review for 0002 and all Stage 4 dependencies.
+
+Required checks:
+- migration analyzer/diff if available;
+- development/test application path;
+- rollback/recovery assumptions;
+- adapter flags;
+- canonical bridge flag;
+- API compatibility;
+- mobile compatibility;
+- zero historical backfill;
+- no production data mutation;
+- duplicate-credit and owner-isolation tests;
+- offline delayed-sync test;
+- Expedition simulation/real-summit separation;
+- SDE/protected Progress Mountain boundaries.
+
+Produce docs/STAGE_4_PRODUCTION_READINESS.md containing:
+- exact production migration statements/artifact;
+- exact flags/config that would need activation, with recommended order;
+- expected tables/indexes/constraints;
+- preflight queries/checks;
+- post-migration verification checks;
+- rollback/recovery strategy;
+- whether a new mobile build would ultimately be required;
+- any known blocker.
+
+DO NOT apply production migration or production flags.
+
+If Stage 4 cannot function safely without applying production schema before C10, record APPROVAL REQUIRED and stop.
+
+Result: S4-R09.
+
+## S4-C10 — Stage 4 regression/completion gate
 
 Run a bounded integration/regression pass.
 
 Verify:
-- Training and Expedition state remain isolated;
-- Basecamp resolves correctly for each mode and remains the primary/home navigation label;
-- shared Explore/Track/Community/You navigation works;
-- deep links/back behavior have no obvious regressions;
-- offline tracking lifecycle is unchanged;
-- canonical activity architecture remains compatible;
-- no production schema dependency was accidentally introduced;
-- Stage 2 migration remains unapplied;
-- SDE untouched;
-- Progress Mountain and cinematic/live-3D summit behavior untouched;
-- no payments/auth/release/public-privacy changes.
+- one physical activity remains one canonical activity;
+- retry cannot duplicate activity or Elevation Bank credit;
+- multi-context activity does not double-credit;
+- offline Start/Pause/Resume/Finish/Save remains intact;
+- completion can succeed without network;
+- Training calculations are unchanged except intentional presentation/integration;
+- Expedition calculations are unchanged except intentional presentation/integration;
+- simulated Expedition progress cannot create a Real Summit;
+- manual/indoor/untrusted evidence boundaries hold;
+- canonical/legacy history coexist safely;
+- SDE unchanged;
+- Progress Mountain/cinematic/live-3D unchanged;
+- no production migration/flag/release/payment/auth/public-privacy change occurred.
 
-Run relevant targeted tests/builds. Avoid unrelated expensive suites unless a failure requires them.
+Run relevant targeted tests/builds and the smallest meaningful integration suite.
 
-Create docs/STAGE_3_COMPLETION_REPORT.md with:
-- delivered UX/navigation changes;
-- screenshots/routes/components materially changed;
-- tests/build results;
-- known issues;
-- pending production migrations/flags;
-- Stage 4 prerequisites.
+Create docs/STAGE_4_COMPLETION_REPORT.md summarizing:
+- delivered functionality;
+- tests/builds;
+- protected-boundary verification;
+- remaining feature flags;
+- pending production migration;
+- native-device QA needs;
+- exact RED-gate actions awaiting owner approval;
+- Stage 5 prerequisites.
 
-Update AI_HANDOFF.md and AI_CHANGELOG.md, commit/push, and STOP. Do not begin Stage 4.
+Update AI_HANDOFF.md and AI_CHANGELOG.md, commit/push, and STOP.
 
-Result: S3-R08 — COMPLETE / PARTIAL / BLOCKED / FAILED / APPROVAL REQUIRED.
+Result: S4-R10 — COMPLETE / PARTIAL / BLOCKED / FAILED / APPROVAL REQUIRED.
+
+### Stage 4 completion rule
+
+Stage 4 implementation may be marked COMPLETE with production activation still pending, provided:
+- all code and development/test verification is complete;
+- production changes are explicitly documented and unapplied;
+- released behavior remains safe/backwards-compatible;
+- no RED gate was crossed.
+
+Do not begin Stage 5.
