@@ -68,7 +68,7 @@ Result: S3-R01. Continue automatically if COMPLETE.
 Implement/refine the shared shell using the existing canonical shellMode/state architecture.
 
 Target primary navigation:
-- Home
+- Basecamp
 - Explore
 - Track
 - Community
@@ -76,7 +76,7 @@ Target primary navigation:
 
 Requirements:
 - mode context is visible where relevant but not intrusive;
-- Training Home and Expedition Home remain distinct destinations;
+- The primary/home destination remains named **Basecamp**. Do not rename it to Home. Basecamp is the product concept and shared primary navigation label; its content is mode-aware, showing the distinct Training Basecamp or Expedition Basecamp experience as appropriate.
 - switching mode must not corrupt state or silently reset progress;
 - Track is a shared entry point and retains Free Hike plus context-aware Training/Expedition paths;
 - preserve deep links/back behavior;
@@ -88,9 +88,9 @@ If current navigation differs materially and changing all five tabs at once is h
 
 Result: S3-R02.
 
-## S3-C03 — Training Home hierarchy
+## S3-C03 — Training Basecamp hierarchy
 
-Refine Training Home around one dominant goal and next action.
+Refine Training Basecamp around one dominant goal and next action. Keep the user-facing Basecamp naming; do not rename it Home.
 
 Priority hierarchy:
 1. target mountain + target date/days remaining;
@@ -111,9 +111,9 @@ Requirements:
 
 Result: S3-R03.
 
-## S3-C04 — Expedition Home hierarchy
+## S3-C04 — Expedition Basecamp hierarchy
 
-Refine Expedition Home around adventure progress and the next stage.
+Refine Expedition Basecamp around adventure progress and the next stage. Keep the user-facing Basecamp naming; do not rename it Home.
 
 Priority hierarchy:
 1. current expedition hero/context;
@@ -186,7 +186,7 @@ Run a bounded integration/regression pass.
 
 Verify:
 - Training and Expedition state remain isolated;
-- Home resolves correctly for each mode;
+- Basecamp resolves correctly for each mode and remains the primary/home navigation label;
 - shared Explore/Track/Community/You navigation works;
 - deep links/back behavior have no obvious regressions;
 - offline tracking lifecycle is unchanged;
