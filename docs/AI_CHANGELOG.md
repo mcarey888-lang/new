@@ -481,3 +481,32 @@ All offline behaviors, SDE identities, and Route Engine features were preserved 
 **Important files:** `artifacts/summit-ready/app/hike-tracking.tsx`, `artifacts/summit-ready/utils/activityCompletionPresentation.ts`, `artifacts/summit-ready/utils/activityCompletionPresentation.test.ts`, `artifacts/api-server/src/services/elevationBank.ts`, `artifacts/api-server/src/routes/elevation-bank.ts`, `lib/api-spec/openapi.yaml`, `docs/AI_HANDOFF.md`.
 
 **Tests/result:** SummitReady targeted completion/tracking/Elevation Bank regression passed **13/13**; SummitReady TypeScript passed; API consequence/Elevation Bank focused suites passed **25/25**; API production bundle passed; OpenAPI codegen completed (its chained workspace library typecheck retains unrelated pre-existing diagnostics); `git diff --check` passed. No migration, production flag, backfill, release, or Stage 5 work was performed. Parent agent owns the checkpoint commit.
+
+## 2026-09-19 UTC — PA-A2 development ledger schema and Publish preflight
+
+**Task:** Apply the exact reviewed `0002_stage2_activity_ledgers.sql` artifact
+to the managed development database only, verify it, regenerate the production
+Publish diff, and stop without publishing.
+
+**Implementation:** Reconfirmed Git blob
+`e8848dfc4592390b6040d2c7e2a82d949f0a7be1` and SHA-256
+`f2aeccb3cda06c663789c14b2b908c1b095f55d5143ddeb68b852e66396e6c69`.
+Applied the unchanged file content in one development-only operation without
+`push-force` or schema synchronization. Verified all five ledger tables and
+their reviewed constraints/indexes. The controlled production analyzer then
+generated 24 additive statements but omitted four reviewed composite unique
+indexes required by proposed foreign-key targets, so the production diff was
+not published.
+
+**Important files/schema:** Development now contains the five Stage 2 ledger
+tables with zero rows. Production remains unchanged. Evidence is recorded in
+`docs/PRODUCTION_ACTIVATION_GATE_A2_REPORT.md` and `docs/AI_HANDOFF.md`.
+
+**Tests/result:** **BLOCKED at PA-A2-C03.** Development counts remained
+`canonical_activities=0` and `tracked_hill_sessions=4`; all five new tables
+contain zero rows. Production remains at the same counts and lacks the five
+ledger tables. All production Stage 2/Stage 4 flags remain unset. No production
+SQL, Publish, deployment, backfill, runtime activation, release, or Stage 5
+work occurred.
+
+**Commit:** Reported in the completion message after this entry is committed.

@@ -10,42 +10,27 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 S4-C10 is COMPLETE under the Stage 4 completion rule.
-`docs/STAGE_4_COMPLETION_REPORT.md` records the bounded regression evidence and
-the remaining RED gates. Production migration and activation remain blocked by
-the current hard production gates, a separately reviewed production-availability
-code change/release after migration verification, owner approval,
-rollback/backup confirmation, native-device QA, and legacy/canonical
-equivalence evidence. The Stage 2 migration remains unapplied and all
-production flags remain disabled; do not begin Stage 5.
+PA-A2 stopped **BLOCKED** at C03. The exact reviewed
+`0002_stage2_activity_ledgers.sql` artifact was applied successfully to the
+managed development database and verified with zero ledger rows and unchanged
+legacy/canonical counts. The controlled production Publish analyzer generated
+24 additive statements but omitted four reviewed composite unique indexes that
+its proposed foreign keys depend on. Production was not published or changed.
+All production flags remain disabled; do not begin Stage 5.
 
 ## Last completed task
 
-S4-C10 produced `docs/STAGE_4_COMPLETION_REPORT.md`. The report records
-92/92 API tests across 9 files, 39/39 SummitReady tests across 5 files, API build, SummitReady typecheck,
-DB TypeScript, generated-client diff, and diff-check results. It also records
-the two-part unavailable Elevation Bank 503 runtime hardening: the response
-discriminant and removal of raw `query.data.recentCredits` footer access.
-Post-fix focused presentation tests pass 3/3, SummitReady typecheck passes, and
-the Expo workflow restarted cleanly with no new browser console error on the
-latest refresh; preview routing is unreliable and native-device QA remains not
-run. S4-C09 produced `docs/STAGE_4_PRODUCTION_READINESS.md`, whose review inventories
-the exact `0002_stage2_activity_ledgers.sql` additive artifact, expected
-tables/indexes/constraints, actual hard production gates, dev/test-only
-controls versus production-capable opt-ins, the required future
-production-availability code release, development/test application path,
-preflight/post-migration checks, configuration rollback and recovery, mobile
-build requirements, known blockers, and the explicit C10 safety
-determination. Safe focused checks now pass: API focused tests 77/77, API
-build, SummitReady focused tests 31/31, SummitReady typecheck, DB TypeScript,
-and migration static/schema-contract checks. The evidence matrix separately
-records development migration application and row-level/production DB checks
-as NOT RUN by design, while adapter/bridge semantics and rollback assumptions
-are PASS static review only. No migration, production flag, data mutation,
-release,
-backfill, reconciliation, consumer switch, or protected
-payment/authentication/privacy/SDE/Progress Mountain/cinematic change was
-made.
+PA-A2-C01/C02 confirmed the reviewed migration hashes, applied its unchanged
+content to development only, and verified all five tables, constraints,
+foreign keys, and indexes. Counts remain `canonical_activities=0`,
+`tracked_hill_sessions=4`, and zero for every new ledger table. PA-A2-C03 found
+that the 24-statement production diff omits
+`canonical_activities_owner_id_uidx`,
+`personal_elevation_credit_events_lineage_uidx`,
+`expedition_runs_owner_id_uidx`, and
+`expedition_stage_contributions_lineage_uidx`. None exists in production.
+`docs/PRODUCTION_ACTIVATION_GATE_A2_REPORT.md` contains the evidence and stop
+condition.
 
 ## S4-C10 completion handoff
 
@@ -180,10 +165,12 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Live site: `https://summitready.uk`
 - Deployment type: autoscale; latest deployment is healthy and public.
 - Phase 1 production schema Publish completed successfully.
-- Publish-generated schema diff remaining: zero statements.
+- Publish-generated Stage 2 ledger diff: 24 additive statements, not applied;
+  blocked because four reviewed composite unique indexes are omitted.
 - No direct production SQL was run.
 - No production backfill or mobile build was performed.
-- Stage 2 migration `0002_stage2_activity_ledgers.sql` is prepared but was not applied to development or production.
+- Stage 2 migration `0002_stage2_activity_ledgers.sql` is applied and verified
+  in development only; it remains unapplied to production.
 - `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; the current
   Stage 4 bridge implementation therefore remains disabled.
 
@@ -201,7 +188,9 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Decisions requiring review
 
-- Production publication of migration `0002_stage2_activity_ledgers.sql` requires separate owner approval through Replit Publish.
+- Production publication of migration `0002_stage2_activity_ledgers.sql` is
+  blocked until the Publish analyzer includes all four reviewed composite
+  unique indexes and a regenerated clean diff receives separate owner approval.
 - Adapter activation and consumer switching require a later approved release plan.
 - Keep the canonical bridge explicitly controlled by
   `CANONICAL_ACTIVITY_BRIDGE_ENABLED`; any production activation requires a
@@ -209,10 +198,10 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Proceed to S4-C10 only as the bounded non-production validation described in
-`docs/STAGE_4_PRODUCTION_READINESS.md`. Keep the Stage 2 migration unapplied,
-production flags disabled, canonical history shadowed, and legacy consumers
-authoritative.
+Resolve the controlled Publish analyzer's omission of the four composite unique
+indexes without changing production, then regenerate and re-review the full
+diff. Keep production flags disabled, canonical history shadowed, and legacy
+consumers authoritative.
 
 ## Git branch and latest commit SHA
 
