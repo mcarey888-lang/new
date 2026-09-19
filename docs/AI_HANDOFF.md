@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 3 Navigation + UX Cohesion is COMPLETE through S3-R08. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the audited navigation/state boundaries; `docs/STAGE_3_COMPLETION_REPORT.md` records delivered changes, verification, known issues, pending migration/flags, and Stage 4 prerequisites. Stop before Stage 4 until a new command is provided.
+Stage 4 is active. S4-R01 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited ingestion, ledger, completion, history, and visible-total dependency chain. Proceed to S4-C02 additive development-only hardening; do not apply production migration or flags.
 
 ## Last completed task
 
-S3-R08 completed the bounded Stage 3 regression gate and completion report. No production schema, publish, mobile release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-R01 completed the targeted unfinished-foundation audit. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 

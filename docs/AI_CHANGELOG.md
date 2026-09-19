@@ -2,6 +2,16 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-R01 Stage 4 preflight
+
+**Task:** Audit the exact Stage 4 dependency chain before activating canonical adapters, ledgers, Elevation Bank, completion consequences, or canonical history.
+
+**Implementation:** Added `docs/STAGE_4_PREFLIGHT.md` with the ingestion/ledger/mobile/history dependency map, migration review, activation risks, protected boundaries, and additive implementation sequence. Confirmed the tracked-hill bridge activation asymmetry, absent ledger persistence services, evidence-vocabulary boundary, legacy challenge double-count path, and shadow-only canonical history.
+
+**Tests/result:** COMPLETE. Read-only targeted audits found no destructive correction requirement. Migration `0002_stage2_activity_ledgers.sql` remains unapplied; no runtime behavior or production configuration changed.
+
+**Commit:** Reported after this entry is committed.
+
 ## 2026-09-16T13:09:56Z — Offline-first activity tracking
 
 **Task:** Make hike tracking resilient to interruption, offline operation, and delayed authenticated sync.
