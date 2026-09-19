@@ -65,9 +65,8 @@ router.use(trackedRoutesRouter);
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
 router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);
-// Canonical route records consume the already-published app-DB read copy.
 // Keep the boundary dark in production until explicitly activated; this does
-// not publish or migrate any SDE/authoring data.
+// not publish or migrate any SDE data.
 if (canonicalRouteRecordsEnabled()) {
   router.use("/canonical-routes", canonicalRouteRecordsRouter);
 }

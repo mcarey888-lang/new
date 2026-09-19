@@ -36,6 +36,7 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   geometryVersion: "2026-01",
   geometryDerivationMethod: "verified_osm",
   geometrySourceMembers: [{ evidenceId: "geometry-evidence" }],
+  geometryValidationPassed: true,
   profileVersion: "dem-v1",
   profileSpacingM: 25,
   profileCalculationVersion: "dem-v1",
@@ -109,6 +110,17 @@ describe("canonical route record boundary", () => {
     expect(result.reasons).toEqual(expect.arrayContaining(["missing_geometry", "missing_elevation_profile"]));
     expect((result.record as any).geometry).toBeUndefined();
     expect((result.record as any).elevationProfile).toBeUndefined();
+  });
+
+  it("omits geometry unless persisted validation and reusable rights are both present", () => {
+    const noValidation = buildCanonicalRouteRecord([row({ geometryValidationPassed: false })]);
+    expect((noValidation.record as any).geometry).toBeUndefined();
+    const noRights = buildCanonicalRouteRecord([row({
+      rightsClassification: "factual_identity_only",
+      geometryReuseAllowed: false,
+    })]);
+    expect((noRights.record as any).geometry).toBeUndefined();
+    expect(noRights.reasons).toContain("rights_unclear");
   });
 
   it("rejects unverified or mismatched versions", () => {

@@ -1,8 +1,5 @@
 import { sql } from "drizzle-orm";
-// This boundary reads the deliberately published public SDE read copy through
-// @workspace/db. It must never use ENGINE_DATABASE_URL (the authoring DB).
-// Missing/unverified copy rows are intentionally returned as unavailable.
-import { db } from "@workspace/db";
+import { executeEngineReadOnly } from "@workspace/db";
 import type { CanonicalRouteRecord } from "../../../../summit-ready/utils/routeIntelligence";
 
 export type CanonicalRouteRecordStatus =
@@ -50,6 +47,7 @@ type RouteRecordRow = Record<string, unknown> & {
   geometryVersion?: string | null;
   geometryDerivationMethod?: string | null;
   geometrySourceMembers?: Array<Record<string, unknown>> | null;
+  geometryValidationPassed?: boolean;
   profileVersion?: string | null;
   profileSpacingM?: number | null;
   profileCalculationVersion?: string | null;
@@ -107,6 +105,10 @@ const ROUTE_RECORD_SQL = sql`
     geom.geometry_version AS "geometryVersion",
     geom.derivation_method AS "geometryDerivationMethod",
     geom.source_members AS "geometrySourceMembers",
+    EXISTS (
+      SELECT 1 FROM public.route_validation AS rv
+      WHERE rv.route_id = rd.route_id AND rv.outcome = 'pass'
+    ) AS "geometryValidationPassed",
     NULL::text AS "profileVersion",
     NULL::float8 AS "profileSpacingM",
     NULL::text AS "profileCalculationVersion",
@@ -125,7 +127,7 @@ const ROUTE_RECORD_SQL = sql`
         g.geom,
          g.version AS geometry_version,
         g.derivation_method,
-        COUNT(sb.id)::int AS member_count,
+        COUNT(es.id)::int AS member_count,
         COALESCE(json_agg(json_build_object(
           'provider', sb.provider,
           'sourceUrl', sb.source_url,
@@ -133,14 +135,22 @@ const ROUTE_RECORD_SQL = sql`
           'sourceHash', sb.sha256,
           'retrievedAt', sb.retrieved_at,
           'provenanceVersion', sb.provenance_version,
-          'rightsClassification', 'reusable_geometry',
+          'rightsClassification', es.rights_classification,
           'qaFlags', '[]'::json
-        ) ORDER BY gm.id) FILTER (WHERE sb.id IS NOT NULL), '[]'::json) AS source_members
+        ) ORDER BY gm.id) FILTER (WHERE es.id IS NOT NULL), '[]'::json) AS source_members
       FROM public.route_geometries AS g
       LEFT JOIN public.route_geometry_members AS gm ON gm.route_geometry_id = g.id
       LEFT JOIN public.source_bundles AS sb ON sb.id = gm.source_bundle_id
+      LEFT JOIN public.evidence_sources AS es
+        ON es.publisher = sb.provider AND es.url = sb.source_url
+       AND es.rights_classification = 'reusable_geometry'
+       AND es.geometry_reuse_allowed = TRUE
       WHERE g.route_definition_id = rd.id
         AND g.version = rd.version
+        AND EXISTS (
+          SELECT 1 FROM public.route_validation AS rv
+          WHERE rv.route_id = rd.route_id AND rv.outcome = 'pass'
+        )
       GROUP BY g.id, g.geom, g.version, g.derivation_method
       ORDER BY g.id DESC
       LIMIT 1
@@ -204,11 +214,14 @@ export function buildCanonicalRouteRecord(
     evidenceType: "source",
     ...provenance,
   };
-  const geometrySources = (row.geometrySourceMembers ?? []).map(member => ({
-    ...provenance,
-    ...member,
-    evidenceType: "source" as const,
-  }));
+  const geometrySources = (row.geometrySourceMembers ?? []).map(member => {
+    const { evidenceId: _ignoredEvidenceId, ...safeMember } = member;
+    return {
+      ...provenance,
+      ...safeMember,
+      evidenceType: "source" as const,
+    };
+  });
   const profileSources = (row.profileSourceMembers ?? []).map(member => ({
     ...evidence,
     ...member,
@@ -266,6 +279,7 @@ export function buildCanonicalRouteRecord(
     geometry: row.geometry &&
       row.rightsClassification === "reusable_geometry" &&
       row.geometryReuseAllowed === true &&
+      row.geometryValidationPassed === true &&
       geometrySources.length
       ? {
           geometryVersion: row.geometryVersion ?? row.definitionVersion,
@@ -316,13 +330,17 @@ export const queryCanonicalRouteRecord: CanonicalRouteRecordQuery = async (
       AND "mountainId" = ${mountainId}
     LIMIT 2
   `;
-  const result = await db.execute(query);
-  return result.rows as RouteRecordRow[];
+  return executeEngineReadOnly<RouteRecordRow>(query);
 };
 
 export function createCanonicalRouteRecordHandler(
   query: CanonicalRouteRecordQuery = queryCanonicalRouteRecord,
 ) {
-  return async (identityKey: string, version: string, mountainId: string) =>
-    buildCanonicalRouteRecord(await query(identityKey, version, mountainId));
+  return async (identityKey: string, version: string, mountainId: string) => {
+    try {
+      return buildCanonicalRouteRecord(await query(identityKey, version, mountainId));
+    } catch {
+      return { status: "unavailable", reasons: ["service_unavailable"], record: null };
+    }
+  };
 }

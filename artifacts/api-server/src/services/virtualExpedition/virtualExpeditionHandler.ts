@@ -510,6 +510,15 @@ export function createVirtualExpeditionHandler(
       const selectedCanonicalRoute = canonicalMountain
         ? selectVerifiedRoute(canonicalMountain, input.targetRouteIdentityKey, input.targetRouteId)
         : null;
+      if (canonicalMountain && input.targetRouteId && !selectedCanonicalRoute) {
+        timings.total = Math.round(performance.now() - startedAt);
+        return res.status(422).json({
+          error: "The selected verified route does not belong to this mountain.",
+          code: "TARGET_ROUTE_NOT_FOUND",
+          routes: availableVerifiedRoutes,
+          _meta: process.env.NODE_ENV === "production" ? undefined : { timingsMs: timings },
+        });
+      }
       const routeSelectionRequired = Boolean(
         canonicalMountain && canonicalMountain.routes.length > 1 && !selectedCanonicalRoute,
       );

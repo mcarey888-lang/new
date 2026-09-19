@@ -1,8 +1,5 @@
 import { pythonUnicode14Casefold } from "./unicodeCasefold";
 
-// Queries here are against the published public SDE read copy via @workspace/db;
-// authoring/ENGINE_DATABASE_URL is intentionally not part of runtime consumers.
-
 export interface CanonicalLookupInput {
   name: string;
   country?: string;
