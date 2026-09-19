@@ -10,6 +10,8 @@ import {
 } from "./stage2Ledgers";
 import type { ElevationCreditInput } from "./stage2LedgerPlanning";
 import { db } from "@workspace/db";
+import { canonicalActivities } from "@workspace/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 export const ELEVATION_BANK_RULE_VERSION = "elevation-bank-v1";
 export const EVEREST_HEIGHT_M = 8_849;
@@ -232,7 +234,7 @@ export async function getRecentElevationBankCredits(
   const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
   return db.transaction(async (client) => {
     const rows = await getPersonalElevationCreditEventsWithClient(client, ownerUserId);
-    return rows
+    const effectiveRows = rows
       .filter((row) => row.status === "credited" || row.status === "corrected")
       .filter((row, index, all) =>
         !all.some((other) =>
@@ -243,5 +245,31 @@ export async function getRecentElevationBankCredits(
       )
       .sort((a, b) => b.effectiveAt.getTime() - a.effectiveAt.getTime())
       .slice(0, safeLimit);
+    const activityIds = effectiveRows.map((row) => row.activityId);
+    const activities = activityIds.length === 0
+      ? []
+      : await client
+        .select({
+          id: canonicalActivities.id,
+          sourceId: canonicalActivities.sourceId,
+          sourceType: canonicalActivities.sourceType,
+        })
+        .from(canonicalActivities)
+        .where(and(
+          eq(canonicalActivities.ownerUserId, ownerUserId),
+          inArray(canonicalActivities.id, activityIds),
+        ));
+    const activityById = new Map(activities.map((activity) => [activity.id, activity]));
+    return effectiveRows.map((row) => {
+      const activity = activityById.get(row.activityId);
+      if (!activity) {
+        throw new Error("Elevation Bank activity identity could not be resolved");
+      }
+      return {
+        ...row,
+        sourceId: activity.sourceId,
+        sourceType: activity.sourceType,
+      };
+    });
   });
 }

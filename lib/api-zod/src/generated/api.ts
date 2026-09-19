@@ -125,6 +125,8 @@ export const GetElevationBankResponse = zod.object({
   recentCredits: zod.array(
     zod.object({
       activityId: zod.string(),
+      sourceId: zod.string(),
+      sourceType: zod.string(),
       revision: zod.number(),
       status: zod.enum(["credited", "corrected"]),
       creditedAscentM: zod.number(),

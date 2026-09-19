@@ -4,6 +4,7 @@ import {
   CheckCircle,
   ChevronRight,
   MapPin,
+  Mountain,
   Pause,
   Play,
   Square,
@@ -48,6 +49,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import { useGetElevationBank } from "@workspace/api-client-react";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import type { PlanSession } from "@/context/AppContext";
@@ -81,6 +83,7 @@ import {
   routeCompletionKey,
 } from "@/utils/stateReliability";
 import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
+import { buildActivityCompletionPresentation } from "@/utils/activityCompletionPresentation";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -246,6 +249,14 @@ export default function HikeTrackingScreen() {
   const { getToken, userId } = useAuth();
   const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
           summitGoal, patchExpedition, activeExpeditionId, expeditions } = useApp();
+  const elevationBankQuery = useGetElevationBank({
+    query: {
+      enabled: Boolean(userId),
+      staleTime: 15_000,
+      retry: false,
+      queryKey: ["/api/elevation-bank"],
+    },
+  });
 
   // ── Hill session metadata (optional — passed when launched from a plan hill session) ──
   const params = useLocalSearchParams<{
@@ -318,6 +329,7 @@ export default function HikeTrackingScreen() {
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
   const [showExpeditionPrompt, setShowExpeditionPrompt] = useState(false);
+  const [completionSaveStarted, setCompletionSaveStarted] = useState(false);
 
   // ── Nearby route picker ───────────────────────────────────────────────────
   const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
@@ -339,6 +351,34 @@ export default function HikeTrackingScreen() {
     Crypto.randomUUID(),
   );
   const stageSnapshotRef = useRef<Record<string, unknown> | undefined>(undefined);
+
+  // A completed activity can reach the canonical ledger through the outbox
+  // after the local save returns. Refresh only while this screen is visible,
+  // with a short finite budget; saving/navigation never waits for this.
+  useEffect(() => {
+    if (status !== "finished" || !completionSaveStarted || isOffline || !userId) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      if (cancelled || attempts >= 4) return;
+      attempts += 1;
+      const result = await elevationBankQuery.refetch();
+      if (cancelled) return;
+      const activityId = routeIdRef.current;
+      const credited = result.data?.recentCredits.some((credit) =>
+        (credit.activityId === activityId || credit.sourceId === activityId)
+        && (credit.status === "credited" || credit.status === "corrected"),
+      );
+      if (!credited && attempts < 4) timer = setTimeout(poll, 2_000);
+    };
+    timer = setTimeout(poll, 1_000);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [completionSaveStarted, elevationBankQuery.refetch, isOffline, status, userId]);
+
   if (!stageSnapshotRef.current && params.stageSnapshot) {
     try {
       stageSnapshotRef.current = JSON.parse(params.stageSnapshot) as Record<string, unknown>;
@@ -1200,6 +1240,7 @@ export default function HikeTrackingScreen() {
         expeditionId: hillMeta.expeditionId ?? undefined,
         syncState: isOffline ? "queued" : "local_only",
       });
+      setCompletionSaveStarted(true);
       void logHikeTracked({ distance_km: distKm, elevation_gain: elevGain, duration_min: Math.round(elapsedSecs / 60) });
 
       // Close the GPS gap: if this hike was launched from a plan session,
@@ -1339,6 +1380,20 @@ export default function HikeTrackingScreen() {
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
        addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline]);
 
+  const completionPresentation = buildActivityCompletionPresentation({
+    activityId: routeIdRef.current,
+    title: routeName,
+    distanceKm,
+    ascentM: Math.round(elevGainM),
+    durationSecs: elapsedSecs,
+    trackingMode: hillMeta.trackingMode,
+    trainingSessionKey: hillMeta.sessionKey,
+    expeditionId: hillMeta.expeditionId,
+    expeditionStageName: hillMeta.hillName,
+    isOffline,
+    elevationBank: elevationBankQuery.data,
+  });
+
   // ── Render: permission denied ────────────────────────────────────────────
   if (permDenied) {
     return (
@@ -1373,8 +1428,8 @@ export default function HikeTrackingScreen() {
                 <CheckCircle size={32} color="#fff" />
               </LinearGradient>
             </View>
-            <Text style={s.summaryTitle}>Hike Complete</Text>
-            <Text style={s.summaryTrail} numberOfLines={2}>{routeName || "Tracked Hike"}</Text>
+            <Text style={s.summaryEyebrow}>ACTIVITY COMPLETE</Text>
+            <Text style={s.summaryTitle} numberOfLines={2}>{completionPresentation.title}</Text>
 
             <View style={s.summaryGrid}>
               <View style={s.summaryCell}>
@@ -1409,6 +1464,60 @@ export default function HikeTrackingScreen() {
                 <Text style={s.summaryCellLabel}>Final Alt</Text>
               </View>
             </View>
+
+            {completionPresentation.elevationBank.status === "credited" && (
+              <View style={s.consequenceCard} testID="completion-elevation-bank">
+                <View style={s.consequenceHeader}>
+                  <TrendingUp size={16} color={T.green} />
+                  <Text style={s.consequenceEyebrow}>PERSONAL PROGRESS</Text>
+                </View>
+                <Text style={s.bankValue}>
+                  +{fmtM(completionPresentation.elevationBank.creditedAscentM)} ELEVATION BANK
+                </Text>
+                <Text style={s.consequenceSub}>
+                  Lifetime {fmtM(completionPresentation.elevationBank.lifetimeAscentM)}
+                  {" · "}
+                  {completionPresentation.elevationBank.everestEquivalent.toFixed(1)} Everest equivalent
+                  {" · display only"}
+                </Text>
+                <Text style={s.recordedNote}>
+                  Recorded ascent only — simulated Expedition elevation is separate.
+                </Text>
+              </View>
+            )}
+
+            {completionPresentation.training.status === "linked" && (
+              <View style={s.consequenceRow} testID="completion-training">
+                <CheckCircle size={17} color={T.green} />
+                <View style={s.consequenceCopy}>
+                  <Text style={s.consequenceTitle}>Training session linked</Text>
+                  <Text style={s.consequenceSub}>
+                    Your GPS activity is ready to save to the planned session.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {completionPresentation.expedition.status === "simulated" && (
+              <View style={s.consequenceRow} testID="completion-expedition">
+                <Mountain size={17} color={T.blue} />
+                <View style={s.consequenceCopy}>
+                  <Text style={s.consequenceTitle}>Expedition progress</Text>
+                  <Text style={s.consequenceSub}>
+                    {completionPresentation.expedition.stageName} · simulated stage progress only
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {completionPresentation.sync === "saved_locally" && (
+              <View style={s.offlineCompletion} testID="completion-offline">
+                <WifiOff size={14} color={T.orange} />
+                <Text style={s.offlineCompletionText}>
+                  Saved on this device — consequences will sync when online.
+                </Text>
+              </View>
+            )}
 
             {trainingPlan && trainingPlan.length > 0 && (
               <TouchableOpacity
@@ -2037,6 +2146,10 @@ const s = StyleSheet.create({
     width: 80, height: 80, borderRadius: 40,
     alignItems: "center", justifyContent: "center",
   },
+  summaryEyebrow: {
+    fontSize: 10, fontFamily: "Inter_700Bold", color: T.green,
+    letterSpacing: 1.4,
+  },
   summaryTitle: { fontSize: 28, fontFamily: "Inter_700Bold", color: T.text },
   summaryTrail: {
     fontSize: 16, fontFamily: "Inter_400Regular", color: T.textMuted,
@@ -2055,6 +2168,31 @@ const s = StyleSheet.create({
   },
   summaryCellValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
   summaryCellLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  consequenceCard: {
+    width: "100%", borderRadius: 16, padding: 16,
+    backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "45",
+    gap: 6,
+  },
+  consequenceHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  consequenceEyebrow: {
+    fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1,
+  },
+  bankValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
+  consequenceRow: {
+    width: "100%", flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 14, padding: 14, backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+  },
+  consequenceCopy: { flex: 1, gap: 3 },
+  consequenceTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
+  consequenceSub: { fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", color: T.textMuted },
+  recordedNote: { fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular", color: T.textDim },
+  offlineCompletion: {
+    width: "100%", flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12,
+    backgroundColor: "rgba(251,146,60,0.10)",
+  },
+  offlineCompletionText: { flex: 1, fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular", color: T.orange },
 
   planToggle: {
     flexDirection: "row", alignItems: "center", gap: 14, width: "100%",

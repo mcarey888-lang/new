@@ -9,6 +9,8 @@ import type { ElevationBankCreditStatus } from "./elevationBankCreditStatus";
 
 export interface ElevationBankCredit {
   activityId: string;
+  sourceId: string;
+  sourceType: string;
   revision: number;
   status: ElevationBankCreditStatus;
   creditedAscentM: number;

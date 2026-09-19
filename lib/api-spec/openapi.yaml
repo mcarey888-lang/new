@@ -295,9 +295,13 @@ components:
 
     ElevationBankCredit:
       type: object
-      required: [activityId, revision, status, creditedAscentM, evidenceClass, ruleVersion, effectiveAt]
+      required: [activityId, sourceId, sourceType, revision, status, creditedAscentM, evidenceClass, ruleVersion, effectiveAt]
       properties:
         activityId:
+          type: string
+        sourceId:
+          type: string
+        sourceType:
           type: string
         revision:
           type: integer

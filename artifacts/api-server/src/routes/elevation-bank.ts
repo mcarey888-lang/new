@@ -27,6 +27,8 @@ export function serializeElevationBankResponse(
     everestEquivalent: summary.everestEquivalent,
     recentCredits: recent.map((credit) => ({
       activityId: credit.activityId,
+      sourceId: credit.sourceId,
+      sourceType: credit.sourceType,
       revision: credit.revision,
       status: credit.status,
       creditedAscentM: credit.creditedAscentM,

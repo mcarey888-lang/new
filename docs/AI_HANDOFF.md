@@ -165,6 +165,16 @@ Proceed to S4-C05 verification/review. Keep the consequence resolver and Elevati
 
 The commit containing these coordination documents is reported in the completion message because a Git commit cannot embed its own final SHA without changing that SHA.
 
+## S4-C07 current handoff — structured activity completion
+
+- S4-C07 integrates the finished GPS activity screen with a structured, offline-safe completion presentation in `artifacts/summit-ready/app/hike-tracking.tsx`.
+- Elevation Bank recent credits now include canonical `sourceId`/`sourceType` loaded under the authenticated owner; completion matching accepts only exact canonical activity ID or exact source ID, never names/metrics/fuzzy matches. The visible completion screen performs at most four bounded online refetches for delayed outbox credit and never blocks local save/navigation.
+- The hierarchy is activity/route title, recorded distance/ascent/duration, then only available consequences. Elevation Bank values appear only when an effective credited/corrected activity credit is returned by the authenticated API; unavailable or pending values are hidden rather than replaced with zeros.
+- Training context is shown as a local link-to-session consequence. Expedition context is explicitly labelled simulated stage progress and never creates or claims a Real Summit. Multi-context completion is supported without merging recorded and simulated elevation.
+- Existing local-first save, outbox retry, protected Progress Mountain/cinematic behavior, private GPS evidence, and navigation paths are unchanged. Offline completion remains renderable and shows that consequences will sync later.
+- Added pure presentation contract/tests at `artifacts/summit-ready/utils/activityCompletionPresentation.ts` and `.test.ts` covering credited bank, Training + Expedition context, unavailable/offline behavior, and retry/no-duplicate display behavior.
+- Verification: SummitReady targeted regression **13/13**, SummitReady TypeScript passed, API consequence/Elevation Bank focused suites **25/25**, API production bundle passed, OpenAPI codegen completed (workspace library typecheck retains unrelated pre-existing diagnostics), and `git diff --check` passed. No migration, production flag, backfill, release, or Stage 5 work was performed.
+
 ## Permanent handoff protocol
 
 At the end of every meaningful SummitReady development task:

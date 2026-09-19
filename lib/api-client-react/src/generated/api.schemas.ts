@@ -95,6 +95,8 @@ export const ElevationBankCreditStatus = {
 
 export interface ElevationBankCredit {
   activityId: string;
+  sourceId: string;
+  sourceType: string;
   revision: number;
   status: ElevationBankCreditStatus;
   creditedAscentM: number;

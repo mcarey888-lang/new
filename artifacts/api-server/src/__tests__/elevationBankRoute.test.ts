@@ -18,6 +18,8 @@ function credit(
     id: `${ownerUserId}-${activityId}`,
     ownerUserId,
     activityId,
+    sourceId: `source-${activityId}`,
+    sourceType: "explore_hike",
     revision: status === "corrected" ? 2 : 1,
     status,
     creditedAscentM: status === "corrected" ? 640 : 700,
@@ -50,6 +52,8 @@ describe("Elevation Bank API response contract", () => {
       everestEquivalent: 0.1,
       recentCredits: [{
         activityId: "activity-a",
+        sourceId: "source-activity-a",
+        sourceType: "explore_hike",
         revision: 2,
         status: "corrected",
         creditedAscentM: 640,
@@ -154,6 +158,22 @@ describe("GET /elevation-bank handler boundary", () => {
       status: "available",
       lifetimeAscentM: 640,
     });
+  });
+
+  it("returns canonical source identity without exposing owner identity", async () => {
+    recentRead.mockResolvedValue([
+      credit("clerk-owner-a", "canonical-activity-a"),
+    ]);
+    const result = await invoke(createElevationBankHandler(dependencies), {});
+
+    expect(result.payload).toMatchObject({
+      recentCredits: [{
+        activityId: "canonical-activity-a",
+        sourceId: "source-canonical-activity-a",
+        sourceType: "explore_hike",
+      }],
+    });
+    expect(JSON.stringify(result.payload)).not.toContain("clerk-owner-a");
   });
 
   it("returns a stable unavailable response when the development gate is closed", async () => {
