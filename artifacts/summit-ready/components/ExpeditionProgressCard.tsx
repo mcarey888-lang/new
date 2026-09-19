@@ -49,7 +49,11 @@ interface ChartProps {
   completedRoutes: string[];
   totalElev:       number;
   totalTrained:    number;
-  stagePresentation?: ReadonlyArray<{ routeIdentityKey: string; status: string }>;
+  stagePresentation?: ReadonlyArray<{
+    routeIdentityKey: string;
+    status: string;
+    simulatedElevationGainM: number;
+  }>;
 }
 
 function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained, stagePresentation }: ChartProps) {
@@ -57,8 +61,11 @@ function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained, 
   if (n === 0 || totalElev === 0) return null;
 
   const cum: number[] = [0];
-  for (const st of stages) {
-    cum.push(cum[cum.length - 1] + st.elevation * st.repeats);
+  for (const [i, st] of stages.entries()) {
+    const canonicalGain = stagePresentation?.[i]?.simulatedElevationGainM
+      ?? st.totalElevation
+      ?? st.elevation * st.repeats;
+    cum.push(cum[cum.length - 1] + Math.max(0, canonicalGain));
   }
   const maxE = Math.max(totalElev, cum[n]);
 
@@ -159,13 +166,15 @@ function ElevationLineChart({ stages, completedRoutes, totalElev, totalTrained, 
       {stages.map((st, i) => {
         const pt   = pts[i + 1];
         const done = stagePresentation
-          ? stagePresentation.find(item => item.routeIdentityKey === (st.routeIdentityKey ?? routeCompletionKey(st)))?.status === "completed"
+          ? stagePresentation.find(item => item.routeIdentityKey === routeCompletionKey(st))?.status === "completed"
           : isRouteCompleted(completedRoutes, st);
         const above = pt.y >= P.top + PH * 0.48;
-        const elev  = Math.round(st.elevation * st.repeats);
+        const elev  = Math.round(stagePresentation?.[i]?.simulatedElevationGainM
+          ?? st.totalElevation
+          ?? st.elevation * st.repeats);
         const name  = clip(st.name, 15);
         return (
-          <G key={st.routeIdentityKey ?? routeCompletionKey(st)}>
+          <G key={routeCompletionKey(st)}>
             {above ? (
               <Line x1={pt.x} y1={pt.y - 12} x2={pt.x} y2={pt.y - 34}
                 stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
@@ -335,7 +344,11 @@ export interface ExpeditionProgressCardProps {
   totalTrained:    number;
   /** Called when the user taps a stage card. */
   onStagePress?:   (hill: NearbyHill) => void;
-  stagePresentation?: ReadonlyArray<{ routeIdentityKey: string; status: string }>;
+  stagePresentation?: ReadonlyArray<{
+    routeIdentityKey: string;
+    status: string;
+    simulatedElevationGainM: number;
+  }>;
 }
 
 export function ExpeditionProgressCard({

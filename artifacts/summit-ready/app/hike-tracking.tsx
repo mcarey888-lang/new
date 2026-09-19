@@ -60,6 +60,7 @@ import {
   flattenBatches,
   selectBatchKeys,
   shouldRestoreCheckpoint,
+  isPersistableHikeStatus,
   type HikeCheckpoint,
   type PointBatch,
 } from "@/utils/hikeReliability";
@@ -779,7 +780,7 @@ export default function HikeTrackingScreen() {
         savedAt: Date.now(),
       };
       const write = checkpointWriteRef.current.then(async () => {
-        if (statusRef.current !== "tracking" && statusRef.current !== "paused") return;
+        if (!isPersistableHikeStatus(statusRef.current)) return;
         await writeActiveHike(session);
       });
       checkpointWriteRef.current = write.catch(() => {});
@@ -1638,11 +1639,9 @@ export default function HikeTrackingScreen() {
                         completedRoutes: contribution.completedRoutes,
                         virtualHikeProgress: contribution.virtualHikeProgress,
                       }).progress.isComplete);
-                    router.replace(
-                      (isFinished && activeExpeditionId === expId
-                        ? "/(expedition)/expedition-complete"
-                        : "/(expedition)/base-camp") as any
-                    );
+                    // Basecamp owns the protected 100% summit → cinematic →
+                    // completion sequence. Never bypass it from tracking.
+                    router.replace("/(expedition)/base-camp" as any);
                   }}
                 >
                   <LinearGradient

@@ -3,6 +3,7 @@ import {
   acknowledgeBatchKeys,
   checkpointElapsedSecs,
   flattenBatches,
+  isPersistableHikeStatus,
   shouldRestoreCheckpoint,
   type HikeCheckpoint,
 } from "./hikeReliability";
@@ -25,6 +26,15 @@ import {
   selectShellGoal,
 } from "./stateReliability";
 import { syncOutboxKey } from "./syncOutbox";
+
+describe("finished hike checkpoint persistence", () => {
+  it("accepts finished as a durable save-state, not active tracking", () => {
+    expect(isPersistableHikeStatus("finished")).toBe(true);
+    expect(isPersistableHikeStatus("tracking")).toBe(true);
+    expect(isPersistableHikeStatus("paused")).toBe(true);
+    expect(isPersistableHikeStatus("idle")).toBe(false);
+  });
+});
 
 describe("manual summit completion identity", () => {
   it("uses canonical summit identity while preserving legacy route fallback", () => {

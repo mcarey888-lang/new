@@ -98,4 +98,14 @@ describe("selectExpeditionPresentation", () => {
     expect(state.summit.eligible).toBe(true);
     expect(state.summit.completionAwarded).toBe(false);
   });
+
+  it("keeps final-stage routes ineligible when canonical simulated elevation is incomplete", () => {
+    const state = selectExpeditionPresentation(expedition({
+      completedRoutes: ["route:first", "route:second"],
+      virtualHikeProgress: { elevationGained: 299, distanceCovered: 2, hikesLogged: 2 },
+    }));
+    expect(state.progress.completedStageCount).toBe(2);
+    expect(state.progress.isComplete).toBe(false);
+    expect(state.summit.eligible).toBe(false);
+  });
 });

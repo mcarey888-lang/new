@@ -15,6 +15,7 @@ import {
 } from "@/utils/stateReliability";
 import { upsertByActivityId } from "@/utils/activityReliability";
 import { FLAT_MIGRATION_KEYS, FLAT_MIGRATION_OWNER_KEY } from "@/utils/userHydration";
+import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 
 export interface AlpineRequirement {
   id: string;
@@ -1490,7 +1491,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const completeExpedition = useCallback(async (id: string, stats?: SavedExpedition["completionStats"]): Promise<boolean> => {
     const expedition = expeditions.find(e => e.id === id);
-    if (!expedition || !isExpeditionComplete(expedition)) return false;
+    if (
+      !expedition
+      || !isExpeditionComplete(expedition)
+      || !selectExpeditionPresentation(expedition).progress.isComplete
+    ) return false;
     const now = new Date().toISOString();
     const updated = expeditions.map(e =>
       e.id === id

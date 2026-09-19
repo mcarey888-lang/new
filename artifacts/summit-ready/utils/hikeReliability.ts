@@ -35,6 +35,12 @@ export interface HikeCheckpoint {
   savedAt: number;
 }
 
+export function isPersistableHikeStatus(
+  status: HikeCheckpoint["status"] | string,
+): status is HikeCheckpoint["status"] {
+  return status === "tracking" || status === "paused" || status === "finished";
+}
+
 export function batchStorageKey(routeId: string, now: number, nonce: string): string {
   return `hike_bg_batch_${routeId}_${now}_${nonce}`;
 }
