@@ -166,8 +166,8 @@ export default function ChallengesScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
           <View>
-            <Text style={s.eyebrow}>CHALLENGES</Text>
-            <Text style={s.title}>Ascents</Text>
+            <Text style={s.eyebrow}>COMMUNITY</Text>
+            <Text style={s.title}>Challenges</Text>
           </View>
           <View style={[s.trophyWrap, { backgroundColor: T.greenDim }]}>
             <Trophy size={20} color={T.green} />

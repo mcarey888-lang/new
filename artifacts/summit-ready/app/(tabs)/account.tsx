@@ -79,7 +79,7 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
 export default function AccountScreen() {
   useScreenView("account");
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
+  const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -279,7 +279,35 @@ export default function AccountScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(0).duration(400)} style={styles.header}>
-          <Text style={styles.title}>Account</Text>
+          <View>
+            <Text style={styles.eyebrow}>YOU</Text>
+            <Text style={styles.title}>Profile</Text>
+          </View>
+        </Animated.View>
+
+        {/* Current Context Banner */}
+        <Animated.View entering={FadeInDown.delay(20).duration(400)} style={{ marginBottom: 16 }}>
+          <View style={[styles.profileCard, { borderColor: T.blue + "40", paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 12 }]}>
+            <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={[styles.avatar, { backgroundColor: T.blueDim, width: 44, height: 44, borderRadius: 12 }]}>
+              {shellMode === "expedition" ? <Compass size={20} color={T.blue} /> : <MapPin size={20} color={T.blue} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>
+                {shellMode === "expedition" ? "Active Expedition" : "Training Goal"}
+              </Text>
+              <Text style={styles.displayName} numberOfLines={1}>
+                {shellMode === "expedition"
+                  ? (activeExpedition?.challengeName ?? "No active expedition")
+                  : (summitGoal?.mountainName ?? "No active goal")}
+              </Text>
+              <Text style={styles.userId} numberOfLines={1}>
+                {shellMode === "expedition"
+                  ? (activeExpedition?.location ?? "Select a stage in Explore")
+                  : (summitGoal?.location ?? "Set a goal to begin")}
+              </Text>
+            </View>
+          </View>
         </Animated.View>
 
         {/* Profile card */}
@@ -849,7 +877,8 @@ export default function AccountScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, gap: 20 },
-  header: { marginBottom: 0 },
+  header: { marginBottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
 
   section: { gap: 8 },

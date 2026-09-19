@@ -226,3 +226,19 @@ All offline behaviors, SDE identities, and Route Engine features were preserved 
 **Commit:** Reported in the completion message after this entry is committed.
 
 **Update 2:** Resolved C06 verification blocker by explicitly extracting typed pure `trackingLaunchContext` builder helpers to ensure the exact legacy routing payloads (including plan session parameters and Expedition `stageSnapshot` metadata) are reliably transmitted to `hike-tracking.tsx`. Cleaned up unused imports.
+
+## 2026-09-19 UTC — S3-R07 Profile + Community shell cohesion
+
+**Task:** Execute S3-C07: Complete the app shell by ensuring Profile (You) and Community surfaces respect mode contexts and use shared components safely.
+
+**Implementation:**
+- Standardized page headers: Added "YOU / Profile" and "COMMUNITY / Challenges" styling consistent across the shell without extracting a standalone reusable layout component, maintaining local token alignment.
+- Refined Profile view to communicate mode identity and objective: Replaced standard account top section with a "Current Context Banner" explicitly showcasing the Active Expedition/Training Goal metadata and matching shellMode map-pin icons.
+- Avoided backend changes, SDE activations, leaderboard reveals, and new schemas as strictly mandated, using only existing offline/local state architecture (activeExpedition, shellMode, summitGoal) seamlessly.
+- Retained layout metrics (fonts, spaces, empty states) ensuring accessibility, safe areas, and web cross-platform safety.
+
+**Important files/schema:** `artifacts/summit-ready/app/(tabs)/account.tsx`, `artifacts/summit-ready/app/(tabs)/challenges.tsx`. No Route Engine, DB migration, auth or structural changes.
+
+**Tests/result:** COMPLETE. TypeScript check passed.
+
+**Commit:** Reported in the completion message after this entry is committed.
