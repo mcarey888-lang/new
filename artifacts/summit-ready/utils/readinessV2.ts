@@ -17,7 +17,27 @@ export type ReadinessTarget = {
   expectedDurationMinutes?: number | null;
   terrainTags?: readonly string[];
   summitDate?: string | null;
+  /** Field-level provenance supplied by the deterministic target resolver. */
+  provenance?: ReadinessTargetProvenance;
 };
+
+export type ReadinessTargetFactName =
+  | "mountainId"
+  | "routeId"
+  | "distanceKm"
+  | "ascentM"
+  | "expectedDurationMinutes"
+  | "terrainTags"
+  | "summitDate";
+
+export type ReadinessTargetFactProvenance = {
+  source: "sde_verified" | "approved_route" | "goal_metadata" | "unknown";
+  confidence: "verified" | "approved" | "fallback" | "unknown";
+};
+
+export type ReadinessTargetProvenance = Partial<
+  Record<ReadinessTargetFactName, ReadinessTargetFactProvenance>
+>;
 
 export type ReadinessEvidence = {
   evidenceId: string;
