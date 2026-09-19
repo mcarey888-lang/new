@@ -1,0 +1,775 @@
+SUMMITREADY 2.0 — PHASE 1 ARCHITECTURE AUDIT
+Audit date: 19 September 2026
+Scope: Architecture and source/schema audit only. No implementation, schema migration, production query, data mutation, UI/navigation change, workflow change, or mobile build was performed.
+
+EXECUTIVE SUMMARY
+
+SummitReady does not currently have one canonical activity ledger shared by Training, Expeditions, Free Hikes, challenges, achievements, profile statistics, and future competitive features.
+
+The closest existing pieces are:
+
+1. Device-local Session records in AppContext.
+2. Device-local ExploreHike records in AppContext.
+3. Device-local ChallengeActivity records in ChallengesContext.
+4. Server-side tracked_hill_sessions for manual or GPS hill evidence.
+5. Server-side tracked_routes and route_contributions for reusable community route data.
+
+These pieces partially correlate through activityId, but activityId is not a canonical, foreign-key-backed activity record. Some actions deliberately write the same event into several local arrays. Expedition progress and profile statistics then derive totals from different subsets of those arrays.
+
+The safest direction is additive:
+
+- Introduce an authenticated, append-oriented canonical activity ledger on the server.
+- Preserve current local stores and APIs as compatibility sources during a dual-write period.
+- Link source-specific evidence, plans, routes, expeditions, simulations, challenges, and summits to canonical activity IDs.
+- Build Elevation Bank and future competitive projections from qualifying canonical activities, not from mutable UI aggregates.
+- Add immutable expedition completion and real summit records as explicitly different concepts.
+- Do not replace AppContext, GPS checkpointing, or current expedition state in one migration.
+
+URGENT RISKS
+
+1. tracked_hill_sessions has a globally unique activity_id, while lookups during idempotent save are not scoped to user_id. A cross-user collision can prevent a valid insert and may return another user’s session metadata. Ownership must be enforced before this table is used as a broader ledger.
+
+2. GPS distance/elevation metrics are calculated on the client and accepted by the API. recorded_elevation_gain_m can be submitted without server recomputation and currently lacks a non-negative validation constraint. This is unsuitable for leaderboards without a verification pipeline.
+
+3. Public tracked-route detail responses include full GPS track points. Those tracks can reveal precise start/end locations. Privacy, visibility, retention, and authorization rules are needed before community expansion.
+
+4. One completed GPS hike can be represented in Session, ExploreHike, ChallengeActivity, tracked_hill_sessions, tracked_routes, expedition aggregate progress, and plan completion. activityId helps deduplicate some views, but there is no universal reconciliation contract.
+
+5. Most personal training, challenge, expedition, achievement, and profile state is device-local AsyncStorage. The server cannot currently provide complete cross-device restore, account deletion, authoritative history, or production-wide progression.
+
+6. Existing Elevation Bank candidates have different meanings. GPS cumulative ascent, manually estimated hill repeats, planned route gain, mountain summit altitude, and simulated target elevation must never be added interchangeably.
+
+
+1. ACTIVITY MODELS
+
+Mobile types and stores
+
+- artifacts/summit-ready/context/AppContext.tsx
+  - Session represents cardio, hill, or big-day work. It contains date, completion state, distance, elevationGain, duration, plan week/session metadata, optional activityId, expeditionId, routeIdentityKey, and summit identity fields.
+  - ExploreHike represents hike history and may contain GPS track data, activityId, expeditionId, and sync state.
+  - SummitGoal contains mutable active-goal state, including training/expedition plan fields, virtualHikeProgress, completedRoutes, simulation score, and route data.
+  - SavedExpedition is the device-local expedition library record. It stores status, stages/routes, completed route keys, progress aggregate, timestamps, and optional frozen completionStats.
+  - addSession and logExploreHike deduplicate only when activityId is present.
+
+- artifacts/summit-ready/context/ChallengesContext.tsx
+  - ChallengeActivity and ActiveChallenge are a separate device-local model.
+  - logActivity updates challenge progress, then writes correlated records to AppContext Session and ExploreHike with the same activityId.
+
+- artifacts/summit-ready/utils/activityReliability.ts
+  - stableActivityId, upsertByActivityId, dedupeLinkedActivities, and mergeActivityKinds are the current cross-array correlation/deduplication helpers.
+
+Server/database models
+
+- lib/db/src/schema/canonical-hills.ts
+  - tracked_hill_sessions is the strongest existing server-side record of a completed real activity.
+  - It stores user_id, activity_id, canonical hill/route IDs, training plan/session IDs, planned values, recorded metrics, raw GPS evidence, completion type, quality, verification status, and timestamps.
+  - It is limited to hill sessions and lacks foreign keys from hill_id/route_id to canonical identities.
+
+- lib/db/src/schema/tracked-routes.ts
+  - tracked_routes stores reusable submitted route data and a full JSON GPS track. It is a route/community catalogue record, not a user activity history record.
+
+- lib/db/src/schema/route-contributions.ts
+  - route_contributions stores additional route tracks/metrics. It does not record the contributing user.
+
+- lib/db/src/schema/signature-challenges.ts
+  - Defines challenge catalogue, stages, and limitations only. It has no user enrollment, progress, or completion ledger.
+
+- lib/db/src/schema/virtual-expedition-engine.ts
+  - Defines expedition targets, expedition routes, training routes, versioned DNA, weights, matches, and review records. These are catalogue/matching inputs, not user activities.
+
+APIs and services
+
+- artifacts/api-server/src/routes/hill-session.ts
+  - Supports estimated manual completion and tracked GPS saves.
+  - Computes quality/verification eligibility and updates aggregate hill verification statistics.
+
+- artifacts/api-server/src/routes/tracked-routes.ts
+  - Supports route submission, contribution, listing, detail, nearby search, and owner deletion.
+
+- artifacts/api-server/src/routes/virtual-expedition.ts and services/virtualExpedition/*
+  - Build/retrieve target profiles and route recommendations. They do not persist per-user expedition runs or completions.
+
+Conclusion: no canonical shared activity entity currently exists.
+
+
+2. TRAINING ACTIVITIES
+
+Training plans and their completion state are primarily device-local.
+
+Typical flow:
+
+1. A training plan/session exists inside AppContext goal/plan state.
+2. A user marks a session complete, logs a session manually, or launches GPS tracking from a plan session.
+3. Plan completion maps and/or Session records are updated in AsyncStorage.
+4. AppContext recalculates readiness-related state and unlocked achievements from local sessions, completed weeks, score, and hikes.
+5. For tracked hill sessions, hike-tracking may also queue a server POST to /api/hill-session/save-tracked.
+6. A plan-launched GPS hike can both toggle the plan session and create a completed Session record.
+
+There is no server-side training_plan, plan_week, plan_session, or session_completion persistence in the main Drizzle schema. trainingPlanId and trainingSessionId exist as optional text fields on tracked_hill_sessions, but they are not foreign keys to durable plan records.
+
+Readiness uses local activity data and can merge outdoor hike evidence. Because the shared local arrays are not consistently context-scoped, expedition activity may influence training readiness. That may be desirable for genuine fitness evidence, but it needs an explicit eligibility rule rather than incidental inclusion.
+
+
+3. EXPEDITION ACTIVITIES
+
+Expedition state is primarily persisted in user-scoped AsyncStorage through AppContext.
+
+- startExpedition creates a SavedExpedition, makes it active, and mirrors key data into SummitGoal.
+- setActiveExpedition snapshots the old active expedition and hydrates the selected one.
+- patchExpedition updates the library and mirrors selected fields into the active goal.
+- completeExpedition marks the library record complete, stores completion time/stats, and clears active state.
+
+Activity relationships:
+
+- Session and ExploreHike can carry expeditionId.
+- Manual hill, hills, GPS tracking, and progress-screen recovery paths can mark route/stage completion.
+- Progress merges explicitly linked Session and ExploreHike records and deduplicates by activityId where available.
+- Stage completion is based on completed route/summit identity keys, with name-based legacy fallback.
+- Expedition completion is stage/route based, while displayed elevation progress is a separate derived calculation.
+
+There is no server-side user expedition enrollment/run/completion table. SavedExpedition.completionStats is a device-local frozen summary supplied by the caller, not an immutable server record tied to its contributing activities.
+
+
+4. FREE HIKES / GPS ACTIVITIES
+
+Entry and recording
+
+1. Expedition Track or other app flows navigate to hike-tracking with route/mode/expedition context.
+2. Foreground Expo Location watching and a background location task collect points.
+3. Background points are stored in immutable AsyncStorage batches.
+4. syncBgPoints repeatedly snapshots batches, flattens them, deduplicates by timestamp, rejects implausible points, updates distance/elevation, and removes processed batches.
+5. A full active HikeCheckpoint is saved roughly every 15 seconds for restoration.
+
+Finish and persistence
+
+1. Stop leads to handleSave.
+2. The hike is first stored locally as ExploreHike.
+3. It may also create a completed Session and toggle a plan session.
+4. A community route submission and tracked hill-session submission are queued separately.
+5. The per-user sync outbox retries authenticated POSTs.
+6. If linked to an expedition, local expedition progress and completed route state are updated.
+
+The local write occurs before all remote queue writes complete. Therefore partial success is possible: the app may retain the hike while one or both server representations are absent.
+
+
+5. SHARED ACTIVITY MODEL
+
+Shared today:
+
+- Session and ExploreHike share optional activityId and expeditionId.
+- ChallengeActivity can use the same activityId and intentionally writes into both AppContext stores.
+- GPS saves reuse routeId as a correlation/activity identifier in several paths.
+- activityReliability helpers merge/deduplicate arrays.
+- tracked_hill_sessions accepts activityId for server idempotency.
+
+Separate today:
+
+- Session, ExploreHike, ChallengeActivity, SavedExpedition progress, plan completion, and tracked_hill_sessions remain independent records.
+- tracked_routes represents a route contribution, not an activity.
+- Achievements persist only unlocked IDs.
+- There are no foreign keys or server event records joining these concepts.
+
+Therefore activityId is a correlation convention, not a canonical activity model.
+
+
+6. ELEVATION
+
+GPS calculation
+
+- Source: Expo location point coords.altitude on the device.
+- Distance: haversine segments above the minimum movement threshold.
+- Elevation gain/loss: successive altitude deltas whose absolute change is at least ALTITUDE_NOISE_THRESHOLD (currently 1 metre).
+- Background and restored points feed the same incremental calculation.
+- The finished values are stored locally and submitted to route/hill APIs.
+
+Server handling
+
+- tracked_hill_sessions stores recordedElevationGainM supplied by the client.
+- tracked_routes stores client-provided elevation gain/loss.
+- The server does not currently recompute ascent from the submitted track.
+- Hill verification quality scores and aggregate medians provide useful evidence filtering, but they do not establish a competition-grade verified ascent.
+
+Other elevation values
+
+- canonical_hills contains summitElevationM, estimatedGainM, and verifiedGainM.
+- canonical_hill_routes contains estimated and verified route gain.
+- expedition routes and goals contain planned/target elevation.
+- SavedExpedition virtualHikeProgress is a mutable local aggregate.
+
+Authoritative value by purpose
+
+- Personal raw GPS activity: the final device-calculated recorded gain is the current source of record.
+- Manual hill session: estimated gain per repetition multiplied by repetitions.
+- Route planning: canonical/verified route ascent where available.
+- Expedition target: planned simulation requirement, not achieved ascent.
+- Summit altitude: descriptive mountain altitude only; never Elevation Bank credit.
+- Competitive/leaderboard elevation: no sufficiently authoritative source exists yet. It requires server-side validation/recalculation and eligibility state.
+
+
+7. OFFLINE SYSTEM
+
+Local identity and persistence
+
+- User-scoped AsyncStorage keys are used for app state, challenges, outbox, and active hikes.
+- Older flat keys are migrated only when ownership rules permit.
+- Local fallback IDs are timestamp/random strings; GPS routeId is reused as activityId in key flows.
+
+Checkpoints
+
+- Active checkpoints contain route, user, points, distance, gain/loss, timing, mode, and expedition context.
+- Checkpoints older than 24 hours are rejected unless restoration conditions pass.
+- Per-user namespacing rejects mismatched legacy ownership.
+- The background reader can still fall back to an unscoped legacy checkpoint when no owner marker exists.
+- Full foreground track state is stored in one AsyncStorage value, which may become large on long hikes.
+
+Outbox
+
+- syncOutbox is per user.
+- Writes are serialized.
+- Items are coalesced by item ID.
+- Authentication tokens are checked against the owner.
+- Network calls use a timeout.
+- Reconciliation keeps a newer payload if an older one finishes in flight.
+- Failures remain for later retry.
+
+Limitations
+
+- No exponential backoff, retry ceiling, dead-letter handling, or user-visible permanent-failure resolution.
+- Route and hill-session writes are independent and can partially succeed.
+- Manual completion lacks an equivalent robust idempotency contract.
+- The server’s global activityId uniqueness is inconsistent with user-scoped local identity.
+
+
+8. USERS
+
+- Authentication uses Clerk.
+- Most local stores are namespaced by Clerk user ID.
+- API hill-session endpoints derive user ID from authenticated Clerk context.
+- tracked_routes stores created_by from Clerk and deletion checks ownership.
+- There is no local users table in the main Drizzle schema.
+- tracked_hill_sessions.user_id is nullable.
+- route_contributions has no contributor user ID.
+- Account deletion removes owned tracked routes and the Clerk user, but the current schema cannot guarantee deletion of every historical activity/evidence record.
+
+
+9. RELATIONSHIPS
+
+- Activities to mountains/routes:
+  - Local records use names and optional route/summit identity keys.
+  - tracked_hill_sessions stores hillId and routeId without database foreign keys.
+  - tracked_routes is independent from canonical hill routes.
+
+- Activities to plans/sessions:
+  - Local Session records include plan metadata.
+  - tracked_hill_sessions stores optional text trainingPlanId/trainingSessionId without durable plan tables.
+
+- Activities to expeditions/stages:
+  - Local Session/ExploreHike may contain expeditionId.
+  - completedRoutes stores route/summit completion keys.
+  - No server foreign key or user expedition run exists.
+
+- Activities to challenges:
+  - ChallengeActivity contains challengeId locally.
+  - The server challenge catalogue has no user progress relationship.
+
+The future model should use canonical IDs where available while preserving source snapshots for historical display and legacy records.
+
+
+10. ACHIEVEMENTS / CHALLENGES
+
+Achievements
+
+- The catalogue and computeUnlocked logic live in artifacts/summit-ready/utils/achievements.ts.
+- AppContext recalculates unlocked IDs from sessions, readiness, plan weeks, and explore hikes.
+- Only unlocked IDs are persisted locally.
+- There is no durable award event, award timestamp, evidence link, revocation state, or server record.
+
+Challenges
+
+- Static challenge definitions live in constants/challenges.ts.
+- ActiveChallenge and ChallengeActivity are local.
+- Progress is recomputed from activities against a metric/target.
+- Server signature challenges provide curated challenge/stage content only.
+
+Reusable:
+
+- Existing catalogues, IDs, metric definitions, compute logic, and UI.
+- activityId deduplication concept.
+- Signature challenge catalogue/stage schema.
+
+Needs adding:
+
+- Server user enrollment, activity links, progress events/projections, completion record, and durable achievement award records.
+
+
+11. PROFILE STATISTICS
+
+Expedition profile currently derives:
+
+- Elevation: sum of all local Session.elevationGain.
+- Distance: sum of all local Session.distance.
+- Summits: distinct local Session.hillName values.
+- Expeditions: completedGoals count plus one if summitGoal exists.
+- Achievements: unlocked IDs matched against the static catalogue.
+- Recent activity: latest local sessions.
+- My Routes: active summitGoal virtual hills.
+
+These are dynamic local calculations, not authoritative persisted statistics. ExploreHikes can be excluded from totals unless duplicated as Sessions. The statistics are not consistently scoped to Training, Expedition, or a completed expedition. SavedExpedition completion records are not the profile’s expedition source.
+
+
+12. DATABASE
+
+Relevant main Drizzle tables
+
+- canonical_hills
+- canonical_hill_routes
+- tracked_hill_sessions
+- hill_verification_stats
+- tracked_routes
+- route_contributions
+- signature_challenges
+- challenge_stages
+- challenge_limitations
+- virtual_expeditions
+- expedition_routes
+- training_routes
+- route_dna
+- match_weights
+- route_matches
+- import_review_items
+- cached mountain/hill/profile and verification tables
+
+Not present in the main app database
+
+- users/user_profiles
+- canonical activities
+- activity GPS/evidence child records
+- durable training plans/weeks/sessions/completions
+- user expedition runs/completions
+- real summit records
+- challenge enrollments/progress/completions
+- achievement awards
+- trophy/collection membership
+- Elevation Bank ledger/projections
+- leaderboard eligibility/rankings
+
+The summit_data_engine Alembic project is separate and provenance/version oriented. Its mountain, route, geometry, evidence, validation, and elevation-profile data should be treated as immutable/versioned canonical content, not as user progression storage.
+
+
+13. ELEVATION BANK REUSE
+
+Safe reuse
+
+- activityId correlation and local deduplication helpers.
+- Recorded GPS gain, distance, duration, timestamps, and raw track as source evidence.
+- tracked_hill_sessions quality/verification fields.
+- Canonical route/hill identity and verified route ascent for plausibility comparison.
+- Per-user outbox and ownership checks.
+
+Unsafe direct reuse
+
+- Summit altitude as gained elevation.
+- Mutable SavedExpedition.virtualHikeProgress as a ledger.
+- Profile total elevation as currently derived.
+- Manual estimated elevation as automatically leaderboard eligible.
+- Client-submitted GPS metrics as automatically verified.
+- tracked_routes as user completion history.
+
+Recommended bank design
+
+- Treat Elevation Bank as a projection over qualifying canonical activities.
+- Store immutable ascent credit events or a reproducible projection with activity ID, credited ascent, qualification class, occurred time, and rule/version.
+- Provide lifetime/year/month/week sums from those credits.
+- Separate personal total from leaderboard-eligible total.
+- Support correction/revocation through append-only adjustment or re-projection, not silent history edits.
+
+
+14. RECOMMENDED ARCHITECTURE
+
+Canonical activity foundation
+
+Add a server-side activities table with:
+
+- server ID
+- owner Clerk user ID
+- stable client/source ID and unique (user_id, source, source_id)
+- activity kind/context: training, expedition, free_hike, mountain_simulation
+- source type and source snapshot
+- started/ended/occurred timestamps
+- completion/sync state
+- distance, actual ascent, descent, duration
+- verification and leaderboard eligibility states
+- privacy/visibility
+- created/updated timestamps
+
+Use child/link tables rather than one overloaded row:
+
+- activity_gps_evidence or activity_tracks
+- activity_plan_links
+- activity_mountain_route_links
+- activity_expedition_stage_links
+- activity_challenge_links
+- activity_verification_events
+
+Elevation Bank
+
+- Build a server projection/credit ledger from canonical activities.
+- Version qualification rules.
+- Keep personal, verified, and competitive totals distinct.
+
+Real summit records
+
+- Add summit_records linked to user, canonical mountain, route, achieved date, optional activity, actual ascent, evidence, verification, and collection membership.
+- Summit altitude remains descriptive.
+- A real summit record requires an explicit user action/evidence policy and must never be inferred from an Expedition completion.
+
+Expedition completions
+
+- Add expedition_runs and expedition_completions linked to catalogue expedition/routes, user, contributing activities/stages, algorithm/data version, score snapshot, and completion totals.
+- Preserve “simulated” language in schema/API and UI.
+
+Mountain Simulations
+
+- Represent each completed simulation as a canonical activity with context mountain_simulation.
+- Link target mountain, local route, match score/breakdown/version, and the training plan/session.
+- It can contribute to readiness and Elevation Bank if it contains qualifying actual ascent.
+- It is neither a real summit nor automatically an Expedition.
+
+Trophy Room
+
+- Derive displays from separate durable sources:
+  - verified/recorded real summits
+  - simulated expedition completions
+  - achievement awards
+  - collection membership
+- Do not collapse these into one ambiguous completion table.
+
+Leaderboards
+
+- Use only server-evaluated eligible elevation credits.
+- Add explicit opt-in/privacy, anti-cheat/verification status, period/version, pagination, moderation, and correction handling.
+- Never rank directly from mutable local totals or unverified manual entries.
+
+
+15. MIGRATION RISKS
+
+- Duplicate history: one real-world event may already exist in multiple local arrays and one or more server tables.
+- Identity mismatch: old records may lack activityId, expeditionId, canonical route ID, or authenticated owner.
+- Cross-user collision: existing globally unique tracked_hill_sessions.activity_id.
+- Old client compatibility: released apps must continue using current APIs/stores during rollout.
+- Partial sync: route and session submissions can diverge.
+- Local-only history: server backfill requires the user’s device to upload it.
+- Route-name fallback can link the wrong stage.
+- Expedition active mirror and library record can diverge.
+- Long-offline devices may upload stale state after server migration.
+- Account switching and legacy flat AsyncStorage require strict ownership checks.
+- Changing elevation rules can alter totals; credits need rule versions and auditable correction.
+
+Use source-qualified stable IDs, per-user uniqueness, idempotent endpoints, compatibility adapters, dual-read/dual-write, reconciliation reports, and feature flags.
+
+
+16. PRODUCTION DATA RISKS
+
+No production data was queried or changed during this audit.
+
+Before migration:
+
+- Measure counts/null rates/duplicates for tracked_hill_sessions activity_id and user_id.
+- Identify activity IDs shared across users.
+- Measure malformed/negative/extreme recorded metrics and track sizes.
+- Determine whether public GPS tracks contain sensitive home locations.
+- Confirm account-deletion obligations and retention policy.
+- Confirm schema deployment order and old-app compatibility.
+- Back up and test migrations against a production-like copy.
+
+Do not perform destructive backfills. Preserve original source payloads and use reversible projections.
+
+
+17. MOBILE BUILD IMPACT
+
+A. Backend/database only
+
+- Additive tables, indexes, ownership constraints, idempotent APIs.
+- Read-only reconciliation/reporting.
+- Server projections for Elevation Bank.
+- Server-side verification and privacy enforcement.
+- Existing mobile app remains compatible if current responses/endpoints are preserved.
+
+B. Server plus existing mobile app compatible
+
+- Server accepts existing outbox payloads and maps them into canonical activities.
+- Bridge tracked_hill_sessions to canonical activities.
+- Additive API response fields ignored by old clients.
+- Server-side route privacy defaults may require careful compatibility behavior.
+
+C. Requires a new mobile build
+
+- Mobile dual-write/upload of Session, ExploreHike, challenge, expedition, or plan context.
+- New Elevation Bank, Trophy Room, summit record, simulation, and leaderboard UI.
+- New local repository/queue formats or conflict UI.
+- Any change to native GPS/background capability or native dependencies.
+
+Pure TypeScript/JavaScript changes still require distributing a new app version to users even when they do not require new native modules. No mobile build should be created until the foundation contracts are approved and implemented.
+
+
+18. REUSE
+
+Reuse rather than rebuild:
+
+- AppContext local Session/ExploreHike adapters during transition.
+- ChallengesContext catalogue/progress behavior as a legacy source.
+- activityReliability correlation/deduplication helpers.
+- activeHikeSession ownership and restore policy.
+- hikeReliability background batch selection/deduplication/plausibility helpers.
+- syncOutbox per-user serialization, token ownership check, timeout, and in-flight reconciliation.
+- hike-tracking GPS collection/checkpoint/recovery flow.
+- tracked_hill_sessions planned-vs-recorded evidence and quality fields.
+- hill-session quality scoring and verification aggregation as an input to stronger verification.
+- canonical_hills and canonical_hill_routes identity.
+- virtual expedition catalogue, route DNA, matching, and score breakdown/version concepts.
+- signature challenge catalogue/stages.
+- current achievements catalogue and compute rules, while adding durable awards.
+- SavedExpedition UI/library compatibility until durable runs are proven.
+
+Do not reuse tracked_routes as the canonical activity ledger, summit altitude as ascent, or mutable expedition/profile aggregates as permanent history.
+
+
+PHASED IMPLEMENTATION PLAN
+
+PHASE 0 — CONTRACT AND READ-ONLY RECONCILIATION
+
+Purpose:
+Define semantics before schema work and quantify overlap.
+
+Changes:
+- Document activity kinds, source IDs, contexts, ownership, actual ascent, verification, privacy, and eligibility.
+- Build read-only development reconciliation tools/tests against representative local fixtures and schema data.
+- Decide which current records represent one event versus projections.
+
+Untouched:
+- Current app behavior, schemas, APIs, production data, UI, GPS, and builds.
+
+Database impact:
+- None.
+
+Mobile build:
+- None.
+
+Risks:
+- Incorrect identity rules create duplicate history later.
+
+Tests:
+- Fixture mapping, duplicate/collision cases, elevation semantics, user ownership, legacy records.
+
+Rollback:
+- Documentation/tooling only; discard without runtime effect.
+
+
+PHASE 1 — ADDITIVE SERVER ACTIVITY FOUNDATION
+
+Purpose:
+Create a durable per-user activity ledger without replacing current systems.
+
+Changes:
+- Add activities, evidence/link tables, constraints, indexes, and idempotent authenticated ingestion.
+- Use unique (user_id, source, source_id).
+- Add explicit verification/privacy/eligibility states.
+- Bridge new tracked hill saves to activities while preserving current API behavior.
+
+Untouched:
+- AppContext reads, local progress, expedition UI, current route catalogue, GPS recording.
+
+Database impact:
+- Additive migration only.
+
+Mobile build:
+- No, if existing APIs are server-mapped.
+
+Risks:
+- Deployment ordering, ownership mistakes, duplicate bridge records.
+
+Tests:
+- Migration, auth, cross-user collision, idempotency, old-client contract, constraints, account deletion.
+
+Rollback:
+- Disable bridge writes; retain new tables; do not delete source records.
+
+
+PHASE 2 — ELEVATION CREDIT PROJECTION
+
+Purpose:
+Create accurate personal and eligible elevation totals.
+
+Changes:
+- Add versioned elevation credit/projection logic.
+- Classify GPS, manual, corrected, and ineligible activities.
+- Add lifetime/year/month/week read APIs.
+
+Untouched:
+- Existing profile totals and UI until comparison is accepted.
+
+Database impact:
+- Additive credit/projection tables or materialized aggregates.
+
+Mobile build:
+- No for backend shadow computation; yes to display it.
+
+Risks:
+- Historical totals differ from current UI; fabricated GPS; rule changes.
+
+Tests:
+- Summit altitude exclusion, cumulative ascent semantics, time periods, corrections, duplicate activity prevention, eligibility.
+
+Rollback:
+- Disable projection version/API; source activities remain unchanged.
+
+
+PHASE 3 — MOBILE DUAL-WRITE AND RECONCILIATION
+
+Purpose:
+Upload local activity contexts reliably while retaining offline behavior.
+
+Changes:
+- Add a repository adapter behind existing add/log completion actions.
+- Queue canonical activity ingestion with stable source-qualified IDs.
+- Keep current local reads as fallback.
+- Add upload state and safe retry/dead-letter handling.
+
+Untouched:
+- GPS point collection and restoration, current screens, current local records.
+
+Database impact:
+- Uses Phase 1 tables/APIs.
+
+Mobile build:
+- Yes.
+
+Risks:
+- Duplicate uploads, partial writes, old offline clients, account changes.
+
+Tests:
+- Offline/online transitions, app kill/restart, identity change, retries, duplicate response, partial failure, long hikes.
+
+Rollback:
+- Feature flag off canonical upload; continue current local/outbox behavior.
+
+
+PHASE 4 — DURABLE EXPEDITION AND SUMMIT RECORDS
+
+Purpose:
+Create permanent, semantically distinct completion histories.
+
+Changes:
+- Add expedition_runs/completions and summit_records.
+- Link contributing canonical activities and stage snapshots.
+- Preserve simulation score/data/algorithm versions.
+- Add compatibility projection from SavedExpedition only after reconciliation.
+
+Untouched:
+- Current expedition planning/matching and active expedition UX.
+
+Database impact:
+- Additive tables and APIs.
+
+Mobile build:
+- Backend shadow records may not; user creation/history UI does.
+
+Risks:
+- Misclassifying simulated completion as real summit; legacy stage identity.
+
+Tests:
+- Semantic separation, ownership, stage completeness, evidence, immutable completion snapshots, repeated attempts.
+
+Rollback:
+- Disable new writes/views; keep existing SavedExpedition state.
+
+
+PHASE 5 — MOUNTAIN SIMULATION RECORDS
+
+Purpose:
+Connect matched local routes to Training without confusing simulation, Expedition, or summit status.
+
+Changes:
+- Add simulation assignment/result records linked to plan session, target mountain, local route, canonical activity, and versioned match breakdown.
+- Feed qualifying completion into readiness and elevation projections.
+
+Untouched:
+- Existing expedition matching until explicitly integrated.
+
+Database impact:
+- Additive simulation tables/links.
+
+Mobile build:
+- Yes for recommendation/completion UI.
+
+Risks:
+- Score drift, stale route DNA, accidental summit claims.
+
+Tests:
+- Match versioning, completion links, readiness effect, classification, copy semantics.
+
+Rollback:
+- Disable recommendations; canonical activity remains valid as a hike.
+
+
+PHASE 6 — TROPHY ROOM
+
+Purpose:
+Present durable achievements without merging unlike accomplishments.
+
+Changes:
+- Add achievement award events and collection membership/progress.
+- Display separate Real Summits, Expedition Completions, Achievement Badges, and Collections.
+
+Untouched:
+- Existing profile until parity is verified.
+
+Database impact:
+- Additive awards/collections tables and projections.
+
+Mobile build:
+- Yes.
+
+Risks:
+- Double awards, changed achievement rules, incomplete legacy history.
+
+Tests:
+- Idempotent awards, evidence links, revoked/corrected activity, separate categories, legacy import.
+
+Rollback:
+- Hide new UI; retain award records for audit.
+
+
+PHASE 7 — OPT-IN LEADERBOARDS AND COMMUNITY PROGRESSION
+
+Purpose:
+Use verified eligible activity data competitively.
+
+Changes:
+- Add privacy/opt-in, eligibility review, period rankings, moderation, pagination, and correction/rebuild.
+- Start with one narrow elevation leaderboard.
+
+Untouched:
+- Personal Elevation Bank and private activities.
+
+Database impact:
+- Additive opt-in and ranking projections.
+
+Mobile build:
+- Yes for participation/UI.
+
+Risks:
+- Privacy, cheating, fabricated GPS, location exposure, ranking corrections, abuse.
+
+Tests:
+- Authorization, opt-in/out, private activity exclusion, manual activity exclusion, period boundaries, ties, corrections, rate limits.
+
+Rollback:
+- Disable ranking publication and opt-in; retain personal records.
+
+
+FINAL RECOMMENDATION
+
+Approve Phase 0 first. Do not begin by replacing AppContext or by turning tracked_hill_sessions into a universal table. Establish the canonical activity contract, ownership/idempotency rules, elevation qualification policy, and reconciliation fixtures. Then add the server ledger behind existing compatible APIs before asking the mobile app to dual-write.
+
+This order preserves the recent offline reliability work, avoids destructive migration, keeps Training and Expeditions distinct at product level, and creates a shared foundation suitable for Elevation Bank, real summit history, simulations, Trophy Room, and future leaderboards.
