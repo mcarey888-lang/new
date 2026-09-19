@@ -1,0 +1,1041 @@
+SUMMITREADY 2.0 — PHASE 0 CONTRACT AND READ-ONLY RECONCILIATION REPORT
+Date: 19 September 2026
+Status: Architecture contract only
+
+SCOPE AND CONSTRAINTS
+
+This report completes Phase 0 only.
+
+No runtime functionality was implemented.
+No application code was modified.
+No database schema or migration was created.
+No production data was queried or changed.
+No UI or navigation was redesigned.
+No mobile build was created.
+The existing GPS, checkpoint, offline queue, and sync systems were not refactored.
+
+This report defines the contract that a future Phase 1 implementation must satisfy.
+
+
+1. PERMANENT DOMAIN BOUNDARIES
+
+SummitReady has three permanently distinct completion concepts.
+
+1.1 REAL SUMMIT
+
+Definition:
+The user physically climbed an actual canonical mountain or hill.
+
+Required characteristics:
+- Refers to the real canonical mountain/hill climbed.
+- May refer to a canonical route.
+- Has an actual occurrence/completion time.
+- May link to one or more evidence records, normally including a real activity.
+- Has an explicit verification state.
+- May record actual cumulative ascent, but summit altitude is descriptive and is not automatically credited as ascent.
+- May qualify for real-summit achievements, collections, mountain statistics, or a Summit Crown only when the relevant qualification policy passes.
+
+A real summit must never be inferred solely from:
+- crossing a summit coordinate;
+- completing a simulated expedition;
+- completing a Mountain Simulation;
+- a route name or free-text mountain name;
+- planned elevation;
+- summit altitude;
+- an unverified manual claim.
+
+1.2 EXPEDITION COMPLETION
+
+Definition:
+The user completed a SummitReady simulated expedition or staged adventure.
+
+Required characteristics:
+- Refers to a SummitReady expedition definition/run.
+- Records that a simulated challenge was completed.
+- May aggregate qualifying real activities performed on real local mountains.
+- Stores the expedition target, stages, score/version, contributing activities, and completion timestamp.
+- Must use explicit simulated-expedition language.
+
+An Expedition completion:
+- is not a claim that the simulated target mountain was climbed;
+- must never create a real summit record for the simulated target;
+- must never award the simulated target’s Summit Crown;
+- may allow contributing real activities to qualify independently for the real local mountains actually climbed.
+
+Example:
+Completing Everest Scotland may create an Everest Scotland Expedition Completion. If the contributing activities independently verify ascents of real Scottish mountains, those real ascents may support real summit records or Scottish Summit Crowns. It must never create a Mount Everest real summit or Crown.
+
+1.3 MOUNTAIN SIMULATION
+
+Definition:
+A Training activity intended to reproduce selected physical characteristics of a target mountain.
+
+Required characteristics:
+- Refers to a real completed local activity.
+- Links separately to the target mountain being simulated and the real local mountain/route used.
+- Stores the matching method, score/breakdown, and algorithm/data version.
+- May contribute to Readiness and Elevation Bank based on the actual completed activity.
+
+A Mountain Simulation:
+- is not a real summit of the target mountain;
+- is not automatically an Expedition;
+- must never award the target mountain’s Crown;
+- may independently qualify as a real ascent of the local mountain actually climbed if real-summit rules pass.
+
+These three concepts must use separate types, records, APIs, analytics events, and user-facing language. A generic ambiguous “completion” type is prohibited.
+
+
+2. USER PROFILE IDENTITY CONTRACT
+
+2.1 PRIVATE AUTHENTICATION IDENTITY
+
+Clerk remains the authentication/account authority.
+
+The Clerk user/account ID is the stable private owner identifier used for:
+- authorization;
+- ownership;
+- private data access;
+- idempotency scope;
+- account deletion;
+- internal audit relationships.
+
+Email is private account/contact data.
+
+Email must never be:
+- the public community identifier;
+- a public profile URL identity;
+- a leaderboard display identity;
+- a Summit Crown holder identity;
+- exposed in community APIs;
+- used as a fallback public display name.
+
+2.2 FUTURE PUBLIC MOUNTAIN PROFILE
+
+A future public profile must conceptually support:
+- owner Clerk user/account ID;
+- display name;
+- unique username;
+- optional avatar;
+- broad region;
+- profile visibility;
+- leaderboard opt-in.
+
+Identity rules:
+- Username is the unique public handle.
+- Display name is non-unique and user-editable.
+- Broad region is intentionally coarse and must not reveal home/start coordinates.
+- Avatar is optional.
+- Profile visibility and leaderboard opt-in are separate controls.
+- A private profile may still maintain private activities and personal Elevation Bank totals.
+- Leaderboard opt-in must not make raw GPS tracks public.
+- Historical public references should resolve through an internal stable profile ID or owner ID, not depend exclusively on mutable username text.
+- Username changes must not orphan Crown history, awards, or activity ownership.
+- Deleted/deactivated accounts need an explicit anonymization/removal policy for public historical records.
+
+No profile UI is part of Phase 0.
+
+
+3. CANONICAL ACTIVITY SEMANTICS
+
+3.1 ACTIVITY DEFINITION
+
+A canonical activity is one real-world exercise/activity occurrence owned by one authenticated user.
+
+It is not:
+- a route catalogue entry;
+- a training-plan template;
+- an expedition definition;
+- a mountain definition;
+- an aggregate progress total;
+- an achievement;
+- a summit record;
+- a leaderboard row.
+
+Those systems may link to or project from activities.
+
+3.2 ACTIVITY CONTEXT
+
+An activity has one primary context:
+- training;
+- expedition;
+- free_hike;
+- mountain_simulation.
+
+It may have several secondary links without becoming duplicate activities:
+- training plan/session;
+- expedition run/stage;
+- real canonical mountain/hill;
+- canonical or community route;
+- challenge;
+- real summit evidence;
+- Mountain Simulation assignment.
+
+Context describes why the activity occurred. Qualification describes what it may count toward. These are separate.
+
+3.3 ACTIVITY KIND AND SOURCE
+
+Conceptual activity kinds include:
+- outdoor_hike;
+- hill_repeats;
+- cardio;
+- strength;
+- long_day;
+- other supported training activity.
+
+Conceptual source types include:
+- summitready_gps;
+- manual_entry;
+- legacy_session;
+- legacy_explore_hike;
+- legacy_challenge_activity;
+- tracked_hill_session;
+- approved_external_source in a future version.
+
+GPS recording is a source/evidence characteristic. It is not itself proof of competitive verification.
+
+3.4 ACTIVITY LIFECYCLE
+
+Conceptual lifecycle states:
+- recording;
+- completed_local;
+- pending_sync;
+- synced;
+- sync_failed;
+- corrected;
+- deleted.
+
+Verification and qualification must not be overloaded into lifecycle state.
+
+3.5 SOURCE SNAPSHOT
+
+Canonical ingestion must preserve enough original source information to explain and reconcile the record later:
+- source type;
+- source ID;
+- source schema/version where available;
+- original occurrence timestamps;
+- original metrics;
+- original context/link identifiers;
+- original verification/evidence indicators;
+- ingestion timestamp.
+
+Source snapshots must avoid unnecessary sensitive duplication and follow retention policy.
+
+
+4. SOURCE IDENTITY RULES
+
+4.1 CANONICAL ID
+
+Every canonical activity receives a server-controlled immutable activity ID.
+
+4.2 IDEMPOTENCY IDENTITY
+
+The idempotency identity is scoped by owner and source:
+
+(owner_user_id, source_type, source_id)
+
+It must not be a globally unique unscoped client activity ID.
+
+4.3 LEGACY SOURCE IDS
+
+Existing records may use:
+- activityId;
+- Session.id;
+- ExploreHike.id;
+- ChallengeActivity.id;
+- GPS routeId;
+- tracked_hill_sessions.activity_id.
+
+Phase 1 must treat those as source IDs, not automatically as canonical IDs.
+
+4.4 SOURCE PRECEDENCE
+
+When several legacy records describe the same real-world event:
+- an explicit shared activityId is the strongest existing correlation signal;
+- matching owner is mandatory;
+- matching times, duration, distance, ascent, route, and notes are supporting signals;
+- same metrics alone are insufficient;
+- same mountain/route name alone is insufficient;
+- a ChallengeActivity that deliberately produced Session and ExploreHike records should reconcile to one canonical activity with challenge links;
+- a GPS activity represented as ExploreHike, Session, tracked_hill_session, and tracked_route should reconcile to one canonical activity, while tracked_route remains a separate reusable route record.
+
+4.5 COLLISIONS
+
+If the same source identity appears for different owners:
+- do not merge;
+- do not return another owner’s data;
+- create an ownership-collision finding;
+- scope future uniqueness by owner;
+- require explicit remediation for existing server records.
+
+If one owner has the same source identity with materially different payloads:
+- do not silently overwrite;
+- retain the first accepted source version or version the correction;
+- flag a payload conflict;
+- apply an explicit correction/reconciliation policy.
+
+
+5. OWNERSHIP AND AUTHORIZATION CONTRACT
+
+- Every personal activity has exactly one authenticated owner.
+- The server derives owner identity from authentication, never from a trusted client body field.
+- Reads, updates, deletion, evidence access, and reconciliation require ownership or an explicit authorized administrative role.
+- Public projections must not expose private source/evidence fields.
+- Route catalogue ownership and activity ownership are separate.
+- Contributing to a public route does not make the contributing user’s complete activity public.
+- Account deletion must address canonical activities, evidence, public projections, Crown history, leaderboard rows, and shared route contributions under a documented retention/anonymization policy.
+- No API may resolve an idempotency collision by returning another owner’s record.
+
+
+6. IDEMPOTENCY AND CORRECTION CONTRACT
+
+6.1 INGESTION
+
+- Repeating the same authenticated source submission must return the same canonical result.
+- Concurrent repeats must not create duplicates.
+- Idempotency must survive app restarts and offline retries.
+- Route upload and activity upload may be independent, but partial state must be observable and repairable.
+
+6.2 MUTATION
+
+Completed activity evidence should be append-oriented.
+
+Corrections must:
+- preserve an audit relationship to the original value;
+- trigger re-evaluation of qualifications and projections;
+- never silently rewrite Crown, leaderboard, achievement, summit, or Elevation Bank history without corresponding correction/revocation behavior.
+
+6.3 DELETION
+
+Deletion must distinguish:
+- hiding from the user;
+- excluding from projections;
+- deleting sensitive GPS evidence;
+- legal/account deletion;
+- retaining anonymized aggregate/audit facts where policy permits.
+
+Runtime behavior is deferred to later phases.
+
+
+7. ELEVATION SEMANTICS
+
+The following values are permanently distinct:
+
+7.1 SUMMIT ALTITUDE
+
+The height of a mountain summit above sea level.
+
+It is descriptive and must never automatically become Elevation Bank credit.
+
+7.2 PLANNED/ESTIMATED ASCENT
+
+Expected cumulative ascent for a route, session, or repetitions.
+
+It is suitable for planning and some personal manual-history displays. It is not automatically competitive evidence.
+
+7.3 RECORDED RAW ASCENT
+
+The ascent calculated by the recording client from observed altitude samples.
+
+It is evidence, not automatically a verified value.
+
+7.4 VALIDATED ACTUAL ASCENT
+
+The ascent accepted after applicable quality, plausibility, smoothing/recalculation, and verification rules.
+
+This is the preferred basis for qualified Elevation Bank and competitive use.
+
+7.5 SIMULATED TARGET ELEVATION
+
+The challenge requirement represented by an Expedition or Mountain Simulation.
+
+It is not actual gained elevation and must not be deposited into Elevation Bank.
+
+7.6 CREDITED ASCENT
+
+The amount a versioned policy credits to a specific projection/purpose.
+
+Examples:
+- personal Elevation Bank may credit a manual estimate with a manual label;
+- leaderboard elevation may credit only validated eligible ascent;
+- Readiness may use recorded or estimated work under its own policy.
+
+Credited ascent must retain:
+- source activity;
+- credited amount;
+- purpose;
+- qualification class;
+- rule/version;
+- correction/revocation state.
+
+
+8. ACTIVITY QUALIFICATION CONTRACT
+
+Qualification is purpose-specific. One activity may qualify for some uses and not others.
+
+8.1 EVIDENCE CLASSES
+
+Conceptual evidence classes:
+
+UNVERIFIED_MANUAL
+- User-entered without qualifying GPS evidence.
+
+RECORDED_UNVERIFIED
+- GPS or sensor evidence exists, but competition/real-summit verification has not passed.
+
+QUALITY_ACCEPTED
+- Basic recording quality and plausibility checks pass for personal progression.
+
+VERIFIED_ACTIVITY
+- Stronger server-side/activity verification policy passes.
+
+VERIFIED_SUMMIT_ASCENT
+- Verified activity plus canonical mountain, route/summit evidence, and ascent-completion policy passes.
+
+COMPETITION_ELIGIBLE
+- Verified activity additionally passes anti-cheat, privacy/consent, account, and competition-specific rules.
+
+Evidence classes may progress or be revoked. They are not inferred solely from source type.
+
+8.2 PURPOSE QUALIFICATIONS
+
+Each activity can have an explicit outcome for:
+
+PERSONAL_HISTORY
+- Normally yes for completed user-owned activities, including manual entries.
+- Private by default unless the user changes visibility.
+
+ELEVATION_BANK_PERSONAL
+- May include actual recorded ascent and clearly labelled manual estimated ascent under versioned policy.
+- Must never include summit altitude or simulated target elevation.
+
+READINESS
+- May include training-relevant manual or recorded work.
+- Policy may weight confidence/source differently.
+- Expedition context does not automatically exclude genuine physical work.
+
+REAL_SUMMIT_EVIDENCE
+- Requires a real canonical mountain/hill link and summit/ascent evidence.
+- A GPS summit-coordinate crossing alone is insufficient.
+- Manual claims may remain pending/unverified but must not automatically qualify.
+
+SUMMIT_CROWN_ELIGIBILITY
+- Requires VERIFIED_SUMMIT_ASCENT.
+- Must also pass Crown-specific freshness, canonical identity, ownership, integrity, and exclusion rules.
+- Manual-only activities are not automatically eligible.
+- Expeditions and simulations can only contribute through an independently qualifying real activity for the real local mountain climbed.
+
+LEADERBOARD_ELIGIBILITY
+- Requires COMPETITION_ELIGIBLE status for the relevant metric/period.
+- Public ranking must not require public raw GPS disclosure.
+
+ACHIEVEMENTS
+- Qualification depends on the achievement definition.
+- Personal achievements may allow manual history.
+- Competitive/verified achievements may require stronger classes.
+- Award rule/version and evidence activity must be retained.
+
+8.3 QUALIFICATION RESULT
+
+A future qualification result should conceptually contain:
+- activity ID;
+- purpose;
+- eligible/ineligible/pending/revoked;
+- evidence class;
+- reason codes;
+- rule/version;
+- evaluated timestamp;
+- credited metric where applicable.
+
+Avoid one global isVerified or isEligible boolean.
+
+
+9. SUMMIT CROWNS / KING OF THE HILL CONTRACT
+
+9.1 CROWN DEFINITION
+
+A Summit Crown belongs to an eligible real canonical mountain/hill.
+
+The current Crown Holder is the user associated with the most recent qualifying verified summit ascent event for that canonical mountain under the active Crown rules.
+
+9.2 REQUIRED SOURCE
+
+A Crown claim must derive from:
+- a canonical activity;
+- a real canonical mountain/hill identity;
+- a VERIFIED_SUMMIT_ASCENT qualification;
+- a Crown eligibility evaluation;
+- an authoritative qualifying occurrence/completion timestamp.
+
+Simply crossing a summit coordinate is insufficient.
+
+Manual-only activities do not automatically qualify.
+
+9.3 EXCLUSIONS
+
+- An Expedition Completion cannot directly claim any Crown.
+- A Mountain Simulation cannot claim the target mountain’s Crown.
+- A simulated target identity must never be substituted for the real local mountain identity.
+- Planned routes, summit altitude, estimated repetitions, and challenge completion are not Crown claims.
+- Deleted, disqualified, fraudulent, or revoked activities must not remain active Crown claims.
+
+9.4 LOCAL REAL ASCENTS WITHIN SIMULATED EXPERIENCES
+
+A physical activity performed during an Expedition or Mountain Simulation may independently claim the Crown for the real canonical local mountain climbed if all real-summit and Crown rules pass.
+
+It can never claim the simulated target’s Crown unless the real activity actually occurred on that target and independently passes verification.
+
+9.5 CROWN HISTORY REQUIREMENTS
+
+Future Crown history must support:
+- canonical mountain/hill;
+- current holder;
+- claim activity/summit event;
+- claimed timestamp;
+- previous holders;
+- claim sequence;
+- number of claims;
+- hold start/end;
+- current and historical hold duration;
+- longest hold duration;
+- revocation/correction reason;
+- Crown rule/version.
+
+Crown history must be event-based or reproducible from immutable qualified summit events. A single mutable current-holder field is insufficient.
+
+9.6 PRIVACY
+
+Public Crown presentation may show permitted profile identity and broad event information.
+
+It must not require exposing:
+- email;
+- private activity details;
+- raw GPS tracks;
+- precise home/start/end locations.
+
+A private-profile or deleted-user policy must be decided before Crown launch.
+
+No Crown runtime or schema is part of Phase 0 or Phase 1 unless separately approved.
+
+
+10. GPS AND COMMUNITY PRIVACY CONTRACT
+
+10.1 SEPARATE VISIBILITY CONTROLS
+
+The system must distinguish:
+- profile visibility;
+- activity visibility;
+- route visibility;
+- leaderboard opt-in;
+- evidence access.
+
+Making one item public must not implicitly publish the others.
+
+10.2 ACTIVITY VISIBILITY
+
+Conceptual activity visibility:
+- private;
+- followers/friends in a future system;
+- public_summary.
+
+Private is the safe default for personal activities.
+
+Public summary may expose approved summary fields without raw GPS.
+
+10.3 ROUTE VISIBILITY
+
+A reusable route can be:
+- private;
+- unlisted;
+- public.
+
+A route is not the same record as the activity that generated it.
+
+Publishing a generalized route must not automatically publish:
+- the originating activity;
+- owner identity;
+- exact timestamps;
+- private notes;
+- precise start/end points;
+- the raw unredacted track.
+
+10.4 START/END PRIVACY
+
+Future public route/activity processing must support:
+- trimming or masking configurable start/end portions;
+- coordinate generalization;
+- sensitive-location exclusion;
+- storage of private raw evidence separately from public geometry;
+- preventing inference of home or routine locations.
+
+10.5 LEADERBOARDS WITHOUT TRACK DISCLOSURE
+
+An activity may be leaderboard eligible while its raw GPS remains private.
+
+The server may publish:
+- verified credited ascent;
+- duration/distance where allowed;
+- broad mountain/route identity;
+- occurrence date at an appropriate granularity;
+- public profile identity.
+
+Verification evidence remains authorization-controlled.
+
+10.6 OWNERSHIP/AUTHORIZATION
+
+- Raw GPS is owner-private by default.
+- Administrative verification access must be explicit, logged, and least-privileged.
+- Public endpoints must return public projections, not raw storage rows.
+- Guessing an activity/route ID must not bypass visibility.
+- Shared route contributors must not gain access to each other’s private activities.
+
+10.7 RETENTION/DELETION
+
+Policy must define:
+- how long raw tracks are retained;
+- whether users can delete raw evidence while retaining a noncompetitive personal summary;
+- how deletion affects summit verification, Crowns, leaderboards, and achievements;
+- how public route geometry derived from multiple contributors is handled;
+- how account deletion anonymizes or removes historical competitive records;
+- how backups and delayed deletion are communicated.
+
+No production privacy changes are made in Phase 0.
+
+
+11. READ-ONLY RECONCILIATION RULES
+
+11.1 RECONCILIATION OUTPUT CLASSES
+
+A read-only reconciliation process should classify source records as:
+- EXACT_LINK: explicit owner-scoped shared activity ID and compatible payload.
+- PROBABLE_LINK: no definitive shared ID, but strong multi-field match.
+- POSSIBLE_LINK: some matching evidence; requires review or conservative separation.
+- DISTINCT: clearly separate real-world events.
+- OWNER_COLLISION: same source ID across owners.
+- PAYLOAD_CONFLICT: same owner/source ID with materially different data.
+- ORPHAN: source record has no corresponding related record where one was expected.
+- INVALID_IDENTITY: missing or ambiguous user ownership.
+- INVALID_METRICS: negative/impossible/malformed measurements.
+
+Phase 0 reconciliation is specification/fixtures only. It must not merge or mutate live records.
+
+11.2 EXACT LINK RULE
+
+Records can be EXACT_LINK only when:
+- owner identity matches;
+- a shared activityId/source ID is explicit;
+- occurrence timing is compatible;
+- there is no material contradictory evidence.
+
+11.3 PROBABLE LINK RULE
+
+Requires several supporting signals, such as:
+- same owner;
+- timestamps within an agreed tolerance;
+- same duration/distance/ascent within tolerances;
+- matching route/mountain identity;
+- known write-path relationship;
+- matching notes/context.
+
+No single fuzzy field can establish a probable link.
+
+11.4 CONSERVATIVE DEFAULT
+
+When uncertain, retain separate source records and flag them.
+
+False non-merges are safer than merging two distinct hikes and corrupting history, Crown eligibility, or Elevation Bank.
+
+11.5 PROJECTION RECONCILIATION
+
+Mutable aggregates are never treated as source activities:
+- virtualHikeProgress;
+- profile elevation totals;
+- readiness score;
+- challenge total;
+- expedition progress percentage;
+- completed route count.
+
+They may be compared against recomputed source totals to find discrepancies.
+
+11.6 ROUTE RECORD RECONCILIATION
+
+tracked_routes represents reusable route content.
+
+It may link to an originating activity but must not be merged into that activity. Later route contributions are also evidence/content contributions, not automatically personal activity history.
+
+
+12. REPRESENTATIVE LEGACY FIXTURES
+
+These conceptual fixtures must be implemented as non-production test fixtures before Phase 1 acceptance.
+
+FIXTURE A — GPS FREE HIKE WRITTEN TO MULTIPLE STORES
+
+Owner: user_A
+ExploreHike:
+- id: route_100
+- activityId: route_100
+- elevationGain: 640
+- expeditionId: exp_scotland
+
+Session:
+- id: route_100
+- activityId: route_100
+- elevationGain: 640
+- completed: true
+
+tracked_hill_session:
+- activity_id: route_100
+- user_id: user_A
+- completion_type: tracked_gps
+- recorded_elevation_gain_m: 640
+
+tracked_route:
+- id: route_100
+- created_by: user_A
+
+Expected:
+- one canonical activity;
+- separate route catalogue record linked to it;
+- Training/Expedition links retained;
+- no double Elevation Bank credit.
+
+FIXTURE B — CHALLENGE LOG DUPLICATION
+
+Owner: user_A
+ChallengeActivity, Session, and ExploreHike share activityId challenge_200.
+
+Expected:
+- one canonical activity;
+- challenge link retained;
+- local challenge projection remains reproducible;
+- one ascent credit only.
+
+FIXTURE C — SAME LEGACY ID, DIFFERENT USERS
+
+user_A tracked session activityId route_300.
+user_B tracked session activityId route_300.
+
+Expected:
+- OWNER_COLLISION;
+- never merge;
+- never return user_A data to user_B;
+- two owner-scoped canonical identities if both are valid.
+
+FIXTURE D — SAME OWNER/ID, DIFFERENT PAYLOAD
+
+Two retries for user_A/source route_400:
+- first ascent 500m;
+- second ascent 900m with different duration/track.
+
+Expected:
+- PAYLOAD_CONFLICT;
+- no silent overwrite;
+- correction/review policy required.
+
+FIXTURE E — LEGACY RECORD WITHOUT ACTIVITY ID
+
+Session:
+- owner user_A;
+- timestamp, 3h duration, 12km, 700m, Helvellyn.
+
+ExploreHike:
+- owner user_A;
+- timestamp within one minute, 3h duration, 12km, 700m, Helvellyn.
+
+Expected:
+- PROBABLE_LINK if all configured signals pass;
+- no automatic production merge until reconciliation policy is approved.
+
+FIXTURE F — TWO SIMILAR HIKES ON THE SAME DAY
+
+Two activities owned by user_A on the same route with similar metrics but separate start times and source IDs.
+
+Expected:
+- DISTINCT;
+- metric similarity must not collapse repeats.
+
+FIXTURE G — MANUAL HILL REPEATS
+
+Manual entry estimated at 600m with no GPS.
+
+Expected:
+- personal history: eligible;
+- Readiness: policy-eligible;
+- personal Elevation Bank: optionally eligible with manual label;
+- leaderboard: ineligible by default;
+- Summit Crown: ineligible by default;
+- verified real summit: not automatically eligible.
+
+FIXTURE H — SUMMIT COORDINATE CROSSING
+
+GPS passes within summit radius but track is too short, begins near summit, or lacks qualifying ascent evidence.
+
+Expected:
+- no automatic VERIFIED_SUMMIT_ASCENT;
+- no Crown;
+- may remain a personal recorded activity.
+
+FIXTURE I — EVEREST SCOTLAND
+
+Expedition target: Mount Everest.
+Contributing activity: verified ascent of Ben Nevis.
+
+Expected:
+- Everest Scotland Expedition Completion may be recorded;
+- no Mount Everest real summit;
+- no Mount Everest Crown;
+- Ben Nevis may receive a real summit record/Crown claim if its independent policy passes;
+- only actual qualifying ascent contributes to Elevation Bank.
+
+FIXTURE J — MOUNTAIN SIMULATION
+
+Target: Kilimanjaro.
+Local route: Helvellyn Circuit.
+Verified actual ascent: 850m.
+
+Expected:
+- Mountain Simulation result for Kilimanjaro;
+- possible Readiness contribution;
+- 850m may qualify for Elevation Bank;
+- no Kilimanjaro real summit or Crown;
+- possible Helvellyn real summit/Crown only if independent real-summit policy passes.
+
+FIXTURE K — PRIVATE COMPETITION-ELIGIBLE ACTIVITY
+
+User opts into leaderboard.
+Activity and raw GPS remain private.
+Server verifies 1,000m eligible ascent.
+
+Expected:
+- public leaderboard may show permitted profile and 1,000m credit;
+- raw GPS/start/end remain private.
+
+FIXTURE L — DELETED OR REVOKED CROWN ACTIVITY
+
+Current Crown source activity is later disqualified or deleted.
+
+Expected:
+- current Crown is recalculated from valid historical claims;
+- history records revocation/correction;
+- no silent dangling holder.
+
+FIXTURE M — EXPEDITION AGGREGATE WITHOUT SOURCE ACTIVITIES
+
+SavedExpedition.virtualHikeProgress reports 3,000m, but only 2,200m of linked source activities can be found.
+
+Expected:
+- aggregate is not ingested as an activity;
+- reconciliation discrepancy is reported;
+- no automatic 800m credit creation.
+
+FIXTURE N — USERNAME CHANGE
+
+One owner changes public username after earning achievements/Crown history.
+
+Expected:
+- ownership/history remains linked through stable internal identity;
+- public display resolves current policy-approved identity;
+- no records are orphaned.
+
+
+13. DUPLICATE AND COLLISION TEST MATRIX
+
+The future reconciliation test suite must cover:
+
+- same owner + same source + same payload;
+- same owner + same source + changed payload;
+- different owner + same source ID;
+- same owner + shared activityId across Session/ExploreHike/ChallengeActivity;
+- missing activityId with strong match;
+- missing activityId with weak match;
+- identical metrics for two genuine repeats;
+- restored offline activity resubmitted after app restart;
+- route upload succeeds while activity upload fails;
+- activity upload succeeds while route upload fails;
+- delayed old client submits after a correction;
+- account switches while outbox items exist;
+- malformed or negative ascent;
+- oversized/raw GPS evidence;
+- route-name match with different canonical route identity;
+- expedition simulated target name matching a real mountain;
+- deleted/revoked activity with dependent projections.
+
+
+14. BACKWARDS COMPATIBILITY ASSUMPTIONS
+
+- Existing released clients continue to use AppContext, ChallengesContext, current AsyncStorage keys, and current outbox payloads.
+- Existing endpoint request/response shapes remain valid during initial server adoption.
+- Additive response fields must be optional for old clients.
+- Existing source IDs are accepted as source identities but are owner-scoped.
+- Current local UI remains local-source-first until a separately approved mobile phase.
+- Current GPS recording, checkpoint restoration, background batches, and outbox logic remain untouched in Phase 1 unless explicitly approved.
+- Current Session, ExploreHike, ChallengeActivity, SavedExpedition, and tracked_hill_sessions records remain readable.
+- No destructive rewrite or deletion of legacy source records occurs during initial adoption.
+- Canonical ingestion must be idempotent for repeated old-client submissions.
+- New server projections cannot be assumed complete until device-local history has had an opportunity to reconcile.
+- Old clients will not understand new privacy controls; server defaults must therefore be conservative.
+- Any restriction of currently public GPS endpoints requires a separately planned compatibility/security rollout.
+
+
+15. READ-ONLY PHASE 0 RECONCILIATION DELIVERABLE
+
+Phase 0 defines, but does not run against production, a reconciliation report with:
+
+- source record counts by type;
+- owner-known versus owner-missing counts;
+- explicit shared-ID groups;
+- owner collisions;
+- payload conflicts;
+- probable/possible links;
+- orphan records;
+- invalid metrics;
+- linked versus aggregate-only expedition progress;
+- projected duplicate Elevation Bank credit avoided;
+- qualification distribution by purpose;
+- private/public evidence exposure findings.
+
+Any future production execution must be separately approved as read-only, use privacy-safe output, and avoid extracting raw tracks unless strictly necessary.
+
+
+16. PROPOSED PHASE 1 ACCEPTANCE CRITERIA
+
+Phase 1 may be considered complete only if all approved criteria below pass.
+
+16.1 SCOPE
+
+- Additive server foundation only.
+- No replacement of existing mobile local stores.
+- No GPS/offline refactor.
+- No Crown runtime.
+- No Trophy Room, leaderboard, or public profile UI.
+- No ambiguous completion model.
+
+16.2 ACTIVITY IDENTITY
+
+- Server-controlled canonical activity ID.
+- Unique owner-scoped source identity.
+- Concurrent idempotent submissions return one activity.
+- Cross-user source ID collisions remain separate.
+- No API can return another owner’s activity on collision.
+
+16.3 OWNERSHIP
+
+- Owner derived from authenticated Clerk context.
+- Every canonical activity has a non-null owner.
+- Owner-scoped authorization tests pass for read/write/delete/evidence.
+- Email is absent from public/community identity contracts.
+
+16.4 ACTIVITY CONTRACT
+
+- Primary context supports training, expedition, free_hike, and mountain_simulation.
+- Secondary links do not duplicate the activity.
+- Source type/snapshot and occurrence timestamps are retained.
+- Real Summit, Expedition Completion, and Mountain Simulation remain separate types/links.
+
+16.5 ELEVATION
+
+- Summit altitude and simulated target elevation cannot populate actual/credited ascent.
+- Recorded, validated, and credited ascent are distinct.
+- Negative/impossible metrics are rejected or quarantined.
+- Rule/version can be attached to future credits/qualification.
+
+16.6 QUALIFICATION
+
+- Purpose-specific qualification structure exists or the activity foundation can add it without changing activity identity.
+- One global isVerified boolean is not used as the full model.
+- GPS source alone does not grant competition eligibility.
+- Manual source is not automatically Crown/leaderboard eligible.
+
+16.7 PRIVACY
+
+- Raw GPS evidence is private by default.
+- Public projections are separate from raw storage rows.
+- Activity visibility, route visibility, profile visibility, and leaderboard opt-in remain independent.
+- The foundation permits start/end redaction/generalization without altering private evidence.
+- Retention/deletion hooks and dependent-projection handling are defined.
+
+16.8 LEGACY COMPATIBILITY
+
+- Existing hill-session API behavior remains compatible or has a tested compatibility adapter.
+- Existing old-client retries do not duplicate canonical activities.
+- tracked_hill_sessions can link to a canonical activity without becoming the universal activity table.
+- Representative fixtures A–N have automated reconciliation/contract tests.
+- No legacy source records are destructively rewritten.
+
+16.9 CORRECTIONS
+
+- Materially different payloads for the same owner/source are detected.
+- Corrections can preserve audit history.
+- Dependent future projections can be re-evaluated/revoked.
+
+16.10 OPERATIONS
+
+- Additive migration has a tested rollback/disable strategy.
+- Deployment ordering supports old clients.
+- Metrics/logging identify duplicate, conflict, authorization, and ingestion failures without exposing sensitive GPS data.
+- Production backfill/reconciliation remains a separately approved operation.
+
+
+17. OPEN POLICY DECISIONS THAT DO NOT BLOCK THE FOUNDATION
+
+These decisions can be finalized after the Phase 1 foundation if the schema keeps them configurable/versioned:
+
+- exact GPS verification thresholds;
+- exact summit-radius/ascent rules;
+- whether personal Elevation Bank includes labelled manual estimates;
+- Crown freshness and disqualification policy;
+- private/deleted profile display in historical Crown records;
+- username reservation/change rules;
+- raw GPS retention duration;
+- start/end masking distance;
+- achievement-specific qualification classes;
+- external activity providers.
+
+They must not be hard-coded into canonical activity identity.
+
+
+18. PHASE 0 COMPLETION CHECK
+
+Completed:
+- activity semantics/contract;
+- source identity rules;
+- ownership/idempotency rules;
+- elevation semantics;
+- verification/eligibility contract;
+- profile identity contract;
+- Summit Crown future compatibility contract;
+- permanent Real Summit/Expedition/Mountain Simulation separation;
+- GPS/community privacy contract;
+- reconciliation rules;
+- representative legacy fixtures;
+- duplicate/collision cases;
+- backwards compatibility assumptions;
+- proposed Phase 1 acceptance criteria.
+
+Not performed:
+- runtime implementation;
+- schema/migrations;
+- production queries or mutation;
+- UI/navigation changes;
+- mobile build;
+- GPS/offline refactor;
+- Phase 1 work.
+
+
+FINAL RECOMMENDATION
+
+READY FOR PHASE 1
+
+Reasons:
+
+1. The canonical activity boundary is defined without replacing existing local activity systems.
+2. Owner-scoped source identity and idempotency rules address the current global activity-ID collision risk.
+3. Elevation semantics prevent summit altitude, planned ascent, and simulated targets from being confused with actual credited ascent.
+4. Qualification is purpose-specific, so personal history, Readiness, Elevation Bank, real summits, Summit Crowns, leaderboards, and achievements can apply different evidence standards.
+5. Real Summit, Expedition Completion, and Mountain Simulation are permanently separated.
+6. The future public profile uses username/display identity rather than email.
+7. Summit Crowns can be added later from verified canonical summit events without changing activity identity.
+8. GPS privacy is separated from competitive eligibility, allowing verification without public raw tracks.
+9. Representative legacy fixtures and conservative reconciliation rules cover known duplicate, collision, offline, simulation, and privacy cases.
+10. Phase 1 has explicit additive scope and acceptance criteria, while unresolved policy thresholds remain versionable and do not require redesigning the foundation.
+
+Approval is still required before any Phase 1 implementation, database migration, runtime change, production reconciliation, or mobile work begins.

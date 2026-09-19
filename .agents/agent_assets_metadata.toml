@@ -396,3 +396,17 @@ mtime_ms = 1789803075038
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/9359d478-d3f8-48e6-a3fa-750aca60c040/774eb964-0b16-4795-b9ea-58945fe7542e"
 storage_version_token = "1789803085277443"
 content_type = "text/plain"
+
+[[outputs]]
+id = "pjybITtbBQHW0JgeXJhRI"
+uri = "file://SUMMITREADY_2_PHASE_0_REPORT.txt"
+type = "text"
+title = "SummitReady 2.0 Phase 0 Report"
+description = "Self-contained activity, identity, verification, privacy, reconciliation, and Phase 1 acceptance contract."
+logical_id = "000803ac-4d9b-487f-8367-23e74c79d3cb"
+content_hash = "sha256:a5092a792d56c8b1612b9c4c6ca3a96b9120e902a202529786ae12494241e06c"
+size = 35798
+mtime_ms = 1789803841299
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/000803ac-4d9b-487f-8367-23e74c79d3cb/de805d03-c3e2-4ef7-89f3-873ec0b287c5"
+storage_version_token = "1789803856835718"
+content_type = "text/plain"
