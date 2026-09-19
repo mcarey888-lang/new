@@ -2,7 +2,7 @@
 
 Updated: 2026-09-19 UTC
 Branch: `virtual-expeditions-mode`  
-Branch HEAD before S2-R02: `b3310b3dc30837df14a76fd79f8b3446430ac6e5`
+Latest Stage 5 completion checkpoint: `393f559`
 
 ## Current project state
 
@@ -10,15 +10,25 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-PA-A2 stopped **BLOCKED** at C03. The exact reviewed
-`0002_stage2_activity_ledgers.sql` artifact was applied successfully to the
-managed development database and verified with zero ledger rows and unchanged
-legacy/canonical counts. The controlled production Publish analyzer generated
-24 additive statements but omitted four reviewed composite unique indexes that
-its proposed foreign keys depend on. Production was not published or changed.
-All production flags remain disabled; do not begin Stage 5.
+Stage 5 — Readiness 2.0 is **COMPLETE** through S5-C10 under the authorized
+runbook. The deterministic `readiness-v2.0.0` engine, stable target-demand
+resolver, next-action/projection service, Training Home surface, detailed
+“Am I Ready?” screen, and offline-safe activity evidence integration are
+implemented and documented. Stage 6 must not begin.
+
+PA-A2 remains a parked **BLOCKED** parallel infrastructure issue. Replit
+Publish still omitted four required composite unique indexes from the unsafe
+24-statement production diff. It was not applied, and production remains
+unchanged/default-safe. PA-A2 does not block normal development, but no
+production migration, flag, backfill, canonical-history switch, adapter
+activation, or mobile release is authorized.
 
 ## Last completed task
+
+S5-C10 completed the Stage 5 gate. See
+`docs/STAGE_5_COMPLETION_REPORT.md` for the exact model, evidence sources,
+target fallback order, user-facing outcomes, tests, protected-boundary review,
+limitations, and native-device QA status.
 
 PA-A2-C01/C02 confirmed the reviewed migration hashes, applied its unchanged
 content to development only, and verified all five tables, constraints,
@@ -51,7 +61,8 @@ condition.
 - Browser E2E was intentionally not run; native-device Start → Track → Pause →
   Resume → Finish → Save and delayed-sync QA remain required.
 - Do not apply `0002_stage2_activity_ledgers.sql`, enable production flags,
-  switch canonical history consumers, release mobile, or begin Stage 5.
+  switch canonical history consumers, or release mobile. Stage 5 is complete;
+  do not begin Stage 6.
 
 ## Changes made
 
@@ -82,6 +93,15 @@ condition.
 - S3-R08 verifies mode isolation, shared navigation boundaries, offline tracking compatibility, stable Training/Expedition completion handoff, protected files, and the unchanged/unapplied Stage 2 migration.
 - S4-C04 adds `elevationBank.ts` decision/read service and focused tests; manual, indoor, unavailable/untrusted, zero/invalid, simulated, and unsupported competition evidence cannot credit personal elevation.
 - S4-C08 keeps canonical history shadowed until legacy equivalence is demonstrated; `canonical-history` is owner-scoped and disabled by default, while mobile fallback preserves all legacy rows.
+- S5-R01 audits the existing Readiness formula, evidence/target data flow, offline behavior, and duplicate calculations.
+- S5-R02 defines `readiness-v2.0.0` with four dimensions, evidence provenance, recency, caps, degraded/unavailable states, explanations, actions, projections, and safety limitations.
+- S5-R03 adds the pure owner-scoped Readiness engine and direct fixtures.
+- S5-R04 adds stable-ID-only target-demand resolution with verified SDE/route/goal fallback provenance.
+- S5-R05 adds deterministic next-action selection and same-engine estimated projection without persistence.
+- S5-R06/R07 add Training Home and detailed “Am I Ready?” experiences.
+- S5-R08 connects completed canonical/legacy-safe physical activity evidence while preserving immediate offline Finish/Save.
+- S5-R09 verifies bounded mobile/API regressions, builds, typechecks, diff safety, and protected boundaries.
+- S5-R10 records Stage 5 completion; native-device QA and any mobile release remain separate prerequisites.
 
 ## Files changed
 
@@ -120,6 +140,10 @@ Coordination:
 - `docs/STAGE_3_COMPLETION_REPORT.md`
 - `docs/STAGE_4_PRODUCTION_READINESS.md`
 - `docs/STAGE_4_COMPLETION_REPORT.md`
+- `docs/STAGE_5_READINESS_AUDIT.md`
+- `docs/STAGE_5_READINESS_MODEL.md`
+- `docs/STAGE_5_REGRESSION_REVIEW.md`
+- `docs/STAGE_5_COMPLETION_REPORT.md`
 
 ## Database/schema changes
 
@@ -185,6 +209,9 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Existing visible history/readiness/elevation/Expedition consumers remain on legacy paths.
 - Real summit records, challenge lifecycle, public/competitive governance, backfill, and reconciliation remain future work. S4-C05 adds `activityConsequences.ts` as an unwired pure planner plus injected effect boundary; Training/readiness, Expedition, challenge/achievement, and mountain/route persistence remain caller-owned until their existing legacy contracts are explicitly supplied. Review hardening now filters replayed qualifications by activity ID, binds Expedition effects and runs to exact links/IDs and canonical metrics, deduplicates identical ledger corrections/revocations, scopes unique-conflict retries to migration-defined indexes, and gates every exported Stage 2 write boundary outside production until schema availability is explicitly enabled.
 - Replit's Expo screenshot proxy can resolve the separate landing artifact at `/`; use Expo Go/native-device QA for authenticated visual release checks.
+- Stage 5 bounded verification passed SummitReady **63/63**, API **85/85**,
+  SummitReady typecheck, API build, DB TypeScript, and `git diff --check`.
+- Native-device QA was not run; no mobile/store release is approved.
 
 ## Decisions requiring review
 
@@ -198,10 +225,10 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Resolve the controlled Publish analyzer's omission of the four composite unique
-indexes without changing production, then regenerate and re-review the full
-diff. Keep production flags disabled, canonical history shadowed, and legacy
-consumers authoritative.
+Keep PA-A2 parked with production frozen/default-safe and await Replit support.
+For product work, use the Stage 5 completion report as the handoff. Before any
+mobile release, complete native-device offline QA and obtain the separately
+required release approval. Do not begin Stage 6.
 
 ## Git branch and latest commit SHA
 
@@ -212,6 +239,7 @@ consumers authoritative.
 - S2-C01 command SHA: `560e1fe3410d82af0abd20a0d3774555ce0ed48f`
 - S2-R01 implementation SHA: `a1cfd9fac19f7d30571a45c1d0de8f6929a60b10`
 - S2-C02 command SHA: `b3310b3dc30837df14a76fd79f8b3446430ac6e5`
+- Stage 5 completion SHA: `393f559` (documentation checkpoint follows)
 
 ## S4-C09 readiness handoff
 
