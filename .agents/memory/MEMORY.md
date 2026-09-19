@@ -41,3 +41,4 @@
 - [Onboarding prototype preservation](onboarding-prototype-preservation.md) — keep new onboarding concepts as named, versioned prototypes until the user explicitly approves removal.
 - [Summit Data Engine production schema](summit-engine-public-schema.md) — engine data tables belong in public for managed production copies; legacy provenance labels remain stable.
 - [Canonical activity foundation](canonical-activity-foundation.md) — owner-scoped canonical identity coexists with global legacy IDs; report collisions without leaking or overwriting.
+- [GitHub push credential split](github-push-credential-split.md) — connector API access may allow push while the shell Git transport still lacks a writable credential.

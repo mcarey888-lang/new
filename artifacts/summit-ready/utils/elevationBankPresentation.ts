@@ -1,4 +1,7 @@
-import type { ElevationBankResponse } from "@workspace/api-client-react";
+import type {
+  ElevationBankResponse,
+  ElevationBankUnavailable,
+} from "@workspace/api-client-react";
 
 export type ElevationBankPresentation =
   | { kind: "loading" }
@@ -9,10 +12,16 @@ export type ElevationBankPresentation =
 export function getElevationBankPresentation(input: {
   isLoading: boolean;
   isError: boolean;
-  data?: ElevationBankResponse;
+  data?: ElevationBankResponse | ElevationBankUnavailable;
 }): ElevationBankPresentation {
   if (input.isLoading) return { kind: "loading" };
-  if (input.isError || !input.data) return { kind: "unavailable" };
+  if (
+    input.isError
+    || !input.data
+    || input.data.status !== "available"
+  ) {
+    return { kind: "unavailable" };
+  }
   if (input.data.lifetimeAscentM === 0 && input.data.recentCredits.length === 0) {
     return { kind: "empty" };
   }

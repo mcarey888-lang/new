@@ -53,6 +53,10 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
     isError: query.isError,
     data: query.data,
   });
+  const hasCollapsedRecentCredits =
+    !expanded
+    && presentation.kind === "ready"
+    && presentation.data.recentCredits.length > 0;
 
   const content = (() => {
     if (presentation.kind === "loading") {
@@ -167,7 +171,7 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
         )}
       </View>
       {content}
-      {query.data && query.data.recentCredits.length > 0 && !expanded && (
+      {hasCollapsedRecentCredits && (
         <TouchableOpacity onPress={onPress} style={styles.detailLink}>
           <Text style={styles.detailLinkText}>View credited activity</Text>
           <ChevronRight size={14} color={T.green} />

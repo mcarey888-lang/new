@@ -10,20 +10,26 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 S4-C09 is COMPLETE. `docs/STAGE_4_PRODUCTION_READINESS.md` records
-the non-production readiness review for the additive Stage 2 ledger migration
-and all Stage 4 dependencies. Production migration and activation remain
-blocked by the current hard production gates, a separately reviewed
-production-availability code change/release after migration verification,
-owner approval, rollback/backup confirmation, and legacy/canonical equivalence
-evidence. Setting `STAGE2_LEDGER_ENABLED=true` in production cannot enable
-writes. C10 may proceed only as a bounded non-production validation of
-legacy/offline and gated-unavailable behavior; do not apply the migration, set
-production flags, mutate production data, or switch consumers.
+Stage 4 S4-C10 is COMPLETE under the Stage 4 completion rule.
+`docs/STAGE_4_COMPLETION_REPORT.md` records the bounded regression evidence and
+the remaining RED gates. Production migration and activation remain blocked by
+the current hard production gates, a separately reviewed production-availability
+code change/release after migration verification, owner approval,
+rollback/backup confirmation, native-device QA, and legacy/canonical
+equivalence evidence. The Stage 2 migration remains unapplied and all
+production flags remain disabled; do not begin Stage 5.
 
 ## Last completed task
 
-S4-C09 produced `docs/STAGE_4_PRODUCTION_READINESS.md`. The review inventories
+S4-C10 produced `docs/STAGE_4_COMPLETION_REPORT.md`. The report records
+92/92 API tests across 9 files, 39/39 SummitReady tests across 5 files, API build, SummitReady typecheck,
+DB TypeScript, generated-client diff, and diff-check results. It also records
+the two-part unavailable Elevation Bank 503 runtime hardening: the response
+discriminant and removal of raw `query.data.recentCredits` footer access.
+Post-fix focused presentation tests pass 3/3, SummitReady typecheck passes, and
+the Expo workflow restarted cleanly with no new browser console error on the
+latest refresh; preview routing is unreliable and native-device QA remains not
+run. S4-C09 produced `docs/STAGE_4_PRODUCTION_READINESS.md`, whose review inventories
 the exact `0002_stage2_activity_ledgers.sql` additive artifact, expected
 tables/indexes/constraints, actual hard production gates, dev/test-only
 controls versus production-capable opt-ins, the required future
@@ -40,6 +46,27 @@ release,
 backfill, reconciliation, consumer switch, or protected
 payment/authentication/privacy/SDE/Progress Mountain/cinematic change was
 made.
+
+## S4-C10 completion handoff
+
+- Stage 4 implementation is **COMPLETE** with safe backwards-compatible
+  default-off behavior; production activation remains pending RED-gate approval.
+- `artifacts/summit-ready/utils/elevationBankPresentation.ts` treats an API
+  `status: "unavailable"` response as unavailable instead of dereferencing
+  missing totals, and `ElevationBankCard` no longer reads raw
+  `query.data.recentCredits` outside the ready presentation branch.
+- Post-fix focused presentation tests pass **3/3**, SummitReady typecheck
+  passes, and the Expo workflow restart/latest refresh has no new browser
+  console error. Preview routing remains unreliable and this is not native UI
+  E2E evidence.
+- API targeted regression: **92/92** across 9 files.
+- SummitReady targeted regression: **39/39** across 5 files.
+- API build, SummitReady typecheck, DB TypeScript, generated-client boundary
+  check, and `git diff --check` pass.
+- Browser E2E was intentionally not run; native-device Start → Track → Pause →
+  Resume → Finish → Save and delayed-sync QA remain required.
+- Do not apply `0002_stage2_activity_ledgers.sql`, enable production flags,
+  switch canonical history consumers, release mobile, or begin Stage 5.
 
 ## Changes made
 
@@ -107,6 +134,7 @@ Coordination:
 - `docs/STAGE_3_NAVIGATION_UX_MAP.md`
 - `docs/STAGE_3_COMPLETION_REPORT.md`
 - `docs/STAGE_4_PRODUCTION_READINESS.md`
+- `docs/STAGE_4_COMPLETION_REPORT.md`
 
 ## Database/schema changes
 

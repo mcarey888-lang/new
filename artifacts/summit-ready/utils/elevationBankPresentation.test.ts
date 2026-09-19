@@ -18,6 +18,14 @@ describe("Elevation Bank mobile presentation states", () => {
     expect(getElevationBankPresentation({ isLoading: true, isError: false })).toEqual({ kind: "loading" });
     expect(getElevationBankPresentation({ isLoading: false, isError: true })).toEqual({ kind: "unavailable" });
     expect(getElevationBankPresentation({ isLoading: false, isError: false })).toEqual({ kind: "unavailable" });
+    expect(getElevationBankPresentation({
+      isLoading: false,
+      isError: false,
+      data: {
+        status: "unavailable",
+        reason: "development_dependency_unavailable",
+      },
+    })).toEqual({ kind: "unavailable" });
   });
 
   it("does not substitute legacy totals for an empty ledger", () => {

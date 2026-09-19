@@ -2,6 +2,59 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-C10 unavailable Elevation Bank runtime correction
+
+**Correction:** Post-restart browser logs found a second unavailable-state
+crash after the initial response discriminant fix: `ElevationBankCard` still
+read `query.data.recentCredits.length` directly in its footer when the
+presentation was unavailable.
+
+**Implementation/result:** The component now computes collapsed recent credits
+only when `presentation.kind === "ready"`, so both raw footer access and
+missing-total formatting are guarded. Focused `elevationBankPresentation`
+tests pass **3/3** after the fix; SummitReady typecheck passes; the Expo
+workflow restarted cleanly and the latest refresh has no new browser console
+error. Preview routing remains unreliable and this is not native UI E2E
+evidence. The bounded C10 totals remain API **92/92** and mobile **39/39**;
+native-device QA is still required.
+
+**Files:** `artifacts/summit-ready/components/ElevationBankCard.tsx`,
+`artifacts/summit-ready/utils/elevationBankPresentation.ts`,
+`artifacts/summit-ready/utils/elevationBankPresentation.test.ts`,
+`docs/STAGE_4_COMPLETION_REPORT.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`.
+
+**Commit:** Not committed; the parent agent will decide commit/push handling.
+
+## 2026-09-19 UTC — S4-C10 Stage 4 regression/completion gate
+
+**Task:** Run the bounded Stage 4 regression/completion gate without applying
+schema, enabling flags, accessing production, releasing mobile, or changing
+protected boundaries.
+
+**Implementation:** Added `docs/STAGE_4_COMPLETION_REPORT.md`. The only C10
+runtime fix makes an unavailable Elevation Bank 503 response render the safe
+unavailable state rather than crash while formatting missing totals, with a
+focused regression test. Existing canonical activity, ledger, Elevation Bank,
+consequence, completion, offline reliability, tracking-launch, and history
+boundaries remain unchanged.
+
+**Tests/result:** API targeted regression **92/92** across nine files; SummitReady
+targeted regression **39/39** across five files; API production build,
+SummitReady typecheck, DB TypeScript, generated-client boundary check, and
+`git diff --check` passed. Browser E2E was intentionally not run because Expo
+web routing is not reliable native-flow evidence. Native-device QA remains
+required. S4-R10 is **COMPLETE** under the Stage 4 completion rule; production
+migration/activation, native release, canonical consumer switching, and Stage 5
+remain blocked or pending the exact RED gates in the completion report.
+
+**Files:** `docs/STAGE_4_COMPLETION_REPORT.md`,
+`artifacts/summit-ready/utils/elevationBankPresentation.ts`,
+`artifacts/summit-ready/utils/elevationBankPresentation.test.ts`,
+`docs/AI_HANDOFF.md`, `docs/AI_CHANGELOG.md`.
+
+**Commit:** Not committed; the parent agent will decide commit/push handling.
+
 ## 2026-09-19 UTC — S4-C09 evidence-matrix corrections
 
 **Task:** Resolve final architecture-review distinctions for C09 evidence and
