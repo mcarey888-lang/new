@@ -1,8 +1,8 @@
 # SummitReady AI handoff
 
-Updated: 2026-09-19T09:06:03.063Z
+Updated: 2026-09-19 UTC
 Branch: `virtual-expeditions-mode`  
-Branch HEAD before this documentation update: `99c41a4abb2ee26ee03b43fd5320a3ca858b2a80`
+Branch HEAD before S2-R01: `560e1fe3410d82af0abd20a0d3774555ce0ed48f`
 
 ## Current project state
 
@@ -10,13 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Phase 1 production Publish and read-only verification are complete. Await ChatGPT review and a future Stage 2 task document in GitHub. Do not begin Stage 2 until that document exists.
-
-Pre-migration PITR marker: `2026-09-19T08:29:30.681Z`. Production has seven-day point-in-time recovery and scheduled backups with 28-day retention.
+S2-C01 is complete. `docs/STAGE_2_ARCHITECTURE_AUDIT.md` is S2-R01 and awaits ChatGPT review. Stop before S2-C02 and execute no further Stage 2 work until ChatGPT writes the next numbered command to `docs/AI_TASK.md`.
 
 ## Last completed task
 
-Verified the Phase 1 production Publish read-only. The reviewed 24-statement additive schema diff is fully applied, all legacy rows are preserved, and no backfill or mobile build was performed.
+Completed the S2-C01 unified activity architecture audit. No runtime, schema, data, production, UI, release, or protected-asset changes were made.
 
 ## Changes made
 
@@ -26,6 +24,7 @@ Verified the Phase 1 production Publish read-only. The reviewed 24-statement add
 - Raw GPS/elevation evidence is stored separately and private.
 - Existing tracked hill saves bridge transactionally to canonical activities without replacing legacy models.
 - Real Summit, Expedition Completion, and Mountain Simulation remain distinct concepts.
+- S2-R01 maps current activity flows, qualification semantics, Summit Data Engine references, additive Stage 2 gaps, sequencing, and compatibility controls.
 
 ## Files changed
 
@@ -41,6 +40,7 @@ Primary activity implementation:
 - `lib/db/src/schema/canonical-hills.ts`
 - `SUMMITREADY_2_PHASE_0_REPORT.txt`
 - `SUMMITREADY_2_PHASE_1_REPORT.txt`
+- `docs/STAGE_2_ARCHITECTURE_AUDIT.md`
 
 Coordination:
 
@@ -73,6 +73,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Public mountain-image route returned an image successfully.
 - Released-client compatibility was verified from the additive nullable schema and deployed route contract. No authenticated write smoke test was run because verification was required to remain non-mutating.
 - Full API `tsc --noEmit` remains blocked by unrelated pre-existing object-storage typing and OpenAI declaration-build diagnostics; no Phase 1 file appears in those diagnostics.
+- S2-C01 used targeted read-only repository inspection and three independent audit passes. No runtime test was needed because the command changed documentation only.
 
 ## Production/deployment status
 
@@ -90,16 +91,18 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - Existing production rows have no owner and are intentionally not backfilled.
 - No fuzzy legacy reconciliation or correction API exists.
 - Full API typecheck has unrelated pre-existing failures noted above.
+- Manual Training completion and local ExploreHike records do not yet share the idempotent canonical ingestion path used by GPS tracked hill sessions.
+- Durable Elevation Bank credits, Expedition run/stage contributions, real summit records, challenge lifecycle, and public/competitive governance remain additive future work.
 
 ## Decisions requiring review
 
-- ChatGPT should review and accept the completed production verification.
-- Decide whether the bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
-- Do not begin Stage 2 until its task document appears in GitHub.
+- ChatGPT should review S2-R01 and issue the next numbered command.
+- Approve or revise the proposed source-ID namespaces, SDE link formats, evidence classes, qualification boundaries, and additive implementation sequence before implementation.
+- Decide whether the canonical bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
 
 ## Recommended next action
 
-Wait for ChatGPT's Stage 2 task document in GitHub. Do not backfill, create a mobile build, or begin Stage 2 early.
+Wait for ChatGPT to review S2-R01 and update `docs/AI_TASK.md`. Do not begin S2-C02 early.
 
 ## Git branch and latest commit SHA
 
@@ -107,6 +110,7 @@ Wait for ChatGPT's Stage 2 task document in GitHub. Do not backfill, create a mo
 - Branch: `virtual-expeditions-mode`
 - Latest Phase 1 implementation SHA: `bf831921c9ae2b901a25b29bdc60ab8e8af4f26c`
 - Publish marker SHA: `99c41a4abb2ee26ee03b43fd5320a3ca858b2a80`
+- S2-C01 command SHA: `560e1fe3410d82af0abd20a0d3774555ce0ed48f`
 
 The commit containing these coordination documents is reported in the completion message because a Git commit cannot embed its own final SHA without changing that SHA.
 
