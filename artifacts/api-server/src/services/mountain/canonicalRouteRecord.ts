@@ -47,6 +47,8 @@ type RouteRecordRow = Record<string, unknown> & {
   geometryVersion?: string | null;
   geometryDerivationMethod?: string | null;
   geometrySourceMembers?: Array<Record<string, unknown>> | null;
+  geometryMemberCount?: number;
+  geometryReusableMemberCount?: number;
   geometryValidationPassed?: boolean;
   profileVersion?: string | null;
   profileSpacingM?: number | null;
@@ -99,16 +101,19 @@ const ROUTE_RECORD_SQL = sql`
     e.rights_statement AS "rightsStatement",
     e.geometry_reuse_allowed AS "geometryReuseAllowed",
     CASE WHEN geom.geom IS NULL OR geom.member_count = 0
+      OR geom.reusable_member_count <> geom.member_count
       OR e.rights_classification <> 'reusable_geometry'
       OR NOT e.geometry_reuse_allowed THEN NULL
       ELSE ST_AsGeoJSON(geom.geom)::jsonb END AS "geometry",
     geom.geometry_version AS "geometryVersion",
     geom.derivation_method AS "geometryDerivationMethod",
     geom.source_members AS "geometrySourceMembers",
-    EXISTS (
-      SELECT 1 FROM public.route_validation AS rv
-      WHERE rv.route_id = rd.route_id AND rv.outcome = 'pass'
-    ) AS "geometryValidationPassed",
+    geom.member_count AS "geometryMemberCount",
+    geom.reusable_member_count AS "geometryReusableMemberCount",
+    -- route_validation currently has no published version relationship that
+    -- proves applicability to this exact geometry/definition version. Keep
+    -- geometry degraded until a schema/publication link is approved.
+    FALSE AS "geometryValidationPassed",
     NULL::text AS "profileVersion",
     NULL::float8 AS "profileSpacingM",
     NULL::text AS "profileCalculationVersion",
@@ -127,7 +132,8 @@ const ROUTE_RECORD_SQL = sql`
         g.geom,
          g.version AS geometry_version,
         g.derivation_method,
-        COUNT(es.id)::int AS member_count,
+        COUNT(gm.id)::int AS member_count,
+        COUNT(es.id)::int AS reusable_member_count,
         COALESCE(json_agg(json_build_object(
           'provider', sb.provider,
           'sourceUrl', sb.source_url,
@@ -147,10 +153,6 @@ const ROUTE_RECORD_SQL = sql`
        AND es.geometry_reuse_allowed = TRUE
       WHERE g.route_definition_id = rd.id
         AND g.version = rd.version
-        AND EXISTS (
-          SELECT 1 FROM public.route_validation AS rv
-          WHERE rv.route_id = rd.route_id AND rv.outcome = 'pass'
-        )
       GROUP BY g.id, g.geom, g.version, g.derivation_method
       ORDER BY g.id DESC
       LIMIT 1
@@ -279,6 +281,8 @@ export function buildCanonicalRouteRecord(
     geometry: row.geometry &&
       row.rightsClassification === "reusable_geometry" &&
       row.geometryReuseAllowed === true &&
+      row.geometryMemberCount != null &&
+      row.geometryReusableMemberCount === row.geometryMemberCount &&
       row.geometryValidationPassed === true &&
       geometrySources.length
       ? {

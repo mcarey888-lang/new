@@ -4,6 +4,7 @@ import {
   lookupVerifiedCanonicalSummitsInArea,
   lookupVerifiedCanonicalMountain,
   normalizeMountainLookupTerm,
+  CANONICAL_LOOKUP_READ_BOUNDARY,
   type CanonicalLookupResult,
   type CanonicalQuery,
   type VerifiedCanonicalMountain,
@@ -156,6 +157,10 @@ async function invoke(
 }
 
 describe("normalizeMountainLookupTerm", () => {
+  it("uses the bounded ENGINE read helper for both target and area defaults", () => {
+    expect(CANONICAL_LOOKUP_READ_BOUNDARY).toBe("executeEngineReadOnlyQuery");
+  });
+
   it("uses NFKC and Unicode alphanumeric normalization", () => {
     expect(normalizeMountainLookupTerm("  ＡＬＥＴＳＣＨ-ＨＯＲＮ  ")).toBe(
       "aletschhorn",

@@ -1,4 +1,7 @@
 import { pythonUnicode14Casefold } from "./unicodeCasefold";
+import { executeEngineReadOnlyQuery } from "@workspace/db";
+
+export const CANONICAL_LOOKUP_READ_BOUNDARY = "executeEngineReadOnlyQuery" as const;
 
 export interface CanonicalLookupInput {
   name: string;
@@ -333,9 +336,13 @@ async function defaultQuery(
   text: string,
   params: readonly unknown[],
 ): Promise<Record<string, unknown>[]> {
-  const { pool } = await import("@workspace/db");
-  const result = await pool.query(text, [...params]);
-  return result.rows as Record<string, unknown>[];
+  try {
+    return await executeEngineReadOnlyQuery<Record<string, unknown>>(text, params);
+  } catch {
+    // Engine absence, unreachable service, and missing published tables are
+    // intentionally indistinguishable from an empty canonical read.
+    return [];
+  }
 }
 
 /**

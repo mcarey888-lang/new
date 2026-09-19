@@ -37,6 +37,8 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   geometryDerivationMethod: "verified_osm",
   geometrySourceMembers: [{ evidenceId: "geometry-evidence" }],
   geometryValidationPassed: true,
+  geometryMemberCount: 1,
+  geometryReusableMemberCount: 1,
   profileVersion: "dem-v1",
   profileSpacingM: 25,
   profileCalculationVersion: "dem-v1",

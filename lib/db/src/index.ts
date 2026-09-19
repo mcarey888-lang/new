@@ -45,4 +45,14 @@ export async function executeEngineReadOnly<T extends Record<string, unknown>>(
   return result.rows as T[];
 }
 
+export async function executeEngineReadOnlyQuery<T extends Record<string, unknown>>(
+  text: string,
+  params: readonly unknown[] = [],
+): Promise<T[]> {
+  const readPool = getEngineReadOnlyPool();
+  if (!readPool) throw new Error("ENGINE_DATABASE_URL is not configured");
+  const result = await readPool.query(text, [...params]);
+  return result.rows as T[];
+}
+
 export * from "./schema";
