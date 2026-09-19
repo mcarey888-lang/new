@@ -44,3 +44,4 @@
 - [GitHub push credential split](github-push-credential-split.md) — connector API access may allow push while the shell Git transport still lacks a writable credential.
 - [PA-A2 parked during Stage 5](pa-a2-parallel-blocker.md) — Publish’s incomplete ledger diff remains frozen, but this infrastructure issue does not block normal Stage 5 development.
 - [Expedition completion authority](expedition-completion-authority.md) — Final-stage saves return through Basecamp; only canonical 100% plus completed stages can award completion.
+- [SDE route read boundary](sde-route-read-boundary.md) — canonical reads use a bounded ENGINE_DATABASE_URL-only server pool; geometry stays hidden without exact rights and validation proof.
