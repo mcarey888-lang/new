@@ -10,7 +10,7 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 3 Navigation + UX Cohesion is active. S3-R02 is COMPLETE; continue with S3-C03 Training Home hierarchy. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the current navigation graph, state boundaries, risks, protected surfaces, and low-risk direction for C02-C07.
+Stage 3 Navigation + UX Cohesion is active. S3-R03 is COMPLETE; continue with S3-C04 Expedition Home hierarchy. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the current navigation graph, state boundaries, risks, protected surfaces, and low-risk direction for C02-C07.
 
 ## Last completed task
 
@@ -37,6 +37,7 @@ S3-R01 completed as a read-only targeted navigation/UX audit. No runtime, schema
 - S2-R10 completes integration/regression review and the Stage 2 report.
 - S3-R01 maps current navigation, shell state, Home resolution, duplicate redirects/stacks, mode-specific/shared surfaces, offline/protected boundaries, and the low-risk C02-C07 sequence.
 - S3-R02 implements the shared app shell boundary (`SharedTabBar`) unifying primary navigation (Home, Explore, Track, Community, You) without duplicating navigation stacks or corrupting state.
+- S3-R03 refines the Training Home dashboard hierarchy (Mountain > Readiness > Next Action > Weekly Progress) reducing nested-card clutter without changing calculations.
 
 ## Files changed
 
@@ -133,7 +134,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Execute S3-C03: refine Training Home hierarchy around one dominant goal and next action. Preserve readiness calculations, training-plan logic, and the unapplied Stage 2 migration.
+Execute S3-C04: refine Expedition Home around adventure progress and the next stage. Preserve Progress Mountain and existing simulation logic.
 
 ## Git branch and latest commit SHA
 

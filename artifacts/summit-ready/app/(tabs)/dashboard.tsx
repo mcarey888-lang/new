@@ -443,7 +443,7 @@ function AlpineCard({
 export default function DashboardScreen() {
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions } = useApp();
   const { isSubscribed } = useSubscription();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
@@ -795,6 +795,16 @@ export default function DashboardScreen() {
 
   const peakState = getPeakExperienceState(summitGoal, completedGoals);
 
+  let nextSession = null;
+  let nextSessionIndex = -1;
+  if (currentWeek) {
+    const idx = currentWeek.sessions.findIndex((s, i) => !completedPlanSessions[s.id ?? `${currentWeek.weekNumber}-${i}`]);
+    if (idx !== -1) {
+      nextSession = currentWeek.sessions[idx];
+      nextSessionIndex = idx;
+    }
+  }
+
   const trackingMsg = peakState.superseded
     ? `Proven on ${peakState.mountain}`
     : readinessScore >= 70 ? "You are on track"
@@ -826,26 +836,6 @@ export default function DashboardScreen() {
           distance={summitGoal.distance}
           highestAltitude={summitGoal.highestAltitude}
         />
-
-        {/* Ask Coach pill — scrolls to coach for Pro, upsells for free */}
-        <Animated.View entering={FadeInDown.delay(20).duration(400)}>
-          <TouchableOpacity
-            onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")}
-            activeOpacity={0.82}
-            style={styles.askPill}
-          >
-            <View style={styles.askPillIcon}>
-              <MessageCircle size={13} color={isSubscribed ? T.blue : T.textMuted} />
-            </View>
-            <Text style={[styles.askPillText, !isSubscribed && { color: T.textMuted }]}>
-              {isSubscribed ? "Ask your coach a question" : "AI Coach — Pro feature"}
-            </Text>
-            {isSubscribed
-              ? <ChevronRight size={13} color={T.blue} />
-              : <View style={styles.askPillProBadge}><Text style={styles.askPillProText}>PRO</Text></View>
-            }
-          </TouchableOpacity>
-        </Animated.View>
 
         {/* Upgrade banner — shown only after user has seen their plan */}
         {hasViewedPlan && !isSubscribed && (
@@ -968,6 +958,75 @@ export default function DashboardScreen() {
           </Animated.View>
         )}
 
+        {/* Today's Mission */}
+        {nextSession && currentWeek && (
+          <Animated.View entering={FadeInDown.delay(90).duration(500)}>
+            <TouchableOpacity
+              style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}
+              onPress={() => router.push(`/(tabs)/plan?week=${currentWeek.weekNumber}&session=${nextSessionIndex}` as any)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[PHASE_COLOR[currentWeek.phase] + "0A", "transparent"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.weekCardTop}>
+                <View style={[styles.phasePill, { backgroundColor: T.surface, borderWidth: 1, borderColor: T.border }]}>
+                  <Text style={[styles.phaseText, { color: T.text }]}>Up Next</Text>
+                </View>
+                <View style={styles.sessionChips}>
+                  <View style={[styles.sChip, { backgroundColor: T.surface }]}>
+                    {nextSession.type === "cardio" ? <Heart size={11} color={T.green} /> : nextSession.type === "hill" ? <TrendingUp size={11} color={T.green} /> : <Flag size={11} color={T.orange} />}
+                    <Text style={styles.sChipText}>{nextSession.label}</Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={styles.weekPurpose} numberOfLines={2}>{nextSession.description}</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Weekly Progress */}
+        {currentWeek && (
+          <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+            <View style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}>
+              <View style={styles.weekCardTop}>
+                <View style={[styles.phasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "20" }]}>
+                  <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[currentWeek.phase] }]} />
+                  <Text style={[styles.phaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                    Week {currentWeek.weekNumber} · {currentWeek.phase}
+                  </Text>
+                </View>
+                {currentWeek.isPeakWeek && (
+                  <View style={styles.peakBadge}>
+                    <Text style={styles.peakBadgeText}>⚡ PEAK</Text>
+                  </View>
+                )}
+                {currentWeek.isTaperWeek && (
+                  <View style={styles.taperBadge}>
+                    <Text style={styles.taperBadgeText}>↓ TAPER</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.progressRow}>
+                <View style={styles.progressTrack}>
+                  <Animated.View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${weekCompletion}%` as any,
+                        backgroundColor: PHASE_COLOR[currentWeek.phase],
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressLabel, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                  {weekCompletion}%
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
         {/* Stats Strip */}
         <Animated.View entering={FadeInDown.delay(110).duration(500)}>
           <View style={styles.statsSectionHeader}>
@@ -1057,63 +1116,25 @@ export default function DashboardScreen() {
           />
         )}
 
-        {/* Current Week */}
-        {currentWeek && (
-          <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-            <View style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}>
-              <LinearGradient
-                colors={[PHASE_COLOR[currentWeek.phase] + "0A", "transparent"]}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.weekCardTop}>
-                <View style={[styles.phasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "20" }]}>
-                  <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[currentWeek.phase] }]} />
-                  <Text style={[styles.phaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
-                    Week {currentWeek.weekNumber} · {currentWeek.phase}
-                  </Text>
-                </View>
-                {currentWeek.isPeakWeek && (
-                  <View style={styles.peakBadge}>
-                    <Text style={styles.peakBadgeText}>⚡ PEAK</Text>
-                  </View>
-                )}
-                {currentWeek.isTaperWeek && (
-                  <View style={styles.taperBadge}>
-                    <Text style={styles.taperBadgeText}>↓ TAPER</Text>
-                  </View>
-                )}
-                <Text style={[styles.weekTarget, { color: T.orange }]}>
-                  {currentWeek.targetElevation}m
-                </Text>
-              </View>
-              <Text style={styles.weekPurpose}>{currentWeek.purpose}</Text>
-              <View style={styles.progressRow}>
-                <View style={styles.progressTrack}>
-                  <Animated.View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${weekCompletion}%` as any,
-                        backgroundColor: PHASE_COLOR[currentWeek.phase],
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.progressLabel, { color: PHASE_COLOR[currentWeek.phase] }]}>
-                  {weekCompletion}%
-                </Text>
-              </View>
-              <View style={styles.sessionChips}>
-                {currentWeek.sessions.map((s, i) => (
-                  <View key={i} style={[styles.sChip, { backgroundColor: T.surface }]}>
-                    {s.type === "cardio" ? <Heart size={11} color={T.green} /> : s.type === "hill" ? <TrendingUp size={11} color={T.green} /> : <Flag size={11} color={T.orange} />}
-                    <Text style={styles.sChipText}>{s.label}</Text>
-                  </View>
-                ))}
-              </View>
+        {/* Ask Coach pill — scrolls to coach for Pro, upsells for free */}
+        <Animated.View entering={FadeInDown.delay(20).duration(400)}>
+          <TouchableOpacity
+            onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")}
+            activeOpacity={0.82}
+            style={styles.askPill}
+          >
+            <View style={styles.askPillIcon}>
+              <MessageCircle size={13} color={isSubscribed ? T.blue : T.textMuted} />
             </View>
-          </Animated.View>
-        )}
+            <Text style={[styles.askPillText, !isSubscribed && { color: T.textMuted }]}>
+              {isSubscribed ? "Ask your coach a question" : "AI Coach — Pro feature"}
+            </Text>
+            {isSubscribed
+              ? <ChevronRight size={13} color={T.blue} />
+              : <View style={styles.askPillProBadge}><Text style={styles.askPillProText}>PRO</Text></View>
+            }
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* AI Coach */}
         <Animated.View entering={FadeInDown.delay(320).duration(500)}>

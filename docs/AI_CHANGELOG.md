@@ -173,3 +173,15 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** COMPLETE. TypeScript check passed for the mobile artifact.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S3-R03 Training Home hierarchy
+
+**Task:** Execute S3-C03: Refine Training Home hierarchy around one dominant goal and next action.
+
+**Implementation:** Reorganized `dashboard.tsx` inside the Training shell to prioritize the target mountain/date, Readiness score, Today's Mission (first uncompleted session), and weekly progress. Reduced visual clutter and nested sections while reusing existing outdoor-themed `weekCard` and `statsStrip` styling. Preserved all readiness and training plan logic without modifying schema, Expedition mode, or SDE.
+
+**Important files/schema:** `artifacts/summit-ready/app/(tabs)/dashboard.tsx`.
+
+**Tests/result:** COMPLETE. TypeScript check passed.
+
+**Commit:** Reported in the completion message after this entry is committed.
