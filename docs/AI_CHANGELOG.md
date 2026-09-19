@@ -2,6 +2,82 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-C09 evidence-matrix corrections
+
+**Task:** Resolve final architecture-review distinctions for C09 evidence and
+later catalog acceptance.
+
+**Implementation:** Added distinct matrix rows for the development/test
+migration path, adapter flag semantics, canonical bridge semantics, static
+zero-backfill evidence versus row-level zero-count verification, C09
+no-mutation record versus production DB verification, and rollback/recovery
+assumptions. Verified the migration artifact contains exactly 21 named
+check/foreign-key constraints. Added objective acceptance criteria for five
+tables, sixteen migration-created indexes, twenty-one named check/FK
+constraints plus five primary keys, and five zero-row counts. Added a
+SELECT-only primary-key catalog query scoped to all five tables.
+
+**Result:** Application and row-level/production catalog checks remain
+**NOT RUN by design**; no DB access occurred. Static migration evidence,
+flag semantics, rollback assumptions, and the C10 default-off determination
+remain bounded PASS results. Updated handoff accordingly; no commit.
+
+## 2026-09-19 UTC — S4-C09 evidence matrix and operational catalog
+
+**Task:** Complete the architecture-review evidence requirements for C09
+without connecting to or applying any database.
+
+**Implementation:** Expanded `docs/STAGE_4_PRODUCTION_READINESS.md` with a
+PASS/PARTIAL/NOT RUN matrix, exact focused commands and test files, the
+Drizzle analyzer result, explicit mobile build/release requirement, protected
+SDE/Progress Mountain/cinematic/Real Summit findings, and SELECT-only
+placeholder catalog queries for all five ledger tables, sixteen indexes,
+named constraints/foreign keys, the simulated-only check, and zero-row
+verification. Clarified that migration application and catalog queries are
+NOT RUN by design and that C10 remains safe default-off.
+
+**Tests/result:** API focused tests **77/77**, API production build, SummitReady
+focused tests **31/31**, SummitReady typecheck, DB TypeScript, migration
+static/schema-contract checks, and `git diff --check` passed. Drizzle
+`check` was attempted without a database and stopped in configuration because
+the repository config requires `DATABASE_URL`/database parameters; no
+connection was made. No DB integration result, migration, production flag,
+mobile build, store release, or commit.
+
+**Files:** `docs/STAGE_4_PRODUCTION_READINESS.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`.
+
+## 2026-09-19 UTC — S4-C09 gate clarification
+
+**Correction:** Clarified the readiness review against the actual runtime
+gates. `assertStage2LedgerWritesAvailable()` rejects `NODE_ENV=production`
+even when `STAGE2_LEDGER_ENABLED=true`; canonical history projection also
+rejects production; and `CANONICAL_ACTIVITY_DEVELOPMENT_ACTIVATION` is
+test/development-only. The bridge and adapter flags are code-level opt-ins,
+not a production activation sequence.
+
+**Result:** `docs/STAGE_4_PRODUCTION_READINESS.md` now distinguishes
+dev/test-only controls, production-capable opt-in helpers, and the separately
+reviewed code change/release required to introduce an owner-approved
+production availability capability after migration verification. The document
+explicitly states that this does not trigger the current **APPROVAL REQUIRED**
+stop because C10 is bounded/default-off and needs no schema, while production
+rollout remains blocked. Handoff wording was updated accordingly. No
+migration, flag activation, database access, production change, release, or
+commit occurred.
+
+## 2026-09-19 UTC — S4-C09 Stage 4 production readiness review
+
+**Task:** Review Stage 2 migration `0002_stage2_activity_ledgers.sql` and all Stage 4 activation dependencies without applying production migrations, flags, data mutations, releases, or other RED-gate operations.
+
+**Implementation:** Added `docs/STAGE_4_PRODUCTION_READINESS.md`. The review inventories the exact additive SQL artifact, expected ledger tables/indexes/constraints and owner-safe lineage, non-production flag configuration and activation order, optional manual development application path, preflight/post-migration checks, configuration rollback and recovery, mobile build requirements, known production blockers, and the constrained C10 safety determination. Updated `docs/AI_HANDOFF.md` to make C10 the next bounded non-production command.
+
+**Tests/result:** Read-only static review completed. Migration `0002_stage2_activity_ledgers.sql` remains unapplied; no database connector, SQL, production access, flag activation, backfill, reconciliation, consumer switch, release, or mobile build was performed. C10 is safe only for legacy/offline behavior and explicitly gated unavailable/pending states in test/development. Production migration and activation remain pending owner approval and separate verification.
+
+**Files:** `docs/STAGE_4_PRODUCTION_READINESS.md`, `docs/AI_HANDOFF.md`, `docs/AI_CHANGELOG.md`.
+
+**Commit:** Not committed; the parent agent will decide commit handling.
+
 ## 2026-09-19 UTC — S4-R08 canonical history projection shadow boundary
 
 **Task:** Integrate canonical private history only where equivalence is demonstrated, while preserving every legacy activity and the existing history consumer.

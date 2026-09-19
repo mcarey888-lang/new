@@ -10,11 +10,36 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 is active. S4-C08 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, the Elevation Bank decision/read service and consequence resolver are ready, and canonical history remains a shadowed read projection because legacy/canonical equivalence is not yet proven. Proceed to S4-C09; do not apply production migration or flags.
+Stage 4 S4-C09 is COMPLETE. `docs/STAGE_4_PRODUCTION_READINESS.md` records
+the non-production readiness review for the additive Stage 2 ledger migration
+and all Stage 4 dependencies. Production migration and activation remain
+blocked by the current hard production gates, a separately reviewed
+production-availability code change/release after migration verification,
+owner approval, rollback/backup confirmation, and legacy/canonical equivalence
+evidence. Setting `STAGE2_LEDGER_ENABLED=true` in production cannot enable
+writes. C10 may proceed only as a bounded non-production validation of
+legacy/offline and gated-unavailable behavior; do not apply the migration, set
+production flags, mutate production data, or switch consumers.
 
 ## Last completed task
 
-S4-C08 added the owner-scoped `/canonical-history` read boundary and a mobile canonical/legacy display projection utility. The boundary is explicitly shadowed by default and only reads canonical rows in test/development when `CANONICAL_HISTORY_PROJECTION_ENABLED=true`; existing private history consumers remain legacy-authoritative. The projection proves one canonical activity per All/filter view, preserves every legacy-only row, and refuses fuzzy matching. Legacy/canonical mismatch reporting still shows missing canonical IDs and duplicate/source mismatches, so no consumer switch was forced. No migration, production flag, data mutation, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-C09 produced `docs/STAGE_4_PRODUCTION_READINESS.md`. The review inventories
+the exact `0002_stage2_activity_ledgers.sql` additive artifact, expected
+tables/indexes/constraints, actual hard production gates, dev/test-only
+controls versus production-capable opt-ins, the required future
+production-availability code release, development/test application path,
+preflight/post-migration checks, configuration rollback and recovery, mobile
+build requirements, known blockers, and the explicit C10 safety
+determination. Safe focused checks now pass: API focused tests 77/77, API
+build, SummitReady focused tests 31/31, SummitReady typecheck, DB TypeScript,
+and migration static/schema-contract checks. The evidence matrix separately
+records development migration application and row-level/production DB checks
+as NOT RUN by design, while adapter/bridge semantics and rollback assumptions
+are PASS static review only. No migration, production flag, data mutation,
+release,
+backfill, reconciliation, consumer switch, or protected
+payment/authentication/privacy/SDE/Progress Mountain/cinematic change was
+made.
 
 ## Changes made
 
@@ -81,6 +106,7 @@ Coordination:
 - `docs/AI_CHANGELOG.md`
 - `docs/STAGE_3_NAVIGATION_UX_MAP.md`
 - `docs/STAGE_3_COMPLETION_REPORT.md`
+- `docs/STAGE_4_PRODUCTION_READINESS.md`
 
 ## Database/schema changes
 
@@ -130,7 +156,8 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 - No direct production SQL was run.
 - No production backfill or mobile build was performed.
 - Stage 2 migration `0002_stage2_activity_ledgers.sql` is prepared but was not applied to development or production.
-- `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; deployed code therefore uses its documented default of enabled.
+- `CANONICAL_ACTIVITY_BRIDGE_ENABLED` is unset in production; the current
+  Stage 4 bridge implementation therefore remains disabled.
 
 ## Known issues
 
@@ -148,11 +175,16 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 - Production publication of migration `0002_stage2_activity_ledgers.sql` requires separate owner approval through Replit Publish.
 - Adapter activation and consumer switching require a later approved release plan.
-- Decide whether the canonical bridge should remain default-enabled or be explicitly controlled with `CANONICAL_ACTIVITY_BRIDGE_ENABLED`.
+- Keep the canonical bridge explicitly controlled by
+  `CANONICAL_ACTIVITY_BRIDGE_ENABLED`; any production activation requires a
+  separate owner-approved rollout.
 
 ## Recommended next action
 
-Proceed to S4-C05 verification/review. Keep the consequence resolver and Elevation Bank service unwired from routes/UI and do not apply `0002_stage2_activity_ledgers.sql` or activate production flags.
+Proceed to S4-C10 only as the bounded non-production validation described in
+`docs/STAGE_4_PRODUCTION_READINESS.md`. Keep the Stage 2 migration unapplied,
+production flags disabled, canonical history shadowed, and legacy consumers
+authoritative.
 
 ## Git branch and latest commit SHA
 
@@ -163,6 +195,25 @@ Proceed to S4-C05 verification/review. Keep the consequence resolver and Elevati
 - S2-C01 command SHA: `560e1fe3410d82af0abd20a0d3774555ce0ed48f`
 - S2-R01 implementation SHA: `a1cfd9fac19f7d30571a45c1d0de8f6929a60b10`
 - S2-C02 command SHA: `b3310b3dc30837df14a76fd79f8b3446430ac6e5`
+
+## S4-C09 readiness handoff
+
+- `docs/STAGE_4_PRODUCTION_READINESS.md` is the controlling C09 artifact.
+- C10 is safe only for legacy/offline behavior and explicitly gated
+  unavailable/pending paths in test/development.
+- `STAGE2_LEDGER_ENABLED` cannot bypass the `NODE_ENV=production` hard
+  rejection; production needs a separately reviewed availability code change
+  and release after migration verification.
+- Stage 4 mobile changes require a new tested mobile build/release artifact
+  before shipping; no native/store artifact exists and store release remains
+  RED-gated.
+- Stage 2 migration `0002_stage2_activity_ledgers.sql` remains unapplied.
+- Later catalog acceptance is exactly five tables, sixteen migration-created
+  indexes, twenty-one named check/FK constraints plus five primary keys, and
+  five zero-row counts; catalog queries are documented but not run.
+- Do not enable `STAGE2_LEDGER_ENABLED` or any canonical adapter/history flag
+  in production. Do not perform production SQL, backfill, reconciliation,
+  consumer switching, or release work.
 
 The commit containing these coordination documents is reported in the completion message because a Git commit cannot embed its own final SHA without changing that SHA.
 
