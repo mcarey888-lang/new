@@ -26,15 +26,16 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { T, STATUS_COLOR, STATUS_LABEL, PHASE_COLOR } from "@/constants/theme";
+import { T, PHASE_COLOR } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
-import { ProgressRing } from "@/components/ProgressRing";
 import { AchievementToast } from "@/components/AchievementToast";
-import { getDaysRemaining, getWeeklyCompletion, isRequirementMet, getPeakExperienceState } from "@/utils/readinessScore";
+import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
+import { ProgressRing } from "@/components/ProgressRing";
+import { ReadinessV2Hero } from "@/components/ReadinessV2Hero";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
 
 // Animated WebP supports transparency on all platforms via expo-image.
@@ -778,9 +779,6 @@ export default function DashboardScreen() {
     );
   }
 
-  const statusColor = STATUS_COLOR(readinessScore);
-  const statusLabel = STATUS_LABEL(readinessScore);
-  const days = getDaysRemaining(summitGoal.summitDate);
   const currentWeek = getCurrentWeek(trainingPlan);
   const timeAssessment = assessTime(
     summitGoal.summitDate,
@@ -794,7 +792,6 @@ export default function DashboardScreen() {
   const totalDone = sessions.filter(s => s.completed).length;
   const hillsDone = sessions.filter(s => s.completed && s.type === "hill").length;
 
-  const peakState = getPeakExperienceState(summitGoal, completedGoals);
 
   let nextSession = null;
   let nextSessionIndex = -1;
@@ -806,11 +803,6 @@ export default function DashboardScreen() {
     }
   }
 
-  const trackingMsg = peakState.superseded
-    ? `Proven on ${peakState.mountain}`
-    : readinessScore >= 70 ? "You are on track"
-    : readinessScore >= 40 ? "Keep building fitness"
-    : "Behind — prioritise training";
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -888,78 +880,7 @@ export default function DashboardScreen() {
         )}
 
         {/* Readiness Hero Card — Expedition mode */}
-        {(
-          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
-            <View style={styles.readinessCard}>
-              <LinearGradient
-                colors={[statusColor + "10", "transparent"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.readinessInner}>
-                {/* Score ring — number hidden for free users with score > 40 */}
-                <TouchableOpacity
-                  onPress={!isSubscribed && readinessScore > 40 ? () => router.push("/paywall") : undefined}
-                  activeOpacity={!isSubscribed && readinessScore > 40 ? 0.85 : 1}
-                >
-                  <ProgressRing
-                    score={readinessScore}
-                    size={148}
-                    strokeWidth={11}
-                    hideScore={!isSubscribed && readinessScore > 40}
-                  />
-                </TouchableOpacity>
-                <View style={styles.readinessMeta}>
-                  <Text style={styles.areYouReadyLabel}>Are you ready?</Text>
-                  {!isSubscribed && readinessScore > 40 ? (
-                    <>
-                      <TouchableOpacity
-                        onPress={() => router.push("/paywall")}
-                        style={[styles.statusPill, { backgroundColor: T.greenDim }]}
-                        activeOpacity={0.8}
-                      >
-                        <Lock size={11} color={T.green} />
-                        <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.trackingMsg}>Score above 40 — upgrade to track progress</Text>
-                      <TouchableOpacity onPress={() => router.push("/paywall")} activeOpacity={0.8} style={styles.ringUpgradeBtn}>
-                        <Text style={styles.ringUpgradeBtnText}>See your full score →</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
-                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                        <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-                      </View>
-                      <Text style={styles.trackingMsg}>{trackingMsg}</Text>
-                      {peakState.superseded && (
-                        <View style={styles.provenBadge}>
-                          <Trophy size={11} color={T.green} />
-                          <Text style={styles.provenBadgeText}>Been there, done harder</Text>
-                        </View>
-                      )}
-                      <Text style={styles.daysText}>
-                        {days > 0 ? `${days} days until summit` : "Summit day!"}
-                      </Text>
-                    </>
-                  )}
-                  <View style={styles.difficultyRow}>
-                    <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                      <Flag size={11} color={T.textMuted} />
-                      <Text style={styles.diffText}>{summitGoal.difficulty}</Text>
-                    </View>
-                    <View style={[styles.diffPill, { backgroundColor: T.surface }]}>
-                      <Zap size={11} color={T.textMuted} />
-                      <Text style={styles.diffText}>{summitGoal.fitnessLevel}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-        )}
+        <ReadinessV2Hero />
 
         {/* Today's Mission */}
         {nextSession && currentWeek && (

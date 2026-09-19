@@ -8,7 +8,7 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run utils/reliability.test.ts utils/manualExpedition.test.ts utils/signatureExpedition.test.ts utils/trackingLaunchContext.test.ts",
+    "test": "vitest run utils/reliability.test.ts utils/manualExpedition.test.ts utils/signatureExpedition.test.ts utils/trackingLaunchContext.test.ts utils/readinessAdapter.test.ts",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
