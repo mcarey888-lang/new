@@ -1,58 +1,73 @@
 # SummitReady AI Task
 
-## S2-C01 — Unified Activity Architecture Audit
+## S2-C02 — Canonical Contracts and Stable IDs
 
 Stage: 2 — Unified Training/Expedition foundation
-Command: S2-C01
-Previous stage reviewed: Stage 1 production verification ACCEPTED.
+Command: S2-C02
+Previous response reviewed: S2-R01 ✓ ACCEPTED.
 
-Mode/cost guidance: Use normal Replit Agent effort. This is a bounded audit/design task. Do not use expensive extended/max-effort reasoning unless a concrete blocker genuinely requires it. Reuse existing reports and targeted searches rather than repeatedly re-reading the whole repository.
+Mode/cost guidance: Use normal/default Replit Agent effort. Keep this implementation bounded and targeted. Reuse the S2-R01 audit; do not repeat the whole repository audit. Escalate reasoning effort only for a concrete blocker.
 
 ### Objective
-Design the safest additive path for Training, Expeditions and Free Hike to share one canonical physical-activity foundation while keeping Training and Expeditions intentionally distinct.
+Implement the lowest-risk contract/identity foundation recommended by S2-R01 so subsequent adapters can canonicalize Training, Expedition and Free Hike activity without duplicating physical activities.
 
-Training serves users preparing for a real target mountain and centres on readiness and a personalised training plan.
-Expeditions serves casual/adventure hikers simulating famous mountain demands using local hills/routes and centres on staged expedition progress.
+This command may add internal TypeScript contracts/helpers/tests/documentation. It must NOT yet switch user-facing behavior or create production/schema changes.
 
-Do not merge these experiences. Unify the underlying activity/data foundation.
+### Approved architecture
+- Training and Expeditions remain separate product experiences.
+- One physical activity maps to one owner-scoped canonical activity; additional purposes are links/qualifications.
+- Stable source identity is source-qualified and never derived from names, dates, distance or elevation.
+- Existing Summit Data Engine is authoritative geographic asset and is referenced, not copied.
+- Real Summit, Expedition Completion and Mountain Simulation remain distinct.
+- S2-R01 source-ID/link/evidence direction is approved as the baseline.
+
+### Implement
+1. Define central typed contracts/helpers for canonical source namespaces, including at minimum:
+   - tracked_hill_session
+   - training_manual
+   - explore_hike
+   - extensible provider/import namespace support.
+2. Define/validate namespaced canonical link targets, including SDE mountain and route references. Keep existing persisted link schema compatible; validation can be service-layer/type-layer in this command.
+3. Define central evidence classification semantics for:
+   - gps_recorded
+   - estimated_manual
+   - indoor_training
+   - unavailable_untrusted
+   Map these safely onto existing Phase 1 evidence storage without schema migration in this command.
+4. Define adapter interfaces/input contracts that future manual Training and ExploreHike adapters will use.
+5. Add deterministic unit tests for formatting/parsing/validation, invalid IDs, SDE references, and idempotent identity generation.
+6. Document contracts briefly so later commands consume one definition rather than inventing new conventions.
+
+### Important compatibility requirement
+Do not rename or invalidate existing Phase 1 source_type/source_id values. The existing tracked-hill bridge must remain compatible. If S2-R01's illustrative colon-form differs from existing persisted conventions, preserve the existing persisted identity and make helpers explicitly backwards-compatible rather than migrating data.
 
 ### Protected assets
-1. Progress Mountain + summit transition: preserve the existing elevation-driven route/progress fill and the summit handoff/zoom into the live 3D mountain with climber summit experience. Do not modify, replace, simplify or regress it.
-2. Existing Summit Data Engine / 20,000+ UK summit catalogue: identify its actual schema, pipeline, IDs and relationships. Integrate with it; do not create a competing replacement catalogue, destructively migrate, duplicate or rebuild it.
+NO changes to:
+- the 21,576-mountain Summit Data Engine data/schema/import pipeline;
+- Progress Mountain, ExpeditionMountainProgress, cinematic/3D summit behavior;
+- Training/Expedition UX or calculations.
 
-### Audit scope
-Map every activity-like flow: GPS tracked hill sessions, Free Hike, Expedition tracking and stage completion, Training sessions including manual completion, logged hill sessions, Training history, Expedition Journal, Recent Activity, elevation totals, readiness calculations, achievements/challenges, mountain/hill completion, and any additional physical-activity systems discovered.
+### Do not
+- change production;
+- apply DB/schema migrations;
+- backfill historical records;
+- create a mobile build;
+- switch history/readiness/elevation/Expedition consumers to canonical reads;
+- implement Elevation Bank yet;
+- implement public leaderboards/competitive rules;
+- implement real summit records;
+- start S2-C03.
 
-For each identify: database model; API/service; client/local storage; ID generation; GPS/evidence; elevation source; completion representation; duplicate-record risk; downstream effects; and proposed relationship to the Phase 1 canonical model.
-
-### Canonical model review
-Review canonical_activities, canonical_activity_evidence, canonical_activity_links, canonical_activity_conflicts and canonical_activity_qualifications.
-
-Assess whether one physical activity can safely have multiple independent purposes/links without destructive change.
-
-Explicitly distinguish universal personal history, personal Elevation Bank, future public/competitive elevation, Training/readiness, Expedition/stage progress, summit/mountain completion, and challenge/achievement eligibility.
-
-Classify elevation evidence as GPS/recorded, estimated/manual, indoor/training, or unavailable/untrusted.
-
-### Summit Data Engine audit
-Locate and document the existing 20,000+ UK summit catalogue: canonical tables/schema, stable IDs, provenance metadata if present, import/build pipeline, current Training/Expedition/Explore references, route relationships and duplicate-identity risks. Recommend how canonical activity links should reference this existing asset.
-
-### Deliverable
-Create docs/STAGE_2_ARCHITECTURE_AUDIT.md containing:
-1. current activity-system map;
-2. fragmentation/duplication risks;
-3. proposed canonical mapping;
-4. qualification/eligibility matrix;
-5. Summit Data Engine integration map;
-6. Phase 1 schema gaps;
-7. recommended additive Stage 2 implementation sequence;
-8. backwards-compatibility risks;
-9. explicit confirmation both protected assets remain untouched.
-
-### Constraints
-Audit/design only. Do not change runtime behaviour, UI/navigation, readiness/Expedition calculations, Progress Mountain/3D summit code, summit catalogue, production, schema, data, or mobile build. Do not backfill or introduce a second activity system. Use targeted inspection to keep cost low.
+### Verification
+Run the smallest relevant unit/type/build checks for changed files/packages plus regression tests around existing canonical ingestion/bridge where practical. Do not spend credits rerunning unrelated expensive suites unless needed.
 
 ### Completion protocol
-Update docs/AI_HANDOFF.md, append S2-R01 to docs/AI_CHANGELOG.md, commit and push documentation changes to virtual-expeditions-mode, report status as COMPLETE/PARTIAL/BLOCKED/FAILED/APPROVAL REQUIRED, identify commit SHA and checks used, then stop. Do not begin S2-C02.
+When complete:
+- update docs/AI_HANDOFF.md;
+- append S2-R02 to docs/AI_CHANGELOG.md;
+- commit and push implementation/docs/tests to virtual-expeditions-mode;
+- status must be COMPLETE/PARTIAL/BLOCKED/FAILED/APPROVAL REQUIRED;
+- report commit SHA and checks;
+- stop before S2-C03.
 
-Expected response ID: S2-R01.
+Expected response ID: S2-R02.
