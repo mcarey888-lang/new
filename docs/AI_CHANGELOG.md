@@ -161,3 +161,15 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** COMPLETE. Final focused Stage 2 suites: 93 passed and four optional database integration tests skipped. Database TypeScript build and API production bundle passed. Final architecture review passed. Migration `0002_stage2_activity_ledgers.sql` is prepared but not applied. No production, deployment, mobile build, or protected-asset changes.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S3-R02 Shared app shell boundary
+
+**Task:** Execute S3-C02: Implement/refine the shared shell using the existing canonical shellMode/state architecture. Target primary navigation: Home, Explore, Track, Community, You.
+
+**Implementation:** Replaced duplicated tab configurations in `(tabs)/_layout.tsx` and `(expedition)/_layout.tsx` with a single unified `SharedTabBar` component. It honors the existing `shellMode` context dynamically (via colors) and routes to the correct mode-specific or shared screens without corrupting state if a deep link hits a shared path. Mode-specific route entry now safely synchronizes `shellMode` only when arriving at a mode-exclusive surface, preserving deep links and back behavior.
+
+**Important files/schema:** `artifacts/summit-ready/components/SharedTabBar.tsx`, `artifacts/summit-ready/app/(tabs)/_layout.tsx`, `artifacts/summit-ready/app/(expedition)/_layout.tsx`. Fixed trailing whitespace and corrected deep-link mode constraints so legacy virtual routes correctly preserve expedition state. No database/schema, production, data, UI, calculation, or Summit Data Engine changes.
+
+**Tests/result:** COMPLETE. TypeScript check passed for the mobile artifact.
+
+**Commit:** Reported in the completion message after this entry is committed.

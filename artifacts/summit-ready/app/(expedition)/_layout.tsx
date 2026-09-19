@@ -1,138 +1,48 @@
 /**
- * Expedition shell — separate tab navigator for the virtual-expedition experience.
- * Rendered as a full replacement for the Training tabs when the user switches
- * to Expeditions via the persistent ModeTogglePill.
+ * Expedition shell — separate route group for the virtual-expedition experience.
+ * It uses the same SharedTabBar as (tabs) to provide a unified app shell visually.
  */
 
-import { Redirect, Tabs } from "expo-router";
-import {
-  Compass, Mountain, Footprints, Map, TrendingUp, User,
-} from "lucide-react-native";
-import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { T } from "@/constants/theme";
-import { ModeTogglePill } from "@/components/ModeTogglePill";
+import React, { useEffect } from "react";
+import { Tabs, useSegments } from "expo-router";
 import { useApp } from "@/context/AppContext";
-
-const ACCENT = T.blue;
-const DIM    = T.blueDim;
+import { ModeTogglePill } from "@/components/ModeTogglePill";
+import { SharedTabBar } from "@/components/SharedTabBar";
 
 export default function ExpeditionLayout() {
-  const isWeb = Platform.OS === "web";
-  const insets = useSafeAreaInsets();
-  const { shellMode, isLoading, activeExpeditionId } = useApp();
+  const { isLoading, activeExpeditionId, shellMode, setShellMode } = useApp();
+  const segments = useSegments();
+  const currentRoute = segments[segments.length - 1] || "";
 
-  const tabBarHeight = isWeb ? 80 : 60 + insets.bottom;
-
-  const sharedScreenOptions = {
-    tabBarActiveTintColor: ACCENT,
-    tabBarInactiveTintColor: T.textDim,
-    headerShown: false,
-    tabBarStyle: {
-      position: "absolute" as const,
-      backgroundColor: T.bg,
-      borderTopWidth: 1,
-      borderTopColor: "rgba(100,160,255,0.10)",
-      elevation: 0,
-      height: tabBarHeight,
-      paddingBottom: isWeb ? 12 : insets.bottom,
-    },
-    tabBarBackground: () => (
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: T.bg }]} />
-    ),
-    tabBarLabelStyle: {
-      fontSize: 11,
-      fontFamily: "Inter_600SemiBold",
-      marginBottom: isWeb ? 0 : 2,
-    },
-  };
+  // If deep-linked here while in training mode, sync state to expedition
+  // rather than bouncing the user back, BUT only if it's a mode-specific route.
+  useEffect(() => {
+    if (isLoading || shellMode === "expedition") return;
+    const isModeSpecific = ["base-camp", "mountains", "track", "route", "progress", "expedition-complete"].includes(currentRoute);
+    if (isModeSpecific) {
+      setShellMode("expedition").catch(() => {});
+    }
+  }, [isLoading, shellMode, setShellMode, currentRoute]);
 
   if (isLoading) return null;
-  if (shellMode !== "expedition") return <Redirect href="/(tabs)/dashboard" />;
 
   return (
     <>
       <Tabs
         initialRouteName={activeExpeditionId ? "base-camp" : "mountains"}
-        screenOptions={sharedScreenOptions}
+        tabBar={(props) => <SharedTabBar />}
+        screenOptions={{ headerShown: false }}
       >
-        <Tabs.Screen
-          name="base-camp"
-          options={{
-            title: "Base Camp",
-            href: activeExpeditionId ? undefined : null,
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <Compass size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="mountains"
-          options={{
-            title: "Mountains",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <Mountain size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="track"
-          options={{
-            title: "Track",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <Footprints size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="route"
-          options={{
-            title: "Route",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <Map size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="progress"
-          options={{
-            title: "Progress",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <TrendingUp size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            tabBarIcon: ({ color, focused }) => (
-              <View style={focused ? [s.activeIconWrap, { backgroundColor: DIM }] : s.iconWrap}>
-                <User size={20} color={color} />
-              </View>
-            ),
-          }}
-        />
-        {/* Hidden from tab bar — navigated to programmatically on expedition completion */}
-        <Tabs.Screen
-          name="expedition-complete"
-          options={{ href: null }}
-        />
-        <Tabs.Screen
-          name="account"
-          options={{ href: null }}
-        />
+        <Tabs.Screen name="base-camp" options={{ href: activeExpeditionId ? undefined : null }} />
+        <Tabs.Screen name="mountains" />
+        <Tabs.Screen name="track" />
+        <Tabs.Screen name="route" />
+        <Tabs.Screen name="progress" />
+        <Tabs.Screen name="profile" />
+
+        {/* Hidden from tab bar — navigated to programmatically */}
+        <Tabs.Screen name="expedition-complete" options={{ href: null }} />
+        <Tabs.Screen name="account" options={{ href: null }} />
       </Tabs>
 
       {/* Persistent shell toggle — sits in the safe-area zone above all tabs */}
@@ -140,10 +50,3 @@ export default function ExpeditionLayout() {
     </>
   );
 }
-
-const s = StyleSheet.create({
-  iconWrap: { width: 36, height: 26, alignItems: "center", justifyContent: "center" },
-  activeIconWrap: {
-    width: 44, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 10,
-  },
-});
