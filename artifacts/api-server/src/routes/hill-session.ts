@@ -9,6 +9,10 @@ import {
   hillVerificationStats,
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import {
+  canonicalActivityBridgeEnabled,
+  ingestCanonicalActivityWithClient,
+} from "../services/canonicalActivity";
 
 const router: IRouter = Router();
 
@@ -185,9 +189,10 @@ const SaveTrackedSchema = z.object({
   targetReps:             z.number().int().min(1).optional(),
   estimatedGainPerRepM:   z.number().int().optional(),
   estimatedTotalGainM:    z.number().int().optional(),
-  recordedDistanceKm:     z.number().optional(),
-  recordedElevationGainM: z.number().int().optional(),
-  recordedDurationSeconds:z.number().int().optional(),
+  occurredAt:             z.coerce.date().optional(),
+  recordedDistanceKm:     z.number().nonnegative().optional(),
+  recordedElevationGainM: z.number().int().nonnegative().optional(),
+  recordedDurationSeconds:z.number().int().nonnegative().optional(),
   highestElevationM:      z.number().optional(),
   lowestElevationM:       z.number().optional(),
   rawGpsTrack:            z.array(z.unknown()).optional(),
@@ -200,7 +205,7 @@ router.post("/save-tracked", async (req, res) => {
     return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
   }
 
-  // Derive userId from the verified Clerk token (falls back to null in dev).
+  // Derive ownership from the verified Clerk token, never from request data.
   const { userId } = getAuth(req);
   const d = parsed.data;
 
@@ -217,69 +222,166 @@ router.post("/save-tracked", async (req, res) => {
   const usedForVerification = dataQualityScore >= 70 && matchConfidence >= 70;
 
   try {
-    {
-      const [existing] = await db.select({
-        id: trackedHillSessions.id,
-        dataQualityScore: trackedHillSessions.dataQualityScore,
-        matchConfidence: trackedHillSessions.matchConfidence,
-        usedForVerification: trackedHillSessions.usedForVerification,
-      }).from(trackedHillSessions)
-        .where(eq(trackedHillSessions.activityId, d.activityId))
-        .limit(1);
-      if (existing) {
-        return res.status(200).json({
-          ...existing,
-          completionType: "tracked_gps",
-          deduplicated: true,
+    const result = await db.transaction(async (tx) => {
+      const [ownedExisting] = userId
+        ? await tx.select({
+            id: trackedHillSessions.id,
+            canonicalActivityId: trackedHillSessions.canonicalActivityId,
+            dataQualityScore: trackedHillSessions.dataQualityScore,
+            matchConfidence: trackedHillSessions.matchConfidence,
+            usedForVerification: trackedHillSessions.usedForVerification,
+            completedAt: trackedHillSessions.completedAt,
+          }).from(trackedHillSessions).where(and(
+            eq(trackedHillSessions.userId, userId),
+            eq(trackedHillSessions.activityId, d.activityId),
+          )).limit(1)
+        : [];
+
+      const occurredAt = d.occurredAt ?? ownedExisting?.completedAt ?? new Date();
+      let canonicalActivityId = ownedExisting?.canonicalActivityId ?? null;
+      let canonicalStatus: "created" | "deduplicated" | "conflict" | "disabled" = "disabled";
+
+      if (userId && canonicalActivityBridgeEnabled()) {
+        const canonical = await ingestCanonicalActivityWithClient(tx, {
+          ownerUserId: userId,
+          sourceType: "tracked_hill_session",
+          sourceId: d.activityId,
+          sourceVersion: "1",
+          primaryContext: d.trainingSessionId ? "training" : "free_hike",
+          activityKind: "outdoor_hike",
+          occurredAt,
+          durationSeconds: d.recordedDurationSeconds,
+          distanceKm: d.recordedDistanceKm,
+          recordedAscentM: d.recordedElevationGainM,
+          lifecycle: "synced",
+          evidenceState: usedForVerification ? "quality_accepted" : "recorded_unverified",
+          visibility: "private",
+          sourceSnapshot: {
+            plannedHillName: d.plannedHillName,
+            plannedRouteName: d.plannedRouteName ?? null,
+            targetReps: d.targetReps ?? null,
+            estimatedGainPerRepM: d.estimatedGainPerRepM ?? null,
+            estimatedTotalGainM: d.estimatedTotalGainM ?? null,
+            highestElevationM: d.highestElevationM ?? null,
+            lowestElevationM: d.lowestElevationM ?? null,
+          },
+          evidence: [
+            ...(d.rawGpsTrack ? [{ evidenceType: "gps_track" as const, payload: d.rawGpsTrack }] : []),
+            ...(d.elevationProfile ? [{ evidenceType: "elevation_profile" as const, payload: d.elevationProfile }] : []),
+          ],
+          links: [
+            ...(d.trainingPlanId ? [{ linkType: "training_plan" as const, targetId: d.trainingPlanId }] : []),
+            ...(d.trainingSessionId ? [{ linkType: "training_session" as const, targetId: d.trainingSessionId }] : []),
+            ...(d.hillId ? [{ linkType: "canonical_hill" as const, targetId: String(d.hillId) }] : []),
+            ...(d.routeId ? [{ linkType: "canonical_route" as const, targetId: String(d.routeId) }] : []),
+          ],
         });
+        canonicalActivityId = canonical.activity.id;
+        canonicalStatus = canonical.status;
+        if (canonical.status === "conflict") {
+          return { kind: "conflict" as const, activityId: canonical.activity.id };
+        }
       }
+
+      if (ownedExisting) {
+        if (canonicalActivityId && !ownedExisting.canonicalActivityId) {
+          await tx.update(trackedHillSessions)
+            .set({ canonicalActivityId })
+            .where(eq(trackedHillSessions.id, ownedExisting.id));
+        }
+        return {
+          kind: "deduplicated" as const,
+          row: ownedExisting,
+          canonicalActivityId,
+          canonicalStatus,
+        };
+      }
+
+      const [row] = await tx.insert(trackedHillSessions).values({
+        userId:                 userId ?? null,
+        activityId:             d.activityId,
+        canonicalActivityId,
+        hillId:                 d.hillId ?? null,
+        routeId:                d.routeId ?? null,
+        trainingPlanId:         d.trainingPlanId ?? null,
+        trainingSessionId:      d.trainingSessionId ?? null,
+        plannedHillName:        d.plannedHillName,
+        plannedRouteName:       d.plannedRouteName ?? null,
+        targetReps:             d.targetReps ?? null,
+        estimatedGainPerRepM:   d.estimatedGainPerRepM ?? null,
+        estimatedTotalGainM:    d.estimatedTotalGainM ?? null,
+        completionType:         "tracked_gps",
+        recordedDistanceKm:     d.recordedDistanceKm ?? null,
+        recordedElevationGainM: d.recordedElevationGainM ?? null,
+        recordedDurationSeconds:d.recordedDurationSeconds ?? null,
+        highestElevationM:      d.highestElevationM ?? null,
+        lowestElevationM:       d.lowestElevationM ?? null,
+        rawGpsTrack:            d.rawGpsTrack ?? null,
+        elevationProfile:       d.elevationProfile ?? null,
+        dataQualityScore,
+        matchConfidence,
+        usedForVerification,
+        completedAt:            occurredAt,
+      }).onConflictDoNothing({
+        target: trackedHillSessions.activityId,
+      }).returning({ id: trackedHillSessions.id });
+
+      if (!row) {
+        if (userId) {
+          const [concurrentOwned] = await tx.select({
+            id: trackedHillSessions.id,
+            canonicalActivityId: trackedHillSessions.canonicalActivityId,
+            dataQualityScore: trackedHillSessions.dataQualityScore,
+            matchConfidence: trackedHillSessions.matchConfidence,
+            usedForVerification: trackedHillSessions.usedForVerification,
+          }).from(trackedHillSessions).where(and(
+            eq(trackedHillSessions.userId, userId),
+            eq(trackedHillSessions.activityId, d.activityId),
+          )).limit(1);
+          if (concurrentOwned) {
+            if (canonicalActivityId && !concurrentOwned.canonicalActivityId) {
+              await tx.update(trackedHillSessions)
+                .set({ canonicalActivityId })
+                .where(eq(trackedHillSessions.id, concurrentOwned.id));
+            }
+            return {
+              kind: "deduplicated" as const,
+              row: concurrentOwned,
+              canonicalActivityId,
+              canonicalStatus,
+            };
+          }
+        }
+        // The legacy table still has a global unique activity_id for released
+        // client compatibility. Never reveal the colliding owner's row.
+        return { kind: "owner_collision" as const };
+      }
+      return { kind: "created" as const, row, canonicalActivityId, canonicalStatus };
+    });
+
+    if (result.kind === "conflict") {
+      return res.status(409).json({
+        error: "Source identity payload conflict",
+        activityId: result.activityId,
+        conflict: true,
+      });
     }
-
-    const [row] = await db.insert(trackedHillSessions).values({
-      userId:                 userId ?? null,
-      activityId:             d.activityId,
-      hillId:                 d.hillId ?? null,
-      routeId:                d.routeId ?? null,
-      trainingPlanId:         d.trainingPlanId ?? null,
-      trainingSessionId:      d.trainingSessionId ?? null,
-      plannedHillName:        d.plannedHillName,
-      plannedRouteName:       d.plannedRouteName ?? null,
-      targetReps:             d.targetReps ?? null,
-      estimatedGainPerRepM:   d.estimatedGainPerRepM ?? null,
-      estimatedTotalGainM:    d.estimatedTotalGainM ?? null,
-      completionType:         "tracked_gps",
-      recordedDistanceKm:     d.recordedDistanceKm ?? null,
-      recordedElevationGainM: d.recordedElevationGainM ?? null,
-      recordedDurationSeconds:d.recordedDurationSeconds ?? null,
-      highestElevationM:      d.highestElevationM ?? null,
-      lowestElevationM:       d.lowestElevationM ?? null,
-      rawGpsTrack:            d.rawGpsTrack ?? null,
-      elevationProfile:       d.elevationProfile ?? null,
-      dataQualityScore,
-      matchConfidence,
-      usedForVerification,
-      completedAt:            new Date(),
-    }).onConflictDoNothing({
-      target: trackedHillSessions.activityId,
-    }).returning({ id: trackedHillSessions.id });
-
-    if (!row) {
-      const [existing] = await db.select({
-        id: trackedHillSessions.id,
-        dataQualityScore: trackedHillSessions.dataQualityScore,
-        matchConfidence: trackedHillSessions.matchConfidence,
-        usedForVerification: trackedHillSessions.usedForVerification,
-      }).from(trackedHillSessions)
-        .where(eq(trackedHillSessions.activityId, d.activityId))
-        .limit(1);
-      if (existing) {
-        return res.status(200).json({
-          ...existing,
-          completionType: "tracked_gps",
-          deduplicated: true,
-        });
-      }
-      throw new Error("Idempotent hill session insert did not return a row");
+    if (result.kind === "owner_collision") {
+      return res.status(409).json({
+        error: "Legacy activity identifier collision",
+        conflict: true,
+      });
+    }
+    if (result.kind === "deduplicated") {
+      return res.status(200).json({
+        id: result.row.id,
+        dataQualityScore: result.row.dataQualityScore,
+        matchConfidence: result.row.matchConfidence,
+        usedForVerification: result.row.usedForVerification,
+        completionType: "tracked_gps",
+        deduplicated: true,
+        canonicalActivityId: result.canonicalActivityId,
+      });
     }
 
     // Recalculate stats for this hill if we have a canonical record
@@ -290,11 +392,12 @@ router.post("/save-tracked", async (req, res) => {
     }
 
     return res.status(201).json({
-      id: row.id,
+      id: result.row.id,
       completionType: "tracked_gps",
       dataQualityScore,
       matchConfidence,
       usedForVerification,
+      canonicalActivityId: result.canonicalActivityId,
     });
   } catch (err) {
     req.log.error({ err }, "hill-session/save-tracked failed");

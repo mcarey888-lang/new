@@ -1,0 +1,454 @@
+SUMMITREADY 2.0 — PHASE 1 DEVELOPMENT REPORT
+Date: 19 September 2026
+Status: Development implementation complete; production migration not applied
+
+
+SCOPE AND CONSTRAINTS
+
+This report completes Phase 1 development only.
+
+Implemented:
+- additive canonical server-side activity foundation;
+- owner-scoped idempotent ingestion;
+- authenticated canonical activity create/read API;
+- authenticated tracked-hill-session compatibility bridge;
+- separate private raw GPS/elevation evidence;
+- typed secondary links;
+- purpose-specific qualification storage;
+- payload-conflict detection/audit;
+- development-only additive migration;
+- automated contract and development database integration tests.
+
+Not implemented:
+- Phase 2;
+- UI or navigation changes;
+- Elevation Bank, Trophy Room, Crowns, leaderboards, public profiles, or
+  Mountain Simulation UI;
+- legacy activity backfill or reconciliation mutation;
+- production migration;
+- mobile build;
+- replacement/refactor of AppContext, Session, ExploreHike,
+  ChallengeActivity, SavedExpedition, GPS/checkpoints, or offline outbox.
+
+No production data was queried or changed.
+No production migration was run.
+
+
+1. FILES CREATED
+
+- lib/db/src/schema/canonical-activities.ts
+- lib/db/migrations/0001_canonical_activity_foundation.sql
+- lib/db/migrations/0001_canonical_activity_foundation.rollback.sql
+- artifacts/api-server/src/services/canonicalActivity.ts
+- artifacts/api-server/src/routes/activities.ts
+- artifacts/api-server/src/__tests__/canonicalActivityContract.test.ts
+- artifacts/api-server/src/__tests__/canonicalActivityIntegration.test.ts
+- SUMMITREADY_2_PHASE_1_REPORT.txt
+
+
+2. FILES MODIFIED
+
+- lib/db/src/schema/index.ts
+  Exports the canonical activity schema.
+
+- lib/db/src/schema/canonical-hills.ts
+  Adds one nullable canonical_activity_id foreign-key bridge to
+  tracked_hill_sessions plus a lookup index.
+
+- artifacts/api-server/src/routes/index.ts
+  Mounts the canonical activity router behind existing Clerk authentication.
+
+- artifacts/api-server/src/routes/hill-session.ts
+  Bridges authenticated tracked GPS saves to canonical activities, preserves
+  old request fields/response fields, rejects negative tracked metrics, adds
+  optional occurredAt input, scopes existing-row lookup by Clerk owner, and
+  reports owner collisions/payload conflicts without exposing another user's
+  row.
+
+- artifacts/api-server/src/routes/user.ts
+  Deletes canonical activities owned by the authenticated account during
+  account deletion. Evidence, links, qualifications, and conflicts cascade;
+  legacy tracked_hill_sessions rows remain and their nullable canonical link is
+  set to null.
+
+
+3. SCHEMA CHANGES
+
+3.1 New table: canonical_activities
+
+Purpose:
+- one server-controlled immutable UUID per real-world activity;
+- owner-scoped source idempotency;
+- canonical activity metrics and lifecycle.
+
+Core columns:
+- id uuid primary key, server-generated with gen_random_uuid();
+- owner_user_id text not null;
+- source_type text not null;
+- source_id text not null;
+- source_version text nullable;
+- source_payload_hash text not null;
+- source_snapshot jsonb not null;
+- primary_context text not null:
+  training | expedition | free_hike | mountain_simulation;
+- activity_kind text not null;
+- occurred_at timestamp with time zone not null;
+- started_at / ended_at timestamps with time zone nullable;
+- duration_seconds / distance_km nullable;
+- recorded_ascent_m / validated_ascent_m / descent_m nullable;
+- lifecycle text not null;
+- evidence_state text not null;
+- visibility text not null, default private;
+- created_at / updated_at timestamps.
+
+Constraints:
+- unique(owner_user_id, source_type, source_id);
+- non-negative duration, distance, recorded ascent, validated ascent, descent;
+- ended_at may not precede started_at;
+- explicit context, lifecycle, evidence-state, and visibility checks.
+
+Elevation semantics:
+- recorded ascent and validated ascent are separate;
+- no summit altitude field;
+- no simulated target elevation field;
+- no credited ascent is stored on the activity itself;
+- purpose-specific credited metrics belong to qualification rows.
+
+3.2 New table: canonical_activity_evidence
+
+Purpose:
+- keep raw GPS/elevation evidence separate from activity summary data.
+
+Properties:
+- UUID primary key;
+- activity and owner references;
+- evidence type;
+- private JSON payload;
+- optional capture timestamp;
+- visibility is constrained to private.
+
+Raw GPS is never returned by GET /api/activities/:id.
+
+3.3 New table: canonical_activity_links
+
+Purpose:
+- attach one activity to several secondary contexts without duplicating the
+  activity.
+
+Supported typed links:
+- training_plan;
+- training_session;
+- expedition;
+- expedition_stage;
+- canonical_hill;
+- canonical_route;
+- community_route;
+- challenge.
+
+No generic completion link/type was added.
+Real Summit, Expedition Completion, and Mountain Simulation remain separate
+future concepts.
+
+3.4 New table: canonical_activity_qualifications
+
+Purpose:
+- store future purpose-specific qualification outcomes instead of one global
+  isVerified/isEligible boolean.
+
+Supported purposes:
+- personal_history;
+- elevation_bank_personal;
+- readiness;
+- real_summit_evidence;
+- summit_crown;
+- leaderboard;
+- achievement.
+
+Each result stores status, evidence class, reason codes, rule version,
+evaluation timestamp, and optional non-negative credited metric.
+
+3.5 New table: canonical_activity_conflicts
+
+Purpose:
+- audit materially different payloads submitted for an already accepted
+  owner/source identity.
+
+It records identifiers and payload hashes, not a second raw GPS payload.
+The accepted activity is not overwritten.
+
+3.6 Existing table altered: tracked_hill_sessions
+
+Additive change only:
+- canonical_activity_id uuid nullable;
+- foreign key to canonical_activities(id), ON DELETE SET NULL;
+- tracked_hill_sessions_canonical_activity_idx.
+
+Preserved:
+- all existing columns and records;
+- existing globally unique legacy activity_id;
+- existing released-client request and response fields.
+
+The legacy global activity_id uniqueness remains a compatibility constraint.
+Canonical identity itself is correctly owner-scoped. If two owners submit the
+same legacy activity ID, the canonical API can hold both owner-scoped
+activities, but the tracked-hill compatibility endpoint reports HTTP 409
+without returning the first owner's row.
+
+
+4. API CHANGES
+
+4.1 POST /api/activities
+
+Authentication:
+- protected by existing Clerk middleware;
+- owner_user_id comes only from getAuth(req).userId;
+- client-supplied owner identity is not accepted by the request schema.
+
+Behavior:
+- server generates immutable canonical UUID;
+- same owner/source/payload returns the same activity with deduplicated=true;
+- concurrent identical submissions create one activity;
+- same source ID for different owners creates separate canonical activities;
+- changed payload for the same owner/source returns HTTP 409 and records a
+  conflict without overwriting the accepted activity;
+- negative metrics and reversed start/end times return HTTP 400;
+- visibility defaults to private;
+- GPS/elevation evidence is stored in the private evidence table.
+
+4.2 GET /api/activities/:id
+
+Authentication/authorization:
+- requires Clerk authentication;
+- query is constrained by both canonical activity ID and authenticated owner;
+- another owner's ID resolves as 404;
+- raw evidence and source snapshot are not included in the response.
+
+4.3 POST /api/hill-session/save-tracked compatibility bridge
+
+Existing clients remain valid:
+- no existing required request field changed;
+- occurredAt is optional;
+- existing response fields remain;
+- canonicalActivityId is additive.
+
+Bridge behavior:
+- only authenticated Clerk-owned saves are canonicalized;
+- canonical source identity is:
+  (Clerk owner, "tracked_hill_session", legacy activityId);
+- canonical and legacy writes occur in one database transaction;
+- repeated and concurrent identical submissions deduplicate;
+- materially changed payloads return HTTP 409;
+- a cross-owner collision in the legacy globally unique activity_id returns
+  HTTP 409 without leaking the existing row;
+- canonicalActivityId links the legacy row to the canonical activity;
+- rawGpsTrack and elevationProfile are copied to private evidence rows;
+- hill, route, training plan, and training session references become typed
+  links;
+- route catalogue rows remain separate records;
+- no Elevation Bank projection or double-credit behavior was added.
+
+Disable path:
+- set CANONICAL_ACTIVITY_BRIDGE_ENABLED=false;
+- released legacy tracked-hill writes continue without canonical ingestion;
+- no schema rollback is required to disable runtime bridging.
+
+
+5. IDEMPOTENCY AND CONFLICT POLICY
+
+Canonical unique identity:
+- owner_user_id;
+- source_type;
+- source_id.
+
+Payload comparison:
+- relevant canonical summary, source snapshot, links, and evidence are
+  normalized deterministically;
+- a SHA-256 hash is stored;
+- JSON object key order does not alter the hash;
+- identical payloads deduplicate;
+- materially different payloads create a conflict audit row;
+- first accepted canonical values are retained;
+- no silent correction/overwrite exists in Phase 1.
+
+
+6. REPRESENTATIVE FIXTURES A–N
+
+Automated contract coverage exists for all Phase 0 representative fixtures:
+
+- A: multi-store GPS event maps to one canonical owner/source identity; route
+  remains a separate linkable record.
+- B: shared challenge activity identity maps to one activity with typed links.
+- C: same source ID for different owners remains owner-scoped and does not leak.
+- D: same owner/source with changed payload is a conflict.
+- E: missing IDs are not automatically fuzzily merged.
+- F: similar repeated hikes are not collapsed by metrics/route name.
+- G: manual evidence class is distinct from verified/competition evidence.
+- H: summit coordinate crossing alone does not imply verified summit ascent.
+- I: Expedition context cannot become a generic/real summit completion.
+- J: Mountain Simulation remains a context, not target-mountain ascent.
+- K: competition qualification storage is separate from private GPS evidence.
+- L: qualification status supports revoked outcomes.
+- M: virtualHikeProgress/other mutable aggregates are not activity inputs.
+- N: stable private owner identity does not depend on username/email.
+
+
+7. AUTOMATED TEST RESULTS
+
+Full API test suite:
+- 14 test files passed;
+- 1 database integration file skipped by default;
+- 221 tests passed;
+- 4 integration tests skipped by default;
+- command: pnpm --filter @workspace/api-server run test.
+
+Development database integration suite:
+- 1 file passed;
+- 4 tests passed;
+- command:
+  RUN_DB_INTEGRATION_TESTS=1 pnpm --filter @workspace/api-server exec vitest
+  run src/__tests__/canonicalActivityIntegration.test.ts.
+
+Integration behaviors verified:
+- eight concurrent identical submissions produced exactly one activity;
+- the same source ID for two owners produced two owner-scoped activities;
+- changed payload returned conflict and retained the first ascent;
+- GPS evidence and activity visibility defaulted to private;
+- test rows were deleted after the suite.
+
+Build checks:
+- @workspace/db TypeScript build passed;
+- API production bundle build passed;
+- git diff whitespace check passed;
+- no TypeScript diagnostics referenced Phase 1 files.
+
+Full API tsc --noEmit remains blocked by unrelated pre-existing diagnostics:
+- objectStorage.ts response.json() is typed unknown;
+- integrations-openai-ai-server declaration output is not built for several
+  existing routes.
+
+These diagnostics were not introduced by Phase 1 and were not changed because
+they are outside the approved scope.
+
+
+8. DEVELOPMENT MIGRATION RESULTS
+
+Applied only to the development database:
+- CREATE EXTENSION IF NOT EXISTS pgcrypto;
+- created canonical_activities;
+- created canonical_activity_evidence;
+- created canonical_activity_links;
+- created canonical_activity_qualifications;
+- created canonical_activity_conflicts;
+- added nullable tracked_hill_sessions.canonical_activity_id;
+- added foreign key and indexes.
+
+Post-migration verification confirmed:
+- all five new tables exist in public schema;
+- tracked_hill_sessions.canonical_activity_id exists, is nullable, and is uuid;
+- canonical_activities_owner_source_uidx exists;
+- tracked_hill_sessions_canonical_activity_idx exists;
+- zero phase1_test integration rows remained.
+
+No existing table, column, or record was deleted, renamed, truncated,
+overwritten, or backfilled.
+
+
+9. MIGRATION ROLLBACK/DISABLE STRATEGY
+
+Preferred operational rollback:
+1. Set CANONICAL_ACTIVITY_BRIDGE_ENABLED=false.
+2. Keep additive tables/column in place.
+3. Released legacy clients continue to use tracked_hill_sessions.
+4. Investigate/fix without deleting newly captured canonical data.
+
+Development destructive rollback reference:
+- lib/db/migrations/0001_canonical_activity_foundation.rollback.sql.
+
+That reference:
+- drops the nullable tracked_hill_sessions bridge column;
+- drops only the five Phase 1 tables;
+- does not delete tracked_hill_sessions or any legacy row.
+
+The destructive rollback file was not run against production.
+For production, disabling the bridge is safer than dropping canonical data.
+
+
+10. KNOWN LIMITATIONS AND RISKS
+
+- The existing tracked_hill_sessions.activity_id global unique index remains.
+  This preserves current released-client/database behavior but means the legacy
+  endpoint must report a cross-owner collision rather than store both legacy
+  rows. The canonical table itself correctly stores owner-scoped identities.
+
+- No production legacy records were backfilled. Existing rows receive a
+  canonical link only when an authenticated identical save safely passes
+  through the compatibility bridge.
+
+- No fuzzy/probable legacy merge engine was implemented. Ambiguous records stay
+  separate until a later approved reconciliation policy.
+
+- No correction API exists. Conflicting retries are audited and rejected.
+
+- Qualification rows provide the future foundation only. Phase 1 does not
+  evaluate Elevation Bank, Readiness, real summits, Crowns, leaderboards, or
+  achievements.
+
+- Raw evidence is private and omitted from activity reads, but no administrator
+  evidence-review API or retention scheduler exists in Phase 1.
+
+- Evidence is currently stored as JSONB. Large-track object-storage migration,
+  size limits, redaction, and retention policy require a separately approved
+  phase.
+
+- Existing tracked_hill_sessions still contains its historical raw_gps_track
+  JSONB column for released-client compatibility. Phase 1 does not destructively
+  move or erase legacy data.
+
+
+11. PROPOSED PRODUCTION MIGRATION — NOT APPLIED
+
+Before production execution:
+1. Review and approve
+   lib/db/migrations/0001_canonical_activity_foundation.sql.
+2. Confirm a current database backup/checkpoint.
+3. Deploy schema additively before enabling the bridge.
+4. Confirm existing tracked_hill_sessions row count and constraints.
+5. Apply only:
+   - five CREATE TABLE operations;
+   - supporting CREATE INDEX operations;
+   - one nullable ADD COLUMN;
+   - one ON DELETE SET NULL foreign key;
+   - one bridge index.
+6. Do not backfill in this migration.
+7. Deploy API with CANONICAL_ACTIVITY_BRIDGE_ENABLED=false first.
+8. Smoke-test released mobile tracked-hill save/read behavior.
+9. Enable the bridge separately.
+10. Monitor HTTP 409 payload/owner conflicts and database errors.
+
+Reason for each production change:
+- canonical_activities: owner-scoped canonical ledger identity and metrics;
+- canonical_activity_evidence: private evidence separation;
+- canonical_activity_links: non-duplicating secondary relationships;
+- canonical_activity_qualifications: purpose-specific future eligibility;
+- canonical_activity_conflicts: visible non-overwriting conflict audit;
+- tracked_hill_sessions.canonical_activity_id: optional legacy bridge;
+- constraints/indexes: enforce identity, metric sanity, privacy defaults, and
+  efficient owner/source lookup.
+
+Existing production records are preserved by design:
+- no destructive SQL;
+- no NOT NULL alteration on an existing column;
+- no legacy row rewrite;
+- no backfill;
+- legacy API fields remain compatible;
+- bridge can be disabled without schema rollback.
+
+
+12. PRODUCTION AND NEXT-PHASE STATUS
+
+Production migration: NOT APPLIED.
+Production backfill: NOT RUN.
+Phase 2: NOT STARTED.
+Mobile build: NOT CREATED.
+
+PHASE 1 DEVELOPMENT COMPLETE — PRODUCTION MIGRATION AWAITING APPROVAL

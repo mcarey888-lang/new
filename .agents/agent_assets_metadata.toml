@@ -410,3 +410,17 @@ mtime_ms = 1789803841299
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/000803ac-4d9b-487f-8367-23e74c79d3cb/de805d03-c3e2-4ef7-89f3-873ec0b287c5"
 storage_version_token = "1789803856835718"
 content_type = "text/plain"
+
+[[outputs]]
+id = "Mti0UtLHgPgi-9Xk0anGW"
+uri = "file://SUMMITREADY_2_PHASE_1_REPORT.txt"
+type = "text"
+title = "SummitReady 2.0 — Phase 1 Report"
+description = "Canonical activity foundation, development migration results, tests, risks, and proposed production migration. Production was not migrated."
+logical_id = "efeb83f7-5697-4d0d-b3b4-aafcfc6123b9"
+content_hash = "sha256:ba087f7f02320c74bd0ccdb6dcdca8219117691d4f441c0e46b323ef9adb0d9c"
+size = 16441
+mtime_ms = 1789804556986
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/efeb83f7-5697-4d0d-b3b4-aafcfc6123b9/3482d12a-3258-4fac-95a1-ef4c0194ddd8"
+storage_version_token = "1789804606128214"
+content_type = "text/plain"

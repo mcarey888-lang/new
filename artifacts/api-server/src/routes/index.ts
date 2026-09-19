@@ -24,6 +24,7 @@ import { signatureChallengesRouter } from "./signature-challenges";
 import { artworkRouter } from "./artwork";
 import { atlasRouter } from "./atlas";
 import redditConversionsRouter from "./reddit-conversions";
+import activitiesRouter from "./activities";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -58,6 +59,7 @@ router.use(trackedRoutesRouter);
 // Hill sessions and tracking data belong to a user — require auth.
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
 router.use("/hill-session", requireAuth(), hillSessionRouter);
+router.use(requireAuth(), activitiesRouter);
 
 // User account management — requires auth.
 router.use(requireAuth(), userRouter);
