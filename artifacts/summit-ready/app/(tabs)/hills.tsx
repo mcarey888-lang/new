@@ -244,13 +244,30 @@ export default function MyHillsScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-          <Text style={styles.title}>My Hills</Text>
+          <Text style={styles.title}>Explore</Text>
           {myHills.length > 0 && (
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{myHills.length}</Text>
             </View>
           )}
         </Animated.View>
+
+
+        {/* Training Context Banner */}
+        {summitGoal && (
+          <Animated.View entering={FadeInDown.delay(20).duration(400)}>
+            <View style={[styles.searchCard, { backgroundColor: T.surface, padding: 12, marginBottom: -4 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Mountain size={18} color={T.green} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green, textTransform: "uppercase" }}>Training For</Text>
+                  <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" }}>{summitGoal.mountainName}</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted }}>Target altitude: {summitGoal.highestAltitude}m</Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+        )}
 
         {/* Search Hills card */}
         <Animated.View entering={FadeInDown.delay(40).duration(400)}>
@@ -310,17 +327,30 @@ export default function MyHillsScreen() {
                   <View style={styles.searchStat}><Repeat size={11} color={T.textMuted} /><Text style={styles.searchStatVal}>{searchResult.repeats}×</Text><Text style={styles.searchStatLbl}>recs</Text></View>
                   <View style={styles.searchStat}><BarChart2 size={11} color={T.purple} /><Text style={styles.searchStatVal}>{searchResult.totalElevation}m</Text><Text style={styles.searchStatLbl}>total</Text></View>
                 </View>
-                <TouchableOpacity
-                  onPress={handleAddSearchResult}
-                  disabled={searchAdded}
-                  style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
-                  activeOpacity={0.75}
-                >
-                  {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
-                  <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
-                    {searchAdded ? "Added to your hills!" : "Add to my hills"}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                  <TouchableOpacity
+                    onPress={handleAddSearchResult}
+                    disabled={searchAdded}
+                    style={[styles.searchAddBtn, searchAdded && { backgroundColor: T.greenDim, borderColor: T.green + "50" }, { flex: 1 }]}
+                    activeOpacity={0.75}
+                  >
+                    {searchAdded ? <CheckCircle size={14} color={T.green} /> : <PlusCircle size={14} color={T.purple} />}
+                    <Text style={[styles.searchAddText, searchAdded && { color: T.green }]}>
+                      {searchAdded ? "Saved" : "Save"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.push({
+                      pathname: "/hike-tracking",
+                      params: { trackingMode: "freehike", hillName: searchResult.name, hillSessionKey: searchResult.routeIdentityKey }
+                    })}
+                    style={[styles.searchAddBtn, { flex: 1, backgroundColor: T.blueDim, borderColor: T.blue + "50" }]}
+                    activeOpacity={0.75}
+                  >
+                    <Footprints size={14} color={T.blue} />
+                    <Text style={[styles.searchAddText, { color: T.blue }]}>Track Hike</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -480,6 +510,17 @@ export default function MyHillsScreen() {
                 {/* Action buttons */}
                 <View style={styles.actionRow}>
                   <TouchableOpacity
+                    style={[styles.logBtn, { backgroundColor: T.blueDim, borderColor: T.blue + "50" }]}
+                    activeOpacity={0.75}
+                    onPress={() => router.push({
+                      pathname: "/hike-tracking",
+                      params: { trackingMode: "freehike", hillName: hill.name, hillSessionKey: hill.routeIdentityKey }
+                    })}
+                  >
+                    <Footprints size={14} color={T.blue} />
+                    <Text style={[styles.logBtnText, { color: T.blue }]}>Track Hike</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={[styles.logBtn, wasJustLogged && { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}
                     activeOpacity={0.75}
                     onPress={() => openLogModal(hill)}
@@ -488,7 +529,7 @@ export default function MyHillsScreen() {
                       ? <CheckCircle size={14} color={T.green} />
                       : <PlusCircle size={14} color={T.green} />}
                     <Text style={[styles.logBtnText, wasJustLogged && { color: T.green }]}>
-                      {wasJustLogged ? "Logged!" : "Log session"}
+                      {wasJustLogged ? "Logged!" : "Log"}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity

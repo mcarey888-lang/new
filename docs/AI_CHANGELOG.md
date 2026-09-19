@@ -197,3 +197,18 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** COMPLETE. TypeScript check passed.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S3-R05 Explore + mountain/route cohesion
+
+**Task:** Execute S3-C05: Refine Explore as the shared discovery surface using existing screens/components/data.
+
+**Implementation:** Renamed both mode-specific discovery surfaces (`hills.tsx` and `mountains.tsx`) to "Explore".
+- In Training mode (`hills.tsx`), added a Target-Relevant context banner pointing to the active training goal, and added "Track Hike" CTAs to search results and saved hills so users can seamlessly discover a route and start a Free Hike tracking session.
+- In Expedition mode (`ExpeditionMountainsScreen.tsx`), unified the title and explicitly labelled mountain metrics as "Real Summit" and "Simulated Gain" to distinguish real-world altitude from the simulated target, directly answering the requirement.
+All offline behaviors, SDE identities, and Route Engine features were preserved without schema changes.
+
+**Important files/schema:** `artifacts/summit-ready/app/(tabs)/hills.tsx`, `artifacts/summit-ready/components/ExpeditionMountainsScreen.tsx`.
+
+**Tests/result:** COMPLETE. TypeScript check passed.
+
+**Commit:** Reported in the completion message after this entry is committed.

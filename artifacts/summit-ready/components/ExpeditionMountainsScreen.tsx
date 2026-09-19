@@ -1281,7 +1281,7 @@ export default function ExpeditionMountainsScreen() {
             <View style={[s.card, { gap: 8 }]}>
               <Text style={s.mountainTitle}>{tp.name}</Text>
               <Text style={s.mountainSub}>Target route: {results.provenance?.selectedTargetRouteName ?? "selected route facts unavailable"}</Text>
-              <Text style={s.mountainSub}>Target route DNA · {tp.totalElevationGain.toLocaleString()}m gain · {tp.totalDistance}km</Text>
+              <Text style={s.mountainSub}>Target route DNA · {tp.totalElevationGain.toLocaleString()}m simulated gain · {tp.totalDistance}km</Text>
               <Text style={s.improveCandidateMeta}>Target average gradient: {manual.targetDna.averageGradientPercent == null ? "unavailable" : `${manual.targetDna.averageGradientPercent}% (estimated)`}</Text>
               <Text style={s.improveCandidateMeta}>Target technical character: {manual.targetDna.technicalCharacter ?? "unavailable"}</Text>
             </View>
@@ -1441,9 +1441,9 @@ export default function ExpeditionMountainsScreen() {
                 </View>
               </View>
               <View style={s.statsRow}>
-                <StatCell value={`${tp.summitElevation.toLocaleString()}m`} label="Summit" accent={T.blue} />
+                <StatCell value={`${tp.summitElevation.toLocaleString()}m`} label="Real Summit" accent={T.blue} />
                 <View style={s.statDiv} />
-                <StatCell value={`${tp.totalElevationGain.toLocaleString()}m`} label="Gain" accent={T.green} />
+                <StatCell value={`${tp.totalElevationGain.toLocaleString()}m`} label="Simulated Gain" accent={T.green} />
                 <View style={s.statDiv} />
                 <StatCell value={`${tp.totalDistance}km`} label="Distance" accent={T.orange} />
                 <View style={s.statDiv} />
@@ -2063,7 +2063,7 @@ export default function ExpeditionMountainsScreen() {
           {/* Title row */}
           <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 4 }}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={s.heroTitle}>Mountains</Text>
+              <Text style={s.heroTitle}>Explore</Text>
               <Text style={s.heroSub}>Explore signature expeditions or create{"\n"}your own adventure.</Text>
             </View>
             <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
