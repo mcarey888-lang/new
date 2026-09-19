@@ -1,115 +1,101 @@
-# SummitReady AI Task — Production Activation Gate A
+# SummitReady AI Task — Production Activation Gate A2
 
-## PA-A — Apply and verify Stage 2 ledger schema only
+## PA-A2 — Seed reviewed ledger schema into development, then re-run production Publish preflight
 
-Owner approval has been given for this narrowly bounded RED-gate action: apply the already-reviewed additive migration `lib/db/migrations/0002_stage2_activity_ledgers.sql` to the SummitReady **production database**, using the normal controlled Replit production database/publish mechanism.
+PA-A correctly stopped because Replit Publish compares production against the development database, and neither database currently contains the five Stage 2 ledger tables. Publish therefore reports an empty diff.
 
-This approval is for **schema migration only**. It does NOT approve production feature activation, data backfill, consumer switching, mobile release, Stage 5, or any other RED-gate action.
+The owner now explicitly approves the **development-database-only** application of the exact already-reviewed migration artifact so that the controlled Publish mechanism can generate a production diff.
 
-### Objective
+This does NOT yet authorize applying that generated diff to production.
 
-Safely make the Stage 2/Stage 4 ledger schema available in production while leaving all new runtime functionality disabled.
+Reviewed artifact identity from PA-A:
+- file: `lib/db/migrations/0002_stage2_activity_ledgers.sql`
+- Git blob: `e8848dfc4592390b6040d2c7e2a82d949f0a7be1`
+- SHA-256: `f2aeccb3cda06c663789c14b2b908c1b095f55d5143ddeb68b852e66396e6c69`
 
-Expected additive objects:
+Expected five tables:
 - `personal_elevation_credit_events`
 - `personal_elevation_credit_corrections`
 - `expedition_runs`
 - `expedition_stage_contributions`
 - `expedition_contribution_corrections`
-- required additive canonical owner/id index and reviewed indexes/constraints from migration 0002.
 
-Expected initial ledger row count: **zero**. Do not populate them.
+## PA-A2-C01 — Reconfirm artifact and development target
 
-### Mandatory preflight — PA-A-C01
+Before mutation:
+1. Confirm the migration file still matches BOTH the Git blob and SHA-256 above.
+2. Confirm target is the managed SummitReady **development** database, not production.
+3. Read-only confirm the five ledger tables are still absent from development.
+4. Record non-sensitive baseline counts for `canonical_activities` and `tracked_hill_sessions`.
+5. Confirm the operation will execute only the reviewed additive migration and no unrelated schema synchronization.
+6. Do not use push-force.
 
-Before changing production:
+If any check fails, STOP BLOCKED/APPROVAL REQUIRED.
 
-1. Confirm the target is the actual SummitReady production database.
-2. Confirm the exact migration blob/content is the reviewed current `0002_stage2_activity_ledgers.sql`; do not regenerate it.
-3. Confirm backup/PITR is enabled and record a non-secret verification in the handoff/changelog.
-4. Perform read-only schema inspection and confirm there is no conflicting/destructive pending schema operation bundled with this action.
-5. Record current counts of existing canonical/legacy activity tables needed to prove no data loss, without exposing private activity payloads.
-6. Confirm all Stage 2/Stage 4 production flags remain unset/false and that current code still hard-rejects production ledger writes/history activation.
-7. Do not use `push-force`, destructive schema synchronization, table recreation, truncate/delete, backfill or reconciliation.
+## PA-A2-C02 — Apply exact migration to development only
 
-If any preflight condition is not satisfied, STOP with **BLOCKED** or **APPROVAL REQUIRED** and make no production change.
+Apply the exact reviewed `0002_stage2_activity_ledgers.sql` artifact to the development database using the controlled development migration process.
 
-Result: PA-A-R01.
+No edits, regeneration, backfill, test rows, cleanup, feature flags, production operation, consumer switch, or release.
 
-### Migration — PA-A-C02
+Immediately verify:
+- all five tables exist;
+- reviewed PKs/FKs/checks/indexes exist;
+- new ledger tables contain zero rows;
+- existing baseline counts are unchanged;
+- no unrelated/destructive schema change occurred.
 
-Only after C01 passes, apply **only** the reviewed additive migration 0002 through the controlled production database migration/publish path.
+If verification fails, do not destructively repair. STOP and report.
 
-Rules:
-- no edits to migration during application;
-- no unrelated schema changes;
-- no backfill;
-- no feature flags;
-- no application/runtime activation;
-- no data cleanup;
-- no release/store action.
+## PA-A2-C03 — Re-run Publish analyzer, but DO NOT publish
 
-If the controlled mechanism attempts to include unrelated/destructive changes, abort before applying and report **APPROVAL REQUIRED**.
+After development verification, run the controlled Replit Publish schema analyzer against production.
 
-Result: PA-A-R02.
+Expected result: an additive production diff corresponding to migration 0002.
 
-### Post-migration verification — PA-A-C03
+Inspect and record every proposed production statement/class of statement. Verify:
+- it creates only the reviewed ledger schema/index/constraint additions;
+- it contains no DROP/TRUNCATE/DELETE/data rewrite/destructive alteration;
+- it does not modify or backfill existing user rows;
+- no unrelated schema change is bundled;
+- production flags remain unset.
 
-Immediately perform read-only verification:
+**DO NOT click/execute Publish and DO NOT apply the production diff in PA-A2.**
 
-- all five expected ledger tables exist;
-- expected PKs, owner-safe composite FKs, status/evidence/simulated checks, lineage constraints, unique identities, lookup indexes and effective-revision indexes exist;
-- `canonical_activities(owner_user_id,id)` unique index exists as reviewed;
-- each new ledger table contains exactly **0 rows**;
-- pre-existing canonical/legacy row counts match the preflight baseline;
-- no historical activity was modified/backfilled;
-- no unexpected production schema object was changed;
-- production feature flags remain disabled/unset;
-- production runtime still follows the existing safe legacy/unavailable path;
-- perform the smallest safe production health check; do not create test activity data.
+If the analyzer is still empty, differs materially from 0002, or contains unrelated/destructive work, STOP BLOCKED/APPROVAL REQUIRED.
 
-If verification differs from expectation, do not attempt destructive repair. Stop and report the exact discrepancy.
+## PA-A2-C04 — Report and stop for production approval
 
-Result: PA-A-R03.
-
-### Documentation and stop — PA-A-C04
-
-Update:
+Create/update:
+- `docs/PRODUCTION_ACTIVATION_GATE_A2_REPORT.md`
 - `docs/AI_HANDOFF.md`
 - `docs/AI_CHANGELOG.md`
-- create `docs/PRODUCTION_ACTIVATION_GATE_A_REPORT.md`
 
-Report:
-- target/environment verification (no secrets);
-- migration identity/hash or Git blob;
-- backup/PITR confirmation;
-- before/after non-sensitive row-count evidence;
-- tables/indexes/constraints verified;
-- production health result;
-- confirmation that no flags/backfill/runtime activation occurred;
-- any discrepancy or follow-up prerequisite.
+Include:
+- development artifact/target verification;
+- before/after non-sensitive counts;
+- development schema verification;
+- exact Publish analyzer summary for production;
+- destructive-change assessment;
+- confirmation production is unchanged;
+- exact next production action that would be required.
 
-Commit and push documentation/code state if documentation changed.
+Commit and push documentation.
 
-Then **STOP**.
+Then STOP with **APPROVAL REQUIRED** if the generated production diff is clean and ready for owner approval, otherwise BLOCKED/FAILED as appropriate.
 
-Final status must be one of:
-**COMPLETE / PARTIAL / BLOCKED / FAILED / APPROVAL REQUIRED**
-
-### Explicitly NOT authorised
+## Explicitly not authorised
 
 Do not:
-- remove the production hard gates;
-- set `STAGE2_LEDGER_ENABLED`;
-- enable canonical Manual Training or ExploreHike adapters;
-- enable/switch canonical history;
-- backfill or reconcile old activities;
-- write ledger/activity test rows to production;
-- modify/delete existing user data;
+- apply any schema change to production;
+- publish/deploy production;
+- set Stage 2/4 flags;
+- remove production hard gates;
+- backfill/reconcile activity history;
+- activate canonical history or adapters;
+- create test activity/ledger rows in production;
 - start Stage 5;
 - build/release mobile;
-- change auth, payments, subscriptions or privacy;
-- change Summit Data Engine data/identity;
-- change Progress Mountain or cinematic/live-3D summit experience.
-
-This authorization expires when PA-A-C04 is reached or any blocker occurs.
+- change auth/payments/privacy;
+- alter Summit Data Engine identities/data;
+- alter Progress Mountain or cinematic/live-3D summit behavior.
