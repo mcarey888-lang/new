@@ -4,7 +4,9 @@ import {
 } from "./routeMatching";
 import {
   selectCanonicalRoute,
+  mapExpeditionStage,
   type CanonicalRouteRecord,
+  type ExpeditionLocalStageRoute,
   type RouteIntelligence,
   type RouteReadResult,
 } from "./routeIntelligence";
@@ -63,6 +65,71 @@ export type TrainingRouteIntelligence = {
   target: RouteReadResult<RouteIntelligence> | null;
   matches: RouteMatchResult;
 };
+
+export type ExpeditionStageRouteIntelligence = {
+  reference: ConsumerRouteReference;
+  stage: ExpeditionLocalStageRoute;
+  targetRoute: RouteReadResult<RouteIntelligence> | null;
+  dna: RouteMatchResult;
+};
+
+/**
+ * Adapts one persisted Expedition stage to the shared canonical route boundary.
+ * A legacy/generated stage remains a compatibility reference and never inherits
+ * SDE trust merely because its display name or metrics look familiar.
+ */
+export function buildExpeditionStageRouteIntelligence(
+  stage: NearbyHill,
+  records: readonly CanonicalRouteRecord[],
+  targetRouteId?: string | null,
+): ExpeditionStageRouteIntelligence {
+  const routeId = stage.routeIdentityKey?.trim() || null;
+  const canonical = routeId
+    ? selectCanonicalRoute({ routeId, candidates: records })
+    : {
+        availability: "unavailable" as const,
+        value: null,
+        reasons: ["missing_identity" as const],
+      };
+  const stageReference: ConsumerRouteReference = canonical.value
+    ? {
+        routeIdentityKey: canonical.value.route.version.routeId,
+        summitIdentityKey: canonical.value.mountain.id,
+        status: canonical.availability === "available" ? "verified" : "degraded",
+        label: canonical.availability === "available"
+          ? "SummitReady verified route"
+          : "Canonical route needs verification",
+        reason: canonical.availability === "available"
+          ? "Stable SDE route identity, provenance and route facts are available."
+          : "A canonical identity exists, but one or more verified route facts are incomplete.",
+      }
+    : routeReferenceFromNearbyHill(stage);
+  const stageSnapshot = {
+    name: stage.name,
+    simulatedElevationGainM: Math.max(0, stage.totalElevation ?? stage.elevation ?? 0),
+    routeIdentityKey: stage.routeIdentityKey,
+    summitIdentityKey: stage.summitIdentityKey ?? stage.summitId,
+  };
+  const targetRoute = targetRouteId
+    ? selectCanonicalRoute({ routeId: targetRouteId, candidates: records })
+    : null;
+  const dna = targetRouteId
+    ? buildTrainingRouteIntelligence(targetRouteId, records, routeId ? [routeId] : []).matches
+    : {
+        availability: "unavailable" as const,
+        targetRouteId: null,
+        matches: [] as [],
+        filtered: [],
+        error: "invalid_target_identity" as const,
+      };
+
+  return {
+    reference: stageReference,
+    stage: mapExpeditionStage(stageSnapshot, canonical),
+    targetRoute,
+    dna,
+  };
+}
 
 /**
  * Scores Training candidates only when the caller has canonical records for

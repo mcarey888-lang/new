@@ -36,8 +36,8 @@ import {
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
 import {
+  buildExpeditionStageRouteIntelligence,
   buildTrainingRouteIntelligence,
-  routeReferenceFromNearbyHill,
 } from "@/utils/routeConsumerAdapters";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -390,12 +390,17 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
           {isWeekend ? (
             <View style={{ gap: 8 }}>
               {hills.slice(0, 2).map((hill, idx) => (
-                <HillCard key={hill.routeIdentityKey ?? `${hill.name}-${idx}`} hill={hill} dayLabel={idx === 0 ? "Saturday" : "Sunday"} />
+                <HillCard
+                  key={hill.routeIdentityKey ?? `${hill.name}-${idx}`}
+                  hill={hill}
+                  targetRouteId={targetRouteIdentityKey}
+                  dayLabel={idx === 0 ? "Saturday" : "Sunday"}
+                />
               ))}
             </View>
           ) : (
             hills.slice(0, 1).map(hill => (
-              <HillCard key={hill.routeIdentityKey ?? hill.name} hill={hill} />
+              <HillCard key={hill.routeIdentityKey ?? hill.name} hill={hill} targetRouteId={targetRouteIdentityKey} />
             ))
           )}
         </Animated.View>
@@ -509,8 +514,17 @@ function StatChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-function HillCard({ hill, dayLabel }: { hill: NearbyHill; dayLabel?: string }) {
-  const reference = routeReferenceFromNearbyHill(hill);
+function HillCard({
+  hill,
+  targetRouteId,
+  dayLabel,
+}: {
+  hill: NearbyHill;
+  targetRouteId?: string | null;
+  dayLabel?: string;
+}) {
+  const intelligence = buildExpeditionStageRouteIntelligence(hill, [], targetRouteId);
+  const reference = intelligence.reference;
   return (
     <View style={s.hillCard}>
       <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
@@ -531,6 +545,11 @@ function HillCard({ hill, dayLabel }: { hill: NearbyHill; dayLabel?: string }) {
           ]}>
             {reference.label}
           </Text>
+           <Text style={s.routeTrust}>
+             {intelligence.dna.availability === "unavailable"
+               ? "Mountain DNA unavailable until both routes are verified"
+               : "Mountain DNA analogue available"}
+           </Text>
         </View>
       </View>
       <View style={s.hillStats}>
