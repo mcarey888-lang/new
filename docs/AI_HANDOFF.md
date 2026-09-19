@@ -10,7 +10,7 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 3 Navigation + UX Cohesion is active. S3-R05 is COMPLETE; continue with S3-C06 Shared Track entry and completion handoff. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the current navigation graph, state boundaries, risks, protected surfaces, and low-risk direction for C02-C07.
+Stage 3 Navigation + UX Cohesion is active. S3-R06 is COMPLETE; continue with S3-C07 Profile + Community shell cohesion. `docs/STAGE_3_NAVIGATION_UX_MAP.md` records the current navigation graph, state boundaries, risks, protected surfaces, and low-risk direction for C02-C07.
 
 ## Last completed task
 
@@ -40,6 +40,7 @@ S3-R01 completed as a read-only targeted navigation/UX audit. No runtime, schema
 - S3-R03 refines the Training Home dashboard hierarchy (Mountain > Readiness > Next Action > Weekly Progress) reducing nested-card clutter without changing calculations.
 - S3-R04 refines Expedition Home Base Camp labels (SIMULATED ELEVATION, NEXT LOCAL STAGE, Start Next Stage) clarifying metrics while preserving Progress Mountain behavior exactly.
 - S3-R05 unifies Explore discovery across modes: Training adds target-relevant context banner and "Track Hike" entry; Expedition adds explicit "Real Summit" and "Simulated Gain" metric labels.
+- S3-R06 replaces disparate Track screens with a unified SharedTrackScreen offering context-appropriate tracking (Next Stage, Next Session, Free Hike) while preserving the offline GPS engine.
 
 ## Files changed
 
@@ -136,7 +137,7 @@ The four pre-existing `tracked_hill_sessions` rows remain. All four have `activi
 
 ## Recommended next action
 
-Execute S3-C06: Unify Track entry UX without changing offline engine. Add context-appropriate actions (Free Hike, Training, Expedition).
+Execute S3-C07: Complete the app shell by ensuring Profile (You) and Community surfaces respect mode contexts and use shared components safely.
 
 ## Git branch and latest commit SHA
 

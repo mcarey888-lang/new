@@ -212,3 +212,17 @@ All offline behaviors, SDE identities, and Route Engine features were preserved 
 **Tests/result:** COMPLETE. TypeScript check passed.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S3-R06 Shared Track entry and completion handoff
+
+**Task:** Execute S3-C06: Unify Track entry UX without changing offline engine. Add context-appropriate actions (Free Hike, Training, Expedition).
+
+**Implementation:** Replaced the divergent `(tabs)/trails.tsx` and `(expedition)/track.tsx` screens with a single `SharedTrackScreen.tsx` component. The new unified Tracking surface detects the active `shellMode` and dynamically offers the next context-appropriate action: "Next Expedition Stage", "Next Training Session", and a persistent "Start Free Hike". Unified lifetime stats and recent activities across both modes. The active-hike resume banner works identically and consistently across contexts. Preserved all routing parameters, outbox helpers, and offline engine capabilities exactly.
+
+**Important files/schema:** `artifacts/summit-ready/components/SharedTrackScreen.tsx`, `artifacts/summit-ready/app/(tabs)/trails.tsx`, `artifacts/summit-ready/app/(expedition)/track.tsx`. No Route Engine, schema, SDE, or payment changes.
+
+**Tests/result:** COMPLETE. TypeScript check passed.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
+**Update 2:** Resolved C06 verification blocker by explicitly extracting typed pure `trackingLaunchContext` builder helpers to ensure the exact legacy routing payloads (including plan session parameters and Expedition `stageSnapshot` metadata) are reliably transmitted to `hike-tracking.tsx`. Cleaned up unused imports.
