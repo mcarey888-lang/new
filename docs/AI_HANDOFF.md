@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 is active. S4-R02 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, and development-only ledger writers/readers are ready for C03/C04 tests. Do not apply production migration or flags.
+Stage 4 is active. S4-R03 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, and the five new ingestion paths are proven behind a development/test-only activation boundary. Proceed to S4-C04; do not apply production migration or flags.
 
 ## Last completed task
 
-S4-R02 completed additive Stage 2 ledger and activation hardening. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-R03 proved stable source identities, retry/conflict behavior, explicit multi-context reuse, private GPS evidence, manual evidence boundaries, offline/local UUID preservation, and owner separation for new canonical ingestion. No production schema, data, flag, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 

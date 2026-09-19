@@ -2,6 +2,16 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-R03 development activation boundary
+
+**Task:** Prove the five new canonical activity ingestion paths end-to-end in development/test boundaries without production activation.
+
+**Implementation:** Added `canonicalActivityDevelopmentActivation.ts` as an explicit test/development-only orchestrator over tracked GPS/Free Hike, Manual Training, ExploreHike, Training-context GPS, and Expedition-context GPS. One tracked local UUID becomes one canonical physical activity with only explicit context links; ExploreHike may reuse it only when explicitly joined. The orchestrator accepts injected dependencies for deterministic end-to-end test execution. Existing adapters and the canonical bridge remain default-off, GPS evidence remains private, manual evidence remains unverified manual, and legacy routes remain authoritative.
+
+**Tests/result:** Focused activation tests execute all paths through an in-memory dependency harness, covering tracked Free Hike/Training/Expedition, Manual Training, distinct and explicit-reuse ExploreHike, identical retry dedupe, retained changed-payload conflict, owner separation, delayed offline UUID, manual evidence classification, private evidence, and simulated Expedition metadata. Relevant adapter/contracts/link suites pass; API build passes. API typecheck remains blocked by pre-existing unrelated errors in objectStorage, integration package build outputs, and canonicalActivityProjections. No migration, backfill, production flag, route, SDE, Progress Mountain, cinematic/live-3D, auth, payment, or public-privacy change.
+
+**Commit:** Reported after this entry is committed.
+
 ## 2026-09-19 UTC — S4-R01 Stage 4 preflight
 
 **Task:** Audit the exact Stage 4 dependency chain before activating canonical adapters, ledgers, Elevation Bank, completion consequences, or canonical history.
