@@ -23,9 +23,11 @@ import type {
   ArtworkPrompt,
   ArtworkRejectResult,
   ArtworkStatusList,
+  CanonicalHistoryResponse,
   ElevationBankResponse,
   ElevationBankUnavailable,
   GenerateArtworkInput,
+  GetCanonicalHistoryParams,
   HealthStatus,
 } from "./api.schemas";
 
@@ -689,6 +691,110 @@ export function useGetElevationBank<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetElevationBankQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns a shadowed response until canonical and legacy history equivalence is proven and explicitly enabled in development/test.
+ * @summary Read the authenticated user's development canonical history projection
+ */
+export const getGetCanonicalHistoryUrl = (
+  params?: GetCanonicalHistoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/canonical-history?${stringifiedParams}`
+    : `/api/canonical-history`;
+};
+
+export const getCanonicalHistory = async (
+  params?: GetCanonicalHistoryParams,
+  options?: RequestInit,
+): Promise<CanonicalHistoryResponse> => {
+  return customFetch<CanonicalHistoryResponse>(
+    getGetCanonicalHistoryUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCanonicalHistoryQueryKey = (
+  params?: GetCanonicalHistoryParams,
+) => {
+  return [`/api/canonical-history`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCanonicalHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCanonicalHistory>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetCanonicalHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCanonicalHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCanonicalHistoryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCanonicalHistory>>
+  > = ({ signal }) =>
+    getCanonicalHistory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCanonicalHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCanonicalHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCanonicalHistory>>
+>;
+export type GetCanonicalHistoryQueryError = ErrorType<void>;
+
+/**
+ * @summary Read the authenticated user's development canonical history projection
+ */
+
+export function useGetCanonicalHistory<
+  TData = Awaited<ReturnType<typeof getCanonicalHistory>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetCanonicalHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCanonicalHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCanonicalHistoryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

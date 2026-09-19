@@ -2,6 +2,18 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S4-R08 canonical history projection shadow boundary
+
+**Task:** Integrate canonical private history only where equivalence is demonstrated, while preserving every legacy activity and the existing history consumer.
+
+**Implementation:** Added an authenticated owner-scoped `GET /canonical-history` read boundary with `all`, `training`, `expeditions`, and `mountains_free_hike` filters. It is explicitly shadowed unless `CANONICAL_HISTORY_PROJECTION_ENABLED=true` in test/development; production and default environments never activate it. Added canonical activity/link projection serialization without owner identifiers, plus a mobile pure display utility that shows one canonical physical activity once, exposes context filters, preserves legacy-only rows, and refuses fuzzy matching. Existing `/tabs/hikes` remains legacy-authoritative because the mismatch report still identifies missing canonical IDs and duplicate/source mismatches.
+
+**Tests/result:** Focused canonical projection, route-boundary, and mobile projection tests passed. API/mobile builds and typechecks were run; OpenAPI clients were regenerated. No historical reconciliation, backfill, migration, production flag, consumer switch, or protected SDE/Progress Mountain/cinematic change occurred.
+
+**Files:** `artifacts/api-server/src/routes/canonical-history.ts`, `artifacts/api-server/src/services/canonicalActivityProjections.ts`, `artifacts/summit-ready/utils/canonicalHistoryProjection.ts`, `lib/api-spec/openapi.yaml`.
+
+**Commit:** Reported after this entry is committed.
+
 ## 2026-09-19 UTC — S4-C04 personal Elevation Bank service
 
 **Task:** Implement the additive personal Elevation Bank calculation/read boundary over the Stage 2 ledger without changing legacy totals or consumers.

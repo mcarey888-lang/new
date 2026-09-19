@@ -10,11 +10,11 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 4 is active. S4-C06 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, the Elevation Bank decision/read service and consequence resolver are ready, and the first owner-scoped mobile/API presentation is safely unavailable until the development schema gate is enabled. Proceed to S4-C07; do not apply production migration or flags.
+Stage 4 is active. S4-C08 is COMPLETE. `docs/STAGE_4_PREFLIGHT.md` records the audited dependency chain. The Stage 2 ledger contracts are hardened additively, the canonical bridge is explicitly opt-in, the five new ingestion paths are proven behind a development/test-only activation boundary, the Elevation Bank decision/read service and consequence resolver are ready, and canonical history remains a shadowed read projection because legacy/canonical equivalence is not yet proven. Proceed to S4-C09; do not apply production migration or flags.
 
 ## Last completed task
 
-S4-C06 added the authenticated owner-scoped `/elevation-bank` read contract, generated client hook, Home/Profile Elevation Bank card, and private Elevation History surface. The UI shows lifetime/current-month credited ascent, display-only 8,849m Everest equivalents, recent effective credits/corrections, loading/empty/error/unavailable states, and refreshes after local activity completion counts change. Legacy totals remain the sole visible fallback; no dual-source totals are shown. Stage 2 writes remain default-off and no migration, production flag, data mutation, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
+S4-C08 added the owner-scoped `/canonical-history` read boundary and a mobile canonical/legacy display projection utility. The boundary is explicitly shadowed by default and only reads canonical rows in test/development when `CANONICAL_HISTORY_PROJECTION_ENABLED=true`; existing private history consumers remain legacy-authoritative. The projection proves one canonical activity per All/filter view, preserves every legacy-only row, and refuses fuzzy matching. Legacy/canonical mismatch reporting still shows missing canonical IDs and duplicate/source mismatches, so no consumer switch was forced. No migration, production flag, data mutation, release, payment, authentication/security, public-privacy, SDE, Progress Mountain, or cinematic/live-3D change was made.
 
 ## Changes made
 
@@ -44,6 +44,7 @@ S4-C06 added the authenticated owner-scoped `/elevation-bank` read contract, gen
 - S3-R07 standardizes Profile (You) and Community headers and injects a "Current Context" banner (Training Goal / Active Expedition) into the Profile view.
 - S3-R08 verifies mode isolation, shared navigation boundaries, offline tracking compatibility, stable Training/Expedition completion handoff, protected files, and the unchanged/unapplied Stage 2 migration.
 - S4-C04 adds `elevationBank.ts` decision/read service and focused tests; manual, indoor, unavailable/untrusted, zero/invalid, simulated, and unsupported competition evidence cannot credit personal elevation.
+- S4-C08 keeps canonical history shadowed until legacy equivalence is demonstrated; `canonical-history` is owner-scoped and disabled by default, while mobile fallback preserves all legacy rows.
 
 ## Files changed
 

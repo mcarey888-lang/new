@@ -140,3 +140,78 @@ export interface ElevationBankUnavailable {
   status: ElevationBankUnavailableStatus;
   reason: ElevationBankUnavailableReason;
 }
+
+export type CanonicalHistoryLinkMetadata = { [key: string]: unknown };
+
+export interface CanonicalHistoryLink {
+  linkType: string;
+  targetId: string;
+  metadata?: CanonicalHistoryLinkMetadata;
+}
+
+export type CanonicalHistoryItemMatchedContextsItem =
+  (typeof CanonicalHistoryItemMatchedContextsItem)[keyof typeof CanonicalHistoryItemMatchedContextsItem];
+
+export const CanonicalHistoryItemMatchedContextsItem = {
+  training: "training",
+  expeditions: "expeditions",
+  mountains_free_hike: "mountains_free_hike",
+} as const;
+
+export interface CanonicalHistoryItem {
+  id: string;
+  sourceType: string;
+  sourceId: string;
+  primaryContext: string;
+  activityKind: string;
+  occurredAt: string;
+  /** @nullable */
+  startedAt?: string | null;
+  /** @nullable */
+  endedAt?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  distanceKm?: number | null;
+  /** @nullable */
+  recordedAscentM?: number | null;
+  /** @nullable */
+  validatedAscentM?: number | null;
+  /** @nullable */
+  descentM?: number | null;
+  lifecycle: string;
+  evidenceState: string;
+  visibility: string;
+  matchedContexts: CanonicalHistoryItemMatchedContextsItem[];
+  links: CanonicalHistoryLink[];
+}
+
+export type CanonicalHistoryResponseStatus =
+  (typeof CanonicalHistoryResponseStatus)[keyof typeof CanonicalHistoryResponseStatus];
+
+export const CanonicalHistoryResponseStatus = {
+  active: "active",
+  shadowed: "shadowed",
+  unavailable: "unavailable",
+} as const;
+
+export interface CanonicalHistoryResponse {
+  status: CanonicalHistoryResponseStatus;
+  /** @nullable */
+  reason: string | null;
+  items: CanonicalHistoryItem[];
+}
+
+export type GetCanonicalHistoryParams = {
+  filter?: GetCanonicalHistoryFilter;
+};
+
+export type GetCanonicalHistoryFilter =
+  (typeof GetCanonicalHistoryFilter)[keyof typeof GetCanonicalHistoryFilter];
+
+export const GetCanonicalHistoryFilter = {
+  all: "all",
+  training: "training",
+  expeditions: "expeditions",
+  mountains_free_hike: "mountains_free_hike",
+} as const;

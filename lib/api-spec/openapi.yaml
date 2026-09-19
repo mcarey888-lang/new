@@ -169,6 +169,34 @@ paths:
         "500":
           description: Elevation Bank could not be loaded
 
+  /canonical-history:
+    get:
+      operationId: getCanonicalHistory
+      tags: [activity]
+      summary: Read the authenticated user's development canonical history projection
+      description: Returns a shadowed response until canonical and legacy history equivalence is proven and explicitly enabled in development/test.
+      parameters:
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, training, expeditions, mountains_free_hike]
+            default: all
+      responses:
+        "200":
+          description: Canonical history projection or safe shadowed fallback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CanonicalHistoryResponse"
+        "400":
+          description: Invalid history filter
+        "401":
+          description: Authentication required
+        "503":
+          description: Canonical history dependency unavailable
+
 components:
   schemas:
     HealthStatus:
@@ -348,3 +376,78 @@ components:
         reason:
           type: string
           enum: [development_dependency_unavailable, load_failed]
+
+    CanonicalHistoryLink:
+      type: object
+      required: [linkType, targetId]
+      properties:
+        linkType:
+          type: string
+        targetId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    CanonicalHistoryItem:
+      type: object
+      required: [id, sourceType, sourceId, primaryContext, activityKind, occurredAt, lifecycle, evidenceState, visibility, matchedContexts, links]
+      properties:
+        id:
+          type: string
+        sourceType:
+          type: string
+        sourceId:
+          type: string
+        primaryContext:
+          type: string
+        activityKind:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: ["string", "null"]
+          format: date-time
+        endedAt:
+          type: ["string", "null"]
+          format: date-time
+        durationSeconds:
+          type: ["integer", "null"]
+        distanceKm:
+          type: ["number", "null"]
+        recordedAscentM:
+          type: ["integer", "null"]
+        validatedAscentM:
+          type: ["integer", "null"]
+        descentM:
+          type: ["integer", "null"]
+        lifecycle:
+          type: string
+        evidenceState:
+          type: string
+        visibility:
+          type: string
+        matchedContexts:
+          type: array
+          items:
+            type: string
+            enum: [training, expeditions, mountains_free_hike]
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/CanonicalHistoryLink"
+
+    CanonicalHistoryResponse:
+      type: object
+      required: [status, reason, items]
+      properties:
+        status:
+          type: string
+          enum: [active, shadowed, unavailable]
+        reason:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CanonicalHistoryItem"

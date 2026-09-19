@@ -136,3 +136,50 @@ export const GetElevationBankResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Returns a shadowed response until canonical and legacy history equivalence is proven and explicitly enabled in development/test.
+ * @summary Read the authenticated user's development canonical history projection
+ */
+export const getCanonicalHistoryQueryFilterDefault = `all`;
+
+export const GetCanonicalHistoryQueryParams = zod.object({
+  filter: zod
+    .enum(["all", "training", "expeditions", "mountains_free_hike"])
+    .default(getCanonicalHistoryQueryFilterDefault),
+});
+
+export const GetCanonicalHistoryResponse = zod.object({
+  status: zod.enum(["active", "shadowed", "unavailable"]),
+  reason: zod.string().nullable(),
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      sourceType: zod.string(),
+      sourceId: zod.string(),
+      primaryContext: zod.string(),
+      activityKind: zod.string(),
+      occurredAt: zod.coerce.date(),
+      startedAt: zod.coerce.date().nullish(),
+      endedAt: zod.coerce.date().nullish(),
+      durationSeconds: zod.number().nullish(),
+      distanceKm: zod.number().nullish(),
+      recordedAscentM: zod.number().nullish(),
+      validatedAscentM: zod.number().nullish(),
+      descentM: zod.number().nullish(),
+      lifecycle: zod.string(),
+      evidenceState: zod.string(),
+      visibility: zod.string(),
+      matchedContexts: zod.array(
+        zod.enum(["training", "expeditions", "mountains_free_hike"]),
+      ),
+      links: zod.array(
+        zod.object({
+          linkType: zod.string(),
+          targetId: zod.string(),
+          metadata: zod.record(zod.string(), zod.unknown()).optional(),
+        }),
+      ),
+    }),
+  ),
+});
