@@ -2,14 +2,30 @@
 
 Updated: 2026-09-19 UTC
 Branch: `virtual-expeditions-mode`  
-Latest Stage 6 implementation checkpoint: `2dc1e16`
-Latest Stage 6 regression checkpoint: `4d93819`
+Latest Stage 7 implementation checkpoint: `60a2ea1`
+Latest Stage 7 regression/completion checkpoint: `60a2ea1`
 
 ## Current project state
 
 SummitReady is an Expo mobile app with a TypeScript API server and managed PostgreSQL database in a pnpm workspace. Activity recording is offline-first: GPS sessions are retained locally, recoverable after interruption, and queued in a user-scoped sync outbox for authenticated retry. Phase 1 of SummitReady 2.0 adds an owner-scoped canonical server activity foundation while preserving released local models and APIs.
 
 ## Current task
+
+Stage 7 — Mountain and Route Intelligence is **COMPLETE** through S7-C10 under
+the authorized runbook. The shared versioned SDE route model, deterministic
+Mountain DNA/matching, route-detail UX, Training/Explore/Expedition adapters,
+and server-only read boundary are implemented. Production route-record
+activation remains default-off; this is not production or mobile release
+approval. See `docs/STAGE_7_COMPLETION_REPORT.md` and
+`docs/STAGE_7_REGRESSION_REVIEW.md`.
+
+The current SDE schema cannot prove exact geometry-version validation or every
+geometry-member rights relationship. Geometry/profile/DNA matching therefore
+degrade until separately approved SDE publication/schema work. No production
+migration, activation, backfill, reconciliation, release, or Stage 8 work is
+authorized from this checkpoint.
+
+### Previous task
 
 Stage 6 — Expedition Experience is **COMPLETE** through S6-C10 under the
 authorized runbook. Basecamp now has a compact Progress Mountain backed by the
@@ -27,6 +43,12 @@ production migration, flag, backfill, canonical-history switch, adapter
 activation, or mobile release is authorized.
 
 ## Last completed task
+
+S7-C10 completed the Stage 7 gate. See
+`docs/STAGE_7_COMPLETION_REPORT.md` for the requirement matrix, implementation
+inventory, environment/activation runbook, rollback guidance, explicit SDE
+limitation, regression evidence, and native-device QA status. S7-C09 evidence
+is in `docs/STAGE_7_REGRESSION_REVIEW.md`. Do not start Stage 8.
 
 S6-C10 completed the Stage 6 gate. See
 `docs/STAGE_6_COMPLETION_REPORT.md` for the exact architecture, commands,

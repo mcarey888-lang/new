@@ -2,6 +2,47 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-19 UTC — S7-C10 Mountain and Route Intelligence completion gate
+
+**Task:** Execute S7-C09 regression/protected-boundary review and S7-C10
+documentation-only completion for the authorized Stage 7 runbook.
+
+**Implementation/result:** Added the versioned, provenance-aware SDE route
+intelligence model, deterministic `mountain-dna-v1` evaluator and bounded
+route matcher, shared mountain/route detail presentation, Training/Explore/
+Expedition adapters, exact route-version selection, and a server-only
+read-only `ENGINE_DATABASE_URL` boundary. Canonical reads never fall back to
+the application database or AI geography. Production route-record activation
+is default-off. Geometry/profile data is withheld when current SDE data cannot
+prove exact validation-version and member-rights relationships.
+
+**Architect review:** The initial C09 review found integration and trust
+boundary gaps. Follow-up checkpoints through `60a2ea1` corrected the real
+engine read boundary, exact version propagation, SQL/schema joins, rights and
+validation fail-closed behavior, cached-record hydration, and complete tracker
+stage snapshots. The final architecture review returned **PASS** with no
+concrete Stage 7 completion blocker.
+
+**Verification:** Final bounded verification passed SummitReady **100/100**,
+API **103/103**, SummitReady typecheck, API production build, and
+`git diff --check`. Earlier full relevant C09 regression passed SummitReady
+**122/122** and API **97/97**. Protected tracker, Stage 6 Progress
+Mountain/cinematic, Readiness, activity identity, auth/payment/privacy,
+production, and PA-A2 boundary review passed. Native-device QA was **NOT RUN**.
+
+**Safety:** No production migration, schema change, backfill, reconciliation,
+deployment, release, flag activation, SDE identity migration, tracker
+redesign, payment/auth/privacy change, or PA-A2 action occurred. The exact
+geometry-validation/publication linkage limitation is documented as a future
+approval boundary. Stage 8 was not started.
+
+**Files:** `docs/STAGE_7_REGRESSION_REVIEW.md`,
+`docs/STAGE_7_COMPLETION_REPORT.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`.
+
+**Commit:** `60a2ea1` implementation checkpoint; documentation checkpoint
+follows this entry.
+
 ## 2026-09-19 UTC — S6-C10 Expedition Experience completion gate
 
 **Task:** Execute S6-C10 documentation-only completion for the authorized Stage
