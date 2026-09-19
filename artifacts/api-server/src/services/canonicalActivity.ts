@@ -7,6 +7,11 @@ import {
   canonicalActivityEvidence,
   canonicalActivityLinks,
 } from "@workspace/db/schema";
+import type {
+  CanonicalActivityLinkInput,
+  PersistedCanonicalEvidenceState,
+  PersistedCanonicalEvidenceType,
+} from "./canonicalActivityContracts";
 
 export type ActivityContext = "training" | "expedition" | "free_hike" | "mountain_simulation";
 export type ActivityLifecycle =
@@ -17,13 +22,7 @@ export type ActivityLifecycle =
   | "sync_failed"
   | "corrected"
   | "deleted";
-export type ActivityEvidenceState =
-  | "unverified_manual"
-  | "recorded_unverified"
-  | "quality_accepted"
-  | "verified_activity"
-  | "verified_summit_ascent"
-  | "competition_eligible";
+export type ActivityEvidenceState = PersistedCanonicalEvidenceState;
 export type ActivityVisibility = "private" | "unlisted" | "public_summary";
 
 export interface CanonicalActivityInput {
@@ -46,23 +45,11 @@ export interface CanonicalActivityInput {
   visibility?: ActivityVisibility;
   sourceSnapshot?: Record<string, unknown>;
   evidence?: Array<{
-    evidenceType: "gps_track" | "elevation_profile" | "manual_estimate" | "source_snapshot";
+    evidenceType: PersistedCanonicalEvidenceType;
     payload: unknown;
     capturedAt?: Date;
   }>;
-  links?: Array<{
-    linkType:
-      | "training_plan"
-      | "training_session"
-      | "expedition"
-      | "expedition_stage"
-      | "canonical_hill"
-      | "canonical_route"
-      | "community_route"
-      | "challenge";
-    targetId: string;
-    metadata?: Record<string, unknown>;
-  }>;
+  links?: CanonicalActivityLinkInput[];
 }
 
 export type CanonicalActivityIngestionResult =

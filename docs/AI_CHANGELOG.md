@@ -85,3 +85,15 @@ Append-only coordination log. Do not include secrets, credentials, private user 
 **Tests/result:** COMPLETE. Used targeted repository searches, three independent read-only audit passes, existing Phase 0/Phase 1 reports, and official Replit documentation. Replit has no documented native GitHub-file trigger for Agent; recommended a human-gated one-line prompt with optional GitHub notification rather than unattended execution.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-19 UTC — S2-R02 canonical contracts and stable IDs
+
+**Task:** Execute S2-C02: implement the lowest-risk source identity, link-target, evidence classification, and adapter contract foundation without switching user-facing behavior or changing schema.
+
+**Implementation:** Added central typed helpers for built-in, provider, and import source namespaces; deterministic source identity keys; backwards-compatible existing link IDs; validated Summit Data Engine mountain and versioned route targets; evidence-classification mappings onto Phase 1 storage; and explicit future Manual Training and ExploreHike adapter inputs. Existing canonical ingestion now consumes the central evidence and link types while preserving persisted tracked-hill identity.
+
+**Important files/schema:** `artifacts/api-server/src/services/canonicalActivityContracts.ts`, `artifacts/api-server/src/services/canonicalActivity.ts`, `artifacts/api-server/src/__tests__/canonicalActivityContracts.test.ts`, and `docs/CANONICAL_ACTIVITY_CONTRACTS.md`. No database/schema, production, data, UI, calculation, mobile build, protected Progress Mountain/3D, or Summit Data Engine changes.
+
+**Tests/result:** COMPLETE. Focused canonical contract suites: 39 passed and four database integration tests skipped by default. Isolated contract TypeScript check and API production bundle passed. Full API typecheck remains blocked only by the pre-existing object-storage typing error and missing OpenAI declaration-build outputs; no S2-C02 file appears in those diagnostics.
+
+**Commit:** Reported in the completion message after this entry is committed.
