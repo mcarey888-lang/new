@@ -19,16 +19,15 @@ import { useApp } from "@/context/AppContext";
 import {
   addUniqueCompletedRoute,
   expeditionRouteIdentityMatches,
-  isRouteCompleted,
   routeCompletionKey,
 } from "@/utils/stateReliability";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
-import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
   ExpeditionProgressCard,
   fmtM,
 } from "@/components/ExpeditionProgressCard";
+import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -52,9 +51,13 @@ function insightMsg(done: number, total: number, remainM: number) {
 export default function ExpeditionProgressScreen() {
   useScreenView("expedition_progress");
   const insets = useSafeAreaInsets();
-  const { sessions, exploreHikes, activeExpedition, patchExpedition, updateSession } = useApp();
+  const { sessions, activeExpedition, patchExpedition, updateSession } = useApp();
   const recoveredSessionIds = useRef(new Set<string>());
 
+  const presentation = useMemo(
+    () => selectExpeditionPresentation(activeExpedition),
+    [activeExpedition],
+  );
   const target  = activeExpedition?.targetMountain;
   const stages  = activeExpedition?.virtualHills ?? [];
   const completedRoutes: string[] = activeExpedition?.completedRoutes ?? [];
@@ -100,32 +103,14 @@ export default function ExpeditionProgressScreen() {
     })();
   }, [activeExpedition, patchExpedition, sessions, updateSession]);
 
-  const linkedActivities = useMemo(() => {
-    if (!activeExpedition) return [];
-    return mergeActivityKinds(
-      sessions.filter(item => item.expeditionId === activeExpedition.id),
-      exploreHikes.filter(item => item.expeditionId === activeExpedition.id),
-    );
-  }, [activeExpedition, sessions, exploreHikes]);
-
   // ── Derived ─────────────────────────────────────────────────────────────────
-  const totalElevGoal = useMemo(
-    () => target?.totalElevationGain
-      ?? stages.reduce((s, h) => s + h.elevation * h.repeats, 0),
-    [target, stages],
-  );
-  const totalTrained = useMemo(
-    () => linkedActivities.reduce((s, item) => s + (item.elevationGain ?? 0), 0),
-    [linkedActivities],
-  );
-  const pct = totalElevGoal > 0
-    ? Math.min(100, Math.round(totalTrained / totalElevGoal * 100))
-    : 0;
-
-  const completedCount = useMemo(
-    () => stages.filter(stage => isRouteCompleted(completedRoutes, stage)).length,
-    [completedRoutes, stages],
-  );
+  // Both Basecamp's compact mountain and this expanded destination read the
+  // same persisted simulated presentation state. Linked activity facts remain
+  // available for recovery/linking above, but never become simulated progress.
+  const totalElevGoal = presentation.progress.targetSimulatedElevationM;
+  const totalTrained = presentation.progress.currentSimulatedElevationM;
+  const pct = Math.round(presentation.progress.simulatedPercent * 100);
+  const completedCount = presentation.progress.completedStageCount;
   const remaining = Math.max(0, totalElevGoal - totalTrained);
 
   const expName   = activeExpedition?.expeditionPlan?.title
@@ -135,7 +120,7 @@ export default function ExpeditionProgressScreen() {
     : null;
   const regionText = activeExpedition?.location ?? null;
 
-  const insight = insightMsg(completedCount, stages.length, remaining);
+  const insight = insightMsg(completedCount, presentation.progress.totalStageCount, remaining);
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
 
