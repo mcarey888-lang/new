@@ -40,6 +40,11 @@ import {
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
+import {
+  advanceSummitTransition,
+  selectSummitTransition,
+  type SummitTransitionState,
+} from "@/utils/expeditionSummitTransition";
 import { CompactBasecampMountain } from "@/components/CompactBasecampMountain";
 import { JourneyHistory } from "@/components/JourneyHistory";
 
@@ -298,7 +303,7 @@ export default function BaseCampScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal: publicGoal, sessions, patchGoal, setSummitGoal, unlockedAchievements,
           startExpedition, expeditions, activeExpeditionId, activeExpedition, exploreHikes,
-          trainingPlan, setShellMode } = useApp();
+          trainingPlan, setShellMode, completeExpedition } = useApp();
   const summitGoal: SummitGoal | null = activeExpedition
     ? {
         ...(publicGoal ?? {
@@ -425,12 +430,30 @@ export default function BaseCampScreen() {
   const mountainRef      = useRef<import("react-native").View>(null);
 
   const presentation = useMemo(() => selectExpeditionPresentation(activeExpedition), [activeExpedition]);
+  const summitTransitionRef = useRef<SummitTransitionState>("not_ready");
+  const completionAwardedRef = useRef(false);
 
   // Dismisses the completion modal and zooms back out to the expedition screen
   const handleCompletionContinue = useCallback(() => {
     setShowCompletion(false);
     setCinematicActive(false);
-  }, []);
+    if (
+      completionAwardedRef.current ||
+      !activeExpeditionId ||
+      summitTransitionRef.current === "completed"
+    ) return;
+    completionAwardedRef.current = true;
+    void completeExpedition(activeExpeditionId).then(success => {
+      if (success) {
+        summitTransitionRef.current = advanceSummitTransition(
+          summitTransitionRef.current,
+          "complete",
+        );
+      } else {
+        completionAwardedRef.current = false;
+      }
+    });
+  }, [activeExpeditionId, completeExpedition]);
 
   // Called by CinematicPrototype once zoom reaches the handoff position
   const handleCinematicReady = useCallback(() => {
@@ -516,18 +539,26 @@ export default function BaseCampScreen() {
   const steepnessRatio = suggestedSteepness > 0 ? `1:${Math.round(1 / suggestedSteepness)}` : "—";
   const targetSteepnessRatio = targetSteepness > 0 ? `1:${Math.round(1 / targetSteepness)}` : "—";
 
-  // ── Auto-trigger cinematic at 90 % progress ──────────────────────────────
+  // ── Summit handoff: canonical 100% eligibility only ──────────────────────
   const cinematicTriggeredRef = useRef(false);
   useEffect(() => {
-    if (pct >= 75 && totalGoal > 0 && !cinematicTriggeredRef.current) {
+    const persistedState = selectSummitTransition({
+      eligible: presentation.summit.eligible,
+      expeditionStatus: activeExpedition?.expeditionStatus,
+      visualStarted: summitTransitionRef.current === "started",
+      completionAwarded: completionAwardedRef.current,
+    });
+    summitTransitionRef.current = persistedState;
+    if (persistedState === "ready" && !cinematicTriggeredRef.current) {
       cinematicTriggeredRef.current = true;
+      summitTransitionRef.current = advanceSummitTransition(persistedState, "cinematic_ready");
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       setTimeout(() => {
         setCinematicReplayTrigger(t => t + 1);
         setCinematicActive(true);
       }, 200);
     }
-  }, [pct, totalGoal]);
+  }, [activeExpedition?.expeditionStatus, presentation.summit.eligible]);
 
   // Stage timeline — use virtualHills as named hill checkpoints (the actual
   // places the user will train), falling back to expeditionPlan day titles.
