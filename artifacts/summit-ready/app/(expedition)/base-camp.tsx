@@ -326,7 +326,6 @@ export default function BaseCampScreen() {
   const [featured,  setFeatured]  = useState<FeaturedChallenge[]>([]);
   const [featLoading, setFeatLoading] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
-  const [routePickerOpen, setRoutePickerOpen] = useState(false);
   const [targetRoutePickerOpen, setTargetRoutePickerOpen] = useState(false);
   const [targetRouteChoices, setTargetRouteChoices] = useState<VerifiedTargetRouteChoice[]>([]);
   const [pendingTargetRouteRequest, setPendingTargetRouteRequest] = useState<PendingBaseExpeditionRequest | null>(null);
@@ -1125,88 +1124,22 @@ export default function BaseCampScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Title + progress row */}
-            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 10 }}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text
-                  style={[
-                    s.activeTitle,
-                    expTitle.length > 22 && { fontSize: 26, lineHeight: 31 },
-                    expTitle.length > 32 && { fontSize: 22, lineHeight: 27 },
-                  ]}
-                >
-                  {expTitle}
-                </Text>
-                {!!expSub && <Text style={s.activeSub}>{expSub}</Text>}
-                {!!concept && (
-                  <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
-                )}
-              </View>
-              {/* Overall progress — elevation-based */}
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", letterSpacing: 0.5, marginBottom: 2 }}>
-                  SIMULATED ELEVATION
-                </Text>
-                <Text style={{ fontSize: 42, fontFamily: "Inter_700Bold", color: pct > 0 ? T.green : "rgba(255,255,255,0.85)", lineHeight: 46 }}>
-                  {pct}%
-                </Text>
-                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.40)", marginTop: 1 }}>
-                  {totalTrained.toLocaleString()}m climbed of {totalGoal.toLocaleString()}m target
-                </Text>
-              </View>
+            {/* Title */}
+            <View style={{ marginTop: 10, marginRight: 10 }}>
+              <Text
+                style={[
+                  s.activeTitle,
+                  expTitle.length > 22 && { fontSize: 26, lineHeight: 31 },
+                  expTitle.length > 32 && { fontSize: 22, lineHeight: 27 },
+                ]}
+              >
+                {expTitle}
+              </Text>
+              {!!expSub && <Text style={s.activeSub}>{expSub}</Text>}
+              {!!concept && (
+                <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
+              )}
             </View>
-
-            {/* Start Next Stage — opens picker so user can select any incomplete route */}
-            <TouchableOpacity
-              style={s.quickStartBtn}
-              activeOpacity={0.85}
-              onPress={() => {
-                if (completedRoutes.length > 0 && !nextHill) {
-                  router.push("/(expedition)/expedition-complete" as any);
-                } else {
-                  setRoutePickerOpen(true);
-                }
-              }}
-            >
-              <LinearGradient
-                colors={completedRoutes.length > 0 && !nextHill
-                  ? ["#7C3AED", "#5B21B6"]
-                  : [T.green, "#2AB860"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={s.quickStartGrad}
-              >
-                <Play size={14} color="#fff" fill="#fff" />
-                <Text style={s.quickStartText}>
-                  {completedRoutes.length > 0 && !nextHill
-                    ? "View Expedition Completion"
-                    : "Start Next Stage"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[s.quickStartBtn, { marginTop: 8 }]}
-              activeOpacity={0.85}
-              testID="free-hike-base-camp-cta"
-              onPress={() => {
-                if (!activeExpeditionId) return;
-                router.push({
-                  pathname: "/hike-tracking" as any,
-                  params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
-                });
-              }}
-              disabled={!activeExpeditionId}
-            >
-              <LinearGradient
-                colors={["#69CEF5", "#45B7E8"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.quickStartGrad}
-              >
-                <Footprints size={14} color="#071428" />
-                <Text style={[s.quickStartText, { color: "#071428" }]}>Free Hike</Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -1246,36 +1179,83 @@ export default function BaseCampScreen() {
                   style={s.quickStartBtn}
                   activeOpacity={0.85}
                   onPress={() => {
-                    if (completedRoutes.length > 0 && !nextHill) {
-                      router.push("/(expedition)/expedition-complete" as any);
-                    } else {
-                      setRoutePickerOpen(true);
-                    }
+                    router.push({
+                      pathname: "/hike-tracking" as any,
+                      params: {
+                        hillName: nextHill.name,
+                        routeIdentityKey: nextHill.routeIdentityKey ?? "",
+                        summitIdentityKey: nextHill.summitIdentityKey ?? "",
+                        objectiveType: nextHill.objectiveType ?? "",
+                        trackingMode: "expedition-route",
+                        expeditionId: activeExpeditionId,
+                        stageSnapshot: JSON.stringify({
+                          ...nextHill,
+                          expeditionProgress: activeExpedition?.virtualHikeProgress,
+                        }),
+                      },
+                    });
                   }}
                 >
                   <LinearGradient
-                    colors={completedRoutes.length > 0 && !nextHill
-                      ? ["#7C3AED", "#5B21B6"]
-                      : [T.green, "#2AB860"]}
+                    colors={[T.green, "#2AB860"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={s.quickStartGrad}
                   >
                     <Play size={14} color="#fff" fill="#fff" />
-                    <Text style={s.quickStartText}>
-                      {completedRoutes.length > 0 && !nextHill
-                        ? "View Expedition Completion"
-                        : "Start Next Stage"}
-                    </Text>
+                    <Text style={s.quickStartText}>Start Next Stage</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : presentation.progress.isComplete ? (
+              <View style={{ paddingVertical: 10, alignItems: "stretch" }}>
+                <TouchableOpacity
+                  style={s.quickStartBtn}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/(expedition)/expedition-complete" as any)}
+                >
+                  <LinearGradient
+                    colors={["#7C3AED", "#5B21B6"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={s.quickStartGrad}
+                  >
+                    <Play size={14} color="#fff" fill="#fff" />
+                    <Text style={s.quickStartText}>View Expedition Completion</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={{ paddingVertical: 20, alignItems: "center" }}>
                 <Text style={{ fontSize: 13, color: T.textDim, fontFamily: "Inter_400Regular" }}>
-                  {presentation.progress.isComplete ? "Expedition Complete" : "Loading..."}
+                  Loading...
                 </Text>
               </View>
             )}
+
+            {/* Free Hike secondary action */}
+            <TouchableOpacity
+              style={[s.quickStartBtn, { marginTop: 8 }]}
+              activeOpacity={0.85}
+              testID="free-hike-base-camp-cta"
+              onPress={() => {
+                if (!activeExpeditionId) return;
+                router.push({
+                  pathname: "/hike-tracking" as any,
+                  params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+                });
+              }}
+              disabled={!activeExpeditionId}
+            >
+              <LinearGradient
+                colors={["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[s.quickStartGrad, { borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }]}
+              >
+                <Footprints size={14} color={T.textMuted} />
+                <Text style={[s.quickStartText, { color: T.text }]}>Record Free Hike</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
           </View>
         </Animated.View>
 
@@ -1338,80 +1318,6 @@ export default function BaseCampScreen() {
         )}
 
       </ScrollView>
-
-      {/* ── Route picker modal ────────────────────────────────────────────────── */}
-      <Modal
-        visible={routePickerOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setRoutePickerOpen(false)}
-      >
-        <TouchableOpacity
-          style={s.pickerBackdrop}
-          activeOpacity={1}
-          onPress={() => setRoutePickerOpen(false)}
-        />
-        <View style={s.pickerSheet}>
-          <View style={s.pickerHandle} />
-          <Text style={s.pickerTitle}>Choose Your Route</Text>
-          <Text style={s.pickerSub}>All routes are available — climb in any order you like.</Text>
-          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
-            {stages.map((stage, idx) => {
-              const done = isRouteCompleted(completedRoutes, stage);
-              return (
-                <TouchableOpacity
-                  key={stage.name + idx}
-                  activeOpacity={done ? 1 : 0.75}
-                  onPress={done ? undefined : () => {
-                    setRoutePickerOpen(false);
-                    router.push({
-                      pathname: "/hike-tracking" as any,
-                      params: {
-                        hillName: stage.name,
-                        routeIdentityKey: stage.routeIdentityKey ?? "",
-                        summitIdentityKey: stage.summitIdentityKey ?? "",
-                        objectiveType: stage.objectiveType ?? "",
-                        trackingMode: "expedition-route",
-                        expeditionId: activeExpeditionId,
-                          stageSnapshot: JSON.stringify({
-                            ...stage,
-                            expeditionProgress: activeExpedition?.virtualHikeProgress,
-                          }),
-                      },
-                    });
-                  }}
-                  style={[s.pickerRow, done && s.pickerRowDone]}
-                >
-                  {/* Stage number / tick */}
-                  <View style={[s.pickerBadge, done && s.pickerBadgeDone]}>
-                    <Text style={[s.pickerBadgeText, done && { color: "#fff" }]}>
-                      {done ? "✓" : idx + 1}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[s.pickerRouteName, done && s.pickerRouteNameDone]}>
-                      {englishPlaceName(stage.name)}
-                    </Text>
-                    <Text style={s.pickerRouteSub}>
-                      {stage.elevation != null ? `${Math.round(stage.elevation)}m gain · ` : ""}
-                      {stage.distance?.toFixed(1) ?? "?"}km
-                    </Text>
-                  </View>
-                  {done ? (
-                    <Text style={s.pickerDoneLabel}>DONE</Text>
-                  ) : (
-                    <View style={s.pickerStartBtn}>
-                      <Play size={10} color="#fff" fill="#fff" />
-                      <Text style={s.pickerStartText}>Start</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-            <View style={{ height: 32 }} />
-          </ScrollView>
-        </View>
-      </Modal>
 
       {/* Verified target-route selection — shown only when canonical routes differ. */}
       <Modal
