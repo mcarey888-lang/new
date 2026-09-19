@@ -39,11 +39,9 @@ import {
   VerifiedMountainChooser,
   type VerifiedMountainChoice,
 } from "@/components/VerifiedMountainChooser";
-
-const ExpeditionMountainProgress = React.lazy(async () => {
-  const module = await import("@/components/ExpeditionMountainProgress");
-  return { default: module.ExpeditionMountainProgress };
-});
+import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
+import { CompactBasecampMountain } from "@/components/CompactBasecampMountain";
+import { JourneyHistory } from "@/components/JourneyHistory";
 
 const CinematicPrototype = React.lazy(async () => {
   const module = await import("@/components/CinematicPrototype");
@@ -426,6 +424,8 @@ export default function BaseCampScreen() {
   const [showCompletion,         setShowCompletion]         = useState(false);
   const scrollRef        = useRef<import("react-native").ScrollView>(null);
   const mountainRef      = useRef<import("react-native").View>(null);
+
+  const presentation = useMemo(() => selectExpeditionPresentation(activeExpedition), [activeExpedition]);
 
   // Dismisses the completion modal and zooms back out to the expedition screen
   const handleCompletionContinue = useCallback(() => {
@@ -1212,232 +1212,81 @@ export default function BaseCampScreen() {
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
-          {/* mountainImageRef placed on the inner mountain image view via ExpeditionMountainProgress */}
-          <ExpeditionMountainProgress
-            targetElevation={totalGoal}
-            targetDistance={targetDist}
-            currentElevation={totalTrained}
-            stages={summitGoal.virtualHills ?? []}
-            completedRoutes={completedRoutes}
-            days={target?.estimatedDays ?? 1}
-            highestPoint={target?.summitElevation ?? 0}
-            allDone={completedRoutes.length > 0 && !nextHill}
+          {/* mountainImageRef placed on the inner mountain image view via CompactBasecampMountain */}
+          <CompactBasecampMountain
+            presentation={presentation}
             mountainImageRef={mountainRef}
             replayTrigger={cinematicReplayTrigger}
-            onStagePress={(pressedHill) => {
-              const hill = pressedHill;
-              router.push({
-                pathname: "/hill-detail",
-                params: {
-                  name:           hill.name,
-                  location:       summitGoal.location ?? "",
-                  lat:            hill.lat?.toString()       ?? "",
-                  lng:            hill.lng?.toString()       ?? "",
-                  elevation:      (hill.elevation ?? 0).toString(),
-                  distance:       hill.distance.toString(),
-                  routeDistance:  hill.routeDistance?.toString() ?? "",
-                  estimatedTime:  hill.estimatedTime ?? "",
-                  routeType:      hill.routeType ?? "",
-                  grade:          hill.grade   ?? "",
-                  surface:        hill.surface ?? "",
-                  emoji:          hill.emoji   ?? "",
-                  expeditionMode: "true",
-                  expeditionId: activeExpeditionId ?? "",
-                  routeIdentityKey: hill.routeIdentityKey ?? "",
-                  summitIdentityKey: hill.summitIdentityKey ?? "",
-                  objectiveType: hill.objectiveType ?? "",
-                },
-              });
-            }}
-            onCtaPress={() => {
-              if (completedRoutes.length > 0 && !nextHill) {
-                router.push("/(expedition)/expedition-complete" as any);
-              } else {
-                setRoutePickerOpen(true);
-              }
-            }}
           />
         </Animated.View>
 
-        {/* ── DNA Match Breakdown ──────────────────────────────────────────── */}
-        <View style={s.dnaCard}>
-          <View style={[s.sectionRow, { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" }]}>
-            <Text style={s.sectionLabel}>MOUNTAIN DNA MATCH</Text>
-            {score > 0 && (
-              <View style={s.overallScoreBadge}>
-                <Text style={s.overallScoreText}>{score}% overall</Text>
-              </View>
-            )}
-          </View>
 
-          <View style={s.dnaGrid}>
-            <View style={s.dnaCol}>
-              <Text style={s.dnaVal}>{elevMatch !== null ? `${elevMatch}%` : "—"}</Text>
-              <Text style={s.dnaLbl}>Elevation</Text>
-              <Text style={s.dnaSub}>{suggestedGain.toLocaleString()}m / {totalGoal.toLocaleString()}m</Text>
-            </View>
-            <View style={s.dnaDiv} />
-            <View style={s.dnaCol}>
-              <Text style={s.dnaVal}>{distMatch !== null ? `${distMatch}%` : "—"}</Text>
-              <Text style={s.dnaLbl}>Distance</Text>
-              <Text style={s.dnaSub}>
-                {hasCompleteRouteDistance
-                  ? `${suggestedDist.toFixed(1)}km / ${targetDist.toFixed(1)}km`
-                  : "Route data unavailable"}
-              </Text>
-            </View>
-            <View style={s.dnaDiv} />
-            <View style={s.dnaCol}>
-              <Text style={s.dnaVal}>{steepnessMatch !== null ? `${steepnessMatch}%` : "—"}</Text>
-              <Text style={s.dnaLbl}>Steepness</Text>
-              <Text style={s.dnaSub}>
-                {hasCompleteRouteDistance
-                  ? `${steepnessRatio} vs ${targetSteepnessRatio}`
-                  : "Route data unavailable"}
-              </Text>
-            </View>
-          </View>
-          <Text style={s.dnaNote}>
-            Stage DNA compares each local route with an equal share of the full mountain target.
-          </Text>
-        </View>
-
-        {/* ── Next Up + Prepare for Success ─────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(140).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
-          {/* Next Up */}
-          <View style={[s.card, { flex: 1 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>NEXT LOCAL STAGE</Text>
+        {/* ── Next Local Stage ──────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginHorizontal: 14, marginTop: 14 }}>
+          <View style={[s.card, { padding: 16 }]}>
+            <Text style={[s.sectionLabel, { marginBottom: 12 }]}>NEXT LOCAL STAGE</Text>
             {nextHill ? (
-              <>
-                <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-                  <View style={s.nextHillThumb}>
+              <View>
+                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
+                  <View style={[s.nextHillThumb, { width: 80, height: 60, borderRadius: 8 }]}>
                     <ExpoImage
                       source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=160&height=120${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}` }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.nextHillName} numberOfLines={2}>{englishPlaceName(nextHill.name)}</Text>
-                    <Text style={s.nextHillMeta}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
-                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 }}>{nextEst}</Text>
+                  <View style={{ flex: 1, justifyContent: "center" }}>
+                    <Text style={[s.nextHillName, { fontSize: 16, marginBottom: 4 }]} numberOfLines={2}>{englishPlaceName(nextHill.name)}</Text>
+                    <Text style={[s.nextHillMeta, { fontSize: 13 }]}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
                   </View>
                 </View>
+
+                {/* Primary Start Next Stage Action */}
                 <TouchableOpacity
-                  style={s.nextHillBtn}
-                  onPress={() => router.push("/(expedition)/route" as any)}
+                  style={s.quickStartBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (completedRoutes.length > 0 && !nextHill) {
+                      router.push("/(expedition)/expedition-complete" as any);
+                    } else {
+                      setRoutePickerOpen(true);
+                    }
+                  }}
                 >
-                  <Text style={s.nextHillBtnText}>View Route</Text>
-                  <ChevronRight size={12} color={T.blue} />
+                  <LinearGradient
+                    colors={completedRoutes.length > 0 && !nextHill
+                      ? ["#7C3AED", "#5B21B6"]
+                      : [T.green, "#2AB860"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={s.quickStartGrad}
+                  >
+                    <Play size={14} color="#fff" fill="#fff" />
+                    <Text style={s.quickStartText}>
+                      {completedRoutes.length > 0 && !nextHill
+                        ? "View Expedition Completion"
+                        : "Start Next Stage"}
+                    </Text>
+                  </LinearGradient>
                 </TouchableOpacity>
-              </>
+              </View>
             ) : (
-              <Text style={{ fontSize: 12, color: T.textDim, fontFamily: "Inter_400Regular" }}>Loading…</Text>
+              <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                <Text style={{ fontSize: 13, color: T.textDim, fontFamily: "Inter_400Regular" }}>
+                  {presentation.progress.isComplete ? "Expedition Complete" : "Loading..."}
+                </Text>
+              </View>
             )}
-          </View>
-
-          {/* Prepare for Success */}
-          <View style={[s.card, { flex: 1 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 10 }]}>PREPARE FOR SUCCESS</Text>
-            <Text style={s.coachText} numberOfLines={5}>
-              {hasTrainingPlan
-                ? pct < 25
-                  ? "Build your base. Focus on consistent hill sessions with good elevation gain."
-                  : pct < 50
-                    ? "Good work! Keep your leg strength and hydration high for your next stage."
-                    : pct < 80
-                      ? "You're making great progress. Add longer days to sharpen your endurance."
-                      : "You're nearly there! Taper well and trust your training before the final push."
-                : "Training for a real mountain? Build a personalised plan around your summit, schedule and local hills."}
-            </Text>
-            <TouchableOpacity
-              style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}
-              onPress={() => {
-                void (async () => {
-                  try {
-                    await setShellMode("training");
-                    router.replace(hasTrainingPlan ? "/(tabs)/plan" : "/setup" as any);
-                  } catch (switchError) {
-                    console.error("[base-camp] Could not open Training mode", switchError);
-                    Alert.alert(
-                      "Couldn't open Training",
-                      "SummitReady couldn't switch to Training mode. Please try again.",
-                    );
-                  }
-                })();
-              }}
-            >
-              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>
-                {hasTrainingPlan ? "View Training Plan" : "Start Mountain Training"}
-              </Text>
-              <ChevronRight size={12} color={T.blue} />
-            </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {/* ── Expedition Journal + Recent Achievements ───────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(180).duration(400)} style={{ flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 }}>
-          {/* Journal */}
-          <View style={[s.card, { flex: 1 }]}>
-            <View style={[s.sectionRow, { marginBottom: 10 }]}>
-              <Text style={s.sectionLabel}>EXPEDITION{"\n"}JOURNAL</Text>
-              <TouchableOpacity onPress={() => setJournalOpen(true)}>
-                <Text style={s.viewAllLink}>View all</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: "row", gap: 5 }}>
-              {journalPhotos.slice(0, 2).map(photo => (
-                <TouchableOpacity key={photo.id} style={s.journalThumb} onPress={() => setJournalOpen(true)}>
-                  <ExpoImage source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={[s.journalThumb, s.journalAdd]}
-                onPress={() => void addJournalPhotos()}
-                disabled={journalPicking || !activeExpeditionId}
-              >
-                {journalPicking
-                  ? <ActivityIndicator size="small" color={T.blue} />
-                  : <Plus size={16} color="rgba(255,255,255,0.5)" />}
-                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
-                  Add Photo
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Achievements */}
-          <TouchableOpacity
-            style={[s.card, { flex: 1 }]}
-            onPress={() => router.push("/(expedition)/profile" as any)}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="View all achievements on your profile"
-          >
-            <View style={[s.sectionRow, { marginBottom: 10 }]}>
-              <Text style={s.sectionLabel}>RECENT{"\n"}ACHIEVEMENTS</Text>
-              <Text style={s.viewAllLink}>View all</Text>
-            </View>
-            {unlockedAchievements.length === 0 ? (
-              <View style={{ alignItems: "center", paddingVertical: 8 }}>
-                <Trophy size={22} color="rgba(255,255,255,0.15)" />
-                <Text style={{ fontSize: 9, color: T.textDim, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" }}>
-                  Complete sessions to earn badges
-                </Text>
-              </View>
-            ) : (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                {unlockedAchievements.slice(0, 4).map((id, i) => (
-                  <View key={id} style={[s.achieveBadge, { backgroundColor: ACHIEVEMENT_COLORS[i % 4] + "22", borderColor: ACHIEVEMENT_COLORS[i % 4] + "44" }]}>
-                    <Trophy size={16} color={ACHIEVEMENT_COLORS[i % 4]} />
-                  </View>
-                ))}
-              </View>
-            )}
-          </TouchableOpacity>
+        {/* ── Journey History ─────────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+          <JourneyHistory presentation={presentation} />
         </Animated.View>
 
-        <Modal visible={journalOpen} animationType="slide" transparent onRequestClose={() => setJournalOpen(false)}>
+        {/* Keep the modal stuff below intact */}
+
+<Modal visible={journalOpen} animationType="slide" transparent onRequestClose={() => setJournalOpen(false)}>
           <View style={s.journalModalBackdrop}>
             <View style={[s.journalModal, { paddingBottom: Math.max(insets.bottom, 18) }]}>
               <View style={s.journalModalHeader}>
