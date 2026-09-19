@@ -1,113 +1,189 @@
-# SummitReady AI Task — Stage 5: Readiness 2.0
+# SummitReady AI Task — Stage 6: Expedition Experience
 
 ## Objective
-Make Training Readiness answer: **Am I ready for my mountain, and what should I do next?**
+Turn Expedition mode into a distinctive adventure journey: choose an expedition, complete matched local stages, see meaningful progress, and experience a memorable summit completion.
 
-Stage 5 builds on the existing canonical evidence architecture but MUST NOT depend on the blocked production ledger migration being activated. Development may use the verified development schema. Production remains unchanged/default-safe.
+Stage 6 builds around the existing Expedition architecture and the protected Progress Mountain/cinematic work. It MUST preserve Training/Expedition separation, canonical activity identity, offline-first tracking, Summit Data Engine identities, and all completed Stage 1–5 boundaries.
+
+PA-A2 remains parked. Production remains unchanged/default-safe.
 
 ## Product outcome
-Training users with a target mountain/date get:
-- overall Readiness 0–100;
-- four explainable dimensions: **Endurance, Elevation Capacity, Consistency, Mountain Experience**;
-- evidence quality/state;
-- concise strongest gaps/strengths;
-- deterministic next best action;
-- estimated projected impact where evidence supports it, e.g. “Complete Saturday’s 800m hill session — estimated readiness 72 → 76”;
-- real progress/trend only where source evidence exists.
+Expedition answers: **How far through my adventure am I, what should I climb next, and what happens when I reach the summit?**
 
-Readiness is a training heuristic, not a guarantee of mountain safety, weather, technical competence, health, or summit success.
+Basecamp should feel like a premium outdoor expedition dashboard, not a SaaS dashboard:
+- one dominant current expedition;
+- compact live Progress Mountain as the visual centrepiece;
+- simulated elevation/progress clearly distinguished from real climbed elevation;
+- obvious next local stage + primary CTA;
+- concise stage journey/history;
+- rewarding stage completion;
+- tap compact mountain to open the existing full Progress Mountain;
+- summit completion flows into the protected cinematic/live-3D summit experience.
+
+## Protected Progress Mountain decision
+This is now a core Stage 6 requirement.
+
+**Basecamp → compact Progress Mountain → tap → existing full Progress Mountain → summit → cinematic/live-3D completion.**
+
+The compact and expanded views MUST consume the same underlying expedition progress/state. Do not create an independent competing progress calculation.
+
+Compact Basecamp version should target roughly 30–35% of the useful screen height and show, where supported:
+- mountain silhouette/artwork;
+- existing elevation-driven route/progress fill;
+- current position;
+- current / total simulated expedition elevation and percentage;
+- current or next stage marker;
+- restrained “View progress” affordance.
+
+The full-screen Progress Mountain remains the richer detailed experience and preserves the existing progressive elevation-driven fill/stage behavior.
+
+At 100%, preserve the intended summit sequence: progress reaches summit → camera/visual transition into cinematic/live-3D mountain → climber reaches summit → expedition completion.
+
+Existing implementation may be refactored only to share state/rendering safely. It must not be removed, replaced, substantially redesigned, or regressed without explicit owner approval.
+
+Protected files include:
+- artifacts/summit-ready/components/MountainProgress.tsx
+- artifacts/summit-ready/components/ExpeditionMountainProgress.tsx
+- artifacts/summit-ready/app/(expedition)/base-camp.tsx
+- artifacts/summit-ready/components/CinematicPrototype.tsx
 
 ## Architecture rules
-One physical activity has one canonical identity. Readiness consumes evidence; it does not create a second Training activity store.
+One physical activity exists once. Expedition contribution is a consequence/link, not a duplicate activity.
 
-Evidence preference:
-1. eligible canonical GPS activity evidence;
-2. trusted existing tracked-hill evidence where canonical capability is unavailable;
-3. explicit manual/indoor Training evidence with appropriate reduced influence;
-4. missing evidence.
+Keep distinct:
+- real GPS ascent / personal Elevation Bank;
+- simulated Expedition progress/elevation;
+- Training Readiness evidence;
+- real summit evidence.
 
-Never count simulated Expedition elevation, planned sessions, duplicate retries, invalid/untrusted GPS, or public leaderboard data as completed Readiness evidence.
+A real Expedition GPS activity may qualify for other systems once under their rules. Simulated Expedition elevation must never masquerade as real ascent, Elevation Bank credit, Readiness evidence, or a real summit.
 
-Use the existing Summit Data Engine for canonical mountain/route knowledge. No fuzzy-name identity, duplicate summit store, AI-invented route metrics, or destructive SDE changes.
+Offline selected-stage tracking remains Start → Track → Pause → Resume → Finish → Save without network gating. Route/stage context is cached before tracking. Sync may enrich later but cannot gate recording/completion.
 
-PA-A2 remains a parallel blocker. Never publish the unsafe 24-statement diff, weaken schema to satisfy Publish, apply production migration 0002, set production Stage 2/4/5 flags, backfill production, switch canonical-history consumers, or release mobile during Stage 5.
+Use stable SDE/canonical identities where available. No fuzzy-name identity, duplicate summit store, AI-invented coordinates/route facts, or destructive SDE changes.
 
-## Model principles
-Deterministic, versioned, testable, explainable, bounded 0–100. Do not claim scientific/physiological validation.
+## S6-C01 — Expedition + Progress Mountain audit
+Audit only. Map:
+- Expedition entry/discovery/current expedition flow;
+- Basecamp hierarchy/state;
+- expedition/stage/run/contribution models and APIs;
+- current simulated-progress calculation;
+- stage completion/consequence path;
+- offline selected-stage cache/tracking;
+- MountainProgress and ExpeditionMountainProgress rendering/data contracts;
+- summit/cinematic/live-3D trigger path;
+- duplicate/dead/legacy Expedition surfaces;
+- tests and production gates.
 
-Dimensions:
-- **Endurance:** recent eligible duration/distance/longest sustained activity vs verified target demand.
-- **Elevation Capacity:** recent/largest/cumulative eligible ascent vs verified target ascent; distinct from lifetime Elevation Bank.
-- **Consistency:** eligible session frequency, plan adherence and recency, capped so overtraining is not rewarded indefinitely.
-- **Mountain Experience:** eligible real mountain/hill experience and verified relevant terrain evidence; never infer technical competence from elevation/distance alone.
+Identify exactly what can be reused for compact/expanded Progress Mountain and where state should be centralized without changing behavior.
 
-Audit existing evidence before finalizing weights. Default direction if evidence does not justify another split:
-- Endurance 30%
-- Elevation Capacity 30%
-- Consistency 25%
-- Mountain Experience 15%
+Create docs/STAGE_6_EXPEDITION_AUDIT.md.
+End S6-R01 with one status.
 
-Recent evidence should matter more than stale evidence. Missing verified target facts must fail soft and reduce confidence, never be invented.
+## S6-C02 — Expedition UX/state specification
+Define one canonical Expedition presentation state and screen hierarchy:
+**Expedition selection → Basecamp → next stage → Track → completion → progress → summit.**
 
-## S5-C01 — Existing Readiness/data-flow audit
-Audit only. Map every current Readiness formula/display, target mountain/date input, Training plan/session input, activity evidence source, SDE/route fact source, API/client contract, offline/cache behavior, legacy fallback, production gate and relevant test. Identify duplicate/conflicting calculations and the migration path to one service.
+Specify:
+- current expedition/run identity;
+- overall progress and stage progress;
+- real vs simulated labels;
+- next-stage selection;
+- completed/current/locked/upcoming stage states;
+- offline/degraded/unavailable behavior;
+- compact vs expanded Progress Mountain contract;
+- summit transition trigger/idempotency;
+- recovery after restart;
+- no-progress/no-expedition/completed states.
 
-Create docs/STAGE_5_READINESS_AUDIT.md.
-End S5-R01 with one status.
+Create docs/STAGE_6_EXPEDITION_MODEL.md.
+If destructive migration or replacement of protected Progress Mountain/cinematic behavior is required: APPROVAL REQUIRED.
 
-## S5-C02 — Versioned Readiness specification
-Define readiness_model_version, four formulas, weighting, caps/floors, recency, target normalization, evidence eligibility, confidence/missing-data semantics, manual/indoor treatment, duplicate protection, explanations, next-action selection, projected-impact calculation and safety limitations.
+## S6-C03 — Shared Progress Mountain state
+Implement/refactor the minimum shared typed state/selectors required so compact and expanded Progress Mountain consume the same deterministic expedition progress.
 
-Prefer pure typed deterministic functions. Define fixtures/tests before consumer wiring.
-Create docs/STAGE_5_READINESS_MODEL.md.
-If destructive migration or major new flow is required: APPROVAL REQUIRED.
+No second progress formula. Preserve existing full-screen behavior. Add tests for bounds, stage markers, restart/reload, missing data and 100% completion.
 
-## S5-C03 — Calculation service
-Implement pure/versioned Readiness engine + service boundary:
-- owner scoped;
-- deterministic/read-only/idempotent;
-- no duplicate activity creation;
-- no production dependency on unavailable Stage 2 ledgers;
-- provenance-aware evidence;
-- score + four dimensions + confidence/state + explanation;
-- explicit unavailable/degraded response instead of fabricated zero.
+## S6-C04 — Compact Progress Mountain
+Implement the compact Basecamp mountain presentation using the shared state.
 
-Test no/partial/strong/stale evidence, manual/indoor only, simulated Expedition exclusion, duplicates, invalid GPS, missing target facts, owner isolation and bounds.
+Requirements:
+- visual centrepiece, approximately 30–35% useful screen height;
+- preserve recognizable mountain silhouette and route-fill language;
+- current position/progress;
+- simulated elevation + percentage with honest labeling;
+- next/current stage cue;
+- whole component tappable;
+- restrained “View progress” cue;
+- accessible fallback and reduced-motion behavior;
+- no nested-dashboard clutter.
 
-## S5-C04 — Target mountain demand
-Connect Readiness to verified target mountain/route facts via existing SDE/approved route sources. Stable identity only; deterministic distance/ascent facts; explicit unknowns; no AI geography. Safe fallback to existing approved target metadata when verified SDE route facts are unavailable. Do not alter SDE identities/catalogue.
+Tap opens the existing expanded Progress Mountain experience.
 
-## S5-C05 — Next best action + projected impact
-Select the highest-value action from the existing Training plan/context. Projection must simulate the proposed evidence through the same engine, show current → projected only when sufficient inputs exist, be labelled estimated, never mark planned work completed, and never write projected evidence to history/Elevation Bank.
+## S6-C05 — Expanded Progress Mountain integration
+Integrate/refine the existing full Progress Mountain as the expanded destination.
 
-## S5-C06 — Training Home experience
-Preserve hierarchy:
-**Mountain → Readiness → Next Action → Weekly Progress**
+Preserve its detailed progress/stage behavior. Ensure compact → expanded continuity, same values/state, correct back navigation, offline rendering, and no reset/recalculation drift.
 
-Show one dominant score, four concise dimensions, strongest gap/why, confidence where useful, next action, estimated impact, and route to detail. Premium outdoor dark-navy visual language, restrained cards, accessible contrast. No new primary nav tab.
+Do not replace protected artwork/animation/cinematic implementation.
 
-## S5-C07 — Detailed “Am I Ready?” experience
-Target mountain/date, overall score, four dimensions, evidence behind each, real trend where evidence exists, missing-evidence callouts, next action/estimated impact, concise limitations. Explain rather than overwhelm. No paywall/pricing changes.
+## S6-C06 — Basecamp hierarchy + next stage
+Refine Expedition Basecamp around:
+1. Expedition identity/status;
+2. compact Progress Mountain;
+3. **NEXT LOCAL STAGE**;
+4. primary **Start Next Stage** CTA;
+5. concise stage journey/recent progress.
 
-## S5-C08 — Activity consequence integration
-Eligible newly completed activities affect subsequent Readiness through existing canonical/legacy-safe evidence boundary. Count once. Offline Finish/Save remains immediate; Readiness refresh never blocks save; delayed sync updates later. Expedition GPS may count as real physical evidence if independently eligible, but simulated Expedition progress never counts. Do not activate blocked production ledgers.
+Use premium dark-navy outdoor visual language, stronger imagery, fewer nested cards/tiny uppercase labels, and one dominant action. Preserve shared shell: Basecamp | Explore | Track | Community | You.
 
-## S5-C09 — Regression/protected-boundary review
-Run bounded relevant suites then required build/type checks. Verify no regression to offline Start→Track→Pause→Resume→Finish→Save, mode isolation, canonical identity/dedupe, Elevation Bank, simulated Expedition semantics, shared shell, SDE identity/provenance, Progress Mountain, cinematic/live-3D summit transition, auth/payment/privacy, or existing production behavior. Native-device offline QA remains a release prerequisite.
+## S6-C07 — Stage completion consequence
+After offline-safe Finish/Save, show clear physical activity facts separately from Expedition simulation:
+- real distance/ascent/duration where recorded;
+- simulated Expedition contribution;
+- updated expedition progress;
+- next-stage state;
+- Elevation Bank consequence only when independently eligible.
 
-## S5-C10 — Completion gate
-Create docs/STAGE_5_COMPLETION_REPORT.md and update docs/AI_HANDOFF.md + docs/AI_CHANGELOG.md.
+No double counting. Completion presentation must work locally while sync/consequences may be pending.
 
-Report commands/responses, model version/formula, evidence sources, target-demand source/fallbacks, tests/build/typecheck, offline compatibility, production capability state, PA-A2 isolation, protected-boundary verification, limitations and native-device QA status.
+## S6-C08 — Summit + cinematic completion
+Wire/prove the idempotent 100% transition using existing protected functionality:
+**route reaches summit → summit transition → cinematic/live-3D mountain → climber reaches summit → expedition complete.**
 
-Stage 5 COMPLETE only when deterministic explainable Readiness 2.0 exists; four dimensions are visible/evidence-backed; next action works; projections are estimated/non-persistent; simulated/planned data cannot masquerade as completed evidence; offline tracking remains non-blocking; production remains unchanged/default-safe; protected assets remain preserved.
+Handle replay/reopen/restart safely. Do not repeatedly award completion. Provide reduced-motion/non-3D fallback without deleting the hero experience.
 
-Then STOP. Do not begin Stage 6.
+Any substantial redesign/replacement of the existing cinematic/live-3D implementation requires APPROVAL REQUIRED.
+
+## S6-C09 — Regression/protected-boundary review
+Run bounded relevant suites + build/type checks. Verify no regression to:
+- offline Start→Track→Pause→Resume→Finish→Save;
+- canonical identity/dedupe;
+- Training Readiness 2.0;
+- Elevation Bank;
+- real vs simulated semantics;
+- shared shell/mode isolation;
+- SDE identities/provenance;
+- full Progress Mountain;
+- summit cinematic/live-3D;
+- auth/payment/privacy;
+- production default-safe state.
+
+Native-device QA remains required before release.
+
+## S6-C10 — Completion gate
+Create docs/STAGE_6_COMPLETION_REPORT.md and update docs/AI_HANDOFF.md + docs/AI_CHANGELOG.md.
+
+Report commands/responses, changed architecture, compact/expanded state contract, Basecamp UX, stage completion behavior, summit trigger, tests/build/typecheck, offline compatibility, production capability state, PA-A2 isolation, protected-boundary verification, limitations and native QA status.
+
+Stage 6 COMPLETE only when compact Progress Mountain is integrated on Basecamp; tapping opens the preserved expanded experience; both use one progress state; next-stage journey is clear; completion keeps real and simulated consequences distinct; summit transition remains protected and functional; production remains unchanged/default-safe.
+
+Then STOP. Do not begin Stage 7.
 
 ## Response protocol
-Use S5-R01 through S5-R10. Each response states prior result reviewed, concise implementation/files/tests/risks/commit, and ends with exactly one status: COMPLETE, PARTIAL, BLOCKED, FAILED, or APPROVAL REQUIRED.
+Use S6-R01 through S6-R10. Each response states prior result reviewed, concise implementation/files/tests/risks/commit, and ends with exactly one status: COMPLETE, PARTIAL, BLOCKED, FAILED, or APPROVAL REQUIRED.
 
 ## Authorization
-GREEN Stage 5 development and additive/default-off implementation above is authorized.
+GREEN Stage 6 audit, additive/default-off/refactoring work that preserves protected behavior, UI refinement, tests and documentation above is authorized.
 
-NOT authorized: production DB/schema changes, production activation, destructive migration/backfill/reconciliation, production/mobile release, payments/pricing, auth/privacy changes, destructive SDE changes, Progress Mountain/cinematic/live-3D replacement, or Stage 6. Any such need must stop for explicit owner approval.
+NOT authorized: production DB/schema changes, production activation, destructive migration/backfill/reconciliation, production/mobile release, payments/pricing, auth/privacy changes, destructive SDE changes, replacement/substantial redesign of Progress Mountain or cinematic/live-3D functionality, or Stage 7. Any such need must stop for explicit owner approval.
