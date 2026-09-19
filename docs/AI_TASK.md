@@ -1,307 +1,358 @@
-# Stage 7 — Mountains, Routes & Mountain DNA
+# Overnight Runbook — Consolidation + Stage 8 Challenges & Achievements
 
-**Authority:** Product owner has authorized Stage 7 development.  
-**Branch:** `virtual-expeditions-mode`  
-**Stage 6 baseline:** `67c8db5b26f2698297c9e7af77d4cf7dadf92684`
+**Authority:** Product owner has authorized autonomous GREEN development overnight. ChatGPT is lead product/design/architecture authority.
+**Branch:** `virtual-expeditions-mode`
+**Accepted baseline:** Stages 1–7 are accepted. Stage 7 completion is the current product baseline.
 
-## Objective
+## Mission
 
-Turn SummitReady's existing mountain data into a trusted route intelligence layer that powers Explore, Training and Expeditions without duplicating mountains, inventing geography, or disturbing the working GPS/offline tracker.
+Make substantial safe progress without requiring the product owner to supervise individual engineering steps.
 
-Stage 7 should make SummitReady able to answer:
+Sequence:
+1. Consolidate and regression-check the accepted Stages 1–7 architecture.
+2. Build Stage 8 — Challenges & Achievements.
+3. Self-review architecture, fix concrete GREEN blockers, rerun bounded regressions, document completion.
+4. If Stage 8 completes cleanly, audit/prepare Stage 9 Community & Competition only. **Do not implement Stage 9.**
 
-> What mountain/route is this, how trustworthy is the route data, and how closely does this local route match the mountain I am preparing for?
+Do not wait for routine approval. Make reasonable product/UX/architecture decisions inside this runbook and record them.
 
-The user-facing differentiator is **Mountain DNA**: an explainable route-to-route similarity model using verified deterministic route facts.
+## SummitReady product north star
 
-## Product model
+SummitReady is not an AllTrails or Strava clone. It connects the mountain a user wants to climb with what they need to do to become capable of climbing it:
 
-One canonical mountain may have multiple routes. A route is not a recorded activity.
+`Discover → Choose mountain → Understand route → Assess readiness → Train → Find local matches → Track real hikes → Build elevation → Complete expeditions → Achieve summits → Challenges/community → Next mountain`.
 
-```text
-SUMMIT DATA ENGINE MOUNTAIN
-  → ROUTE IDENTITY
-    → VERSIONED ROUTE DEFINITION / FACTS
-      → ROUTE GEOMETRY + ELEVATION PROFILE
-        → MOUNTAIN DNA
+Challenges must reinforce mountain capability, consistency and exploration rather than dangerous speed.
 
-PHYSICAL ACTIVITY
-  → recorded GPS trace/evidence
-  → may reference canonical mountain/route
-  → never overwrites canonical route geometry
-```
+## Permanent protected boundaries
 
-Training, Expedition and Explore consume this shared mountain/route intelligence; they do not create competing mountain catalogues.
+Preserve:
+- one physical activity stored once, with multiple consequences/qualifications;
+- Training Readiness and Expedition Progress as separate primary metrics;
+- real GPS ascent vs simulated Expedition elevation;
+- Elevation Bank as personal eligible real elevation;
+- Summit Data Engine stable/provenance-aware identities;
+- Stage 7 route intelligence/Mountain DNA trust boundaries;
+- offline-first Start → Track → Pause → Resume → Finish → Save;
+- Stage 6 compact → expanded Progress Mountain → protected summit/cinematic/live-3D sequence;
+- canonical owner isolation/dedupe;
+- existing auth/privacy/payment behavior.
 
-## Protected boundaries
+Protected implementations must not be replaced/substantially redesigned without approval:
+- `MountainProgress.tsx`
+- `ExpeditionMountainProgress.tsx`
+- `CinematicPrototype.tsx`
+- GPS/offline tracking engine and lifecycle.
 
-### Summit Data Engine — PROTECTED
-The existing curated catalogue (21k+ mountains) is the canonical summit asset. Integrate with it; do not replace, copy, destructively migrate, fuzzy-merge, or discard it.
+## Production freeze / PA-A2/PA-A3
 
-Use stable identities:
-- `sde:mountain:<mountains.id>`
-- `sde:route:<route_identities.identity_key>@<version>`
+PA-A2 remains parked. Replit Support has supplied a possible four-index production workaround, but it is a separate RED production gate.
 
-Do not use display names, slugs, app serial IDs, or spreadsheet row numbers as cross-catalog identity.
+**Overnight work must NOT:**
+- run production SQL;
+- apply schema/migrations to production;
+- enable production flags;
+- backfill/reconcile production data;
+- activate canonical history/route records;
+- deploy/release/publish mobile or backend;
+- perform PA-A3;
+- change pricing/payments/auth/privacy;
+- weaken SDE provenance;
+- start destructive data work.
 
-Preserve provenance, verification status, source hashes, licences/attribution and versioning. AI must not invent coordinates, geometry, elevation facts, route names, or verification.
+If any command requires one of these, record `APPROVAL REQUIRED` for that item and continue only with independent GREEN work where safe.
 
-### GPS/offline tracker — PROTECTED
-The existing tracking infrastructure is working and is now a protected subsystem.
+## Challenge product rules
 
-Stage 7 may consume activity/route evidence and pass stable route context into the existing tracker. It must NOT redesign, replace, or materially alter the GPS engine, active-session lifecycle, offline checkpoints, pause/resume/finish/save flow, outbox/sync semantics, or canonical physical-activity identity unless a concrete blocker is documented and approval is obtained.
+Build motivation around:
+- elevation accumulated;
+- mountains/summits completed;
+- hike/activity consistency;
+- distance where useful;
+- Expedition milestones;
+- Training milestones/readiness improvement where evidence is legitimate;
+- exploration/completion.
 
-### Progress Mountain / cinematic — PROTECTED
-Do not replace, remove, substantially redesign or regress the Stage 6 compact→expanded Progress Mountain or protected summit/cinematic/live-3D completion sequence.
+Avoid incentives for:
+- fastest dangerous descents;
+- risky scrambling speed;
+- unsafe ascent speed;
+- unverified manual public competition.
 
-### Production — FROZEN
-PA-A2 remains parked. Replit Support has proposed a separate workaround involving four production unique indexes, but that is NOT part of Stage 7.
+Personal achievements may acknowledge broader evidence where explicitly labelled. Competitive/public eligibility is stricter and must be separated from personal completion.
 
-No production SQL/schema migration, production flags, backfill, reconciliation, consumer switch, deployment, mobile/store release, auth/payment/privacy change, or destructive data operation is authorized.
+A single physical activity may progress multiple challenges/achievements, but must never be duplicated.
 
-## Route trust lifecycle
+## Trust / eligibility principles
 
-Keep route trust explicit:
+Define qualification separately from presentation.
 
-```text
-Generated / Planned
-→ Recorded
-→ Community-confirmed
-→ SummitReady Verified
-```
+Expected evidence tiers:
+- eligible trusted GPS outdoor activity: may qualify for personal + public/competitive challenges subject to plausibility;
+- manual outdoor entry: personal/history only unless a later explicit policy says otherwise;
+- treadmill/StairMaster/indoor: Training/personal fitness achievements only, never real outdoor summit/elevation/public competition;
+- simulated Expedition elevation: Expedition-specific milestones only; never Elevation Bank, real summit, or outdoor elevation challenge credit;
+- canonical summit completion requires legitimate route/activity evidence under existing rules;
+- retries/reprocessing must be idempotent.
 
-A single user's GPS recording does **not** automatically make a route SummitReady Verified.
+Do not invent anti-cheat certainty. For Stage 8, establish explicit competitive eligibility hooks/flags and deterministic validation boundaries; deeper leaderboard anti-cheat belongs to Stage 9.
 
-Canonical route geometry and actual walked GPS trace remain separate objects.
+## Response protocol
 
-Where existing SDE verification terminology differs, audit it first and map rather than silently renaming persisted states.
+Responses are `O8-R01` onward. Every response:
+- states previous result reviewed;
+- summarizes implementation/decisions;
+- lists files/tests;
+- identifies risks/limitations;
+- gives commit SHA;
+- ends with exactly one status: `COMPLETE`, `PARTIAL`, `BLOCKED`, `FAILED`, or `APPROVAL REQUIRED`.
 
-## Mountain DNA principles
+Commit and push each meaningful checkpoint. Continue autonomously through GREEN commands. Do not stop merely because a test exposes a GREEN-scope bug: diagnose, fix, rerun, document.
 
-Mountain DNA compares a candidate/local route against a target route using deterministic, provenance-backed facts. It is not an AI opinion.
+---
 
-Initial explainable dimensions should be audited against available data before final weights are fixed. Expected dimensions include:
+## O8-C01 — Consolidation audit and regression baseline
 
-- elevation/ascent demand;
-- distance;
-- steepness/grade profile;
-- terrain/technical character where genuinely sourced;
-- optionally altitude/exposure/profile shape only where trustworthy data exists.
-
-Example presentation only:
-
-```text
-96% MOUNTAIN DNA MATCH
-Elevation   100%
-Distance     94%
-Steepness    98%
-Terrain      87%
-
-Why this route?
-```
-
-Do not manufacture a dimension when the source data is missing. Return explicit unknown/degraded confidence instead. Overall score must not imply precision unsupported by evidence.
-
-Mountain DNA is route-to-route matching first. Mountain-level matching may select a documented representative/default route only when that relationship is explicit and stable.
-
-## Data sources
-
-Prefer existing SDE provenance and verified route facts. Existing OSM/Copernicus DEM pipeline may be reused where licensed/provenance-safe. Any route generation must be deterministic and separately labelled from verified routes.
-
-No AI-generated geographic facts.
-
-## Command protocol
-
-Every response is `S7-Rxx`, explicitly states the previous result reviewed, lists implementation/files/tests/risks/commit, and ends with exactly one status:
-
-`COMPLETE`, `PARTIAL`, `BLOCKED`, `FAILED`, or `APPROVAL REQUIRED`.
-
-Commit and push each meaningful checkpoint. Continue autonomously through GREEN commands. Stop at S7-C10 or sooner if an AMBER/RED decision is required.
-
-### S7-C01 — Mountain/route architecture audit
-
-Audit, do not redesign yet.
-
-Map:
-- SDE mountain, route identity, route definition/facts, geometry, elevation profile and provenance models;
-- existing app `canonical_hills`, `canonical_hill_routes`, Training routes, Expedition routes and Explore route surfaces;
-- every current mountain/route lookup and stable-ID boundary;
-- route verification/trust states and evidence;
-- OSM/Copernicus/DEM pipeline and existing Tryfan review outputs;
-- route metrics already available vs missing;
-- activity→route linking;
-- map/offline route caching;
-- duplicate/dead/legacy route stores;
-- exact protected tracker boundaries;
-- production/schema implications.
-
-Identify the lowest-risk integration path that makes SDE canonical without destructive migration.
-
-Create `docs/STAGE_7_MOUNTAIN_ROUTE_AUDIT.md`.
-
-### S7-C02 — Canonical route intelligence specification
-
-Define the typed contracts and lifecycle for:
-- Mountain;
-- RouteIdentity + version;
-- RouteDefinition/Facts;
-- RouteGeometry;
-- RouteElevationProfile;
-- provenance/attribution;
-- trust/verification state;
-- activity route reference;
-- Training target route;
-- Expedition local-stage route;
-- Explore route.
-
-Define exact behavior for missing/ambiguous/unverified data and version changes. No fuzzy identity.
-
-Create `docs/STAGE_7_ROUTE_INTELLIGENCE_MODEL.md`.
-
-If implementation requires destructive SDE changes, a new production migration, weakening provenance, or tracker redesign: **APPROVAL REQUIRED**.
-
-### S7-C03 — Shared read-only route intelligence layer
-
-Implement the minimum typed read/select layer needed for app consumers.
-
-Requirements:
-- stable SDE IDs/versioned route IDs;
-- provenance and verification exposed;
-- deterministic missing/degraded states;
-- no duplicate summit catalogue;
-- no production activation;
-- compatibility adapters only where necessary;
-- focused tests.
-
-This layer should allow Explore/Training/Expedition to refer to the same canonical mountain/route facts without changing their separate journey state.
-
-### S7-C04 — Deterministic Mountain DNA engine
-
-Implement a pure, versioned Mountain DNA evaluator.
-
-Requirements:
-- deterministic;
-- route-to-route;
-- uses only trustworthy available facts;
-- dimension scores + overall score + evidence/confidence/degraded state;
-- explicit missing dimensions;
-- no AI geography;
-- no network/clock/randomness inside evaluator;
-- version identifier in result;
-- tests for exact match, partial match, missing data, unverified data, extreme values and deterministic repeatability.
-
-Document formula/weights/rationale. Do not tune scores merely to make examples look impressive.
-
-### S7-C05 — Route matching service
-
-Build bounded candidate matching around Mountain DNA.
-
-Requirements:
-- stable target route identity;
-- candidate routes filtered by valid provenance/geometry/facts before scoring;
-- deterministic ordering/tie handling;
-- explain why each route matched;
-- never fuzzy-merge mountain identity;
-- unknown data lowers confidence rather than being invented;
-- allow future geographic/radius filters without coupling them to scoring;
-- no production switch.
-
-### S7-C06 — Mountain/route detail UX
-
-Create/refine the shared mountain/route detail experience so a user can understand:
-- mountain identity and key facts;
-- available routes;
-- verification/trust label;
-- distance/ascent and supported route characteristics;
-- source/attribution where appropriate;
-- Mountain DNA when viewed in Training/target context;
-- clear `Why this route?` explanation;
-- Track action that launches the **existing protected tracker** with stable route context.
-
-Use the established premium outdoor visual language. Avoid SaaS-dashboard clutter.
-
-### S7-C07 — Training + Explore integration
-
-Wire the shared route intelligence into Training and Explore without merging their journeys.
-
-Training:
-- target mountain/route is explicit;
-- local route recommendations use Mountain DNA;
-- explain the match;
-- Readiness 2.0 remains authoritative and unchanged except consuming already-approved route demand facts through its stable boundary.
-
-Explore:
-- browse/discover canonical mountains/routes;
-- route trust visible;
-- Track uses existing tracker;
-- a completed activity may reference the canonical route but does not alter route geometry or verification automatically.
-
-### S7-C08 — Expedition integration
-
-Use the same route intelligence for Expedition local stages.
-
-Requirements:
-- Expedition simulated progress semantics remain unchanged;
-- selected local stage has stable canonical route reference where available;
-- Mountain DNA may explain why a local stage is a good analogue;
-- one physical activity remains one activity;
-- Stage 6 selected-stage contribution and summit completion authority remain unchanged;
-- compact/expanded Progress Mountain and cinematic untouched.
-
-### S7-C09 — Regression and protected-boundary review
-
-Run bounded then full relevant regression.
+Before new Stage 8 features, inspect accepted Stages 1–7 and establish a clean baseline.
 
 Verify:
-- GPS/offline tracker behavior has not been redesigned/regressed;
-- canonical activity identity/dedupe;
-- Stage 5 Readiness 2.0;
-- Stage 6 Expedition progress/contribution/summit authority;
-- Elevation Bank real-vs-simulated semantics;
-- Training/Expedition mode isolation;
-- SDE provenance/stable identities;
-- Mountain DNA determinism and degraded states;
-- route geometry vs GPS trace separation;
+- activity identity/dedupe and owner isolation;
+- offline tracker boundaries;
+- Readiness 2.0;
+- Elevation Bank;
+- Expedition selected-stage consequences;
+- compact/expanded Progress Mountain and summit authority;
+- SDE route intelligence/Mountain DNA;
+- production-default-off boundaries;
+- PA-A2 isolation.
+
+Run bounded relevant tests/typechecks/build/diff safety. Do not rewrite working systems.
+
+Create `docs/OVERNIGHT_CONSOLIDATION_REPORT.md`.
+
+If a concrete GREEN regression is found, fix it and record the fix before proceeding. Native-device QA remains separately required and is not falsely claimed.
+
+## O8-C02 — Stage 8 architecture audit
+
+Audit existing challenge, achievement, badge, streak, leaderboard, completion and profile code/data.
+
+Map:
+- current challenge/achievement stores and APIs;
+- existing UI;
+- activity/elevation/summit/Expedition/Training evidence sources;
+- idempotency/duplicate risks;
+- personal vs competitive eligibility;
+- legacy/dead/duplicate concepts;
+- schema implications;
+- offline implications.
+
+Prefer reuse/additive compatibility. Do not create a second activity ledger or summit catalogue.
+
+Create `docs/STAGE_8_CHALLENGES_AUDIT.md`.
+
+## O8-C03 — Challenge & achievement domain model
+
+Define a deterministic versioned model.
+
+At minimum cover:
+- ChallengeDefinition;
+- ChallengeWindow/period;
+- ChallengeEnrollment where necessary;
+- ChallengeProgress;
+- AchievementDefinition;
+- AchievementAward;
+- EvidenceReference;
+- qualification/eligibility;
+- personal vs public/competitive scope;
+- idempotent award/progress identity;
+- corrections/revocations;
+- offline/pending state.
+
+Initial challenge families should support:
+- monthly elevation;
+- cumulative elevation;
+- mountain/summit count;
+- hiking distance;
+- activity consistency;
+- Expedition milestones;
+- selected Training/readiness milestones where safe.
+
+Achievement examples may include first tracked mountain, first 1,000m eligible elevation, first Expedition stage/Expedition completion, mountain-count milestones and consistency milestones. Names/copy can be refined during UI work.
+
+Define rules before building UI. Create `docs/STAGE_8_CHALLENGE_MODEL.md`.
+
+If persistent implementation requires a production migration, prepare code/migration only if additive and safe, but DO NOT apply production. If architecture would require destructive migration, stop that portion with APPROVAL REQUIRED.
+
+## O8-C04 — Deterministic progress/award evaluator
+
+Implement pure/versioned evaluation services with tests.
+
+Requirements:
+- one activity may contribute to many eligible challenge consequences without duplication;
+- exact stable evidence identity;
+- owner isolation;
+- deterministic retry/idempotency;
+- simulated vs real evidence separation;
+- manual/indoor/public eligibility separation;
+- bounded date/window logic supplied explicitly, no hidden clock inside pure evaluator;
+- corrections/revocations modeled;
+- no network/randomness in evaluator;
+- explicit degraded/unavailable states.
+
+Test duplicates, retries, cross-owner evidence, manual, indoor, simulated Expedition, GPS outdoor, corrections, date boundaries and repeated deterministic evaluation.
+
+## O8-C05 — Personal challenge experience
+
+Implement/refine a premium mobile Challenges experience consistent with SummitReady visual language.
+
+Hierarchy should emphasize current meaningful goal, not a grid of SaaS cards.
+
+Provide:
+- active challenge hero;
+- progress toward goal;
+- concise challenge catalogue;
+- completed/recent challenges;
+- clear evidence/progress explanation;
+- offline/pending state;
+- no unsafe speed incentives.
+
+Use strong outdoor imagery/typography where existing assets permit. Avoid excessive nested cards and tiny uppercase labels.
+
+Integrate into existing navigation with the lowest-disruption route. Do not substantially redesign the shared shell without approval.
+
+## O8-C06 — Achievements and celebration
+
+Implement achievement presentation and safe award flow.
+
+Requirements:
+- meaningful, sparse achievements rather than badge spam;
+- deterministic exactly-once award identity;
+- celebration only after legitimate local/confirmed consequence;
+- restart/replay safe;
+- offline award can remain pending and reconcile later;
+- clearly distinguish real summit, Expedition completion, Training milestone and general elevation achievements;
+- do not alter protected Expedition summit cinematic.
+
+Add an achievements section to the appropriate existing profile/You surface using the established premium outdoor style.
+
+## O8-C07 — Activity consequence integration
+
+Connect completed eligible activities to challenge/achievement evaluation through existing consequence architecture.
+
+Must preserve:
+- one physical activity;
+- Elevation Bank rules;
+- Readiness rules;
+- Expedition simulated contribution rules;
+- canonical history shadow/default boundaries;
+- offline Finish/Save;
+- sync retry/idempotency.
+
+Completion UI may show newly earned challenge/achievement consequences only when deterministically known. Pending network consequences must be honestly labelled, never fabricated.
+
+## O8-C08 — Challenge catalogue seed + product polish
+
+Create a high-quality initial challenge/achievement catalogue using deterministic definitions.
+
+Prefer a focused launch set over dozens of weak badges. Include a balanced mix of elevation, mountain completion, consistency, exploration and Expedition progress.
+
+Do not make public leaderboard ranking the centre of Stage 8. Prepare metadata so Stage 9 can consume eligible challenge progress later.
+
+Review copy, empty/completed states, accessibility, reduced motion and visual hierarchy.
+
+## O8-C09 — Architecture/regression review and self-fix loop
+
+Perform an independent adversarial review of C02–C08.
+
+Explicitly check:
+- duplicate activity/progress/award risks;
+- cross-owner leakage;
+- manual/indoor/simulated evidence incorrectly qualifying;
+- public/competitive eligibility leakage;
+- date/window/timezone boundary bugs;
+- retry/restart behavior;
+- Readiness/Elevation Bank/Expedition regressions;
+- SDE identity/provenance;
 - protected Progress Mountain/cinematic;
-- auth/payment/privacy;
-- production default-safe;
-- PA-A2 remains isolated.
+- offline tracker;
+- auth/privacy/payment;
+- production-default-safe state;
+- PA-A2/PA-A3 isolation.
 
-Run relevant package tests, API tests, typechecks/build and diff safety. Native-device QA remains a release gate and does not block Stage 7 completion unless Stage 7 materially changed protected tracking behavior.
+Run bounded then broader relevant tests, typechecks, API build and diff safety.
 
-Create `docs/STAGE_7_REGRESSION_REVIEW.md`.
+If review finds GREEN blockers, fix them, rerun review/tests, and continue until PASS or a genuine approval boundary.
 
-### S7-C10 — Completion gate
+Create `docs/STAGE_8_REGRESSION_REVIEW.md`.
 
-Create `docs/STAGE_7_COMPLETION_REPORT.md` and update `docs/AI_HANDOFF.md` + `docs/AI_CHANGELOG.md`.
+## O8-C10 — Stage 8 completion gate
 
-Stage 7 is complete only if:
-- one stable canonical mountain/route intelligence model is used across consumers;
-- SDE is integrated, not duplicated/replaced;
-- route provenance/trust is explicit;
-- Mountain DNA is deterministic/explainable and honest about missing data;
-- Training/Explore/Expedition consume shared route intelligence without losing mode separation;
-- activities never overwrite canonical route geometry;
-- existing GPS/offline tracker remains protected;
-- Stage 6 Progress Mountain/cinematic remains protected;
-- production is unchanged;
-- tests/regressions pass or limitations are explicitly documented.
+Create `docs/STAGE_8_COMPLETION_REPORT.md`. Update `docs/AI_HANDOFF.md` and `docs/AI_CHANGELOG.md`.
 
-Report native-device QA status separately.
+Stage 8 may be marked COMPLETE only when:
+- challenge/achievement rules are deterministic and evidence-aware;
+- one activity can safely produce multiple consequences without duplication;
+- real/manual/indoor/simulated semantics remain distinct;
+- personal vs future competitive eligibility is explicit;
+- core challenge and achievement UX exists;
+- offline/pending behavior is honest;
+- protected systems remain intact;
+- production remains unchanged;
+- regressions pass or limitations are clearly documented.
 
-**STOP after S7-R10. Do not start Stage 8.**
+Native-device QA remains a release gate and must be reported honestly.
 
-## Authorization
+## O8-C11 — Stage 9 preparation only, if Stage 8 is COMPLETE
 
-### GREEN — proceed autonomously
-Audits, documentation, typed contracts, pure evaluators, read-only/adaptor services, additive UI/refactoring, tests, non-production development work that preserves all protected boundaries.
+If and only if O8-C10 is COMPLETE, perform a read-only audit for the next stage: **Community & Competition**.
 
-### AMBER — stop and request review
-Substantial new navigation, material changes to Mountain DNA product semantics after audit, significant persistent model redesign, or changes that alter existing released user behavior beyond the scope above.
+Map:
+- existing Community screens/APIs;
+- friend/local/UK/global concepts;
+- monthly Elevation League;
+- eligible evidence needed for public ranking;
+- privacy/identity concerns;
+- anti-cheat/plausibility boundaries;
+- moderation/reporting needs;
+- challenge-to-leaderboard relationship;
+- scalability/query implications.
 
-### RED — explicit product-owner approval required
-Production DB/schema/SQL, backfill/reconciliation, production flags/activation, release/publishing, payments/pricing, auth/privacy, destructive SDE changes, canonical identity migration, GPS/offline tracker redesign, Progress Mountain/cinematic replacement/substantial redesign.
+Desired future tabs remain conceptually:
+`Friends | Local | UK | Global`
+with filters such as:
+`Elevation | Mountains | Expeditions | Distance`.
+
+Do NOT implement Stage 9, create production schema, enable leaderboards, or make privacy decisions overnight.
+
+Create `docs/STAGE_9_COMMUNITY_AUDIT.md` and a proposed Stage 9 command sequence for lead review.
+
+Then STOP.
+
+---
+
+## GREEN authorization
+
+Proceed autonomously with:
+- audits/docs;
+- typed contracts;
+- pure deterministic evaluators;
+- additive/default-off services;
+- UI refinements/integration within existing navigation;
+- tests;
+- refactors that preserve behavior;
+- non-production additive migration preparation;
+- fixing concrete GREEN-scope bugs found by review.
+
+## AMBER
+
+Make the safest reversible design choice and document it where possible. Stop that specific portion if it would materially alter navigation, public competition semantics, persistent model architecture beyond additive compatibility, or accepted Readiness/Expedition/Mountain DNA semantics.
+
+## RED — never execute overnight
+
+Production SQL/schema/migrations; production flags/activation; backfill/reconciliation; deployment/release/store publishing; pricing/payments; auth/privacy changes; destructive SDE work; canonical identity migration; tracker redesign; protected Progress Mountain/cinematic replacement; deletion of user data.
 
 ## Completion discipline
 
-Do not use Stage 7 as permission to clean up unrelated systems. Prefer narrow changes and existing infrastructure. If existing working code already satisfies a requirement, document and reuse it rather than rewriting it.
+Do not chase unrelated cleanup. Do not weaken tests to pass. Do not manufacture data. Do not claim native QA without a real device. Preserve exact evidence/provenance boundaries.
+
+The objective is meaningful finished product progress, not commit count.
