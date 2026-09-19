@@ -37,6 +37,7 @@ import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import { CURATED_HILLS } from "@/constants/trailData";
 import type { Trail, TrailBenefit } from "@/constants/trailData";
+import { buildFreeHikeLaunchContext } from "@/utils/trackingLaunchContext";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { openMapSearch } from "@/utils/openMaps";
 
@@ -491,7 +492,11 @@ export default function TrailDetailScreen() {
               activeOpacity={0.85}
               onPress={() => router.push({
                 pathname: "/hike-tracking",
-                params: { name: trail.name, location: trail.location },
+                params: {
+                  name: trail.name,
+                  location: trail.location,
+                  ...buildFreeHikeLaunchContext("training"),
+                },
               })}
             >
               <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.actionGrad}>

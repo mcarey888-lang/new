@@ -8,6 +8,9 @@ export interface CanonicalLookupInput {
 
 export interface TrustedCanonicalRoute {
   identityKey: string;
+  version?: string;
+  mountainId?: string;
+  routeId?: string;
   name: string;
   aliases: string[];
   description: string;
@@ -101,7 +104,9 @@ interface NameIndexRow extends Record<string, unknown> {
 }
 
 interface RouteRow extends Record<string, unknown> {
+  mountainId?: string;
   identityKey: string;
+  version?: string;
   name: string;
   aliases: string[];
   description: string;
@@ -192,7 +197,9 @@ ORDER BY m.name, m.country NULLS LAST, m.region NULLS LAST, m.id
 
 const VERIFIED_ROUTES_SQL = `
 SELECT
+  ri.mountain_id::text AS "mountainId",
   ri.identity_key AS "identityKey",
+  ri.version AS "version",
   ri.canonical_name AS "name",
   ri.aliases AS "aliases",
   rd.description AS "description",
@@ -259,6 +266,7 @@ const VERIFIED_AREA_ROUTES_SQL = `
 SELECT
   ri.mountain_id::text AS "mountainId",
   ri.identity_key AS "identityKey",
+  ri.version AS "version",
   ri.canonical_name AS "name",
   ri.aliases AS "aliases",
   rd.description AS "description",
@@ -291,8 +299,14 @@ function optional<T>(value: T | null): T | undefined {
 }
 
 function toTrustedRoute(route: RouteRow): TrustedCanonicalRoute {
+  const version = route.version;
   return {
     identityKey: route.identityKey,
+    ...(version ? { version } : {}),
+    ...(version && route.mountainId ? { mountainId: route.mountainId } : {}),
+    ...(version && route.mountainId
+      ? { routeId: `sde:route:${route.identityKey}@${version}` }
+      : {}),
     name: route.name,
     aliases: route.aliases,
     description: route.description,

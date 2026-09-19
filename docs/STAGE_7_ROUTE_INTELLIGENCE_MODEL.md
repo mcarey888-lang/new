@@ -1,6 +1,6 @@
 # Stage 7 Route Intelligence Model
 
-**Checkpoint:** S7-C02 / S7-R02  
+**Checkpoint:** S7-C02 / S7-R02
 **Scope:** canonical read contracts and lifecycle specification; documentation only.
 
 This model follows `docs/STAGE_7_MOUNTAIN_ROUTE_AUDIT.md`. It describes a

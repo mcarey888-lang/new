@@ -1,6 +1,6 @@
 # Stage 7 Mountain and Route Architecture Audit
 
-**Checkpoint:** S7-C01 / S7-R01  
+**Checkpoint:** S7-C01 / S7-R01
 **Scope:** audit only; no product, protected tracker, SDE schema, production, or
 consumer changes were made.
 

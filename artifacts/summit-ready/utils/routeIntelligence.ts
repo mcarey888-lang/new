@@ -335,11 +335,20 @@ function availabilityForRecord(record: CanonicalRouteRecord): RouteReadResult<Ro
   if (record.source !== "canonical") return invalidResult("invalid_identity");
 
   const reasons: RouteDataReason[] = [];
-  if (record.route.status === "needs_review") reasons.push("needs_review");
+  if (record.mountain.verification.engineStatus !== "verified" ||
+      record.mountain.verification.productLifecycle !== "summitready_verified") {
+    reasons.push("needs_review");
+  }
+  if (record.route.status !== "verified") reasons.push("needs_review");
   if (record.route.status === "rejected") reasons.push("rejected");
   if (record.route.provenance.rightsClassification === "unclear") reasons.push("rights_unclear");
   if (!record.definition) reasons.push("missing_definition");
+  if (record.definition && (
+    record.definition.status !== "verified" ||
+    record.definition.identity.status !== "verified"
+  )) reasons.push("needs_review");
   if (!record.geometry) reasons.push("missing_geometry");
+  if (record.geometry && record.geometry.topologyStatus !== "complete") reasons.push("missing_geometry");
   if (!record.elevationProfile) reasons.push("missing_elevation_profile");
   reasons.push(...factsReasons(record.facts));
 
@@ -460,7 +469,7 @@ export function mapExploreRoute(
       : unavailableGeometry,
     trust: canonical?.trust ?? null,
     attribution: canonical?.attribution ?? null,
-    trackAvailability: canonical?.geometry
+    trackAvailability: canonical && result.availability === "available" && canonical.geometry
       ? "can_track"
       : canonical
         ? "identity_only"

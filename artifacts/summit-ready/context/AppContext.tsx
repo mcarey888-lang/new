@@ -93,6 +93,8 @@ export interface VirtualExpeditionProvenance {
   targetRouteSource: string;
   routeDataStatus: "verified" | "unverified";
   selectedTargetRouteIdentityKey?: string | null;
+  selectedTargetRouteId?: string | null;
+  targetMountainId?: string | null;
   selectedTargetRouteName?: string | null;
   routeSelectionRequired?: boolean;
   localCandidateSources?: string[];

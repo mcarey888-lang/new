@@ -1,0 +1,284 @@
+import { sql } from "drizzle-orm";
+import { db } from "@workspace/db";
+
+export type CanonicalRouteRecordStatus =
+  | "available"
+  | "degraded"
+  | "unavailable"
+  | "ambiguous";
+
+export type CanonicalRouteRecordResponse = {
+  status: CanonicalRouteRecordStatus;
+  reasons: string[];
+  record: Record<string, unknown> | null;
+};
+
+type RouteRecordRow = Record<string, unknown> & {
+  mountainId?: string;
+  mountainName?: string;
+  mountainStatus?: string;
+  mountainProvenanceVersion?: string;
+  routeIdentityKey?: string;
+  routeVersion?: string;
+  routeName?: string;
+  routeAliases?: string[];
+  routeStatus?: string;
+  definitionVersion?: string;
+  definitionKey?: string;
+  definitionDescription?: string;
+  definitionStatus?: string;
+  factVersion?: string;
+  distanceKm?: number | null;
+  totalAscentM?: number | null;
+  totalDescentM?: number | null;
+  startElevationM?: number | null;
+  summitElevationM?: number | null;
+  typicalDurationHours?: number | null;
+  evidenceId?: string;
+  publisher?: string;
+  evidenceTitle?: string;
+  evidenceUrl?: string;
+  rightsClassification?: string;
+  rightsStatement?: string | null;
+  geometryReuseAllowed?: boolean;
+  geometry?: { type?: string; coordinates?: unknown } | null;
+  geometryVersion?: string | null;
+  geometryDerivationMethod?: string | null;
+  profileVersion?: string | null;
+  profileSpacingM?: number | null;
+  profileCalculationVersion?: string | null;
+  profileNodataCount?: number | null;
+  profileSamples?: Array<{ distanceM: number; elevationM: number | null }> | null;
+};
+
+export type CanonicalRouteRecordQuery = (
+  identityKey: string,
+  version: string,
+  mountainId: string,
+) => Promise<RouteRecordRow[]>;
+
+const ROUTE_RECORD_SQL = sql`
+  SELECT
+    m.id::text AS "mountainId",
+    m.name AS "mountainName",
+    m.status AS "mountainStatus",
+    m.provenance_version AS "mountainProvenanceVersion",
+    ri.identity_key AS "routeIdentityKey",
+    ri.version AS "routeVersion",
+    ri.canonical_name AS "routeName",
+    ri.aliases AS "routeAliases",
+    ri.status AS "routeStatus",
+    rd.version AS "definitionVersion",
+    rd.id::text AS "definitionKey",
+    rd.description AS "definitionDescription",
+    rd.status AS "definitionStatus",
+    rf.version AS "factVersion",
+    rf.distance_km AS "distanceKm",
+    rf.total_ascent_m AS "totalAscentM",
+    rf.total_descent_m AS "totalDescentM",
+    rf.start_elevation_m AS "startElevationM",
+    rf.summit_elevation_m AS "summitElevationM",
+    rf.typical_duration_hours AS "typicalDurationHours",
+    e.id::text AS "evidenceId",
+    e.publisher AS "publisher",
+    e.title AS "evidenceTitle",
+    e.url AS "evidenceUrl",
+    e.rights_classification AS "rightsClassification",
+    e.rights_statement AS "rightsStatement",
+    e.geometry_reuse_allowed AS "geometryReuseAllowed",
+    CASE WHEN r.geom IS NULL THEN NULL ELSE ST_AsGeoJSON(r.geom)::jsonb END AS "geometry",
+    NULL::text AS "geometryVersion",
+    r.resolution_method AS "geometryDerivationMethod",
+    rep.calculation_version AS "profileVersion",
+    rep.sample_spacing_m AS "profileSpacingM",
+    rep.calculation_version AS "profileCalculationVersion",
+    rep.nodata_count AS "profileNodataCount",
+    (
+      SELECT COALESCE(
+        json_agg(
+          json_build_object(
+            'distanceM', s.distance_m,
+            'elevationM', s.smoothed_elevation_m
+          ) ORDER BY s.sequence
+        ),
+        '[]'::json
+      )
+      FROM public.route_elevation_samples AS s
+      WHERE s.profile_id = rep.id
+    ) AS "profileSamples"
+  FROM public.route_identities AS ri
+  JOIN public.mountains AS m ON m.id = ri.mountain_id
+  JOIN public.route_definitions AS rd
+    ON rd.route_identity_id = ri.id AND rd.version = ri.version
+  JOIN public.route_facts AS rf
+    ON rf.route_definition_id = rd.id AND rf.version = rd.version
+  JOIN public.evidence_sources AS e ON e.id = rf.evidence_source_id
+  LEFT JOIN public.routes AS r ON r.id = rd.route_id
+  LEFT JOIN LATERAL (
+    SELECT p.id, p.calculation_version, p.sample_spacing_m, p.nodata_count
+    FROM public.route_elevation_profiles AS p
+    WHERE p.route_id = r.id
+    ORDER BY p.created_at DESC
+    LIMIT 1
+  ) AS rep ON TRUE
+`;
+
+function stableRouteId(identityKey: string, version: string): string {
+  return `sde:route:${identityKey}@${version}`;
+}
+
+function stableMountainId(mountainId: string): string {
+  return `sde:mountain:${mountainId}`;
+}
+
+function reasonList(row: RouteRecordRow): string[] {
+  const reasons: string[] = [];
+  if (!row.geometry) reasons.push("missing_geometry");
+  if (!row.profileVersion) reasons.push("missing_elevation_profile");
+  if (row.rightsClassification !== "reusable_geometry" || !row.geometryReuseAllowed) {
+    reasons.push("rights_unclear");
+  }
+  return reasons;
+}
+
+export function buildCanonicalRouteRecord(
+  rows: readonly RouteRecordRow[],
+): CanonicalRouteRecordResponse {
+  if (rows.length === 0) {
+    return { status: "unavailable", reasons: ["version_not_found"], record: null };
+  }
+  if (rows.length > 1) {
+    return { status: "ambiguous", reasons: ["ambiguous_lookup"], record: null };
+  }
+  const row = rows[0];
+  if (
+    row.mountainStatus !== "verified" ||
+    row.routeStatus !== "verified" ||
+    row.definitionStatus !== "verified" ||
+    row.factVersion !== row.definitionVersion ||
+    row.routeVersion !== row.definitionVersion
+  ) {
+    return { status: "unavailable", reasons: ["needs_review"], record: null };
+  }
+
+  const reasons = reasonList(row);
+  const provenance = {
+    provider: row.publisher ?? "Summit Data Engine",
+    sourceUrl: row.evidenceUrl,
+    attribution: row.evidenceTitle,
+    rightsClassification: row.rightsClassification ?? "unclear",
+    provenanceVersion: row.mountainProvenanceVersion ?? row.routeVersion ?? "unknown",
+    qaFlags: [],
+  };
+  const evidence = {
+    evidenceId: row.evidenceId ?? "unknown",
+    evidenceType: "source",
+    ...provenance,
+  };
+  const routeId = stableRouteId(row.routeIdentityKey!, row.routeVersion!);
+  const mountainId = stableMountainId(row.mountainId!);
+  const record = {
+    mountain: {
+      id: mountainId,
+      canonicalName: row.mountainName,
+      aliases: [],
+      verification: {
+        engineStatus: "verified",
+        productLifecycle: "summitready_verified",
+        qaFlags: [],
+      },
+      provenance,
+      routes: [{
+        version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
+        canonicalName: row.routeName,
+        status: "verified",
+        availability: reasons.length ? "degraded" : "available",
+      }],
+    },
+    route: {
+      version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
+      canonicalName: row.routeName,
+      aliases: row.routeAliases ?? [],
+      status: "verified",
+      provenance,
+    },
+    definition: {
+      identity: {
+        version: { identityKey: row.routeIdentityKey, version: row.routeVersion, routeId, mountainId },
+        canonicalName: row.routeName,
+        aliases: row.routeAliases ?? [],
+        status: "verified",
+        provenance,
+      },
+      definitionVersion: row.definitionVersion,
+      definitionKey: row.definitionKey,
+      description: row.definitionDescription,
+      evidence: [evidence],
+      status: "verified",
+    },
+    facts: {
+      distanceM: row.distanceKm == null ? undefined : row.distanceKm * 1000,
+      ascentM: row.totalAscentM ?? undefined,
+      descentM: row.totalDescentM ?? undefined,
+      startElevationM: row.startElevationM ?? undefined,
+      summitElevationM: row.summitElevationM ?? undefined,
+      typicalDurationS: row.typicalDurationHours == null ? undefined : row.typicalDurationHours * 3600,
+    },
+    geometry: row.geometry
+      ? {
+          geometryVersion: row.geometryVersion ?? row.definitionVersion,
+          coordinateReferenceSystem: "EPSG:4326",
+          coordinates: row.geometry.coordinates ?? [],
+          direction: "unknown",
+          derivationMethod: row.geometryDerivationMethod ?? "sde",
+          sourceMembers: [evidence],
+          topologyStatus: "complete",
+        }
+      : undefined,
+    elevationProfile: row.profileVersion
+      ? {
+          profileVersion: row.profileVersion,
+          samples: row.profileSamples ?? [],
+          spacingM: row.profileSpacingM ?? undefined,
+          calculationVersion: row.profileCalculationVersion ?? row.profileVersion,
+          nodataCount: row.profileNodataCount ?? 0,
+          demSources: [evidence],
+        }
+      : undefined,
+    trust: {
+      engineStatus: "verified",
+      productLifecycle: "summitready_verified",
+      evidence: [evidence],
+      rightsClassification: row.rightsClassification ?? "unclear",
+    },
+    attribution: [provenance],
+  };
+  return {
+    status: reasons.length ? "degraded" : "available",
+    reasons,
+    record,
+  };
+}
+
+export const queryCanonicalRouteRecord: CanonicalRouteRecordQuery = async (
+  identityKey,
+  version,
+  mountainId,
+) => {
+  const query = sql`
+    SELECT * FROM (${ROUTE_RECORD_SQL}) AS route_record
+    WHERE "routeIdentityKey" = ${identityKey}
+      AND "routeVersion" = ${version}
+      AND "mountainId" = ${mountainId}
+    LIMIT 2
+  `;
+  const result = await db.execute(query);
+  return result.rows as RouteRecordRow[];
+};
+
+export function createCanonicalRouteRecordHandler(
+  query: CanonicalRouteRecordQuery = queryCanonicalRouteRecord,
+) {
+  return async (identityKey: string, version: string, mountainId: string) =>
+    buildCanonicalRouteRecord(await query(identityKey, version, mountainId));
+}

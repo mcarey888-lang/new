@@ -29,26 +29,13 @@ export type ConsumerRouteReference = {
 export function routeReferenceFromNearbyHill(hill: NearbyHill): ConsumerRouteReference {
   const routeIdentityKey = hill.routeIdentityKey?.trim() || null;
   const summitIdentityKey = hill.summitIdentityKey?.trim() || null;
-  const hasStableRouteId = routeIdentityKey?.startsWith("sde:route:") ?? false;
-  const isVerified = hill.routeDataStatus === "verified" && hasStableRouteId;
-
-  if (isVerified) {
-    return {
-      routeIdentityKey,
-      summitIdentityKey,
-      status: "verified",
-      label: "SummitReady verified route",
-      reason: "Stable route identity and verified route facts are available.",
-    };
-  }
-
   if (routeIdentityKey) {
     return {
       routeIdentityKey,
       summitIdentityKey,
       status: "degraded",
       label: "Route reference available",
-      reason: "The route is referenced, but its verified provenance is not available here.",
+      reason: "The route is referenced, but a verified SDE record was not supplied.",
     };
   }
 

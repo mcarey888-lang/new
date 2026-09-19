@@ -1208,6 +1208,10 @@ export function createVirtualExpeditionHandler(
         targetRouteSource,
         routeDataStatus,
         selectedTargetRouteIdentityKey,
+        selectedTargetRouteId: selectedCanonicalRoute?.routeId ?? null,
+        targetMountainId: canonicalMountain?.id
+          ? `sde:mountain:${canonicalMountain.id}`
+          : null,
         selectedTargetRouteName,
         availableVerifiedRoutes,
         routeSelectionRequired,

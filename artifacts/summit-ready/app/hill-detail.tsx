@@ -65,6 +65,9 @@ interface HillDetail {
 import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
 import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
+import { fetchCanonicalRouteRecord, type CanonicalRouteApiResult } from "@/utils/canonicalRouteApi";
+import { buildExpeditionStageLaunchContext, buildFreeHikeLaunchContext } from "@/utils/trackingLaunchContext";
+import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -94,6 +97,9 @@ export default function HillDetailScreen() {
   const [detail, setDetail] = useState<HillDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState(false);
+  const [canonicalRecord, setCanonicalRecord] = useState<CanonicalRouteRecord | null>(null);
+  const [canonicalStatus, setCanonicalStatus] = useState<CanonicalRouteApiResult["status"]>("unavailable");
+  const [canonicalReasons, setCanonicalReasons] = useState<string[]>(["missing_identity"]);
 
   const [imageError, setImageError] = useState(false);
 
@@ -147,6 +153,21 @@ export default function HillDetailScreen() {
 
     fetchDetail();
   }, [name, location, lat, lng, elevation, routeDistance, estimatedTime, routeType, grade, surface, routeIdentityKey, summitIdentityKey]);
+
+  useEffect(() => {
+    if (!routeIdentityKey?.startsWith("sde:route:") || !summitIdentityKey?.startsWith("sde:mountain:")) {
+      setCanonicalRecord(null);
+      setCanonicalStatus("unavailable");
+      setCanonicalReasons(["missing_identity"]);
+      return;
+    }
+    void fetchCanonicalRouteRecord(routeIdentityKey, summitIdentityKey)
+      .then(result => {
+        setCanonicalRecord(result.record);
+        setCanonicalStatus(result.status);
+        setCanonicalReasons(result.reasons);
+      });
+  }, [routeIdentityKey, summitIdentityKey]);
 
   // Load any saved user correction for this hill's start point
   useEffect(() => {
@@ -210,11 +231,26 @@ export default function HillDetailScreen() {
     }
   }
 
-  const sdeResult: RouteReadResult<RouteIntelligence> = {
-    availability: "unavailable",
-    value: null,
-    reasons: ["missing_identity"],
-  };
+  const sdeResult: RouteReadResult<RouteIntelligence> = canonicalRecord
+    ? {
+        availability: canonicalStatus === "available" ? "available" : "degraded",
+        value: {
+          mountain: canonicalRecord.mountain,
+          route: canonicalRecord.route,
+          definition: canonicalRecord.definition ?? null,
+          facts: canonicalRecord.facts ?? null,
+          geometry: canonicalRecord.geometry ?? null,
+          elevationProfile: canonicalRecord.elevationProfile ?? null,
+          trust: canonicalRecord.mountain.verification,
+          attribution: canonicalRecord.mountain.provenance,
+        },
+        reasons: canonicalReasons as RouteReadResult<RouteIntelligence>["reasons"],
+      }
+    : {
+        availability: "unavailable",
+        value: null,
+      reasons: [routeIdentityKey ? "stale_compatibility_record" : "missing_identity"],
+      };
 
   const trainingTarget = objectiveType === "training" ? mapTrainingTarget(sdeResult) : null;
   const exploreTarget = (!objectiveType && !isExpeditionMode) ? mapExploreRoute(sdeResult) : null;
@@ -479,32 +515,18 @@ export default function HillDetailScreen() {
           <TouchableOpacity
             style={styles.expeditionStartBtn}
             activeOpacity={0.85}
-            onPress={() =>
-              router.push({
-                pathname: "/hike-tracking" as any,
-                params: {
-                  hillName: name,
-                  routeIdentityKey: routeIdentityKey ?? "",
-                  summitIdentityKey: summitIdentityKey ?? "",
-                  objectiveType: objectiveType ?? "",
-                    stageSnapshot: JSON.stringify({
-                      name,
-                      location,
-                      elevation,
-                      distance,
-                      routeDistance,
-                      estimatedTime,
-                      routeType,
-                      grade,
-                      surface,
-                    }),
-                  ...(isExpeditionMode ? {
-                    trackingMode: "expedition-route",
-                    expeditionId: expeditionId ?? "",
-                  } : {}),
-                },
-              })
-            }
+            onPress={() => {
+              const hill = {
+                name: name ?? "",
+                routeIdentityKey: routeIdentityKey ?? null,
+                summitIdentityKey: summitIdentityKey ?? null,
+                objectiveType: objectiveType ?? null,
+              } as any;
+              const launch = isExpeditionMode
+                ? buildExpeditionStageLaunchContext(hill, expeditionId ?? "", undefined)
+                : buildFreeHikeLaunchContext("training", expeditionId);
+              router.push({ pathname: "/hike-tracking" as any, params: launch as any });
+            }}
           >
             <LinearGradient
               colors={[T.green, "#2AB860"]}

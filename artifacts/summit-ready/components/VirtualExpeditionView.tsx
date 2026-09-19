@@ -39,6 +39,8 @@ import {
   buildExpeditionStageRouteIntelligence,
   buildTrainingRouteIntelligence,
 } from "@/utils/routeConsumerAdapters";
+import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
+import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -83,6 +85,7 @@ interface VirtualExpeditionResponse {
   simulationScore: number;
   scoreBreakdown: SimulationScoreBreakdown;
   provenance?: SummitGoal["virtualExpeditionProvenance"];
+  canonicalRouteRecords?: import("@/utils/routeIntelligence").CanonicalRouteRecord[];
 }
 
 interface PendingVirtualExpeditionRequest {
@@ -120,6 +123,7 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   const [pendingRequest, setPendingRequest] = useState<PendingVirtualExpeditionRequest | null>(null);
   const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
   const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
+  const [canonicalRecords, setCanonicalRecords] = useState<CanonicalRouteRecord[]>([]);
 
   async function fetchExpedition(
     force = false,
@@ -189,6 +193,28 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
           ? { virtualExpeditionProvenance: data.provenance }
           : {}),
       });
+      const lookups = [
+        data.provenance?.selectedTargetRouteId && data.provenance?.targetMountainId
+          ? {
+              routeId: data.provenance.selectedTargetRouteId,
+              mountainId: data.provenance.targetMountainId,
+            }
+          : null,
+        ...data.recommendedHills.map(hill =>
+          hill.routeIdentityKey?.startsWith("sde:route:") &&
+          hill.summitIdentityKey?.startsWith("sde:mountain:")
+            ? { routeId: hill.routeIdentityKey, mountainId: hill.summitIdentityKey }
+            : null,
+        ),
+      ].filter((lookup): lookup is { routeId: string; mountainId: string } => Boolean(lookup));
+      const fetchedRecords = await Promise.all(
+        lookups.map(lookup => fetchCanonicalRouteRecord(lookup.routeId, lookup.mountainId)),
+      );
+      setCanonicalRecords(
+        fetchedRecords
+          .map(result => result.record)
+          .filter((record): record is CanonicalRouteRecord => Boolean(record)),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load expedition data. Check your connection.");
     } finally {
@@ -308,12 +334,14 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
   const maxLocalASL = hills.reduce<number>((m, h) => Math.max(m, h.summitElevationASL ?? 0), 0);
   const showAltitudeNote = breakdown.altitude < 50 && target.summitElevation > 1500;
   const targetRouteIdentityKey =
-    summitGoal.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey ?? null;
+    summitGoal.virtualExpeditionProvenance?.selectedTargetRouteId
+      ?? summitGoal.virtualExpeditionProvenance?.selectedTargetRouteIdentityKey
+      ?? null;
   const targetRouteName =
     summitGoal.virtualExpeditionProvenance?.selectedTargetRouteName ?? null;
   const targetRouteIntelligence = buildTrainingRouteIntelligence(
     targetRouteIdentityKey,
-    [],
+    canonicalRecords,
   );
 
   return (
@@ -393,6 +421,7 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
                 <HillCard
                   key={hill.routeIdentityKey ?? `${hill.name}-${idx}`}
                   hill={hill}
+                  canonicalRecords={canonicalRecords}
                   targetRouteId={targetRouteIdentityKey}
                   dayLabel={idx === 0 ? "Saturday" : "Sunday"}
                 />
@@ -400,7 +429,7 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
             </View>
           ) : (
             hills.slice(0, 1).map(hill => (
-              <HillCard key={hill.routeIdentityKey ?? hill.name} hill={hill} targetRouteId={targetRouteIdentityKey} />
+                <HillCard key={hill.routeIdentityKey ?? hill.name} hill={hill} canonicalRecords={canonicalRecords} targetRouteId={targetRouteIdentityKey} />
             ))
           )}
         </Animated.View>
@@ -516,14 +545,16 @@ function StatChip({ label, value }: { label: string; value: string }) {
 
 function HillCard({
   hill,
+  canonicalRecords,
   targetRouteId,
   dayLabel,
 }: {
   hill: NearbyHill;
+  canonicalRecords: readonly CanonicalRouteRecord[];
   targetRouteId?: string | null;
   dayLabel?: string;
 }) {
-  const intelligence = buildExpeditionStageRouteIntelligence(hill, [], targetRouteId);
+  const intelligence = buildExpeditionStageRouteIntelligence(hill, canonicalRecords, targetRouteId);
   const reference = intelligence.reference;
   return (
     <View style={s.hillCard}>
@@ -550,6 +581,11 @@ function HillCard({
                ? "Mountain DNA unavailable until both routes are verified"
                : "Mountain DNA analogue available"}
            </Text>
+           {intelligence.dna.matches[0]?.whyMatched.length ? (
+             <Text style={s.routeTrust}>
+               Why this route: {intelligence.dna.matches[0].whyMatched.join(" · ")}
+             </Text>
+           ) : null}
         </View>
       </View>
       <View style={s.hillStats}>

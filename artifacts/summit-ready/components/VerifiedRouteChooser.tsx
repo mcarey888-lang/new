@@ -13,6 +13,9 @@ import { T } from "@/constants/theme";
 
 export interface VerifiedTargetRouteChoice {
   identityKey: string;
+  routeId?: string | null;
+  version?: string | null;
+  mountainId?: string | null;
   routeName: string;
   startPoint: string | null;
   distanceKm: number | null;

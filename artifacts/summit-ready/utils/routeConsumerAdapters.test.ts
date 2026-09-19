@@ -42,7 +42,7 @@ describe("route consumer adapters", () => {
       routeDataStatus: "verified",
     }));
     expect(first.routeIdentityKey).not.toBe(second.routeIdentityKey);
-    expect(first.status).toBe("verified");
+    expect(first.status).toBe("degraded");
   });
 
   it("returns honest unavailable DNA without canonical records", () => {
@@ -59,7 +59,7 @@ describe("route consumer adapters", () => {
       lng: -3,
     }));
     expect(result.status).toBe("degraded");
-    expect(result.reason).toContain("verified provenance");
+    expect(result.reason).toContain("verified SDE record");
   });
 
   it("keeps tracker context stable without copying route geometry into activity data", () => {

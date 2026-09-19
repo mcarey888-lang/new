@@ -102,6 +102,9 @@ export function verifiedRouteChoices(
 ): VerifiedRouteChoice[] {
   return mountain.routes.map(route => ({
     identityKey: route.identityKey,
+    routeId: route.routeId ?? null,
+    version: route.version ?? null,
+    mountainId: route.mountainId ? `sde:mountain:${route.mountainId}` : `sde:mountain:${mountain.id}`,
     routeName: route.name,
     startPoint: route.startName ?? null,
     distanceKm: route.distanceKm ?? null,
