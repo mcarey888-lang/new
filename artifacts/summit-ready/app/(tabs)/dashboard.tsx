@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -37,6 +37,7 @@ import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 import { ProgressRing } from "@/components/ProgressRing";
 import { ReadinessV2Hero } from "@/components/ReadinessV2Hero";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
+import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 
 // Animated WebP supports transparency on all platforms via expo-image.
 // GIF on Android fills transparent pixels with black, so we never use it.
@@ -88,12 +89,24 @@ function MountainHero({
   highestAltitude: number;
 }) {
   const [imageError, setImageError] = useState(false);
+  const [resolvedUri, setResolvedUri] = useState<string | null>(null);
 
   useEffect(() => { setImageError(false); }, [mountainName]);
 
+  useEffect(() => {
+    async function loadArtwork() {
+      const uri = await resolveTrainingBasecampArtwork();
+      if (uri) {
+        setResolvedUri(uri);
+      }
+    }
+    loadArtwork();
+  }, []);
+
+  const mountainFallbackUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
   const heroImageUri = imageError
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
+    : (resolvedUri || mountainFallbackUri);
 
   const dateStr = summitDate
     ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
@@ -108,7 +121,14 @@ function MountainHero({
           source={{ uri: heroImageUri }}
           style={heroStyles.image}
           resizeMode="cover"
-          onError={() => { setImageError(true); }}
+          onError={() => {
+            if (resolvedUri) {
+              setResolvedUri(null);
+              setImageError(false);
+              return;
+            }
+            setImageError(true);
+          }}
         >
           {/* Top subtle vignette */}
           <LinearGradient
@@ -275,8 +295,9 @@ function StatCard({
   accent: string;
   delay?: number;
 }) {
+  const reducedMotion = useReducedMotion();
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(500)} style={[styles.statCard, { width: CARD_W }]}>
+    <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(delay).duration(500)} style={[styles.statCard, { width: CARD_W }]}>
       <View style={[styles.statIconRow, { backgroundColor: accent + "18" }]}>
         <IconComp size={15} color={accent} />
       </View>
@@ -328,6 +349,7 @@ function AlpineCard({
   trainingPlan: import("@/context/AppContext").TrainingWeek[];
   loading: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weeksElapsed = trainingPlan.filter(w => new Date(w.endDate) < today).length;
@@ -335,7 +357,7 @@ function AlpineCard({
 
   if (loading) {
     return (
-      <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+      <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(270).duration(500)}>
         <View style={styles.alpineCard}>
           <LinearGradient colors={[T.blue + "15", "transparent"]} style={StyleSheet.absoluteFill} />
           <View style={styles.alpineCardHeader}>
@@ -360,7 +382,7 @@ function AlpineCard({
   ).length;
 
   return (
-    <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+    <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(270).duration(500)}>
       <View style={styles.alpineCard}>
         <LinearGradient colors={[T.blue + "12", "transparent"]} style={StyleSheet.absoluteFill} />
 
@@ -440,6 +462,7 @@ function AlpineCard({
 }
 
 export default function DashboardScreen() {
+  const reducedMotion = useReducedMotion();
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions } = useApp();
@@ -827,61 +850,9 @@ export default function DashboardScreen() {
           highestAltitude={summitGoal.highestAltitude}
         />
 
-        <ElevationBankCard onPress={() => router.push("/elevation-history")} />
-
-        {/* Upgrade banner — shown only after user has seen their plan */}
-        {hasViewedPlan && !isSubscribed && (
-          <Animated.View entering={FadeInDown.delay(40).duration(500)}>
-            <TouchableOpacity
-              onPress={() => router.push("/paywall")}
-              activeOpacity={0.85}
-              style={styles.upgradeBanner}
-            >
-              <LinearGradient
-                colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.upgradeBannerLeft}>
-                <View style={styles.upgradeIconWrap}>
-                  <Zap size={13} color={T.green} />
-                </View>
-                <View style={{ gap: 1, flex: 1 }}>
-                  <Text style={styles.upgradeBannerTitle} numberOfLines={1}>Upgrade to Summit Ready Pro</Text>
-                  <Text style={styles.upgradeBannerSub} numberOfLines={1}>Unlock adaptive plans, AI coaching & more</Text>
-                </View>
-              </View>
-              <ChevronRight size={16} color={T.green} />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* Time readiness warning */}
-        {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
-          <Animated.View entering={FadeInDown.delay(60).duration(500)}>
-            <View style={[
-              styles.warningBanner,
-              timeAssessment.status === "tight"
-                ? { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }
-                : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
-            ]}>
-              {timeAssessment.status === "tight" ? <Clock size={14} color={T.orange} /> : <AlertTriangle size={14} color={T.red} />}
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[styles.warningText, { color: timeAssessment.status === "tight" ? T.orange : T.red }]}>
-                  {timeAssessment.message}
-                </Text>
-                <Text style={styles.warningDetail}>{timeAssessment.detail}</Text>
-              </View>
-            </View>
-          </Animated.View>
-        )}
-
-        {/* Readiness Hero Card — Expedition mode */}
-        <ReadinessV2Hero />
-
         {/* Unified Mission Control */}
         {currentWeek && (
-          <Animated.View entering={FadeInDown.delay(90).duration(500)}>
+          <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)}>
             <View style={styles.missionControl}>
               <View style={styles.missionControlHeader}>
                 <View style={[styles.missionPhasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "1A" }]}>
@@ -954,8 +925,62 @@ export default function DashboardScreen() {
             </View>
           </Animated.View>
         )}
+
+        {/* Readiness Hero Card — Expedition mode */}
+        <ReadinessV2Hero />
+
+        {/* Useful Secondary Progress */}
+        <ElevationBankCard onPress={() => router.push("/elevation-history")} />
+
+        {/* Upgrade banner — shown only after user has seen their plan */}
+        {hasViewedPlan && !isSubscribed && (
+          <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(40).duration(500)}>
+            <TouchableOpacity
+              onPress={() => router.push("/paywall")}
+              activeOpacity={0.85}
+              style={styles.upgradeBanner}
+            >
+              <LinearGradient
+                colors={["rgba(62,207,117,0.14)", "rgba(62,207,117,0.06)"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.upgradeBannerLeft}>
+                <View style={styles.upgradeIconWrap}>
+                  <Zap size={13} color={T.green} />
+                </View>
+                <View style={{ gap: 1, flex: 1 }}>
+                  <Text style={styles.upgradeBannerTitle} numberOfLines={1}>Upgrade to Summit Ready Pro</Text>
+                  <Text style={styles.upgradeBannerSub} numberOfLines={1}>Unlock adaptive plans, AI coaching & more</Text>
+                </View>
+              </View>
+              <ChevronRight size={16} color={T.green} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Time readiness warning */}
+        {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
+          <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}>
+            <View style={[
+              styles.warningBanner,
+              timeAssessment.status === "tight"
+                ? { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }
+                : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
+            ]}>
+              {timeAssessment.status === "tight" ? <Clock size={14} color={T.orange} /> : <AlertTriangle size={14} color={T.red} />}
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.warningText, { color: timeAssessment.status === "tight" ? T.orange : T.red }]}>
+                  {timeAssessment.message}
+                </Text>
+                <Text style={styles.warningDetail}>{timeAssessment.detail}</Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
         {/* Stats Strip */}
-        <Animated.View entering={FadeInDown.delay(110).duration(500)}>
+        <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(110).duration(500)}>
           <View style={styles.statsSectionHeader}>
             <Text style={styles.statsSectionTitle}>Your Stats</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7} style={styles.statsSectionLink}>
@@ -1003,7 +1028,7 @@ export default function DashboardScreen() {
 
         {/* Achievements Strip */}
         {unlockedAchievements.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(115).duration(500)}>
+          <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(115).duration(500)}>
             <TouchableOpacity
               style={styles.achieveStrip}
               onPress={() => router.push("/(tabs)/account?scrollTo=achievements")}
@@ -1044,7 +1069,7 @@ export default function DashboardScreen() {
         )}
 
         {/* Ask Coach pill — scrolls to coach for Pro, upsells for free */}
-        <Animated.View entering={FadeInDown.delay(20).duration(400)}>
+        <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(20).duration(400)}>
           <TouchableOpacity
             onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")}
             activeOpacity={0.82}
@@ -1064,7 +1089,7 @@ export default function DashboardScreen() {
         </Animated.View>
 
         {/* AI Coach */}
-        <Animated.View entering={FadeInDown.delay(320).duration(500)}>
+        <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(320).duration(500)}>
           {isSubscribed ? (
             /* ── Pro: full interactive coach card ── */
             <View
@@ -1449,15 +1474,15 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     marginBottom: 8,
   },
-  statsSectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
+  statsSectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.basecampText },
   statsSectionLink: { flexDirection: "row", alignItems: "center", gap: 2 },
-  statsSectionLinkText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statsSectionLinkText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.basecampTextMuted },
   statsStrip: {
     flexDirection: "row",
-    backgroundColor: T.card,
+    backgroundColor: T.basecampSurface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: T.cardBorder,
+    borderColor: T.basecampBorder,
     paddingVertical: 14,
     marginBottom: 12,
   },
@@ -1466,14 +1491,14 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 8,
     alignItems: "center", justifyContent: "center",
   },
-  statsTileValue: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  statsTileUnit: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  statsTileLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
-  statsTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 4 },
+  statsTileValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.basecampText },
+  statsTileUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.basecampTextMuted },
+  statsTileLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.basecampTextMuted },
+  statsTileDivider: { width: 1, backgroundColor: T.basecampBorder, marginVertical: 4 },
   achieveStrip: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 16,
-    borderWidth: 1, borderColor: "#FFD70030",
+    backgroundColor: T.basecampSurface, borderRadius: 16,
+    borderWidth: 1, borderColor: T.basecampBorder,
     paddingVertical: 12, paddingHorizontal: 14,
     marginBottom: 12, overflow: "hidden",
   },
@@ -1484,8 +1509,8 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   achieveStripTrophy: { fontSize: 18 },
-  achieveStripTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
-  achieveStripSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  achieveStripTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.basecampText },
+  achieveStripSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, marginTop: 1 },
   achieveStripEmojis: { flexDirection: "row", gap: 2, alignItems: "center", flexShrink: 0 },
   achieveStripIconWrap: { alignItems: "center", justifyContent: "center" },
   statCard: {
@@ -1510,18 +1535,13 @@ const styles = StyleSheet.create({
 
   // ── Unified Mission Control ────────────────────────────────────────────────
   missionControl: {
-    backgroundColor: T.basecampSurface,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: T.basecampBorder,
-    overflow: "hidden",
     marginBottom: 24,
   },
   missionControlHeader: {
-    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    marginBottom: 12,
   },
   missionPhasePill: {
     flexDirection: "row",
@@ -1532,7 +1552,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   phaseDot: { width: 6, height: 6, borderRadius: 3 },
-  missionPhaseText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
+  missionPhaseText: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   peakBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1581,9 +1601,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: T.basecampBorder,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: T.basecampSurface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
   },
   dominantActionLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 16 },
   dominantActionIcon: {
@@ -1594,7 +1615,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dominantActionEyebrow: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1 },
+  dominantActionEyebrow: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green, letterSpacing: 0.5 },
   dominantActionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.basecampText },
   dominantActionDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, marginTop: 2 },
   dominantActionArrow: { marginLeft: 10, opacity: 0.8 },
@@ -1603,8 +1624,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: T.basecampBorder,
+    backgroundColor: T.basecampSurface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
   },
   weekCompleteText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.basecampTextMuted },
 

@@ -36,7 +36,10 @@ export default function LandingScreen() {
     const profile = DEV_PROFILES.find((p) => p.id === demoId);
     if (!profile) return;
     setDemoLoading(true);
-    loadDevProfile(profile).then(() => reloadApp()).catch(() => setDemoLoading(false));
+    loadDevProfile(profile)
+      .then(() => reloadApp())
+      .then(() => router.replace("/(tabs)/dashboard"))
+      .catch(() => setDemoLoading(false));
   }, []);
 
   function handleLogoPress() {

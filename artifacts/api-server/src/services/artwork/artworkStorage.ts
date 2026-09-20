@@ -237,6 +237,7 @@ export async function streamReviewCandidate(
   version: number,
   crop: CropType,
   res: ExpressResponse,
+  cacheControl = "private, max-age=3600",
 ) {
   const file = getBucket().file(candidateGcsPath(batchId, assetId, version, crop));
   const [exists] = await file.exists();
@@ -245,7 +246,7 @@ export async function streamReviewCandidate(
     return;
   }
   res.setHeader("Content-Type", "image/jpeg");
-  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.setHeader("Cache-Control", cacheControl);
   file.createReadStream()
     .on("error", () => res.status(500).end())
     .pipe(res);

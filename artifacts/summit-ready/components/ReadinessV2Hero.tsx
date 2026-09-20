@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { Activity, ChevronRight, Lock, Heart, Wind, Zap, Mountain, AlertCircle } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
@@ -31,6 +31,7 @@ const DIM_LABELS: Record<string, string> = {
 export function ReadinessV2Hero() {
   const { isSubscribed } = useSubscription();
   const v2 = useReadinessV2();
+  const reducedMotion = useReducedMotion();
   
   if (!v2 || !v2.result) return null;
   const { result, nextAction } = v2;
@@ -44,7 +45,7 @@ export function ReadinessV2Hero() {
   const gapDim = dominantGap ? dimensions[dominantGap] : null;
 
   return (
-    <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+    <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(80).duration(500)}>
       <View style={styles.card}>
         <LinearGradient
           colors={[statusColor + "0A", "transparent"]}
@@ -87,9 +88,11 @@ export function ReadinessV2Hero() {
                 </Text>
                 
                 {confidence && confidence !== "none" && (
-                  <View style={[styles.confBadge, confidence === "high" ? { backgroundColor: T.greenDim } : { backgroundColor: T.surface }]}>
-                    <Activity size={10} color={confidence === "high" ? T.green : T.textMuted} />
-                    <Text style={[styles.confText, { color: confidence === "high" ? T.green : T.textMuted }]}>{confidence.toUpperCase()} CONFIDENCE</Text>
+                  <View style={[styles.confBadge, confidence === "high" ? { backgroundColor: T.greenDim } : { backgroundColor: T.basecampSurface }]}>
+                    <Activity size={10} color={confidence === "high" ? T.green : T.basecampTextMuted} />
+                    <Text style={[styles.confText, { color: confidence === "high" ? T.green : T.basecampTextMuted }]}>
+                      {confidence === "high" ? "High confidence" : confidence === "medium" ? "Medium confidence" : "Low confidence"}
+                    </Text>
                   </View>
                 )}
               </>
@@ -137,7 +140,7 @@ export function ReadinessV2Hero() {
 
             <TouchableOpacity style={styles.detailBtn} onPress={() => router.push("/readiness-detail" as any)} activeOpacity={0.7}>
               <Text style={styles.detailBtnText}>View detailed analysis</Text>
-              <ChevronRight size={14} color={T.textMuted} />
+              <ChevronRight size={14} color={T.basecampTextMuted} />
             </TouchableOpacity>
           </>
         )}
@@ -147,27 +150,27 @@ export function ReadinessV2Hero() {
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 18, borderRadius: 20, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, overflow: "hidden", marginBottom: 16 },
+  card: { marginHorizontal: 18, borderRadius: 20, borderWidth: 1, borderColor: T.basecampBorder, backgroundColor: T.basecampSurface, overflow: "hidden", marginBottom: 16 },
   topRow: { flexDirection: "row", padding: 18, gap: 20, alignItems: "center" },
   metaCol: { flex: 1, gap: 6, justifyContent: "center" },
-  areYouReadyLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  areYouReadyLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted, letterSpacing: 0.2 },
   statusPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  trackingMsg: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 18 },
+  trackingMsg: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextDim, lineHeight: 18 },
   confBadge: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
   confText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  divider: { height: 1, backgroundColor: T.border, marginHorizontal: 18 },
+  divider: { height: 1, backgroundColor: T.basecampBorder, marginHorizontal: 18 },
   dimsRow: { flexDirection: "row", justifyContent: "space-between", padding: 18 },
   dimItem: { alignItems: "center", gap: 4, width: "22%" },
   dimIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   dimScore: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  dimLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: T.textMuted, textAlign: "center" },
+  dimLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, textAlign: "center" },
   actionRow: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 18, marginBottom: 18, padding: 12, backgroundColor: "rgba(0,0,0,0.15)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.03)" },
-  actionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase" },
-  actionDesc: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.text, marginTop: 2 },
+  actionTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted },
+  actionDesc: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.basecampText, marginTop: 2 },
   impactBadge: { backgroundColor: T.greenDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: T.green + "40" },
   impactText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.green },
-  detailBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, borderTopWidth: 1, borderTopColor: T.border, backgroundColor: "rgba(255,255,255,0.02)" },
-  detailBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
+  detailBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, borderTopWidth: 1, borderTopColor: T.basecampBorder, backgroundColor: "rgba(255,255,255,0.02)" },
+  detailBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.basecampTextMuted },
 });

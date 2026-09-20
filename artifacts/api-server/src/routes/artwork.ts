@@ -46,6 +46,10 @@ import {
   rejectBatch01Version,
 } from "../services/artwork/reviewBatchService.js";
 import { BATCH_01_ID, isObjectiveFailureReason } from "../services/artwork/batch01.js";
+import {
+  APPROVED_ARTWORK_PLACEMENTS,
+  resolveApprovedBatch01Artwork,
+} from "../services/artwork/approvedArtworkResolver.js";
 
 export const artworkRouter = Router();
 
@@ -63,6 +67,46 @@ function requireDevelopment(_req: Request, res: Response, next: NextFunction): v
   }
   next();
 }
+
+/**
+ * Stable, read-only Batch 01 contract for app artwork.
+ * This endpoint intentionally returns only an approved current crop URL.
+ */
+artworkRouter.get("/resolve/:assetId/:placement", requireDevelopment, async (req, res) => {
+  const assetId = param(req.params.assetId);
+  const placement = param(req.params.placement);
+  if (!APPROVED_ARTWORK_PLACEMENTS.includes(placement as typeof APPROVED_ARTWORK_PLACEMENTS[number])) {
+    return res.status(404).json({ error: "Artwork not found" });
+  }
+  const manifest = await getBatch01Manifest();
+  const resolved = resolveApprovedBatch01Artwork(manifest, assetId, placement);
+  if (!resolved) return res.status(404).json({ error: "Artwork not found" });
+  return res.json(resolved);
+});
+
+artworkRouter.get("/approved/:assetId/:placement", requireDevelopment, async (req, res) => {
+  const assetId = param(req.params.assetId);
+  const placement = param(req.params.placement);
+  const manifest = await getBatch01Manifest();
+  const resolved = resolveApprovedBatch01Artwork(manifest, assetId, placement);
+  if (!resolved) return res.status(404).json({ error: "Artwork not found" });
+  const current = manifest.versions
+    .filter((candidate) => candidate.assetId === assetId)
+    .reduce<(typeof manifest.versions)[number] | null>(
+      (latest, candidate) => !latest || candidate.version > latest.version ? candidate : latest,
+      null,
+    );
+  if (!current) return res.status(404).json({ error: "Artwork not found" });
+  await streamReviewCandidate(
+    BATCH_01_ID,
+    assetId,
+    current.version,
+    placement as CropType,
+    res,
+    "private, no-store, max-age=0",
+  );
+  return;
+});
 
 artworkRouter.get("/batches/:batchId", requireDevelopment, async (req, res) => {
   if (param(req.params.batchId) !== BATCH_01_ID) {

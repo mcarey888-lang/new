@@ -609,9 +609,15 @@ export async function loadDevProfile(profile: DevProfile): Promise<void> {
     : [];
   await AsyncStorage.multiRemove([...ALL_KEYS, ...previousOwnerKeys]);
   const present = new Set(profile.storageData.map(([key]) => key));
+  const stored = new Map(profile.storageData);
+  const legacyGoal = stored.get("summitready_goal") ?? "null";
+  const fixtureShell = stored.get("summitready_shell_mode") === "expedition"
+    ? "expedition"
+    : "training";
   const contractDefaults: Array<[string, string]> = [
     ["summitready_goal", "null"],
-    ["summitready_training_goal", "null"],
+    ["summitready_training_goal", fixtureShell === "training" ? legacyGoal : "null"],
+    ["summitready_expedition_goal", fixtureShell === "expedition" ? legacyGoal : "null"],
     ["summitready_plan", "[]"],
     ["summitready_sessions", "[]"],
     ["summitready_explore_hikes", "[]"],
