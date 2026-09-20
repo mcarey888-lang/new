@@ -14,6 +14,7 @@
 
 import { Storage } from "@google-cloud/storage";
 import type { Response as ExpressResponse } from "express";
+import crypto from "node:crypto";
 
 const REPLIT_SIDECAR = "http://127.0.0.1:1106";
 
@@ -55,6 +56,144 @@ export interface StoredArtwork {
   cardPath:      string;
   thumbnailPath: string;
   masterPath:    string;
+}
+
+export interface ReviewCandidatePaths {
+  masterPath: string;
+  heroPath: string;
+  cardPath: string;
+  thumbnailPath: string;
+  objectPaths: Record<CropType, string>;
+}
+
+function candidateGcsPath(batchId: string, assetId: string, version: number, crop: CropType) {
+  return `expedition-artwork/review-batches/${batchId}/${assetId}/v${version}/${crop}.jpg`;
+}
+
+function candidateServingPath(batchId: string, assetId: string, version: number, crop: CropType) {
+  return `/api/artwork/batches/${batchId}/${assetId}/v${version}/${crop}`;
+}
+
+export async function uploadReviewCandidate(
+  batchId: string,
+  assetId: string,
+  version: number,
+  crops: { hero: Buffer; card: Buffer; thumbnail: Buffer; master: Buffer },
+): Promise<ReviewCandidatePaths> {
+  const bucket = getBucket();
+  await Promise.all(
+    CROP_TYPES.map((crop) =>
+      bucket.file(candidateGcsPath(batchId, assetId, version, crop)).save(crops[crop], {
+        contentType: "image/jpeg",
+        metadata: { cacheControl: "private, max-age=3600" },
+        resumable: false,
+        preconditionOpts: { ifGenerationMatch: 0 },
+      }),
+    ),
+  );
+  return {
+    masterPath: candidateServingPath(batchId, assetId, version, "master"),
+    heroPath: candidateServingPath(batchId, assetId, version, "hero"),
+    cardPath: candidateServingPath(batchId, assetId, version, "card"),
+    thumbnailPath: candidateServingPath(batchId, assetId, version, "thumbnail"),
+    objectPaths: Object.fromEntries(
+      CROP_TYPES.map((crop) => [crop, candidateGcsPath(batchId, assetId, version, crop)]),
+    ) as Record<CropType, string>,
+  };
+}
+
+export async function writeReviewBatchManifest(batchId: string, manifest: unknown) {
+  await getBucket()
+    .file(`expedition-artwork/review-batches/${batchId}/manifest.json`)
+    .save(JSON.stringify(manifest, null, 2), {
+      contentType: "application/json",
+      metadata: { cacheControl: "no-store" },
+    });
+}
+
+/**
+ * Object Storage precondition lock. Batch generation is intentionally
+ * serialized so version reservation, spend recording and manifest writes
+ * cannot race, even if more than one API process receives a request.
+ */
+const GENERATION_LOCK_LEASE_MS = 10 * 60 * 1000;
+
+export async function acquireReviewBatchGenerationLock(
+  batchId: string,
+  staleRecoveryAttempted = false,
+): Promise<() => Promise<void>> {
+  const file = getBucket().file(`expedition-artwork/review-batches/${batchId}/.generation.lock`);
+  const owner = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + GENERATION_LOCK_LEASE_MS).toISOString();
+  try {
+    await file.save(JSON.stringify({ owner, acquiredAt: new Date().toISOString(), expiresAt }), {
+      contentType: "application/json",
+      resumable: false,
+      preconditionOpts: { ifGenerationMatch: 0 },
+    });
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? Number((error as { code?: unknown }).code)
+      : 0;
+    if (code === 412) {
+      if (!staleRecoveryAttempted) {
+        const [metadata] = await file.getMetadata();
+        const [contents] = await file.download();
+        const existing = JSON.parse(contents.toString("utf8")) as { expiresAt?: string };
+        if (existing.expiresAt && Date.parse(existing.expiresAt) <= Date.now()) {
+          await file.delete({
+            preconditionOpts: { ifGenerationMatch: Number(metadata.generation) },
+          });
+          return acquireReviewBatchGenerationLock(batchId, true);
+        }
+      }
+      throw new Error(`Review batch ${batchId} already has a generation in progress`);
+    }
+    throw error;
+  }
+  const [metadata] = await file.getMetadata();
+  const generation = Number(metadata.generation);
+  return async () => {
+    try {
+      const [contents] = await file.download();
+      const existing = JSON.parse(contents.toString("utf8")) as { owner?: string };
+      if (existing.owner !== owner) return;
+      await file.delete({ preconditionOpts: { ifGenerationMatch: generation } });
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? Number((error as { code?: unknown }).code)
+        : 0;
+      if (code !== 404 && code !== 412) throw error;
+    }
+  };
+}
+
+export async function readReviewBatchManifest<T>(batchId: string): Promise<T | null> {
+  const file = getBucket().file(`expedition-artwork/review-batches/${batchId}/manifest.json`);
+  const [exists] = await file.exists();
+  if (!exists) return null;
+  const [contents] = await file.download();
+  return JSON.parse(contents.toString("utf8")) as T;
+}
+
+export async function streamReviewCandidate(
+  batchId: string,
+  assetId: string,
+  version: number,
+  crop: CropType,
+  res: ExpressResponse,
+) {
+  const file = getBucket().file(candidateGcsPath(batchId, assetId, version, crop));
+  const [exists] = await file.exists();
+  if (!exists) {
+    res.status(404).json({ error: "Review candidate not found" });
+    return;
+  }
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  file.createReadStream()
+    .on("error", () => res.status(500).end())
+    .pipe(res);
 }
 
 /**

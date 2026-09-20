@@ -14,6 +14,10 @@ const atlasSource = readFileSync(
   new URL("../routes/atlas.ts", import.meta.url),
   "utf8",
 );
+const artworkStorageSource = readFileSync(
+  new URL("../services/artwork/artworkStorage.ts", import.meta.url),
+  "utf8",
+);
 
 const protectedGroups: Array<{ name: string; method: Method; path: string }> = [
   { name: "artwork mutation", method: "POST", path: "/artwork" },
@@ -107,10 +111,28 @@ describe("shared admin-key protection", () => {
 describe("privileged route declarations", () => {
   it("guards every Artwork mutation", () => {
     const declarations = artworkSource.match(/artworkRouter\.(?:post|patch|put|delete)\([^;]+?=> \{/gs) ?? [];
-    expect(declarations).toHaveLength(8);
+    expect(declarations).toHaveLength(9);
     for (const declaration of declarations) {
       expect(declaration).toContain("requireAdminKey");
     }
+  });
+
+  it("keeps review-batch routes development-only and reason-gated", () => {
+    expect(artworkSource).toContain('if (process.env.NODE_ENV !== "development")');
+    const batchMutation = artworkSource.match(
+      /artworkRouter\.post\("\/batches\/:batchId\/generate"[\s\S]*?\n\}\);/,
+    )?.[0];
+    expect(batchMutation).toContain("requireDevelopment");
+    expect(batchMutation).toContain("requireAdminKey");
+    expect(batchMutation).toContain("objectiveFailureReason");
+    expect(batchMutation).toContain("isObjectiveFailureReason");
+  });
+
+  it("uses create-only review objects and an owned expiring generation lease", () => {
+    expect(artworkStorageSource).toContain("preconditionOpts: { ifGenerationMatch: 0 }");
+    expect(artworkStorageSource).toContain("GENERATION_LOCK_LEASE_MS");
+    expect(artworkStorageSource).toContain("existing.owner !== owner");
+    expect(artworkStorageSource).toContain("ifGenerationMatch: generation");
   });
 
   it("guards every Atlas mutation", () => {

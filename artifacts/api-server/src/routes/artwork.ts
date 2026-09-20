@@ -15,7 +15,7 @@
  *   DELETE /api/artwork/:challengeId            — clear all artwork + GCS objects
  */
 
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import {
   generateChallengeArtwork,
   approveChallengeArtwork,
@@ -24,7 +24,11 @@ import {
   bulkGenerateArtwork,
   getArtworkStatus,
 } from "../services/artwork/artworkService.js";
-import { streamArtworkImage, type CropType } from "../services/artwork/artworkStorage.js";
+import {
+  streamArtworkImage,
+  streamReviewCandidate,
+  type CropType,
+} from "../services/artwork/artworkStorage.js";
 import { buildExpeditionPrompt } from "../services/artwork/promptBuilder.js";
 import { db, signatureChallenges, challengeStages } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -35,6 +39,12 @@ import {
   rejectMountainHeroCandidate,
 } from "../services/artwork/mountainHeroReview.js";
 import { requireAdminKey } from "../middlewares/requireAdminKey.js";
+import {
+  generateBatch01,
+  generateBatch01Candidate,
+  getBatch01Manifest,
+} from "../services/artwork/reviewBatchService.js";
+import { BATCH_01_ID, isObjectiveFailureReason } from "../services/artwork/batch01.js";
 
 export const artworkRouter = Router();
 
@@ -44,6 +54,52 @@ const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
 function param(value: string | string[]): string {
   return Array.isArray(value) ? value[0]! : value;
 }
+
+function requireDevelopment(_req: Request, res: Response, next: NextFunction): void {
+  if (process.env.NODE_ENV !== "development") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  next();
+}
+
+artworkRouter.get("/batches/:batchId", requireDevelopment, async (req, res) => {
+  if (param(req.params.batchId) !== BATCH_01_ID) {
+    return res.status(404).json({ error: "Review batch not found" });
+  }
+  return res.json(await getBatch01Manifest());
+});
+
+artworkRouter.get("/batches/:batchId/:assetId/v:version/:crop", requireDevelopment, async (req, res) => {
+  const batchId = param(req.params.batchId);
+  const assetId = param(req.params.assetId);
+  const crop = param(req.params.crop) as CropType;
+  const version = Number(param(req.params.version));
+  if (batchId !== BATCH_01_ID || !VALID_CROPS.includes(crop) || !Number.isInteger(version) || version < 1) {
+    return res.status(400).json({ error: "Invalid review candidate request" });
+  }
+  await streamReviewCandidate(batchId, assetId, version, crop, res);
+  return;
+});
+
+artworkRouter.post("/batches/:batchId/generate", requireDevelopment, requireAdminKey, async (req, res) => {
+  if (param(req.params.batchId) !== BATCH_01_ID) {
+    return res.status(404).json({ error: "Review batch not found" });
+  }
+  try {
+    if (typeof req.body?.assetId === "string") {
+      const reason = req.body?.objectiveFailureReason;
+      if (reason !== undefined && !isObjectiveFailureReason(reason)) {
+        return res.status(400).json({ error: "Invalid objectiveFailureReason" });
+      }
+      return res.json(await generateBatch01Candidate(req.body.assetId, reason));
+    }
+    return res.json(await generateBatch01());
+  } catch (err) {
+    console.error("[artwork/batch-01/generate]", err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Batch generation failed" });
+  }
+});
 
 artworkRouter.get("/mountains", async (req, res) => {
   try {

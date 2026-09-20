@@ -97,6 +97,61 @@ export interface BuiltPrompt {
   hash: string;  // sha256 of the source data; used to detect stale images
 }
 
+export interface PlacementPromptInput {
+  assetId: string;
+  title: string;
+  subject: string;
+  placement: string;
+  focalLocation: string;
+  negativeSpaceLocation: string;
+  cropRequirements: string;
+  people: string;
+  moodWeather: string;
+  geographicIdentity: string;
+  exclusions: string[];
+}
+
+const PLACEMENT_STYLE_BLOCK = `
+Create one individual 1536x1024 landscape 3:2 photographic master, never a collage, contact sheet, mood board, poster, split screen, multi-panel image or UI mockup.
+Photography style: premium outdoor editorial with believable real geography, natural optics, restrained saturation, deep natural shadows and atmospheric depth.
+Character: authentic Berghaus, Arc'teryx and Patagonia-level outdoor editorial craft without copying any campaign.
+People and equipment, where requested, must be anatomically correct, practical and appropriate to the terrain.
+No baked-in text, labels, logos, watermarks, UI, route lines, markers or badges.
+Avoid fantasy peaks, impossible ridgelines, oversaturated HDR, generic AI gloss, excessive lens flare, duplicated people, malformed hands or equipment and unsafe positions.
+Preserve summit tips, faces, hands and essential route terrain. Compose for downstream crops.
+`.trim();
+
+/**
+ * Additive placement-aware prompt mode for standalone review candidates.
+ * Existing expedition prompt output and stale hashes remain unchanged.
+ */
+export function buildPlacementAwarePrompt(input: PlacementPromptInput): BuiltPrompt {
+  const prompt = [
+    `Create the standalone photographic master for internal asset ${input.assetId}.`,
+    `Internal title (do not render this text): ${input.title}.`,
+    "",
+    `Subject: ${input.subject}`,
+    `Actual app placement: ${input.placement}`,
+    `Focal location: ${input.focalLocation}`,
+    `Negative-space location: ${input.negativeSpaceLocation}`,
+    `Crop requirements: ${input.cropRequirements}`,
+    `People: ${input.people}`,
+    `Mood and weather: ${input.moodWeather}`,
+    `Geographic identity requirements: ${input.geographicIdentity}`,
+    `Exclusions: ${input.exclusions.join("; ")}.`,
+    "",
+    PLACEMENT_STYLE_BLOCK,
+  ].join("\n").trim();
+
+  const hash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(input))
+    .digest("hex")
+    .slice(0, 16);
+
+  return { prompt, hash };
+}
+
 export function buildExpeditionPrompt(
   challenge: SignatureChallenge,
   stages: ChallengeStage[],

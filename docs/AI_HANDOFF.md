@@ -448,3 +448,30 @@ At the end of every meaningful SummitReady development task:
 3. Include the branch and latest available implementation commit SHA.
 4. Flag decisions requiring human or ChatGPT review.
 5. Never include secrets, credentials, private user information, raw production data, or production connection strings.
+
+## ART-C01–ART-C06 Batch 01 handoff
+
+- The controlling review record is
+  `docs/SUMMITREADY_ARTWORK_BATCH_01.md`.
+- Artwork Admin now contains a development-only Batch 01 review gallery inside
+  `/assets`. It renders all 12 independently stored masters with 16:9 and 4:5
+  crop previews plus placement, focal/crop, provider, version, cost and status
+  metadata.
+- The API adds a development-only review-batch read/generation boundary backed
+  by the existing OpenAI ImageProvider, crop service and Object Storage. It does
+  not write signature challenge artwork rows and exposes no candidate approve
+  or publish operation.
+- Final result: 12/12 candidates, all 1536×1024 v1 masters, one generation
+  attempt each, estimated total cost $0.48. Objective visual review found no
+  authorised regeneration reason.
+- Every candidate remains `REVIEW REQUIRED`, `approved=false` and
+  `published=false`. No production schema/data change, approval, publication,
+  deploy/release, Stage 9 work, or protected Progress Mountain/cinematic change
+  occurred.
+- Targeted artwork/admin verification passed. Full API TypeScript still retains
+  unrelated pre-existing canonical/object-storage/OpenAI-library diagnostics;
+  the production API bundle and running development workflow load the new
+  route successfully.
+- Human/ChatGPT review is the next and only authorised action. Do not approve,
+  publish, derive runtime placements or begin another batch without new
+  authority.

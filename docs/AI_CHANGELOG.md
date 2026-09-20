@@ -196,6 +196,42 @@ unchanged. Stage 6 is a runbook completion, not mobile release approval.
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-20 UTC — ART-C01–ART-C06 flagship artwork Batch 01
+
+**Task:** Generate the 12 authorised SummitReady flagship candidates through
+the existing Artwork Admin, artwork API, OpenAI ImageProvider, crop service and
+Object Storage pipeline, then stop at review.
+
+**Implementation:** Added an additive placement-aware prompt contract without
+changing existing challenge prompt output. Added a development-only,
+object-backed review batch with immutable candidate versions and no candidate
+approval/publication route. Artwork Admin `/assets` now shows every master
+beside 16:9 and 4:5 crop previews and its placement, focal/crop,
+provider/model, dimensions, version, estimated cost and review status.
+
+**Generation/review:** Generated Mont Blanc, Matterhorn, Kilimanjaro, Everest
+Base Camp, Training Basecamp, Expeditions Discovery, Explore, Track, Rank,
+Mountain DNA, Achievement and You/Profile as 12 individual 1536×1024 masters.
+Every final candidate is v1 with one attempt; estimated total cost is $0.48.
+Master and derivative review found no text/watermark, collage, severe
+anatomy/equipment failure, wrong named-mountain morphology, unusable crop or
+fantasy geography, so no regeneration was performed.
+
+**Important files:** `artifacts/api-server/src/services/artwork/batch01.ts`,
+`reviewBatchService.ts`, `artworkStorage.ts`, `promptBuilder.ts`,
+`artifacts/artwork-admin/src/components/Batch01ReviewGallery.tsx`, and
+`docs/SUMMITREADY_ARTWORK_BATCH_01.md`.
+
+**Tests/result:** Targeted artwork prompt/security tests passed **23/23**;
+Artwork Admin TypeScript passed; API production bundle and development restart
+passed; the live manifest reports 12 candidates, all `REVIEW REQUIRED`,
+unapproved and unpublished. Full API TypeScript retains unrelated pre-existing
+diagnostics. No production schema/data change, approval, publication,
+deployment/release, Stage 9 work, or protected Progress Mountain/cinematic
+change occurred.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
 ## 2026-09-20 UTC — MV-C01–MV-C10 media, visual and motion gate
 
 **Task:** Audit and consolidate the SummitReady media architecture, specify the

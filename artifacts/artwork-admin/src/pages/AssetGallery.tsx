@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { ImageIcon, Layers, FileImage } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Batch01ReviewGallery } from "@/components/Batch01ReviewGallery";
 
 // Direct Vite imports from the inventoried product source roots.
 import boxStepUpsImg from "@summit-assets/images/exercise-box-steps.png";
@@ -201,6 +202,7 @@ export default function AssetGallery() {
         </div>
 
         <div className="flex flex-col gap-12">
+          <Batch01ReviewGallery />
           {ASSET_FAMILIES.map((family) => (
             <section key={family.id} className="flex flex-col gap-4" data-testid={`section-family-${family.id}`}>
               <div className="border-b border-border pb-3">
