@@ -41,6 +41,8 @@ import { englishPlaceName } from "@/utils/placeNames";
 import { RankExperience } from "@/components/RankExperience";
 import { evaluateRank } from "@/utils/rankEvaluator";
 import type { RankSignal } from "@/utils/rankDomain";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { readDevRankEvidence } from "@/utils/devProfiles";
 
 const PILL_OFFSET = 52;
 
@@ -80,8 +82,16 @@ export default function ExpeditionProfileScreen() {
     .filter((award) => award.status === "confirmed").length;
 
   const [devModalVisible, setDevModalVisible] = useState(false);
+  const [devRankEvidence, setDevRankEvidence] = useState<readonly import("@/utils/challengeDomain").EvidenceReference[]>([]);
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (!__DEV__) return;
+    AsyncStorage.getItem("summitready_dev_profile_id")
+      .then((id) => setDevRankEvidence(id ? readDevRankEvidence(id, user?.id ?? "dev-fixture-owner") : []))
+      .catch(() => setDevRankEvidence([]));
+  }, [user?.id]);
 
   function handleTitlePress() {
     if (!__DEV__) return;
@@ -133,16 +143,16 @@ export default function ExpeditionProfileScreen() {
   const displayName = user?.fullName ?? user?.username ?? "Adventurer";
   const initials    = displayName.slice(0, 1).toUpperCase();
   const rankResult = evaluateRank({
-    ownerUserId: user?.id ?? "signed-out",
-    evidence: [],
+    ownerUserId: __DEV__ ? (user?.id ?? "dev-fixture-owner") : (user?.id ?? "signed-out"),
+    evidence: __DEV__ ? devRankEvidence : [],
     signalAvailability: {
-      eligibleActivities: "unavailable",
-      eligibleElevation: "unavailable",
-      distinctMountains: "unavailable",
-      summitCompletions: "unavailable",
-      activeWeeks: "unavailable",
-      expeditionMilestones: "unavailable",
-    } satisfies Record<RankSignal, "unavailable">,
+      eligibleActivities: __DEV__ ? "available" : "unavailable",
+      eligibleElevation: __DEV__ ? "available" : "unavailable",
+      distinctMountains: __DEV__ ? "available" : "unavailable",
+      summitCompletions: __DEV__ ? "available" : "unavailable",
+      activeWeeks: __DEV__ ? "available" : "unavailable",
+      expeditionMilestones: __DEV__ ? "available" : "unavailable",
+    } satisfies Record<RankSignal, "available" | "unavailable">,
   });
 
   return (

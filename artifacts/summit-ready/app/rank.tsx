@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -6,10 +7,24 @@ import { ArrowLeft, CheckCircle2, Lock, Mountain } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { T } from "@/constants/theme";
-import { RANKS } from "@/utils/rankEvaluator";
+import { RANKS } from "@/utils/rankDomain";
+import { evaluateRank } from "@/utils/rankEvaluator";
+import { readDevRankEvidence } from "@/utils/devProfiles";
+import type { RankSignal, RankSignalAvailability } from "@/utils/rankDomain";
 
 export default function RankJourneyScreen() {
   const insets = useSafeAreaInsets();
+  const [profileId, setProfileId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!__DEV__) return;
+    AsyncStorage.getItem("summitready_dev_profile_id").then(setProfileId).catch(() => setProfileId(null));
+  }, []);
+  const evidence = __DEV__ && profileId ? readDevRankEvidence(profileId) : [];
+  const availability = Object.fromEntries(
+    ["eligibleActivities", "eligibleElevation", "distinctMountains", "summitCompletions", "activeWeeks", "expeditionMilestones"]
+      .map((signal) => [signal, __DEV__ && profileId ? "available" : "unavailable"]),
+  ) as Record<RankSignal, RankSignalAvailability>;
+  const result = evaluateRank({ ownerUserId: "dev-fixture-owner", evidence, signalAvailability: availability });
   return (
     <LinearGradient colors={T.bgGrad} style={styles.screen}>
       <ScrollView
@@ -35,21 +50,26 @@ export default function RankJourneyScreen() {
         </Text>
 
         <View style={styles.ladder}>
-          {RANKS.map((rank, index) => (
+          {RANKS.map((rank, index) => {
+            const achieved = result.currentRank
+              ? index <= RANKS.findIndex((item) => item.rank === result.currentRank)
+              : false;
+            const current = rank.rank === result.currentRank;
+            return (
             <View key={rank.rank} style={styles.rankRow}>
               <View style={styles.rail}>
                 <View style={styles.marker}>
-                  {index === 0 ? <Mountain size={16} color={T.green} /> : <Lock size={14} color={T.textDim} />}
+                  {achieved ? <Mountain size={16} color={T.green} /> : <Lock size={14} color={T.textDim} />}
                 </View>
                 {index < RANKS.length - 1 && <View style={styles.line} />}
               </View>
               <View style={styles.rankCard}>
                 <View style={styles.rankHeader}>
                   <Text style={styles.rankName}>{rank.rank}</Text>
-                  {index === 0 && (
+                  {current && (
                     <View style={styles.statusPill}>
                       <CheckCircle2 size={11} color={T.green} />
-                      <Text style={styles.statusText}>First milestone</Text>
+                      <Text style={styles.statusText}>Current rank</Text>
                     </View>
                   )}
                 </View>
@@ -59,7 +79,7 @@ export default function RankJourneyScreen() {
                 </Text>
               </View>
             </View>
-          ))}
+          )})}
         </View>
 
         <View style={styles.notice}>

@@ -1,9 +1,9 @@
 # SummitReady Visual QA Manifest
 
-**Scope:** VQ-C01–C09 final visual evidence
+**Scope:** VQ-C01–C09 final visual evidence plus VR-C04 populated-state evidence
 **Date:** 2026-09-20 UTC
 **Viewport:** 390 × 844 CSS pixels, phone portrait
-**Status:** Final stable repository pack; native-device QA remains outstanding.
+**Status:** Final stable repository pack; VR-C04 is complete; native-device QA remains outstanding.
 
 ## Capture labels
 
@@ -24,6 +24,30 @@
 
 Every indexed item is an actual PNG/JPG in this repository. No transient URL is
 the sole evidence.
+
+## VR-C04 deterministic demo-profile matrix
+
+The following exactly five development-only personas use the fixed fixture
+clock **2026-09-20 UTC**: Beginner, Active Hillwalker, Experienced Summiteer,
+Expedition-focused, and Advanced all-round. Every item below is a synthetic
+deterministic fixture rendered through the real production UI at 390 × 844;
+none is a production account or production evidence.
+
+| File | Persona | Production screen/state |
+|---|---|---|
+| `docs/visual-qa/demo-profiles/beginner-basecamp.png` | Beginner | Training Basecamp |
+| `docs/visual-qa/demo-profiles/hillwalker-basecamp.png` | Active Hillwalker | Training Basecamp |
+| `docs/visual-qa/demo-profiles/hillwalker-explore.png` | Active Hillwalker | Explore |
+| `docs/visual-qa/demo-profiles/summiteer-profile.png` | Experienced Summiteer | You/Profile |
+| `docs/visual-qa/demo-profiles/summiteer-rank.png` | Experienced Summiteer | Rank journey |
+| `docs/visual-qa/demo-profiles/expedition-basecamp.png` | Expedition-focused | Expedition Basecamp |
+| `docs/visual-qa/demo-profiles/expedition-progress.png` | Expedition-focused | Expedition Progress |
+| `docs/visual-qa/demo-profiles/advanced-track.png` | Advanced all-round | Track |
+| `docs/visual-qa/demo-profiles/advanced-challenges.png` | Advanced all-round | Challenges/Achievements |
+| `docs/visual-qa/demo-profiles/advanced-profile.png` | Advanced all-round | You/Profile |
+
+The demo loader and Rank fixtures are `__DEV__` guarded, with production
+rejection tests; they cannot create or select production identities.
 
 ## Stable screenshot index
 

@@ -46,6 +46,8 @@ export function SharedTabBar() {
           const color = isActive ? activeColor : T.textDim;
           const bgColor = isActive ? activeBg : "transparent";
 
+          const trackBorderColor = isIOS ? "rgba(20, 30, 45, 0.8)" : T.bg;
+
           return (
             <TouchableOpacity
               key={t.id}
@@ -57,12 +59,12 @@ export function SharedTabBar() {
               accessibilityState={{ selected: isActive }}
             >
               {isTrack ? (
-                <>
-                  <View style={[styles.trackWrap, { backgroundColor: activeColor }]}>
+                <View style={styles.trackContainer}>
+                  <View style={[styles.trackWrap, { backgroundColor: activeColor, borderColor: trackBorderColor }]}>
                     <Icon size={24} color={T.bg} />
                   </View>
                   <Text style={[styles.trackLabel, { color: activeColor }]}>Track</Text>
-                </>
+                </View>
               ) : (
                 <>
                   <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
@@ -99,21 +101,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 8,
   },
+  trackContainer: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    height: 52,
+    marginTop: -22,
+  },
   trackWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 4,
   },
   trackLabel: {
-    marginTop: 2,
+    marginTop: 4,
     fontSize: 10,
     fontFamily: "Inter_600SemiBold",
   },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EvidenceReference } from "./challengeDomain";
-import { evaluateRank } from "./rankEvaluator";
+import { evaluateRank, RANKS } from "./rankEvaluator";
 import { RANK_EVIDENCE_CONTRACT } from "./rankEvaluator";
 import type { RankSignal, RankSignalAvailability } from "./rankDomain";
 
@@ -27,6 +27,36 @@ const evidence = (id: string, overrides: Partial<EvidenceReference> = {}): Evide
 });
 
 describe("SummitReady rank evaluator", () => {
+  it("defines the seven centralized ranks in strictly increasing order", () => {
+    expect(RANKS.map((rank) => rank.rank)).toEqual([
+      "Trailhead",
+      "Hillwalker",
+      "Summiteer",
+      "Mountaineer",
+      "Alpinist",
+      "Expeditioner",
+      "Summit Elite",
+    ]);
+    expect(RANKS.map((rank) => rank.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    for (let index = 1; index < RANKS.length; index += 1) {
+      const previous = Object.fromEntries(
+        RANKS[index - 1].requirements.map((requirement) => [requirement.signal, requirement.minimum]),
+      );
+      for (const requirement of RANKS[index].requirements) {
+        if (previous[requirement.signal] !== undefined) {
+          expect(requirement.minimum).toBeGreaterThan(previous[requirement.signal]);
+        }
+      }
+    }
+  });
+
+  it("requires canonical summits and Expedition milestones at every high rank", () => {
+    for (const rank of RANKS.slice(3)) {
+      expect(rank.requirements.find((item) => item.signal === "summitCompletions")?.mandatory).toBe(true);
+      expect(rank.requirements.find((item) => item.signal === "expeditionMilestones")?.mandatory).toBe(true);
+    }
+  });
+
   it("does not fabricate Trailhead from no evidence", () => {
     const result = evaluateRank({ ownerUserId: "owner", evidence: [], signalAvailability: available });
     expect(result.currentRank).toBeNull();

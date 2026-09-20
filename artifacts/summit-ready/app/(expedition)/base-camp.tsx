@@ -157,7 +157,7 @@ function CommunityActivityCard({
   return (
     <View style={{ marginHorizontal: 16, marginTop: 16, marginBottom: 16 }}>
       <View style={[s.sectionRow, { marginBottom: 10 }]}>
-        <Text style={s.sectionLabel}>COMMUNITY ACTIVITY</Text>
+        <Text style={s.sectionLabel}>Community activity</Text>
         <TouchableOpacity onPress={() => router.push("/community-routes" as any)}>
           <Text style={s.viewAllLink}>View all routes</Text>
         </TouchableOpacity>
@@ -182,42 +182,42 @@ function CommunityActivityCard({
                 <Text style={{ fontSize: 24, fontFamily: "Inter_700Bold", color: "#fff" }}>
                   {stats.totalRoutes}
                 </Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted }}>
-                  Routes shared by the community
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted }}>
+                  Routes shared
                 </Text>
               </View>
               <View>
                 <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: T.green }}>
                   {stats.totalElev.toLocaleString()}m
                 </Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textMuted }}>
-                  Combined route gain
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted }}>
+                  Combined gain
                 </Text>
               </View>
             </View>
             <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.08)" }} />
             <View style={{ flex: 1.2, gap: 12 }}>
               <View>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue, marginBottom: 2 }}>
-                  TOP ELEVATION ROUTE
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue, marginBottom: 4 }}>
+                  Top elevation route
                 </Text>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }} numberOfLines={1}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" }} numberOfLines={1}>
                   {stats.topRouteName}
                 </Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim }}>
                   ▲ {stats.topRouteElev.toLocaleString()}m gain
                 </Text>
               </View>
               {stats.mostRepeatedName && (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.orange, marginBottom: 2 }}>
-                    MOST REPEATED
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.orange, marginBottom: 4 }}>
+                    Most repeated
                   </Text>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }} numberOfLines={1}>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" }} numberOfLines={1}>
                     {stats.mostRepeatedName}
                   </Text>
                   {stats.mostRepeatedCount && (
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim }}>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim }}>
                       {stats.mostRepeatedCount.toLocaleString()} contributions
                     </Text>
                   )}
@@ -1158,7 +1158,7 @@ export default function BaseCampScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View style={s.activeBadge}>
                 <View style={s.activeBadgeDot} />
-                <Text style={s.activeBadgeText}>ACTIVE EXPEDITION</Text>
+                <Text style={s.activeBadgeText}>Active expedition</Text>
               </View>
               <TouchableOpacity
                 onPress={() => fetchExpedition(true)}
@@ -1204,7 +1204,7 @@ export default function BaseCampScreen() {
         {/* ── Next Local Stage ──────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginHorizontal: 14, marginTop: 14 }}>
           <View style={[s.card, { padding: 16 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 12 }]}>NEXT LOCAL STAGE</Text>
+            <Text style={[s.sectionLabel, { marginBottom: 12 }]}>Next local stage</Text>
             {nextHill ? (
               <View>
                 <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
@@ -1539,12 +1539,12 @@ const s = StyleSheet.create({
   overallScoreBadge: {
     backgroundColor: "rgba(62,207,117,0.15)",
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   overallScoreText: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
     color: T.green,
   },
   dnaGrid: {
@@ -1561,20 +1561,18 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
   },
   dnaVal: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
     color: "#fff",
   },
   dnaLbl: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: T.blue,
-    letterSpacing: 0.5,
     marginTop: 4,
-    textTransform: "uppercase",
   },
   dnaSub: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.40)",
     marginTop: 2,
@@ -1583,8 +1581,8 @@ const s = StyleSheet.create({
   dnaNote: {
     paddingHorizontal: 16,
     paddingBottom: 14,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 15,
     fontFamily: "Inter_400Regular",
     color: T.textDim,
     textAlign: "center",
@@ -1594,13 +1592,13 @@ const s = StyleSheet.create({
   activeBadge: {
     flexDirection: "row", alignItems: "center", gap: 6,
     alignSelf: "flex-start",
-    borderWidth: 1, borderColor: "rgba(62,207,117,0.45)",
-    borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5,
-    backgroundColor: "rgba(62,207,117,0.08)",
+    borderWidth: 1, borderColor: "rgba(62,207,117,0.35)",
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: "rgba(62,207,117,0.10)",
   },
   activeBadgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
-  activeBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.8 },
-  activeTitle: { fontSize: 32, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 37 },
+  activeBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  activeTitle: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 39 },
   activeSub:   { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.52)", marginTop: 4, lineHeight: 18 },
 
   refreshBtn: {
@@ -1722,13 +1720,13 @@ const s = StyleSheet.create({
 
   // Shared card / section
   card: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    borderRadius: 18, padding: 14, overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.02)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20, padding: 16, overflow: "hidden",
   },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2 },
-  viewAllLink: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim },
+  viewAllLink: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.blue },
 
   // Error
   errorBanner: {

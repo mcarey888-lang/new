@@ -182,7 +182,7 @@ export function SharedTrackScreen() {
           <View>
             <View style={s.gpsPill}>
               <View style={s.gpsDot} />
-              <Text style={s.gpsText}>GPS READY</Text>
+              <Text style={s.gpsText}>GPS ready</Text>
             </View>
             <Text style={s.pageTitle}>Track Activity</Text>
           </View>
@@ -271,8 +271,8 @@ export function SharedTrackScreen() {
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginHorizontal: 14, marginBottom: 14 }}>
           {shellMode === "expedition" && nextHill && activeExpeditionId && (
             <>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Next Expedition Stage
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim, marginBottom: 8 }}>
+                Next expedition stage
               </Text>
               <TouchableOpacity
                 onPress={() => handleStart(buildExpeditionStageLaunchContext(nextHill, activeExpeditionId, activeExpedition?.virtualHikeProgress))}
@@ -289,8 +289,8 @@ export function SharedTrackScreen() {
 
           {shellMode === "training" && nextSession && currentWeek && (
             <>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Next Training Session
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim, marginBottom: 8 }}>
+                Next training session
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -314,8 +314,8 @@ export function SharedTrackScreen() {
             </>
           )}
 
-          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, marginBottom: 8, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Free Hike
+          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim, marginBottom: 8, marginTop: 4 }}>
+            Free hike
           </Text>
           <TouchableOpacity
             onPress={() => handleStart(buildFreeHikeLaunchContext(shellMode, activeExpeditionId))}
@@ -331,11 +331,11 @@ export function SharedTrackScreen() {
 
         {/* ── Recent sessions ───────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(180).duration(400)} style={s.recentCard}>
-          <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={["rgba(255,255,255,0.02)", "transparent"]} style={StyleSheet.absoluteFill} />
           <View style={s.cardHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-              <Clock size={13} color={T.orange} />
-              <Text style={s.cardTitle}>RECENT ACTIVITY</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Clock size={16} color={T.orange} />
+              <Text style={s.cardTitle}>Recent activity</Text>
             </View>
           </View>
           {recentSessions.length === 0 ? (
@@ -430,45 +430,45 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 16,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.05)",
     overflow: "hidden",
   },
   bigStatRow: {
     flexDirection: "row",
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 20,
   },
   bigStat: {
     flex: 1,
     alignItems: "center",
-    gap: 2,
+    gap: 4,
   },
   bigStatValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
   },
   bigStatUnit: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: T.textMuted,
   },
   bigStatDiv: {
     width: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
   subStatRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingVertical: 12,
+    backgroundColor: "rgba(255,255,255,0.03)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.03)",
   },
   subStatText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: T.textDim,
   },
@@ -497,9 +497,9 @@ const s = StyleSheet.create({
   recentCard: {
     marginHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.05)",
     overflow: "hidden",
   },
   cardHeader: {
@@ -513,10 +513,9 @@ const s = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.05)",
   },
   cardTitle: {
-    fontSize: 11,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    color: T.textMuted,
-    letterSpacing: 0.5,
+    color: T.text,
   },
   sessionRow: {
     flexDirection: "row",

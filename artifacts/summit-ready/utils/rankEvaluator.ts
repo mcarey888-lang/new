@@ -2,6 +2,7 @@ import type { EvidenceReference } from "./challengeDomain";
 import { compareEvidenceAuthority } from "./evidenceAuthority";
 import {
   RANK_DOMAIN_VERSION,
+  RANKS,
   type RankDefinition,
   type RankEvidenceInput,
   type RankName,
@@ -12,67 +13,9 @@ import {
   type RankSignalAvailability,
 } from "./rankDomain";
 
-export const RANKS: readonly RankDefinition[] = [
-  {
-    rank: "Trailhead",
-    order: 1,
-    identity: "Beginning a deliberate mountain practice.",
-    requirements: [
-      { signal: "eligibleActivities", minimum: 1, label: "eligible outdoor activity", mandatory: true },
-      { signal: "eligibleElevation", minimum: 100, label: "metres of eligible elevation", mandatory: true },
-      { signal: "activeWeeks", minimum: 1, label: "active week", mandatory: true },
-    ],
-  },
-  {
-    rank: "Hillwalker",
-    order: 2,
-    identity: "Building dependable hill experience.",
-    requirements: [
-      { signal: "eligibleActivities", minimum: 5, label: "eligible outdoor activities", mandatory: true },
-      { signal: "eligibleElevation", minimum: 1000, label: "metres of eligible elevation", mandatory: true },
-      { signal: "distinctMountains", minimum: 2, label: "distinct mountains", mandatory: true },
-      { signal: "activeWeeks", minimum: 2, label: "active weeks", mandatory: true },
-    ],
-  },
-  {
-    rank: "Summiteer",
-    order: 3,
-    identity: "Turning repeated outings into summit experience.",
-    requirements: [
-      { signal: "eligibleActivities", minimum: 12, label: "eligible outdoor activities", mandatory: true },
-      { signal: "eligibleElevation", minimum: 3000, label: "metres of eligible elevation", mandatory: true },
-      { signal: "distinctMountains", minimum: 4, label: "distinct mountains", mandatory: true },
-      { signal: "summitCompletions", minimum: 2, label: "eligible summit completions", mandatory: true },
-      { signal: "activeWeeks", minimum: 4, label: "active weeks", mandatory: true },
-    ],
-  },
-  {
-    rank: "Mountaineer",
-    order: 4,
-    identity: "A broad, sustained mountain capability identity.",
-    requirements: [
-      { signal: "eligibleActivities", minimum: 25, label: "eligible outdoor activities", mandatory: true },
-      { signal: "eligibleElevation", minimum: 7500, label: "metres of eligible elevation", mandatory: true },
-      { signal: "distinctMountains", minimum: 8, label: "distinct mountains", mandatory: true },
-      { signal: "summitCompletions", minimum: 5, label: "eligible summit completions", mandatory: true },
-      { signal: "activeWeeks", minimum: 8, label: "active weeks", mandatory: true },
-      { signal: "expeditionMilestones", minimum: 1, label: "eligible Expedition milestones", mandatory: true },
-    ],
-  },
-  {
-    rank: "Expeditioner",
-    order: 5,
-    identity: "A long-term record of prepared mountain progression.",
-    requirements: [
-      { signal: "eligibleActivities", minimum: 50, label: "eligible outdoor activities", mandatory: true },
-      { signal: "eligibleElevation", minimum: 15000, label: "metres of eligible elevation", mandatory: true },
-      { signal: "distinctMountains", minimum: 12, label: "distinct mountains", mandatory: true },
-      { signal: "summitCompletions", minimum: 8, label: "eligible summit completions", mandatory: true },
-      { signal: "activeWeeks", minimum: 12, label: "active weeks", mandatory: true },
-      { signal: "expeditionMilestones", minimum: 3, label: "eligible Expedition milestones", mandatory: true },
-    ],
-  },
-] as const;
+// Compatibility export for existing evaluator consumers. The ladder itself is
+// centralized in rankDomain and is also consumed directly by the UI.
+export { RANKS } from "./rankDomain";
 
 const rankSignalNames = new Set<RankSignal>([
   "eligibleActivities", "eligibleElevation", "distinctMountains",

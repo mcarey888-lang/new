@@ -2348,7 +2348,7 @@ export default function ExpeditionMountainsScreen() {
                     />
                     {ch.featured && (
                       <View style={s.featuredBadge}>
-                        <Text style={s.featuredBadgeText}>FEATURED</Text>
+                        <Text style={s.featuredBadgeText}>Featured</Text>
                       </View>
                     )}
                   </View>
@@ -2581,35 +2581,34 @@ const s = StyleSheet.create({
 
   // Legend bar
   legendBar: {
-    backgroundColor: "#0F1D30",
-    borderRadius: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    padding: 14,
+    backgroundColor: "rgba(255,255,255,0.02)",
+    borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    padding: 16,
     flexDirection: "row",
     gap: 16,
     alignItems: "flex-start",
   },
   legendTitle: {
-    fontSize: 8, fontFamily: "Inter_700Bold", color: T.textDim,
-    letterSpacing: 0.9, textTransform: "uppercase",
+    fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim,
   },
   legendItem: {
-    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted,
+    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted,
   },
 
   // Active goal banner
   activeGoalBanner: {
-    backgroundColor: "#0F1D30", borderRadius: 16,
+    backgroundColor: "transparent", borderRadius: 16,
     borderWidth: 1, borderColor: T.blue + "40",
-    padding: 14, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden",
+    padding: 16, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden",
   },
-  activeGoalLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.blue, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 2 },
-  activeGoalName: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
-  activeGoalSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  activeGoalLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue, marginBottom: 2 },
+  activeGoalName: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white },
+  activeGoalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
 
   // Section labels
-  sectionTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.5, textTransform: "uppercase" },
-  sectionLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 10 },
+  sectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim },
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim, marginBottom: 10 },
 
   // Search card
   searchCard: {
@@ -2704,50 +2703,50 @@ const s = StyleSheet.create({
 
   // Signature challenge card
   sigCard: {
-    backgroundColor: "#120D20", borderRadius: 16,
+    backgroundColor: "transparent", borderRadius: 16,
     borderWidth: 1, borderColor: "rgba(139,92,246,0.25)",
-    padding: 14, gap: 0, overflow: "hidden",
+    padding: 16, gap: 0, overflow: "hidden",
   },
   sigBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderWidth: 1, borderColor: "rgba(139,92,246,0.3)",
+    backgroundColor: "rgba(139,92,246,0.10)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: "rgba(139,92,246,0.25)",
     alignSelf: "flex-start",
   },
-  sigBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 1, textTransform: "uppercase" },
-  sigTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 2 },
-  sigRoute: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.purple, marginBottom: 4 },
-  sigSummary: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18, marginBottom: 10 },
+  sigBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.purple },
+  sigTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4, marginTop: 4 },
+  sigRoute: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.purple, marginBottom: 6 },
+  sigSummary: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19, marginBottom: 12 },
   sigStage: {
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 10,
-    padding: 10, marginBottom: 6, marginTop: 4,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 12,
+    padding: 12, marginBottom: 8, marginTop: 4,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
   },
   sigDayBubble: {
-    width: 36, height: 36, borderRadius: 9,
-    backgroundColor: T.purple + "22",
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: T.purple + "15",
     alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: T.purple + "44",
+    borderWidth: 1, borderColor: T.purple + "30",
   },
-  sigDayBubbleText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.purple },
-  sigStageName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
-  sigStageMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  sigStatPill: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.textDim, backgroundColor: "#142236", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  sigDayBubbleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.purple },
+  sigStageName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
+  sigStageMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  sigStatPill: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textDim, backgroundColor: "rgba(255,255,255,0.04)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   sigLimitations: {
-    backgroundColor: T.orange + "0F", borderRadius: 10, padding: 10, marginTop: 10,
-    borderWidth: 1, borderColor: T.orange + "30",
+    backgroundColor: T.orange + "0F", borderRadius: 12, padding: 12, marginTop: 12,
+    borderWidth: 1, borderColor: T.orange + "20",
   },
-  sigLimitationText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 16, marginTop: 2 },
+  sigLimitationText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 17, marginTop: 2 },
 
   // Hills
   hillCard: {
-    backgroundColor: "#0F1D30", borderRadius: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    padding: 13, gap: 9, overflow: "hidden",
+    backgroundColor: "transparent", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    padding: 16, gap: 10, overflow: "hidden",
   },
-  hillDay: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, textTransform: "uppercase", letterSpacing: 1 },
-  hillEmoji: { width: 42, height: 42, borderRadius: 11, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
+  hillDay: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  hillEmoji: { width: 42, height: 42, borderRadius: 21, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
   hillName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
   hillMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   hillStats: { flexDirection: "row", alignItems: "center", backgroundColor: "#142236", borderRadius: 9, paddingVertical: 8, paddingHorizontal: 6 },
@@ -2769,20 +2768,20 @@ const s = StyleSheet.create({
   improveTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
   improveIntro: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   improveMetrics: { flexDirection: "row", gap: 10 },
-  improveMetricLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, textTransform: "uppercase", letterSpacing: 0.6 },
-  improveMetricValue: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white, marginTop: 3 },
-  improveRemaining: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  improveCandidate: { backgroundColor: "#142236", borderRadius: 11, padding: 11, gap: 3 },
-  improveCandidateLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1 },
-  improveCandidateName: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
-  improveCandidateMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, backgroundColor: T.green, borderRadius: 11, paddingVertical: 11 },
-  improvePrimaryText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
-  improveSecondary: { alignItems: "center", paddingVertical: 8 },
-  improveSecondaryText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue },
-  alternativeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#142236", borderRadius: 9, padding: 10, marginTop: -4 },
-  alternativeName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.white, flex: 1 },
-  alternativeMeta: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
+  improveMetricLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim },
+  improveMetricValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
+  improveRemaining: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  improveCandidate: { backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 12, gap: 4 },
+  improveCandidateLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  improveCandidateName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
+  improveCandidateMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: T.green, borderRadius: 12, paddingVertical: 12 },
+  improvePrimaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  improveSecondary: { alignItems: "center", paddingVertical: 10 },
+  improveSecondaryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.blue },
+  alternativeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 12, marginTop: -4 },
+  alternativeName: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.white, flex: 1 },
+  alternativeMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   // CTA
   setGoalBtn: {
@@ -2792,8 +2791,8 @@ const s = StyleSheet.create({
   setGoalBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 
   // Progress view
-  progressGoalLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.blue, letterSpacing: 1.8, textTransform: "uppercase" },
-  progressGoalName: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, marginTop: 2 },
+  progressGoalLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
+  progressGoalName: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
   progressGoalSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   progRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   progBarLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.text },
@@ -2862,7 +2861,7 @@ const s = StyleSheet.create({
   },
   modalTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4 },
   modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  inputLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.5 },
+  inputLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 6 },
   input: {
     backgroundColor: "#142236", borderRadius: 10,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",

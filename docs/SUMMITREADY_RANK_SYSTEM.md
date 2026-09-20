@@ -1,6 +1,6 @@
 # SummitReady Rank System
 
-**Status:** VQ-C05 specification and additive, pure evaluator. No persistence,
+**Status:** VR-C02 specification and additive, pure evaluator. No persistence,
 migration, API, leaderboard, or public activation.
 
 Rank is SummitReady's long-term mountain progression identity: who a person is
@@ -19,7 +19,9 @@ The ladder intentionally avoids generic Bronze/Silver/Gold labels:
 | Hillwalker | 5 | 1,000 m | 2 | — | 2 | — |
 | Summiteer | 12 | 3,000 m | 4 | 2 | 4 | — |
 | Mountaineer | 25 | 7,500 m | 8 | 5 | 8 | 1 |
-| Expeditioner | 50 | 15,000 m | 12 | 8 | 12 | 3 |
+| Alpinist | 75 | 25,000 m | 16 | 12 | 16 | 5 |
+| Expeditioner | 120 | 40,000 m | 24 | 20 | 24 | 10 |
+| Summit Elite | 200 | 75,000 m | 40 | 35 | 36 | 20 |
 
 Every requirement for a rank must be met. Values are cumulative over the
 surviving owner-scoped evidence set. The ladder does not imply route readiness,
@@ -27,9 +29,11 @@ technical competence, leadership, rescue ability, or any external qualification.
 
 ## Signal-specific evidence contracts
 
-The evaluator is `artifacts/summit-ready/utils/rankEvaluator.ts`; the input and
-result types are in `utils/rankDomain.ts`. Each accepted signal has an exact
-purpose and rule version. The current rule version is `summitready-rank-v1`.
+The authoritative ladder names, identities, and thresholds are centralized in
+`artifacts/summit-ready/utils/rankDomain.ts` (`RANKS`). The evaluator is
+`artifacts/summit-ready/utils/rankEvaluator.ts`; the input and result types are
+in `utils/rankDomain.ts`. Each accepted signal has an exact purpose and rule
+version. The current rule version is `summitready-rank-v1`.
 
 | Signal | Accepted producer/class | Exact purpose | Required fields |
 |---|---|---|---|
@@ -58,7 +62,10 @@ class, rule version, owner, and lifecycle checks pass. A value attached to a
 wrong-purpose record is excluded. Summit and Expedition booleans on ordinary
 GPS records are not authoritative and never qualify a summit or milestone.
 Manual, indoor, simulated, Community Route, pending, unverified, cross-owner,
-invalid, and unprovenanced evidence cannot advance Rank.
+invalid, and unprovenanced evidence cannot advance Rank. Mountaineer, Alpinist,
+Expeditioner, and Summit Elite additionally require canonical summit completions
+and authoritative Expedition milestones; they cannot be reached through
+activity or elevation evidence alone.
 
 ## Evaluation and status semantics
 

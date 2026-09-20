@@ -1,8 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { SummitGoal, TrainingWeek, Session, ExploreHike } from "@/context/AppContext";
+import type { CompletedGoal, SummitGoal, TrainingWeek, Session, ExploreHike } from "@/context/AppContext";
+import type { EvidenceReference } from "./challengeDomain";
+import { RANK_EVIDENCE_CONTRACT } from "./rankEvaluator";
 
 const ALL_KEYS = [
+  "summitready_dev_profile_id",
+  "summitready_dev_profile_owner_id",
   "summitready_goal",
+  "summitready_training_goal",
   "summitready_sessions",
   "summitready_plan",
   "summitready_nearby_hills",
@@ -32,8 +37,10 @@ const ALL_KEYS = [
   "baseline_popup_seen",
 ];
 
+export const DEV_FIXTURE_CLOCK = "2026-09-20T12:00:00.000Z";
+
 function daysFromNow(n: number): string {
-  const d = new Date();
+  const d = new Date(DEV_FIXTURE_CLOCK);
   d.setDate(d.getDate() + n);
   return d.toISOString().split("T")[0];
 }
@@ -119,6 +126,46 @@ function makeSession(
   } as Session;
 }
 
+function makeExploreHikes(
+  prefix: string,
+  count: number,
+  activeWeeks: number,
+  mountainNames: readonly string[],
+  elevationGain: number,
+): ExploreHike[] {
+  return Array.from({ length: count }, (_, index) => {
+    const week = index % activeWeeks;
+    const outing = Math.floor(index / activeWeeks);
+    const name = mountainNames[index % mountainNames.length];
+    return {
+      id: `${prefix}-hike-${index + 1}`,
+      name,
+      date: daysFromNow(-(week * 7 + outing + 1)),
+      distance: 7.5 + (index % 6) * 1.1,
+      elevationGain,
+      timeTaken: 105 + (index % 5) * 22,
+      notes: "Deterministic verified outdoor fixture",
+    };
+  });
+}
+
+function makeCompletedGoals(
+  prefix: string,
+  count: number,
+  mountainNames: readonly string[],
+): CompletedGoal[] {
+  return Array.from({ length: count }, (_, index) => ({
+    mountainName: mountainNames[index % mountainNames.length],
+    elevationGain: 650 + index * 35,
+    highestAltitude: 900 + index * 80,
+    difficulty: index > 7 ? "Alpine" : index > 2 ? "Hard" : "Moderate",
+    completedAt: daysFromNow(-(index + 2) * 14),
+    sessionsLogged: 8 + index,
+    totalElevationTrained: 3000 + index * 500,
+    trainingWeeks: 6 + index,
+  }));
+}
+
 export interface DevProfile {
   id: string;
   label: string;
@@ -128,24 +175,40 @@ export interface DevProfile {
   storageData: Array<[string, string]>;
 }
 
+/** The fixture clock is deliberately independent of the host clock. */
 // ── Profile 1: New User ───────────────────────────────────────────────────────
 
-const newUserProfile: DevProfile = {
-  id: "new_user",
-  label: "New User",
+const beginnerProfile: DevProfile = {
+  id: "beginner",
+  label: "Beginner",
   emoji: "👋",
-  description: "Fresh install — goes through onboarding",
+  description: "Starting mountain training with a structured first goal",
   color: "#9CA3AF",
-  storageData: [],
+  storageData: [
+    ["summitready_app_mode", "summit"],
+    ["summitready_goal", JSON.stringify({
+      mountainName: "Mam Tor", summitDate: daysFromNow(140), distance: 10,
+      elevationGain: 420, highestAltitude: 517, difficulty: "Moderate",
+      fitnessLevel: "Beginner", location: "Sheffield", maxRadius: 25,
+      equipment: ["none"], trainingDaysPerWeek: 2, hillDaysPerWeek: 1,
+    } satisfies SummitGoal)],
+    ["summitready_plan", JSON.stringify([])],
+    ["summitready_sessions", JSON.stringify([])],
+    ["summitready_explore_hikes", JSON.stringify([])],
+    ["summitready_achievements", JSON.stringify([])],
+    ["summitready_challenges", JSON.stringify([])],
+    ["summitready_expeditions", JSON.stringify([])],
+    ["summitready_has_viewed_plan", "true"],
+  ],
 };
 
 // ── Profile 2: Beginner — Ben Nevis ──────────────────────────────────────────
 
-const beginnerBenNevis: DevProfile = {
-  id: "beginner_ben_nevis",
-  label: "Beginner — Ben Nevis",
+const activeHillwalkerProfile: DevProfile = {
+  id: "active_hillwalker",
+  label: "Active Hillwalker",
   emoji: "🥾",
-  description: "Week 1 of 16 · Readiness ~18 · Manchester",
+  description: "Building consistent hill experience · Sheffield",
   color: "#60A5FA",
   storageData: (() => {
     const goal: SummitGoal = {
@@ -178,19 +241,34 @@ const beginnerBenNevis: DevProfile = {
       ["summitready_app_mode",      "summit"],
       ["summitready_goal",           JSON.stringify(goal)],
       ["summitready_plan",           JSON.stringify(plan)],
-      ["summitready_sessions",       JSON.stringify([])],
+      ["summitready_sessions",       JSON.stringify([
+        makeSession("hillwalker-1", 19, "cardio", 1),
+        makeSession("hillwalker-2", 16, "hill", 1, "Rivington Pike"),
+        makeSession("hillwalker-3", 12, "bigDay", 2),
+        makeSession("hillwalker-4", 9, "cardio", 2),
+        makeSession("hillwalker-5", 5, "hill", 3, "Winter Hill"),
+        makeSession("hillwalker-6", 2, "bigDay", 3),
+      ])],
+      ["summitready_explore_hikes", JSON.stringify(
+        makeExploreHikes("hillwalker", 6, 3, ["Rivington Pike", "Winter Hill"], 240),
+      )],
+      ["summitready_completed_goals", JSON.stringify(
+        makeCompletedGoals("hillwalker", 2, ["Rivington Pike", "Winter Hill"]),
+      )],
+      ["summitready_achievements", JSON.stringify(["first_session", "first_hike", "hill_week"])],
       ["summitready_has_viewed_plan","true"],
+      ["baseline_popup_seen",        "1"],
     ] as Array<[string, string]>;
   })(),
 };
 
 // ── Profile 3: Intermediate — Kilimanjaro ────────────────────────────────────
 
-const intermediateKili: DevProfile = {
-  id: "intermediate_kilimanjaro",
-  label: "Intermediate — Kilimanjaro",
+const experiencedSummiteerProfile: DevProfile = {
+  id: "experienced_summiteer",
+  label: "Experienced Summiteer",
   emoji: "⛰️",
-  description: "Week 8 of 20 · Readiness ~45 · Sheffield",
+  description: "Repeated summit preparation · Sheffield",
   color: "#F59E0B",
   storageData: (() => {
     const goal: SummitGoal = {
@@ -246,19 +324,26 @@ const intermediateKili: DevProfile = {
       ["summitready_goal",           JSON.stringify(goal)],
       ["summitready_plan",           JSON.stringify(plan)],
       ["summitready_sessions",       JSON.stringify(sessions)],
+      ["summitready_explore_hikes",  JSON.stringify(
+        makeExploreHikes("summiteer", 15, 6, ["Kinder Scout", "Mam Tor", "Pen-y-ghent", "Whernside"], 300),
+      )],
+      ["summitready_completed_goals", JSON.stringify(
+        makeCompletedGoals("summiteer", 4, ["Kinder Scout", "Mam Tor", "Pen-y-ghent", "Whernside"]),
+      )],
       ["summitready_has_viewed_plan","true"],
       ["summitready_achievements",   JSON.stringify(["first_session", "5_sessions", "hill_week"])],
+      ["baseline_popup_seen",        "1"],
     ] as Array<[string, string]>;
   })(),
 };
 
 // ── Profile 4: Advanced — Mont Blanc ─────────────────────────────────────────
 
-const advancedMontBlanc: DevProfile = {
-  id: "advanced_mont_blanc",
-  label: "Advanced — Mont Blanc",
+const expeditionFocusedProfile: DevProfile = {
+  id: "expedition_focused",
+  label: "Expedition-focused",
   emoji: "🏔️",
-  description: "Week 18 of 22 · Readiness ~78 · Leeds",
+  description: "Active alpine expedition preparation · Leeds",
   color: "#3ECF75",
   storageData: (() => {
     const goal: SummitGoal = {
@@ -382,7 +467,7 @@ const advancedMontBlanc: DevProfile = {
         dnaMatchNotes: "Local routes emphasize sustained climbing and repeatable elevation.",
       },
       simulationScore: 78,
-      completedRoutes: [],
+      completedRoutes: ["stage-base-endurance", "stage-summit-simulation"],
       expeditionStatus: "active",
       virtualHikeProgress: { elevationGained: 220, distanceCovered: 8.4, hikesLogged: 2, creditedHikeIds: [] },
       location: "Leeds",
@@ -398,6 +483,12 @@ const advancedMontBlanc: DevProfile = {
       ["summitready_goal",           JSON.stringify(goal)],
       ["summitready_plan",           JSON.stringify(plan)],
       ["summitready_sessions",       JSON.stringify(sessions)],
+      ["summitready_explore_hikes",  JSON.stringify(
+        makeExploreHikes("expedition", 35, 10, ["Ilkley Moor", "Rombald's Moor", "Pen-y-ghent", "Whernside", "Ingleborough", "Skiddaw", "Blencathra", "Helvellyn"], 300),
+      )],
+      ["summitready_completed_goals", JSON.stringify(
+        makeCompletedGoals("expedition", 8, ["Pen-y-ghent", "Whernside", "Ingleborough", "Skiddaw", "Blencathra", "Helvellyn", "Snowdon", "Ben Nevis"]),
+      )],
       ["summitready_has_viewed_plan","true"],
       ["summitready_achievements",   JSON.stringify(["first_session", "5_sessions", "10_sessions", "hill_week", "elevation_1000", "big_day", "consistent_month"])],
       ["summitready_challenges",     JSON.stringify(completedChallenge)],
@@ -411,42 +502,20 @@ const advancedMontBlanc: DevProfile = {
 
 // ── Profile 5: Explore Mode ───────────────────────────────────────────────────
 
-const exploreModeUser: DevProfile = {
-  id: "explore_mode",
-  label: "Explorer",
+const advancedAllRoundProfile: DevProfile = {
+  id: "advanced_all_round",
+  label: "Advanced all-round",
   emoji: "🗺️",
-  description: "Explore mode · 3 hikes logged · Trails saved",
+  description: "Broad training, recent hikes, challenges and routes",
   color: "#A78BFA",
   storageData: (() => {
-    const hikes: ExploreHike[] = [
-      {
-        id: "h1",
-        name: "Stanage Edge Loop",
-        date: daysFromNow(-12),
-        distance: 11.4,
-        elevationGain: 380,
-        timeTaken: 195,
-        notes: "Beautiful day, views were incredible",
-      },
-      {
-        id: "h2",
-        name: "Kinder Scout Circuit",
-        date: daysFromNow(-7),
-        distance: 14.2,
-        elevationGain: 490,
-        timeTaken: 265,
-        notes: "Tough in the wind but absolutely worth it",
-      },
-      {
-        id: "h3",
-        name: "Rivington Pike Out & Back",
-        date: daysFromNow(-2),
-        distance: 8.6,
-        elevationGain: 310,
-        timeTaken: 140,
-        notes: "Quick one after work",
-      },
+    const advancedMountains = [
+      "Stanage Edge", "Kinder Scout", "Rivington Pike", "Mam Tor",
+      "Pen y Fan", "Whernside", "Ingleborough", "Skiddaw",
+      "Cairn Gorm", "Blencathra", "Helvellyn", "Snowdon",
+      "Ben Nevis", "Scafell Pike", "Tryfan", "Cadair Idris",
     ];
+    const hikes = makeExploreHikes("advanced", 85, 18, advancedMountains, 360);
 
     const savedTrails = [
       "kinder-scout-circular_peak-district-derbyshire",
@@ -454,12 +523,68 @@ const exploreModeUser: DevProfile = {
     ];
     const completedTrails = ["rivington-pike-loop_lancashire"];
 
+    const goal: SummitGoal = {
+      mountainName: "Snowdon", summitDate: daysFromNow(56), distance: 14,
+      elevationGain: 950, highestAltitude: 1085, difficulty: "Hard",
+      fitnessLevel: "Strong", location: "Manchester", maxRadius: 35,
+      equipment: ["gym", "weights"], trainingDaysPerWeek: 4, hillDaysPerWeek: 2,
+    };
+    const plan: TrainingWeek[] = [
+      makeWeek(1, "Build", "Maintain all-round mountain conditioning", 900, 0, true, "Kinder Scout", 636),
+    ];
+    const sessions: Session[] = [
+      makeSession("all-round-1", 5, "cardio", 1),
+      makeSession("all-round-2", 3, "hill", 1, "Kinder Scout"),
+    ];
+    const completedChallenge = [{
+      challengeId: "everest-basecamp",
+      startedAt: daysFromNow(-28),
+      activities: [{
+        id: "advanced-challenge-activity",
+        activityId: "advanced-challenge-activity",
+        challengeId: "everest-basecamp",
+        title: "Advanced elevation block",
+        date: daysFromNow(-2),
+        elevationGain: 3485,
+        distance: 38.6,
+        duration: 540,
+        createdAt: daysFromNow(-2),
+      }],
+      completed: true,
+      completedAt: daysFromNow(-2),
+    }];
+    const completedExpedition = {
+      id: "advanced-completed-expedition",
+      challengeName: "Six-stage alpine preparation",
+      targetMountainName: "Gran Paradiso",
+      virtualHills: [],
+      completedRoutes: Array.from({ length: 6 }, (_, index) => `advanced-stage-${index + 1}`),
+      expeditionStatus: "complete",
+      virtualHikeProgress: { elevationGained: 7200, distanceCovered: 92, hikesLogged: 18 },
+      location: "Manchester",
+      maxRadius: 35,
+      fitnessLevel: "Strong",
+      savedAt: daysFromNow(-180),
+      startedAt: daysFromNow(-160),
+      completedAt: daysFromNow(-35),
+      summitTransitionState: "completed",
+    };
     return [
-      ["summitready_app_mode",       "explore"],
+      ["summitready_app_mode",       "summit"],
+      ["summitready_goal",           JSON.stringify(goal)],
+      ["summitready_plan",           JSON.stringify(plan)],
+      ["summitready_sessions",       JSON.stringify(sessions)],
       ["summitready_explore_hikes",   JSON.stringify(hikes)],
+      ["summitready_completed_goals", JSON.stringify(
+        makeCompletedGoals("advanced", 16, advancedMountains),
+      )],
       ["summitready_saved_trails",    JSON.stringify(savedTrails)],
       ["summitready_completed_trails",JSON.stringify(completedTrails)],
-      ["summitready_achievements",    JSON.stringify(["first_hike", "trail_explorer"])],
+      ["summitready_achievements",    JSON.stringify(["first_hike", "trail_explorer", "hill_week"])],
+      ["summitready_challenges",      JSON.stringify(completedChallenge)],
+      ["summitready_expeditions",     JSON.stringify([completedExpedition])],
+      ["summitready_has_viewed_plan", "true"],
+      ["baseline_popup_seen",         "1"],
     ] as Array<[string, string]>;
   })(),
 };
@@ -467,16 +592,128 @@ const exploreModeUser: DevProfile = {
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const DEV_PROFILES: DevProfile[] = [
-  newUserProfile,
-  beginnerBenNevis,
-  intermediateKili,
-  advancedMontBlanc,
-  exploreModeUser,
+  beginnerProfile,
+  activeHillwalkerProfile,
+  experiencedSummiteerProfile,
+  expeditionFocusedProfile,
+  advancedAllRoundProfile,
 ];
 
 export async function loadDevProfile(profile: DevProfile): Promise<void> {
-  await AsyncStorage.multiRemove(ALL_KEYS);
-  if (profile.storageData.length > 0) {
-    await AsyncStorage.multiSet(profile.storageData);
+  if (!__DEV__) {
+    throw new Error("Development profiles are unavailable outside development builds");
   }
+  const previousOwner = await AsyncStorage.getItem("summitready_dev_profile_owner_id");
+  const previousOwnerKeys = previousOwner
+    ? ALL_KEYS.map((key) => `${key}_${previousOwner}`)
+    : [];
+  await AsyncStorage.multiRemove([...ALL_KEYS, ...previousOwnerKeys]);
+  const present = new Set(profile.storageData.map(([key]) => key));
+  const contractDefaults: Array<[string, string]> = [
+    ["summitready_goal", "null"],
+    ["summitready_training_goal", "null"],
+    ["summitready_plan", "[]"],
+    ["summitready_sessions", "[]"],
+    ["summitready_explore_hikes", "[]"],
+    ["summitready_challenges", "[]"],
+    ["summitready_achievements", "[]"],
+  ];
+  await AsyncStorage.multiSet([
+    ...profile.storageData,
+    ...contractDefaults.filter(([key]) => !present.has(key)),
+    ["summitready_dev_profile_id", profile.id],
+  ]);
+}
+
+export async function markDevProfileMigrationOwner(ownerUserId: string): Promise<boolean> {
+  if (!__DEV__ || !ownerUserId) return false;
+  const [profileId, existingOwner] = await Promise.all([
+    AsyncStorage.getItem("summitready_dev_profile_id"),
+    AsyncStorage.getItem("summitready_dev_profile_owner_id"),
+  ]);
+  if (!profileId) return false;
+  if (existingOwner) return existingOwner === ownerUserId;
+  await AsyncStorage.setItem("summitready_dev_profile_owner_id", ownerUserId);
+  return true;
+}
+
+export async function purgePersistedDevProfileForProduction(): Promise<boolean> {
+  if (__DEV__) return false;
+  const [profileId, ownerUserId] = await Promise.all([
+    AsyncStorage.getItem("summitready_dev_profile_id"),
+    AsyncStorage.getItem("summitready_dev_profile_owner_id"),
+  ]);
+  if (!profileId) return false;
+  const ownerKeys = ownerUserId
+    ? ALL_KEYS.map((key) => `${key}_${ownerUserId}`)
+    : [];
+  await AsyncStorage.multiRemove([...ALL_KEYS, ...ownerKeys]);
+  return true;
+}
+
+/**
+ * Rank evidence is intentionally a developer-only projection of the same
+ * stored outdoor, summit, and Expedition history used by the persona UI.
+ */
+export function readDevRankEvidence(profileId: string, ownerUserId = "dev-fixture-owner"): readonly EvidenceReference[] {
+  if (!__DEV__) return [];
+  const profile = DEV_PROFILES.find((item) => item.id === profileId);
+  if (!profile) return [];
+  const stored = new Map(profile.storageData);
+  const hikes = JSON.parse(stored.get("summitready_explore_hikes") ?? "[]") as ExploreHike[];
+  const completedGoals = JSON.parse(stored.get("summitready_completed_goals") ?? "[]") as CompletedGoal[];
+  const expeditions = JSON.parse(stored.get("summitready_expeditions") ?? "[]") as Array<{
+    completedRoutes?: string[];
+  }>;
+  const base = (id: string, occurredAt: string) => ({
+    evidenceId: `dev-${profileId}-${id}`,
+    lineageId: `dev-${profileId}-${id}`,
+    ownerUserId,
+    sourceId: `dev-${profileId}-${id}`,
+    occurredAt,
+    qualificationStatus: "eligible" as const,
+  });
+  const outdoor: EvidenceReference[] = hikes.map((hike, index) => ({
+    ...base(`activity-${index + 1}`, hike.date),
+    sourceType: "canonical_activity",
+    activityId: hike.id,
+    evidenceClass: "trusted_gps_outdoor",
+    qualificationPurpose: RANK_EVIDENCE_CONTRACT.outdoor.purpose,
+    qualificationRuleVersion: RANK_EVIDENCE_CONTRACT.outdoor.ruleVersion,
+  }));
+  const elevationTotal = hikes.reduce((sum, hike) => sum + Math.max(0, hike.elevationGain), 0);
+  const elevation: EvidenceReference[] = elevationTotal > 0 ? [{
+    ...base("eligible-elevation", hikes[0]?.date ?? DEV_FIXTURE_CLOCK),
+    sourceType: "canonical_activity",
+    activityId: `dev-${profileId}-elevation`,
+    evidenceClass: "trusted_gps_outdoor",
+    qualificationPurpose: RANK_EVIDENCE_CONTRACT.elevation.purpose,
+    qualificationRuleVersion: RANK_EVIDENCE_CONTRACT.elevation.ruleVersion,
+    value: elevationTotal,
+  }] : [];
+  const summits: EvidenceReference[] = completedGoals.map((goal, index) => ({
+    ...base(`summit-${index + 1}`, goal.completedAt),
+    sourceType: "canonical_route_evidence",
+    evidenceClass: "canonical_summit",
+    qualificationPurpose: RANK_EVIDENCE_CONTRACT.summit.purpose,
+    qualificationRuleVersion: RANK_EVIDENCE_CONTRACT.summit.ruleVersion,
+    provenanceHash: `dev-provenance-${profileId}-${index + 1}`,
+    sdeTargetId: `sde:mountain:dev-${index + 1}`,
+    mountainId: `dev-mountain-${goal.mountainName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    summitCompleted: true,
+  }));
+  const milestoneIds = expeditions.flatMap((expedition, expeditionIndex) =>
+    (expedition.completedRoutes ?? []).map((routeId) => ({ routeId, expeditionIndex })),
+  );
+  const expeditionEvidence: EvidenceReference[] = milestoneIds.map(
+    ({ routeId, expeditionIndex }, index) => ({
+      ...base(`expedition-${expeditionIndex + 1}-${routeId}`, daysFromNow(-(index + 1) * 7)),
+      sourceType: "expedition_consequence",
+      evidenceClass: "trusted_gps_outdoor",
+      qualificationPurpose: RANK_EVIDENCE_CONTRACT.expedition.purpose,
+      qualificationRuleVersion: RANK_EVIDENCE_CONTRACT.expedition.ruleVersion,
+      expeditionStageCompleted: true,
+    }),
+  );
+  return [...outdoor, ...elevation, ...summits, ...expeditionEvidence];
 }

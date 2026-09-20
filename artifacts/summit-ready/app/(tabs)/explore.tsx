@@ -6,6 +6,12 @@ import {
   Map,
   Mountain,
   TrendingUp,
+  Footprints,
+  Medal,
+  Flame,
+  Star,
+  MapPin,
+  Lock
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -28,7 +34,7 @@ import { useScreenView } from "@/lib/analytics";
 
 interface ExploreAchievement {
   id: string;
-  icon: string;
+  icon: typeof Footprints;
   label: string;
   desc: string;
   condition: (hikes: ExploreHike[]) => boolean;
@@ -38,7 +44,7 @@ interface ExploreAchievement {
 const ACHIEVEMENTS: ExploreAchievement[] = [
   {
     id: "first_hike",
-    icon: "🥾",
+    icon: Footprints,
     label: "First Steps",
     desc: "Log your first hike",
     condition: h => h.length >= 1,
@@ -46,7 +52,7 @@ const ACHIEVEMENTS: ExploreAchievement[] = [
   },
   {
     id: "five_hikes",
-    icon: "🏅",
+    icon: Medal,
     label: "Getting Going",
     desc: "Complete 5 hikes",
     condition: h => h.length >= 5,
@@ -54,7 +60,7 @@ const ACHIEVEMENTS: ExploreAchievement[] = [
   },
   {
     id: "thousand_m",
-    icon: "⛰️",
+    icon: Mountain,
     label: "1000m Club",
     desc: "Gain 1,000m elevation",
     condition: h => h.reduce((s, x) => s + x.elevationGain, 0) >= 1000,
@@ -62,7 +68,7 @@ const ACHIEVEMENTS: ExploreAchievement[] = [
   },
   {
     id: "streak_3",
-    icon: "🔥",
+    icon: Flame,
     label: "On a Roll",
     desc: "3 hikes in 7 days",
     condition: h => {
@@ -77,7 +83,7 @@ const ACHIEVEMENTS: ExploreAchievement[] = [
   },
   {
     id: "ten_hikes",
-    icon: "🌟",
+    icon: Star,
     label: "Trail Regular",
     desc: "Complete 10 hikes",
     condition: h => h.length >= 10,
@@ -85,7 +91,7 @@ const ACHIEVEMENTS: ExploreAchievement[] = [
   },
   {
     id: "fifty_km",
-    icon: "🗺️",
+    icon: MapPin,
     label: "Explorer",
     desc: "Cover 50km total",
     condition: h => h.reduce((s, x) => s + x.distance, 0) >= 50,
@@ -140,15 +146,15 @@ function SuggestedChallenge({ hikes }: { hikes: ExploreHike[] }) {
   return (
     <View style={ch.card}>
       <View style={ch.badge}>
-        <Flag size={12} color={T.orange} />
-        <Text style={ch.badgeText}>SUGGESTED NEXT CHALLENGE</Text>
+        <Flag size={14} color={T.orange} />
+        <Text style={ch.badgeText}>Suggested next challenge</Text>
       </View>
       <Text style={ch.title}>{title}</Text>
       <Text style={ch.desc}>{desc}</Text>
       <TouchableOpacity style={ch.btn} onPress={onPress} activeOpacity={0.82}>
         <LinearGradient colors={btnColor as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ch.btnGrad}>
           <Text style={ch.btnText}>{btnLabel}</Text>
-          <ChevronRight size={14} color="#fff" />
+          <ChevronRight size={16} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -156,14 +162,14 @@ function SuggestedChallenge({ hikes }: { hikes: ExploreHike[] }) {
 }
 
 const ch = StyleSheet.create({
-  card: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,144,48,0.2)", padding: 18, gap: 10 },
-  badge: { flexDirection: "row", alignItems: "center", gap: 5 },
-  badgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.orange, letterSpacing: 0.8 },
-  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
-  desc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
-  btn: { alignSelf: "flex-start", borderRadius: 12, overflow: "hidden" },
-  btnGrad: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 16, paddingVertical: 10 },
-  btnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  card: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,144,48,0.2)", padding: 20, gap: 12 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 6 },
+  badgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
+  desc: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 21 },
+  btn: { alignSelf: "flex-start", borderRadius: 12, overflow: "hidden", marginTop: 4 },
+  btnGrad: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  btnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
 
 // ── Achievement Card ──────────────────────────────────────────────────────────
@@ -172,10 +178,13 @@ function AchievementCard({ a, hikes }: { a: ExploreAchievement; hikes: ExploreHi
   const done = a.condition(hikes);
   const progress = a.progressFn?.(hikes);
   const pct = progress ? progress.current / progress.target : done ? 1 : 0;
+  const Icon = a.icon;
 
   return (
     <View style={[ac.card, done && ac.cardDone]}>
-      <Text style={ac.icon}>{done ? a.icon : "🔒"}</Text>
+      <View style={[ac.iconWrap, done && { backgroundColor: T.greenDim }]}>
+        {done ? <Icon size={22} color={T.green} /> : <Lock size={20} color={T.textDim} />}
+      </View>
       <Text style={[ac.label, done && { color: T.text }]}>{a.label}</Text>
       <Text style={ac.desc}>{a.desc}</Text>
       <View style={ac.barTrack}>
@@ -193,23 +202,23 @@ function AchievementCard({ a, hikes }: { a: ExploreAchievement; hikes: ExploreHi
 
 const ac = StyleSheet.create({
   card: {
-    width: "47%",
-    backgroundColor: T.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: T.border,
-    padding: 14,
+    width: "48%",
+    backgroundColor: "transparent",
+    borderRadius: 16,
+    padding: 12,
     alignItems: "center",
-    gap: 5,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
-  cardDone: { borderColor: "rgba(62,207,117,0.3)" },
-  icon: { fontSize: 24 },
-  label: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textMuted, textAlign: "center" },
-  desc: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 14 },
-  barTrack: { width: "100%", height: 3, backgroundColor: T.surface, borderRadius: 2, overflow: "hidden", marginTop: 4 },
-  barFill: { height: 3, borderRadius: 2 },
-  doneRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  doneText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
+  cardDone: { backgroundColor: "rgba(255,255,255,0.03)", borderColor: "transparent" },
+  iconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.05)", marginBottom: 4 },
+  label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center" },
+  desc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 16 },
+  barTrack: { width: "100%", height: 4, backgroundColor: T.surface, borderRadius: 2, overflow: "hidden", marginTop: 6 },
+  barFill: { height: 4, borderRadius: 2 },
+  doneRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  doneText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -243,7 +252,7 @@ export default function ExploreScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.delay(60).duration(600)} style={s.header}>
-          <Text style={s.eyebrow}>EXPLORE MODE</Text>
+          <Text style={s.eyebrow}>Explore mode</Text>
           <Text style={s.headline}>Start local.{"\n"}Build your mountain fitness.</Text>
         </Animated.View>
 
@@ -268,17 +277,17 @@ export default function ExploreScreen() {
         <Animated.View entering={FadeInDown.delay(300).duration(600)}>
           <TouchableOpacity style={s.logBtn} onPress={() => router.push("/(tabs)/trails")} activeOpacity={0.85}>
             <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.logBtnGrad}>
-              <TrendingUp size={19} color="#fff" />
+              <TrendingUp size={20} color="#fff" />
               <Text style={s.logBtnText}>Log a hike</Text>
-              <ChevronRight size={17} color="#fff" />
+              <ChevronRight size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(380).duration(600)}>
           <View style={s.sectionRow}>
-            <Award size={14} color={T.textDim} />
-            <Text style={s.sectionHead}>ACHIEVEMENTS</Text>
+            <Award size={16} color={T.textDim} />
+            <Text style={s.sectionHead}>Achievements</Text>
           </View>
           <View style={s.achieveGrid}>
             {ACHIEVEMENTS.map(a => (
@@ -303,33 +312,33 @@ export default function ExploreScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 18, gap: 18 },
-  header: { gap: 4 },
-  eyebrow: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1.2, textTransform: "uppercase" },
-  headline: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.text, lineHeight: 30 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  scroll: { paddingHorizontal: 18, gap: 24 },
+  header: { gap: 6 },
+  eyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.green },
+  headline: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text, lineHeight: 32 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   statCard: {
     flex: 1, minWidth: "44%",
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    paddingVertical: 16, paddingHorizontal: 14, gap: 4,
+    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    paddingVertical: 18, paddingHorizontal: 16, gap: 6,
   },
-  statValue: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  statValue: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  statLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
   logBtn: {
     borderRadius: 18, overflow: "hidden",
     shadowColor: T.green, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
   },
-  logBtnGrad: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-  logBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-  sectionRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
-  sectionHead: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1, textTransform: "uppercase" },
-  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  logBtnGrad: { height: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  logBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  sectionRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  sectionHead: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textDim },
+  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" },
   switchCard: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 16, flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    padding: 18, flexDirection: "row", alignItems: "center", gap: 14,
   },
-  switchTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
-  switchDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  switchBtn: { backgroundColor: T.blueDim, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  switchBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.blue },
+  switchTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text, marginBottom: 2 },
+  switchDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  switchBtn: { backgroundColor: T.blueDim, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  switchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.blue },
 });

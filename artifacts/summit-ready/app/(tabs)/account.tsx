@@ -56,6 +56,7 @@ import { ElevationBankCard } from "@/components/ElevationBankCard";
 import { RankExperience } from "@/components/RankExperience";
 import { evaluateRank } from "@/utils/rankEvaluator";
 import type { RankSignal } from "@/utils/rankDomain";
+import { readDevRankEvidence } from "@/utils/devProfiles";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -119,6 +120,14 @@ export default function AccountScreen() {
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const achievementsY = useRef<number>(0);
+  const [devRankEvidence, setDevRankEvidence] = useState<readonly import("@/utils/challengeDomain").EvidenceReference[]>([]);
+
+  useEffect(() => {
+    if (!__DEV__) return;
+    AsyncStorage.getItem("summitready_dev_profile_id")
+      .then((id) => setDevRankEvidence(id ? readDevRankEvidence(id, user?.id ?? "dev-fixture-owner") : []))
+      .catch(() => setDevRankEvidence([]));
+  }, [user?.id]);
 
   useEffect(() => {
     if (scrollTo === "achievements") {
@@ -141,16 +150,16 @@ export default function AccountScreen() {
   );
 
   const rankResult = evaluateRank({
-    ownerUserId: user?.id ?? "signed-out",
-    evidence: [],
+    ownerUserId: __DEV__ ? (user?.id ?? "dev-fixture-owner") : (user?.id ?? "signed-out"),
+    evidence: __DEV__ ? devRankEvidence : [],
     signalAvailability: {
-      eligibleActivities: "unavailable",
-      eligibleElevation: "unavailable",
-      distinctMountains: "unavailable",
-      summitCompletions: "unavailable",
-      activeWeeks: "unavailable",
-      expeditionMilestones: "unavailable",
-    } satisfies Record<RankSignal, "unavailable">,
+      eligibleActivities: __DEV__ ? "available" : "unavailable",
+      eligibleElevation: __DEV__ ? "available" : "unavailable",
+      distinctMountains: __DEV__ ? "available" : "unavailable",
+      summitCompletions: __DEV__ ? "available" : "unavailable",
+      activeWeeks: __DEV__ ? "available" : "unavailable",
+      expeditionMilestones: __DEV__ ? "available" : "unavailable",
+    } satisfies Record<RankSignal, "available" | "unavailable">,
   });
 
   const uniqueCurrentActivities = mergeActivityKinds(

@@ -53,25 +53,25 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={cc.card}>
-      <LinearGradient colors={[color + "12", "transparent"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+      <LinearGradient colors={[color + "08", "transparent"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <View style={cc.top}>
-        <View style={[cc.emoji, { backgroundColor: color + "20" }]}>
+        <View style={[cc.emoji, { backgroundColor: color + "15" }]}>
           {getIconForMetric(c.metric, color)}
         </View>
-        <View style={{ flex: 1, gap: 3 }}>
+        <View style={{ flex: 1, gap: 4 }}>
           <View style={cc.badges}>
-            <View style={[cc.badge, { backgroundColor: diffColor + "20" }]}>
+            <View style={[cc.badge, { backgroundColor: diffColor + "15" }]}>
               <Text style={[cc.badgeText, { color: diffColor }]}>{c.difficulty}</Text>
             </View>
             {c.isPremium && (
               <View style={[cc.badge, { backgroundColor: T.purpleDim }]}>
-                <Zap size={9} color={T.purple} />
+                <Zap size={10} color={T.purple} />
                 <Text style={[cc.badgeText, { color: T.purple }]}>Pro</Text>
               </View>
             )}
             {ac?.completed && (
               <View style={[cc.badge, { backgroundColor: T.greenDim }]}>
-                <CheckCircle size={9} color={T.green} />
+                <CheckCircle size={10} color={T.green} />
                 <Text style={[cc.badgeText, { color: T.green }]}>Done</Text>
               </View>
             )}
@@ -79,8 +79,8 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
           <Text style={cc.title} numberOfLines={2}>{c.title}</Text>
         </View>
         {locked
-          ? <Lock size={16} color={T.textDim} />
-          : <ChevronRight size={16} color={T.textDim} />
+          ? <Lock size={18} color={T.textDim} />
+          : <ChevronRight size={18} color={T.textDim} />
         }
       </View>
 
@@ -115,24 +115,24 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
 
 const cc = StyleSheet.create({
   card: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border,
-    padding: 16, gap: 10, overflow: "hidden",
+    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    padding: 16, gap: 12, overflow: "hidden",
   },
-  top: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  emoji: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  top: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  emoji: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   emojiText: { fontSize: 22 },
-  badges: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
-  badge: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  badgeText: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  title: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text, lineHeight: 19 },
-  tagline: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
-  meta: { flexDirection: "row", alignItems: "center", gap: 5 },
-  metaText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
-  metaDot: { fontSize: 12, color: T.textDim },
-  progressArea: { gap: 5 },
+  badges: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  title: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text, lineHeight: 22 },
+  tagline: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
+  meta: { flexDirection: "row", alignItems: "center", gap: 6 },
+  metaText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
+  metaDot: { fontSize: 13, color: T.textDim },
+  progressArea: { gap: 6, marginTop: 4 },
   progressRow: { flexDirection: "row", justifyContent: "space-between" },
-  progressLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  progressPct: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  progressLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  progressPct: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });
 
 export default function ChallengesScreen() {
@@ -338,61 +338,61 @@ export default function ChallengesScreen() {
 }
 
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, gap: 16 },
+  scroll: { paddingHorizontal: 20, gap: 20 },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  eyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
-  trophyWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  eyebrow: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.textDim },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: T.text },
+  trophyWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
 
   statsStrip: {
-    flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
-    borderWidth: 1, borderColor: T.border, padding: 14, justifyContent: "space-around",
+    flexDirection: "row", backgroundColor: "transparent", borderRadius: 16,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)", padding: 16, justifyContent: "space-around",
   },
-  statItem: { alignItems: "center", gap: 3 },
-  statVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
-  statDivider: { width: 1, backgroundColor: T.border },
+  statItem: { alignItems: "center", gap: 4 },
+  statVal: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  statLbl: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
+  statDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.05)" },
 
   infoBox: {
-    flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12,
-    backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 16,
+    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.04)",
   },
-  infoText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  infoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
 
-  section: { gap: 10 },
+  section: { gap: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
-  sectionCount: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
+  sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },
+  sectionCount: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.textMuted },
 
-  grid: { gap: 10 },
+  grid: { gap: 12 },
   gridItem: {},
 
   featured: {
-    backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.green + "35",
-    padding: 20, gap: 10, overflow: "hidden",
+    backgroundColor: "transparent", borderRadius: 20, borderWidth: 1, borderColor: T.green + "40",
+    padding: 24, gap: 12, overflow: "hidden",
   },
   featuredTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  featuredEyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.green },
-  featuredBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  featuredBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  featuredTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },
-  featuredDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
-  featuredMeta: { flexDirection: "row", alignItems: "center", gap: 6 },
-  featuredMetaText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
-  featuredMetaDot: { fontSize: 12, color: T.textDim },
+  featuredEyebrow: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
+  featuredBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  featuredBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  featuredTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
+  featuredDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 21 },
+  featuredMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  featuredMetaText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
+  featuredMetaDot: { fontSize: 13, color: T.textDim },
   startBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
-    backgroundColor: T.green, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9, marginTop: 2,
+    flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start",
+    backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, marginTop: 4,
   },
-  startBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.bg },
+  startBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.bg },
 
   comingSoon: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 18, gap: 8, overflow: "hidden",
+    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    padding: 20, gap: 10, overflow: "hidden",
   },
-  comingSoonTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.text },
-  comingSoonBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  comingSoonBadge: { alignSelf: "flex-start", backgroundColor: T.purpleDim, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  comingSoonBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.purple },
+  comingSoonTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },
+  comingSoonBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 20 },
+  comingSoonBadge: { alignSelf: "flex-start", backgroundColor: T.purpleDim, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  comingSoonBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.purple },
 });

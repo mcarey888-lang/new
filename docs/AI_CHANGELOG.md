@@ -2,6 +2,79 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-20 UTC — VR-C04/VR-C06 final architect PASS
+
+**Review:** Final architect review returned **PASS** with no P0/P1 blockers.
+
+**Correction:** Production fixture isolation now records the first signed-in
+migration owner for each fixture load, purges prior-owner-scoped fixture keys
+before selecting another fixture, and on production boot purges flat plus
+current owner-scoped keys, including derived
+`summitready_training_goal`, before `AppContext` migration/hydration. Tests
+model A fixture migration, A→B account switch, second fixture selection for B,
+and production purge.
+
+**Verification:** Exact results remain unchanged: targeted
+devProfiles/rankEvaluator/navigation **3 files, 20 tests passed**; bounded
+suite **24 files, 158 tests passed**; TypeScript, production iOS and Android
+Expo bundles, and `git diff --check` passed. Native-device QA remains
+**NOT RUN**.
+
+## 2026-09-20 UTC — VR-C04/VR-C06 final architect-review corrections
+
+**Task:** Update the VR-C04/VR-C06 completion record after the final
+architect-review fixes; no new results are claimed.
+
+**Correction:** The development fixture boundary now purges every marked
+development fixture key before production `AppContext` migration/hydration,
+preventing development-to-production fixture carryover. Development Rank
+evidence is projected from each persona's same stored Explore hikes, completed
+goals, and completed Expedition route history rather than a separate Rank-only
+fixture. Expected evaluated ranks are **Hillwalker, Summiteer, Mountaineer, and
+Alpinist**. Screenshots were recaptured after these fixes.
+
+**Verification:** The exact prior verification remains unchanged: targeted
+devProfiles/rankEvaluator/navigation **3 files, 20 tests passed**; bounded suite
+**24 files, 158 tests passed**; TypeScript passed; production iOS and Android
+Expo bundles passed; and `git diff --check` passed. Native-device QA remains
+**NOT RUN**.
+
+**Files:** `docs/VISUAL_REFINEMENT_COMPLETION_REPORT.md`,
+`docs/AI_HANDOFF.md`, `docs/AI_CHANGELOG.md`.
+
+## 2026-09-20 UTC — VR-C04/VR-C06 visual refinement completion
+
+**Task:** Complete the bounded populated-state visual evidence and
+documentation gate authorized by `docs/AI_TASK.md` VR-C01–VR-C06.
+
+**Evidence:** Documented exactly five deterministic development-only personas —
+Beginner, Active Hillwalker, Experienced Summiteer, Expedition-focused, and
+Advanced all-round — using the fixed fixture clock 2026-09-20 UTC. Listed all
+ten PNGs under `docs/visual-qa/demo-profiles/`; they are synthetic deterministic
+data rendered through real production UI at 390 × 844, not production accounts
+or evidence.
+
+**Rank and presentation:** Recorded the seven centralized ranks and exact
+thresholds, with Summit Elite as the centralized working final name and no
+persistence. Summarized bounded visual refinement across SharedTabBar, Explore,
+Challenges, Track presentation, Expedition discovery/Basecamp, and Rank
+journey. Navigation remains Basecamp | Explore | Track | Expeditions | You;
+Challenges remains contextual; protected Progress Mountain/cinematic/GPS/
+Readiness/Mountain DNA/SDE evidence/Expedition semantics are unchanged.
+
+**Verification:** Targeted devProfiles/rankEvaluator/navigation **3 files,
+20 tests passed**; bounded suite **24 files, 158 tests passed**; TypeScript,
+production iOS and Android Expo bundles, and `git diff --check` passed. Native-
+device QA was **NOT RUN**. Demo loader and Rank fixtures are `__DEV__` guarded
+and production rejection tested.
+
+**Safety:** No Stage 9, production DB/schema/flags/deploy/release/auth/payment/
+privacy changes, or production accounts/evidence were introduced. Remaining
+P2/P3 items are bounded native-device QA and follow-up visual polish only.
+
+**Files:** `docs/VISUAL_REFINEMENT_COMPLETION_REPORT.md`,
+`docs/VISUAL_QA_MANIFEST.md`, `docs/AI_HANDOFF.md`, `docs/AI_CHANGELOG.md`.
+
 ## 2026-09-20 UTC — O8-C10 Challenges & Achievements completion gate
 
 **Task:** Execute O8-C09 adversarial regression/self-fix and the O8-C10

@@ -15,6 +15,10 @@ import {
 } from "@/utils/stateReliability";
 import { upsertByActivityId } from "@/utils/activityReliability";
 import { FLAT_MIGRATION_KEYS, FLAT_MIGRATION_OWNER_KEY } from "@/utils/userHydration";
+import {
+  markDevProfileMigrationOwner,
+  purgePersistedDevProfileForProduction,
+} from "@/utils/devProfiles";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 
 export interface AlpineRequirement {
@@ -815,8 +819,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setIsLoading(true);
       try {
+        // A development fixture must never survive into a production installation.
+        // Purge it before flat-key migration or hydration can claim/display it.
+        await purgePersistedDevProfileForProduction();
+        if (!isCurrent()) return;
+
         // One-time migration: copy flat-key data to per-user namespaced keys
         if (_uid) {
+          await markDevProfileMigrationOwner(_uid);
+          if (!isCurrent()) return;
           let migrationOwner = await AsyncStorage.getItem(FLAT_MIGRATION_OWNER_KEY);
             if (migrationOwner === null) {
               if (!isCurrent()) return;

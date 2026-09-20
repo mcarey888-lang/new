@@ -25,6 +25,50 @@ Expedition, and canonical-mountain producers remain explicitly unavailable
 rather than fabricated. Production remains unchanged/default-safe. Native-device
 QA was not run and remains a release gate.
 
+### VR-C04 / VR-C06 Visual refinement completion
+
+- VR-C04/C06 is complete after final architect-review fixes as a bounded
+  documentation and visual-evidence gate;
+  the completion report is `docs/VISUAL_REFINEMENT_COMPLETION_REPORT.md`.
+- Final architect review is **PASS** with no P0/P1 blockers. Production
+  fixture isolation records the first signed-in migration owner per fixture
+  load, purges prior-owner-scoped keys before selecting another fixture, and
+  on production boot purges flat plus current owner-scoped keys, including
+  derived `summitready_training_goal`, before `AppContext` migration/hydration.
+  Tests model A fixture migration, A→B account switch, second fixture
+  selection for B, and production purge.
+- Exactly five deterministic development-only personas are documented:
+  Beginner, Active Hillwalker, Experienced Summiteer, Expedition-focused, and
+  Advanced all-round. The fixed fixture clock is 2026-09-20 UTC. All ten PNGs
+  are listed in `docs/VISUAL_QA_MANIFEST.md` and are synthetic deterministic
+  data rendered through real production UI at 390 × 844, not production
+  accounts or evidence.
+- The seven centralized ranks are Trailhead, Hillwalker, Summiteer,
+  Mountaineer, Alpinist, Expeditioner, and Summit Elite. Thresholds remain in
+  `rankDomain.ts`; Summit Elite is centralized and Rank is non-persistent.
+- Development Rank evidence is projected from each persona's same stored
+  Explore hikes, completed goals, and completed Expedition route history. The
+  expected evaluated ranks are Hillwalker, Summiteer, Mountaineer, and
+  Alpinist; it is not a separate Rank-only fixture.
+- Bounded presentation refinement covers SharedTabBar, Explore, Challenges,
+  Track, Expedition discovery/Basecamp, and Rank journey while preserving
+  semantics. Navigation remains **Basecamp | Explore | Track | Expeditions |
+  You** and Challenges remains contextual.
+- Verification passed: targeted devProfiles/rankEvaluator/navigation **3 files,
+  20 tests**; bounded suite **24 files, 158 tests**; TypeScript; production
+  iOS and Android Expo bundles; and `git diff --check`. Native-device QA is
+  **NOT RUN**.
+- The demo loader and Rank fixtures are `__DEV__` guarded and production
+  rejection tested. Before production `AppContext` migration/hydration, every
+  marked development fixture key is purged, preventing development-to-
+  production fixture carryover. Protected Progress
+  Mountain/cinematic/GPS/readiness/DNA/evidence/Expedition semantics are
+  unchanged. No Stage 9 or production DB/schema/flags/deploy/release/auth/
+  payment/privacy changes occurred.
+- Screenshots were recaptured after the final architect-review fixes.
+- Remaining P2/P3 work is bounded native-device QA and additional polish for
+  content-length, image crops, spacing, labels, and empty/degraded states.
+
 ### VQ-C10 Visual QA and Rank completion
 
 - VQ-C05/C09/C10 documentation is complete in
