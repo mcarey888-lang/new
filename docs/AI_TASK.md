@@ -1,108 +1,239 @@
-# Visual Refinement + Demo Profiles Gate
+# SummitReady Media Studio + Premium Visual/Motion System
 
-**Authority:** Visual QA gate accepted with follow-up refinements. ChatGPT is lead product/design/architecture authority.
+**Command:** MV-C01
+**Authority:** ChatGPT lead product/design/architecture
 **Branch:** `virtual-expeditions-mode`
-**Baseline:** `c6ce90058`
-**Stage 9:** NOT authorized.
+**Accepted baseline:** `ef1deafcad0773a2692da6b3daaf12e9992c6baf`
+**Stage 9:** PAUSED / NOT AUTHORIZED
 
-## Objective
+## Product target
 
-Perform one tightly bounded post-Visual-QA refinement pass. Improve premium outdoor visual quality, restore a longer aspirational Rank ladder, and add safe development-only demo user profiles with realistic metrics so the real app can be reviewed in populated states.
+Move the functioning SummitReady product toward the approved premium concept: cinematic authentic mountain imagery, dark natural surfaces, confident typography, restrained blue/green accents, generous space, fewer nested cards, strong information hierarchy, and purposeful motion.
 
-This is not a wholesale redesign.
+This is a real-product design system, not a screenshot recreation. Existing functionality, accessibility, offline behaviour, evidence authority and protected systems take precedence over decorative fidelity.
 
-## VR-C01 — Demo profile architecture
+## MV-C01 — Audit existing media architecture FIRST
 
-Extend the existing development-only demo/profile fixture system rather than creating real users or production records.
+Audit, do not replace:
+- `artifacts/artwork-admin/`
+- `artifacts/api-server/src/routes/artwork.ts`
+- `artifacts/api-server/src/services/artwork/`
+- mountain-image API/services and documented remote-image behaviour
+- `artifacts/atlas-media-studio/`
+- `artifacts/summit-ready/assets/`
+- landing/mockup image assets where potentially reusable
+- DB fields/tables used by artwork
+- storage provider/object paths, prompt/provider/cost/version metadata
+- approval/rejection/bulk-generation workflow
+- actual app consumers of artwork/images
 
-Create a small set of clearly named synthetic personas, for example:
-- Beginner / first mountain goal
-- Active Hillwalker
-- Experienced Summiteer
-- Expedition-focused user
-- Advanced all-round user
+Document what is canonical, duplicated, experimental, production-coupled, safe to reuse, and obsolete. Do not create a third parallel media system.
 
-Each profile should contain internally consistent representative metrics sufficient to populate the actual production components: eligible outdoor activities, elevation, distinct mountains/summits, active weeks, readiness dimensions where existing fixture contracts permit, Training goal/plan, Expedition progress/stages, Elevation Bank, Challenges/Achievements, recent activity, and Rank evidence.
+Create `docs/SUMMITREADY_MEDIA_ARCHITECTURE_AUDIT.md`.
+
+## MV-C02 — Design the consolidated SummitReady Media Studio
+
+Produce an implementation architecture that evolves the strongest existing system into one central internal studio.
+
+Required asset families:
+1. Mountains
+2. Expeditions
+3. Training
+4. Routes / Mountain DNA
+5. Rank
+6. Achievements
+7. Challenges
+8. Onboarding / App UI
+9. Atmospheric/background assets
+10. Marketing / store assets where appropriate
+11. Motion assets/specifications
+
+Required lifecycle:
+**Generate/import → Review → Refine/regenerate → Approve → Derive variants → Optimise → Publish → Consume**
+
+Design a master/variant model so one approved visual identity can create controlled derivatives rather than unrelated imagery per screen.
+
+Metadata should support where appropriate:
+- stable asset ID
+- family/subtype
+- subject/canonical entity reference
+- master/derived relationship
+- prompt + prompt/style version
+- provider/model + generation cost
+- dimensions/aspect ratio
+- intended placements
+- focal point
+- safe-area metadata
+- crop/fit policy
+- dark/light overlay suitability
+- provenance/licence for imported imagery
+- status: draft/generated/review/approved/published/retired
+- created/approved timestamps
+- mobile optimisation state
+- motion type/duration/trigger/reduced-motion fallback where relevant
+
+Do not implement production schema changes in this gate. If persistent schema is needed, propose it as a later AMBER/RED gate.
+
+Create `docs/SUMMITREADY_MEDIA_STUDIO_SPEC.md`.
+
+## MV-C03 — SummitReady Art Direction System
+
+Turn the existing useful prompt-builder principles into a documented, reusable art-direction system.
+
+Target:
+- premium outdoor editorial/cinematic photography;
+- believable geography and terrain;
+- authentic hikers/equipment where people appear;
+- natural colour, atmospheric depth, controlled dawn/dusk/golden-hour use;
+- dark-image compatibility for SummitReady UI;
+- deliberate negative space and focal placement;
+- no baked-in UI text/logos unless the asset specifically requires typography;
+- avoid fantasy mountains, oversaturation, generic AI gloss, impossible routes, fake technical gear, duplicated anatomy or implausible climbing scenes.
+
+Define family-specific direction for Mountain, Expedition, Training, Route/DNA, Rank/Achievement, onboarding and marketing assets while preserving one brand.
+
+Specify standard master sizes/aspect ratios and derivative targets based on actual app usage rather than arbitrary dimensions.
+
+Create `docs/SUMMITREADY_ART_DIRECTION.md`.
+
+## MV-C04 — Premium UI design system
+
+Codify the approved visual direction into reusable implementation guidance/tokens/components.
+
+Priorities:
+- cinematic imagery used as structural UI, not decoration;
+- dark navy/charcoal natural surfaces;
+- strong large headings and metric hierarchy;
+- restrained blue/green/orange semantic accents;
+- fewer card-within-card containers;
+- borders/backgrounds used sparingly;
+- generous but efficient spacing;
+- consistent radii;
+- readable labels rather than excessive micro-uppercase text;
+- one dominant action per screen;
+- image overlays/gradients that protect readability;
+- Training and Expedition remain immediately distinguishable;
+- central Track action remains visually strong;
+- bottom navigation remains **Basecamp | Explore | Track | Expeditions | You**.
+
+Create `docs/SUMMITREADY_PREMIUM_UI_SYSTEM.md`.
+
+Do not wholesale reskin every screen yet. Implement only shared, low-risk primitives/tokens if doing so clearly enables the next screen migration without changing product semantics.
+
+## MV-C05 — Motion language
+
+Design a restrained motion system and implement only safe reusable foundations/prototypes.
+
+Motion hierarchy:
+- ambient: subtle hero/parallax/atmospheric movement;
+- interface: smooth state/metric/progress transitions;
+- meaningful: elevation gain, Readiness response, Mountain DNA reveal, Rank ascent;
+- celebratory: achievements/challenges;
+- cinematic: protected Expedition summit sequence.
+
+Create `docs/SUMMITREADY_MOTION_SYSTEM.md`.
+
+Define durations/easing, interruption behaviour, performance constraints and reduced-motion alternatives.
+
+Preferred implementation:
+- native/Reanimated/SVG/procedural motion for UI and data-driven animation;
+- Lottie only when it is genuinely the right asset;
+- video for cinematic content where appropriate;
+- never use heavyweight video for an effect better implemented natively.
+
+Prototype shared primitives only if they are isolated and regression-safe. Do NOT alter the protected Progress Mountain/cinematic behaviour in this gate.
+
+## MV-C06 — Internal Media Gallery / Studio plan
+
+The internal studio should ultimately provide a review surface for approved and candidate assets across families, with master + derivatives visible together.
+
+For this gate, either:
+A) extend the existing admin safely if architecture audit makes the path obvious and no persistent production schema change is needed, OR
+B) produce a precise implementation plan and a development-only gallery using existing data/assets.
+
+Do not duplicate `artwork-admin` and `atlas-media-studio` merely to move faster.
+
+## MV-C07 — Existing asset inventory
+
+Inventory existing SummitReady assets and classify:
+- KEEP
+- KEEP / REPROCESS
+- REPLACE
+- LEGACY / UNUSED
+- PROTECTED
+
+Include exercise imagery, Basecamp imagery, mountain backgrounds, website heroes, mascot, completion media and any relevant Atlas/Artwork assets.
+
+Do not delete anything in this gate.
+
+Create `docs/SUMMITREADY_ASSET_INVENTORY.md`.
+
+## MV-C08 — First real visual migration pilot
+
+After the audit/specs are complete, migrate ONE representative real screen to the new shared visual system as a pilot. Use a populated development persona.
+
+Preferred pilot: **Training Basecamp**, unless repository evidence shows another screen is a safer/better representative.
 
 Requirements:
-- `__DEV__` / development-only and impossible to activate as production identity.
-- No Clerk fake accounts, production database rows, production API writes, migrations, backfills, or fabricated production evidence.
-- Reuse existing fixture/dev-profile loader and actual production screens/components.
-- Clearly label synthetic data in developer tooling; do not add intrusive "demo" labels to normal production UI.
-- Deterministic and repeatable.
-- Add tests proving production builds cannot select/load these profiles.
+- actual production component;
+- actual navigation/data semantics;
+- no fake screenshot-only implementation;
+- preserve functionality;
+- use current approved/available artwork, with graceful fallback;
+- demonstrate hero treatment, hierarchy, surfaces, CTA and at least one safe motion primitive;
+- capture before/after at 390×844.
 
-## VR-C02 — Rank ladder refinement
+This pilot should answer whether the new system can reproduce the approved premium character in the functioning app before broad migration.
 
-Keep the deterministic authority-gated Rank model but refine the progression to seven aspirational levels:
+## MV-C09 — Verification
 
-1. Trailhead
-2. Hillwalker
-3. Summiteer
-4. Mountaineer
-5. Alpinist
-6. Expeditioner
-7. Summit Elite
-
-Treat **Summit Elite** as the working final name for this gate; keep naming centralized so it can be changed later without migration.
-
-Define balanced cumulative thresholds that rise meaningfully across eligible outdoor activities, eligible elevation, distinct canonical mountains/summits, active weeks and authoritative Expedition milestones. Do not let manual, indoor or simulated evidence qualify high ranks. Do not imply professional qualifications, technical competence or safety certification.
-
-Update `docs/SUMMITREADY_RANK_SYSTEM.md`, evaluator/tests and Rank UI. Do not persist Rank or add production schema.
-
-## VR-C03 — Lead-designer visual refinement
-
-Use the final screenshot pack and actual production components. Fix the remaining high-value P2 issues without changing accepted product semantics:
-- reduce unnecessary nested rounded-card-on-card presentation;
-- reduce tiny uppercase-label repetition;
-- strengthen type hierarchy and breathing room;
-- normalize shared spacing/radii where practical;
-- improve image crop/hero consistency between Training and Expeditions;
-- maintain one obvious primary action per screen;
-- keep Training vs Expedition context immediately distinguishable;
-- preserve the dark premium outdoor identity.
-
-Prioritize Basecamp, Explore, Track, Expedition discovery/Basecamp, Challenges, You/Profile and Rank. Prefer shared-component/token improvements over one-off patches.
-
-Do NOT redesign protected Progress Mountain, cinematic/live-3D sequence, GPS/offline tracking, Readiness logic, Mountain DNA calculations, SDE identity/provenance, activity qualification, Elevation Bank semantics, or Expedition contribution semantics.
-
-## VR-C04 — Populated-state screenshot matrix
-
-Using the synthetic development profiles, recapture a concise representative matrix at 390×844 from the real production screens/components.
-
-At minimum capture:
-- Beginner Training Basecamp
-- Active Hillwalker Basecamp/Explore
-- Experienced Summiteer You/Profile + Rank journey
-- Expedition user Expedition Basecamp + Progress
-- Advanced user Track, Challenges/Achievements and populated You/Profile
-
-Store stable evidence under `docs/visual-qa/demo-profiles/` and update the manifest. State explicitly that these are deterministic synthetic development profiles rendered through production UI.
-
-## VR-C05 — Verification
-
-Run targeted navigation, Rank, dev-profile isolation and affected UI tests, then the bounded SummitReady regression suite and TypeScript. Bundle iOS/Android production Expo builds if that remains the established gate.
+Run targeted affected tests, TypeScript, and bounded regression tests. Production bundle only if affected code warrants it.
 
 Verify:
-- demo profiles unavailable in production;
-- bottom nav remains Basecamp | Explore | Track | Expeditions | You;
-- Challenges remains contextual;
-- protected Progress Mountain/cinematic unchanged;
-- no Stage 9 implementation;
-- no production DB/schema/flags/deploy/release/auth/payment/privacy changes.
+- no Stage 9;
+- no production DB/schema/migration/backfill;
+- no production deploy/release;
+- no auth/payment/privacy changes;
+- no SDE identity/provenance changes;
+- no GPS/offline semantics changes;
+- no Readiness calculation changes;
+- no Expedition contribution changes;
+- no protected Progress Mountain/cinematic replacement;
+- demo profiles remain development-only.
 
-## VR-C06 — Completion and STOP
+## MV-C10 — Completion and STOP
 
-Create `docs/VISUAL_REFINEMENT_COMPLETION_REPORT.md`; update `docs/VISUAL_QA_MANIFEST.md`, `docs/AI_HANDOFF.md`, and `docs/AI_CHANGELOG.md`.
+Create `docs/MEDIA_VISUAL_MOTION_COMPLETION_REPORT.md`.
+Update `docs/AI_HANDOFF.md` and `docs/AI_CHANGELOG.md`.
+Store pilot screenshots under `docs/visual-qa/media-pilot/`.
 
-Report exact tests/builds, screenshot paths, demo personas, Rank thresholds, visual changes, remaining P2/P3, native-device QA status, and protected/production boundaries.
+Report:
+- architecture findings;
+- consolidation decision;
+- files/systems to retain;
+- proposed future persistence changes, if any;
+- asset inventory totals;
+- motion foundations/prototypes;
+- pilot before/after;
+- tests/builds;
+- unresolved decisions;
+- production/protected boundaries.
 
-Commit/push meaningful checkpoints and STOP. Do not begin Stage 9.
+Commit/push meaningful checkpoints and STOP. Do not start broad screen migration, asset mass-generation, production schema changes, or Stage 9.
+
+## Cost discipline
+
+Use targeted repository inspection; do not re-audit Stages 1–8. Reuse existing docs and tests. Avoid broad full-repo analysis where scoped searches suffice. This gate is intended to establish the system and prove it with one pilot, not regenerate the entire application.
 
 ## Authority
 
-GREEN: all work above.
-AMBER: stop only if a requested refinement requires material persistent architecture or changes accepted Readiness/Expedition/Mountain DNA semantics.
-RED: production SQL/schema/migration/backfill, production flags, deployment/release, auth/privacy/payments/pricing, destructive SDE work, GPS/offline tracker redesign, protected Progress Mountain/cinematic replacement.
+GREEN: audit, documentation, development-only tooling/gallery, low-risk shared visual/motion primitives, one-screen pilot, tests.
+AMBER: persistent media schema design or substantial cross-screen migration — document and STOP before implementation.
+RED: production schema/migrations/backfills, deploy/release, auth/privacy/payments/pricing, destructive asset/SDE work, protected Progress Mountain/cinematic changes.
 
-End responses with exactly one of: COMPLETE, PARTIAL, BLOCKED, FAILED, APPROVAL REQUIRED.
+End the response with exactly one of:
+COMPLETE
+PARTIAL
+BLOCKED
+FAILED
+APPROVAL REQUIRED
