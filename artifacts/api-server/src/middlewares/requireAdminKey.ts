@@ -9,7 +9,16 @@ import type { NextFunction, Request, Response } from "express";
  * variable remains supported for backwards compatibility.
  */
 export function requireAdminKey(req: Request, res: Response, next: NextFunction): void {
-  const provided = req.headers["x-vx-admin-key"];
+  const providedRaw = req.headers["x-vx-admin-key"];
+  const providedEncoded = req.headers["x-vx-admin-key-b64"];
+  let provided = providedRaw;
+  if (!provided && typeof providedEncoded === "string") {
+    try {
+      provided = Buffer.from(providedEncoded, "base64").toString("utf8");
+    } catch {
+      provided = undefined;
+    }
+  }
   const expected = process.env.VIRTUAL_ENGINE_ADMIN_KEY ?? process.env.ADMIN_API_KEY;
 
   if (!expected) {
@@ -18,7 +27,7 @@ export function requireAdminKey(req: Request, res: Response, next: NextFunction)
   }
 
   if (!provided || provided !== expected) {
-    res.status(401).json({ error: "Unauthorized — x-vx-admin-key header required" });
+    res.status(401).json({ error: "Unauthorized — valid admin key required" });
     return;
   }
 

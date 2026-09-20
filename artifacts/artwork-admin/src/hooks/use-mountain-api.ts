@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { adminKeyHeader } from "@/lib/adminKey";
 
 function adminHeaders(): Record<string, string> {
   const key = sessionStorage.getItem("summitready-admin-key");
-  return key ? { "x-vx-admin-key": key } : {};
+  return key ? adminKeyHeader(key) : {};
 }
 
 export type Mountain = {

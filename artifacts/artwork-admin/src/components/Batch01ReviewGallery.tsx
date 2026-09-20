@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Loader2, RotateCw, CheckCircle, XCircle, ExternalLink, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
+import { adminKeyHeader } from "@/lib/adminKey";
 
 type CandidateStatus = "REVIEW REQUIRED" | "APPROVED" | "REJECTED";
 type ObjectiveFailureReason =
@@ -60,15 +61,11 @@ function statusClass(status: CandidateStatus) {
   return "border-amber-500/30 bg-amber-500/10 text-amber-300";
 }
 
-function normalizeAdminKey(value: string) {
-  return value.replace(/[^\x20-\x7E]/g, "").trim();
-}
-
 export function Batch01ReviewGallery() {
   const [manifest, setManifest] = useState<ReviewManifest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [adminKey, setAdminKey] = useState(() => normalizeAdminKey(sessionStorage.getItem("summitready-admin-key") ?? ""));
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem("summitready-admin-key") ?? "");
   const [action, setAction] = useState<{ kind: "approve" | "reject" | "regenerate"; candidate: ReviewCandidate } | null>(null);
   const [reason, setReason] = useState<ObjectiveFailureReason>("UNUSABLE_CROP");
 
@@ -92,22 +89,16 @@ export function Batch01ReviewGallery() {
   }, [manifest]);
 
   const persistAdminKey = (value: string) => {
-    const normalized = normalizeAdminKey(value);
-    setAdminKey(normalized);
-    if (normalized) sessionStorage.setItem("summitready-admin-key", normalized);
+    setAdminKey(value);
+    if (value) sessionStorage.setItem("summitready-admin-key", value);
     else sessionStorage.removeItem("summitready-admin-key");
-    if (value !== normalized && /[^\x20-\x7E]/.test(value)) {
-      toast.warning("Removed an unsupported character from the admin key. Paste only the secret value.");
-    }
   };
 
   const mutate = async (candidate: ReviewCandidate, kind: "approve" | "reject" | "regenerate") => {
-    const normalizedAdminKey = normalizeAdminKey(adminKey);
-    if (!normalizedAdminKey) {
+    if (!adminKey.trim()) {
       toast.error("Enter the admin key before changing artwork");
       return;
     }
-    if (normalizedAdminKey !== adminKey) persistAdminKey(normalizedAdminKey);
     setBusy(`${candidate.assetId}:${kind}`);
     try {
       const path = kind === "regenerate"
@@ -120,7 +111,7 @@ export function Batch01ReviewGallery() {
           : {};
       const response = await fetch(path, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-vx-admin-key": normalizedAdminKey },
+        headers: { "Content-Type": "application/json", ...adminKeyHeader(adminKey) },
         body: JSON.stringify(body),
       });
       const result = await response.json().catch(() => ({}));

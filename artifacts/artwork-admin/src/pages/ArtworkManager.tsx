@@ -31,6 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { adminKeyHeader } from "@/lib/adminKey";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -116,7 +117,7 @@ export default function ArtworkManager() {
     try {
       const response = await fetch("/api/artwork/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-vx-admin-key": adminKey },
+        headers: { "Content-Type": "application/json", ...adminKeyHeader(adminKey) },
         body: JSON.stringify({
           force: false,
           confirmed: true,
@@ -449,7 +450,7 @@ function ChallengeRow({
           : `/api/artwork/${action}/${challenge.challengeId}`;
       const response = await fetch(path, {
         method: action === "clear" ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json", "x-vx-admin-key": adminKey },
+        headers: { "Content-Type": "application/json", ...adminKeyHeader(adminKey) },
         body: action === "generate" || action === "regenerate"
           ? JSON.stringify({ force: action === "regenerate" })
           : undefined,

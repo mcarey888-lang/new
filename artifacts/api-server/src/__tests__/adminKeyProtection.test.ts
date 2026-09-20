@@ -45,6 +45,7 @@ async function callEndpoint(
   method: Method,
   path: string,
   key?: string,
+  encoded = false,
 ): Promise<number> {
   return new Promise((resolve) => {
     const server = app.listen(0, () => {
@@ -55,7 +56,11 @@ async function callEndpoint(
           port: address.port,
           method,
           path,
-          headers: key ? { "x-vx-admin-key": key } : {},
+          headers: key
+            ? encoded
+              ? { "x-vx-admin-key-b64": Buffer.from(key, "utf8").toString("base64") }
+              : { "x-vx-admin-key": key }
+            : {},
         },
         (response) => {
           response.resume();
@@ -103,6 +108,14 @@ describe("shared admin-key protection", () => {
     process.env.ADMIN_API_KEY = "shared-admin-key";
     expect(await callEndpoint(app, "POST", "/artwork")).toBe(401);
     expect(await callEndpoint(app, "POST", "/artwork", "shared-admin-key")).toBe(204);
+    delete process.env.ADMIN_API_KEY;
+    process.env.VIRTUAL_ENGINE_ADMIN_KEY = "test-admin-key";
+  });
+
+  it("accepts a UTF-8 admin key through the encoded header", async () => {
+    delete process.env.VIRTUAL_ENGINE_ADMIN_KEY;
+    process.env.ADMIN_API_KEY = "shared—admin—key";
+    expect(await callEndpoint(app, "POST", "/artwork", "shared—admin—key", true)).toBe(204);
     delete process.env.ADMIN_API_KEY;
     process.env.VIRTUAL_ENGINE_ADMIN_KEY = "test-admin-key";
   });
