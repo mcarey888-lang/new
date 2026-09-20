@@ -47,3 +47,4 @@
 - [SDE route read boundary](sde-route-read-boundary.md) — canonical reads use a bounded ENGINE_DATABASE_URL-only server pool; geometry stays hidden without exact rights and validation proof.
 - [Evidence authority ordering](evidence-authority-ordering.md) — evaluator and persistence must share one total order; global event time supersedes producer-rule-local revisions.
 - [Stable approved artwork caching](stable-approved-artwork-caching.md) — stable approved-media URLs must revalidate on every request; versioned review URLs may remain cacheable.
+- [Visual flattening preserves behavior](visual-flattening-preserves-behavior.md) — Basecamp may lose cards, never progress, routes, coach controls, or accessibility semantics.

@@ -2,6 +2,49 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-20 UTC — VR2-C01–VR2-C08 Premium Basecamp V2 completion
+
+**Task:** Refine only Training Basecamp into a premium outdoor/editorial
+continuous page, replace the rejected Ben Nevis visual-QA goal with the approved
+Mont Blanc flagship, self-review real 390×844 captures, verify, document, and
+stop.
+
+**Implementation:** Active Hillwalker now uses existing Mont Blanc values
+(19 km, 2,800 m gain, 4,808 m, Alpine) and consumes approved unpublished
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`, exact version 1. The
+resolver is limited to development profile `active_hillwalker` plus exact Mont
+Blanc goal identity and remains production fail-closed.
+
+Basecamp now uses an unframed cinematic hero, flat mission with accessible week
+progress and one valid next-session action, signature flat Readiness, integrated
+Elevation Bank/progress, and quieter warning/achievement/coach/commercial rows.
+The central Track control received only the explicitly permitted decorative
+reduction; its route and behavior are unchanged.
+
+**Correction loop:** Real screenshots prompted a stronger locked Readiness
+hierarchy and sentence-case action label. Independent review then caught and
+caused correction of an invalid session route, over-broad DEV artwork mapping,
+temporarily removed week-progress/achievement/coach behavior, altered baseline
+copy, and one reduced-motion gap. Follow-up review returned **PASS** with no
+P0/P1/P2 finding.
+
+**Evidence:** Added five final 390×844 PNGs under
+`docs/visual-qa/premium-basecamp-v2/`: first viewport, locked Readiness,
+mid-scroll Readiness/progress, lower supporting content, and final fallback.
+
+**Verification:** SummitReady focused **6 files / 34 tests** and final
+configured **31 files / 195 tests** passed. TypeScript, production iOS and
+Android Expo exports, `git diff --check`, live workflow restart, manifest
+inspection, and independent final review passed. Native-device QA was not run.
+
+**Safety:** No new generation, Batch 02, publication, production schema/data,
+migration, deployment/release, auth/payment/privacy, broad reskin, Stage 9, or
+protected Expedition Progress Mountain/cinematic change occurred.
+
+**Files:** `docs/PREMIUM_BASECAMP_V2_REPORT.md`,
+`docs/VISUAL_QA_MANIFEST.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`, `docs/visual-qa/premium-basecamp-v2/`.
+
 ## 2026-09-20 UTC — UI-C01–UI-C09 Premium Training Basecamp completion
 
 **Task:** Complete the missing populated evidence, lead-design review, final

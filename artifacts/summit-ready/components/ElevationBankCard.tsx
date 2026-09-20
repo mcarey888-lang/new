@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import {
@@ -150,17 +149,12 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
 
   return (
     <View style={[styles.card, expanded && styles.expandedCard]} testID="elevation-bank-card">
-      <LinearGradient
-        colors={[T.greenDim, "rgba(15,29,48,0.08)"]}
-        style={StyleSheet.absoluteFill}
-      />
       <View style={styles.header}>
         <View style={styles.titleWrap}>
           <View style={styles.icon}>
-            <ShieldCheck size={17} color={T.green} />
+            <ShieldCheck size={14} color={T.green} />
           </View>
           <View>
-            <Text style={styles.eyebrow}>PERSONAL PROGRESS</Text>
             <Text style={styles.title}>Elevation Bank</Text>
           </View>
         </View>
@@ -183,14 +177,9 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    marginHorizontal: 0,
     marginBottom: 16,
-    padding: 16,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: T.basecampSurface,
-    borderWidth: 1,
-    borderColor: T.basecampBorder,
+    padding: 0,
   },
   expandedCard: { marginHorizontal: 0 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },

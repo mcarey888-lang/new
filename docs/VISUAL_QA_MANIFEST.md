@@ -1,6 +1,6 @@
 # SummitReady Visual QA Manifest
 
-**Scope:** VQ-C01–C09 final visual evidence plus VR-C04 populated-state evidence
+**Scope:** VQ-C01–C09, VR-C04, Premium Basecamp pilot, and VR2 Basecamp V2 evidence
 **Date:** 2026-09-20 UTC
 **Viewport:** 390 × 844 CSS pixels, phone portrait
 **Status:** Final stable repository pack; VR-C04 is complete; native-device QA remains outstanding.
@@ -24,6 +24,22 @@
 
 Every indexed item is an actual PNG/JPG in this repository. No transient URL is
 the sole evidence.
+
+## VR2-C06 Premium Training Basecamp V2
+
+These 390 × 844 files use the real Expo Dashboard and the deterministic
+development-only Active Hillwalker profile mapped to Mont Blanc. The approved
+hero is `SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`, version 1. The
+fallback capture blocks approved-artwork and mountain-image requests to show the
+final gradient state.
+
+| File | State | Notes |
+|---|---|---|
+| `docs/visual-qa/premium-basecamp-v2/first-viewport.png` | Final populated first viewport | Approved Mont Blanc hero, mission, accessible week progress, next session, locked Readiness |
+| `docs/visual-qa/premium-basecamp-v2/locked-readiness.png` | Locked/non-Pro | Signature Readiness identity without an exposed or invented score |
+| `docs/visual-qa/premium-basecamp-v2/mid-readiness-progress.png` | Mid-scroll | Readiness, Elevation Bank, essential progress, warning and achievements |
+| `docs/visual-qa/premium-basecamp-v2/lower-supporting-content.png` | Lower scroll | Progress values, warning, achievements, AI Coach and quiet upgrade row |
+| `docs/visual-qa/premium-basecamp-v2/fallback-hero.png` | Final image fallback | Branded gradient; no broken image or layout shift |
 
 ## UI-C06 Premium Training Basecamp pilot
 

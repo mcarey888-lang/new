@@ -60,8 +60,8 @@ export function SharedTabBar() {
             >
               {isTrack ? (
                 <View style={styles.trackContainer}>
-                  <View style={[styles.trackWrap, { backgroundColor: activeColor, borderColor: trackBorderColor }]}>
-                    <Icon size={24} color={T.bg} />
+                  <View style={[styles.trackWrap, { backgroundColor: activeBg, borderColor: trackBorderColor }]}>
+                    <Icon size={20} color={activeColor} />
                   </View>
                   <Text style={[styles.trackLabel, { color: activeColor }]}>Track</Text>
                 </View>
@@ -108,22 +108,17 @@ const styles = StyleSheet.create({
     marginTop: -22,
   },
   trackWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-    borderWidth: 4,
+    borderWidth: 2,
   },
   trackLabel: {
     marginTop: 4,
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_500Medium",
   },
   iconWrap: {
     width: 44,

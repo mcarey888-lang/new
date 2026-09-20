@@ -11,6 +11,33 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### VR2-C01–VR2-C08 Premium Training Basecamp V2
+
+- The bounded editorial refinement is complete. The authoritative report is
+  `docs/PREMIUM_BASECAMP_V2_REPORT.md`.
+- The deterministic DEV-only Active Hillwalker goal now uses Mont Blanc with
+  existing values: 19 km, 2,800 m gain, 4,808 m altitude, Alpine. It consumes
+  approved unpublished `SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`,
+  exact current version 1.
+- The resolver requires development mode, profile `active_hillwalker`, and
+  exact goal `Mont Blanc`; negative tests prove other profiles and changed
+  goals do not fetch. Production remains fail-closed.
+- Basecamp now flows through unframed hero → flat mission with accessible week
+  progress and valid session-detail action → signature Readiness → flat
+  Elevation Bank/progress → quieter supporting rows.
+- Existing session navigation, week progress, AchievementToast, complete Pro
+  coach behavior, Readiness calculations/locking/baseline meaning, Elevation
+  Bank semantics/destination, and bottom-tab routes are preserved.
+- Five final 390×844 captures are indexed under
+  `docs/visual-qa/premium-basecamp-v2/`, including locked and final fallback
+  states.
+- Final verification: SummitReady **31 files / 195 tests**, TypeScript,
+  production iOS and Android Expo exports, `git diff --check`, and independent
+  review passed.
+- No generation/publication, production data/schema, deploy/release, broad
+  reskin, Stage 9, or protected Expedition Progress Mountain/cinematic change
+  occurred. Native-device release QA remains not run.
+
 ### UI-C01–UI-C09 Premium Training Basecamp pilot
 
 - The bounded approved-artwork → real Training Basecamp pilot is complete.

@@ -202,7 +202,7 @@ const beginnerProfile: DevProfile = {
   ],
 };
 
-// ── Profile 2: Beginner — Ben Nevis ──────────────────────────────────────────
+// ── Profile 2: Active hillwalker — Mont Blanc visual pilot ───────────────────
 
 const activeHillwalkerProfile: DevProfile = {
   id: "active_hillwalker",
@@ -212,12 +212,12 @@ const activeHillwalkerProfile: DevProfile = {
   color: "#60A5FA",
   storageData: (() => {
     const goal: SummitGoal = {
-      mountainName: "Ben Nevis",
+      mountainName: "Mont Blanc",
       summitDate: daysFromNow(112),
-      distance: 17,
-      elevationGain: 1345,
-      highestAltitude: 1345,
-      difficulty: "Hard",
+      distance: 19,
+      elevationGain: 2800,
+      highestAltitude: 4808,
+      difficulty: "Alpine",
       fitnessLevel: "Beginner",
       location: "Manchester",
       maxRadius: 25,

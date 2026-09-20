@@ -1,7 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { Activity, ChevronRight, Lock, Heart, Wind, Zap, Mountain, AlertCircle } from "lucide-react-native";
 import { T } from "@/constants/theme";
@@ -47,12 +46,6 @@ export function ReadinessV2Hero() {
   return (
     <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(80).duration(500)}>
       <View style={styles.card}>
-        <LinearGradient
-          colors={[statusColor + "0A", "transparent"]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        
         {/* Main Score Row */}
         <View style={styles.topRow}>
           <TouchableOpacity
@@ -71,11 +64,14 @@ export function ReadinessV2Hero() {
             
             {!isSubscribed && score > 40 ? (
               <>
-                <TouchableOpacity onPress={() => router.push("/paywall")} style={[styles.statusPill, { backgroundColor: T.greenDim }]} activeOpacity={0.8}>
-                  <Lock size={11} color={T.green} />
-                  <Text style={[styles.statusText, { color: T.green }]}>Pro feature</Text>
+                <Text style={styles.trackingMsg}>
+                  Endurance, elevation, consistency and mountain experience in one clear view.
+                </Text>
+                <TouchableOpacity onPress={() => router.push("/paywall")} style={styles.lockedStatus} activeOpacity={0.8}>
+                  <Lock size={11} color={T.basecampTextMuted} />
+                  <Text style={styles.lockedStatusText}>Unlock your analysis with Pro</Text>
+                  <ChevronRight size={12} color={T.basecampTextDim} />
                 </TouchableOpacity>
-                <Text style={styles.trackingMsg}>Score above 40 — upgrade to see your full readiness data</Text>
               </>
             ) : (
               <>
@@ -150,27 +146,35 @@ export function ReadinessV2Hero() {
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 18, borderRadius: 20, borderWidth: 1, borderColor: T.basecampBorder, backgroundColor: T.basecampSurface, overflow: "hidden", marginBottom: 16 },
-  topRow: { flexDirection: "row", padding: 18, gap: 20, alignItems: "center" },
+  card: { marginHorizontal: 0, marginBottom: 16 },
+  topRow: { flexDirection: "row", paddingVertical: 18, gap: 20, alignItems: "center" },
   metaCol: { flex: 1, gap: 6, justifyContent: "center" },
-  areYouReadyLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted, letterSpacing: 0.2 },
+  areYouReadyLabel: { fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold", color: T.basecampText },
   statusPill: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  trackingMsg: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextDim, lineHeight: 18 },
+  trackingMsg: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, lineHeight: 20 },
+  lockedStatus: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  lockedStatusText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted },
   confBadge: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
   confText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  divider: { height: 1, backgroundColor: T.basecampBorder, marginHorizontal: 18 },
-  dimsRow: { flexDirection: "row", justifyContent: "space-between", padding: 18 },
+  divider: { height: 1, backgroundColor: T.basecampBorder },
+  dimsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 18 },
   dimItem: { alignItems: "center", gap: 4, width: "22%" },
   dimIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   dimScore: { fontSize: 15, fontFamily: "Inter_700Bold" },
   dimLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, textAlign: "center" },
-  actionRow: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 18, marginBottom: 18, padding: 12, backgroundColor: "rgba(0,0,0,0.15)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.03)" },
+  actionRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18, padding: 12, backgroundColor: "rgba(0,0,0,0.15)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.03)" },
   actionTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted },
   actionDesc: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.basecampText, marginTop: 2 },
   impactBadge: { backgroundColor: T.greenDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: T.green + "40" },
   impactText: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.green },
-  detailBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, borderTopWidth: 1, borderTopColor: T.basecampBorder, backgroundColor: "rgba(255,255,255,0.02)" },
+  detailBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, borderTopWidth: 1, borderTopColor: T.basecampBorder },
   detailBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.basecampTextMuted },
 });

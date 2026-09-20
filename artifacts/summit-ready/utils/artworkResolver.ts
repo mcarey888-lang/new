@@ -6,11 +6,24 @@ export interface ArtworkResolution {
   url: string;
 }
 
-export async function resolveTrainingBasecampArtwork(): Promise<string | null> {
-  if (!__DEV__) return null;
+export interface TrainingBasecampArtworkContext {
+  devProfileId: string | null;
+  mountainName: string;
+}
+
+export async function resolveTrainingBasecampArtwork(
+  context: TrainingBasecampArtworkContext,
+): Promise<string | null> {
+  if (
+    !__DEV__
+    || context.devProfileId !== "active_hillwalker"
+    || context.mountainName.trim() !== "Mont Blanc"
+  ) {
+    return null;
+  }
   
   try {
-    const res = await fetch(`${API_BASE}/artwork/resolve/SR-TRAIN-BASECAMP-001/hero`);
+    const res = await fetch(`${API_BASE}/artwork/resolve/SR-MTN-MONTBLANC-001/hero`);
     if (!res.ok) return null;
     
     const data = await res.json() as ArtworkResolution;
