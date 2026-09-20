@@ -29,4 +29,14 @@ describe("offline challenge projection", () => {
     const revoked = reduceChallengeProjection(state, { type: "revoke_progress", ownerUserId: "owner-1", progressIdentity: progress.progressIdentity, correctionVersion: 1 });
     expect(revoked.progress[progress.progressIdentity].status).toBe("revoked");
   });
+
+  it("rejects nested owner mismatches", () => {
+    const state = createChallengeProjection("owner-1");
+    const result = reduceChallengeProjection(state, {
+      type: "apply_progress",
+      ownerUserId: "owner-1",
+      progress: { ...progress, ownerUserId: "owner-2" },
+    });
+    expect(result.progress).toEqual({});
+  });
 });

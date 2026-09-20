@@ -17,6 +17,7 @@ import { useScreenView } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, type ChallengeTemplate } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
+import { useStage8 } from "@/context/Stage8Context";
 
 function getIconForMetric(metric: string, color: string) {
   switch (metric) {
@@ -139,6 +140,7 @@ export default function ChallengesScreen() {
   const insets = useSafeAreaInsets();
   const { activeChallenges, getProgress } = useChallenges();
   const { isSubscribed } = useSubscription();
+  const { projection: stage8Projection, pendingEvidence, catalogue: stage8Catalogue } = useStage8();
 
   const active = useMemo(
     () => activeChallenges.filter(ac => !ac.completed),
@@ -153,6 +155,8 @@ export default function ChallengesScreen() {
     [activeChallenges]
   );
   const featured = available[0] ?? CHALLENGES[0];
+  const stage8Tracked = Object.values(stage8Projection.progress)
+    .filter((item) => item.status === "active" || item.status === "completed");
 
   const totalElev = useMemo(
     () => activeChallenges.flatMap(ac => ac.activities).reduce((s, a) => s + a.elevationGain, 0),
@@ -208,6 +212,26 @@ export default function ChallengesScreen() {
         <Animated.View entering={FadeInDown.delay(70).duration(600)} style={s.infoBox}>
           <Info size={14} color={T.textDim} />
           <Text style={s.infoText}>Local progress is available offline. Newly tracked activity consequences may remain pending until the activity is saved and qualified.</Text>
+          {(Object.keys(stage8Projection.progress).length > 0 || pendingEvidence.length > 0) && (
+            <View>
+              <Text style={s.infoText}>
+                Stage 8 projection · {stage8Tracked.length} tracked
+                {pendingEvidence.length > 0 ? ` · ${pendingEvidence.length} pending` : ""}
+              </Text>
+              {stage8Catalogue.map((definition) => {
+                const progress = Object.values(stage8Projection.progress)
+                  .find((item) => item.definitionId === definition.definitionId);
+                if (!progress) return null;
+                return (
+                  <Text key={definition.definitionId} style={s.infoText}>
+                  {progress.status === "active" || progress.status === "completed"
+                    ? `${definition.title} · ${progress.status} · ${progress.value}/${progress.target}`
+                    : `${definition.title} · ${progress.status}: ${progress.pendingReason ?? "Awaiting authoritative producer"}`}
+                  </Text>
+                );
+              })}
+            </View>
+          )}
         </Animated.View>
 
         {/* Active challenges */}

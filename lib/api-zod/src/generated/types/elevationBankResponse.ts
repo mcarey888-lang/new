@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ElevationBankCredit } from "./elevationBankCredit";
+import type { ElevationBankEvent } from "./elevationBankEvent";
 import type { ElevationBankResponseStatus } from "./elevationBankResponseStatus";
 
 export interface ElevationBankResponse {
@@ -15,4 +16,5 @@ export interface ElevationBankResponse {
   creditedActivities: number;
   everestEquivalent: number;
   recentCredits: ElevationBankCredit[];
+  recentEvents: ElevationBankEvent[];
 }

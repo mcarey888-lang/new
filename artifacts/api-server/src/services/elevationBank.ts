@@ -234,17 +234,7 @@ export async function getRecentElevationBankCredits(
   const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
   return db.transaction(async (client) => {
     const rows = await getPersonalElevationCreditEventsWithClient(client, ownerUserId);
-    const effectiveRows = rows
-      .filter((row) => row.status === "credited" || row.status === "corrected")
-      .filter((row, index, all) =>
-        !all.some((other) =>
-          other.activityId === row.activityId
-          && other.ruleVersion === row.ruleVersion
-          && other.revision > row.revision,
-        ),
-      )
-      .sort((a, b) => b.effectiveAt.getTime() - a.effectiveAt.getTime())
-      .slice(0, safeLimit);
+    const effectiveRows = selectLegacyElevationBankCredits(rows, safeLimit);
     const activityIds = effectiveRows.map((row) => row.activityId);
     const activities = activityIds.length === 0
       ? []
@@ -272,4 +262,71 @@ export async function getRecentElevationBankCredits(
       };
     });
   });
+}
+
+export function selectLegacyElevationBankCredits<
+  T extends { activityId: string; ruleVersion: string; revision: number; status: string; effectiveAt: Date },
+>(rows: readonly T[], limit: number): T[] {
+  const latest = new Map<string, T>();
+  for (const row of rows) {
+    const key = `${row.activityId}:${row.ruleVersion}`;
+    const current = latest.get(key);
+    if (!current || row.revision > current.revision) latest.set(key, row);
+  }
+  return [...latest.values()]
+    .filter((row) => row.status === "credited" || row.status === "corrected")
+    .sort((a, b) => b.effectiveAt.getTime() - a.effectiveAt.getTime())
+    .slice(0, limit);
+}
+
+/** Latest event per owner/activity/rule, including revoked events. */
+export async function getRecentElevationBankEvents(
+  ownerUserId: string,
+) {
+  assertStage2LedgerWritesAvailable();
+  return db.transaction(async (client) => {
+    const rows = await getPersonalElevationCreditEventsWithClient(client, ownerUserId);
+    const events = selectLatestElevationBankEvents(rows)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+        || b.revision - a.revision
+        || compareCodeUnits(b.ruleVersion, a.ruleVersion));
+    const activityIds = events.map((row) => row.activityId);
+    const activities = activityIds.length === 0 ? [] : await client
+      .select({ id: canonicalActivities.id, sourceId: canonicalActivities.sourceId, sourceType: canonicalActivities.sourceType })
+      .from(canonicalActivities)
+      .where(and(eq(canonicalActivities.ownerUserId, ownerUserId), inArray(canonicalActivities.id, activityIds)));
+    const activityById = new Map(activities.map((activity) => [activity.id, activity]));
+    return events.map((row) => {
+      const activity = activityById.get(row.activityId);
+      if (!activity) throw new Error("Elevation Bank activity identity could not be resolved");
+      return { ...row, sourceId: activity.sourceId, sourceType: activity.sourceType };
+    });
+  });
+}
+
+function compareCodeUnits(a: string, b: string): number {
+  const length = Math.min(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = a.charCodeAt(index) - b.charCodeAt(index);
+    if (difference) return difference;
+  }
+  return a.length - b.length;
+}
+
+export function selectLatestElevationBankEvents<
+  T extends { activityId: string; ruleVersion: string; revision: number; createdAt: Date },
+>(rows: readonly T[]): T[] {
+  const latest = new Map<string, T>();
+  for (const row of rows) {
+    const key = row.activityId;
+    const current = latest.get(key);
+    if (!current
+      || row.createdAt.getTime() > current.createdAt.getTime()
+      || (row.createdAt.getTime() === current.createdAt.getTime()
+        && (row.revision > current.revision
+          || (row.revision === current.revision && row.ruleVersion > current.ruleVersion)))) {
+      latest.set(key, row);
+    }
+  }
+  return [...latest.values()];
 }

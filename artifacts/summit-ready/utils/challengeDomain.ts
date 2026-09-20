@@ -58,6 +58,14 @@ export interface ChallengeWindowSpec {
   durationDays?: number;
 }
 
+/** A window whose boundaries and bucket identity were resolved explicitly. */
+export interface ResolvedChallengeWindow {
+  windowKey: string;
+  startInclusive: string;
+  endExclusive: string;
+  timezone: string;
+}
+
 export interface ChallengeEnrollmentPolicy {
   kind: "automatic" | "explicit" | "linked_context" | "none";
   maxActive?: number;
@@ -69,6 +77,9 @@ export interface QualificationPolicy {
   purpose: string;
   competitiveEligible: boolean;
   requireQualificationStatus?: EvidenceQualification;
+  requiredQualificationRuleVersion?: string;
+  competitivePurpose?: string;
+  requireCompetitiveStatus?: "eligible";
 }
 
 export interface ChallengeDefinition {
@@ -86,6 +97,7 @@ export interface ChallengeDefinition {
   eligibility: QualificationPolicy;
   targetReference?: CanonicalTargetReference;
   metadata: { safeMotivation: true; competitiveEligible: boolean };
+  availability?: { status: "available" | "pending" | "unavailable"; reason: string };
 }
 
 export interface ChallengeProgress {
@@ -102,6 +114,8 @@ export interface ChallengeProgress {
   pendingReason?: string;
   correctionVersion: number;
   progressIdentity: string;
+  /** Stable per-evidence contribution identities; evidenceIds are derivation metadata. */
+  contributionIdentities?: readonly string[];
 }
 
 export type AchievementCategory = "mountain" | "elevation" | "expedition" | "training" | "consistency" | "exploration";
@@ -118,6 +132,7 @@ export interface AchievementDefinition {
   qualification: QualificationPolicy;
   condition: AchievementCondition;
   repeatable: false;
+  availability?: { status: "available" | "pending" | "unavailable"; reason: string };
 }
 
 export type AchievementCondition =
@@ -140,6 +155,9 @@ export interface AchievementAward {
 
 export interface EvidenceReference {
   evidenceId: string;
+  /** Stable source lineage identity; revisions reuse this identity. */
+  lineageId?: string;
+  sourceCursor?: string;
   ownerUserId: string;
   sourceType: EvidenceSourceType;
   sourceId: string;
@@ -159,6 +177,10 @@ export interface EvidenceReference {
   expeditionStageCompleted?: boolean;
   expeditionCompleted?: boolean;
   trainingBlockCompleted?: boolean;
+  /** Explicit bucket proving this evidence belongs to a resolved evaluation window. */
+  windowBucketKey?: string;
+  competitivePurpose?: string;
+  competitiveStatus?: "eligible" | "ineligible" | "pending";
 }
 
 export type EvaluationReason =

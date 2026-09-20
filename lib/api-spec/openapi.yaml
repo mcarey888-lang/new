@@ -348,7 +348,7 @@ components:
 
     ElevationBankResponse:
       type: object
-      required: [status, lifetimeAscentM, periodAscentM, creditedActivities, everestEquivalent, recentCredits]
+      required: [status, lifetimeAscentM, periodAscentM, creditedActivities, everestEquivalent, recentCredits, recentEvents]
       properties:
         status:
           type: string
@@ -365,6 +365,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ElevationBankCredit"
+        recentEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElevationBankEvent"
+
+    ElevationBankEvent:
+      type: object
+      required: [activityId, sourceId, sourceType, revision, status, creditedAscentM, evidenceClass, ruleVersion, effectiveAt, eventAt]
+      properties:
+        activityId:
+          type: string
+        sourceId:
+          type: string
+        sourceType:
+          type: string
+        revision:
+          type: integer
+        status:
+          type: string
+          enum: [credited, corrected, revoked]
+        creditedAscentM:
+          type: integer
+        evidenceClass:
+          type: string
+        ruleVersion:
+          type: string
+        effectiveAt:
+          type: string
+          format: date-time
+        eventAt:
+          type: string
+          format: date-time
 
     ElevationBankUnavailable:
       type: object

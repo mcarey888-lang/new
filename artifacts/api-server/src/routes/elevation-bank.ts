@@ -6,6 +6,7 @@ import {
 import {
   getElevationBankSummary,
   getRecentElevationBankCredits,
+  getRecentElevationBankEvents,
 } from "../services/elevationBank";
 
 const router: IRouter = Router();
@@ -14,10 +15,14 @@ type ElevationSummary = Awaited<ReturnType<typeof getElevationBankSummary>>;
 export type ElevationBankCreditRow = Awaited<
   ReturnType<typeof getRecentElevationBankCredits>
 >[number];
+export type ElevationBankEventRow = Awaited<
+  ReturnType<typeof getRecentElevationBankEvents>
+>[number];
 
 export function serializeElevationBankResponse(
   summary: ElevationSummary,
   recent: readonly ElevationBankCreditRow[],
+  events: readonly ElevationBankEventRow[] = recent,
 ) {
   return {
     status: "available" as const,
@@ -36,6 +41,18 @@ export function serializeElevationBankResponse(
       ruleVersion: credit.ruleVersion,
       effectiveAt: credit.effectiveAt.toISOString(),
     })),
+    recentEvents: events.map((event) => ({
+      activityId: event.activityId,
+      sourceId: event.sourceId,
+      sourceType: event.sourceType,
+      revision: event.revision,
+      status: event.status === "revoked" ? "revoked" as const : event.status,
+      creditedAscentM: event.creditedAscentM,
+      evidenceClass: event.evidenceClass,
+      ruleVersion: event.ruleVersion,
+      effectiveAt: event.effectiveAt.toISOString(),
+      eventAt: event.createdAt.toISOString(),
+    })),
   };
 }
 
@@ -44,9 +61,10 @@ function currentMonthStart(now = new Date()): Date {
 }
 
 export type ElevationBankRouteDependencies = {
-  assertAvailable: () => void;
+  assertAvailable: typeof assertStage2LedgerWritesAvailable;
   getSummary: typeof getElevationBankSummary;
   getRecent: typeof getRecentElevationBankCredits;
+  getRecentEvents: typeof getRecentElevationBankEvents;
 };
 
 export function createElevationBankHandler(
@@ -54,6 +72,7 @@ export function createElevationBankHandler(
     assertAvailable: assertStage2LedgerWritesAvailable,
     getSummary: getElevationBankSummary,
     getRecent: getRecentElevationBankCredits,
+    getRecentEvents: getRecentElevationBankEvents,
   },
 ): RequestHandler {
   return async (req, res) => {
@@ -67,9 +86,12 @@ export function createElevationBankHandler(
       const summary = await dependencies.getSummary(userId, {
         from: currentMonthStart(),
       });
-      const recent = await dependencies.getRecent(userId, 12);
+      const [recent, events] = await Promise.all([
+        dependencies.getRecent(userId, 12),
+        dependencies.getRecentEvents(userId),
+      ]);
 
-      return res.json(serializeElevationBankResponse(summary, recent));
+      return res.json(serializeElevationBankResponse(summary, recent, events));
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (

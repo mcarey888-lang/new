@@ -21,6 +21,8 @@ export * from "./canonicalHistoryResponseStatus";
 export * from "./challengeArtworkStatus";
 export * from "./elevationBankCredit";
 export * from "./elevationBankCreditStatus";
+export * from "./elevationBankEvent";
+export * from "./elevationBankEventStatus";
 export * from "./elevationBankResponse";
 export * from "./elevationBankResponseStatus";
 export * from "./elevationBankUnavailable";

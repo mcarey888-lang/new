@@ -61,6 +61,18 @@ describe("Elevation Bank API response contract", () => {
         ruleVersion: "elevation-bank-v1",
         effectiveAt: "2026-09-20T10:00:00.000Z",
       }],
+      recentEvents: [{
+        activityId: "activity-a",
+        sourceId: "source-activity-a",
+        sourceType: "explore_hike",
+        revision: 2,
+        status: "corrected",
+        creditedAscentM: 640,
+        evidenceClass: "quality_accepted",
+        ruleVersion: "elevation-bank-v1",
+        effectiveAt: "2026-09-20T10:00:00.000Z",
+        eventAt: "2026-09-20T10:00:00.000Z",
+      }],
     });
     expect(response.recentCredits).not.toContainEqual(
       expect.objectContaining({ activityId: "activity-other" }),
@@ -92,16 +104,19 @@ describe("GET /elevation-bank handler boundary", () => {
   let dependencies: ElevationBankRouteDependencies;
   let summaryRead: ReturnType<typeof vi.fn>;
   let recentRead: ReturnType<typeof vi.fn>;
+  let eventsRead: ReturnType<typeof vi.fn>;
   let assertAvailable: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     summaryRead = vi.fn().mockResolvedValue(summary);
     recentRead = vi.fn().mockResolvedValue([]);
+    eventsRead = vi.fn().mockResolvedValue([]);
     assertAvailable = vi.fn();
     dependencies = {
-      assertAvailable,
-      getSummary: summaryRead,
-      getRecent: recentRead,
+      assertAvailable: assertAvailable as unknown as ElevationBankRouteDependencies["assertAvailable"],
+      getSummary: summaryRead as unknown as ElevationBankRouteDependencies["getSummary"],
+      getRecent: recentRead as unknown as ElevationBankRouteDependencies["getRecent"],
+      getRecentEvents: eventsRead as unknown as ElevationBankRouteDependencies["getRecentEvents"],
     };
     vi.mocked(getAuth).mockReturnValue({ userId: "clerk-owner-a" } as never);
   });

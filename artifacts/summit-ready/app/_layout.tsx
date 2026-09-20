@@ -21,6 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RootErrorFallback } from "@/components/RootErrorFallback";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
+import { Stage8Provider } from "@/context/Stage8Context";
 import { SubscriptionProvider } from "@/lib/revenuecat";
 import { logAppOpen, logFirstOpenForReddit } from "@/lib/analytics";
 import { clerkTokenCache } from "@/utils/clerkTokenCache";
@@ -257,7 +258,9 @@ function RootApp() {
                     <UserSwitchGuard>
                       <AppProvider>
                         <ChallengesProvider>
-                          <RootLayoutNav />
+                          <Stage8Provider>
+                            <RootLayoutNav />
+                          </Stage8Provider>
                         </ChallengesProvider>
                       </AppProvider>
                     </UserSwitchGuard>

@@ -28,6 +28,7 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { Mountain, Target, Award, CalendarDays } from "lucide-react-native";
+import { useStage8 } from "@/context/Stage8Context";
 
 function getIconForMetric(metric: string, color: string, size = 18) {
   switch (metric) {
@@ -103,6 +104,11 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
+  const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue } = useStage8();
+  const stage8Tracked = Object.values(stage8Projection.progress)
+    .filter((item) => item.status === "active" || item.status === "completed");
+  const stage8ConfirmedAwards = Object.values(stage8Projection.awards)
+    .filter((award) => award.status === "confirmed");
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -615,6 +621,28 @@ export default function AccountScreen() {
                 );
               })}
             </View>
+          </Animated.View>
+        )}
+
+        {/* Active Challenges */}
+        {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
+          <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
+            <Text style={styles.sectionLabel}>STAGE 8 QUALIFICATION</Text>
+            <Text style={styles.readySubtext}>
+              {stage8ConfirmedAwards.length} confirmed award{stage8ConfirmedAwards.length === 1 ? "" : "s"} · {stage8Tracked.length} tracked definition{stage8Tracked.length === 1 ? "" : "s"}
+              {stage8Pending.length > 0 ? ` · ${stage8Pending.length} pending` : ""}
+            </Text>
+            {stage8Catalogue.map((definition) => {
+              const progress = Object.values(stage8Projection.progress)
+                .find((item) => item.definitionId === definition.definitionId);
+              return progress ? (
+                <Text key={definition.definitionId} style={styles.readySubtext}>
+                  {progress.status === "active" || progress.status === "completed"
+                    ? `${definition.title} · ${progress.status} · ${progress.value}/${progress.target}`
+                    : `${definition.title} · ${progress.status}: ${progress.pendingReason ?? "Awaiting authoritative producer"}`}
+                </Text>
+              ) : null;
+            })}
           </Animated.View>
         )}
 

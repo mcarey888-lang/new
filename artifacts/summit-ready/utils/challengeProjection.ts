@@ -22,11 +22,13 @@ export function reduceChallengeProjection(
 ): ChallengeProjection {
   if (action.ownerUserId !== state.ownerUserId) return state;
   if (action.type === "apply_progress") {
+    if (action.progress.ownerUserId !== state.ownerUserId) return state;
     const current = state.progress[action.progress.progressIdentity];
     if (current && current.correctionVersion > action.progress.correctionVersion) return state;
     return { ...state, progress: { ...state.progress, [action.progress.progressIdentity]: action.progress } };
   }
   if (action.type === "apply_award") {
+    if (action.award.ownerUserId !== state.ownerUserId) return state;
     const current = state.awards[action.award.awardIdentity];
     if (current && current.correctionVersion > action.award.correctionVersion) return state;
     return { ...state, awards: { ...state.awards, [action.award.awardIdentity]: action.award } };

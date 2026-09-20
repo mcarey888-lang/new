@@ -6,12 +6,14 @@ const personalGps: ChallengeDefinition["eligibility"] = {
   purpose: "eligible_real_outdoor",
   competitiveEligible: true,
   requireQualificationStatus: "eligible",
+  requiredQualificationRuleVersion: "canonical-activity-v1",
 };
 const personalElevation: ChallengeDefinition["eligibility"] = {
   allowedEvidenceClasses: ["trusted_gps_outdoor"],
   purpose: "eligible_real_elevation",
   competitiveEligible: false,
   requireQualificationStatus: "eligible",
+  requiredQualificationRuleVersion: "elevation-bank-v1",
 };
 
 export const STAGE_8_CHALLENGES: readonly ChallengeDefinition[] = [
@@ -39,6 +41,7 @@ export const STAGE_8_CHALLENGES: readonly ChallengeDefinition[] = [
     window: { kind: "lifetime", timezone: "UTC" },
     enrollment: { kind: "automatic", enrollmentRequired: false },
     eligibility: personalGps,
+    availability: { status: "unavailable", reason: "Authoritative distance producer unavailable" },
     metadata: { safeMotivation: true, competitiveEligible: true },
   },
   {
@@ -52,6 +55,7 @@ export const STAGE_8_CHALLENGES: readonly ChallengeDefinition[] = [
     window: { kind: "rolling_days", timezone: "Europe/London", durationDays: 28 },
     enrollment: { kind: "automatic", enrollmentRequired: false },
     eligibility: personalGps,
+    availability: { status: "unavailable", reason: "Authoritative consistency producer unavailable" },
     metadata: { safeMotivation: true, competitiveEligible: false },
   },
   {
@@ -64,7 +68,8 @@ export const STAGE_8_CHALLENGES: readonly ChallengeDefinition[] = [
     unit: "stages", target: 1, scope: "personal",
     window: { kind: "expedition_run", timezone: "UTC" },
     enrollment: { kind: "linked_context", enrollmentRequired: true },
-    eligibility: { allowedEvidenceClasses: ["simulated_expedition"], purpose: "expedition_only", competitiveEligible: false },
+    eligibility: { allowedEvidenceClasses: ["simulated_expedition"], purpose: "expedition_only", competitiveEligible: false, requiredQualificationRuleVersion: "expedition-consequence-v1" },
+    availability: { status: "unavailable", reason: "Authoritative expedition consequence producer unavailable" },
     metadata: { safeMotivation: true, competitiveEligible: false },
   },
 ];
@@ -76,7 +81,8 @@ export const STAGE_8_ACHIEVEMENTS: readonly AchievementDefinition[] = [
     title: "First Tracked Mountain", description: "Complete a legitimate route with a canonical mountain reference.",
     category: "mountain", tier: "bronze", repeatable: false,
     condition: { kind: "first_canonical_mountain", targetCount: 1 },
-    qualification: { allowedEvidenceClasses: ["trusted_gps_outdoor"], purpose: "canonical", competitiveEligible: false, requireQualificationStatus: "eligible" },
+    qualification: { allowedEvidenceClasses: ["trusted_gps_outdoor"], purpose: "canonical", competitiveEligible: false, requireQualificationStatus: "eligible", requiredQualificationRuleVersion: "canonical-qualification-v1" },
+    availability: { status: "unavailable", reason: "Authoritative canonical mountain producer unavailable" },
   },
   {
     achievementId: "first-1000m-elevation",
@@ -92,7 +98,8 @@ export const STAGE_8_ACHIEVEMENTS: readonly AchievementDefinition[] = [
     title: "First Expedition Stage", description: "Complete a simulated Expedition stage.",
     category: "expedition", tier: "bronze", repeatable: false,
     condition: { kind: "first_expedition_stage", targetCount: 1 },
-    qualification: { allowedEvidenceClasses: ["simulated_expedition"], purpose: "expedition_only", competitiveEligible: false },
+    qualification: { allowedEvidenceClasses: ["simulated_expedition"], purpose: "expedition_only", competitiveEligible: false, requiredQualificationRuleVersion: "expedition-consequence-v1" },
+    availability: { status: "unavailable", reason: "Authoritative expedition consequence producer unavailable" },
   },
   {
     achievementId: "training-block-complete",
@@ -100,6 +107,7 @@ export const STAGE_8_ACHIEVEMENTS: readonly AchievementDefinition[] = [
     title: "Training Block Complete", description: "Finish an approved training block.",
     category: "training", tier: "silver", repeatable: false,
     condition: { kind: "training_block_complete", targetCount: 1 },
-    qualification: { allowedEvidenceClasses: ["trusted_gps_outdoor", "indoor"], purpose: "training", competitiveEligible: false },
+    qualification: { allowedEvidenceClasses: ["trusted_gps_outdoor", "indoor"], purpose: "training", competitiveEligible: false, requiredQualificationRuleVersion: "training-v1" },
+    availability: { status: "unavailable", reason: "Authoritative training producer unavailable" },
   },
 ];

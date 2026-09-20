@@ -135,6 +135,20 @@ export const GetElevationBankResponse = zod.object({
       effectiveAt: zod.coerce.date(),
     }),
   ),
+  recentEvents: zod.array(
+    zod.object({
+      activityId: zod.string(),
+      sourceId: zod.string(),
+      sourceType: zod.string(),
+      revision: zod.number(),
+      status: zod.enum(["credited", "corrected", "revoked"]),
+      creditedAscentM: zod.number(),
+      evidenceClass: zod.string(),
+      ruleVersion: zod.string(),
+      effectiveAt: zod.coerce.date(),
+      eventAt: zod.coerce.date(),
+    }),
+  ),
 });
 
 /**

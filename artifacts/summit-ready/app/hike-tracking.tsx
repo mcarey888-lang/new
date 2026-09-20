@@ -81,6 +81,8 @@ import {
 } from "@/utils/pendingHikeSelection";
 import { resolveTrainingSessionLocation } from "@/utils/trackingLaunchContext";
 import { buildActivityCompletionPresentation } from "@/utils/activityCompletionPresentation";
+import { useStage8 } from "@/context/Stage8Context";
+import { findElevationBankCreditForActivity } from "@/utils/elevationBankMatching";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 import { applyExpeditionStageContribution } from "@/utils/expeditionContribution";
 
@@ -248,6 +250,7 @@ export default function HikeTrackingScreen() {
   const { getToken, userId } = useAuth();
   const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
           summitGoal, patchExpedition, activeExpeditionId, expeditions } = useApp();
+  const { lastConsequence: stage8LastConsequence } = useStage8();
   const elevationBankQuery = useGetElevationBank({
     query: {
       enabled: Boolean(userId),
@@ -1387,6 +1390,17 @@ export default function HikeTrackingScreen() {
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
        addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline]);
 
+  const stage8Credit = elevationBankQuery.data?.status === "available"
+    ? findElevationBankCreditForActivity(elevationBankQuery.data.recentCredits, routeIdRef.current)
+    : undefined;
+  const stage8EvidenceId = stage8Credit
+    ? `elevation-bank:${stage8Credit.activityId}`
+    : null;
+  const stage8CurrentConsequence = stage8EvidenceId &&
+    stage8LastConsequence?.evidenceId === stage8EvidenceId &&
+    stage8LastConsequence.status === "confirmed"
+    ? stage8LastConsequence
+    : null;
   const completionPresentation = buildActivityCompletionPresentation({
     activityId: routeIdRef.current,
     title: routeName,
@@ -1403,7 +1417,13 @@ export default function HikeTrackingScreen() {
       completionExpedition ?? trackedExpedition,
       isOffline ? "offline" : "ready",
     ),
-    challengeAchievement: isOffline
+    challengeAchievement: stage8CurrentConsequence
+      ? {
+          status: "confirmed",
+          challengeTitles: stage8CurrentConsequence.challengeTitles,
+          achievementTitles: stage8CurrentConsequence.achievementTitles,
+        }
+      : isOffline
       ? { status: "pending", reason: "Saved locally; challenge and achievement qualification will wait for sync." }
       : { status: "unavailable", reason: "Challenge and achievement qualification is not confirmed yet." },
   });

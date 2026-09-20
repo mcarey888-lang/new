@@ -2,7 +2,7 @@
 
 **Command:** O8-C03  
 **Model version:** `challenge-domain-v1`  
-**Status:** Design-only foundation; no code, schema, or production activation
+**Status:** Additive local projection implementation; legacy catalogue/state remain authoritative for compatibility
 
 ## Purpose and invariants
 
@@ -18,7 +18,7 @@ Permanent invariants:
 
 1. One physical activity is stored once.
 2. A single activity may progress many definitions, but never twice for the
-   same definition/window/rule/evidence identity.
+   same definition/window/rule aggregate identity; contribution lineage is recorded separately.
 3. Training Readiness, Elevation Bank, Expedition simulated progress, real
    summit authority, and challenge progress remain separate outputs.
 4. SDE mountain/route IDs remain stable references, never display-name
@@ -67,6 +67,7 @@ interface ChallengeDefinition {
   eligibility: QualificationPolicy;
   targetReference?: CanonicalTargetReference;
   metadata: { safeMotivation: true; competitiveEligible: boolean };
+  availability?: { status: "available" | "pending" | "unavailable"; reason: string };
 }
 
 interface ChallengeWindowSpec {
@@ -97,6 +98,8 @@ interface ChallengeProgress {
   evaluationVersion: RuleVersion;
   pendingReason?: string;
   correctionVersion: number;
+  progressIdentity: string; // owner:definition:domainVersion:ruleVersion:windowKey
+  contributionIdentities?: readonly string[]; // stable per-lineage derivation metadata
 }
 
 interface AchievementDefinition {
@@ -110,10 +113,11 @@ interface AchievementDefinition {
   tier: "bronze" | "silver" | "gold";
   qualification: QualificationPolicy;
   repeatable: false;
+  availability?: { status: "available" | "pending" | "unavailable"; reason: string };
 }
 
 interface AchievementAward {
-  awardIdentity: string;
+  awardIdentity: string; // owner:achievement:domainVersion:ruleVersion
   ownerUserId: string;
   achievementId: string;
   achievementVersion: DomainVersion;
@@ -125,7 +129,8 @@ interface AchievementAward {
 }
 
 interface EvidenceReference {
-  evidenceId: string;         // canonical activity/evidence identity
+  evidenceId: string;         // stable source reference used for derivation metadata
+  lineageId?: string;         // stable identity across corrections/revisions
   ownerUserId: string;
   sourceType: "canonical_activity" | "training_session"
     | "expedition_consequence" | "canonical_route_evidence"
@@ -140,10 +145,30 @@ interface EvidenceReference {
     | "revoked";
   qualificationPurpose?: string;
   qualificationRuleVersion?: RuleVersion;
+  sourceCursor?: string;       // authoritative eventAt ordering cursor
   sdeTargetId?: string;
   provenanceHash?: string;
+  correctionVersion?: number;
+  windowBucketKey?: string;   // trusted explicit local day/week/window bucket
 }
 ```
+
+Corrections replace the prior reference with the same `lineageId`; revisions never
+coexist in an evaluation set. A revoked/deleted latest revision causes dependent
+progress or awards to be recomputed and deterministically revoked/superseded.
+When competing records for one lineage arrive, authority is normative and
+order-independent: (1) higher `correctionVersion`, (2) higher `sourceCursor`
+(`eventAt`), (3) revoked over non-revoked, then (4) lexical canonical
+serialization as a deterministic tie-break. Exact repeats are idempotent.
+For Elevation Bank activity lineages, `correctionVersion` is the safe eventAt
+epoch-millisecond value, not the ledger revision (which is scoped to
+activity+rule). Its `sourceCursor` is `eventAt|zero-padded revision|ruleVersion`;
+this preserves server ordering when old and new rules overlap. String ordering
+uses UTF-16 code units, never locale collation.
+Confirmed awards retain their original `earnedAt` when a later recomputation still
+qualifies. Progress uses aggregate `progressIdentity`; accepted contributions use
+stable lineage-derived `contributionIdentities`. Evidence IDs are explanatory
+inputs, never award or progress identity.
 
 `CanonicalTargetReference` accepts only the existing stable SDE forms
 `sde:mountain:<id>` and `sde:route:<identity>@<version>`. It never accepts a
@@ -154,6 +179,9 @@ display name, slug, app serial ID, or user GPS trace as canonical identity.
 Qualification is evaluated before presentation. Every definition declares
 required evidence classes, purpose, minimum quality, and whether competitive
 eligibility is even possible.
+Policies may pin `requiredQualificationRuleVersion`; evidence must match its
+purpose and rule exactly. Competitive policies may additionally specify
+`competitivePurpose` and required `competitiveStatus`.
 
 | Evidence class | Personal rules | Competitive candidate rules |
 | --- | --- | --- |
@@ -182,6 +210,7 @@ Window resolution is explicit and stable:
 - monthly challenges use a supplied IANA timezone and a calendar-month
   `[startInclusive, endExclusive)` interval;
 - rolling challenges use an explicit anchor instant and duration;
+  a duration of 28 means exactly `[anchor - 28*24h, anchor)`;
 - lifetime challenges use the owner’s accepted evidence history with no hidden
   current-time lookup;
 - Expedition windows use the immutable expedition run identity and stage
@@ -193,6 +222,8 @@ Evidence exactly at `startInclusive` is included; evidence exactly at
 authoritative occurrence timestamp, not upload/retry time. If the timestamp or
 timezone cannot be trusted, progress is `pending` or `unavailable`, not
 invented.
+Consistency definitions require an explicit trusted timezone-local day/week
+bucket on each evidence reference; UTC date slicing is not a substitute.
 
 ## Required challenge families
 
@@ -236,8 +267,8 @@ The initial catalogue should be sparse and evidence-aware:
   explicitly labelled as readiness rather than summit attainment.
 
 Existing local achievement IDs may be mapped as presentation aliases, but a
-legacy ID is not sufficient award identity until it has an evidence reference
-and rule version.
+legacy IDs are presentation aliases; award identity remains the stable
+owner/achievement/version/rule aggregate.
 
 ## Idempotency identities
 
@@ -245,18 +276,21 @@ Each consequence is independently idempotent:
 
 ```text
 progressIdentity =
-  ownerUserId : definitionId : definitionVersion : windowKey : evidenceId
+  ownerUserId : definitionId : definitionVersion : ruleVersion : windowKey
 
 awardIdentity =
-  ownerUserId : achievementId : achievementVersion : evidenceSetHash
+  ownerUserId : achievementId : achievementVersion : ruleVersion
+
+contributionIdentity =
+  ownerUserId : definitionId : definitionVersion : ruleVersion : windowKey : lineageId
 
 enrollmentIdentity =
   ownerUserId : definitionId : definitionVersion : enrollmentWindowKey
 ```
 
-The evaluator must canonicalize and sort evidence IDs before calculating an
-evidence-set hash. Replaying the same activity, uploading it again, restarting
-the app, or retrying a sync produces the same identity. Different challenge
+Evidence IDs are sorted derivation metadata, not identity inputs. Replaying the
+same activity, uploading it again, restarting the app, or retrying a sync
+produces the same aggregate/contribution identities. Different challenge
 definitions may therefore each receive one valid consequence from one
 activity, while duplicate processing of one definition is ignored.
 
@@ -276,8 +310,8 @@ Progress and awards are derived consequences, not irreversible facts.
   supersession metadata rather than mutating historical evaluation.
 - A pending consequence may later become confirmed, but an unavailable result
   must not be treated as zero evidence.
-- Correction/revocation processing must use the same stable evidence identity
-  and owner scope as initial evaluation.
+- Correction/revocation processing must use the same stable lineage and owner
+  scope as initial evaluation.
 
 The model does not authorize a production backfill or retroactive rewrite.
 Those operations require a separate reviewed rollout.

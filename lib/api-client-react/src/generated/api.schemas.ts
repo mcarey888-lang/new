@@ -112,6 +112,28 @@ export const ElevationBankResponseStatus = {
   available: "available",
 } as const;
 
+export type ElevationBankEventStatus =
+  (typeof ElevationBankEventStatus)[keyof typeof ElevationBankEventStatus];
+
+export const ElevationBankEventStatus = {
+  credited: "credited",
+  corrected: "corrected",
+  revoked: "revoked",
+} as const;
+
+export interface ElevationBankEvent {
+  activityId: string;
+  sourceId: string;
+  sourceType: string;
+  revision: number;
+  status: ElevationBankEventStatus;
+  creditedAscentM: number;
+  evidenceClass: string;
+  ruleVersion: string;
+  effectiveAt: string;
+  eventAt: string;
+}
+
 export interface ElevationBankResponse {
   status: ElevationBankResponseStatus;
   lifetimeAscentM: number;
@@ -119,6 +141,7 @@ export interface ElevationBankResponse {
   creditedActivities: number;
   everestEquivalent: number;
   recentCredits: ElevationBankCredit[];
+  recentEvents: ElevationBankEvent[];
 }
 
 export type ElevationBankUnavailableStatus =

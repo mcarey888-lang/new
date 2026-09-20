@@ -31,6 +31,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { useStage8 } from "@/context/Stage8Context";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { useScreenView } from "@/lib/analytics";
@@ -69,6 +70,11 @@ export default function ExpeditionProfileScreen() {
   const {
     sessions, completedGoals, summitGoal, unlockedAchievements,
   } = useApp();
+  const { projection: stage8Projection, pendingEvidence: stage8Pending } = useStage8();
+  const stage8Tracked = Object.values(stage8Projection.progress)
+    .filter((item) => item.status === "active" || item.status === "completed").length;
+  const stage8ConfirmedAwards = Object.values(stage8Projection.awards)
+    .filter((award) => award.status === "confirmed").length;
 
   const [devModalVisible, setDevModalVisible] = useState(false);
   const tapCount = useRef(0);
@@ -162,6 +168,10 @@ export default function ExpeditionProfileScreen() {
           <View style={{ flex: 1 }}>
             <Text style={s.displayName}>{displayName}</Text>
             <Text style={s.displayTitle}>Adventure Seeker</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 4 }}>
+              Stage 8: {stage8Tracked} tracked · {stage8ConfirmedAwards} confirmed
+              {stage8Pending.length > 0 ? ` · ${stage8Pending.length} pending` : ""}
+            </Text>
             {isSubscribed && (
               <View style={s.proMemberRow}>
                 <Star size={10} color="#FFD700" fill="#FFD700" />
