@@ -1,239 +1,154 @@
-# SummitReady Media Studio + Premium Visual/Motion System
+# SummitReady Flagship Artwork Generation — Batch 01
 
-**Command:** MV-C01
-**Authority:** ChatGPT lead product/design/architecture
-**Branch:** `virtual-expeditions-mode`
-**Accepted baseline:** `ef1deafcad0773a2692da6b3daaf12e9992c6baf`
-**Stage 9:** PAUSED / NOT AUTHORIZED
+**Command:** ART-C01
+**Authority:** ChatGPT lead product/design/art direction
+**Baseline:** `f69e358e14dae28c253ce5f519e91477f3a78321`
+**Purpose:** Generate individual production-quality masters through the EXISTING SummitReady Artwork Admin / artwork API / ImageProvider pipeline.
+**Do not publish or auto-approve. Do not start Stage 9.**
 
-## Product target
+## Core rule
 
-Move the functioning SummitReady product toward the approved premium concept: cinematic authentic mountain imagery, dark natural surfaces, confident typography, restrained blue/green accents, generous space, fewer nested cards, strong information hierarchy, and purposeful motion.
+Before generating an asset, know exactly where it will be used. Every image is an individual master — NEVER a collage, contact sheet, mood board, UI mockup, poster or image containing multiple panels. No baked-in text, labels, logos, UI, route lines or badges.
 
-This is a real-product design system, not a screenshot recreation. Existing functionality, accessibility, offline behaviour, evidence authority and protected systems take precedence over decorative fidelity.
+Use the existing OpenAI image provider pipeline and object storage/version metadata. Generated images must remain candidates until reviewed/approved.
 
-## MV-C01 — Audit existing media architecture FIRST
+## Art direction lock
 
-Audit, do not replace:
-- `artifacts/artwork-admin/`
-- `artifacts/api-server/src/routes/artwork.ts`
-- `artifacts/api-server/src/services/artwork/`
-- mountain-image API/services and documented remote-image behaviour
-- `artifacts/atlas-media-studio/`
-- `artifacts/summit-ready/assets/`
-- landing/mockup image assets where potentially reusable
-- DB fields/tables used by artwork
-- storage provider/object paths, prompt/provider/cost/version metadata
-- approval/rejection/bulk-generation workflow
-- actual app consumers of artwork/images
+Photographic premium outdoor editorial. Believable real geography. Natural weather and terrain. Authentic technical clothing/equipment where people appear. Restrained saturation. Deep natural shadows, atmospheric depth, dawn/dusk/golden-hour only when geographically plausible. Premium Berghaus/Arc'teryx/Patagonia editorial character without copying a specific campaign.
 
-Document what is canonical, duplicated, experimental, production-coupled, safe to reuse, and obsolete. Do not create a third parallel media system.
+Avoid: fantasy peaks, impossible ridgelines, oversaturated HDR, generic AI gloss, excessive lens flare, duplicated hikers, malformed equipment, unsafe/impossible climbing positions, fake signage, text, watermarks.
 
-Create `docs/SUMMITREADY_MEDIA_ARCHITECTURE_AUDIT.md`.
+All masters: 1536×1024 landscape 3:2 using the current provider unless the provider contract has changed. Compose for downstream crops. Preserve a clear focal subject and useful negative space. Do not crop summit tips, faces, hands or essential route terrain.
 
-## MV-C02 — Design the consolidated SummitReady Media Studio
+## ART-C01 — Make prompt builder placement-aware
 
-Produce an implementation architecture that evolves the strongest existing system into one central internal studio.
+Add a safe additive prompt mode/metadata input for asset purpose/placement. Preserve existing challenge generation compatibility. It must be able to describe:
+- subject
+- actual intended app placement
+- focal location
+- negative-space location
+- crop requirements
+- people/no-people
+- mood/weather
+- geographic identity requirements
+- exclusions
 
-Required asset families:
-1. Mountains
-2. Expeditions
-3. Training
-4. Routes / Mountain DNA
-5. Rank
-6. Achievements
-7. Challenges
-8. Onboarding / App UI
-9. Atmospheric/background assets
-10. Marketing / store assets where appropriate
-11. Motion assets/specifications
+Do not introduce production schema/migrations. For this batch, generation manifest/metadata may be stored in docs/dev tooling or existing candidate metadata.
 
-Required lifecycle:
-**Generate/import → Review → Refine/regenerate → Approve → Derive variants → Optimise → Publish → Consume**
+## ART-C02 — Generate Batch 01 individually
 
-Design a master/variant model so one approved visual identity can create controlled derivatives rather than unrelated imagery per screen.
+Generate ONE candidate master for each item below through the existing SummitReady generation engine. Titles below are internal asset titles, not text to render in images.
 
-Metadata should support where appropriate:
-- stable asset ID
-- family/subtype
-- subject/canonical entity reference
-- master/derived relationship
-- prompt + prompt/style version
-- provider/model + generation cost
-- dimensions/aspect ratio
-- intended placements
-- focal point
-- safe-area metadata
-- crop/fit policy
-- dark/light overlay suitability
-- provenance/licence for imported imagery
-- status: draft/generated/review/approved/published/retired
-- created/approved timestamps
-- mobile optimisation state
-- motion type/duration/trigger/reduced-motion fallback where relevant
+### SR-MTN-MONTBLANC-001 — “Mont Blanc — Alpine Dawn”
+**Use:** Mountain/Expedition structural hero; later derivatives for Explore card and expedition discovery.
+**Composition:** recognisable Mont Blanc massif as the unquestionable subject, viewed from a credible Chamonix-side alpine perspective; summit in upper-middle/right third; broad darker foreground/lower third for UI gradient; atmospheric dawn, cold whites and restrained warm first light; no people.
+**Crop safety:** massif remains recognisable in 16:9 hero and 4:5/3:2 card crops; generous sky and lower foreground.
+**Prompt intent:** premium photographic editorial mountain landscape, realistic snow/glacier texture, geographically credible, natural optics.
+**Exclude:** Matterhorn-like pyramidal silhouette, impossible glacier forms, climbers, buildings dominating frame, text.
 
-Do not implement production schema changes in this gate. If persistent schema is needed, propose it as a later AMBER/RED gate.
+### SR-MTN-MATTERHORN-001 — “Matterhorn — First Light”
+**Use:** Mountain detail/Explore hero and Expedition discovery card.
+**Composition:** recognisable Matterhorn from a credible Zermatt-area perspective; peak around right third, clear asymmetric silhouette; darker alpine foreground with restrained warm first light; no people.
+**Crop safety:** full summit retained in wide and card crops; left-side negative space useful for overlay.
+**Exclude:** generic symmetric fantasy pyramid, Mont Blanc morphology, text/buildings dominating.
 
-Create `docs/SUMMITREADY_MEDIA_STUDIO_SPEC.md`.
+### SR-MTN-KILIMANJARO-001 — “Kilimanjaro — Above the Cloud”
+**Use:** Mountain detail/Expedition hero and discovery card.
+**Composition:** broad recognisable Kibo/Uhuru massif, East African highland foreground, sea of cloud, restrained sunrise light; no people; spacious scale.
+**Crop safety:** summit and broad volcanic profile survive 16:9 and card crops; darker lower foreground for text gradient.
+**Exclude:** sharp Alpine peak, jungle at summit, excessive snow, fantasy volcano plume, text.
 
-## MV-C03 — SummitReady Art Direction System
+### SR-EXP-EBC-001 — “Everest Base Camp — The Approach”
+**Use:** Everest Base Camp expedition hero/Basecamp progress context and discovery card.
+**Composition:** trekking approach in Khumbu environment; Everest-region scale and glaciated terrain; 2–3 small authentic trekkers moving away from camera to establish human scale; mountain landscape remains dominant; cold morning atmosphere.
+**Crop safety:** hikers near lower-centre/right but not edge; major mountain features survive wide/card crop; left/lower negative space.
+**Exclude:** summit-climbing scene, crowds, tents dominating, flags/text, impossible Everest view.
 
-Turn the existing useful prompt-builder principles into a documented, reusable art-direction system.
+### SR-TRAIN-BASECAMP-001 — “Training Basecamp — Build Today”
+**Use:** Training Basecamp structural hero behind the user’s active mountain goal UI.
+**Composition:** authentic UK hill/mountain training scene at dawn; single hiker seen from behind ascending a steep rocky path/ridge, practical daypack and trekking clothing, believable Lake District/Snowdonia-style terrain; destination ridge/peak ahead; determined rather than heroic pose.
+**Crop safety:** hiker on right third; left and lower-left negative space for Training objective/metrics; horizon high enough to support portrait/wide derivatives.
+**Exclude:** Alps, ropes/ice axe, extreme mountaineering, gym scene, text, staged influencer pose.
 
-Target:
-- premium outdoor editorial/cinematic photography;
-- believable geography and terrain;
-- authentic hikers/equipment where people appear;
-- natural colour, atmospheric depth, controlled dawn/dusk/golden-hour use;
-- dark-image compatibility for SummitReady UI;
-- deliberate negative space and focal placement;
-- no baked-in UI text/logos unless the asset specifically requires typography;
-- avoid fantasy mountains, oversaturation, generic AI gloss, impossible routes, fake technical gear, duplicated anatomy or implausible climbing scenes.
+### SR-EXP-DISCOVERY-001 — “Expeditions — The Journey Ahead”
+**Use:** Expeditions discovery page structural hero, not tied to one exact expedition.
+**Composition:** small group of 3 hikers traversing a dramatic but credible high-mountain approach, viewed from behind; large landscape, layered peaks, early light, sense of journey and scale; people secondary.
+**Crop safety:** group lower-right/centre; clean darker left side for page title/CTA; landscape usable 16:9.
+**Exclude:** identifiable false composite of a named mountain, summit celebration, flags, text.
 
-Define family-specific direction for Mountain, Expedition, Training, Route/DNA, Rank/Achievement, onboarding and marketing assets while preserving one brand.
+### SR-EXPLORE-001 — “Explore — Find Your Mountain”
+**Use:** Explore page hero/empty-discovery visual.
+**Composition:** expansive UK mountain/ridge landscape with a lone hiker paused at a natural viewpoint looking toward several route possibilities; believable terrain; subtle atmospheric layers; no map graphics.
+**Crop safety:** hiker lower-right; broad left/centre negative space; strong depth.
+**Exclude:** route overlays, UI, text, fantasy terrain, summit celebration.
 
-Specify standard master sizes/aspect ratios and derivative targets based on actual app usage rather than arbitrary dimensions.
+### SR-TRACK-001 — “Track — Real Effort”
+**Use:** Track pre-start/background hero and marketing derivative; must not interfere with live map readability.
+**Composition:** close-to-mid rear three-quarter view of a hiker moving uphill on a rugged UK trail, natural exertion, boots/poles/daypack, landscape opening ahead; cooler overcast/dawn light, tactile terrain.
+**Crop safety:** person on right third; central/left terrain clean enough for UI overlays.
+**Exclude:** phone in hand, visible app UI, running race, gym, text.
 
-Create `docs/SUMMITREADY_ART_DIRECTION.md`.
+### SR-RANK-001 — “Rank — Higher With Every Step”
+**Use:** Rank progression screen atmospheric background behind the vertical ascent/progression UI.
+**Composition:** dramatic dark mountain ridge rising diagonally from lower-left toward a luminous summit upper-right; no people; enough real terrain detail to feel photographic; restrained atmospheric light.
+**Crop safety:** clear diagonal ascent corridor; dark negative space around it for rank markers; no baked-in markers.
+**Exclude:** glowing dots/route lines, game art, badges, text, fantasy mountain.
 
-## MV-C04 — Premium UI design system
+### SR-DNA-001 — “Mountain DNA — Terrain Intelligence”
+**Use:** Mountain DNA comparison hero/background beneath data visualisation.
+**Composition:** close/wide real mountain terrain showing a readable ridge, slope transitions, rock/grass/scree textures and elevation character; cool neutral daylight; no people.
+**Crop safety:** terrain structure visible across frame; darker edge areas for data overlays.
+**Exclude:** generated blue networks, charts, route lines, text, sci-fi look.
 
-Codify the approved visual direction into reusable implementation guidance/tokens/components.
+### SR-ACHIEVE-001 — “Achievement — Earned Summit”
+**Use:** Achievement/completion atmospheric hero, below the protected Expedition summit cinematic in drama.
+**Composition:** one hiker standing naturally on a UK/alpine-style summit ridge after effort, back/side to camera, sunrise/sunset restrained, expansive landscape; quiet earned satisfaction, not arms-up stock-photo celebration.
+**Crop safety:** hiker right third, left space for achievement details.
+**Exclude:** trophy, medals, confetti, arms-up cliché, text.
 
-Priorities:
-- cinematic imagery used as structural UI, not decoration;
-- dark navy/charcoal natural surfaces;
-- strong large headings and metric hierarchy;
-- restrained blue/green/orange semantic accents;
-- fewer card-within-card containers;
-- borders/backgrounds used sparingly;
-- generous but efficient spacing;
-- consistent radii;
-- readable labels rather than excessive micro-uppercase text;
-- one dominant action per screen;
-- image overlays/gradients that protect readability;
-- Training and Expedition remain immediately distinguishable;
-- central Track action remains visually strong;
-- bottom navigation remains **Basecamp | Explore | Track | Expeditions | You**.
+### SR-YOU-001 — “You — Mountain Identity”
+**Use:** You/Profile header background supporting Rank, lifetime elevation and mountain identity.
+**Composition:** authentic outdoor portrait/environmental scene, single anonymous hiker in dark technical shell, side/back three-quarter profile looking toward mountain landscape; face not dominant; premium documentary feel.
+**Crop safety:** person right third; left side dark/quiet for profile metrics.
+**Exclude:** fashion shoot, brand logos, extreme climber gear, text.
 
-Create `docs/SUMMITREADY_PREMIUM_UI_SYSTEM.md`.
+## ART-C03 — Generation manifest
 
-Do not wholesale reskin every screen yet. Implement only shared, low-risk primitives/tokens if doing so clearly enables the next screen migration without changing product semantics.
+Create `docs/SUMMITREADY_ARTWORK_BATCH_01.md` recording for every asset:
+- ID/title
+- family
+- intended app placements
+- exact final prompt sent
+- provider/model
+- master dimensions
+- generated version/object path
+- generation cost if available
+- status = REVIEW REQUIRED
+- crop/focal guidance
 
-## MV-C05 — Motion language
+No asset may be marked approved/published by this command.
 
-Design a restrained motion system and implement only safe reusable foundations/prototypes.
+## ART-C04 — Review gallery
 
-Motion hierarchy:
-- ambient: subtle hero/parallax/atmospheric movement;
-- interface: smooth state/metric/progress transitions;
-- meaningful: elevation gain, Readiness response, Mountain DNA reveal, Rank ascent;
-- celebratory: achievements/challenges;
-- cinematic: protected Expedition summit sequence.
+Expose all 12 individual candidates together in the existing development-only Media Studio review surface. Each must be independently viewable at master ratio plus representative 16:9 and card crop previews. This gallery is for review only; do not bake labels into image files.
 
-Create `docs/SUMMITREADY_MOTION_SYSTEM.md`.
+## ART-C05 — Quality self-review
 
-Define durations/easing, interruption behaviour, performance constraints and reduced-motion alternatives.
+Before reporting complete, inspect each candidate against its brief. Automatically reject/regenerate only for objective generation failures: text/watermark, collage/multi-panel output, severe anatomy/equipment corruption, obviously wrong mountain morphology, unusable crop, or clear fantasy geography.
 
-Preferred implementation:
-- native/Reanimated/SVG/procedural motion for UI and data-driven animation;
-- Lottie only when it is genuinely the right asset;
-- video for cinematic content where appropriate;
-- never use heavyweight video for an effect better implemented natively.
+Maximum 2 regeneration attempts per asset in this run to control cost. Do NOT endlessly regenerate for subjective taste. Leave the strongest candidate as REVIEW REQUIRED.
 
-Prototype shared primitives only if they are isolated and regression-safe. Do NOT alter the protected Progress Mountain/cinematic behaviour in this gate.
-
-## MV-C06 — Internal Media Gallery / Studio plan
-
-The internal studio should ultimately provide a review surface for approved and candidate assets across families, with master + derivatives visible together.
-
-For this gate, either:
-A) extend the existing admin safely if architecture audit makes the path obvious and no persistent production schema change is needed, OR
-B) produce a precise implementation plan and a development-only gallery using existing data/assets.
-
-Do not duplicate `artwork-admin` and `atlas-media-studio` merely to move faster.
-
-## MV-C07 — Existing asset inventory
-
-Inventory existing SummitReady assets and classify:
-- KEEP
-- KEEP / REPROCESS
-- REPLACE
-- LEGACY / UNUSED
-- PROTECTED
-
-Include exercise imagery, Basecamp imagery, mountain backgrounds, website heroes, mascot, completion media and any relevant Atlas/Artwork assets.
-
-Do not delete anything in this gate.
-
-Create `docs/SUMMITREADY_ASSET_INVENTORY.md`.
-
-## MV-C08 — First real visual migration pilot
-
-After the audit/specs are complete, migrate ONE representative real screen to the new shared visual system as a pilot. Use a populated development persona.
-
-Preferred pilot: **Training Basecamp**, unless repository evidence shows another screen is a safer/better representative.
-
-Requirements:
-- actual production component;
-- actual navigation/data semantics;
-- no fake screenshot-only implementation;
-- preserve functionality;
-- use current approved/available artwork, with graceful fallback;
-- demonstrate hero treatment, hierarchy, surfaces, CTA and at least one safe motion primitive;
-- capture before/after at 390×844.
-
-This pilot should answer whether the new system can reproduce the approved premium character in the functioning app before broad migration.
-
-## MV-C09 — Verification
-
-Run targeted affected tests, TypeScript, and bounded regression tests. Production bundle only if affected code warrants it.
+## ART-C06 — Verify and STOP
 
 Verify:
+- exactly 12 independently stored masters/candidates;
+- no collage assets;
+- no automatic approval/publication;
+- no production schema/migration/backfill;
+- no mobile release/deploy;
 - no Stage 9;
-- no production DB/schema/migration/backfill;
-- no production deploy/release;
-- no auth/payment/privacy changes;
-- no SDE identity/provenance changes;
-- no GPS/offline semantics changes;
-- no Readiness calculation changes;
-- no Expedition contribution changes;
-- no protected Progress Mountain/cinematic replacement;
-- demo profiles remain development-only.
+- protected Progress Mountain/cinematic untouched.
 
-## MV-C10 — Completion and STOP
+Update `docs/AI_HANDOFF.md` and `docs/AI_CHANGELOG.md`, commit/push, then STOP for ChatGPT visual review.
 
-Create `docs/MEDIA_VISUAL_MOTION_COMPLETION_REPORT.md`.
-Update `docs/AI_HANDOFF.md` and `docs/AI_CHANGELOG.md`.
-Store pilot screenshots under `docs/visual-qa/media-pilot/`.
-
-Report:
-- architecture findings;
-- consolidation decision;
-- files/systems to retain;
-- proposed future persistence changes, if any;
-- asset inventory totals;
-- motion foundations/prototypes;
-- pilot before/after;
-- tests/builds;
-- unresolved decisions;
-- production/protected boundaries.
-
-Commit/push meaningful checkpoints and STOP. Do not start broad screen migration, asset mass-generation, production schema changes, or Stage 9.
-
-## Cost discipline
-
-Use targeted repository inspection; do not re-audit Stages 1–8. Reuse existing docs and tests. Avoid broad full-repo analysis where scoped searches suffice. This gate is intended to establish the system and prove it with one pilot, not regenerate the entire application.
-
-## Authority
-
-GREEN: audit, documentation, development-only tooling/gallery, low-risk shared visual/motion primitives, one-screen pilot, tests.
-AMBER: persistent media schema design or substantial cross-screen migration — document and STOP before implementation.
-RED: production schema/migrations/backfills, deploy/release, auth/privacy/payments/pricing, destructive asset/SDE work, protected Progress Mountain/cinematic changes.
-
-End the response with exactly one of:
-COMPLETE
-PARTIAL
-BLOCKED
-FAILED
-APPROVAL REQUIRED
+End Replit response with exactly one status: COMPLETE, PARTIAL, BLOCKED, FAILED, or APPROVAL REQUIRED.
