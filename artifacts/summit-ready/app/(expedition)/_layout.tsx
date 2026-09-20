@@ -18,7 +18,7 @@ export default function ExpeditionLayout() {
   // rather than bouncing the user back, BUT only if it's a mode-specific route.
   useEffect(() => {
     if (isLoading || shellMode === "expedition") return;
-    const isModeSpecific = ["base-camp", "mountains", "track", "route", "progress", "expedition-complete"].includes(currentRoute);
+    const isModeSpecific = ["base-camp", "mountains", "track", "route", "progress", "profile", "account", "expedition-complete"].includes(currentRoute);
     if (isModeSpecific) {
       setShellMode("expedition").catch(() => {});
     }

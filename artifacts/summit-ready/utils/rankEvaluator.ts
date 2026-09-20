@@ -79,6 +79,13 @@ const rankSignalNames = new Set<RankSignal>([
   "summitCompletions", "activeWeeks", "expeditionMilestones",
 ]);
 
+export const RANK_EVIDENCE_CONTRACT = {
+  outdoor: { purpose: "rank_real_outdoor", ruleVersion: "summitready-rank-v1" },
+  elevation: { purpose: "rank_real_elevation", ruleVersion: "summitready-rank-v1" },
+  summit: { purpose: "rank_canonical_summit", ruleVersion: "summitready-rank-v1" },
+  expedition: { purpose: "rank_expedition_milestone", ruleVersion: "summitready-rank-v1" },
+} as const;
+
 function latestByLineage(evidence: readonly EvidenceReference[]): EvidenceReference[] {
   const latest = new Map<string, EvidenceReference>();
   for (const item of evidence) {
@@ -97,11 +104,17 @@ function weekKey(occurredAt: string): string | null {
   return date.toISOString().slice(0, 10);
 }
 
-function isEligible(item: EvidenceReference): boolean {
+function isBaseEligible(item: EvidenceReference): boolean {
   if (item.qualificationStatus !== "eligible") return false;
-  if (item.evidenceClass !== "trusted_gps_outdoor" && item.evidenceClass !== "canonical_summit") return false;
-  if (item.evidenceClass === "canonical_summit" && (!item.provenanceHash || !item.sdeTargetId)) return false;
   return Number.isFinite(new Date(item.occurredAt).getTime());
+}
+
+function hasContract(
+  item: EvidenceReference,
+  contract: { purpose: string; ruleVersion: string },
+): boolean {
+  return item.qualificationPurpose === contract.purpose
+    && item.qualificationRuleVersion === contract.ruleVersion;
 }
 
 function requirementResult(
@@ -112,15 +125,24 @@ function requirementResult(
   if (availability === "unavailable") {
     return { ...requirement, value: null, availability, status: "unavailable", remaining: null };
   }
+  if (availability === "degraded") {
+    return {
+      ...requirement,
+      value,
+      availability,
+      status: "degraded",
+      remaining: value === null ? null : Math.max(0, requirement.minimum - value),
+    };
+  }
   if (value === null) {
-    return { ...requirement, value: null, availability, status: availability === "degraded" ? "degraded" : "missing", remaining: null };
+    return { ...requirement, value: null, availability, status: "missing", remaining: null };
   }
   const met = value >= requirement.minimum;
   return {
     ...requirement,
     value,
     availability,
-    status: met ? "met" : availability === "degraded" ? "degraded" : "missing",
+    status: met ? "met" : "missing",
     remaining: Math.max(0, requirement.minimum - value),
   };
 }
@@ -131,7 +153,7 @@ function evaluateRequirements(
   availability: Partial<Record<RankSignal, RankSignalAvailability>>,
 ): RankRequirementResult[] {
   return definition.requirements.map((requirement) =>
-    requirementResult(requirement, values[requirement.signal] ?? null, availability[requirement.signal] ?? "available"));
+    requirementResult(requirement, values[requirement.signal] ?? null, availability[requirement.signal] ?? "unavailable"));
 }
 
 export function evaluateRank(input: RankEvidenceInput): RankResult {
@@ -147,38 +169,69 @@ export function evaluateRank(input: RankEvidenceInput): RankResult {
       excludedEvidence.push({ evidenceId: item.evidenceId, reason: "revoked_evidence" });
       return false;
     }
-    if (!isEligible(item)) {
+    if (!isBaseEligible(item)) {
       excludedEvidence.push({ evidenceId: item.evidenceId, reason: "ineligible_or_missing_provenance" });
       return false;
     }
-    eligibleEvidenceIds.push(item.evidenceId);
     return true;
   });
+
+  const outdoor = eligible.filter((item) =>
+    item.sourceType === "canonical_activity"
+    && item.evidenceClass === "trusted_gps_outdoor"
+    && hasContract(item, RANK_EVIDENCE_CONTRACT.outdoor));
+  const elevationEvidence = eligible.filter((item) =>
+    item.sourceType === "canonical_activity"
+    && item.evidenceClass === "trusted_gps_outdoor"
+    && hasContract(item, RANK_EVIDENCE_CONTRACT.elevation));
+  const summitEvidence = eligible.filter((item) =>
+    item.sourceType === "canonical_route_evidence"
+    && item.evidenceClass === "canonical_summit"
+    && !!item.provenanceHash
+    && !!item.sdeTargetId
+    && item.summitCompleted === true
+    && hasContract(item, RANK_EVIDENCE_CONTRACT.summit));
+  const expeditionEvidence = eligible.filter((item) =>
+    item.sourceType === "expedition_consequence"
+    && item.evidenceClass === "trusted_gps_outdoor"
+    && (item.expeditionStageCompleted === true || item.expeditionCompleted === true)
+    && hasContract(item, RANK_EVIDENCE_CONTRACT.expedition));
+
+  const accepted = new Set([
+    ...outdoor,
+    ...elevationEvidence,
+    ...summitEvidence,
+    ...expeditionEvidence,
+  ].map((item) => item.evidenceId));
+  for (const item of eligible) {
+    if (accepted.has(item.evidenceId)) eligibleEvidenceIds.push(item.evidenceId);
+    else excludedEvidence.push({ evidenceId: item.evidenceId, reason: "wrong_rank_purpose_or_producer" });
+  }
 
   const mountains = new Set<string>();
   const weeks = new Set<string>();
   let elevation = 0;
-  let summits = 0;
-  let expeditionMilestones = 0;
-  for (const item of eligible) {
+  for (const item of elevationEvidence) {
     elevation += Math.max(0, item.value ?? 0);
+  }
+  for (const item of summitEvidence) {
     if (item.mountainId || item.sdeTargetId?.startsWith("sde:mountain:")) {
       mountains.add(item.mountainId ?? item.sdeTargetId!);
     }
+  }
+  for (const item of outdoor) {
     const week = weekKey(item.occurredAt);
     if (week) weeks.add(week);
-    if (item.summitCompleted === true || item.evidenceClass === "canonical_summit") summits += 1;
-    if (item.expeditionStageCompleted === true || item.expeditionCompleted === true) expeditionMilestones += 1;
   }
-  values.eligibleActivities = eligible.length;
+  values.eligibleActivities = new Set(outdoor.map((item) => item.activityId ?? item.sourceId)).size;
   values.eligibleElevation = elevation;
   values.distinctMountains = mountains.size;
-  values.summitCompletions = summits;
+  values.summitCompletions = summitEvidence.length;
   values.activeWeeks = weeks.size;
-  values.expeditionMilestones = expeditionMilestones;
+  values.expeditionMilestones = expeditionEvidence.length;
 
   const availability: Partial<Record<RankSignal, RankSignalAvailability>> = {};
-  for (const signal of rankSignalNames) availability[signal] = input.signalAvailability?.[signal] ?? "available";
+  for (const signal of rankSignalNames) availability[signal] = input.signalAvailability[signal];
   let currentRank: RankName | null = null;
   let currentRequirements: RankRequirementResult[] = [];
   let blockedReasons: string[] = [];

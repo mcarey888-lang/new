@@ -25,6 +25,11 @@ const ALL_KEYS = [
   "summitready_live_trails_cache",
   "summitready_challenges",
   "summitready_questionnaire_data",
+  "summitready_shell_mode",
+  "summitready_expedition_goal",
+  "summitready_expeditions",
+  "summitready_active_expedition_id",
+  "baseline_popup_seen",
 ];
 
 function daysFromNow(n: number): string {
@@ -312,6 +317,82 @@ const advancedMontBlanc: DevProfile = {
       }
     }
 
+    const completedChallenge = [{
+      challengeId: "everest-basecamp",
+      startedAt: daysFromNow(-30),
+      activities: [{
+        id: "vq-complete-activity",
+        activityId: "vq-complete-activity",
+        challengeId: "everest-basecamp",
+        title: "Mont Blanc training block",
+        date: daysFromNow(-1),
+        elevationGain: 3485,
+        distance: 42.4,
+        duration: 620,
+        notes: "Deterministic visual QA fixture",
+        createdAt: daysFromNow(-1),
+      }],
+      completed: true,
+      completedAt: daysFromNow(-1),
+    }];
+
+    const activeExpedition = {
+      id: "vq-mont-blanc-expedition",
+      challengeName: "Mont Blanc Preparation Expedition",
+      targetMountainName: "Mont Blanc",
+      targetMountain: {
+        name: "Mont Blanc",
+        country: "France / Italy",
+        summitElevation: 4808,
+        totalElevationGain: 2800,
+        totalDistance: 19,
+        estimatedDays: 2,
+        difficulty: "Alpine",
+        altitudeExposure: "Extreme",
+        notes: "A sustained alpine ascent requiring endurance and careful preparation.",
+        routeDna: {
+          endurance: 9,
+          elevation: 9,
+          altitude: 9,
+          terrain: 8,
+          technicality: 7,
+          exposure: 8,
+        },
+      },
+      virtualHills: [
+        {
+          name: "Rombald's Moor", elevation: 402, distance: 4.8, repeats: 1,
+          totalElevation: 402, surface: "Mixed trail", grade: "Hard", emoji: "⛰️",
+        },
+        {
+          name: "Ilkley Moor", elevation: 402, distance: 5.2, repeats: 1,
+          totalElevation: 402, surface: "Rocky trail", grade: "Moderate", emoji: "🥾",
+        },
+      ],
+      expeditionPlan: {
+        title: "Alpine endurance progression",
+        concept: "Build sustained climbing capacity before the summit push.",
+        days: [
+          { label: "Stage 1", title: "Base endurance", focus: "Long steady climbing", routes: [{ name: "Rombald's Moor", why: "Builds repeatable ascent volume close to home." }] },
+          { label: "Stage 2", title: "Summit simulation", focus: "Back-to-back elevation", routes: [{ name: "Ilkley Moor", why: "Tests sustained effort before the final expedition stage." }] },
+        ],
+        alternatives: {},
+        adventureScore: 84,
+        dnaMatchScore: 78,
+        dnaMatchNotes: "Local routes emphasize sustained climbing and repeatable elevation.",
+      },
+      simulationScore: 78,
+      completedRoutes: [],
+      expeditionStatus: "active",
+      virtualHikeProgress: { elevationGained: 220, distanceCovered: 8.4, hikesLogged: 2, creditedHikeIds: [] },
+      location: "Leeds",
+      maxRadius: 40,
+      fitnessLevel: "Strong",
+      savedAt: daysFromNow(-21),
+      startedAt: daysFromNow(-14),
+      summitTransitionState: "not_ready",
+    };
+
     return [
       ["summitready_app_mode",      "summit"],
       ["summitready_goal",           JSON.stringify(goal)],
@@ -319,6 +400,11 @@ const advancedMontBlanc: DevProfile = {
       ["summitready_sessions",       JSON.stringify(sessions)],
       ["summitready_has_viewed_plan","true"],
       ["summitready_achievements",   JSON.stringify(["first_session", "5_sessions", "10_sessions", "hill_week", "elevation_1000", "big_day", "consistent_month"])],
+      ["summitready_challenges",     JSON.stringify(completedChallenge)],
+      ["summitready_shell_mode",     "training"],
+      ["summitready_expeditions",    JSON.stringify([activeExpedition])],
+      ["summitready_active_expedition_id", activeExpedition.id],
+      ["baseline_popup_seen",        "1"],
     ] as Array<[string, string]>;
   })(),
 };

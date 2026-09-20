@@ -184,7 +184,7 @@ export default function ExpeditionProfileScreen() {
             <Text style={s.displayName}>{displayName}</Text>
             <Text style={s.displayTitle}>Adventure Seeker</Text>
             <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 4 }}>
-              Stage 8: {stage8Tracked} tracked · {stage8ConfirmedAwards} confirmed
+              Verified progress: {stage8Tracked} tracked · {stage8ConfirmedAwards} confirmed
               {stage8Pending.length > 0 ? ` · ${stage8Pending.length} pending` : ""}
             </Text>
             {isSubscribed && (
@@ -213,6 +213,7 @@ export default function ExpeditionProfileScreen() {
           requirements={rankResult.nextRequirements}
           promotionBlocked={rankResult.promotionBlocked}
           blockedReasons={rankResult.blockedReasons}
+          onPressJourney={() => router.push("/rank")}
           primaryColor={T.blue}
         />
 

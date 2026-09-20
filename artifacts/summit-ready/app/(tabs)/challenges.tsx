@@ -179,7 +179,7 @@ export default function ChallengesScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
           <View>
-            <Text style={s.eyebrow}>Community</Text>
+            <Text style={s.eyebrow}>Your progress</Text>
             <Text style={s.title}>Challenges</Text>
           </View>
           <View style={[s.trophyWrap, { backgroundColor: T.greenDim }]}>
@@ -215,7 +215,7 @@ export default function ChallengesScreen() {
           {(Object.keys(stage8Projection.progress).length > 0 || pendingEvidence.length > 0) && (
             <View>
               <Text style={s.infoText}>
-                Stage 8 projection · {stage8Tracked.length} tracked
+                Verified progress · {stage8Tracked.length} tracked
                 {pendingEvidence.length > 0 ? ` · ${pendingEvidence.length} pending` : ""}
               </Text>
               {stage8Catalogue.map((definition) => {

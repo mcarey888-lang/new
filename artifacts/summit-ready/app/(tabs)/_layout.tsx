@@ -22,7 +22,7 @@ export default function TabLayout() {
   // and "preserve deep links/back behavior". We only do this for mode-specific routes.
   useEffect(() => {
     if (isLoading || shellMode === "training") return;
-    const isModeSpecific = ["dashboard", "plan", "trails", "hills"].includes(currentRoute);
+    const isModeSpecific = ["dashboard", "plan", "trails", "hills", "account"].includes(currentRoute);
     if (isModeSpecific) {
       setShellMode("training").catch(() => {});
     }

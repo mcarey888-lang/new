@@ -32,7 +32,8 @@ export interface RankDefinition {
 export interface RankEvidenceInput {
   ownerUserId: string;
   evidence: readonly EvidenceReference[];
-  signalAvailability?: Partial<Record<RankSignal, RankSignalAvailability>>;
+  /** Callers must state producer authority explicitly; omission must never imply availability. */
+  signalAvailability: Record<RankSignal, RankSignalAvailability>;
 }
 
 export interface RankRequirementResult extends RankRequirement {

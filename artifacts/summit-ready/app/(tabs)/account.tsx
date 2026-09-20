@@ -649,14 +649,15 @@ export default function AccountScreen() {
             requirements={rankResult.nextRequirements}
             promotionBlocked={rankResult.promotionBlocked}
             blockedReasons={rankResult.blockedReasons}
+            onPressJourney={() => router.push("/rank")}
             primaryColor={T.blue}
           />
         </Animated.View>
 
-        {/* Stage 8 Qualification */}
+        {/* Verified progress */}
         {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
           <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
-            <Text style={styles.sectionLabel}>STAGE 8 QUALIFICATION</Text>
+            <Text style={styles.sectionLabel}>VERIFIED PROGRESS</Text>
             <Text style={styles.readySubtext}>
               {stage8ConfirmedAwards.length} confirmed award{stage8ConfirmedAwards.length === 1 ? "" : "s"} · {stage8Tracked.length} tracked definition{stage8Tracked.length === 1 ? "" : "s"}
               {stage8Pending.length > 0 ? ` · ${stage8Pending.length} pending` : ""}

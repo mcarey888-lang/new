@@ -6,21 +6,14 @@ import { router, useSegments } from "expo-router";
 import { BlurView } from "expo-blur";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
-import { primaryTabTarget, type PrimaryTab } from "@/utils/navigationTargets";
+import { activePrimaryTabForSegments, primaryTabTarget, type PrimaryTab } from "@/utils/navigationTargets";
 
 export function SharedTabBar() {
   const insets = useSafeAreaInsets();
   const { shellMode, activeExpeditionId } = useApp();
   const segments = useSegments();
 
-  const currentRoute = segments[segments.length - 1] || "";
-
-  let activeTab = "";
-  if (["dashboard", "base-camp", "v-home"].includes(currentRoute)) activeTab = "home";
-  else if (["explore", "hills", "plan"].includes(currentRoute)) activeTab = "explore";
-  else if (["track", "trails", "route", "progress", "v-progress"].includes(currentRoute)) activeTab = "track";
-  else if (["mountains", "virtual", "v-mountain", "v-hills"].includes(currentRoute)) activeTab = "expeditions";
-  else if (["account", "profile"].includes(currentRoute)) activeTab = "you";
+  const activeTab = activePrimaryTabForSegments(segments);
 
   const tabBarHeight = Platform.OS === "web" ? 80 : 60 + insets.bottom;
   const isIOS = Platform.OS === "ios";
@@ -64,9 +57,12 @@ export function SharedTabBar() {
               accessibilityState={{ selected: isActive }}
             >
               {isTrack ? (
-                <View style={[styles.trackWrap, { backgroundColor: activeColor }]}>
-                  <Icon size={24} color={T.bg} />
-                </View>
+                <>
+                  <View style={[styles.trackWrap, { backgroundColor: activeColor }]}>
+                    <Icon size={24} color={T.bg} />
+                  </View>
+                  <Text style={[styles.trackLabel, { color: activeColor }]}>Track</Text>
+                </>
               ) : (
                 <>
                   <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
@@ -109,12 +105,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginTop: -6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  trackLabel: {
+    marginTop: 2,
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
   },
   iconWrap: {
     width: 44,

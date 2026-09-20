@@ -1,6 +1,24 @@
 export type PrimaryTab = "home" | "explore" | "track" | "expeditions" | "you";
 export type ShellMode = "training" | "expedition";
 
+export function activePrimaryTabForSegments(segments: readonly string[]): PrimaryTab | null {
+  const routeGroup = segments[0];
+  const route = segments[segments.length - 1] ?? "";
+  if (routeGroup === "(expedition)") {
+    if (route === "base-camp") return "home";
+    if (route === "track") return "track";
+    if (route === "profile" || route === "account") return "you";
+    if (["mountains", "route", "progress", "expedition-complete"].includes(route)) return "expeditions";
+  }
+  if (routeGroup === "(tabs)") {
+    if (["dashboard", "v-home"].includes(route)) return "home";
+    if (["explore", "hills", "plan", "v-mountain", "v-hills"].includes(route)) return "explore";
+    if (["trails", "v-progress"].includes(route)) return "track";
+    if (route === "account") return "you";
+  }
+  return null;
+}
+
 export function primaryTabTarget(
   tab: PrimaryTab,
   shellMode: ShellMode,

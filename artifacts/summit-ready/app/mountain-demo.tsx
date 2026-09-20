@@ -8,7 +8,7 @@
 
 import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import React, { useState } from "react";
 import {
   Platform,
@@ -72,6 +72,8 @@ export default function MountainDemoScreen() {
 
   const [pct, setPct]           = useState(0);          // 0–1
   const [summitSeen, setSummitSeen] = useState(false);
+
+  if (!__DEV__) return <Redirect href="/" />;
 
   const currentElevation = Math.round(pct * TARGET_ELEVATION);
   const stages           = computeStages(currentElevation, TARGET_ELEVATION, DEMO_STAGES);

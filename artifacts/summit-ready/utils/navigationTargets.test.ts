@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { primaryTabTarget } from "./navigationTargets";
+import { activePrimaryTabForSegments, primaryTabTarget } from "./navigationTargets";
 
 describe("approved five-tab navigation", () => {
   it("keeps Training destinations in the Training shell", () => {
@@ -22,5 +22,13 @@ describe("approved five-tab navigation", () => {
     expect(primaryTabTarget("explore", "training", null)).toBe("/(tabs)/explore");
     expect(primaryTabTarget("explore", "expedition", "expedition-1")).toBe("/(tabs)/explore");
     expect(primaryTabTarget("expeditions", "training", null)).toBe("/(expedition)/mountains");
+  });
+
+  it("derives active tabs from the full route group", () => {
+    expect(activePrimaryTabForSegments(["(expedition)", "route"])).toBe("expeditions");
+    expect(activePrimaryTabForSegments(["(expedition)", "progress"])).toBe("expeditions");
+    expect(activePrimaryTabForSegments(["(expedition)", "track"])).toBe("track");
+    expect(activePrimaryTabForSegments(["(tabs)", "account"])).toBe("you");
+    expect(activePrimaryTabForSegments(["(tabs)", "challenges"])).toBeNull();
   });
 });
