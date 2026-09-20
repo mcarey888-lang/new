@@ -11,9 +11,19 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, CheckCircle, Trophy } from "lucide-react-native";
+import { ArrowLeft, CheckCircle, Trophy, Mountain, TrendingUp, Compass, CalendarDays } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { getChallenge } from "@/constants/challenges";
+
+function getIconForMetric(metric: string, color: string) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={22} color={color} />;
+    case "hikes": return <Mountain size={22} color={color} />;
+    case "stages": return <Compass size={22} color={color} />;
+    case "weeks": return <CalendarDays size={22} color={color} />;
+    default: return <Trophy size={22} color={color} />;
+  }
+}
 import { useChallenges } from "@/context/ChallengesContext";
 
 export default function CompletedChallengesScreen() {
@@ -43,7 +53,7 @@ export default function CompletedChallengesScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
           <View>
-            <Text style={s.eyebrow}>CHALLENGES</Text>
+            <Text style={s.eyebrow}>Challenges</Text>
             <Text style={s.title}>Completed</Text>
           </View>
           <View style={[s.iconWrap, { backgroundColor: T.blueDim ?? "rgba(96,165,250,0.15)" }]}>
@@ -55,7 +65,7 @@ export default function CompletedChallengesScreen() {
         {completed.length === 0 && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.emptyCard}>
             <LinearGradient colors={[T.blueDim ?? "rgba(96,165,250,0.12)", "transparent"]} style={StyleSheet.absoluteFill} />
-            <Text style={s.emptyEmoji}>🏔️</Text>
+            <Mountain size={40} color={T.textDim} />
             <Text style={s.emptyTitle}>No completed challenges yet</Text>
             <Text style={s.emptyBody}>
               Start a challenge and log your activities — every metre brings you closer to the summit.
@@ -98,7 +108,7 @@ export default function CompletedChallengesScreen() {
                 {/* Top row */}
                 <View style={s.cardTop}>
                   <View style={[s.emojiWrap, { backgroundColor: c.color + "22" }]}>
-                    <Text style={s.emoji}>{c.emoji}</Text>
+                    {getIconForMetric(c.metric, c.color)}
                   </View>
                   <View style={s.completeBadge}>
                     <CheckCircle size={11} color={T.green} />
@@ -145,7 +155,7 @@ const s = StyleSheet.create({
   backText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
+  eyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
   iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 
@@ -153,7 +163,6 @@ const s = StyleSheet.create({
     backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border,
     padding: 28, gap: 10, alignItems: "center", overflow: "hidden",
   },
-  emptyEmoji: { fontSize: 40 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
   emptyBody: {
     fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted,
@@ -171,7 +180,6 @@ const s = StyleSheet.create({
   },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   emojiWrap: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  emoji: { fontSize: 22 },
   completeBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: T.greenDim, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,

@@ -11,14 +11,22 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CheckCircle, ChevronRight, Lock, Trophy, Zap } from "lucide-react-native";
+import { CheckCircle, ChevronRight, Lock, Trophy, Zap, Mountain, TrendingUp, Compass, CalendarDays, Info } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, type ChallengeTemplate } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
 import { useSubscription } from "@/lib/revenuecat";
 
-const FREE_IDS = ["1000m-7days", "5-hikes-30days", "2500m-14days"];
+function getIconForMetric(metric: string, color: string) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={20} color={color} />;
+    case "hikes": return <Mountain size={20} color={color} />;
+    case "stages": return <Compass size={20} color={color} />;
+    case "weeks": return <CalendarDays size={20} color={color} />;
+    default: return <Trophy size={20} color={color} />;
+  }
+}
 
 function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
@@ -47,7 +55,7 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
       <LinearGradient colors={[color + "12", "transparent"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <View style={cc.top}>
         <View style={[cc.emoji, { backgroundColor: color + "20" }]}>
-          <Text style={cc.emojiText}>{c.emoji}</Text>
+          {getIconForMetric(c.metric, color)}
         </View>
         <View style={{ flex: 1, gap: 3 }}>
           <View style={cc.badges}>
@@ -144,6 +152,7 @@ export default function ChallengesScreen() {
     () => CHALLENGES.filter(c => !activeChallenges.some(ac => ac.challengeId === c.id && !ac.completed)),
     [activeChallenges]
   );
+  const featured = available[0] ?? CHALLENGES[0];
 
   const totalElev = useMemo(
     () => activeChallenges.flatMap(ac => ac.activities).reduce((s, a) => s + a.elevationGain, 0),
@@ -166,7 +175,7 @@ export default function ChallengesScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(40).duration(600)} style={s.header}>
           <View>
-            <Text style={s.eyebrow}>COMMUNITY</Text>
+            <Text style={s.eyebrow}>Community</Text>
             <Text style={s.title}>Challenges</Text>
           </View>
           <View style={[s.trophyWrap, { backgroundColor: T.greenDim }]}>
@@ -196,6 +205,11 @@ export default function ChallengesScreen() {
           </View>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(70).duration(600)} style={s.infoBox}>
+          <Info size={14} color={T.textDim} />
+          <Text style={s.infoText}>Local progress is available offline. Newly tracked activity consequences may remain pending until the activity is saved and qualified.</Text>
+        </Animated.View>
+
         {/* Active challenges */}
         {active.length > 0 && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)} style={s.section}>
@@ -216,28 +230,30 @@ export default function ChallengesScreen() {
         )}
 
         {/* Featured if nothing active */}
-        {active.length === 0 && (
+        {active.length === 0 && featured && (
           <Animated.View entering={FadeInDown.delay(80).duration(600)}>
             <TouchableOpacity
-              onPress={() => goTo(CHALLENGES.find(c => c.id === "1000m-7days")!)}
+              onPress={() => goTo(featured)}
               activeOpacity={0.85}
               style={s.featured}
             >
               <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={s.featuredTop}>
-                <Text style={s.featuredEyebrow}>FEATURED CHALLENGE</Text>
-                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR["Beginner"] + "25" }]}>
-                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR["Beginner"] }]}>Beginner</Text>
+                <Text style={s.featuredEyebrow}>Featured</Text>
+                <View style={[s.featuredBadge, { backgroundColor: DIFF_COLOR[featured.difficulty] + "25" }]}>
+                  <Text style={[s.featuredBadgeText, { color: DIFF_COLOR[featured.difficulty] }]}>{featured.difficulty}</Text>
                 </View>
               </View>
-              <Text style={s.featuredTitle}>1,000m in 7 Days</Text>
-              <Text style={s.featuredDesc}>
-                One week. One thousand metres. Build the habit of getting out consistently.
-              </Text>
+              <Text style={s.featuredTitle}>{featured.title}</Text>
+              <Text style={s.featuredDesc}>{featured.description}</Text>
               <View style={s.featuredMeta}>
-                <Text style={s.featuredMetaText}>1,000m elevation gain</Text>
-                <Text style={s.featuredMetaDot}>·</Text>
-                <Text style={s.featuredMetaText}>7 days</Text>
+                <Text style={s.featuredMetaText}>
+                  {featured.metric === "elevation"
+                    ? `${featured.targetValue.toLocaleString()}m gain`
+                    : `${featured.targetValue} sessions`}
+                </Text>
+                {featured.durationDays && <Text style={s.featuredMetaDot}>·</Text>}
+                {featured.durationDays && <Text style={s.featuredMetaText}>{featured.durationDays} days</Text>}
               </View>
               <View style={s.startBtn}>
                 <Zap size={13} color={T.bg} />
@@ -301,7 +317,7 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 16 },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
+  eyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
   trophyWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 
@@ -313,6 +329,12 @@ const s = StyleSheet.create({
   statVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
   statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted },
   statDivider: { width: 1, backgroundColor: T.border },
+
+  infoBox: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12,
+    backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+  },
+  infoText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
 
   section: { gap: 10 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -327,7 +349,7 @@ const s = StyleSheet.create({
     padding: 20, gap: 10, overflow: "hidden",
   },
   featuredTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  featuredEyebrow: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1 },
+  featuredEyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.green },
   featuredBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   featuredBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   featuredTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.text },

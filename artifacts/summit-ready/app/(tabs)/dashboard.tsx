@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -54,6 +54,16 @@ interface CoachAssessment {
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
+
+function getIconForCategory(category: string, color: string, size = 20) {
+  switch (category) {
+    case "mountain": return <Mountain size={size} color={color} />;
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "expedition": return <Compass size={size} color={color} />;
+    case "training": return <Target size={size} color={color} />;
+    default: return <Award size={size} color={color} />;
+  }
+}
 
 // ── Mountain Hero ─────────────────────────────────────────────────────────────
 function MountainHero({
@@ -1022,7 +1032,7 @@ export default function DashboardScreen() {
               <View style={styles.achieveStripEmojis}>
                 {[...unlockedAchievements].reverse().slice(0, 4).map(id => {
                   const a = ACHIEVEMENTS.find(x => x.id === id);
-                  return a ? <Text key={id} style={styles.achieveStripEmoji}>{a.emoji}</Text> : null;
+                  return a ? <View key={id} style={styles.achieveStripIconWrap}>{getIconForCategory(a.category, TIER_COLOR[a.tier], 16)}</View> : null;
                 })}
               </View>
               <ChevronRight size={14} color={T.textDim} />
@@ -1484,7 +1494,7 @@ const styles = StyleSheet.create({
   achieveStripTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
   achieveStripSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   achieveStripEmojis: { flexDirection: "row", gap: 2, alignItems: "center", flexShrink: 0 },
-  achieveStripEmoji: { fontSize: 17 },
+  achieveStripIconWrap: { alignItems: "center", justifyContent: "center" },
   statCard: {
     backgroundColor: T.card,
     borderRadius: 18,

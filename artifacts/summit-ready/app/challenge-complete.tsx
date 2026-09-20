@@ -24,7 +24,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CheckCircle, Share2, Trophy, Zap } from "lucide-react-native";
+import { CheckCircle, Share2, Trophy, Zap, TrendingUp, Mountain, Compass, CalendarDays } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { logChallengeCompleted } from "@/lib/analytics";
 import { CHALLENGES, DIFF_COLOR, getChallenge } from "@/constants/challenges";
@@ -33,7 +33,17 @@ import { ConfettiCelebration } from "@/components/ConfettiCelebration";
 
 const CELEBRATION_KEY_PREFIX = "summitready_celebration_seen_";
 
-function PulsingTrophy({ emoji, color, isCelebrating }: { emoji: string; color: string; isCelebrating: boolean }) {
+function getIconForMetric(metric: string, color: string, size = 64) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "hikes": return <Mountain size={size} color={color} />;
+    case "stages": return <Compass size={size} color={color} />;
+    case "weeks": return <CalendarDays size={size} color={color} />;
+    default: return <Trophy size={size} color={color} />;
+  }
+}
+
+function PulsingTrophy({ metric, color, isCelebrating }: { metric: string; color: string; isCelebrating: boolean }) {
   const scale = useSharedValue(1);
   const glow = useSharedValue(1);
 
@@ -90,7 +100,7 @@ function PulsingTrophy({ emoji, color, isCelebrating }: { emoji: string; color: 
         ]}
       />
       <Animated.View style={[s.trophyWrap, { backgroundColor: color + "20", borderColor: color + "40" }, trophyStyle]}>
-        <Text style={s.trophyEmoji}>{emoji}</Text>
+        {getIconForMetric(metric, color, 52)}
       </Animated.View>
     </View>
   );
@@ -166,12 +176,12 @@ export default function ChallengeCompleteScreen() {
   const color = c.color;
 
   const badges = useMemo(() => {
-    const b: { emoji: string; label: string }[] = [];
-    if (ac.activities.length >= 1) b.push({ emoji: "🌱", label: "First activity logged" });
-    b.push({ emoji: "✅", label: "Challenge completed" });
-    if (ac.activities.length >= 3) b.push({ emoji: "🔥", label: "3 activities logged" });
+    const b: { icon: string; label: string }[] = [];
+    if (ac.activities.length >= 1) b.push({ icon: "check", label: "First activity logged" });
+    b.push({ icon: "check", label: "Challenge completed" });
+    if (ac.activities.length >= 3) b.push({ icon: "check", label: "3 activities logged" });
     const maxElev = Math.max(...ac.activities.map(a => a.elevationGain));
-    if (maxElev >= 500) b.push({ emoji: "🏔️", label: "500m+ in one session" });
+    if (maxElev >= 500) b.push({ icon: "check", label: "500m+ in one session" });
     return b;
   }, [ac]);
 
@@ -180,7 +190,7 @@ export default function ChallengeCompleteScreen() {
     const mins = totalDur % 60;
     const durationStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
     const text = [
-      `🏔️ Summit achieved!`,
+      `Summit Achieved`,
       ``,
       `I completed the ${c!.title} with Summit Ready.`,
       ``,
@@ -215,7 +225,7 @@ export default function ChallengeCompleteScreen() {
       >
         {/* Trophy */}
         <Animated.View entering={FadeInUp.delay(0).duration(700)} style={s.trophySection}>
-          <PulsingTrophy emoji={c.emoji} color={color} isCelebrating={isCelebrating} />
+          <PulsingTrophy metric={c.metric} color={color} isCelebrating={isCelebrating} />
           <View style={[s.completedBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
             <CheckCircle size={13} color={T.green} />
             <Text style={s.completedBadgeText}>Summit achieved</Text>
@@ -253,24 +263,6 @@ export default function ChallengeCompleteScreen() {
           </View>
         </Animated.View>
 
-        {/* Badges */}
-        {badges.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(140).duration(600)} style={s.card}>
-            <View style={s.cardHeader}>
-              <Trophy size={14} color={T.orange} />
-              <Text style={s.cardTitle}>Badges earned</Text>
-            </View>
-            <View style={s.badgeGrid}>
-              {badges.map(b => (
-                <View key={b.label} style={s.badgeItem}>
-                  <Text style={s.badgeEmoji}>{b.emoji}</Text>
-                  <Text style={s.badgeLabel}>{b.label}</Text>
-                </View>
-              ))}
-            </View>
-          </Animated.View>
-        )}
-
         {/* All milestones reached */}
         <Animated.View entering={FadeInDown.delay(160).duration(600)} style={s.card}>
           <Text style={s.cardTitle}>Journey completed</Text>
@@ -278,7 +270,6 @@ export default function ChallengeCompleteScreen() {
             <View key={m.pct} style={s.milestoneRow}>
               <CheckCircle size={14} color={T.green} />
               <Text style={s.milestoneLabel}>{m.label}</Text>
-              <Text style={s.milestoneEmoji}>{m.emoji}</Text>
             </View>
           ))}
         </Animated.View>
@@ -288,7 +279,7 @@ export default function ChallengeCompleteScreen() {
           <LinearGradient colors={[color + "10", "transparent"]} style={StyleSheet.absoluteFill} />
           <Text style={s.shareTitle}>Share your achievement</Text>
           <View style={s.shareContent}>
-            <Text style={[s.shareHeadline, { color }]}>🏔️ Summit achieved!</Text>
+            <Text style={[s.shareHeadline, { color }]}>Summit Achieved</Text>
             <Text style={s.shareCopy}>I completed the {c.title} with Summit Ready.</Text>
             <Text style={s.shareStats}>
               {totalElev.toLocaleString()}m gained · {ac.activities.length} activities · {totalDist.toFixed(1)}km

@@ -1,4 +1,4 @@
-import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity } from "lucide-react-native";
+import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,27 @@ import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
+import { Mountain, Target, Award, CalendarDays } from "lucide-react-native";
+
+function getIconForMetric(metric: string, color: string, size = 18) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "hikes": return <Mountain size={size} color={color} />;
+    case "stages": return <Compass size={size} color={color} />;
+    case "weeks": return <CalendarDays size={size} color={color} />;
+    default: return <Trophy size={size} color={color} />;
+  }
+}
+
+function getIconForCategory(category: string, color: string, size = 20) {
+  switch (category) {
+    case "mountain": return <Mountain size={size} color={color} />;
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "expedition": return <Compass size={size} color={color} />;
+    case "training": return <Target size={size} color={color} />;
+    default: return <Award size={size} color={color} />;
+  }
+}
 import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import { discardActiveHike } from "@/utils/activeHikeSession";
@@ -42,24 +63,24 @@ const DIFF_ICONS: Record<Difficulty, string> = {
   Easy: "🌿", Moderate: "🏔️", Hard: "⛰️", Alpine: "🗻",
 };
 
-const REFERENCE_PEAKS: { name: string; emoji: string; elevation: number; difficulty: Difficulty; location: string }[] = [
-  { name: "Mam Tor",       emoji: "⛰️", elevation: 130,  difficulty: "Easy",     location: "Peak District" },
-  { name: "Pen y Fan",     emoji: "🏔️", elevation: 296,  difficulty: "Easy",     location: "Brecon Beacons" },
-  { name: "Whernside",     emoji: "⛰️", elevation: 380,  difficulty: "Easy",     location: "Yorkshire Dales" },
-  { name: "Kinder Scout",  emoji: "⛰️", elevation: 300,  difficulty: "Moderate", location: "Peak District" },
-  { name: "Ingleborough",  emoji: "⛰️", elevation: 450,  difficulty: "Moderate", location: "Yorkshire Dales" },
-  { name: "Skiddaw",       emoji: "⛰️", elevation: 620,  difficulty: "Moderate", location: "Lake District" },
-  { name: "Cairn Gorm",    emoji: "🏔️", elevation: 610,  difficulty: "Moderate", location: "Cairngorms" },
-  { name: "Snowdon",       emoji: "🏔️", elevation: 730,  difficulty: "Moderate", location: "Snowdonia" },
-  { name: "Blencathra",    emoji: "⛰️", elevation: 640,  difficulty: "Hard",     location: "Lake District" },
-  { name: "Helvellyn",     emoji: "🏔️", elevation: 800,  difficulty: "Hard",     location: "Lake District" },
-  { name: "Ben Macdui",    emoji: "🏔️", elevation: 700,  difficulty: "Hard",     location: "Cairngorms" },
-  { name: "Great Gable",   emoji: "⛰️", elevation: 810,  difficulty: "Hard",     location: "Lake District" },
-  { name: "Scafell Pike",  emoji: "⛰️", elevation: 900,  difficulty: "Hard",     location: "Lake District" },
-  { name: "Ben Nevis",     emoji: "🏔️", elevation: 1290, difficulty: "Hard",     location: "Scottish Highlands" },
-  { name: "Kilimanjaro",   emoji: "🗻", elevation: 1200, difficulty: "Alpine",   location: "Tanzania" },
-  { name: "Mont Blanc",    emoji: "🗻", elevation: 2400, difficulty: "Alpine",   location: "French Alps" },
-  { name: "Denali",        emoji: "🗻", elevation: 3000, difficulty: "Alpine",   location: "Alaska, USA" },
+const REFERENCE_PEAKS: { name: string; icon: string; elevation: number; difficulty: Difficulty; location: string }[] = [
+  { name: "Mam Tor",       icon: "check", elevation: 130,  difficulty: "Easy",     location: "Peak District" },
+  { name: "Pen y Fan",     icon: "check", elevation: 296,  difficulty: "Easy",     location: "Brecon Beacons" },
+  { name: "Whernside",     icon: "check", elevation: 380,  difficulty: "Easy",     location: "Yorkshire Dales" },
+  { name: "Kinder Scout",  icon: "check", elevation: 300,  difficulty: "Moderate", location: "Peak District" },
+  { name: "Ingleborough",  icon: "check", elevation: 450,  difficulty: "Moderate", location: "Yorkshire Dales" },
+  { name: "Skiddaw",       icon: "check", elevation: 620,  difficulty: "Moderate", location: "Lake District" },
+  { name: "Cairn Gorm",    icon: "check", elevation: 610,  difficulty: "Moderate", location: "Cairngorms" },
+  { name: "Snowdon",       icon: "check", elevation: 730,  difficulty: "Moderate", location: "Snowdonia" },
+  { name: "Blencathra",    icon: "check", elevation: 640,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Helvellyn",     icon: "check", elevation: 800,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Ben Macdui",    icon: "check", elevation: 700,  difficulty: "Hard",     location: "Cairngorms" },
+  { name: "Great Gable",   icon: "check", elevation: 810,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Scafell Pike",  icon: "check", elevation: 900,  difficulty: "Hard",     location: "Lake District" },
+  { name: "Ben Nevis",     icon: "check", elevation: 1290, difficulty: "Hard",     location: "Scottish Highlands" },
+  { name: "Kilimanjaro",   icon: "check", elevation: 1200, difficulty: "Alpine",   location: "Tanzania" },
+  { name: "Mont Blanc",    icon: "check", elevation: 2400, difficulty: "Alpine",   location: "French Alps" },
+  { name: "Denali",        icon: "check", elevation: 3000, difficulty: "Alpine",   location: "Alaska, USA" },
 ];
 
 function maskId(id: string) {
@@ -68,12 +89,12 @@ function maskId(id: string) {
 }
 
 function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }) {
-  const b: { emoji: string; label: string }[] = [];
-  if (ac.activities.length >= 1) b.push({ emoji: "🌱", label: "First activity logged" });
-  b.push({ emoji: "✅", label: "Challenge completed" });
-  if (ac.activities.length >= 3) b.push({ emoji: "🔥", label: "3 activities logged" });
+  const b: { icon: string; label: string }[] = [];
+  if (ac.activities.length >= 1) b.push({ icon: "check", label: "First activity logged" });
+  b.push({ icon: "check", label: "Challenge completed" });
+  if (ac.activities.length >= 3) b.push({ icon: "check", label: "3 activities logged" });
   const maxElev = ac.activities.length > 0 ? Math.max(...ac.activities.map(a => a.elevationGain)) : 0;
-  if (maxElev >= 500) b.push({ emoji: "🏔️", label: "500m+ in one session" });
+  if (maxElev >= 500) b.push({ icon: "check", label: "500m+ in one session" });
   return b;
 }
 
@@ -579,7 +600,7 @@ export default function AccountScreen() {
                     onPress={() => openMapSearch(peak.name)}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.readyChipEmoji}>{peak.emoji}</Text>
+                    <Check size={16} color={dc} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.readyChipName}>{peak.name}</Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
@@ -621,7 +642,9 @@ export default function AccountScreen() {
                 >
                   <LinearGradient colors={[dc + "12", "transparent"]} style={StyleSheet.absoluteFill} />
                   <View style={styles.activeChallengeTop}>
-                    <Text style={styles.activeChallengeEmoji}>{template.emoji}</Text>
+                    <View style={styles.activeChallengeIconWrap}>
+                      {getIconForMetric(template.metric, dc)}
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.activeChallengeTitle} numberOfLines={1}>{template.title}</Text>
                       <Text style={styles.activeChallengeProgress}>{progressLabel}</Text>
@@ -681,7 +704,9 @@ export default function AccountScreen() {
                 <View key={ac.challengeId + i} style={[styles.challengeCard, { borderColor: dc + "30" }]}>
                   <LinearGradient colors={[dc + "0D", "transparent"]} style={StyleSheet.absoluteFill} />
                   <View style={styles.challengeCardTop}>
-                    <Text style={styles.challengeEmoji}>{template.emoji}</Text>
+                    <View style={styles.challengeIconWrap}>
+                      {getIconForMetric(template.metric, T.textDim)}
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.challengeTitle} numberOfLines={1}>{template.title}</Text>
                       <Text style={styles.challengeDate}>Completed {dateStr}</Text>
@@ -712,7 +737,7 @@ export default function AccountScreen() {
                       <View style={styles.challengeBadgeList}>
                         {badges.map(b => (
                           <View key={b.label} style={styles.challengeBadgeChip}>
-                            <Text style={styles.challengeBadgeEmoji}>{b.emoji}</Text>
+                            <Check size={12} color={T.green} />
                             <Text style={styles.challengeBadgeLabel}>{b.label}</Text>
                           </View>
                         ))}
@@ -757,7 +782,9 @@ export default function AccountScreen() {
                           />
                         )}
                         <View style={styles.achieveCardTop}>
-                          <Text style={styles.achieveEmoji}>{isUnlocked ? a.emoji : "🔒"}</Text>
+                          <View style={styles.achieveIconWrap}>
+                            {isUnlocked ? getIconForCategory(a.category, TIER_COLOR[a.tier], 24) : <Lock size={20} color={T.textDim} />}
+                          </View>
                           {isUnlocked && (
                             <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
                               <Text style={[styles.achieveTierText, { color: tierColor }]}>
@@ -1043,7 +1070,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between", marginBottom: 2,
   },
-  achieveEmoji: { fontSize: 28 },
+  achieveIconWrap: { alignItems: "center", justifyContent: "center" },
   achieveTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
   achieveDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15 },
   achieveTierBadge: {
@@ -1112,7 +1139,7 @@ const styles = StyleSheet.create({
     padding: 14, gap: 8, overflow: "hidden",
   },
   activeChallengeTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  activeChallengeEmoji: { fontSize: 24 },
+  activeChallengeIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   activeChallengeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   activeChallengeProgress: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
   activeProgressBarTrack: {
@@ -1131,7 +1158,7 @@ const styles = StyleSheet.create({
     padding: 14, gap: 10, overflow: "hidden",
   },
   challengeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  challengeEmoji: { fontSize: 24 },
+  challengeIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   challengeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   challengeDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   challengeDiffBadge: {

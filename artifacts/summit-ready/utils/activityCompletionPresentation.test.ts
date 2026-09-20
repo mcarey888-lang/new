@@ -175,4 +175,39 @@ describe("activity completion presentation", () => {
       isComplete: true,
     });
   });
+
+  it("shows confirmed challenge and achievement titles only from exact supplied consequences", () => {
+    const presentation = base({
+      challengeAchievement: {
+        status: "confirmed",
+        challengeTitles: ["Walk 100km outdoors"],
+        achievementTitles: ["First Tracked Mountain"],
+      },
+    });
+    expect(presentation.challengeAchievement).toEqual({
+      status: "confirmed",
+      challengeTitles: ["Walk 100km outdoors"],
+      achievementTitles: ["First Tracked Mountain"],
+    });
+  });
+
+  it("keeps offline or awaiting qualification consequences pending", () => {
+    expect(base({
+      isOffline: true,
+      challengeAchievement: { status: "pending", reason: "Saved locally; awaiting qualification." },
+    }).challengeAchievement).toEqual({
+      status: "pending",
+      reason: "Saved locally; awaiting qualification.",
+    });
+  });
+
+  it("does not fabricate challenge or achievement awards", () => {
+    expect(base().challengeAchievement).toEqual({ status: "not_linked" });
+    expect(base({
+      challengeAchievement: { status: "unavailable", reason: "No exact consequence result supplied." },
+    }).challengeAchievement).toEqual({
+      status: "unavailable",
+      reason: "No exact consequence result supplied.",
+    });
+  });
 });

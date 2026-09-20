@@ -10,6 +10,7 @@ import {
   Square,
   TrendingDown,
   TrendingUp,
+  Trophy,
   Users,
   Wifi,
   WifiOff,
@@ -1402,6 +1403,9 @@ export default function HikeTrackingScreen() {
       completionExpedition ?? trackedExpedition,
       isOffline ? "offline" : "ready",
     ),
+    challengeAchievement: isOffline
+      ? { status: "pending", reason: "Saved locally; challenge and achievement qualification will wait for sync." }
+      : { status: "unavailable", reason: "Challenge and achievement qualification is not confirmed yet." },
   });
 
   // ── Render: permission denied ────────────────────────────────────────────
@@ -1538,6 +1542,33 @@ export default function HikeTrackingScreen() {
                         ? `Next stage: ${completionPresentation.expedition.nextStageName}`
                         : "Next stage will appear after this activity is confirmed."}
                   </Text>
+                </View>
+              </View>
+            )}
+
+            {completionPresentation.challengeAchievement.status !== "not_linked" && (
+              <View style={s.consequenceRow} testID="completion-challenge-achievement">
+                <Trophy size={17} color={T.orange} />
+                <View style={s.consequenceCopy}>
+                  <Text style={s.consequenceTitle}>CHALLENGES & ACHIEVEMENTS</Text>
+                  {completionPresentation.challengeAchievement.status === "confirmed" ? (
+                    <>
+                      {completionPresentation.challengeAchievement.challengeTitles.map((title) => (
+                        <Text key={`challenge-${title}`} style={s.consequenceSub}>{title}</Text>
+                      ))}
+                      {completionPresentation.challengeAchievement.achievementTitles.map((title) => (
+                        <Text key={`achievement-${title}`} style={s.consequenceSub}>{title}</Text>
+                      ))}
+                      {completionPresentation.challengeAchievement.challengeTitles.length === 0 &&
+                        completionPresentation.challengeAchievement.achievementTitles.length === 0 && (
+                          <Text style={s.consequenceSub}>No new confirmed consequences.</Text>
+                        )}
+                    </>
+                  ) : (
+                    <Text style={s.consequenceSub}>
+                      {completionPresentation.challengeAchievement.reason}
+                    </Text>
+                  )}
                 </View>
               </View>
             )}

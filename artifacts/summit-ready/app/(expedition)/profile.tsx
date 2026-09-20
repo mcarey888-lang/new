@@ -7,8 +7,18 @@
 
 import {
   Settings, Trophy, TrendingUp, Star, ChevronRight, Mountain,
-  Heart, MapPin, Clock, CheckCircle,
+  Heart, MapPin, Clock, CheckCircle, Award, Target, Compass
 } from "lucide-react-native";
+
+function getIconForCategory(category: string, color: string, size = 20) {
+  switch(category) {
+    case "mountain": return <Mountain size={size} color={color} />;
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "expedition": return <Compass size={size} color={color} />;
+    case "training": return <Target size={size} color={color} />;
+    default: return <Award size={size} color={color} />;
+  }
+}
 import { useUser } from "@clerk/expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -175,8 +185,8 @@ export default function ExpeditionProfileScreen() {
           <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
           <View style={s.cardHeader}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-              <Trophy size={14} color={T.orange} />
-              <Text style={s.cardTitle}>ACHIEVEMENTS</Text>
+              <Trophy size={16} color={T.orange} />
+              <Text style={s.cardTitle}>Achievements</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/(expedition)/account" as any)}>
               <Text style={s.viewAll}>View All</Text>
@@ -194,7 +204,7 @@ export default function ExpeditionProfileScreen() {
               {unlockedList.slice(0, 4).map(a => (
                 <View key={a.id} style={s.achievementBadge}>
                   <View style={[s.badgeIcon, { borderColor: TIER_COLOR[a.tier] + "40", backgroundColor: TIER_COLOR[a.tier] + "14" }]}>
-                    <Text style={{ fontSize: 20 }}>{a.emoji}</Text>
+                    {getIconForCategory(a.category, TIER_COLOR[a.tier], 22)}
                   </View>
                   <Text style={s.badgeLabel} numberOfLines={2}>{a.title}</Text>
                 </View>
@@ -208,8 +218,8 @@ export default function ExpeditionProfileScreen() {
           <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
           <View style={s.cardHeader}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-              <TrendingUp size={14} color={T.blue} />
-              <Text style={s.cardTitle}>RECENT ACTIVITY</Text>
+              <TrendingUp size={16} color={T.blue} />
+              <Text style={s.cardTitle}>Recent Activity</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/(tabs)/hikes" as any)}>
               <Text style={s.viewAll}>View All</Text>
@@ -248,8 +258,8 @@ export default function ExpeditionProfileScreen() {
             <LinearGradient colors={["rgba(255,255,255,0.03)", "transparent"]} style={StyleSheet.absoluteFill} />
             <View style={s.cardHeader}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-                <MapPin size={14} color={T.green} />
-                <Text style={s.cardTitle}>MY ROUTES</Text>
+                <MapPin size={16} color={T.green} />
+                <Text style={s.cardTitle}>My Routes</Text>
               </View>
               <TouchableOpacity onPress={() => router.push("/(expedition)/route" as any)}>
                 <Text style={s.viewAll}>View All</Text>
@@ -365,8 +375,8 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  cardTitle: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.2 },
-  viewAll: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
+  cardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.text },
+  viewAll: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textDim },
 
   achievementGrid: { flexDirection: "row", gap: 10 },
   achievementBadge: { flex: 1, alignItems: "center", gap: 6 },

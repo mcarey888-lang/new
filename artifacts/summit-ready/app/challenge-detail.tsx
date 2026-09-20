@@ -20,7 +20,7 @@ import Svg, { Circle, Line, Polyline, Path, Text as SvgText } from "react-native
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   AlertCircle, ArrowLeft, CalendarDays, CheckCircle, ChevronRight, Compass, Lock,
-  MoreHorizontal, Mountain, TrendingUp, Zap,
+  MoreHorizontal, Mountain, TrendingUp, Zap, Trophy
 } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { logChallengeStarted } from "@/lib/analytics";
@@ -39,10 +39,20 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   : "/api";
 
 // ── Challenge Ring ─────────────────────────────────────────────────────────────
+function getIconForMetric(metric: string, color: string) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={32} color={color} />;
+    case "hikes": return <Mountain size={32} color={color} />;
+    case "stages": return <Compass size={32} color={color} />;
+    case "weeks": return <CalendarDays size={32} color={color} />;
+    default: return <Trophy size={32} color={color} />;
+  }
+}
+
 function ChallengeRing({
-  pct, elevation, target, emoji, color, size = 160,
+  pct, elevation, target, metric, color, size = 160,
 }: {
-  pct: number; elevation: number; target: number; emoji: string; color: string; size?: number;
+  pct: number; elevation: number; target: number; metric: string; color: string; size?: number;
 }) {
   const strokeWidth = 13;
   const r = (size - strokeWidth) / 2;
@@ -73,8 +83,11 @@ function ChallengeRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={{ alignItems: "center", gap: 1 }}>
-        <Text style={{ fontSize: 24, lineHeight: 28 }}>{emoji}</Text>
+      <View style={{ alignItems: "center", gap: 6 }}>
+        {metric === "elevation" && <TrendingUp size={24} color={color} />}
+        {metric === "hikes" && <Mountain size={24} color={color} />}
+        {metric === "stages" && <Compass size={24} color={color} />}
+        {metric === "weeks" && <CalendarDays size={24} color={color} />}
         <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 34 }}>
           {elevation >= 1000 ? `${elevation.toLocaleString()}M` : `${elevation}M`}
         </Text>
@@ -188,7 +201,7 @@ function ClimbRow({ activity, color }: { activity: ChallengeActivity; color: str
         <Image source={{ uri: imgUri }} style={cr.thumb} onError={() => setImgErr(true)} resizeMode="cover" />
       ) : (
         <View style={[cr.thumb, cr.thumbFb]}>
-          <Text style={{ fontSize: 18 }}>⛰️</Text>
+          <Mountain size={18} color={T.textDim} />
         </View>
       )}
       <Text style={cr.name} numberOfLines={1}>{activity.title}</Text>
@@ -708,7 +721,7 @@ export default function ChallengeDetailScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} activeOpacity={0.7} style={s.headerBtn}>
             <ArrowLeft size={18} color={T.textMuted} />
           </TouchableOpacity>
-          <Text style={s.cdTitle} numberOfLines={1}>{c.title.toUpperCase()}</Text>
+          <Text style={s.cdTitle} numberOfLines={1}>{c.title}</Text>
           {isActive ? (
             <TouchableOpacity style={s.headerBtn} activeOpacity={0.7} onPress={openMenu}>
               <MoreHorizontal size={20} color={T.textMuted} />
@@ -726,11 +739,11 @@ export default function ChallengeDetailScreen() {
                 pct={pct}
                 elevation={c.metric === "elevation" ? progress : ac.activities.length}
                 target={c.targetValue}
-                emoji={c.emoji}
+                metric={c.metric}
                 color={color}
                 size={160}
               />
-              <Text style={[s.pctText, { color }]}>{pct}% COMPLETED</Text>
+              <Text style={[s.pctText, { color }]}>{pct}% Completed</Text>
               <Text style={s.toGoText}>
                 {c.metric === "elevation"
                   ? `${(c.targetValue - progress).toLocaleString()}M to go`
@@ -790,6 +803,9 @@ export default function ChallengeDetailScreen() {
                     </React.Fragment>
                   ))}
                 </View>
+                <View style={s.syncInfo}>
+                  <Text style={s.syncInfoText}>Sessions mapped from outdoor tracking sync automatically. Manually added activities appear immediately.</Text>
+                </View>
               </Animated.View>
             )}
 
@@ -836,7 +852,7 @@ export default function ChallengeDetailScreen() {
               <LinearGradient colors={[color + "18", "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={s.heroTop}>
                 <View style={[s.heroEmoji, { backgroundColor: color + "22" }]}>
-                  <Text style={s.heroEmojiText}>{c.emoji}</Text>
+                  {getIconForMetric(c.metric, color)}
                 </View>
                 <View style={s.heroBadges}>
                   <View style={[s.badge, { backgroundColor: diffColor + "22" }]}>
@@ -916,7 +932,9 @@ export default function ChallengeDetailScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[s.milestoneLabel, reached && { color: T.text }]}>{m.label}</Text>
                     </View>
-                    <Text style={s.milestoneEmoji}>{reached ? m.emoji : "○"}</Text>
+                    <View style={{ width: 16, alignItems: "center" }}>
+                      {reached ? <CheckCircle size={14} color={color} /> : <View style={s.milestoneDotEmpty} />}
+                    </View>
                     <Text style={[s.milestonePct, reached && { color }]}>{m.pct}%</Text>
                   </View>
                 );
@@ -998,11 +1016,11 @@ const s = StyleSheet.create({
   // ── Header ────────────────────────────────────────────────────────────────
   cdHeader: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
   headerBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  cdTitle: { flex: 1, textAlign: "center", fontSize: 13, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: 1.5 },
+  cdTitle: { flex: 1, textAlign: "center", fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text },
 
   // ── Active state ──────────────────────────────────────────────────────────
   ringSection: { alignItems: "center", gap: 8, paddingVertical: 4 },
-  pctText: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
+  pctText: { fontSize: 20, fontFamily: "Inter_700Bold" },
   toGoText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   chartCard: {
@@ -1021,10 +1039,12 @@ const s = StyleSheet.create({
   statTileDivider: { width: 1, backgroundColor: T.border, marginVertical: 8 },
 
   recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  recentTitle: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 1.4 },
+  recentTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   recentViewAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   recentList: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14 },
   recentDivider: { height: 1, backgroundColor: T.border },
+  syncInfo: { marginTop: 12, paddingHorizontal: 4 },
+  syncInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15 },
 
   milestoneBanner: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: T.border },
   milestoneBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
@@ -1034,7 +1054,6 @@ const s = StyleSheet.create({
   hero: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 18, gap: 10, overflow: "hidden" },
   heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   heroEmoji: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  heroEmojiText: { fontSize: 26 },
   heroBadges: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingTop: 4 },
   badge: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontFamily: "Inter_700Bold" },
@@ -1050,7 +1069,7 @@ const s = StyleSheet.create({
   milestoneRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   milestoneDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: T.border, flexShrink: 0 },
   milestoneLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
-  milestoneEmoji: { fontSize: 16 },
+  milestoneDotEmpty: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.border },
   milestonePct: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textDim, minWidth: 32, textAlign: "right" },
 
   ctaArea: { gap: 10 },

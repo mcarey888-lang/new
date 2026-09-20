@@ -17,7 +17,25 @@ export type CompletionPresentationInput = {
   isOffline: boolean;
   elevationBank?: ElevationBankResponse | ElevationBankUnavailable;
   expeditionProgress?: ExpeditionPresentationState | null;
+  challengeAchievement?: ChallengeAchievementConsequenceInput;
 };
+
+export type ChallengeAchievementConsequenceInput =
+  | {
+      status: "confirmed";
+      challengeTitles?: readonly string[];
+      achievementTitles?: readonly string[];
+    }
+  | { status: "pending" | "unavailable"; reason: string };
+
+export type ChallengeAchievementPresentation =
+  | {
+      status: "confirmed";
+      challengeTitles: readonly string[];
+      achievementTitles: readonly string[];
+    }
+  | { status: "pending" | "unavailable"; reason: string }
+  | { status: "not_linked" };
 
 export type CompletionPresentation = {
   title: string;
@@ -51,6 +69,7 @@ export type CompletionPresentation = {
       }
     | { status: "not_linked" };
   sync: "saved_locally" | "ready_to_sync";
+  challengeAchievement: ChallengeAchievementPresentation;
 };
 
 export function buildActivityCompletionPresentation(
@@ -102,5 +121,14 @@ export function buildActivityCompletionPresentation(
         }
       : { status: "not_linked" },
     sync: input.isOffline ? "saved_locally" : "ready_to_sync",
+    challengeAchievement: input.challengeAchievement
+      ? input.challengeAchievement.status === "confirmed"
+        ? {
+            status: "confirmed",
+            challengeTitles: input.challengeAchievement.challengeTitles ?? [],
+            achievementTitles: input.challengeAchievement.achievementTitles ?? [],
+          }
+        : input.challengeAchievement
+      : { status: "not_linked" },
   };
 }

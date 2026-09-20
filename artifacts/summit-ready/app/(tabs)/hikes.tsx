@@ -124,7 +124,7 @@ const lh = StyleSheet.create({
 // ── Category card ─────────────────────────────────────────────────────────────
 
 interface CategoryCardProps {
-  emoji: string;
+  emoji?: string;
   title: string;
   subtitle: string;
   color: string;
@@ -132,7 +132,7 @@ interface CategoryCardProps {
   badge?: number;
 }
 
-function CategoryCard({ emoji, title, subtitle, color, onPress, badge }: CategoryCardProps) {
+function CategoryCard({ emoji = "⛰️", title, subtitle, color, onPress, badge }: CategoryCardProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -261,21 +261,18 @@ export default function HikesScreen() {
         {/* Category grid */}
         <Animated.View entering={FadeInDown.delay(80).duration(600)} style={p.grid}>
           <CategoryCard
-            emoji="🗺️"
             title="Nearby Trails"
             subtitle="Browse trails"
             color={T.blue}
             onPress={() => router.push("/trail-list")}
           />
           <CategoryCard
-            emoji="⛰️"
             title="Training Hills"
             subtitle="AI-powered hill lookup"
             color={T.orange}
             onPress={() => router.push("/hills-finder")}
           />
           <CategoryCard
-            emoji="🔖"
             title="Saved Routes"
             subtitle="Trails you've bookmarked"
             color={T.blue}
@@ -283,7 +280,6 @@ export default function HikesScreen() {
             onPress={() => router.push("/trails-saved")}
           />
           <CategoryCard
-            emoji="✅"
             title="Completed Trails"
             subtitle="Trails you've finished"
             color={T.green}

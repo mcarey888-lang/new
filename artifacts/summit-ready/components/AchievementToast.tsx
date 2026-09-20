@@ -9,8 +9,19 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Award, Compass, Mountain, Target, TrendingUp } from "lucide-react-native";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL, Achievement } from "@/utils/achievements";
 import { T } from "@/constants/theme";
+
+function getIconForCategory(category: string, color: string, size = 32) {
+  switch (category) {
+    case "mountain": return <Mountain size={size} color={color} />;
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "expedition": return <Compass size={size} color={color} />;
+    case "training": return <Target size={size} color={color} />;
+    default: return <Award size={size} color={color} />;
+  }
+}
 
 function Sparkle({ color, delay, angle, distance }: { color: string; delay: number; angle: number; distance: number }) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -98,7 +109,7 @@ function AchievementCard({ achievement, total, current, onAdvance }: {
             <Sparkle key={i} color={tierColor} delay={s.delay} angle={s.angle} distance={s.distance} />
           ))}
           <Animated.View style={[styles.emojiRing, { borderColor: tierColor + "60", backgroundColor: tierColor + "18", transform: [{ scale: ringPulse }] }]}>
-            <Text style={styles.emoji}>{achievement.emoji}</Text>
+            {getIconForCategory(achievement.category, tierColor, 32)}
           </Animated.View>
         </View>
 
@@ -217,7 +228,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  emoji: { fontSize: 40 },
   sparkle: {
     position: "absolute",
     width: 7,

@@ -8,7 +8,17 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckCircle, Trophy } from "lucide-react-native";
+import { CheckCircle, Trophy, TrendingUp, Mountain, Compass, CalendarDays } from "lucide-react-native";
+
+function getIconForMetric(metric: string, color: string, size = 18) {
+  switch (metric) {
+    case "elevation": return <TrendingUp size={size} color={color} />;
+    case "hikes": return <Mountain size={size} color={color} />;
+    case "stages": return <Compass size={size} color={color} />;
+    case "weeks": return <CalendarDays size={size} color={color} />;
+    default: return <Trophy size={size} color={color} />;
+  }
+}
 import { T } from "@/constants/theme";
 import { getChallenge } from "@/constants/challenges";
 import { useChallenges } from "@/context/ChallengesContext";
@@ -92,7 +102,7 @@ export function AddToChallengeSheet({
                   activeOpacity={0.75}
                   disabled={!!added}
                 >
-                  <Text style={s.emoji}>{tmpl.emoji}</Text>
+                  <View style={s.iconWrap}>{getIconForMetric(tmpl.metric, tmpl.color, 18)}</View>
                   <Text style={s.name} numberOfLines={1}>{tmpl.title}</Text>
                   {isAdded ? (
                     <View style={s.addedBadge}>
@@ -177,8 +187,9 @@ const s = StyleSheet.create({
     borderColor: T.green + "50",
     backgroundColor: T.greenDim,
   },
-  emoji: {
-    fontSize: 20,
+  iconWrap: {
+    width: 24,
+    alignItems: "center",
   },
   name: {
     flex: 1,
