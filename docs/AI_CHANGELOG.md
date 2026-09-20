@@ -2,13 +2,35 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
-## 2026-09-20 UTC — Premium Training Basecamp V3
+## 2026-09-21 UTC — Premium Training Basecamp V3
 
-- Completed bounded visual refinement to align Basecamp with the locked V3 product reference.
-- Restructured dashboard rendering into an immersive cinematic layout, discarding repetitive generic card wrappers.
-- Implemented `FourSegmentRing` SVG component for Readiness 2.0 and correctly mapped Elevation Bank stats into the UI.
-- Preserved backend ledger data, coaching algorithms, routing logic, navigation architecture, and protected features (Progress Mountain).
-- No schema changes or artwork generation occurred.
+**Implementation:** Training Basecamp now follows the locked cinematic
+reference with the approved Mont Blanc hero, separate Mission and Up Next
+surfaces, four-segment locked/entitled Readiness, restrained ledger-backed
+Elevation Bank, Training Insight and quieter secondary modules. The existing
+functional shell switch is embedded in the Basecamp hero only.
+
+**Truthful data:** Goal, week, phase, completion, session duration/elevation,
+Readiness entitlement/values and Elevation Bank states come from existing real
+models. No intensity, Zone, score or ledger value is invented.
+
+**Correction loop:** Real 390 × 844 captures caused corrections to hero height,
+duplicate/sticky shell switching, Mission/Up Next grouping, Readiness density,
+small-phone label collisions, paired-module wrapping and accessibility
+semantics.
+
+**Artwork/evidence:** Consumes exact approved
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn` v1 `hero` derivative.
+Added six final captures under `docs/visual-qa/premium-basecamp-v3/`, including
+full-scroll and forced genuine fallback evidence.
+
+**Verification:** SummitReady **25 files / 166 tests**, TypeScript, production
+web/iOS/Android Expo exports, `git diff --check`, browser network/source checks
+and independent final review passed.
+
+**Safety:** No schema/data migration, artwork generation/publication,
+production deployment/release, Stage 9, other-screen reskin, canonical activity,
+offline tracking, Progress Mountain, cinematic or live-3D change occurred.
 
 ## 2026-09-20 UTC — Basecamp approved Mont Blanc artwork correction
 

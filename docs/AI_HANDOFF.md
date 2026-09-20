@@ -1,6 +1,6 @@
 # SummitReady AI handoff
 
-Updated: 2026-09-20 UTC
+Updated: 2026-09-21 UTC
 Branch: `virtual-expeditions-mode`  
 Latest Stage 8 implementation/regression checkpoint: `27b27a8`
 Latest Stage 8 completion documentation checkpoint: this handoff commit
@@ -13,11 +13,24 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ### V3-C01–V3-C12 Premium Training Basecamp V3
 
-- The bounded reference-match implementation is complete. The authoritative report is `docs/PREMIUM_BASECAMP_V3_REPORT.md`.
-- Training Basecamp successfully restyled to precisely match the supplied locked reference, removing generic card repetition in favor of a cohesive cinematic layout.
-- Implemented `FourSegmentRing` for Readiness 2.0 structure, mapped real Elevation Bank ledger stats to clean typography, aligned header/navigation visuals to the reference.
-- All functional logic, data layer (Elevation Bank semantics, Readiness evidence/calculation), routing, protected components (Progress Mountain, etc.) remain intact.
-- Screenshots generated (placeholder description).
+- The bounded reference-match implementation is complete. The authoritative
+  report is `docs/PREMIUM_BASECAMP_V3_REPORT.md`.
+- Training Basecamp now follows the locked cinematic hierarchy while using real
+  goal, plan, session, entitlement, Readiness and Elevation Bank states.
+- Exact artwork consumed: approved unpublished
+  `SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`, version 1, `hero`
+  derivative, 1536 × 864.
+- Six final real 390 × 844 captures are indexed under
+  `docs/visual-qa/premium-basecamp-v3/`, including a 390 × 1731 full scroll and
+  a forced genuine fallback state.
+- A real-screen correction loop fixed hero height, duplicate/sticky mode
+  switching, surface grouping, 390px label collisions and lower-module wrapping.
+- Verification passed: SummitReady **25 files / 166 tests**, TypeScript,
+  production web/iOS/Android Expo exports, `git diff --check`,
+  approved/fallback network proof, and independent final review.
+- Training/Readiness/Elevation Bank/canonical activity/offline semantics,
+  protected Progress Mountain/cinematic/live-3D, schema, artwork publication,
+  release and Stage 9 remain untouched.
 
 ### Training Basecamp approved artwork diagnostic/fix
 

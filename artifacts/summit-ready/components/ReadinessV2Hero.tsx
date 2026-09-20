@@ -1,9 +1,9 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import Animated, { FadeInDown, useReducedMotion, useSharedValue, useAnimatedProps, withTiming, Easing } from "react-native-reanimated";
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import { Activity, ChevronRight, Lock, Heart, Wind, Zap, Mountain, AlertCircle } from "lucide-react-native";
+import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
+import Svg, { Circle } from "react-native-svg";
+import { Lock, Heart, Wind, Zap, Mountain } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { useSubscription } from "@/lib/revenuecat";
@@ -90,22 +90,25 @@ export function ReadinessV2Hero() {
   const reducedMotion = useReducedMotion();
 
   if (!v2 || !v2.result) return null;
-  const { result, nextAction } = v2;
-  const { overallScore, dimensions, gaps, explanations, confidence } = result;
+  const { result } = v2;
+  const { overallScore, dimensions } = result;
 
   const score = overallScore ?? 0;
   const statusColor = score >= 70 ? T.green : score >= 40 ? T.orange : T.red;
 
   return (
     <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(80).duration(500)}>
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => router.push(isSubscribed ? "/readiness-detail" as any : "/paywall")}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={isSubscribed ? "View detailed readiness analysis" : "Unlock readiness analysis with Pro"}
+      >
         <View style={styles.topRow}>
-          <TouchableOpacity
-            onPress={!isSubscribed ? () => router.push("/paywall") : undefined}
-            activeOpacity={!isSubscribed ? 0.85 : 1}
-          >
-            <FourSegmentRing size={120} hideScore={!isSubscribed} score={score} ringColor={statusColor} />
-          </TouchableOpacity>
+          <View>
+            <FourSegmentRing size={110} hideScore={!isSubscribed} score={score} ringColor={statusColor} />
+          </View>
           <View style={styles.metaCol}>
             <View style={styles.titleRow}>
               <Text style={styles.areYouReadyLabel}>Readiness</Text>
@@ -129,6 +132,11 @@ export function ReadinessV2Hero() {
                 return (
                   <View key={key} style={styles.miniIconItem}>
                     <Icon size={18} color={color} />
+                    {isSubscribed && (
+                      <Text style={[styles.miniIconScore, { color }]}>
+                        {dimensions[key as keyof typeof dimensions]?.score ?? "—"}
+                      </Text>
+                    )}
                     <Text style={[styles.miniIconLabel, { color }]}>{DIM_LABELS[key]}</Text>
                   </View>
                 );
@@ -136,7 +144,7 @@ export function ReadinessV2Hero() {
             </View>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -149,10 +157,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
-    padding: 16,
+    padding: 12,
   },
-  topRow: { flexDirection: "row", gap: 16, alignItems: "center" },
-  metaCol: { flex: 1, gap: 8, justifyContent: "center" },
+  topRow: { flexDirection: "row", gap: 12, alignItems: "center" },
+  metaCol: { flex: 1, gap: 6, justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   areYouReadyLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   proBadge: {
@@ -166,7 +174,8 @@ const styles = StyleSheet.create({
   },
   proBadgeText: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.6)", letterSpacing: 0.5 },
   trackingMsg: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", lineHeight: 18 },
-  miniIconsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  miniIconItem: { alignItems: "center", gap: 4 },
-  miniIconLabel: { fontSize: 9, fontFamily: "Inter_500Medium" },
+  miniIconsRow: { flexDirection: "row", marginTop: 4 },
+  miniIconItem: { flex: 1, minWidth: 0, alignItems: "center", gap: 2 },
+  miniIconScore: { fontSize: 11, fontFamily: "Inter_700Bold", lineHeight: 13 },
+  miniIconLabel: { fontSize: 8, fontFamily: "Inter_500Medium", textAlign: "center" },
 });

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award, Lightbulb } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award, Lightbulb } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,6 +37,7 @@ import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
 import { ProgressRing } from "@/components/ProgressRing";
 import { ReadinessV2Hero } from "@/components/ReadinessV2Hero";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
+import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 
 // Animated WebP supports transparency on all platforms via expo-image.
@@ -149,7 +150,7 @@ function MountainHero({
     : "";
 
   return (
-    <View style={[heroStyles.container, { height: 380 }]}>
+    <View style={[heroStyles.container, { height: 320 }]}>
       {heroImageUri ? (
         <ImageBackground
           source={{ uri: heroImageUri }}
@@ -230,24 +231,29 @@ function HeroContent({
           <Mountain size={20} color="#fff" strokeWidth={1.5} />
           <View style={{ marginLeft: 8 }}>
             <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 2 }}>SUMMITREADY</Text>
-            <Text style={{ fontSize: 6, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.6)", letterSpacing: 1.5, marginTop: 1 }}>TRAIN MORE . GO FURTHER.</Text>
+            <Text style={{ fontSize: 7, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.68)", letterSpacing: 1.2, marginTop: 1 }}>TRAIN MORE · GO FURTHER.</Text>
           </View>
         </View>
 
-        <View style={heroStyles.headerToggle}>
-          <View style={heroStyles.headerToggleActive}>
-            <Text style={heroStyles.headerToggleActiveText}>Training</Text>
-          </View>
-          <View style={heroStyles.headerToggleInactive}>
-            <Text style={heroStyles.headerToggleInactiveText}>Expeditions</Text>
-          </View>
-        </View>
+        <ModeTogglePill embedded />
 
         <View style={heroStyles.headerButtons}>
-          <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={heroStyles.editBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")}
+            style={heroStyles.editBtn}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={isSubscribed ? "Manage subscription" : "View SummitReady Pro"}
+          >
             <Lock size={12} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onEdit}
+            style={heroStyles.editBtn}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Edit training objective"
+          >
             <Pencil size={12} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -295,38 +301,12 @@ const heroStyles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    width: 120, // fixed width to balance toggle
-  },
-  headerToggle: {
-    flexDirection: "row",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderRadius: 20,
-    padding: 3,
-  },
-  headerToggleActive: {
-    backgroundColor: T.green,
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  headerToggleActiveText: {
-    color: "#fff",
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-  headerToggleInactive: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  headerToggleInactiveText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    width: 115,
   },
   headerButtons: {
     flexDirection: "row",
     gap: 8,
-    width: 120, // fixed width to balance toggle
+    width: 64,
     justifyContent: "flex-end",
   },
   editBtn: {
@@ -911,42 +891,67 @@ export default function DashboardScreen() {
         <View style={styles.editorialContent}>
           {/* Mission & Up Next Card */}
           {currentWeek && (
-            <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)} style={styles.basecampCard}>
-              <View style={styles.missionHeader}>
-                <Text style={styles.missionTitle}>This week's mission</Text>
-                <TouchableOpacity style={styles.missionPlanBtn} onPress={() => router.push("/(tabs)/training")}>
-                  <Text style={styles.missionPlanText}>View plan</Text>
-                  <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.missionProgressContainer}>
-                <View style={styles.missionProgressTrack}>
-                  <View
-                    style={[
-                      styles.missionProgressFill,
-                      { width: `${weekCompletion}%` as any },
-                    ]}
-                  />
+            <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)} style={styles.missionGroup}>
+              <View style={styles.basecampCard}>
+                <View style={styles.missionHeader}>
+                  <Text style={styles.missionTitle}>This week's mission</Text>
+                  <TouchableOpacity style={styles.missionPlanBtn} onPress={() => router.push("/(tabs)/plan")}>
+                    <Text style={styles.missionPlanText}>View plan</Text>
+                    <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.missionProgressLabel}>{weekCompletion}% complete</Text>
+
+                <Text style={[styles.missionStatus, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                  Week {currentWeek.weekNumber} · {currentWeek.phase}
+                </Text>
+
+                <View
+                  style={styles.missionProgressContainer}
+                  accessible
+                  accessibilityRole="progressbar"
+                  accessibilityLabel={`Week ${currentWeek.weekNumber} completion`}
+                  accessibilityValue={{ min: 0, max: 100, now: weekCompletion }}
+                >
+                  <View style={styles.missionProgressTrack}>
+                    <View
+                      style={[
+                        styles.missionProgressFill,
+                        { width: `${weekCompletion}%` as any },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.missionProgressLabel}>{weekCompletion}% complete</Text>
+                </View>
               </View>
 
               {nextSession && (
-                <>
-                  <View style={styles.basecampCardDivider} />
-                  <TouchableOpacity
-                    style={styles.upNextBlock}
-                    activeOpacity={0.8}
-                    onPress={() => router.push({
-                      pathname: "/session-detail",
-                      params: {
-                        weekNum: String(currentWeek.weekNumber),
-                        sessionIdx: String(nextSessionIndex),
-                      },
-                    })}
-                  >
-                    <Image source={require("@/assets/store-feature-graphic.png")} style={styles.upNextImage} />
+                <TouchableOpacity
+                  style={styles.upNextCard}
+                  activeOpacity={0.8}
+                  onPress={() => router.push({
+                    pathname: "/session-detail",
+                    params: {
+                      weekNum: String(currentWeek.weekNumber),
+                      sessionIdx: String(nextSessionIndex),
+                    },
+                  })}
+                >
+                  <View style={styles.upNextBlock}>
+                    <Image
+                      source={
+                        nextSession.gymExercise
+                          ? ({
+                              treadmill: require("@/assets/images/exercise-treadmill.png"),
+                              stepper: require("@/assets/images/exercise-stepper.png"),
+                              outdoor: require("@/assets/images/exercise-outdoor.png"),
+                              "box-steps": require("@/assets/images/exercise-box-steps.png"),
+                              "weighted-stairs": require("@/assets/images/exercise-weighted-stairs.png"),
+                              elliptical: require("@/assets/images/exercise-elliptical.png"),
+                            } as const)[nextSession.gymExercise]
+                          : require("@/assets/images/exercise-outdoor.png")
+                      }
+                      style={styles.upNextImage}
+                    />
                     <View style={styles.upNextBody}>
                       <Text style={styles.upNextLabel}>UP NEXT</Text>
                       <Text style={styles.upNextTitle}>{nextSession.label}</Text>
@@ -954,12 +959,12 @@ export default function DashboardScreen() {
                       <View style={styles.upNextStats}>
                         <Clock size={11} color="rgba(255,255,255,0.4)" />
                         <Text style={styles.upNextStatText}>
-                          {nextSession.durationMinutes ? `${nextSession.durationMinutes} mins` : "Flexible"}
+                          {nextSession.duration}
                         </Text>
-                        {nextSession.intensity && (
+                        {nextSession.targetElevation > 0 && (
                           <>
-                            <BarChart2 size={11} color="rgba(255,255,255,0.4)" style={{marginLeft: 10}} />
-                            <Text style={styles.upNextStatText}>{nextSession.intensity}</Text>
+                            <TrendingUp size={11} color="rgba(255,255,255,0.4)" style={{ marginLeft: 10 }} />
+                            <Text style={styles.upNextStatText}>{nextSession.targetElevation.toLocaleString()}m</Text>
                           </>
                         )}
                       </View>
@@ -967,8 +972,8 @@ export default function DashboardScreen() {
                     <View style={styles.upNextAction}>
                       <ChevronRight size={14} color={T.green} />
                     </View>
-                  </TouchableOpacity>
-                </>
+                  </View>
+                </TouchableOpacity>
               )}
             </Animated.View>
           )}
@@ -1026,7 +1031,7 @@ export default function DashboardScreen() {
                   <Trophy size={16} color="#F59E0B" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pairedTitle}>Achievements</Text>
+                  <Text style={styles.pairedTitle} numberOfLines={1}>Achievements</Text>
                   <Text style={styles.pairedDesc}>{unlockedAchievements.length} unlocked</Text>
                 </View>
                 <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
@@ -1037,7 +1042,7 @@ export default function DashboardScreen() {
                   <MessageCircle size={16} color={T.blue} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pairedTitle}>AI Coach</Text>
+                  <Text style={styles.pairedTitle} numberOfLines={1}>AI Coach</Text>
                   <Text style={styles.pairedDesc}>{isSubscribed ? "Ask advice" : "Pro feature"}</Text>
                 </View>
                 <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
@@ -1328,6 +1333,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 16,
   },
+  missionGroup: {
+    gap: 8,
+  },
   editorialSection: {
   },
   basecampCard: {
@@ -1342,8 +1350,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 13,
+    paddingBottom: 6,
   },
   missionTitle: {
     fontSize: 16,
@@ -1364,8 +1372,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     gap: 12,
+  },
+  missionStatus: {
+    paddingHorizontal: 16,
+    paddingBottom: 5,
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
   },
   missionProgressTrack: {
     flex: 1,
@@ -1386,20 +1402,23 @@ const styles = StyleSheet.create({
     width: 80,
     textAlign: "right",
   },
-  basecampCardDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+  upNextCard: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
   },
   upNextBlock: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 16,
+    padding: 11,
+    gap: 12,
   },
   upNextImage: {
-    width: 64,
-    height: 48,
-    borderRadius: 6,
+    width: 76,
+    height: 64,
+    borderRadius: 8,
   },
   upNextBody: {
     flex: 1,
@@ -1488,22 +1507,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.03)",
     borderRadius: 16,
-    padding: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
-    gap: 10,
+    gap: 7,
   },
   pairedIconWrap: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderRadius: 8,
     backgroundColor: "rgba(245, 158, 11, 0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   pairedIconWrapBlue: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderRadius: 8,
     backgroundColor: "rgba(59, 130, 246, 0.1)",
     alignItems: "center",

@@ -1,7 +1,7 @@
 # SummitReady Visual QA Manifest
 
-**Scope:** VQ-C01–C09, VR-C04, Premium Basecamp pilot, and VR2 Basecamp V2 evidence
-**Date:** 2026-09-20 UTC
+**Scope:** VQ-C01–C09, VR-C04, Premium Basecamp pilot, VR2 Basecamp V2, and V3 Basecamp evidence
+**Date:** 2026-09-21 UTC
 **Viewport:** 390 × 844 CSS pixels, phone portrait
 **Status:** Final stable repository pack; VR-C04 is complete; native-device QA remains outstanding.
 
@@ -24,6 +24,22 @@
 
 Every indexed item is an actual PNG/JPG in this repository. No transient URL is
 the sole evidence.
+
+## V3-C11 Premium Training Basecamp V3
+
+These final 390 × 844 files use the real Expo Dashboard and existing
+development-only Active Hillwalker profile. The approved hero is
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`, version 1, `hero`
+derivative. No mock screen or fabricated product value is used.
+
+| File | State | Notes |
+|---|---|---|
+| `docs/visual-qa/premium-basecamp-v3/01-hero-mission.png` | Final first viewport | Approved hero, embedded functional mode switch, Mission, Up Next, locked Readiness |
+| `docs/visual-qa/premium-basecamp-v3/02-mission-readiness.png` | Mission + Readiness | Mission, Up Next, Readiness, Elevation Bank and Training Insight |
+| `docs/visual-qa/premium-basecamp-v3/03-readiness-elevation-bank.png` | Readiness + Elevation Bank | Locked Readiness, truthful signed-out bank state, insight and Alpine content |
+| `docs/visual-qa/premium-basecamp-v3/04-training-insight-secondary.png` | Lower content | Alpine content, Achievements, AI Coach and quiet upgrade row |
+| `docs/visual-qa/premium-basecamp-v3/05-full-scroll.png` | Complete scroll | Stitched 390 × 1731 full content; fixed bottom nav intentionally omitted from the stitch |
+| `docs/visual-qa/premium-basecamp-v3/06-approved-artwork-fallback.png` | Approved stream blocked | Existing `/api/mountain-image` fallback; no broken image or layout shift |
 
 ## VR2-C06 Premium Training Basecamp V2
 

@@ -25,7 +25,7 @@ import { useApp } from "@/context/AppContext";
 const TRAINING_COLOR    = T.green;
 const EXPEDITION_COLOR  = T.blue;
 
-export function ModeTogglePill() {
+export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
   const insets  = useSafeAreaInsets();
   const { shellMode, setShellMode, activeExpeditionId } = useApp();
   const switchingRef = useRef(false);
@@ -67,7 +67,7 @@ export function ModeTogglePill() {
   }
 
   const pill = (
-    <View style={s.pill}>
+    <View style={[s.pill, embedded && s.pillEmbedded]}>
       {/* Training segment */}
       <TouchableOpacity
         onPress={() => { void switchTo("training"); }}
@@ -75,11 +75,16 @@ export function ModeTogglePill() {
         activeOpacity={0.75}
         style={[
           s.segment,
+          embedded && s.segmentEmbedded,
           shellMode === "training" && { backgroundColor: TRAINING_COLOR },
         ]}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: shellMode === "training", disabled: isSwitching }}
+        accessibilityLabel="Training mode"
       >
         <Text style={[
           s.label,
+          embedded && s.labelEmbedded,
           shellMode === "training"
             ? s.labelActive
             : { color: "rgba(255,255,255,0.45)" },
@@ -98,11 +103,16 @@ export function ModeTogglePill() {
         activeOpacity={0.75}
         style={[
           s.segment,
+          embedded && s.segmentEmbedded,
           shellMode === "expedition" && { backgroundColor: EXPEDITION_COLOR },
         ]}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: shellMode === "expedition", disabled: isSwitching }}
+        accessibilityLabel="Expeditions mode"
       >
         <Text style={[
           s.label,
+          embedded && s.labelEmbedded,
           shellMode === "expedition"
             ? s.labelActive
             : { color: "rgba(255,255,255,0.45)" },
@@ -112,6 +122,14 @@ export function ModeTogglePill() {
       </TouchableOpacity>
     </View>
   );
+
+  if (embedded) {
+    return (
+      <View style={[s.plainBg, s.plainBgEmbedded]}>
+        {pill}
+      </View>
+    );
+  }
 
   return (
     <View
@@ -141,6 +159,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
+  plainBgEmbedded: {
+    backgroundColor: "rgba(12,20,36,0.76)",
+  },
   pill: {
     flexDirection: "row",
     alignItems: "center",
@@ -148,12 +169,20 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     gap: 0,
   },
+  pillEmbedded: {
+    paddingHorizontal: 3,
+    paddingVertical: 3,
+  },
   segment: {
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  segmentEmbedded: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
   },
   divider: {
     width: 1,
@@ -164,6 +193,9 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.2,
+  },
+  labelEmbedded: {
+    fontSize: 10,
   },
   labelActive: {
     color: "#fff",
