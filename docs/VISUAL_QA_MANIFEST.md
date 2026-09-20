@@ -25,6 +25,20 @@
 Every indexed item is an actual PNG/JPG in this repository. No transient URL is
 the sole evidence.
 
+## UI-C06 Premium Training Basecamp pilot
+
+These 390 × 844 files use the real Expo Dashboard and DEV-only Active
+Hillwalker fixture. The fallback capture blocks both approved-artwork paths and
+disables cache; identical normal/fallback pixels reflect continuity with the
+existing mountain-image source, not a reconstructed mockup.
+
+| File | State | Notes |
+|---|---|---|
+| `docs/visual-qa/premium-basecamp/before-active-hillwalker.png` | Accepted before baseline | Real production Basecamp before final composition |
+| `docs/visual-qa/premium-basecamp/after-first-viewport.png` | Final populated first viewport | Cinematic hero, Mission Control, Readiness, bottom navigation |
+| `docs/visual-qa/premium-basecamp/after-supporting-content.png` | Final supporting scroll | Elevation Bank, timing, stats, achievements, AI Coach |
+| `docs/visual-qa/premium-basecamp/fallback-no-approved-artwork.png` | Approved-artwork resolver blocked | Existing mountain-image fallback; no broken image or layout shift |
+
 ## VR-C04 deterministic demo-profile matrix
 
 The following exactly five development-only personas use the fixed fixture

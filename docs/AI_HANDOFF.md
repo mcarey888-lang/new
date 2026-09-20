@@ -11,6 +11,33 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### UI-C01–UI-C09 Premium Training Basecamp pilot
+
+- The bounded approved-artwork → real Training Basecamp pilot is complete.
+  The authoritative report is `docs/PREMIUM_BASECAMP_PILOT_REPORT.md`.
+- Persisted Batch 01 state was re-read at completion: **12 current versions,
+  12 approved, 0 published**. The DEV/demo pilot consumes
+  `SR-TRAIN-BASECAMP-001` version 1 by stable ID and `hero` placement only.
+- The resolver and stable media stream are development-only, current-approved
+  only, master/history/storage-opaque, and `no-store`. Production returns 404
+  and the app falls back to the existing mountain image, then gradient.
+- The real Basecamp now presents cinematic goal hero → Mission Control →
+  Readiness → supporting progress. Existing routes, calculations, activity/
+  offline behavior, shell semantics, and bottom navigation are unchanged.
+- Final 390×844 real-screen evidence is in
+  `docs/visual-qa/premium-basecamp/`: accepted before baseline, populated first
+  viewport, supporting scroll, and resolver-blocked fallback.
+- Lead-design review corrected truncated next-session guidance and recaptured
+  the supporting state at a clean section boundary. No P0/P1 visual issue
+  remains.
+- Final verification after that correction: focused **6 files / 32 tests**,
+  TypeScript, and production iOS/Android Expo exports passed. The implementation
+  checkpoint also passed the bounded **25 files / 162 tests**, API
+  **3 files / 11 tests**, API build, and live stable-media checks.
+- No artwork generation/publication, production schema/data, deployment,
+  release, broad reskin, Stage 9, or protected Progress Mountain/cinematic
+  change occurred. Native-device QA remains not run.
+
 ### MV-C01–MV-C10 Media, visual and motion gate
 
 - MV is complete through the bounded architecture, documentation, development

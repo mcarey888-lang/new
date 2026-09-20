@@ -2,6 +2,44 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-20 UTC — UI-C01–UI-C09 Premium Training Basecamp completion
+
+**Task:** Complete the missing populated evidence, lead-design review, final
+verification, and documentation for the one-screen approved-artwork Training
+Basecamp pilot.
+
+**Evidence:** Added four durable 390×844 PNGs under
+`docs/visual-qa/premium-basecamp/`: accepted before baseline, real populated
+first viewport, real supporting-content scroll, and resolver-blocked fallback.
+All captures use the actual Expo app, production Dashboard components, and the
+DEV-only Active Hillwalker fixture.
+
+**Self-review correction:** Expanded the Mission Control guidance from one to
+two lines so the real session cue no longer ends at `Conversation…`, while
+keeping Readiness visible. Recaptured supporting content from the Elevation
+Bank boundary instead of beginning mid-module. Final review found no P0/P1
+issue in hero crop/contrast, hierarchy, CTA competition, shell clarity, card
+density, spacing, or fallback behavior.
+
+**Approval/boundary:** Persisted Batch 01 remains **12 approved, 0 published**.
+The pilot asset is `SR-TRAIN-BASECAMP-001` version 1. Resolution remains
+development-only, current-approved only, stable-ID/placement based,
+master/history/storage opaque, production fail-closed, and non-publishing.
+
+**Verification:** Focused **6 files / 32 tests**, SummitReady TypeScript, and
+fresh production iOS and Android Expo exports passed after the final visual
+correction. The implementation checkpoint also passed bounded **25 files / 162
+tests**, API **3 files / 11 tests**, API build, live stable-media validation,
+and independent review. Native-device QA was not run.
+
+**Safety:** No Batch 02 generation, publication, media migration, production
+data/schema, broad reskin, deployment/release, Stage 9, or protected Expedition
+Progress Mountain/cinematic change occurred.
+
+**Files:** `docs/PREMIUM_BASECAMP_PILOT_REPORT.md`,
+`docs/VISUAL_QA_MANIFEST.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`, `docs/visual-qa/premium-basecamp/`.
+
 ## 2026-09-20 UTC — VR-C04/VR-C06 final architect PASS
 
 **Review:** Final architect review returned **PASS** with no P0/P1 blockers.

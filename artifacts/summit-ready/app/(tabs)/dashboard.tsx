@@ -909,7 +909,7 @@ export default function DashboardScreen() {
                     <View style={{ gap: 2, flex: 1 }}>
                       <Text style={styles.dominantActionEyebrow}>Up next</Text>
                       <Text style={styles.dominantActionTitle}>{nextSession.label}</Text>
-                      <Text style={styles.dominantActionDesc} numberOfLines={1}>{nextSession.description}</Text>
+                      <Text style={styles.dominantActionDesc} numberOfLines={2}>{nextSession.description}</Text>
                     </View>
                   </View>
                   <View style={styles.dominantActionArrow}>
@@ -1617,7 +1617,13 @@ const styles = StyleSheet.create({
   },
   dominantActionEyebrow: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green, letterSpacing: 0.5 },
   dominantActionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.basecampText },
-  dominantActionDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, marginTop: 2 },
+  dominantActionDesc: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted,
+    marginTop: 2,
+  },
   dominantActionArrow: { marginLeft: 10, opacity: 0.8 },
   weekCompleteBox: {
     padding: 24,
