@@ -9,6 +9,12 @@ In this workspace, the external Expo preview domain can misroute by request type
 
 **How to apply:** Compare an Android manifest request against the local Metro port and external domains. Cache clears and workflow restarts cannot repair this mapping; after one compute restart, stop changing app code and treat persistent misrouting as a Replit preview-router issue.
 
+For deterministic web screenshots, bypass the preview proxy and drive Chromium
+against the local Metro port through CDP. Set an explicit device-metrics
+viewport before capture. React Native Web `ScrollView` uses an internal
+`overflow-y: auto` element, so scroll that element rather than `window` when
+capturing content below the fold.
+
 For the editor's web simulation, keep the mobile artifact preview wrapper at `/mobile-preview.html`; using `/mobile/` makes Expo Router interpret `mobile` as an app route and show its not-found screen. The wrapper is served by the root landing artifact, not Metro, so regenerate its pnpm-resolved Expo Router entry whenever the mobile workflow starts. Use `lazy=false`: Metro lazy chunks resolve against the normal web domain and can receive landing-page HTML.
 
 The managed editor artifact workflow must use Expo LAN mode, not forced tunnel mode: Replit already exposes Metro through its Expo development domain, while an ngrok session closure exits the whole workflow and shows an artifact-crashed screen. If a physical device specifically needs a remote native tunnel, run that as a separate interactive preview rather than making the managed web artifact depend on ngrok.

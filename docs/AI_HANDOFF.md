@@ -11,6 +11,34 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### MV-C01–MV-C10 Media, visual and motion gate
+
+- MV is complete through the bounded architecture, documentation, development
+  gallery, motion foundation and one-screen pilot gate. The completion report
+  is `docs/MEDIA_VISUAL_MOTION_COMPLETION_REPORT.md`.
+- Artwork Admin plus the artwork API/service is the consolidation target.
+  Mountain-image remains the approved-first runtime resolver/fallback; Atlas
+  Media Studio remains a separate Atlas-brand domain.
+- A development-only `/assets` gallery was added inside Artwork Admin. It has
+  no production route, persistence, mutation, schema or publish behavior.
+- Only Training Basecamp was migrated as the real-screen pilot. Its data,
+  navigation, mountain resolver, Readiness, Elevation Bank and plan/session
+  semantics remain intact. Existing `FadeInDown` motion is reused.
+- Before/after 390×844 Active Hillwalker captures are in
+  `docs/visual-qa/media-pilot/`.
+- The bounded reproducible inventory classifies 41 relevant raster
+  source/evidence assets. Generated outputs, prototypes, attached uploads and
+  external Object Storage were excluded.
+- Verification passed: targeted **3 files / 20 tests**, bounded **24 files /
+  158 tests**, SummitReady and Artwork Admin TypeScript, Artwork Admin
+  production build with gallery media excluded, iOS/Android production Expo
+  exports and `git diff --check`. Native-device QA was not run.
+- Persistent media catalogue changes remain a future AMBER/RED proposal.
+- No Stage 9, broad migration, mass generation, production schema/data,
+  deploy/release, auth/privacy/payment, SDE, GPS/offline, Readiness,
+  Expedition-contribution or protected Progress Mountain/cinematic changes
+  occurred.
+
 Stage 8 — Challenges & Achievements is **COMPLETE** through O8-C10 under the
 authorized overnight runbook. The additive `challenge-domain-v1` foundation,
 deterministic evaluator, owner-scoped persisted projection, exact

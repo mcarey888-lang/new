@@ -196,6 +196,38 @@ unchanged. Stage 6 is a runbook completion, not mobile release approval.
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-20 UTC — MV-C01–MV-C10 media, visual and motion gate
+
+**Task:** Audit and consolidate the SummitReady media architecture, specify the
+art/UI/motion systems, inventory existing assets, add bounded internal review
+tooling, prove the direction on one production screen, verify and stop.
+
+**Architecture:** Selected Artwork Admin plus the artwork API/service as the
+SummitReady Media Studio foundation. Kept mountain-image as the
+approved-first runtime resolver/fallback and Atlas Media Studio as a separate
+brand domain. Documented a future master/version/variant/publication catalogue
+without implementing production persistence.
+
+**Implementation:** Added a development-only existing-asset gallery inside
+Artwork Admin. Added bounded Training Basecamp tokens and migrated only the
+real Training Basecamp screen with a larger structural hero, flatter natural
+surfaces, unified weekly mission control and existing safe entrance motion.
+Self-review restored route distance, dedicated mountain-change navigation and
+Peak/Taper state labels.
+
+**Evidence:** Added 390×844 before/after Active Hillwalker captures under
+`docs/visual-qa/media-pilot/`. Classified 41 relevant raster source/evidence
+assets in a documented reproducible scope; nothing was deleted or moved.
+
+**Boundaries:** No Stage 9, broad migration, mass generation, production
+schema/data, deploy/release, auth/privacy/payment, SDE, GPS/offline, Readiness,
+Expedition contribution or protected Progress Mountain/cinematic changes.
+
+**Verification:** Targeted **3 files / 20 tests** and bounded **24 files / 158
+tests** passed. SummitReady and Artwork Admin TypeScript passed; iOS/Android
+production Expo exports passed; Artwork Admin production build passed with
+the development gallery route/media excluded; `git diff --check` passed.
+
 ## 2026-09-19 UTC — S5-C10 Readiness 2.0 completion gate
 
 **Task:** Execute S5-C10 documentation-only completion for the authorized Stage
