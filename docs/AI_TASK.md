@@ -38,39 +38,25 @@ Preserve:
 
 No production migration, publication, deploy, release, payment/auth change, Stage 9, or broad reskin.
 
-## VR2-C02 — Replace the weak Ben Nevis visual
+## VR2-C02 — Change the visual-QA goal to an approved flagship summit
 
 The current Ben Nevis visual is rejected as the long-term goal-mountain hero.
 
-For a named mountain hero, geographic recognisability and authenticity outrank generic cinematic atmosphere.
+For this V2 pilot, **do not generate new Ben Nevis artwork**. Change the deterministic Training Basecamp visual-QA/demo goal from Ben Nevis to **Mont Blanc**, using the already manually approved flagship asset:
 
-### Desired Ben Nevis art direction
-- unmistakably Scottish Highlands / Ben Nevis;
-- the mountain/profile must be visibly present rather than hidden in anonymous fog;
-- credible geography and natural terrain;
-- dramatic but believable Highland weather/light;
-- aspirational, premium outdoor editorial photography;
-- darker foreground/lower region suitable for UI transition;
-- useful negative space for interface;
-- no fake route overlays, text, badges or UI baked into the image;
-- no exaggerated fantasy peaks;
-- no generic alpine appearance.
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`
 
-### Source hierarchy
-1. existing legally usable, approved real Ben Nevis photography if the project already has a suitable source with clear rights/provenance;
-2. otherwise use the existing Media Studio generation/review workflow to create **a small curated Ben Nevis candidate set only**;
-3. do not silently substitute an unreviewed image into production.
+Requirements:
+- use the approved exact current version through the existing safe approved-artwork resolver;
+- use Mont Blanc only where the deterministic DEV/demo profile needs a goal for this visual pilot;
+- do not alter a real user's selected goal;
+- do not change Training logic or Readiness calculations;
+- goal title, route/elevation/distance/date context must come from existing Mont Blanc fixture/catalogue data where available — never retain Ben Nevis metrics under a Mont Blanc label and never invent values;
+- if a field is unavailable, omit it gracefully;
+- preserve production fail-closed behavior because the artwork is approved but not published;
+- no new generation, no Batch 02, no auto-approval, no publication.
 
-If generation is needed:
-- create at most **3 Ben Nevis candidates**;
-- this is a bounded one-mountain generation exception, not Batch 02 and not catalogue-wide generation;
-- retain prompt/provider/version/cost/review history using the existing system;
-- estimated generation count/cost must be stated before invoking generation;
-- candidates remain REVIEW REQUIRED;
-- do not approve on behalf of the product owner;
-- do not publish.
-
-If a new image cannot legally/safely be activated without product-owner review, finish the UI refinement using the best current safe fallback and present the new Ben Nevis candidates for approval. Do not block the rest of the GREEN visual work.
+This pass should prove how a named approved summit hero works in the premium Basecamp composition.
 
 ## VR2-C03 — Recompose Basecamp as an editorial continuous page
 
@@ -203,20 +189,17 @@ Update:
 Report:
 - exact visual changes;
 - container/card reduction;
-- Ben Nevis source/candidate status and rights/provenance;
-- if generated: candidate IDs/versions/provider/count/estimated + actual cost and REVIEW REQUIRED state;
+- exact Mont Blanc approved asset/version consumed and deterministic demo goal mapping;
 - screenshots;
 - tests/builds;
 - remaining shortcomings;
 - protected-boundary confirmation.
 
-If Ben Nevis candidates need human approval, finish all other GREEN work, push it, then stop with **APPROVAL REQUIRED** and tell the product owner exactly where to review the 1–3 candidates.
-
-Otherwise commit/push and STOP.
+Commit/push and STOP after the GREEN refinement and visual QA are complete.
 
 Do NOT:
 - reskin Explore/Track/Expeditions/You;
-- generate Batch 02;
+- generate Ben Nevis artwork or Batch 02;
 - generate a mountain catalogue;
 - auto-approve or publish new artwork;
 - alter Readiness logic;
