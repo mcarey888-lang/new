@@ -46,6 +46,11 @@ export default function MountainQueue() {
             <Link href="/mountains" className="px-3 py-1.5 text-sm font-medium rounded bg-background text-foreground shadow-sm">
               Mountain Heroes
             </Link>
+            {import.meta.env.DEV && (
+              <Link href="/assets" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" data-testid="link-asset-gallery">
+                Assets (DEV)
+              </Link>
+            )}
           </nav>
         </div>
       </header>

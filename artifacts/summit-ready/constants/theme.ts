@@ -31,6 +31,15 @@ export const T = {
   border: "rgba(255,255,255,0.07)",
   borderActive: "rgba(62,207,117,0.4)",
 
+  // MV-C08 Basecamp Pilot
+  basecampBg: "#0B0D11",
+  basecampSurface: "#13161C",
+  basecampSurfaceHover: "#1A1D24",
+  basecampBorder: "rgba(255,255,255,0.06)",
+  basecampText: "#F1F5F9",
+  basecampTextMuted: "#94A3B8",
+  basecampTextDim: "#475569",
+
   tabBg: "rgba(6,13,27,0.95)",
 };
 

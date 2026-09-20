@@ -97,12 +97,12 @@ function MountainHero({
 
   const dateStr = summitDate
     ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
-        day: "numeric", month: "long", year: "numeric",
+        day: "numeric", month: "short", year: "numeric",
       })
     : "";
 
   return (
-    <View style={heroStyles.container}>
+    <View style={[heroStyles.container, { height: 380 }]}>
       {heroImageUri ? (
         <ImageBackground
           source={{ uri: heroImageUri }}
@@ -110,15 +110,15 @@ function MountainHero({
           resizeMode="cover"
           onError={() => { setImageError(true); }}
         >
-          {/* top vignette */}
+          {/* Top subtle vignette */}
           <LinearGradient
-            colors={["rgba(0,0,0,0.6)", "transparent"]}
-            style={[StyleSheet.absoluteFill, { height: "55%" }]}
+            colors={["rgba(0,0,0,0.5)", "transparent"]}
+            style={[StyleSheet.absoluteFill, { height: "40%" }]}
           />
-          {/* bottom fade into app bg */}
+          {/* Bottom fade into basecamp bg */}
           <LinearGradient
-            colors={["transparent", "rgba(8,10,14,0.88)", T.bg]}
-            style={[StyleSheet.absoluteFill, { top: "35%" }]}
+            colors={["transparent", "rgba(11,13,17,0.7)", T.basecampBg]}
+            style={[StyleSheet.absoluteFill, { top: "30%" }]}
           />
           <HeroContent
             mountainName={mountainName}
@@ -133,14 +133,11 @@ function MountainHero({
           />
         </ImageBackground>
       ) : (
-        /* Gradient fallback — no image found */
+        /* Gradient fallback */
         <LinearGradient
-          colors={["#1C3A2A", "#0F1E14", T.bg]}
+          colors={["#1E293B", "#0F172A", T.basecampBg]}
           style={heroStyles.image}
         >
-          <View style={heroStyles.fallbackEmoji}>
-            <Text style={{ fontSize: 58 }}>🏔️</Text>
-          </View>
           <HeroContent
             mountainName={mountainName}
             dateStr={dateStr}
@@ -163,37 +160,43 @@ function HeroContent({
   elevationGain, distance, highestAltitude,
 }: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean; elevationGain: number; distance: number; highestAltitude: number }) {
   return (
-    <View style={[heroStyles.overlay, { paddingTop: topInset + 12 }]}>
-      {/* logo centred, buttons pinned right */}
+    <View style={[heroStyles.overlay, { paddingTop: topInset }]}>
       <View style={heroStyles.topRow}>
         <ExpoImage source={require("@/assets/images/logo.gif")} style={heroStyles.logoSmall} contentFit="contain" />
         <View style={heroStyles.headerButtons}>
           {hasViewedPlan && (
-            <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "50" : T.purple + "50" }]} activeOpacity={0.8}>
-              {isSubscribed ? <Zap size={13} color={T.green} /> : <Lock size={13} color={T.purple} />}
+            <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={[heroStyles.editBtn, { borderColor: isSubscribed ? T.green + "40" : T.purple + "40", backgroundColor: "rgba(11,13,17,0.6)" }]} activeOpacity={0.8}>
+              {isSubscribed ? <Zap size={14} color={T.green} /> : <Lock size={14} color={T.purple} />}
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
-            <Pencil size={14} color={T.green} />
+          <TouchableOpacity onPress={onEdit} style={[heroStyles.editBtn, { backgroundColor: "rgba(11,13,17,0.6)" }]} activeOpacity={0.8}>
+            <Pencil size={14} color={T.basecampTextMuted} />
           </TouchableOpacity>
         </View>
       </View>
-      {/* name + date — bottom of hero */}
       <View style={heroStyles.bottomText}>
-        <Text style={heroStyles.trainingFor}>Training for</Text>
-        <View style={heroStyles.mountainNameRow}>
-          <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
-          <TouchableOpacity onPress={() => router.push("/setup?mode=change")} style={heroStyles.namePencil} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Pencil size={13} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
-        </View>
-        {dateStr ? <Text style={heroStyles.summitDate}>🗓 {dateStr}</Text> : null}
-        <View style={heroStyles.statChips}>
-          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>▲ {elevationGain}m</Text></View>
-          <View style={heroStyles.statChipDot} />
-          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>⟶ {distance}km</Text></View>
-          <View style={heroStyles.statChipDot} />
-          <View style={heroStyles.statChip}><Text style={heroStyles.statChipText}>⛰ {highestAltitude}m</Text></View>
+        <View style={{ gap: 6 }}>
+          <Text style={heroStyles.trainingFor}>Training objective</Text>
+          <View style={heroStyles.mountainNameRow}>
+            <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/setup?mode=change")}
+              style={heroStyles.namePencil}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Change mountain objective"
+            >
+              <Pencil size={14} color={T.basecampTextMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={heroStyles.statChips}>
+            {dateStr ? (
+              <View style={heroStyles.statChip}><Calendar size={12} color={T.basecampTextMuted} /><Text style={heroStyles.statChipText}>{dateStr}</Text></View>
+            ) : null}
+            <View style={heroStyles.statChip}><TrendingUp size={12} color={T.basecampTextMuted} /><Text style={heroStyles.statChipText}>{elevationGain}m</Text></View>
+            <View style={heroStyles.statChip}><Compass size={12} color={T.basecampTextMuted} /><Text style={heroStyles.statChipText}>{distance}km</Text></View>
+            <View style={heroStyles.statChip}><Mountain size={12} color={T.basecampTextMuted} /><Text style={heroStyles.statChipText}>{highestAltitude}m</Text></View>
+          </View>
         </View>
       </View>
     </View>
@@ -202,59 +205,43 @@ function HeroContent({
 
 const heroStyles = StyleSheet.create({
   container: { marginHorizontal: -18 },
-  image: { width: "100%", height: 270 },
-  fallbackEmoji: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 40,
-  },
+  image: { width: "100%", height: "100%" },
   overlay: {
     flex: 1,
     paddingHorizontal: 18,
     justifyContent: "space-between",
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   topRow: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 16,
   },
-  logoSmall: { width: 186, height: 74 },
+  logoSmall: { width: 140, height: 60, opacity: 0.9 },
   headerButtons: {
     position: "absolute",
     right: 0,
-    top: 0,
+    top: 10,
     flexDirection: "row",
     gap: 8,
   },
   editBtn: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    borderWidth: 1, borderColor: T.green + "50",
+    width: 38, height: 38, borderRadius: 19,
+    borderWidth: 1, borderColor: T.basecampBorder,
     alignItems: "center", justifyContent: "center",
   },
   bottomText: { gap: 4 },
   mountainNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  namePencil: { marginTop: 2, opacity: 0.85 },
-  statChips: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
-  statChip: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
-  statChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.85)", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  statChipDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.3)" },
+  namePencil: { marginTop: 4, opacity: 0.9 },
+  statChips: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" },
+  statChip: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
+  statChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted, letterSpacing: 0.2 },
   trainingFor: {
-    fontSize: 12, fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.65)", letterSpacing: 0.5,
-    textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    color: T.basecampTextMuted, letterSpacing: 1.5,
   },
   mountainName: {
-    fontSize: 28, fontFamily: "Inter_700Bold", color: "#fff",
-    textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
-    lineHeight: 34,
-  },
-  summitDate: {
-    fontSize: 13, fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-    textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    fontSize: 34, fontFamily: "Inter_700Bold", color: T.basecampText,
+    letterSpacing: -0.5, lineHeight: 40,
   },
 });
 
@@ -815,7 +802,7 @@ export default function DashboardScreen() {
 
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: T.basecampBg }}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={[
@@ -892,72 +879,78 @@ export default function DashboardScreen() {
         {/* Readiness Hero Card — Expedition mode */}
         <ReadinessV2Hero />
 
-        {/* Today's Mission */}
-        {nextSession && currentWeek && (
-          <Animated.View entering={FadeInDown.delay(90).duration(500)}>
-            <TouchableOpacity
-              style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}
-              onPress={() => router.push(`/(tabs)/plan?week=${currentWeek.weekNumber}&session=${nextSessionIndex}` as any)}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[PHASE_COLOR[currentWeek.phase] + "0A", "transparent"]}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.weekCardTop}>
-                <View style={[styles.phasePill, { backgroundColor: T.surface, borderWidth: 1, borderColor: T.border }]}>
-                  <Text style={[styles.phaseText, { color: T.text }]}>Up Next</Text>
-                </View>
-                <View style={styles.sessionChips}>
-                  <View style={[styles.sChip, { backgroundColor: T.surface }]}>
-                    {nextSession.type === "cardio" ? <Heart size={11} color={T.green} /> : nextSession.type === "hill" ? <TrendingUp size={11} color={T.green} /> : <Flag size={11} color={T.orange} />}
-                    <Text style={styles.sChipText}>{nextSession.label}</Text>
-                  </View>
-                </View>
-              </View>
-              <Text style={styles.weekPurpose} numberOfLines={2}>{nextSession.description}</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* Weekly Progress */}
+        {/* Unified Mission Control */}
         {currentWeek && (
-          <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-            <View style={[styles.weekCard, { borderColor: PHASE_COLOR[currentWeek.phase] + "40" }]}>
-              <View style={styles.weekCardTop}>
-                <View style={[styles.phasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "20" }]}>
+          <Animated.View entering={FadeInDown.delay(90).duration(500)}>
+            <View style={styles.missionControl}>
+              <View style={styles.missionControlHeader}>
+                <View style={[styles.missionPhasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "1A" }]}>
                   <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[currentWeek.phase] }]} />
-                  <Text style={[styles.phaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
+                  <Text style={[styles.missionPhaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
                     Week {currentWeek.weekNumber} · {currentWeek.phase}
                   </Text>
                 </View>
-                {currentWeek.isPeakWeek && (
+                {currentWeek.isPeakWeek ? (
                   <View style={styles.peakBadge}>
-                    <Text style={styles.peakBadgeText}>⚡ PEAK</Text>
+                    <Text style={styles.peakBadgeText}>Peak</Text>
                   </View>
-                )}
-                {currentWeek.isTaperWeek && (
+                ) : currentWeek.isTaperWeek ? (
                   <View style={styles.taperBadge}>
-                    <Text style={styles.taperBadgeText}>↓ TAPER</Text>
+                    <Text style={styles.taperBadgeText}>Taper</Text>
                   </View>
-                )}
-              </View>
-              <View style={styles.progressRow}>
-                <View style={styles.progressTrack}>
-                  <Animated.View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${weekCompletion}%` as any,
-                        backgroundColor: PHASE_COLOR[currentWeek.phase],
-                      },
-                    ]}
-                  />
+                ) : null}
+                <View
+                  style={styles.missionWeekProgress}
+                  accessible
+                  accessibilityRole="progressbar"
+                  accessibilityLabel={`Week ${currentWeek.weekNumber} completion`}
+                  accessibilityValue={{ min: 0, max: 100, now: weekCompletion }}
+                >
+                  <View style={styles.missionProgressTrack}>
+                    <Animated.View
+                      style={[
+                        styles.missionProgressFill,
+                        {
+                          width: `${weekCompletion}%` as any,
+                          backgroundColor: PHASE_COLOR[currentWeek.phase],
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.missionProgressLabel}>{weekCompletion}%</Text>
                 </View>
-                <Text style={[styles.progressLabel, { color: PHASE_COLOR[currentWeek.phase] }]}>
-                  {weekCompletion}%
-                </Text>
               </View>
+
+              {nextSession ? (
+                <TouchableOpacity
+                  style={styles.dominantActionBtn}
+                  onPress={() => router.push(`/(tabs)/plan?week=${currentWeek.weekNumber}&session=${nextSessionIndex}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={[T.green + "1A", "transparent"]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={styles.dominantActionLeft}>
+                    <View style={styles.dominantActionIcon}>
+                      {nextSession.type === "cardio" ? <Heart size={18} color={T.green} /> : nextSession.type === "hill" ? <TrendingUp size={18} color={T.green} /> : <Flag size={18} color={T.green} />}
+                    </View>
+                    <View style={{ gap: 2, flex: 1 }}>
+                      <Text style={styles.dominantActionEyebrow}>Up next</Text>
+                      <Text style={styles.dominantActionTitle}>{nextSession.label}</Text>
+                      <Text style={styles.dominantActionDesc} numberOfLines={1}>{nextSession.description}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.dominantActionArrow}>
+                    <ChevronRight size={20} color={T.green} />
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.weekCompleteBox}>
+                  <CheckCircle size={24} color={T.basecampTextMuted} />
+                  <Text style={styles.weekCompleteText}>Week {currentWeek.weekNumber} complete</Text>
+                </View>
+              )}
             </View>
           </Animated.View>
         )}
@@ -1060,7 +1053,7 @@ export default function DashboardScreen() {
             <View style={styles.askPillIcon}>
               <MessageCircle size={13} color={isSubscribed ? T.blue : T.textMuted} />
             </View>
-            <Text style={[styles.askPillText, !isSubscribed && { color: T.textMuted }]}>
+            <Text style={[styles.askPillText, !isSubscribed && { color: T.basecampTextMuted }]}>
               {isSubscribed ? "Ask your coach a question" : "AI Coach — Pro feature"}
             </Text>
             {isSubscribed
@@ -1295,7 +1288,7 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -1316,21 +1309,21 @@ const styles = StyleSheet.create({
   askPillText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue },
 
   // ── Ask Coach bar (inside coach card) ────────────────────────────────────
-  askDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.06)", marginTop: 14, marginBottom: 12 },
+  askDivider: { height: 1, backgroundColor: T.basecampBorder, marginTop: 14, marginBottom: 12 },
   askAnswerBubble: {
     flexDirection: "row", gap: 10, alignItems: "flex-start",
     backgroundColor: T.blue + "10", borderRadius: 10, padding: 10, marginBottom: 10,
   },
-  askAnswerText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 19 },
+  askAnswerText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampText, lineHeight: 19 },
   askBar: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1, borderColor: T.basecampBorder,
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
   },
   askInput: {
     flex: 1, fontSize: 13, fontFamily: "Inter_400Regular",
-    color: T.text, paddingVertical: 6,
+    color: T.basecampText, paddingVertical: 6,
   },
   askSendBtn: { padding: 4 },
   askPillProBadge: { backgroundColor: T.green + "22", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
@@ -1341,7 +1334,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
     backgroundColor: T.green, borderRadius: 12, paddingVertical: 13,
   },
-  coachLockedCtaText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
+  coachLockedCtaText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.basecampBg },
 
   upgradeBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
@@ -1410,7 +1403,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   warningText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  warningDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  warningDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, lineHeight: 16 },
   ringUpgradeBtn: {
     paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: 10, backgroundColor: T.greenDim,
@@ -1514,17 +1507,23 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white },
   statUnit: { fontSize: 15, fontFamily: "Inter_400Regular" },
   statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  weekCard: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    backgroundColor: T.card,
-    padding: 16,
-    marginBottom: 14,
+
+  // ── Unified Mission Control ────────────────────────────────────────────────
+  missionControl: {
+    backgroundColor: T.basecampSurface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
     overflow: "hidden",
-    gap: 10,
+    marginBottom: 24,
   },
-  weekCardTop: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
-  phasePill: {
+  missionControlHeader: {
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  missionPhasePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -1532,24 +1531,83 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 10,
   },
-  phaseDot: { width: 7, height: 7, borderRadius: 4 },
-  phaseText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  peakBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: T.orangeDim },
-  peakBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.orange, letterSpacing: 0.5 },
-  taperBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: T.purpleDim },
-  taperBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.purple, letterSpacing: 0.5 },
-  weekTarget: { fontSize: 14, fontFamily: "Inter_700Bold", marginLeft: "auto" as any },
-  weekPurpose: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },
-  progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  progressTrack: {
+  phaseDot: { width: 6, height: 6, borderRadius: 3 },
+  missionPhaseText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
+  peakBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: T.orangeDim,
+  },
+  peakBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: T.orange,
+  },
+  taperBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: T.purpleDim,
+  },
+  taperBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: T.purple,
+  },
+  missionWeekProgress: {
     flex: 1,
-    height: 5,
-    backgroundColor: T.border,
-    borderRadius: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  missionProgressTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 2,
     overflow: "hidden",
   },
-  progressFill: { height: 5, borderRadius: 3 },
-  progressLabel: { fontSize: 12, fontFamily: "Inter_700Bold", width: 34, textAlign: "right" },
+  missionProgressFill: { height: "100%", borderRadius: 2 },
+  missionProgressLabel: {
+    minWidth: 30,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: T.basecampTextMuted,
+    textAlign: "right",
+  },
+
+  dominantActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: T.basecampBorder,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  dominantActionLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 16 },
+  dominantActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: T.green + "1A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dominantActionEyebrow: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 1 },
+  dominantActionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.basecampText },
+  dominantActionDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, marginTop: 2 },
+  dominantActionArrow: { marginLeft: 10, opacity: 0.8 },
+  weekCompleteBox: {
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: T.basecampBorder,
+  },
+  weekCompleteText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.basecampTextMuted },
+
   sessionChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   sChip: {
     flexDirection: "row",
@@ -1561,32 +1619,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: T.border,
   },
-  sChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.text },
+  sChipText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.basecampText },
   coachCard: {
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: T.cardBorder,
-    backgroundColor: T.card,
-    padding: 16,
-    marginBottom: 14,
+    borderColor: T.basecampBorder,
+    backgroundColor: T.basecampSurface,
+    padding: 20,
+    marginBottom: 16,
     overflow: "hidden",
     gap: 12,
   },
   coachHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
   coachTitleRow: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  coachTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
-  coachSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
+  coachTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.basecampText },
+  coachSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, lineHeight: 18 },
   coachBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   coachBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
   coachRefresh: { padding: 6, marginTop: 2 },
-  coachDivider: { height: 1, backgroundColor: T.border, marginHorizontal: -16, opacity: 0.6 },
+  coachDivider: { height: 1, backgroundColor: T.basecampBorder, marginHorizontal: -20, opacity: 0.6 },
   coachLoading: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  coachLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
-  coachSummary: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 20 },
+  coachLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampTextMuted, flex: 1 },
+  coachSummary: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.basecampText, lineHeight: 20 },
   coachTips: { gap: 10 },
   coachTip: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   coachTipDot: { width: 7, height: 7, borderRadius: 4, marginTop: 6, flexShrink: 0 },
-  coachTipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text, flex: 1, lineHeight: 19 },
+  coachTipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.basecampText, flex: 1, lineHeight: 19 },
   actions: { flexDirection: "row", gap: 10 },
   primaryAction: {
     flex: 1,
@@ -1620,14 +1678,14 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.green },
   alpineCard: {
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: T.blue + "30",
-    backgroundColor: T.card,
-    padding: 16,
-    marginBottom: 12,
+    borderColor: T.basecampBorder,
+    backgroundColor: T.basecampSurface,
+    padding: 20,
+    marginBottom: 16,
     overflow: "hidden",
-    gap: 10,
+    gap: 12,
   },
   alpineCardHeader: {
     flexDirection: "row",
@@ -1645,7 +1703,7 @@ const styles = StyleSheet.create({
   alpineCardTitle: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
-    color: T.white,
+    color: T.basecampText,
   },
   alpineAiBadge: {
     paddingHorizontal: 7,
@@ -1662,7 +1720,7 @@ const styles = StyleSheet.create({
   alpineMetCount: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
   },
   alpineTechRow: {
     flexDirection: "row",
@@ -1673,18 +1731,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: T.surface,
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
   alpinePillText: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
   },
   alpineDivider: {
     height: 1,
-    backgroundColor: T.border,
+    backgroundColor: T.basecampBorder,
     opacity: 0.5,
-    marginHorizontal: -16,
+    marginHorizontal: -20,
   },
   alpineReqRow: {
     flexDirection: "row",
@@ -1703,13 +1761,13 @@ const styles = StyleSheet.create({
   alpineReqLabel: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    color: T.white,
+    color: T.basecampText,
     lineHeight: 18,
   },
   alpineReqDetail: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
     lineHeight: 16,
   },
   alpineReqStatus: {
@@ -1727,7 +1785,7 @@ const styles = StyleSheet.create({
   alpineRisksLabel: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },
@@ -1765,26 +1823,26 @@ const styles = StyleSheet.create({
   alpineAcclimText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
     lineHeight: 18,
     flex: 1,
   },
   alpineLoadingText: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
   },
   baselineOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "flex-end",
   },
   baselineSheet: {
-    backgroundColor: T.surface,
+    backgroundColor: T.basecampBg,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: T.basecampBorder,
     padding: 28,
     paddingBottom: 48,
     gap: 14,
@@ -1802,13 +1860,13 @@ const styles = StyleSheet.create({
   baselineTitle: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
-    color: T.text,
+    color: T.basecampText,
     textAlign: "center",
   },
   baselineBody: {
     fontSize: 15,
     fontFamily: "Inter_400Regular",
-    color: T.textMuted,
+    color: T.basecampTextMuted,
     textAlign: "center",
     lineHeight: 23,
   },

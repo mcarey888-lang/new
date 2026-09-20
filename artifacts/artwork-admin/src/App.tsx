@@ -1,8 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { lazy, Suspense } from 'react';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import ArtworkManager from './pages/ArtworkManager';
 import MountainQueue from './pages/MountainQueue';
 import { Toaster } from '@/components/ui/sonner';
+
+const AssetGallery = import.meta.env.DEV
+  ? lazy(() => import('./pages/AssetGallery'))
+  : null;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +29,21 @@ function NotFound() {
   );
 }
 
+function DevAssetGalleryRoute() {
+  if (!AssetGallery) return <NotFound />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <AssetGallery />
+    </Suspense>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={ArtworkManager} />
       <Route path="/mountains" component={MountainQueue} />
+      {import.meta.env.DEV && <Route path="/assets" component={DevAssetGalleryRoute} />}
       <Route component={NotFound} />
     </Switch>
   );
