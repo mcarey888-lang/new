@@ -1,154 +1,207 @@
-# SummitReady Flagship Artwork Generation — Batch 01
+# SummitReady Approved Artwork → Training Basecamp Premium Integration
 
-**Command:** ART-C01
-**Authority:** ChatGPT lead product/design/art direction
-**Baseline:** `f69e358e14dae28c253ce5f519e91477f3a78321`
-**Purpose:** Generate individual production-quality masters through the EXISTING SummitReady Artwork Admin / artwork API / ImageProvider pipeline.
-**Do not publish or auto-approve. Do not start Stage 9.**
+**Command:** UI-C01
+**Authority:** ChatGPT lead product/design/architecture
+**Baseline:** `6263d9450a75e47019643f09ac90cb512a035dbf`
+**Editorial state:** All 12 Flagship Artwork Batch 01 candidates have been manually APPROVED by the product owner.
+**Stage 9:** PAUSED / NOT AUTHORIZED.
 
-## Core rule
+## Goal
 
-Before generating an asset, know exactly where it will be used. Every image is an individual master — NEVER a collage, contact sheet, mood board, UI mockup, poster or image containing multiple panels. No baked-in text, labels, logos, UI, route lines or badges.
+Prove the complete production-facing visual pipeline on ONE real functioning screen:
 
-Use the existing OpenAI image provider pipeline and object storage/version metadata. Generated images must remain candidates until reviewed/approved.
+**approved Media Studio artwork → safe app asset resolution → Training Basecamp → populated demo profile → premium UI + restrained motion → visual QA**
 
-## Art direction lock
+The target is the previously approved SummitReady concept: cinematic authentic outdoor imagery, dark natural surfaces, strong hierarchy, fewer nested cards, restrained blue/green accents, generous space, one obvious next action, and meaningful subtle motion.
 
-Photographic premium outdoor editorial. Believable real geography. Natural weather and terrain. Authentic technical clothing/equipment where people appear. Restrained saturation. Deep natural shadows, atmospheric depth, dawn/dusk/golden-hour only when geographically plausible. Premium Berghaus/Arc'teryx/Patagonia editorial character without copying a specific campaign.
+This is NOT permission for a broad app reskin.
 
-Avoid: fantasy peaks, impossible ridgelines, oversaturated HDR, generic AI gloss, excessive lens flare, duplicated hikers, malformed equipment, unsafe/impossible climbing positions, fake signage, text, watermarks.
+## UI-C01 — Verify approval state and define app-consumption boundary
 
-All masters: 1536×1024 landscape 3:2 using the current provider unless the provider contract has changed. Compose for downstream crops. Preserve a clear focal subject and useful negative space. Do not crop summit tips, faces, hands or essential route terrain.
+Read the persisted Batch 01 manifest and verify all 12 exact current versions are APPROVED and not PUBLISHED.
 
-## ART-C01 — Make prompt builder placement-aware
+Do not infer approval from docs.
 
-Add a safe additive prompt mode/metadata input for asset purpose/placement. Preserve existing challenge generation compatibility. It must be able to describe:
-- subject
-- actual intended app placement
-- focal location
-- negative-space location
-- crop requirements
-- people/no-people
-- mood/weather
-- geographic identity requirements
-- exclusions
-
-Do not introduce production schema/migrations. For this batch, generation manifest/metadata may be stored in docs/dev tooling or existing candidate metadata.
-
-## ART-C02 — Generate Batch 01 individually
-
-Generate ONE candidate master for each item below through the existing SummitReady generation engine. Titles below are internal asset titles, not text to render in images.
-
-### SR-MTN-MONTBLANC-001 — “Mont Blanc — Alpine Dawn”
-**Use:** Mountain/Expedition structural hero; later derivatives for Explore card and expedition discovery.
-**Composition:** recognisable Mont Blanc massif as the unquestionable subject, viewed from a credible Chamonix-side alpine perspective; summit in upper-middle/right third; broad darker foreground/lower third for UI gradient; atmospheric dawn, cold whites and restrained warm first light; no people.
-**Crop safety:** massif remains recognisable in 16:9 hero and 4:5/3:2 card crops; generous sky and lower foreground.
-**Prompt intent:** premium photographic editorial mountain landscape, realistic snow/glacier texture, geographically credible, natural optics.
-**Exclude:** Matterhorn-like pyramidal silhouette, impossible glacier forms, climbers, buildings dominating frame, text.
-
-### SR-MTN-MATTERHORN-001 — “Matterhorn — First Light”
-**Use:** Mountain detail/Explore hero and Expedition discovery card.
-**Composition:** recognisable Matterhorn from a credible Zermatt-area perspective; peak around right third, clear asymmetric silhouette; darker alpine foreground with restrained warm first light; no people.
-**Crop safety:** full summit retained in wide and card crops; left-side negative space useful for overlay.
-**Exclude:** generic symmetric fantasy pyramid, Mont Blanc morphology, text/buildings dominating.
-
-### SR-MTN-KILIMANJARO-001 — “Kilimanjaro — Above the Cloud”
-**Use:** Mountain detail/Expedition hero and discovery card.
-**Composition:** broad recognisable Kibo/Uhuru massif, East African highland foreground, sea of cloud, restrained sunrise light; no people; spacious scale.
-**Crop safety:** summit and broad volcanic profile survive 16:9 and card crops; darker lower foreground for text gradient.
-**Exclude:** sharp Alpine peak, jungle at summit, excessive snow, fantasy volcano plume, text.
-
-### SR-EXP-EBC-001 — “Everest Base Camp — The Approach”
-**Use:** Everest Base Camp expedition hero/Basecamp progress context and discovery card.
-**Composition:** trekking approach in Khumbu environment; Everest-region scale and glaciated terrain; 2–3 small authentic trekkers moving away from camera to establish human scale; mountain landscape remains dominant; cold morning atmosphere.
-**Crop safety:** hikers near lower-centre/right but not edge; major mountain features survive wide/card crop; left/lower negative space.
-**Exclude:** summit-climbing scene, crowds, tents dominating, flags/text, impossible Everest view.
-
-### SR-TRAIN-BASECAMP-001 — “Training Basecamp — Build Today”
-**Use:** Training Basecamp structural hero behind the user’s active mountain goal UI.
-**Composition:** authentic UK hill/mountain training scene at dawn; single hiker seen from behind ascending a steep rocky path/ridge, practical daypack and trekking clothing, believable Lake District/Snowdonia-style terrain; destination ridge/peak ahead; determined rather than heroic pose.
-**Crop safety:** hiker on right third; left and lower-left negative space for Training objective/metrics; horizon high enough to support portrait/wide derivatives.
-**Exclude:** Alps, ropes/ice axe, extreme mountaineering, gym scene, text, staged influencer pose.
-
-### SR-EXP-DISCOVERY-001 — “Expeditions — The Journey Ahead”
-**Use:** Expeditions discovery page structural hero, not tied to one exact expedition.
-**Composition:** small group of 3 hikers traversing a dramatic but credible high-mountain approach, viewed from behind; large landscape, layered peaks, early light, sense of journey and scale; people secondary.
-**Crop safety:** group lower-right/centre; clean darker left side for page title/CTA; landscape usable 16:9.
-**Exclude:** identifiable false composite of a named mountain, summit celebration, flags, text.
-
-### SR-EXPLORE-001 — “Explore — Find Your Mountain”
-**Use:** Explore page hero/empty-discovery visual.
-**Composition:** expansive UK mountain/ridge landscape with a lone hiker paused at a natural viewpoint looking toward several route possibilities; believable terrain; subtle atmospheric layers; no map graphics.
-**Crop safety:** hiker lower-right; broad left/centre negative space; strong depth.
-**Exclude:** route overlays, UI, text, fantasy terrain, summit celebration.
-
-### SR-TRACK-001 — “Track — Real Effort”
-**Use:** Track pre-start/background hero and marketing derivative; must not interfere with live map readability.
-**Composition:** close-to-mid rear three-quarter view of a hiker moving uphill on a rugged UK trail, natural exertion, boots/poles/daypack, landscape opening ahead; cooler overcast/dawn light, tactile terrain.
-**Crop safety:** person on right third; central/left terrain clean enough for UI overlays.
-**Exclude:** phone in hand, visible app UI, running race, gym, text.
-
-### SR-RANK-001 — “Rank — Higher With Every Step”
-**Use:** Rank progression screen atmospheric background behind the vertical ascent/progression UI.
-**Composition:** dramatic dark mountain ridge rising diagonally from lower-left toward a luminous summit upper-right; no people; enough real terrain detail to feel photographic; restrained atmospheric light.
-**Crop safety:** clear diagonal ascent corridor; dark negative space around it for rank markers; no baked-in markers.
-**Exclude:** glowing dots/route lines, game art, badges, text, fantasy mountain.
-
-### SR-DNA-001 — “Mountain DNA — Terrain Intelligence”
-**Use:** Mountain DNA comparison hero/background beneath data visualisation.
-**Composition:** close/wide real mountain terrain showing a readable ridge, slope transitions, rock/grass/scree textures and elevation character; cool neutral daylight; no people.
-**Crop safety:** terrain structure visible across frame; darker edge areas for data overlays.
-**Exclude:** generated blue networks, charts, route lines, text, sci-fi look.
-
-### SR-ACHIEVE-001 — “Achievement — Earned Summit”
-**Use:** Achievement/completion atmospheric hero, below the protected Expedition summit cinematic in drama.
-**Composition:** one hiker standing naturally on a UK/alpine-style summit ridge after effort, back/side to camera, sunrise/sunset restrained, expansive landscape; quiet earned satisfaction, not arms-up stock-photo celebration.
-**Crop safety:** hiker right third, left space for achievement details.
-**Exclude:** trophy, medals, confetti, arms-up cliché, text.
-
-### SR-YOU-001 — “You — Mountain Identity”
-**Use:** You/Profile header background supporting Rank, lifetime elevation and mountain identity.
-**Composition:** authentic outdoor portrait/environmental scene, single anonymous hiker in dark technical shell, side/back three-quarter profile looking toward mountain landscape; face not dominant; premium documentary feel.
-**Crop safety:** person right third; left side dark/quiet for profile metrics.
-**Exclude:** fashion shoot, brand logos, extreme climber gear, text.
-
-## ART-C03 — Generation manifest
-
-Create `docs/SUMMITREADY_ARTWORK_BATCH_01.md` recording for every asset:
-- ID/title
-- family
-- intended app placements
-- exact final prompt sent
-- provider/model
-- master dimensions
-- generated version/object path
-- generation cost if available
-- status = REVIEW REQUIRED
-- crop/focal guidance
-
-No asset may be marked approved/published by this command.
-
-## ART-C04 — Review gallery
-
-Expose all 12 individual candidates together in the existing development-only Media Studio review surface. Each must be independently viewable at master ratio plus representative 16:9 and card crop previews. This gallery is for review only; do not bake labels into image files.
-
-## ART-C05 — Quality self-review
-
-Before reporting complete, inspect each candidate against its brief. Automatically reject/regenerate only for objective generation failures: text/watermark, collage/multi-panel output, severe anatomy/equipment corruption, obviously wrong mountain morphology, unusable crop, or clear fantasy geography.
-
-Maximum 2 regeneration attempts per asset in this run to control cost. Do NOT endlessly regenerate for subjective taste. Leave the strongest candidate as REVIEW REQUIRED.
-
-## ART-C06 — Verify and STOP
-
-Verify:
-- exactly 12 independently stored masters/candidates;
-- no collage assets;
-- no automatic approval/publication;
+Implement the smallest safe read-only app-consumption boundary needed for approved artwork. Requirements:
+- app code must not know GCS/object-storage internals;
+- resolve by stable asset ID + intended placement;
+- only APPROVED assets may be returned by this pilot resolver;
+- publication remains a separate future concept; because Batch 01 is development-only, this pilot may consume approved assets only in development/demo builds;
+- production must fail closed/fallback rather than consume DEV review fixtures;
 - no production schema/migration/backfill;
-- no mobile release/deploy;
-- no Stage 9;
-- protected Progress Mountain/cinematic untouched.
+- no automatic publication.
 
-Update `docs/AI_HANDOFF.md` and `docs/AI_CHANGELOG.md`, commit/push, then STOP for ChatGPT visual review.
+Preferred pilot asset:
+`SR-TRAIN-BASECAMP-001 — Training Basecamp — Build Today`
 
-End Replit response with exactly one status: COMPLETE, PARTIAL, BLOCKED, FAILED, or APPROVAL REQUIRED.
+Preserve graceful fallback to the current Basecamp imagery if the approved asset is unavailable.
+
+## UI-C02 — Training Basecamp premium composition
+
+Refine the ACTUAL Training Basecamp production component, not a screenshot-only clone.
+
+Use the approved Training Basecamp master/hero derivative as structural artwork in DEV/demo mode.
+
+Design hierarchy:
+
+### A. Cinematic goal hero
+- image should occupy meaningful visual area and feel integrated with the screen;
+- dark readability gradient/overlay;
+- active target mountain/goal and date/context overlaid where data exists;
+- Readiness should be visually important but not compete with the primary action;
+- image focal point/crop must respect the approved artwork guidance;
+- avoid card-inside-card framing around the hero.
+
+### B. Mission Control
+Unify the next meaningful Training action and immediate weekly context into one strong section.
+- one obvious primary CTA;
+- next session/action first;
+- weekly progress/supporting metrics secondary;
+- do not invent data;
+- retain existing Training semantics and navigation.
+
+### C. Readiness / capability
+Use existing Readiness 2.0 outputs exactly. Improve presentation only.
+- overall Readiness
+- useful dimensional context where already supported
+- next-action/gap messaging where existing selectors expose it
+- no scoring/calculation changes.
+
+### D. Supporting progress
+Keep only useful secondary modules visible in the first viewport/scroll sequence. Reduce nested rounded containers and tiny uppercase label repetition. Preserve access to existing functionality.
+
+## UI-C03 — Shared visual primitives
+
+Extract only primitives proven useful by this pilot, for example:
+- cinematic image hero/overlay;
+- premium section heading;
+- metric treatment;
+- mission/primary-action surface;
+- approved artwork resolver/hook.
+
+Do not prematurely abstract every visual element.
+
+Follow `docs/SUMMITREADY_PREMIUM_UI_SYSTEM.md` and `docs/SUMMITREADY_ART_DIRECTION.md`.
+
+## UI-C04 — Motion pilot
+
+Implement restrained, production-safe motion using the established motion system.
+
+Training Basecamp should demonstrate at most 2–3 meaningful effects:
+1. subtle hero entrance/parallax/scale response where performant;
+2. Readiness/progress value settles/rises smoothly on entry;
+3. Mission Control/next-action transition where useful.
+
+Rules:
+- motion must never delay interaction;
+- respect reduced-motion preference;
+- no looping decorative distraction;
+- no confetti;
+- no heavy video for UI motion;
+- avoid excessive simultaneous animation;
+- preserve low-end Android performance.
+
+Do not touch protected Expedition Progress Mountain/cinematic code.
+
+## UI-C05 — Functional preservation
+
+Verify unchanged:
+- Basecamp navigation and deep links;
+- Training goal context;
+- Training plan/session actions;
+- Readiness values and evidence semantics;
+- offline/activity tracking behavior;
+- bottom tabs remain Basecamp | Explore | Track | Expeditions | You;
+- demo profiles remain DEV-only;
+- no new production data writes.
+
+If the visual target conflicts with functional clarity, preserve functionality and document the visual compromise.
+
+## UI-C06 — Populated visual QA
+
+Use the deterministic **Beginner / first mountain goal** and **Active Hillwalker** profiles as appropriate.
+
+Capture at 390×844:
+- Training Basecamp BEFORE (use existing accepted baseline if valid)
+- Training Basecamp AFTER — first viewport
+- Training Basecamp AFTER — scrolled/supporting content
+- reduced-motion state if materially different
+- fallback/no-approved-artwork state
+
+Store under:
+`docs/visual-qa/premium-basecamp/`
+
+Screenshots must come from the real screen/components and populated fixtures, not reconstructed mockups.
+
+## UI-C07 — Tests and build verification
+
+Add/run targeted tests proving:
+- approved asset resolves for DEV/demo pilot;
+- unapproved/rejected asset cannot resolve;
+- production cannot consume Batch 01 DEV fixtures;
+- missing artwork falls back safely;
+- Training semantics/navigation unchanged;
+- reduced-motion path works;
+- existing nav/demo isolation tests remain green.
+
+Run:
+- affected SummitReady targeted tests;
+- bounded SummitReady regression suite;
+- TypeScript;
+- iOS/Android production Expo exports if shared production mobile code changed.
+
+No production deploy/release.
+
+## UI-C08 — Lead-design self-review
+
+Before declaring complete, compare the real AFTER screenshot against the premium target and self-correct obvious issues:
+- too much nested-card UI;
+- weak hero;
+- poor image crop;
+- insufficient text contrast;
+- competing CTAs;
+- excessive uppercase/micro-labels;
+- inconsistent spacing/radii;
+- Training/Expedition ambiguity;
+- generic SaaS/dashboard appearance.
+
+Do not expand scope to other screens while correcting the pilot.
+
+## UI-C09 — Completion report and STOP
+
+Create:
+`docs/PREMIUM_BASECAMP_PILOT_REPORT.md`
+
+Update:
+- `docs/AI_HANDOFF.md`
+- `docs/AI_CHANGELOG.md`
+- visual QA manifest if applicable.
+
+Report:
+- exact approved asset/version consumed;
+- consumption/fallback architecture;
+- UI changes;
+- motion implemented;
+- before/after screenshot paths;
+- tests/builds;
+- remaining visual shortcomings;
+- production boundary;
+- protected feature confirmation.
+
+Commit/push meaningful checkpoints and STOP.
+
+Do NOT:
+- generate Batch 02;
+- publish artwork to production;
+- migrate the media schema;
+- reskin Explore/Track/Expeditions/You;
+- begin Stage 9;
+- deploy/release mobile;
+- modify protected Progress Mountain/cinematic behavior.
+
+End response with exactly one status:
+COMPLETE
+PARTIAL
+BLOCKED
+FAILED
+APPROVAL REQUIRED
