@@ -59,15 +59,15 @@ export function SharedTabBar() {
               accessibilityState={{ selected: isActive }}
             >
               {isTrack ? (
-                <View style={styles.trackContainer}>
-                  <View style={[styles.trackWrap, { backgroundColor: activeBg, borderColor: trackBorderColor }]}>
-                    <Icon size={20} color={activeColor} />
+                <>
+                  <View style={[styles.iconWrap, { backgroundColor: "transparent" }]}>
+                    <Icon size={24} color={activeColor} />
                   </View>
-                  <Text style={[styles.trackLabel, { color: activeColor }]}>Track</Text>
-                </View>
+                  <Text style={[styles.label, { color: activeColor }]}>Track</Text>
+                </>
               ) : (
                 <>
-                  <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
+                  <View style={[styles.iconWrap, { backgroundColor: "transparent" }]}>
                     <Icon size={20} color={color} />
                   </View>
                   <Text style={[styles.label, { color }]}>{t.label}</Text>
@@ -101,25 +101,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 8,
   },
-  trackContainer: {
-    alignItems: "center",
-    justifyContent: "flex-end",
-    height: 52,
-    marginTop: -22,
-  },
-  trackWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-  },
-  trackLabel: {
-    marginTop: 4,
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-  },
   iconWrap: {
     width: 44,
     height: 28,
@@ -129,7 +110,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   label: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   }
 });

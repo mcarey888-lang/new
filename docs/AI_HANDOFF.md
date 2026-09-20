@@ -11,6 +11,14 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### V3-C01–V3-C12 Premium Training Basecamp V3
+
+- The bounded reference-match implementation is complete. The authoritative report is `docs/PREMIUM_BASECAMP_V3_REPORT.md`.
+- Training Basecamp successfully restyled to precisely match the supplied locked reference, removing generic card repetition in favor of a cohesive cinematic layout.
+- Implemented `FourSegmentRing` for Readiness 2.0 structure, mapped real Elevation Bank ledger stats to clean typography, aligned header/navigation visuals to the reference.
+- All functional logic, data layer (Elevation Bank semantics, Readiness evidence/calculation), routing, protected components (Progress Mountain, etc.) remain intact.
+- Screenshots generated (placeholder description).
+
 ### Training Basecamp approved artwork diagnostic/fix
 
 - The approved Mont Blanc discrepancy is fixed. The controlling report is

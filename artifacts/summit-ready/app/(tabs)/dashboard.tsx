@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award } from "lucide-react-native";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, BarChart2, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award, Lightbulb } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -226,20 +226,36 @@ function HeroContent({
   return (
     <View style={[heroStyles.overlay, { paddingTop: topInset }]}>
       <View style={heroStyles.topRow}>
+        <View style={heroStyles.headerLeft}>
+          <Mountain size={20} color="#fff" strokeWidth={1.5} />
+          <View style={{ marginLeft: 8 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 2 }}>SUMMITREADY</Text>
+            <Text style={{ fontSize: 6, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.6)", letterSpacing: 1.5, marginTop: 1 }}>TRAIN MORE . GO FURTHER.</Text>
+          </View>
+        </View>
+
+        <View style={heroStyles.headerToggle}>
+          <View style={heroStyles.headerToggleActive}>
+            <Text style={heroStyles.headerToggleActiveText}>Training</Text>
+          </View>
+          <View style={heroStyles.headerToggleInactive}>
+            <Text style={heroStyles.headerToggleInactiveText}>Expeditions</Text>
+          </View>
+        </View>
+
         <View style={heroStyles.headerButtons}>
-          {hasViewedPlan && (
-            <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={heroStyles.editBtn} activeOpacity={0.8}>
-              {isSubscribed ? <Zap size={14} color={T.basecampTextMuted} /> : <Lock size={14} color={T.basecampTextMuted} />}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")} style={heroStyles.editBtn} activeOpacity={0.8}>
+            <Lock size={12} color="#fff" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={onEdit} style={heroStyles.editBtn} activeOpacity={0.8}>
-            <Pencil size={14} color={T.basecampTextMuted} />
+            <Pencil size={12} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={heroStyles.bottomText}>
-        <View style={{ gap: 6 }}>
-          <Text style={heroStyles.trainingFor}>Training objective</Text>
+        <View style={{ gap: 4 }}>
+          <Text style={heroStyles.trainingFor}>TRAINING OBJECTIVE</Text>
           <View style={heroStyles.mountainNameRow}>
             <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
             <TouchableOpacity
@@ -249,12 +265,13 @@ function HeroContent({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Change mountain objective"
             >
-              <Pencil size={14} color={T.basecampTextMuted} />
+              <Pencil size={14} color={"rgba(255,255,255,0.5)"} />
             </TouchableOpacity>
           </View>
           <Text style={heroStyles.editorialStats}>
-            {dateStr ? `${dateStr} · ` : ""}{elevationGain}m gain · {distance}km · {highestAltitude}m max alt
+            {dateStr ? `${dateStr.toUpperCase()} · ` : ""}{elevationGain.toLocaleString()}M GAIN · {distance}KM · {highestAltitude.toLocaleString()}M MAX ALT
           </Text>
+          <Text style={heroStyles.higherVersions}>HIGHER VERSIONS OF YOU</Text>
         </View>
       </View>
     </View>
@@ -266,43 +283,82 @@ const heroStyles = StyleSheet.create({
   image: { width: "100%", height: "100%" },
   overlay: {
     flex: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     justifyContent: "space-between",
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   topRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
-  logoSmall: { width: 140, height: 60, opacity: 0.9 },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 120, // fixed width to balance toggle
+  },
+  headerToggle: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 20,
+    padding: 3,
+  },
+  headerToggleActive: {
+    backgroundColor: T.green,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  headerToggleActiveText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  headerToggleInactive: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  headerToggleInactiveText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
   headerButtons: {
-    position: "absolute",
-    right: 0,
-    top: 10,
     flexDirection: "row",
     gap: 8,
+    width: 120, // fixed width to balance toggle
+    justifyContent: "flex-end",
   },
   editBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center", justifyContent: "center",
   },
   bottomText: { gap: 4 },
-  mountainNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  namePencil: { marginTop: 4, opacity: 0.9 },
+  mountainNameRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  namePencil: { marginTop: 4 },
   editorialStats: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextMuted,
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.7)",
     marginTop: 4,
+    letterSpacing: 0.5,
   },
   trainingFor: {
-    fontSize: 10, fontFamily: "Inter_700Bold",
-    color: T.basecampTextMuted, letterSpacing: 1.5,
+    fontSize: 9, fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.6)", letterSpacing: 2,
+    marginBottom: 2,
   },
   mountainName: {
-    fontSize: 34, fontFamily: "Inter_700Bold", color: T.basecampText,
-    letterSpacing: -0.5, lineHeight: 40,
+    fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff",
+    letterSpacing: -0.5, lineHeight: 44,
+  },
+  higherVersions: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.3)",
+    letterSpacing: 2,
+    marginTop: 14,
   },
 });
 
@@ -819,10 +875,6 @@ export default function DashboardScreen() {
   );
   const sessionsPerWeek = summitGoal?.trainingDaysPerWeek ?? 4;
   const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek) : 0;
-  const maxElev = sessions.filter(s => s.completed).reduce((m, s) => Math.max(m, s.elevationGain), 0);
-  const totalDone = sessions.filter(s => s.completed).length;
-  const hillsDone = sessions.filter(s => s.completed && s.type === "hill").length;
-
 
   let nextSession = null;
   let nextSessionIndex = -1;
@@ -857,126 +909,102 @@ export default function DashboardScreen() {
         />
 
         <View style={styles.editorialContent}>
-          {/* Mission */}
+          {/* Mission & Up Next Card */}
           {currentWeek && (
-            <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)} style={styles.editorialSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>This week's mission</Text>
-                <View style={[styles.missionPhasePill, { backgroundColor: PHASE_COLOR[currentWeek.phase] + "1A" }]}>
-                  <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[currentWeek.phase] }]} />
-                  <Text style={[styles.missionPhaseText, { color: PHASE_COLOR[currentWeek.phase] }]}>
-                    Week {currentWeek.weekNumber} · {currentWeek.phase}
-                  </Text>
-                </View>
+            <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)} style={styles.basecampCard}>
+              <View style={styles.missionHeader}>
+                <Text style={styles.missionTitle}>This week's mission</Text>
+                <TouchableOpacity style={styles.missionPlanBtn} onPress={() => router.push("/(tabs)/training")}>
+                  <Text style={styles.missionPlanText}>View plan</Text>
+                  <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
+                </TouchableOpacity>
               </View>
 
-              <View
-                style={styles.missionWeekProgress}
-                accessible
-                accessibilityRole="progressbar"
-                accessibilityLabel={`Week ${currentWeek.weekNumber} completion`}
-                accessibilityValue={{ min: 0, max: 100, now: weekCompletion }}
-              >
+              <View style={styles.missionProgressContainer}>
                 <View style={styles.missionProgressTrack}>
                   <View
                     style={[
                       styles.missionProgressFill,
-                      {
-                        width: `${weekCompletion}%` as any,
-                        backgroundColor: PHASE_COLOR[currentWeek.phase],
-                      },
+                      { width: `${weekCompletion}%` as any },
                     ]}
                   />
                 </View>
                 <Text style={styles.missionProgressLabel}>{weekCompletion}% complete</Text>
               </View>
 
-              {nextSession ? (
-                <TouchableOpacity
-                  style={styles.dominantAction}
-                  activeOpacity={0.8}
-                  onPress={() => router.push({
-                    pathname: "/session-detail",
-                    params: {
-                      weekNum: String(currentWeek.weekNumber),
-                      sessionIdx: String(nextSessionIndex),
-                    },
-                  })}
-                >
-                  <View style={styles.dominantActionIcon}>
-                    <Target size={20} color={T.green} />
-                  </View>
-                  <View style={styles.dominantActionBody}>
-                    <Text style={styles.dominantActionLabel}>Up next</Text>
-                    <Text style={styles.dominantActionTitle}>{nextSession.label}</Text>
-                    <Text style={styles.dominantActionDesc} numberOfLines={2}>{nextSession.description}</Text>
-                  </View>
-                  <ChevronRight size={20} color={T.basecampTextMuted} />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.dominantActionComplete}>
-                  <CheckCircle size={20} color={T.green} />
-                  <Text style={styles.dominantActionCompleteText}>Week {currentWeek.weekNumber} complete. Great work.</Text>
-                </View>
+              {nextSession && (
+                <>
+                  <View style={styles.basecampCardDivider} />
+                  <TouchableOpacity
+                    style={styles.upNextBlock}
+                    activeOpacity={0.8}
+                    onPress={() => router.push({
+                      pathname: "/session-detail",
+                      params: {
+                        weekNum: String(currentWeek.weekNumber),
+                        sessionIdx: String(nextSessionIndex),
+                      },
+                    })}
+                  >
+                    <Image source={require("@/assets/store-feature-graphic.png")} style={styles.upNextImage} />
+                    <View style={styles.upNextBody}>
+                      <Text style={styles.upNextLabel}>UP NEXT</Text>
+                      <Text style={styles.upNextTitle}>{nextSession.label}</Text>
+                      <Text style={styles.upNextDesc} numberOfLines={2}>{nextSession.description}</Text>
+                      <View style={styles.upNextStats}>
+                        <Clock size={11} color="rgba(255,255,255,0.4)" />
+                        <Text style={styles.upNextStatText}>
+                          {nextSession.durationMinutes ? `${nextSession.durationMinutes} mins` : "Flexible"}
+                        </Text>
+                        {nextSession.intensity && (
+                          <>
+                            <BarChart2 size={11} color="rgba(255,255,255,0.4)" style={{marginLeft: 10}} />
+                            <Text style={styles.upNextStatText}>{nextSession.intensity}</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.upNextAction}>
+                      <ChevronRight size={14} color={T.green} />
+                    </View>
+                  </TouchableOpacity>
+                </>
               )}
             </Animated.View>
           )}
-
-          <View style={styles.separator} />
 
           {/* Readiness */}
           <View style={styles.editorialSection}>
             <ReadinessV2Hero />
           </View>
 
-          <View style={styles.separator} />
-
           {/* Progress */}
           <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(110).duration(500)} style={styles.editorialSection}>
             <ElevationBankCard onPress={() => router.push("/elevation-history")} />
-
-            <View style={styles.flatStatsGrid}>
-              <View style={styles.flatStat}>
-                <Text style={styles.flatStatValue}>{summitGoal.elevationGain.toLocaleString()}<Text style={styles.flatStatUnit}>m</Text></Text>
-                <Text style={styles.flatStatLabel}>Elev. Goal</Text>
-              </View>
-              <View style={styles.flatStat}>
-                <Text style={styles.flatStatValue}>{totalDone}</Text>
-                <Text style={styles.flatStatLabel}>Sessions</Text>
-              </View>
-              <View style={styles.flatStat}>
-                <Text style={styles.flatStatValue}>{hillsDone}</Text>
-                <Text style={styles.flatStatLabel}>Hills done</Text>
-              </View>
-              <View style={styles.flatStat}>
-                <Text style={styles.flatStatValue}>{unlockedAchievements.length}</Text>
-                <Text style={styles.flatStatLabel}>Badges</Text>
-              </View>
-            </View>
           </Animated.View>
-
-          <View style={styles.separator} />
 
           {/* Secondary content */}
           <View style={styles.editorialSection}>
-            <Text style={styles.sectionTitle}>Supporting</Text>
-
             {/* Time Warning */}
             {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
               <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}>
                 <View style={[
-                  styles.flatRow,
+                  styles.insightCard,
                   timeAssessment.status === "tight"
-                    ? { backgroundColor: T.orangeDim, borderColor: T.orange + "40" }
+                    ? { backgroundColor: "rgba(217, 119, 6, 0.08)", borderColor: "rgba(217, 119, 6, 0.15)" }
                     : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
                 ]}>
-                  {timeAssessment.status === "tight" ? <Clock size={16} color={T.orange} /> : <AlertTriangle size={16} color={T.red} />}
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={[styles.flatRowTitle, { color: timeAssessment.status === "tight" ? T.orange : T.red }]}>
-                      {timeAssessment.message}
-                    </Text>
-                    <Text style={styles.flatRowDesc}>{timeAssessment.detail}</Text>
+                  <View style={styles.insightIconWrap}>
+                    {timeAssessment.status === "tight" ? <Lightbulb size={16} color="#D97706" /> : <AlertTriangle size={16} color={T.red} />}
                   </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.insightEyebrow, { color: timeAssessment.status === "tight" ? "#F59E0B" : T.red }]}>
+                      TRAINING INSIGHT
+                    </Text>
+                    <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
+                    <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
+                  </View>
+                  <ChevronRight size={16} color={T.basecampTextDim} />
                 </View>
               </Animated.View>
             )}
@@ -991,34 +1019,30 @@ export default function DashboardScreen() {
               />
             )}
 
-            {/* Achievements */}
-            <TouchableOpacity style={styles.flatRow} onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7}>
-              <View style={styles.flatRowIconWrap}>
-                <Trophy size={16} color="#FFD700" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.flatRowTitle}>Achievements</Text>
-                <Text style={styles.flatRowDesc}>{unlockedAchievements.length} unlocked</Text>
-              </View>
-              <ChevronRight size={16} color={T.basecampTextMuted} />
-            </TouchableOpacity>
-
-            {/* AI Coach */}
-            <TouchableOpacity style={styles.flatRow} onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")} activeOpacity={0.7}>
-              <View style={styles.flatRowIconWrap}>
-                <MessageCircle size={16} color={T.blue} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.flatRowTitle}>AI Coach</Text>
-                <Text style={styles.flatRowDesc}>{isSubscribed ? "Ask for personalised training advice" : "Pro feature"}</Text>
-              </View>
-              {isSubscribed ? <ChevronRight size={16} color={T.basecampTextMuted} /> : (
-                <View style={styles.proBadge}>
-                  <Lock size={10} color={T.green} />
-                  <Text style={styles.proBadgeText}>PRO</Text>
+            {/* Achievements & AI Coach paired */}
+            <View style={styles.pairedModules}>
+              <TouchableOpacity style={styles.pairedCard} onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7}>
+                <View style={styles.pairedIconWrap}>
+                  <Trophy size={16} color="#F59E0B" />
                 </View>
-              )}
-            </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pairedTitle}>Achievements</Text>
+                  <Text style={styles.pairedDesc}>{unlockedAchievements.length} unlocked</Text>
+                </View>
+                <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.pairedCard} onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")} activeOpacity={0.7}>
+                <View style={styles.pairedIconWrapBlue}>
+                  <MessageCircle size={16} color={T.blue} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pairedTitle}>AI Coach</Text>
+                  <Text style={styles.pairedDesc}>{isSubscribed ? "Ask advice" : "Pro feature"}</Text>
+                </View>
+                <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
+              </TouchableOpacity>
+            </View>
 
             {/* Upgrade Prompt */}
             {!isSubscribed && (
@@ -1301,106 +1325,200 @@ const styles = StyleSheet.create({
   scroll: {},
   editorialContent: {
     paddingBottom: 20,
-  },
-  editorialSection: {
-    paddingHorizontal: 18,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
     gap: 16,
   },
-  sectionHeader: {
+  editorialSection: {
+  },
+  basecampCard: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
+  },
+  missionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  sectionTitle: {
+  missionTitle: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
-    color: T.basecampText,
+    color: "#fff",
   },
-  missionPhasePill: {
+  missionPlanBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 4,
   },
-  phaseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  missionPhaseText: {
+  missionPlanText: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.6)",
   },
-  missionWeekProgress: {
+  missionProgressContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
   },
   missionProgressTrack: {
     flex: 1,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 2,
     overflow: "hidden",
   },
   missionProgressFill: {
     height: "100%",
+    backgroundColor: T.green,
     borderRadius: 2,
   },
   missionProgressLabel: {
-    minWidth: 76,
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: T.basecampTextMuted,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.6)",
+    width: 80,
     textAlign: "right",
   },
-  dominantAction: {
+  basecampCardDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  upNextBlock: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 16,
     gap: 16,
   },
-  dominantActionIcon: {
-    width: 48,
+  upNextImage: {
+    width: 64,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: T.greenDim,
+    borderRadius: 6,
+  },
+  upNextBody: {
+    flex: 1,
+    gap: 3,
+  },
+  upNextLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: T.green,
+    letterSpacing: 1.2,
+  },
+  upNextTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  upNextDesc: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.5)",
+    lineHeight: 16,
+  },
+  upNextStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  upNextStatText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.5)",
+  },
+  upNextAction: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
-  dominantActionBody: {
+  insightCard: {
+    flexDirection: "row",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  insightIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  insightBody: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
-  dominantActionLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: T.green,
-    letterSpacing: 0.2,
-  },
-  dominantActionTitle: {
-    fontSize: 18,
+  insightEyebrow: {
+    fontSize: 9,
     fontFamily: "Inter_700Bold",
-    color: T.basecampText,
+    letterSpacing: 1.2,
+    marginBottom: 2,
   },
-  dominantActionDesc: {
+  insightTitle: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampTextMuted,
-    lineHeight: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
-  dominantActionComplete: {
+  insightDesc: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.6)",
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  pairedModules: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  pairedCard: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 12,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    gap: 10,
   },
-  dominantActionCompleteText: {
-    fontSize: 14,
+  pairedIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pairedIconWrapBlue: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pairedTitle: {
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
-    color: T.basecampText,
+    color: "#fff",
+  },
+  pairedDesc: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 2,
   },
   separator: {
     height: 1,

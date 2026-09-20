@@ -113,23 +113,23 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
     const data = presentation.data;
     return (
       <View testID="elevation-bank-values">
-        <View style={styles.metricRow}>
-          <View style={styles.primaryMetric}>
-            <Text style={styles.primaryValue}>{formatElevationBankMetres(data.lifetimeAscentM)}</Text>
-            <Text style={styles.primaryLabel}>lifetime credited ascent</Text>
+        <View style={styles.metricsGrid}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{formatElevationBankMetres(data.lifetimeAscentM)}</Text>
+            <Text style={styles.metricLabel}>Credited ascent</Text>
           </View>
-          <View style={styles.secondaryMetric}>
-            <Text style={styles.secondaryValue}>{formatElevationBankMetres(data.periodAscentM)}</Text>
-            <Text style={styles.secondaryLabel}>this month</Text>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{formatElevationBankMetres(data.periodAscentM)}</Text>
+            <Text style={styles.metricLabel}>This month</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricValue}>{data.everestEquivalent.toFixed(1)}</Text>
+            <Text style={styles.metricLabel}>Everests</Text>
           </View>
         </View>
-        <View style={styles.everestRow}>
-          <Mountain size={15} color={T.orange} />
-          <Text style={styles.everestText}>
-            {data.everestEquivalent.toFixed(1)} Everest equivalent
-          </Text>
-          <Text style={styles.displayOnly}>display only</Text>
-        </View>
+
         {expanded && data.recentCredits.length > 0 && (
           <View style={styles.recentList}>
             {data.recentCredits.map((credit) => (
@@ -138,7 +138,7 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
                 <Text style={styles.recentLabel} numberOfLines={1}>
                   {credit.status === "corrected" ? "Corrected credit" : "Credited activity"}
                 </Text>
-                  <Text style={styles.recentValue}>+{formatElevationBankMetres(credit.creditedAscentM)}</Text>
+                <Text style={styles.recentValue}>+{formatElevationBankMetres(credit.creditedAscentM)}</Text>
               </View>
             ))}
           </View>
@@ -152,19 +152,21 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
       <View style={styles.header}>
         <View style={styles.titleWrap}>
           <View style={styles.icon}>
-            <ShieldCheck size={14} color={T.green} />
+            <Mountain size={16} color={T.green} />
           </View>
-          <View>
-            <Text style={styles.title}>Elevation Bank</Text>
-          </View>
+          <Text style={styles.title}>Elevation Bank</Text>
         </View>
         {onPress && (
-          <TouchableOpacity onPress={onPress} testID="elevation-bank-open">
-            <ChevronRight size={20} color={T.basecampTextMuted} />
+          <TouchableOpacity onPress={onPress} testID="elevation-bank-open" style={styles.viewDetailsBtn}>
+            <Text style={styles.viewDetailsText}>View details</Text>
+            <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
           </TouchableOpacity>
         )}
       </View>
-      {content}
+      <Text style={styles.helperTextBase}>Your personal, ledger-backed ascent.</Text>
+      <View style={styles.contentWrap}>
+        {content}
+      </View>
       {hasCollapsedRecentCredits && (
         <TouchableOpacity onPress={onPress} style={styles.detailLink}>
           <Text style={styles.detailLinkText}>View credited activity</Text>
@@ -178,15 +180,29 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 0,
-    marginBottom: 16,
-    padding: 0,
+    marginBottom: 0,
+    padding: 16,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
   expandedCard: { marginHorizontal: 0 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   titleWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
-  icon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: T.greenDim },
+  icon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(52, 211, 153, 0.15)" },
+  title: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  viewDetailsBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  viewDetailsText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.6)" },
+  helperTextBase: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 20 },
+  contentWrap: {},
+  metricsGrid: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  metricItem: { flex: 1, alignItems: "center" },
+  metricValue: { color: "#fff", fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  metricLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: "Inter_500Medium", textAlign: "center" },
+  metricDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.1)" },
+
   eyebrow: { color: T.green, fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1.1 },
-  title: { color: T.basecampText, fontSize: 17, fontFamily: "Inter_700Bold", marginTop: 2 },
   metricRow: { flexDirection: "row", alignItems: "flex-end", gap: 18 },
   primaryMetric: { flex: 1 },
   primaryValue: { color: T.basecampText, fontSize: 32, lineHeight: 36, fontFamily: "Inter_700Bold" },
