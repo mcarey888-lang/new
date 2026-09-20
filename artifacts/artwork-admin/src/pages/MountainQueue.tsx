@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Search, ImageIcon, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle } from "lucide-react";
+import { Search, ImageIcon, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, Mountain, Candidate } from "../hooks/use-mountain-api";
 
@@ -11,6 +12,9 @@ export default function MountainQueue() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sort, setSort] = useState("prominence");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem("summitready-admin-key") ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [selectedMountainId, setSelectedMountainId] = useState<string | null>(null);
@@ -29,6 +33,7 @@ export default function MountainQueue() {
     pageSize: 24,
     search: debouncedSearch,
     status: statusFilter,
+    sort,
   });
 
   return (
@@ -53,6 +58,21 @@ export default function MountainQueue() {
             )}
           </nav>
         </div>
+        <form onSubmit={(event) => event.preventDefault()}>
+          <Input
+            type="password"
+            autoComplete="current-password"
+            aria-label="Admin API key"
+            placeholder="Admin key for review actions"
+            value={adminKey}
+            onChange={(event) => {
+              setAdminKey(event.target.value);
+              if (event.target.value) sessionStorage.setItem("summitready-admin-key", event.target.value);
+              else sessionStorage.removeItem("summitready-admin-key");
+            }}
+            className="w-64"
+          />
+        </form>
       </header>
 
       <main className="flex-1 p-6 flex flex-col gap-6 max-w-screen-2xl mx-auto w-full">
@@ -75,9 +95,19 @@ export default function MountainQueue() {
             className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="all">All Status</option>
-            <option value="pending">Pending</option>
+            <option value="review-required">Review required</option>
             <option value="approved">Approved</option>
           </select>
+          <select
+            value={sort}
+            onChange={(e) => { setSort(e.target.value); setPage(1); }}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+          >
+            <option value="prominence">Most prominent</option>
+            <option value="elevation">Highest elevation</option>
+            <option value="name">Name A–Z</option>
+          </select>
+          <Badge variant="outline" className="gap-1"><ListChecks className="h-3.5 w-3.5" /> Curated queue: {selected.size}</Badge>
           <div className="text-sm text-muted-foreground ml-auto">
             {data?.total ?? 0} mountains
           </div>
@@ -98,6 +128,7 @@ export default function MountainQueue() {
               <table className="w-full text-sm text-left">
                 <thead className="bg-secondary/50 text-muted-foreground text-xs uppercase tracking-wider">
                   <tr>
+                    <th className="px-4 py-3 font-medium w-10">Queue</th>
                     <th className="px-4 py-3 font-medium w-[120px]">Hero Image</th>
                     <th className="px-4 py-3 font-medium">Mountain</th>
                     <th className="px-4 py-3 font-medium">Location</th>
@@ -110,8 +141,25 @@ export default function MountainQueue() {
                     <tr 
                       key={mountain.id} 
                       className="hover:bg-secondary/20 transition-colors cursor-pointer group"
-                      onClick={() => setSelectedMountainId(mountain.id)}
+                      onClick={() => {
+                        if (!adminKey) {
+                          toast.error("Enter the admin key before opening Mountain review actions");
+                          return;
+                        }
+                        setSelectedMountainId(mountain.id);
+                      }}
                     >
+                      <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                        <Checkbox
+                          checked={selected.has(mountain.id)}
+                          onCheckedChange={(checked) => setSelected((current) => {
+                            const next = new Set(current);
+                            if (checked) next.add(mountain.id); else next.delete(mountain.id);
+                            return next;
+                          })}
+                          aria-label={`Add ${mountain.name} to curated queue`}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="w-20 h-14 rounded bg-secondary flex items-center justify-center overflow-hidden border border-border group-hover:border-primary/50 transition-colors">
                           {mountain.approvedImageUrl ? (
@@ -147,7 +195,7 @@ export default function MountainQueue() {
                   ))}
                   {data?.mountains.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                         No mountains found matching the filters.
                       </td>
                     </tr>
@@ -161,7 +209,7 @@ export default function MountainQueue() {
                 <div className="text-sm text-muted-foreground">
                   Showing {(page - 1) * data.pageSize + 1} to {Math.min(page * data.pageSize, data.total)} of {data.total}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -170,6 +218,20 @@ export default function MountainQueue() {
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" /> Prev
                   </Button>
+                  <span className="text-sm text-muted-foreground">Page</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={Math.ceil(data.total / data.pageSize)}
+                    value={page}
+                    onChange={(event) => {
+                      const next = Math.max(1, Math.min(Math.ceil(data.total / data.pageSize), Number(event.target.value) || 1));
+                      setPage(next);
+                    }}
+                    className="h-8 w-20"
+                    aria-label="Jump to page"
+                  />
+                  <span className="text-sm text-muted-foreground">of {Math.ceil(data.total / data.pageSize)}</span>
                   <Button
                     variant="outline"
                     size="sm"
@@ -202,6 +264,7 @@ function CandidateDrawer({ mountainId, onClose }: { mountainId: string, onClose:
   const rejectCandidate = useRejectCandidate();
 
   const handleApprove = (candidate: Candidate) => {
+    if (!window.confirm(`Approve “${candidate.title}” as the exact hero for ${data?.mountain.name ?? mountainId}?`)) return;
     approveCandidate.mutate(
       { mountainId, candidate },
       {
@@ -212,6 +275,7 @@ function CandidateDrawer({ mountainId, onClose }: { mountainId: string, onClose:
   };
 
   const handleReject = (imageUrl: string) => {
+    if (!window.confirm(`Reject this exact candidate for ${data?.mountain.name ?? mountainId}? The source record will be retained.`)) return;
     rejectCandidate.mutate(
       { mountainId, imageUrl },
       {

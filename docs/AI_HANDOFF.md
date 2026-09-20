@@ -475,3 +475,25 @@ At the end of every meaningful SummitReady development task:
 - Human/ChatGPT review is the next and only authorised action. Do not approve,
   publish, derive runtime placements or begin another batch without new
   authority.
+
+## GREEN Media Studio curation handoff
+
+- `docs/MEDIA_STUDIO_CURATION_WORKFLOW.md` is the controlling workflow record.
+- Batch 01 now uses its existing Object Storage manifest as a persistent
+  per-version curation catalogue. Each exact version retains its prompt,
+  generation metadata, master, crops, cost and editorial status.
+- Assets (DEV) provides Approve, Reject, Regenerate, View Master, crop review,
+  and version-history controls. Approve never publishes; Reject never deletes;
+  regeneration is single-asset, objective-reasoned, confirmed and limited to
+  two regenerations.
+- Publish remains deliberately disabled until a persistent production Media
+  catalogue is separately authorised and implemented.
+- Signature bulk generation now requires an explicit confirmed target list and
+  matching count, with a server hard cap of 25. The UI shows count,
+  provider/model and estimated cost before starting.
+- Mountain Heroes now supports review-status filtering, useful sorting, page
+  jump and curated queue selection. No bulk generation action targets the
+  catalogue.
+- No artwork was generated, approved, rejected or published during this work.
+  No production migration/data change, Stage 9 work, mobile calculation,
+  Progress Mountain or protected cinematic change occurred.

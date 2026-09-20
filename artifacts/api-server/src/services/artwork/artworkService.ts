@@ -15,7 +15,7 @@
  */
 
 import { db, signatureChallenges, challengeStages } from "@workspace/db";
-import { eq, and, isNull, or, ne } from "drizzle-orm";
+import { eq, and, inArray, isNull, or, ne } from "drizzle-orm";
 import { buildExpeditionPrompt } from "./promptBuilder.js";
 import { defaultImageProvider, type ImageProvider } from "./imageProvider.js";
 import { cropMasterImage } from "./cropService.js";
@@ -197,24 +197,31 @@ export async function clearChallengeArtwork(challengeId: string): Promise<void> 
 const BULK_DELAY_MS = 4_500;
 
 /**
- * Generate artwork for every active challenge that doesn't have an approved
- * image (or where the prompt has changed).
+ * Generate artwork only for an explicit curated list of active challenges.
  *
  * Runs sequentially with a delay between items so we stay within rate limits.
  * Errors on individual challenges are isolated — the bulk run continues.
  *
+ * @param challengeIds Explicit target IDs; hard-capped at 25
  * @param onProgress  Optional callback after each item (for SSE streaming)
  * @param force       Regenerate all, even approved images
  */
 export async function bulkGenerateArtwork(
+  challengeIds: string[],
   onProgress?: (result: GenerateResult, index: number, total: number) => void,
   force = false,
   provider: ImageProvider = defaultImageProvider,
 ): Promise<BulkResult> {
+  if (challengeIds.length === 0 || challengeIds.length > 25) {
+    throw new Error("Bulk generation requires a curated selection of 1 to 25 challenges");
+  }
   const allChallenges = await db
     .select({ challengeId: signatureChallenges.challengeId })
     .from(signatureChallenges)
-    .where(eq(signatureChallenges.status, "active"))
+    .where(and(
+      eq(signatureChallenges.status, "active"),
+      inArray(signatureChallenges.challengeId, challengeIds),
+    ))
     .orderBy(signatureChallenges.challengeId);
 
   const total = allChallenges.length;

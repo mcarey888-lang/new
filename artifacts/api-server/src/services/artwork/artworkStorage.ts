@@ -102,13 +102,20 @@ export async function uploadReviewCandidate(
   };
 }
 
-export async function writeReviewBatchManifest(batchId: string, manifest: unknown) {
-  await getBucket()
-    .file(`expedition-artwork/review-batches/${batchId}/manifest.json`)
-    .save(JSON.stringify(manifest, null, 2), {
+export async function writeReviewBatchManifest(
+  batchId: string,
+  manifest: unknown,
+  expectedGeneration: number,
+): Promise<number> {
+  const file = getBucket().file(`expedition-artwork/review-batches/${batchId}/manifest.json`);
+  await file.save(JSON.stringify(manifest, null, 2), {
       contentType: "application/json",
       metadata: { cacheControl: "no-store" },
+      resumable: false,
+      preconditionOpts: { ifGenerationMatch: expectedGeneration },
     });
+  const [metadata] = await file.getMetadata();
+  return Number(metadata.generation);
 }
 
 /**
@@ -117,16 +124,28 @@ export async function writeReviewBatchManifest(batchId: string, manifest: unknow
  * cannot race, even if more than one API process receives a request.
  */
 const GENERATION_LOCK_LEASE_MS = 10 * 60 * 1000;
+const GENERATION_LOCK_RENEW_MS = 2 * 60 * 1000;
+
+export interface ReviewBatchGenerationLock {
+  assertOwned(): Promise<void>;
+  release(): Promise<void>;
+}
 
 export async function acquireReviewBatchGenerationLock(
   batchId: string,
   staleRecoveryAttempted = false,
-): Promise<() => Promise<void>> {
-  const file = getBucket().file(`expedition-artwork/review-batches/${batchId}/.generation.lock`);
+): Promise<ReviewBatchGenerationLock> {
+  const bucket = getBucket();
+  const lockPath = `expedition-artwork/review-batches/${batchId}/.generation.lock`;
+  const file = bucket.file(lockPath);
   const owner = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + GENERATION_LOCK_LEASE_MS).toISOString();
+  const lockContents = () => JSON.stringify({
+    owner,
+    acquiredAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + GENERATION_LOCK_LEASE_MS).toISOString(),
+  });
   try {
-    await file.save(JSON.stringify({ owner, acquiredAt: new Date().toISOString(), expiresAt }), {
+    await file.save(lockContents(), {
       contentType: "application/json",
       resumable: false,
       preconditionOpts: { ifGenerationMatch: 0 },
@@ -141,9 +160,7 @@ export async function acquireReviewBatchGenerationLock(
         const [contents] = await file.download();
         const existing = JSON.parse(contents.toString("utf8")) as { expiresAt?: string };
         if (existing.expiresAt && Date.parse(existing.expiresAt) <= Date.now()) {
-          await file.delete({
-            preconditionOpts: { ifGenerationMatch: Number(metadata.generation) },
-          });
+          await bucket.file(lockPath, { generation: Number(metadata.generation) }).delete();
           return acquireReviewBatchGenerationLock(batchId, true);
         }
       }
@@ -152,28 +169,66 @@ export async function acquireReviewBatchGenerationLock(
     throw error;
   }
   const [metadata] = await file.getMetadata();
-  const generation = Number(metadata.generation);
-  return async () => {
+  let generation = Number(metadata.generation);
+  let lostError: Error | null = null;
+  let renewal: Promise<void> | null = null;
+  const renew = async () => {
     try {
-      const [contents] = await file.download();
-      const existing = JSON.parse(contents.toString("utf8")) as { owner?: string };
-      if (existing.owner !== owner) return;
-      await file.delete({ preconditionOpts: { ifGenerationMatch: generation } });
+      await file.save(lockContents(), {
+        contentType: "application/json",
+        resumable: false,
+        preconditionOpts: { ifGenerationMatch: generation },
+      });
+      const [nextMetadata] = await file.getMetadata();
+      generation = Number(nextMetadata.generation);
     } catch (error) {
-      const code = typeof error === "object" && error !== null && "code" in error
-        ? Number((error as { code?: unknown }).code)
-        : 0;
-      if (code !== 404 && code !== 412) throw error;
+      lostError = error instanceof Error ? error : new Error(String(error));
     }
+  };
+  const timer = setInterval(() => {
+    if (!renewal) {
+      renewal = renew().finally(() => { renewal = null; });
+    }
+  }, GENERATION_LOCK_RENEW_MS);
+  timer.unref();
+  return {
+    async assertOwned() {
+      await renewal;
+      if (lostError) throw new Error(`Review batch ${batchId} generation lease was lost`);
+      await renew();
+      if (lostError) throw new Error(`Review batch ${batchId} generation lease was lost`);
+    },
+    async release() {
+      clearInterval(timer);
+      await renewal;
+      if (lostError) return;
+      try {
+        const [contents] = await file.download();
+        const existing = JSON.parse(contents.toString("utf8")) as { owner?: string };
+        if (existing.owner !== owner) return;
+        await bucket.file(lockPath, { generation }).delete();
+      } catch (error) {
+        const code = typeof error === "object" && error !== null && "code" in error
+          ? Number((error as { code?: unknown }).code)
+          : 0;
+        if (code !== 404 && code !== 412) throw error;
+      }
+    },
   };
 }
 
-export async function readReviewBatchManifest<T>(batchId: string): Promise<T | null> {
+export async function readReviewBatchManifest<T>(
+  batchId: string,
+): Promise<{ value: T; generation: number } | null> {
   const file = getBucket().file(`expedition-artwork/review-batches/${batchId}/manifest.json`);
   const [exists] = await file.exists();
   if (!exists) return null;
   const [contents] = await file.download();
-  return JSON.parse(contents.toString("utf8")) as T;
+  const [metadata] = await file.getMetadata();
+  return {
+    value: JSON.parse(contents.toString("utf8")) as T,
+    generation: Number(metadata.generation),
+  };
 }
 
 export async function streamReviewCandidate(

@@ -196,6 +196,36 @@ unchanged. Stage 6 is a runbook completion, not mobile release approval.
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-20 UTC — GREEN Media Studio curation workflow
+
+**Task:** Turn Flagship Artwork Batch 01 from a static development gallery into
+a persistent versioned curation workflow, harden bulk generation, and improve
+Mountain Heroes administration without generating or publishing artwork.
+
+**Implementation:** Extended the existing Object Storage review manifest with
+immutable per-version history and exact-version `REVIEW REQUIRED`, `APPROVED`
+and `REJECTED` states. Added development-only, admin-key-protected approve,
+reject and individual regeneration endpoints. The Assets review screen now
+shows intended placement, master and crop previews, version history, and
+confirmed actions. Publish is explicitly unavailable and approval always
+retains `published=false`.
+
+Signature bulk generation now accepts only an explicit confirmed list whose
+count matches the request, with a server hard cap of 25. Its confirmation shows
+count, OpenAI/gpt-image-1 and estimated cost. Mountain Heroes adds review-status
+filtering, prominence/elevation/name sorting, page jump, and persistent
+in-screen curated selection.
+
+**Safety:** No image provider was invoked. No Batch 01 asset was approved,
+rejected, regenerated or published. No production schema/data migration,
+deployment, Stage 9 work, or protected mobile behavior changed.
+
+**Tests/result:** Focused Media Studio safety suites, Artwork Admin TypeScript,
+API bundle and final development workflow checks are recorded in the completion
+message.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
 ## 2026-09-20 UTC — ART-C01–ART-C06 flagship artwork Batch 01
 
 **Task:** Generate the 12 authorised SummitReady flagship candidates through

@@ -75,7 +75,8 @@ export async function listMountainHeroReviews(input: {
   page: number;
   pageSize: number;
   search?: string;
-  status?: "all" | "pending" | "approved";
+  status?: "all" | "review-required" | "approved";
+  sort?: "prominence" | "elevation" | "name";
 }) {
   const offset = (input.page - 1) * input.pageSize;
   const search = input.search?.trim() ?? "";
@@ -86,9 +87,14 @@ export async function listMountainHeroReviews(input: {
     AND (
       $2 = 'all'
       OR ($2 = 'approved' AND review.slug IS NOT NULL)
-      OR ($2 = 'pending' AND review.slug IS NULL)
+      OR ($2 = 'review-required' AND review.slug IS NULL)
     )
   `;
+  const orderBy = input.sort === "name"
+    ? "m.name, m.country NULLS LAST, m.id"
+    : input.sort === "elevation"
+      ? "m.elevation_m DESC NULLS LAST, m.prominence_m DESC NULLS LAST, m.name, m.id"
+      : "m.prominence_m DESC NULLS LAST, m.elevation_m DESC NULLS LAST, m.name, m.id";
   const [rowsResult, countResult] = await Promise.all([
     pool.query<MountainRecord & { reviewData: string | null }>(`
       SELECT
@@ -105,7 +111,7 @@ export async function listMountainHeroReviews(input: {
       LEFT JOIN public.cached_mountains review
         ON review.slug = 'hero-review:${REVIEW_VERSION}:' || m.id::text
       WHERE ${where}
-      ORDER BY m.prominence_m DESC NULLS LAST, m.elevation_m DESC NULLS LAST, m.name, m.id
+       ORDER BY ${orderBy}
       LIMIT $3 OFFSET $4
     `, params),
     pool.query<{ total: string }>(`

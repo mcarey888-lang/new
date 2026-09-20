@@ -40,9 +40,10 @@ import {
 } from "../services/artwork/mountainHeroReview.js";
 import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 import {
-  generateBatch01,
+  approveBatch01Version,
   generateBatch01Candidate,
   getBatch01Manifest,
+  rejectBatch01Version,
 } from "../services/artwork/reviewBatchService.js";
 import { BATCH_01_ID, isObjectiveFailureReason } from "../services/artwork/batch01.js";
 
@@ -89,30 +90,81 @@ artworkRouter.post("/batches/:batchId/generate", requireDevelopment, requireAdmi
   try {
     if (typeof req.body?.assetId === "string") {
       const reason = req.body?.objectiveFailureReason;
-      if (reason !== undefined && !isObjectiveFailureReason(reason)) {
+      if (!isObjectiveFailureReason(reason)) {
         return res.status(400).json({ error: "Invalid objectiveFailureReason" });
+      }
+      if (req.body?.confirmed !== true) {
+        return res.status(400).json({ error: "Regeneration requires explicit confirmation" });
       }
       return res.json(await generateBatch01Candidate(req.body.assetId, reason));
     }
-    return res.json(await generateBatch01());
+    return res.status(400).json({ error: "Whole-batch generation is disabled; choose one asset" });
   } catch (err) {
     console.error("[artwork/batch-01/generate]", err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Batch generation failed" });
   }
 });
 
+artworkRouter.post(
+  "/batches/:batchId/:assetId/v:version/approve",
+  requireDevelopment,
+  requireAdminKey,
+  async (req, res) => {
+    if (param(req.params.batchId) !== BATCH_01_ID) {
+      return res.status(404).json({ error: "Review batch not found" });
+    }
+    const version = Number(param(req.params.version));
+    if (!Number.isInteger(version) || version < 1) {
+      return res.status(400).json({ error: "Invalid version" });
+    }
+    try {
+      return res.json(await approveBatch01Version(param(req.params.assetId), version));
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Approval failed" });
+    }
+  },
+);
+
+artworkRouter.post(
+  "/batches/:batchId/:assetId/v:version/reject",
+  requireDevelopment,
+  requireAdminKey,
+  async (req, res) => {
+    if (param(req.params.batchId) !== BATCH_01_ID) {
+      return res.status(404).json({ error: "Review batch not found" });
+    }
+    const version = Number(param(req.params.version));
+    if (!Number.isInteger(version) || version < 1 || typeof req.body?.reason !== "string") {
+      return res.status(400).json({ error: "Version and rejection reason are required" });
+    }
+    try {
+      return res.json(await rejectBatch01Version(
+        param(req.params.assetId),
+        version,
+        req.body.reason,
+      ));
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Rejection failed" });
+    }
+  },
+);
+
 artworkRouter.get("/mountains", async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(48, Math.max(6, Number(req.query.pageSize) || 24));
-    const status = ["pending", "approved"].includes(String(req.query.status))
-      ? String(req.query.status) as "pending" | "approved"
+    const status = ["review-required", "approved"].includes(String(req.query.status))
+      ? String(req.query.status) as "review-required" | "approved"
       : "all";
+    const sort = ["prominence", "elevation", "name"].includes(String(req.query.sort))
+      ? String(req.query.sort) as "prominence" | "elevation" | "name"
+      : "prominence";
     return res.json(await listMountainHeroReviews({
       page,
       pageSize,
       search: String(req.query.search ?? ""),
       status,
+      sort,
     }));
   } catch (err) {
     console.error("[artwork/mountains]", err);
@@ -237,6 +289,21 @@ artworkRouter.post("/generate/:challengeId", requireAdminKey, async (req, res) =
 // Body: { force?: boolean }
 artworkRouter.post("/bulk", requireAdminKey, async (req, res) => {
   const force = req.body?.force === true;
+  const requestedIds: unknown = req.body?.challengeIds;
+  const challengeIds: string[] = Array.isArray(requestedIds)
+    ? [...new Set(requestedIds.filter((id: unknown): id is string => typeof id === "string" && id.length > 0))]
+    : [];
+  const expectedCount = Number(req.body?.expectedCount);
+  if (
+    req.body?.confirmed !== true
+    || challengeIds.length === 0
+    || challengeIds.length > 25
+    || expectedCount !== challengeIds.length
+  ) {
+    return res.status(400).json({
+      error: "Bulk generation requires confirmation and a curated selection of 1 to 25 challenges",
+    });
+  }
 
   // SSE setup
   res.setHeader("Content-Type", "text/event-stream");
@@ -250,6 +317,7 @@ artworkRouter.post("/bulk", requireAdminKey, async (req, res) => {
 
   try {
     const report = await bulkGenerateArtwork(
+      challengeIds,
       (result, index, total) => {
         send({ index, total, result });
       },
@@ -263,6 +331,7 @@ artworkRouter.post("/bulk", requireAdminKey, async (req, res) => {
   } finally {
     res.end();
   }
+  return;
 });
 
 // ── POST /api/artwork/approve/:challengeId ─────────────────────────────────────

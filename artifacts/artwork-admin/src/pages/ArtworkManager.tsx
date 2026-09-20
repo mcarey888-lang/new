@@ -5,10 +5,6 @@ import {
   getGetArtworkStatusQueryKey,
   useGetArtworkPrompt,
   getGetArtworkPromptQueryKey,
-  useGenerateArtwork,
-  useApproveArtwork,
-  useRejectArtwork,
-  useClearArtwork,
 } from "@workspace/api-client-react";
 
 type ChallengeArtworkStatus = {
@@ -34,6 +30,7 @@ type ChallengeArtworkStatus = {
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -69,9 +66,11 @@ export default function ArtworkManager() {
   const [statusFilter, setStatusFilter] = useState("All");
 
   const [selectedChallenge, setSelectedChallenge] = useState<ChallengeArtworkStatus | null>(null);
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState<Set<string>>(new Set());
 
   // Bulk Generation State
   const [isBulkGenerating, setIsBulkGenerating] = useState(false);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{
     index: number;
     total: number;
@@ -98,15 +97,37 @@ export default function ArtworkManager() {
     });
   }, [challenges, search, statusFilter]);
 
+  const bulkTargets = useMemo(
+    () => challenges.filter((challenge) => selectedChallengeIds.has(challenge.challengeId)).slice(0, 25),
+    [challenges, selectedChallengeIds],
+  );
+  const bulkEstimatedCost = bulkTargets.length * 0.04;
+
   const startBulkGeneration = async () => {
+    const adminKey = sessionStorage.getItem("summitready-admin-key") || window.prompt("Enter the admin API key");
+    if (!adminKey) {
+      toast.error("Bulk generation cancelled: admin key required");
+      return;
+    }
+    sessionStorage.setItem("summitready-admin-key", adminKey);
+    setBulkConfirmOpen(false);
     setIsBulkGenerating(true);
-    setBulkProgress({ index: 0, total: challenges.length, succeeded: 0, failed: 0, skipped: 0, report: null });
+    setBulkProgress({ index: 0, total: bulkTargets.length, succeeded: 0, failed: 0, skipped: 0, report: null });
     try {
       const response = await fetch("/api/artwork/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: false }),
+        headers: { "Content-Type": "application/json", "x-vx-admin-key": adminKey },
+        body: JSON.stringify({
+          force: false,
+          confirmed: true,
+          expectedCount: bulkTargets.length,
+          challengeIds: bulkTargets.map((challenge) => challenge.challengeId),
+        }),
       });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error ?? `Bulk generation failed (${response.status})`);
+      }
       if (!response.body) throw new Error("No response body");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -151,8 +172,10 @@ export default function ArtworkManager() {
         }
       }
     } catch (err) {
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Bulk generation failed");
       queryClient.invalidateQueries({ queryKey: getGetArtworkStatusQueryKey() });
+    } finally {
+      setIsBulkGenerating(false);
     }
   };
 
@@ -179,12 +202,35 @@ export default function ArtworkManager() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <Button onClick={startBulkGeneration} disabled={isBulkGenerating} className="gap-2 font-medium">
+          <Button onClick={() => setBulkConfirmOpen(true)} disabled={isBulkGenerating || bulkTargets.length === 0} className="gap-2 font-medium">
             <Play className="w-4 h-4" />
-            Generate All
+            Generate curated batch
           </Button>
         </div>
       </header>
+
+      <Dialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm curated bulk generation</DialogTitle>
+            <DialogDescription>
+              Only the explicitly selected Signature challenges below will be generated. Mountain Heroes are never included.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">Images</p><p className="text-xl font-semibold">{bulkTargets.length}</p></div>
+            <div className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">Provider/model</p><p className="text-sm font-semibold">OpenAI · gpt-image-1</p></div>
+            <div className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">Estimated cost</p><p className="text-xl font-semibold">${bulkEstimatedCost.toFixed(2)}</p></div>
+          </div>
+          <div className="max-h-40 overflow-y-auto rounded border border-border bg-background/50 p-3 font-mono text-xs text-muted-foreground">
+            {bulkTargets.map((challenge) => <div key={challenge.challengeId}>{challenge.challengeId} · {challenge.challengeName}</div>)}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkConfirmOpen(false)}>Cancel</Button>
+            <Button onClick={startBulkGeneration} disabled={bulkTargets.length === 0}>Confirm {bulkTargets.length} images · ${bulkEstimatedCost.toFixed(2)}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className="flex-1 p-6 flex flex-col gap-6 max-w-screen-2xl mx-auto w-full">
         <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
@@ -211,7 +257,7 @@ export default function ArtworkManager() {
             <option value="failed">Failed</option>
           </select>
           <div className="text-sm text-muted-foreground ml-auto">
-            {filteredChallenges.length} challenges
+            {filteredChallenges.length} challenges · {selectedChallengeIds.size} selected
           </div>
         </div>
 
@@ -224,6 +270,7 @@ export default function ArtworkManager() {
             <table className="w-full text-sm text-left">
               <thead className="bg-secondary/50 text-muted-foreground text-xs uppercase tracking-wider">
                 <tr>
+                  <th className="px-4 py-3 font-medium">Select</th>
                   <th className="px-4 py-3 font-medium">Preview</th>
                   <th className="px-4 py-3 font-medium">Challenge</th>
                   <th className="px-4 py-3 font-medium">Details</th>
@@ -237,11 +284,25 @@ export default function ArtworkManager() {
                     key={challenge.challengeId}
                     challenge={challenge}
                     onOpenPreview={() => setSelectedChallenge(challenge)}
+                    selected={selectedChallengeIds.has(challenge.challengeId)}
+                    onSelectedChange={(checked) => setSelectedChallengeIds((current) => {
+                      const next = new Set(current);
+                      if (checked) {
+                        if (next.size >= 25) {
+                          toast.error("Curated batches are limited to 25 challenges");
+                          return current;
+                        }
+                        next.add(challenge.challengeId);
+                      } else {
+                        next.delete(challenge.challengeId);
+                      }
+                      return next;
+                    })}
                   />
                 ))}
                 {filteredChallenges.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                       No challenges found matching the filters.
                     </td>
                   </tr>
@@ -263,7 +324,7 @@ export default function ArtworkManager() {
           <DialogHeader>
             <DialogTitle>Bulk Generation</DialogTitle>
             <DialogDescription>
-              Processing artwork for all missing or failed challenges.
+              Processing the confirmed curated Signature selection.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -341,17 +402,17 @@ export default function ArtworkManager() {
 function ChallengeRow({
   challenge,
   onOpenPreview,
+  selected,
+  onSelectedChange,
 }: {
   challenge: ChallengeArtworkStatus;
   onOpenPreview: () => void;
+  selected: boolean;
+  onSelectedChange: (checked: boolean) => void;
 }) {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [rowPending, setRowPending] = useState(false);
   const queryClient = useQueryClient();
-
-  const generateMutation = useGenerateArtwork();
-  const approveMutation = useApproveArtwork();
-  const rejectMutation = useRejectArtwork();
-  const clearMutation = useClearArtwork();
 
   const { data: fetchedPrompt, isLoading: isLoadingPrompt } = useGetArtworkPrompt(
     challenge.challengeId,
@@ -365,33 +426,40 @@ function ChallengeRow({
 
   const promptText = challenge.imagePrompt || fetchedPrompt?.prompt;
 
-  const isPending =
-    generateMutation.isPending ||
-    approveMutation.isPending ||
-    rejectMutation.isPending ||
-    clearMutation.isPending ||
-    challenge.imageStatus === "generating";
+  const isPending = rowPending || challenge.imageStatus === "generating";
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: getGetArtworkStatusQueryKey() });
   };
 
   const handleAction = async (action: "generate" | "regenerate" | "approve" | "reject" | "clear") => {
+    const details = action === "regenerate" || action === "generate"
+      ? `${action} ${challenge.challengeName} using OpenAI/gpt-image-1 for an estimated $0.04?`
+      : `${action} artwork for ${challenge.challengeName}?`;
+    if (!window.confirm(details)) return;
+    const adminKey = sessionStorage.getItem("summitready-admin-key") || window.prompt("Enter the admin API key");
+    if (!adminKey) return;
+    sessionStorage.setItem("summitready-admin-key", adminKey);
+    setRowPending(true);
     try {
-      if (action === "generate") {
-        await generateMutation.mutateAsync({ challengeId: challenge.challengeId, data: { force: false } });
-      } else if (action === "regenerate") {
-        await generateMutation.mutateAsync({ challengeId: challenge.challengeId, data: { force: true } });
-      } else if (action === "approve") {
-        await approveMutation.mutateAsync({ challengeId: challenge.challengeId });
-      } else if (action === "reject") {
-        await rejectMutation.mutateAsync({ challengeId: challenge.challengeId });
-      } else if (action === "clear") {
-        await clearMutation.mutateAsync({ challengeId: challenge.challengeId });
-      }
+      const path = action === "generate" || action === "regenerate"
+        ? `/api/artwork/generate/${challenge.challengeId}`
+        : action === "clear"
+          ? `/api/artwork/${challenge.challengeId}`
+          : `/api/artwork/${action}/${challenge.challengeId}`;
+      const response = await fetch(path, {
+        method: action === "clear" ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json", "x-vx-admin-key": adminKey },
+        body: action === "generate" || action === "regenerate"
+          ? JSON.stringify({ force: action === "regenerate" })
+          : undefined,
+      });
+      if (!response.ok) throw new Error(`${action} failed (${response.status})`);
       refresh();
     } catch (e) {
-      console.error(e);
+      toast.error(e instanceof Error ? e.message : `${action} failed`);
+    } finally {
+      setRowPending(false);
     }
   };
 
@@ -414,6 +482,9 @@ function ChallengeRow({
   return (
     <>
       <tr className="hover:bg-secondary/20 transition-colors group">
+        <td className="px-4 py-3">
+          <Checkbox checked={selected} onCheckedChange={(checked) => onSelectedChange(checked === true)} aria-label={`Select ${challenge.challengeName}`} />
+        </td>
         <td className="px-4 py-3 w-20">
           <div
             className="w-12 h-12 rounded bg-secondary flex items-center justify-center overflow-hidden cursor-pointer border border-border group-hover:border-primary/50 transition-colors"

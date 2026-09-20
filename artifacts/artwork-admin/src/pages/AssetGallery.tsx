@@ -196,8 +196,8 @@ export default function AssetGallery() {
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-semibold tracking-tight">Existing-Asset Gallery</h2>
           <p className="text-muted-foreground max-w-3xl">
-            Internal review surface for inspecting hardcoded SummitReady source assets. 
-            This view is bounded to development only and does not persist mutations.
+            Internal review surface for inspecting hardcoded SummitReady source assets.
+            This view is bounded to development only; Batch 01 curation persists in its isolated review manifest.
           </p>
         </div>
 

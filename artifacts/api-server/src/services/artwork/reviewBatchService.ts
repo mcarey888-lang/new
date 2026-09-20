@@ -13,9 +13,11 @@ import {
   readReviewBatchManifest,
   uploadReviewCandidate,
   writeReviewBatchManifest,
+  type ReviewBatchGenerationLock,
 } from "./artworkStorage.js";
 
 const GENERATION_DELAY_MS = 4_500;
+const MANIFEST_GENERATION = Symbol("manifestGeneration");
 
 export interface GenerationAttempt {
   assetId: string;
@@ -44,9 +46,11 @@ export interface ReviewCandidate {
   version: number;
   generatedAt: string;
   generationCost: number;
-  status: "REVIEW REQUIRED";
-  approved: false;
+  status: "REVIEW REQUIRED" | "APPROVED" | "REJECTED";
+  approved: boolean;
   published: false;
+  statusChangedAt?: string;
+  rejectionReason?: string;
   masterPath: string;
   heroPath: string;
   cardPath: string;
@@ -64,11 +68,26 @@ export interface ReviewBatchManifest {
   estimatedCost: number;
   attemptLedger: GenerationAttempt[];
   candidates: ReviewCandidate[];
+  versions: ReviewCandidate[];
+}
+
+type StoredReviewBatchManifest = ReviewBatchManifest & {
+  [MANIFEST_GENERATION]?: number;
+};
+
+function setManifestGeneration(manifest: ReviewBatchManifest, generation: number) {
+  Object.defineProperty(manifest, MANIFEST_GENERATION, {
+    value: generation,
+    enumerable: false,
+    configurable: true,
+  });
+  return manifest as StoredReviewBatchManifest;
 }
 
 export async function getBatch01Manifest(): Promise<ReviewBatchManifest> {
-  const stored = await readReviewBatchManifest<ReviewBatchManifest>(BATCH_01_ID);
-  if (stored) {
+  const record = await readReviewBatchManifest<ReviewBatchManifest>(BATCH_01_ID);
+  if (record) {
+    const stored = record.value;
     const attemptLedger = stored.attemptLedger ?? stored.candidates.map((candidate) => ({
       assetId: candidate.assetId,
       attempt: candidate.attempts,
@@ -80,13 +99,15 @@ export async function getBatch01Manifest(): Promise<ReviewBatchManifest> {
       provider: candidate.provider,
       cost: candidate.generationCost,
     }));
-    return {
+    const versions = stored.versions ?? stored.candidates;
+    return setManifestGeneration({
       ...stored,
       attemptLedger,
+      versions,
       estimatedCost: attemptLedger.reduce((total, attempt) => total + attempt.cost, 0),
-    };
+    }, record.generation);
   }
-  return {
+  return setManifestGeneration({
     batchId: BATCH_01_ID,
     status: "REVIEW REQUIRED",
     approved: false,
@@ -95,23 +116,106 @@ export async function getBatch01Manifest(): Promise<ReviewBatchManifest> {
     estimatedCost: 0,
     attemptLedger: [],
     candidates: [],
-  };
+    versions: [],
+  }, 0);
 }
 
 async function persistManifest(
   manifest: ReviewBatchManifest,
   candidates: ReviewCandidate[],
   attemptLedger: GenerationAttempt[],
+  versions: ReviewCandidate[] = manifest.versions,
+  lock?: ReviewBatchGenerationLock,
 ) {
+  await lock?.assertOwned();
   const next: ReviewBatchManifest = {
     ...manifest,
     updatedAt: new Date().toISOString(),
     estimatedCost: attemptLedger.reduce((total, attempt) => total + attempt.cost, 0),
     attemptLedger,
     candidates,
+    versions,
   };
-  await writeReviewBatchManifest(BATCH_01_ID, next);
-  return next;
+  const generation = await writeReviewBatchManifest(
+    BATCH_01_ID,
+    next,
+    (manifest as StoredReviewBatchManifest)[MANIFEST_GENERATION] ?? 0,
+  );
+  return setManifestGeneration(next, generation);
+}
+
+function sortCandidates(candidates: ReviewCandidate[]) {
+  return candidates.sort((a, b) =>
+    BATCH_01_ASSETS.findIndex((item) => item.assetId === a.assetId)
+    - BATCH_01_ASSETS.findIndex((item) => item.assetId === b.assetId)
+  );
+}
+
+export function updateVersionStatus(
+  versions: ReviewCandidate[],
+  assetId: string,
+  version: number,
+  status: "APPROVED" | "REJECTED",
+  statusChangedAt: string,
+  rejectionReason?: string,
+): ReviewCandidate[] {
+  const target = versions.find(
+    (candidate) => candidate.assetId === assetId && candidate.version === version,
+  );
+  if (!target) throw new Error(`Unknown Batch 01 version: ${assetId} v${version}`);
+  if (status === "REJECTED" && !rejectionReason?.trim()) {
+    throw new Error("Rejecting a candidate requires a reason");
+  }
+  return versions.map((candidate) =>
+    candidate.assetId === assetId && candidate.version === version
+      ? {
+          ...candidate,
+          status,
+          approved: status === "APPROVED",
+          published: false,
+          statusChangedAt,
+          rejectionReason: status === "REJECTED" ? rejectionReason!.trim() : undefined,
+        }
+      : candidate
+  );
+}
+
+async function curateBatch01Version(
+  assetId: string,
+  version: number,
+  status: "APPROVED" | "REJECTED",
+  rejectionReason?: string,
+): Promise<ReviewBatchManifest> {
+  const lock = await acquireReviewBatchGenerationLock(BATCH_01_ID);
+  try {
+    let manifest = await getBatch01Manifest();
+    const statusChangedAt = new Date().toISOString();
+    const versions = updateVersionStatus(
+      manifest.versions,
+      assetId,
+      version,
+      status,
+      statusChangedAt,
+      rejectionReason,
+    );
+    const candidates = manifest.candidates.map((candidate) =>
+      candidate.assetId === assetId && candidate.version === version
+        ? versions.find((item) => item.assetId === assetId && item.version === version)!
+        : candidate
+    );
+    manifest = await persistManifest(manifest, candidates, manifest.attemptLedger, versions, lock);
+    return manifest;
+  } finally {
+    await lock.release();
+  }
+}
+
+export function approveBatch01Version(assetId: string, version: number) {
+  return curateBatch01Version(assetId, version, "APPROVED");
+}
+
+export function rejectBatch01Version(assetId: string, version: number, reason: string) {
+  return curateBatch01Version(assetId, version, "REJECTED", reason);
 }
 
 export async function generateBatch01Candidate(
@@ -122,10 +226,9 @@ export async function generateBatch01Candidate(
   const definition = BATCH_01_PROMPTS.find((asset) => asset.assetId === assetId);
   if (!definition) throw new Error(`Unknown Batch 01 asset: ${assetId}`);
 
-  const releaseLock = await acquireReviewBatchGenerationLock(BATCH_01_ID);
+  const lock = await acquireReviewBatchGenerationLock(BATCH_01_ID);
   try {
-    const manifest = await getBatch01Manifest();
-    const previous = manifest.candidates.find((candidate) => candidate.assetId === assetId);
+    let manifest = await getBatch01Manifest();
     const priorAttempts = manifest.attemptLedger.filter((attempt) => attempt.assetId === assetId);
     const attempts = validateCandidateGeneration(
       priorAttempts.length > 0,
@@ -144,7 +247,7 @@ export async function generateBatch01Candidate(
       cost: 0,
     };
     let attemptLedger = [...manifest.attemptLedger, attempt];
-    await persistManifest(manifest, manifest.candidates, attemptLedger);
+    manifest = await persistManifest(manifest, manifest.candidates, attemptLedger, manifest.versions, lock);
 
     try {
       const generated = await provider.generate(definition.prompt);
@@ -157,7 +260,7 @@ export async function generateBatch01Candidate(
       attemptLedger = attemptLedger.map((item) =>
         item.assetId === assetId && item.attempt === attempts ? attempt : item
       );
-      await persistManifest(manifest, manifest.candidates, attemptLedger);
+      manifest = await persistManifest(manifest, manifest.candidates, attemptLedger, manifest.versions, lock);
 
       const crops = await cropMasterImage(generated.buffer);
       const stored = await uploadReviewCandidate(BATCH_01_ID, assetId, version, crops);
@@ -185,15 +288,14 @@ export async function generateBatch01Candidate(
       const candidates = [
         ...manifest.candidates.filter((item) => item.assetId !== assetId),
         candidate,
-      ].sort((a, b) =>
-        BATCH_01_ASSETS.findIndex((item) => item.assetId === a.assetId)
-        - BATCH_01_ASSETS.findIndex((item) => item.assetId === b.assetId),
-      );
+      ];
+      sortCandidates(candidates);
+      const versions = [...manifest.versions, candidate];
       attempt = { ...attempt, status: "stored", completedAt: generatedAt };
       attemptLedger = attemptLedger.map((item) =>
         item.assetId === assetId && item.attempt === attempts ? attempt : item
       );
-      await persistManifest(manifest, candidates, attemptLedger);
+      manifest = await persistManifest(manifest, candidates, attemptLedger, versions, lock);
       return candidate;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -201,11 +303,11 @@ export async function generateBatch01Candidate(
       attemptLedger = attemptLedger.map((item) =>
         item.assetId === assetId && item.attempt === attempts ? attempt : item
       );
-      await persistManifest(manifest, manifest.candidates, attemptLedger);
+      manifest = await persistManifest(manifest, manifest.candidates, attemptLedger, manifest.versions, lock);
       throw error;
     }
   } finally {
-    await releaseLock();
+    await lock.release();
   }
 }
 
