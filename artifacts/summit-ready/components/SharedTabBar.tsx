@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, Compass, Footprints, Users, User } from "lucide-react-native";
+import { Home, Compass, Footprints, Mountain, User } from "lucide-react-native";
 import { router, useSegments } from "expo-router";
 import { BlurView } from "expo-blur";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
+import { primaryTabTarget, type PrimaryTab } from "@/utils/navigationTargets";
 
 export function SharedTabBar() {
   const insets = useSafeAreaInsets();
@@ -14,39 +15,25 @@ export function SharedTabBar() {
 
   const currentRoute = segments[segments.length - 1] || "";
 
-  let activeTab = "home";
+  let activeTab = "";
   if (["dashboard", "base-camp", "v-home"].includes(currentRoute)) activeTab = "home";
-  else if (["explore", "mountains", "hills", "plan", "v-mountain", "v-hills"].includes(currentRoute)) activeTab = "explore";
+  else if (["explore", "hills", "plan"].includes(currentRoute)) activeTab = "explore";
   else if (["track", "trails", "route", "progress", "v-progress"].includes(currentRoute)) activeTab = "track";
-  else if (["challenges", "community"].includes(currentRoute)) activeTab = "community";
+  else if (["mountains", "virtual", "v-mountain", "v-hills"].includes(currentRoute)) activeTab = "expeditions";
   else if (["account", "profile"].includes(currentRoute)) activeTab = "you";
 
   const tabBarHeight = Platform.OS === "web" ? 80 : 60 + insets.bottom;
   const isIOS = Platform.OS === "ios";
 
-  const handlePress = (tab: string) => {
-    if (tab === "home") {
-      if (shellMode === "training") router.navigate("/(tabs)/dashboard" as any);
-      else router.navigate(activeExpeditionId ? "/(expedition)/base-camp" as any : "/(expedition)/mountains" as any);
-    } else if (tab === "explore") {
-      if (shellMode === "training") router.navigate("/(tabs)/hills" as any);
-      else router.navigate("/(expedition)/mountains" as any);
-    } else if (tab === "track") {
-      if (shellMode === "training") router.navigate("/(tabs)/trails" as any);
-      else router.navigate("/(expedition)/track" as any);
-    } else if (tab === "community") {
-      router.navigate("/(tabs)/challenges" as any);
-    } else if (tab === "you") {
-      if (shellMode === "training") router.navigate("/(tabs)/account" as any);
-      else router.navigate("/(expedition)/profile" as any);
-    }
+  const handlePress = (tab: PrimaryTab) => {
+    router.navigate(primaryTabTarget(tab, shellMode, activeExpeditionId) as any);
   };
 
-  const tabs = [
-    { id: "home", label: "Home", icon: Home },
+  const tabs: { id: PrimaryTab; label: string; icon: typeof Home }[] = [
+    { id: "home", label: "Basecamp", icon: Home },
     { id: "explore", label: "Explore", icon: Compass },
     { id: "track", label: "Track", icon: Footprints },
-    { id: "community", label: "Community", icon: Users },
+    { id: "expeditions", label: "Expeditions", icon: Mountain },
     { id: "you", label: "You", icon: User },
   ];
 
@@ -58,6 +45,7 @@ export function SharedTabBar() {
       <View style={styles.tabsRow}>
         {tabs.map((t) => {
           const isActive = activeTab === t.id;
+          const isTrack = t.id === "track";
           const Icon = t.icon;
           const activeColor = shellMode === "training" ? T.green : T.blue;
           const activeBg = shellMode === "training" ? T.greenDim : T.blueDim;
@@ -75,10 +63,18 @@ export function SharedTabBar() {
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
             >
-              <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
-                <Icon size={20} color={color} />
-              </View>
-              <Text style={[styles.label, { color }]}>{t.label}</Text>
+              {isTrack ? (
+                <View style={[styles.trackWrap, { backgroundColor: activeColor }]}>
+                  <Icon size={24} color={T.bg} />
+                </View>
+              ) : (
+                <>
+                  <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
+                    <Icon size={20} color={color} />
+                  </View>
+                  <Text style={[styles.label, { color }]}>{t.label}</Text>
+                </>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -106,6 +102,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 8,
+  },
+  trackWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   iconWrap: {
     width: 44,

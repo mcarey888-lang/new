@@ -53,6 +53,9 @@ import { authenticatedHeaders, responseError } from "@/utils/authRequest";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import { discardActiveHike } from "@/utils/activeHikeSession";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
+import { RankExperience } from "@/components/RankExperience";
+import { evaluateRank } from "@/utils/rankEvaluator";
+import type { RankSignal } from "@/utils/rankDomain";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -136,6 +139,19 @@ export default function AccountScreen() {
     (s, ac) => s + ac.activities.length,
     0,
   );
+
+  const rankResult = evaluateRank({
+    ownerUserId: user?.id ?? "signed-out",
+    evidence: [],
+    signalAvailability: {
+      eligibleActivities: "unavailable",
+      eligibleElevation: "unavailable",
+      distinctMountains: "unavailable",
+      summitCompletions: "unavailable",
+      activeWeeks: "unavailable",
+      expeditionMilestones: "unavailable",
+    } satisfies Record<RankSignal, "unavailable">,
+  });
 
   const uniqueCurrentActivities = mergeActivityKinds(
     sessions.filter(session => session.completed),
@@ -624,7 +640,20 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
-        {/* Active Challenges */}
+        {/* ── Rank Experience ────────────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(128).duration(400)}>
+          <RankExperience
+            currentRank={rankResult.currentRank}
+            nextRank={rankResult.nextRank}
+            overallProgress={rankResult.progress}
+            requirements={rankResult.nextRequirements}
+            promotionBlocked={rankResult.promotionBlocked}
+            blockedReasons={rankResult.blockedReasons}
+            primaryColor={T.blue}
+          />
+        </Animated.View>
+
+        {/* Stage 8 Qualification */}
         {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
           <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
             <Text style={styles.sectionLabel}>STAGE 8 QUALIFICATION</Text>
@@ -645,6 +674,61 @@ export default function AccountScreen() {
             })}
           </Animated.View>
         )}
+
+        {/* Achievements */}
+        <Animated.View
+          entering={FadeInDown.delay(130).duration(400)}
+          style={styles.section}
+          onLayout={e => { achievementsY.current = e.nativeEvent.layout.y; }}
+        >
+          <Text style={styles.sectionLabel}>
+            ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
+          </Text>
+          <View style={styles.achieveGrid}>
+            {Array.from({ length: Math.ceil(ACHIEVEMENTS.length / 2) }, (_, rowIdx) => {
+              const pair = ACHIEVEMENTS.slice(rowIdx * 2, rowIdx * 2 + 2);
+              return (
+                <View key={rowIdx} style={styles.achieveRow}>
+                  {pair.map(a => {
+                    const isUnlocked = unlockedAchievements.includes(a.id);
+                    const tierColor = TIER_COLOR[a.tier];
+                    return (
+                      <View
+                        key={a.id}
+                        style={[
+                          styles.achieveCard,
+                          isUnlocked ? { borderColor: tierColor + "55" } : { opacity: 0.35 },
+                        ]}
+                      >
+                        {isUnlocked && (
+                          <LinearGradient
+                            colors={[tierColor + "18", "transparent"]}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        )}
+                        <View style={styles.achieveCardTop}>
+                          <View style={styles.achieveIconWrap}>
+                            {isUnlocked ? getIconForCategory(a.category, TIER_COLOR[a.tier], 24) : <Lock size={20} color={T.textDim} />}
+                          </View>
+                          {isUnlocked && (
+                            <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
+                              <Text style={[styles.achieveTierText, { color: tierColor }]}>
+                                {TIER_LABEL[a.tier]}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.achieveTitle} numberOfLines={2}>{a.title}</Text>
+                        <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
+                      </View>
+                    );
+                  })}
+                  {pair.length === 1 && <View style={styles.achieveCardPlaceholder} />}
+                </View>
+              );
+            })}
+          </View>
+        </Animated.View>
 
         {/* Active Challenges */}
         {inProgressChallenges.length > 0 && (
@@ -777,61 +861,6 @@ export default function AccountScreen() {
             })}
           </Animated.View>
         )}
-
-        {/* Achievements */}
-        <Animated.View
-          entering={FadeInDown.delay(130).duration(400)}
-          style={styles.section}
-          onLayout={e => { achievementsY.current = e.nativeEvent.layout.y; }}
-        >
-          <Text style={styles.sectionLabel}>
-            ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
-          </Text>
-          <View style={styles.achieveGrid}>
-            {Array.from({ length: Math.ceil(ACHIEVEMENTS.length / 2) }, (_, rowIdx) => {
-              const pair = ACHIEVEMENTS.slice(rowIdx * 2, rowIdx * 2 + 2);
-              return (
-                <View key={rowIdx} style={styles.achieveRow}>
-                  {pair.map(a => {
-                    const isUnlocked = unlockedAchievements.includes(a.id);
-                    const tierColor = TIER_COLOR[a.tier];
-                    return (
-                      <View
-                        key={a.id}
-                        style={[
-                          styles.achieveCard,
-                          isUnlocked ? { borderColor: tierColor + "55" } : { opacity: 0.35 },
-                        ]}
-                      >
-                        {isUnlocked && (
-                          <LinearGradient
-                            colors={[tierColor + "18", "transparent"]}
-                            style={StyleSheet.absoluteFill}
-                          />
-                        )}
-                        <View style={styles.achieveCardTop}>
-                          <View style={styles.achieveIconWrap}>
-                            {isUnlocked ? getIconForCategory(a.category, TIER_COLOR[a.tier], 24) : <Lock size={20} color={T.textDim} />}
-                          </View>
-                          {isUnlocked && (
-                            <View style={[styles.achieveTierBadge, { backgroundColor: tierColor + "22" }]}>
-                              <Text style={[styles.achieveTierText, { color: tierColor }]}>
-                                {TIER_LABEL[a.tier]}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.achieveTitle} numberOfLines={2}>{a.title}</Text>
-                        <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
-                      </View>
-                    );
-                  })}
-                  {pair.length === 1 && <View style={styles.achieveCardPlaceholder} />}
-                </View>
-              );
-            })}
-          </View>
-        </Animated.View>
 
         {/* Setup / Goal actions */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.section}>

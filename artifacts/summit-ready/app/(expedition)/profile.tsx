@@ -38,6 +38,9 @@ import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { DevToolsModal } from "@/components/DevToolsModal";
 import { englishPlaceName } from "@/utils/placeNames";
+import { RankExperience } from "@/components/RankExperience";
+import { evaluateRank } from "@/utils/rankEvaluator";
+import type { RankSignal } from "@/utils/rankDomain";
 
 const PILL_OFFSET = 52;
 
@@ -129,6 +132,18 @@ export default function ExpeditionProfileScreen() {
 
   const displayName = user?.fullName ?? user?.username ?? "Adventurer";
   const initials    = displayName.slice(0, 1).toUpperCase();
+  const rankResult = evaluateRank({
+    ownerUserId: user?.id ?? "signed-out",
+    evidence: [],
+    signalAvailability: {
+      eligibleActivities: "unavailable",
+      eligibleElevation: "unavailable",
+      distinctMountains: "unavailable",
+      summitCompletions: "unavailable",
+      activeWeeks: "unavailable",
+      expeditionMilestones: "unavailable",
+    } satisfies Record<RankSignal, "unavailable">,
+  });
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -189,6 +204,17 @@ export default function ExpeditionProfileScreen() {
           <View style={s.statDiv} />
           <StatCell value={fmtElev(totalElevation)} label="Elevation" color={T.orange} />
         </Animated.View>
+
+        {/* ── Rank Experience ────────────────────────────────────────────────── */}
+        <RankExperience
+          currentRank={rankResult.currentRank}
+          nextRank={rankResult.nextRank}
+          overallProgress={rankResult.progress}
+          requirements={rankResult.nextRequirements}
+          promotionBlocked={rankResult.promotionBlocked}
+          blockedReasons={rankResult.blockedReasons}
+          primaryColor={T.blue}
+        />
 
         {/* ── Achievements ──────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(160).duration(400)} style={s.card}>
@@ -299,6 +325,17 @@ export default function ExpeditionProfileScreen() {
             ))}
           </Animated.View>
         )}
+
+        {/* ── Challenges Link ───────────────────────────────────────────────── */}
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/challenges" as any)}
+          style={s.settingsLink}
+          activeOpacity={0.8}
+        >
+          <Trophy size={15} color={T.orange} />
+          <Text style={[s.settingsLinkText, { color: T.text }]}>View Challenges</Text>
+          <ChevronRight size={15} color={T.textDim} />
+        </TouchableOpacity>
 
         {/* ── Settings link ─────────────────────────────────────────────────── */}
         <TouchableOpacity
