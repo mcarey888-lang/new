@@ -1,9 +1,9 @@
 # SummitReady AI handoff
 
-Updated: 2026-09-19 UTC
+Updated: 2026-09-20 UTC
 Branch: `virtual-expeditions-mode`  
-Latest Stage 7 implementation checkpoint: `60a2ea1`
-Latest Stage 7 regression/completion checkpoint: `60a2ea1`
+Latest Stage 8 implementation/regression checkpoint: `27b27a8`
+Latest Stage 8 completion documentation checkpoint: this handoff commit
 
 ## Current project state
 
@@ -11,19 +11,19 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
-Stage 7 — Mountain and Route Intelligence is **COMPLETE** through S7-C10 under
-the authorized runbook. The shared versioned SDE route model, deterministic
-Mountain DNA/matching, route-detail UX, Training/Explore/Expedition adapters,
-and server-only read boundary are implemented. Production route-record
-activation remains default-off; this is not production or mobile release
-approval. See `docs/STAGE_7_COMPLETION_REPORT.md` and
-`docs/STAGE_7_REGRESSION_REVIEW.md`.
+Stage 8 — Challenges & Achievements is **COMPLETE** through O8-C10 under the
+authorized overnight runbook. The additive `challenge-domain-v1` foundation,
+deterministic evaluator, owner-scoped persisted projection, exact
+correction/revocation authority, explicit windows, Elevation Bank event
+reconciliation, and additive Challenges/Profile/Account/completion UX are
+implemented. See `docs/STAGE_8_COMPLETION_REPORT.md` and
+`docs/STAGE_8_REGRESSION_REVIEW.md`.
 
-The current SDE schema cannot prove exact geometry-version validation or every
-geometry-member rights relationship. Geometry/profile/DNA matching therefore
-degrade until separately approved SDE publication/schema work. No production
-migration, activation, backfill, reconciliation, release, or Stage 8 work is
-authorized from this checkpoint.
+Only confirmed Elevation Bank evidence currently has an accepted authoritative
+producer integration. Unsupported distance/consistency, Training, Readiness,
+Expedition, and canonical-mountain producers remain explicitly unavailable
+rather than fabricated. Production remains unchanged/default-safe. Native-device
+QA was not run and remains a release gate.
 
 ### Previous task
 
@@ -43,6 +43,13 @@ production migration, flag, backfill, canonical-history switch, adapter
 activation, or mobile release is authorized.
 
 ## Last completed task
+
+O8-C10 completed the Stage 8 gate. The independent C09 review passed after the
+GREEN self-fix loop corrected integration, identity, window, qualification,
+correction/revocation, persistence, API compatibility, and owner-isolation
+defects. Stage 9 implementation is not authorized. O8-C11 may perform only the
+read-only Community & Competition audit and proposed command sequence, then
+must stop.
 
 S7-C10 completed the Stage 7 gate. See
 `docs/STAGE_7_COMPLETION_REPORT.md` for the requirement matrix, implementation

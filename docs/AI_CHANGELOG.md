@@ -2,6 +2,48 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-20 UTC — O8-C10 Challenges & Achievements completion gate
+
+**Task:** Execute O8-C09 adversarial regression/self-fix and the O8-C10
+completion gate under the authorized overnight runbook.
+
+**Implementation/result:** Added the additive versioned Stage 8 challenge and
+achievement domain, deterministic evidence evaluator, owner-scoped persisted
+projection, explicit unavailable states, and additive Challenges/Profile/
+Account/completion UX. Elevation Bank now exposes a backwards-compatible
+`recentEvents` snapshot for credited, corrected, and revoked activity state
+while preserving the independent legacy `recentCredits` contract.
+
+**Architect review:** The C09 loop found and corrected isolated integration,
+unstable identities, unresolved windows, owner/qualification gaps,
+correction/revocation lineage, persistence races, completion misattribution,
+IANA boundary handling, legacy API ordering, cross-rule authority, and
+input-order dependence. The closing independent review returned **PASS**.
+
+**Verification:** SummitReady configured suite **141/141**, earlier broad
+utility regression **160/160**, API suite **356 passed with 4 optional DB tests
+skipped**, SummitReady typecheck, API production build, OpenAPI generation, and
+`git diff --check` passed. Expo and API workflows are running without a new
+Stage 8 runtime error. Native-device QA was **NOT RUN**.
+
+**Limitations:** Only confirmed Elevation Bank evidence currently exposes a
+safe accepted producer integration. Other challenge/achievement families remain
+explicitly unavailable pending exact producer identity, rule, correction, and
+provenance contracts. Workspace-wide library/API typecheck still has unrelated
+pre-existing diagnostics.
+
+**Safety:** No production SQL/schema/migration, activation, backfill,
+reconciliation, deployment, release, public leaderboard, privacy/auth/payment
+change, tracker redesign, protected Progress Mountain/cinematic replacement,
+SDE identity migration, PA-A2/PA-A3 work, or Stage 9 implementation occurred.
+
+**Files:** `docs/STAGE_8_REGRESSION_REVIEW.md`,
+`docs/STAGE_8_COMPLETION_REPORT.md`, `docs/AI_HANDOFF.md`,
+`docs/AI_CHANGELOG.md`.
+
+**Commit:** Implementation/regression checkpoint `27b27a8`; completion
+documentation checkpoint follows this entry.
+
 ## 2026-09-19 UTC — S7-C10 Mountain and Route Intelligence completion gate
 
 **Task:** Execute S7-C09 regression/protected-boundary review and S7-C10
