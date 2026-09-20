@@ -663,3 +663,35 @@ SQL, Publish, deployment, backfill, runtime activation, release, or Stage 5
 work occurred.
 
 **Commit:** Reported in the completion message after this entry is committed.
+
+## 2026-09-20 UTC — VQ-C10 Visual QA and Rank documentation completion
+
+**Task:** Complete the VQ-C05/C09/C10 documentation pack after the final Rank
+and navigation review.
+
+**Documentation:** Reconciled the Rank specification so missing/undefined
+availability fails closed and degraded producers cannot promote. Rebuilt the
+stable screenshot manifest for every actual PNG/JPG, including production
+Explore, Readiness, session, Elevation History, route/Mountain DNA, compact
+Expedition Base Camp, expanded Progress, and one completed personal Challenge.
+The audit now covers these screens and distinguishes real production
+screens/components from the existing `/demo` profile loader and the now
+`__DEV__`-guarded `mountain-demo`.
+
+**Pixel reconciliation:** Confirmed unobscured loaded Training Basecamp;
+populated Track with 374.4 km/46 hikes, scheduled Hill Repeats CTA, and recent
+activity; and signed-out/authority-unavailable empty Elevation History.
+Expedition Base Camp was captured with Chromium forced reduced motion, showing
+the compact accessible fallback with 27% progress, stage list, and next-stage
+CTA. Expanded Progress and the `__DEV__` demo carry the visual mountain
+renderer evidence.
+
+**Verification/status:** Final SummitReady verification is 24 files / 156
+tests; focused navigation/Rank verification is 2 files / 15 tests. Typecheck
+and production iOS/Android Expo bundling pass. Native-device QA was not run.
+Activity completion, pending/revoked consequence
+states, and native active GPS remain explicit native/release QA gaps. No
+production schema, migration, backfill, deployment, release, or Stage 9 work
+occurred.
+
+**Commit:** Reported in the completion message after this entry is committed.

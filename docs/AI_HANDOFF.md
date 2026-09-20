@@ -25,6 +25,41 @@ Expedition, and canonical-mountain producers remain explicitly unavailable
 rather than fabricated. Production remains unchanged/default-safe. Native-device
 QA was not run and remains a release gate.
 
+### VQ-C10 Visual QA and Rank completion
+
+- VQ-C05/C09/C10 documentation is complete in
+  `docs/SUMMITREADY_RANK_SYSTEM.md`, `docs/VISUAL_QA_MANIFEST.md`,
+  `docs/VISUAL_QA_DESIGN_AUDIT.md`, and
+  `docs/VISUAL_QA_COMPLETION_REPORT.md`.
+- Rank is additive and non-persistent. Its evaluator requires exact
+  signal-specific authority contracts and a complete explicit availability map;
+  current callers keep producers unavailable, so the UI says “Evidence
+  building” rather than promoting from local history.
+- The final screenshot index covers every stable PNG/JPG with route/state,
+  390 × 844 viewport, and capture label, including production Explore,
+  Readiness, session, Elevation History, route/Mountain DNA, compact Base
+  Camp, expanded Progress, and a completed personal Challenge. `/demo` is the
+  existing development-only profile loader; no new fixture route or
+  `visual-review` capture source remains.
+- Final audit records fixed P1 issues for authority, deep-link shell sync,
+  active-tab semantics, terminology, Community/Challenges wording, Track
+  labeling, and harness boundaries. Remaining P2/P3 polish and native QA are
+  explicit follow-ups.
+- The pack meets principal visual judgement through real production
+  screens/components and honest empty, degraded, unavailable, and completed
+  states without claiming every native state. Final verification passes
+  **24 files/156 tests**, focused navigation/Rank **2 files/15 tests**,
+  SummitReady typecheck, and production iOS/Android Expo bundling.
+  Pixel reconciliation confirms unobscured loaded Basecamp, populated Track
+  (374.4 km/46 hikes, Hill Repeats CTA, recent activity), and signed-out/
+  authority-unavailable empty Elevation History. Reduced-motion Expedition
+  Base Camp shows the compact accessible fallback (27%, stage list, next-stage
+  CTA); expanded Progress and the `__DEV__` demo show the visual renderer.
+  Native-device QA remains pending. Rank fails closed
+  for missing/undefined availability and degraded producers cannot promote.
+  Do not begin Stage 9, production activation, migration, backfill, or release
+  work.
+
 ### Previous task
 
 Stage 6 — Expedition Experience is **COMPLETE** through S6-C10 under the
