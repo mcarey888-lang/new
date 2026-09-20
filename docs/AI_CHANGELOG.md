@@ -2,6 +2,43 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-20 UTC — Basecamp approved Mont Blanc artwork correction
+
+**Diagnosis:** The approved resolver API and persisted v1 derivative were
+healthy, but API CORS rejected the Expo web origin. The Basecamp resolver caught
+the failed fetch and silently retained the existing cold/blue
+`mountain-image?name=Mont%20Blanc` fallback.
+
+**Fix:** Allowed the Expo development origin and development-only loopback
+visual-QA origins. The development resolver contract now carries exact asset,
+version, placement, and versioned derivative identity. The mobile resolver
+rejects any mismatch, uses a bounded timeout, and Basecamp logs approved,
+mountain-image, or gradient source selection in development.
+
+**Asset proof:** Persisted approved unpublished
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn` v1 resolves to the 1536×864
+hero derivative. The versioned Artwork Admin route and stable approved stream
+are byte-identical with SHA-256 `610126…bd7b`. The final browser DOM rendered
+the stable approved URI and made no mountain-image request.
+
+**Evidence:** Added
+`docs/visual-qa/premium-basecamp-v2/approved-artwork-fixed-first-viewport.png`.
+It visibly matches the warm broad-massif Alpine Dawn composition.
+
+**Verification:** SummitReady focused **1 file / 8 tests** and configured
+**25 files / 166 tests**, API artwork **2 files / 7 tests**, mobile TypeScript,
+API build, live CORS, derivative byte comparison, browser network/DOM, source
+diagnostic, visual comparison, and `git diff --check` passed.
+
+**Safety:** No redesign, artwork generation/publication, deployment/release,
+production schema/data, Training, Readiness, Mission Control, Elevation Bank,
+navigation, profile semantics, Progress Mountain, cinematic, or other-screen
+change occurred.
+
+**Files:** `docs/BASECAMP_APPROVED_ARTWORK_FIX_REPORT.md`,
+`docs/PREMIUM_BASECAMP_V2_REPORT.md`, `docs/VISUAL_QA_MANIFEST.md`,
+`docs/AI_HANDOFF.md`, `docs/AI_CHANGELOG.md`.
+
 ## 2026-09-20 UTC — VR2-C01–VR2-C08 Premium Basecamp V2 completion
 
 **Task:** Refine only Training Basecamp into a premium outdoor/editorial

@@ -9,7 +9,9 @@ export type ApprovedArtworkPlacement = typeof APPROVED_ARTWORK_PLACEMENTS[number
 
 export interface ApprovedArtworkReference {
   assetId: string;
+  version: number;
   placement: ApprovedArtworkPlacement;
+  derivativePath: string;
   url: string;
 }
 
@@ -54,7 +56,9 @@ export function resolveApprovedBatch01Artwork(
   return typeof storedCrop === "string" && storedCrop.length > 0
     ? {
         assetId,
+          version: currentVersion.version,
         placement,
+          derivativePath: storedCrop,
         url: `/api/artwork/approved/${encodeURIComponent(assetId)}/${placement}`,
       }
     : null;

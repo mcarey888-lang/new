@@ -27,16 +27,64 @@ describe('resolveTrainingBasecampArtwork', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('returns url on DEV success', async () => {
+  it('returns only the exact approved asset, version, placement and derivative on DEV success', async () => {
     global.__DEV__ = true;
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ url: 'https://example.com/hero.jpg' })
+      json: async () => ({
+        assetId: 'SR-MTN-MONTBLANC-001',
+        version: 1,
+        placement: 'hero',
+        derivativePath: '/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v1/hero',
+        url: '/api/artwork/approved/SR-MTN-MONTBLANC-001/hero',
+      })
     });
 
     const result = await resolveTrainingBasecampArtwork(pilotContext);
-    expect(result).toBe('https://example.com/hero.jpg');
-    expect(global.fetch).toHaveBeenCalledWith('/api/artwork/resolve/SR-MTN-MONTBLANC-001/hero');
+    expect(result).toEqual({
+      assetId: 'SR-MTN-MONTBLANC-001',
+      version: 1,
+      placement: 'hero',
+      derivativePath: '/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v1/hero',
+      url: '/api/artwork/approved/SR-MTN-MONTBLANC-001/hero',
+      uri: '/api/artwork/approved/SR-MTN-MONTBLANC-001/hero',
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/artwork/resolve/SR-MTN-MONTBLANC-001/hero',
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('rejects a URI whose asset identity does not match the requested approved derivative', async () => {
+    global.__DEV__ = true;
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        assetId: 'SR-MTN-MATTERHORN-001',
+        version: 1,
+        placement: 'hero',
+        derivativePath: '/api/artwork/batches/batch-01/SR-MTN-MATTERHORN-001/v1/hero',
+        url: '/api/artwork/approved/SR-MTN-MATTERHORN-001/hero',
+      }),
+    });
+
+    expect(await resolveTrainingBasecampArtwork(pilotContext)).toBeNull();
+  });
+
+  it('rejects a different version or derivative even when a URI is present', async () => {
+    global.__DEV__ = true;
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        assetId: 'SR-MTN-MONTBLANC-001',
+        version: 2,
+        placement: 'hero',
+        derivativePath: '/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v2/hero',
+        url: '/api/artwork/approved/SR-MTN-MONTBLANC-001/hero',
+      }),
+    });
+
+    expect(await resolveTrainingBasecampArtwork(pilotContext)).toBeNull();
   });
 
   it('returns null on DEV non-2xx failure', async () => {

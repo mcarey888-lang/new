@@ -6,6 +6,13 @@
 **Viewport:** 390 × 844 CSS pixels, phone portrait  
 **Status:** Complete
 
+> **Post-completion correction:** The original first-viewport capture was later
+> proven to show the existing mountain-image fallback because the approved
+> resolver fetch was rejected by API CORS. The bounded correction and truthful
+> replacement evidence are documented in
+> `docs/BASECAMP_APPROVED_ARTWORK_FIX_REPORT.md`. The corrected screenshot is
+> `docs/visual-qa/premium-basecamp-v2/approved-artwork-fixed-first-viewport.png`.
+
 ## Result
 
 Training Basecamp is now a continuous premium outdoor/editorial page rather

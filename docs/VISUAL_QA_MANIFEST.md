@@ -35,7 +35,8 @@ final gradient state.
 
 | File | State | Notes |
 |---|---|---|
-| `docs/visual-qa/premium-basecamp-v2/first-viewport.png` | Final populated first viewport | Approved Mont Blanc hero, mission, accessible week progress, next session, locked Readiness |
+| `docs/visual-qa/premium-basecamp-v2/approved-artwork-fixed-first-viewport.png` | Corrected approved-artwork first viewport | Verified `SR-MTN-MONTBLANC-001` v1 hero; warm broad massif matches Artwork Admin; supersedes the cold/blue fallback shown in the original first viewport |
+| `docs/visual-qa/premium-basecamp-v2/first-viewport.png` | Historical pre-fix first viewport | Cold/blue mountain-image fallback retained as discrepancy evidence; superseded by the corrected approved-artwork capture above |
 | `docs/visual-qa/premium-basecamp-v2/locked-readiness.png` | Locked/non-Pro | Signature Readiness identity without an exposed or invented score |
 | `docs/visual-qa/premium-basecamp-v2/mid-readiness-progress.png` | Mid-scroll | Readiness, Elevation Bank, essential progress, warning and achievements |
 | `docs/visual-qa/premium-basecamp-v2/lower-supporting-content.png` | Lower scroll | Progress values, warning, achievements, AI Coach and quiet upgrade row |

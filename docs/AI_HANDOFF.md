@@ -11,6 +11,32 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### Training Basecamp approved artwork diagnostic/fix
+
+- The approved Mont Blanc discrepancy is fixed. The controlling report is
+  `docs/BASECAMP_APPROVED_ARTWORK_FIX_REPORT.md`.
+- Root cause: the API allowed the standard development domain but not the Expo
+  web origin. The approved resolver `fetch` failed CORS and Basecamp silently
+  rendered `/api/mountain-image?name=Mont%20Blanc`.
+- The API now allows the Expo development origin plus development-only
+  loopback visual-QA origins. Production origins are unchanged.
+- Resolver responses expose and the mobile client verifies exact asset
+  `SR-MTN-MONTBLANC-001`, version 1, `hero` placement, and the v1 hero
+  derivative path before accepting the stable approved URI.
+- The stable approved URI and Artwork Admin v1 hero derivative are identical
+  1536×864 JPEGs with SHA-256 `610126…bd7b`.
+- Basecamp logs `approved`, `mountain-image`, or `gradient` source decisions in
+  development. The successful real browser trace loaded only the approved
+  source.
+- Fresh 390×844 evidence:
+  `docs/visual-qa/premium-basecamp-v2/approved-artwork-fixed-first-viewport.png`.
+- Verification passed: SummitReady **25 files / 166 tests**, focused resolver
+  **1 file / 8 tests**, API artwork **2 files / 7 tests**, mobile TypeScript,
+  API build, live CORS, byte identity, browser network/DOM, and visual checks.
+- No redesign, generation, publication, deploy/release, schema/data, Training,
+  Readiness, Elevation Bank, navigation, Progress Mountain, cinematic, or
+  other-screen change occurred.
+
 ### VR2-C01–VR2-C08 Premium Training Basecamp V2
 
 - The bounded editorial refinement is complete. The authoritative report is

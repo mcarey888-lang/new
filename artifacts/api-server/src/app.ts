@@ -35,12 +35,18 @@ const allowedOrigins = new Set<string>([
   "https://www.summitready.uk",
   ...(process.env.REPLIT_DOMAINS?.split(",").map(d => `https://${d.trim()}`) ?? []),
   ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
+  ...(process.env.REPLIT_EXPO_DEV_DOMAIN ? [`https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`] : []),
 ]);
+
+function isDevelopmentLoopbackOrigin(origin: string): boolean {
+  return process.env.NODE_ENV === "development"
+    && /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin);
+}
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isDevelopmentLoopbackOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin not allowed — ${origin}`));

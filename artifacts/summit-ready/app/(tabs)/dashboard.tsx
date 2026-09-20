@@ -88,28 +88,59 @@ function MountainHero({
   distance: number;
   highestAltitude: number;
 }) {
-  const [imageError, setImageError] = useState(false);
-  const [resolvedUri, setResolvedUri] = useState<string | null>(null);
+  const mountainFallbackUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
+  type HeroSource =
+    | { kind: "resolving" }
+    | { kind: "approved"; uri: string; assetId: string; version: number; placement: string }
+    | { kind: "mountain-image"; uri: string; reason: string }
+    | { kind: "gradient"; reason: string };
+  const [heroSource, setHeroSource] = useState<HeroSource>({ kind: "resolving" });
 
-  useEffect(() => { setImageError(false); }, [mountainName]);
+  const logSource = useCallback((source: HeroSource) => {
+    if (!__DEV__ || source.kind === "resolving") return;
+    const details = source.kind === "approved"
+      ? {
+          source: source.kind,
+          assetId: source.assetId,
+          version: source.version,
+          placement: source.placement,
+          uri: source.uri,
+        }
+      : { source: source.kind, reason: source.reason, uri: "uri" in source ? source.uri : null };
+    console.info("[Basecamp hero source]", details);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    setResolvedUri(null);
+    setHeroSource({ kind: "resolving" });
 
     async function loadArtwork() {
       const devProfileId = await AsyncStorage.getItem("summitready_dev_profile_id");
-      const uri = await resolveTrainingBasecampArtwork({ devProfileId, mountainName });
-      if (active) setResolvedUri(uri);
+      const approved = await resolveTrainingBasecampArtwork({ devProfileId, mountainName });
+      if (!active) return;
+      const next: HeroSource = approved
+        ? {
+            kind: "approved",
+            uri: approved.uri,
+            assetId: approved.assetId,
+            version: approved.version,
+            placement: approved.placement,
+          }
+        : {
+            kind: "mountain-image",
+            uri: mountainFallbackUri,
+            reason: "approved artwork unavailable or identity mismatch",
+          };
+      logSource(next);
+      setHeroSource(next);
     }
     void loadArtwork();
     return () => { active = false; };
-  }, [mountainName]);
+  }, [logSource, mountainFallbackUri, mountainName]);
 
-  const mountainFallbackUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
-  const heroImageUri = imageError
-    ? null
-    : (resolvedUri || mountainFallbackUri);
+  const heroImageUri = heroSource.kind === "approved" || heroSource.kind === "mountain-image"
+    ? heroSource.uri
+    : null;
 
   const dateStr = summitDate
     ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
@@ -125,12 +156,22 @@ function MountainHero({
           style={heroStyles.image}
           resizeMode="cover"
           onError={() => {
-            if (resolvedUri) {
-              setResolvedUri(null);
-              setImageError(false);
+            if (heroSource.kind === "approved") {
+              const fallback: HeroSource = {
+                kind: "mountain-image",
+                uri: mountainFallbackUri,
+                reason: `approved artwork image failed to render: ${heroSource.assetId} v${heroSource.version} ${heroSource.placement}`,
+              };
+              logSource(fallback);
+              setHeroSource(fallback);
               return;
             }
-            setImageError(true);
+            const gradient: HeroSource = {
+              kind: "gradient",
+              reason: "mountain-image fallback failed to render",
+            };
+            logSource(gradient);
+            setHeroSource(gradient);
           }}
         >
           {/* Top subtle vignette */}

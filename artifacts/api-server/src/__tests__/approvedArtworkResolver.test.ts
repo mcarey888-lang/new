@@ -22,11 +22,14 @@ describe("approved Batch 01 artwork resolver", () => {
     );
     expect(result).toEqual({
       assetId: "SR-MTN-MONTBLANC-001",
+      version: 1,
       placement: "hero",
+      derivativePath: "/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v1/hero",
       url: "/api/artwork/approved/SR-MTN-MONTBLANC-001/hero",
     });
     expect(result).not.toHaveProperty("status");
     expect(result?.url).not.toContain("/v1/");
+    expect(result?.derivativePath).toContain("/v1/hero");
   });
 
   it("does not resolve review or rejected candidates", () => {
