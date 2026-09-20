@@ -1,185 +1,207 @@
-# SummitReady Premium Basecamp Visual Refinement + Ben Nevis Hero
+# SummitReady Training Basecamp V3 — Locked Reference-Match Implementation
 
-**Command:** VR2-C01
+**Command:** V3-C01
 **Authority:** ChatGPT lead product/design/architecture
-**Baseline:** `1ae8df602654147bd45e2896b5f2aa0070699e54`
-**Stage 9:** PAUSED / NOT AUTHORIZED.
+**Implementation baseline:** `a51b4ed3d23c2c2d12f4ac18632c6f64f626a3be`
 **Scope:** Training Basecamp only.
+**Stage 9:** PAUSED / NOT AUTHORIZED.
 
-## Why this pass exists
+## Locked visual target
 
-The approved-artwork integration pilot is technically successful, but direct human visual review of the real 390×844 screenshots did **not** accept the screen as the master visual pattern for SummitReady.
+The newly approved Training Basecamp mock-up supplied by the product owner is the visual specification for this pass.
 
-Keep what works: cinematic image-led direction, clear Training/Expeditions mode distinction, Ben Nevis goal context, existing Training functionality, Mission Control semantics, Readiness 2.0, Elevation Bank, navigation and safe approved-artwork boundary.
+This is no longer exploratory design. Refine the **real functioning Training Basecamp** so it matches the supplied reference as closely as practical at 390×844 while preserving real SummitReady data, interactions, navigation, accessibility and business logic.
 
-The visual problem is below the hero: the screen falls back into a generic stack of rounded SaaS/fitness-dashboard cards. The Ben Nevis hero itself is also not good enough: it is mostly anonymous grey mist/rock and does not make Ben Nevis recognisable or aspirational.
+Do not build a static screenshot clone. Match the design, not fabricated mock-up data.
 
-Target: make the functioning Training Basecamp feel materially closer to the approved premium outdoor/editorial mock-up — cinematic, authentic, spacious, strong typography, fewer containers, restrained accent colour, continuous landscape/page composition.
+The approved artwork resolver/CORS fix at the baseline commit is correct and must be preserved.
 
-Do not copy a screenshot mechanically. Preserve real data and behavior.
+## V3-C01 — Hero
 
-## VR2-C01 — Baseline and protected boundaries
+Use the proven approved asset:
 
-Read:
-- `docs/PREMIUM_BASECAMP_PILOT_REPORT.md`
-- `docs/SUMMITREADY_PREMIUM_UI_SYSTEM.md`
-- `docs/SUMMITREADY_ART_DIRECTION.md`
-- current Basecamp implementation and current premium-basecamp screenshots.
+`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`, v1, hero derivative.
+
+Preserve the approved-artwork resolver, DEV diagnostics and genuine fallback chain.
+
+Match the reference:
+- large immersive mountain photography with the summit clearly visible;
+- subtle dark transition into lower content;
+- deliberate SummitReady wordmark/header treatment;
+- Training / Expeditions switch prominent over the hero;
+- quiet lock/edit controls;
+- small spaced `TRAINING OBJECTIVE`;
+- large editorial Mont Blanc title;
+- restrained metadata;
+- no unnecessary outer card.
+
+Use real goal data only. Never alter a real user's selected goal or invent missing metrics.
+
+## V3-C02 — This week's mission
+
+Match the reference composition:
+- strong heading;
+- existing View Plan action where valid;
+- clean long progress indicator;
+- percentage;
+- week/phase status;
+- strong spacing and hierarchy.
+
+Preserve Training plan/session semantics.
+
+## V3-C03 — Up Next / Easy Run
+
+Make the next session feel like a premium training prescription rather than a settings row.
+
+Follow the reference:
+- richer visual treatment;
+- `UP NEXT`;
+- large session name;
+- description;
+- existing duration/intensity information where available;
+- obvious action affordance.
+
+Use an appropriate existing approved/local training image only if already available. Do not generate artwork. Do not fabricate duration, Zone or other session properties; omit unavailable fields gracefully.
+
+## V3-C04 — Readiness signature treatment
+
+Readiness is a primary SummitReady differentiator.
+
+Replace the generic grey question-mark ring with a four-segment readiness visual representing the existing Readiness 2.0 dimensions:
+- Endurance
+- Elevation
+- Consistency
+- Mountain Experience
+
+Locked/non-Pro:
+- do not reveal calculated scores not entitled to the user;
+- show the structure/dimensions;
+- conceal/lock actual values;
+- make the capability desirable rather than dead/disabled;
+- retain existing entitlement/navigation.
+
+Entitled users continue to use actual Readiness 2.0 values.
+
+**Do not change any Readiness calculation or evidence semantics.**
+
+## V3-C05 — Elevation Bank
+
+Match the reference:
+- prominent identity;
+- existing explanatory copy;
+- large meaningful numbers;
+- clear metric labels;
+- valid View Details action;
+- premium restrained surface.
+
+Only display real available data. Preserve ledger-backed Elevation Bank semantics exactly.
+
+## V3-C06 — Training Insight
+
+Remove the user-facing heading `Supporting`.
+
+Restyle the existing schedule warning as **TRAINING INSIGHT** using a restrained premium amber/earth treatment. It should communicate intelligent coaching guidance rather than a system failure.
+
+Preserve underlying warning logic and meaning.
+
+## V3-C07 — Achievements + AI Coach
+
+Follow the reference:
+- quieter paired secondary modules where layout permits;
+- distinct iconography;
+- clear navigation;
+- Pro status where applicable;
+- lower priority than Mission, Readiness and Elevation Bank.
+
+Preserve all existing behavior and responsive small-phone handling.
+
+## V3-C08 — Bottom navigation
+
+Preserve exactly:
+
+**Basecamp | Explore | Track | Expeditions | You**
+
+Match the reference proportions/restraint. Track remains central and distinctive but must not overpower current Training content. Do not change navigation architecture.
+
+## V3-C09 — Overall visual language
+
+The supplied reference is authoritative for:
+- hierarchy;
+- density;
+- spacing;
+- typography scale;
+- image dominance;
+- surface treatment;
+- subtle borders;
+- restrained translucency;
+- dark cinematic palette;
+- selective green;
+- secondary accents;
+- icon scale;
+- information grouping.
+
+Cards/surfaces are allowed where purposeful. Avoid repetitive generic dashboard-card rhythm.
+
+The finished screen should feel like a premium outdoor/mountaineering product.
+
+Respect reduced motion, contrast, safe areas, dynamic/small-phone constraints and low-end Android performance.
+
+## V3-C10 — Functional and protected boundaries
 
 Preserve:
-- Training/Expedition shell semantics;
-- Readiness 2.0 calculations/evidence;
-- Training plan/session actions;
-- Elevation Bank semantics;
-- offline/canonical activity tracking;
-- Basecamp | Explore | Track | Expeditions | You;
-- DEV/demo isolation and production fail-closed media behavior;
-- protected Expedition Progress Mountain/cinematic files and behavior.
+- Training logic;
+- Readiness 2.0 calculations;
+- Elevation Bank;
+- canonical activity architecture;
+- offline tracking;
+- session navigation;
+- DEV/demo isolation;
+- approved-artwork resolver and production fail-closed behavior;
+- accessibility/reduced motion.
 
-No production migration, publication, deploy, release, payment/auth change, Stage 9, or broad reskin.
+Do not touch protected Progress Mountain, ExpeditionMountainProgress, summit cinematic or live-3D behavior.
 
-## VR2-C02 — Change the visual-QA goal to an approved flagship summit
+No schema migration.
+No artwork generation.
+No artwork publication.
+No production deploy/release.
+No Stage 9.
+No redesign of other screens.
 
-The current Ben Nevis visual is rejected as the long-term goal-mountain hero.
+## V3-C11 — Mandatory visual QA
 
-For this V2 pilot, **do not generate new Ben Nevis artwork**. Change the deterministic Training Basecamp visual-QA/demo goal from Ben Nevis to **Mont Blanc**, using the already manually approved flagship asset:
-
-`SR-MTN-MONTBLANC-001 — Mont Blanc — Alpine Dawn`
-
-Requirements:
-- use the approved exact current version through the existing safe approved-artwork resolver;
-- use Mont Blanc only where the deterministic DEV/demo profile needs a goal for this visual pilot;
-- do not alter a real user's selected goal;
-- do not change Training logic or Readiness calculations;
-- goal title, route/elevation/distance/date context must come from existing Mont Blanc fixture/catalogue data where available — never retain Ben Nevis metrics under a Mont Blanc label and never invent values;
-- if a field is unavailable, omit it gracefully;
-- preserve production fail-closed behavior because the artwork is approved but not published;
-- no new generation, no Batch 02, no auto-approval, no publication.
-
-This pass should prove how a named approved summit hero works in the premium Basecamp composition.
-
-## VR2-C03 — Recompose Basecamp as an editorial continuous page
-
-The current structure has too many independent rounded cards. Reduce container count aggressively while preserving functionality.
-
-Desired hierarchy:
-
-**Goal mountain / cinematic hero**
-→ **This week's mission**
-→ **Readiness**
-→ **Your progress**
-→ quieter **Achievements / Coaching / commercial prompts**
-
-### Hero
-- reduce visually dead/anonymous space;
-- make the mountain the visual subject;
-- integrate goal title/date/essential metrics with stronger editorial hierarchy;
-- keep readability gradients subtle;
-- logo must not float as a competing splash-screen element;
-- Training/Expeditions switch remains clear but should feel integrated rather than pasted over the photograph;
-- edit/lock controls should be quieter;
-- avoid decorative badges unless useful.
-
-### This week's mission
-- treat Week/phase/progress + next session as one editorial section;
-- one dominant action;
-- avoid making the whole thing another large rounded card;
-- use typography, spacing, line/divider treatment and selective surface elevation instead;
-- preserve session description and navigation.
-
-### Readiness
-Readiness is a signature SummitReady capability. It must feel important even when entitlement-locked.
-- preserve exact Readiness 2.0 semantics;
-- do not make the locked state look dead/disabled;
-- communicate capability/value without inventing a score;
-- avoid a generic grey dashboard widget;
-- commercial lock/upgrade cue should be subordinate to the feature identity.
-
-### Your progress
-Bring Elevation Bank and essential supporting stats into a coherent progress composition rather than separate stacked cards.
-- Elevation Bank remains accessible;
-- combine/reduce containers where semantically sensible;
-- use larger useful numbers, editorial labels, whitespace and separators;
-- do not invent or merge unrelated data semantics.
-
-### Secondary content
-Achievements, warnings, upgrade prompt and AI Coach should not all compete as equal cards.
-- preserve access/function;
-- warnings remain appropriately prominent when actionable;
-- commercial upsell should be quieter and not interrupt the main training narrative;
-- achievements/coaching can use flatter rows/sections or restrained surfaces;
-- reduce repeated green decoration.
-
-## VR2-C04 — Colour, type, spacing and navigation balance
-
-- Green = deliberate progress/action signal, not default decoration for every module.
-- Keep blue/neutral support colours restrained.
-- Increase typographic hierarchy; avoid tiny dashboard copy where larger editorial text works.
-- Reduce tiny uppercase labels and excessive pills.
-- Use fewer radii/surface boxes; whitespace and thin separators should do more work.
-- Maintain accessible contrast.
-- Review the central Track tab: preserve its central importance and behavior, but if it visually overwhelms the Training primary action, reduce only its decorative dominance without changing tab architecture.
-- Keep small-phone/safe-area behavior sound.
-
-## VR2-C05 — Motion
-
-Keep motion restrained. Reuse the established system.
-- hero may have subtle entrance/parallax/scale;
-- mission/readiness may settle smoothly;
-- no loops/confetti/heavy video;
-- respect reduced motion;
-- no interaction delay;
-- low-end Android safe.
-
-## VR2-C06 — Direct visual self-review and correction loop
-
-Use real 390×844 app screenshots, populated deterministic profiles.
-
-Capture:
-- first viewport;
-- mid-scroll / Readiness + progress;
-- lower supporting content;
-- locked/non-Pro state;
-- fallback hero state;
-- Ben Nevis candidate review sheet if generation was required.
+Capture real populated 390×844 screenshots from the functioning app:
+1. hero + mission;
+2. mission + Readiness;
+3. Readiness + Elevation Bank;
+4. Training Insight + Achievements/AI Coach;
+5. full scroll if tooling permits;
+6. approved-artwork fallback state.
 
 Store under:
-`docs/visual-qa/premium-basecamp-v2/`
+`docs/visual-qa/premium-basecamp-v3/`
 
-Before stopping, compare the actual screenshots against these acceptance questions and self-correct obvious failures:
-1. Does the top immediately feel like a premium outdoor/mountain product?
-2. Is Ben Nevis recognisable/aspirational rather than generic fog/rock?
-3. Does the screen continue to feel editorial after the hero?
-4. Are there materially fewer independent rounded cards?
-5. Is there one obvious Training action?
-6. Does Readiness feel like a signature capability?
-7. Is progress understandable without a dashboard grid feeling?
-8. Is green restrained?
-9. Does the Track tab avoid overpowering the current screen action?
-10. Does any section still look like generic SaaS/fitness UI?
+Compare the actual result directly against the supplied reference and perform at least one self-correction pass after seeing real screenshots.
 
 Do not declare visual success merely because tests pass.
 
-## VR2-C07 — Verification
+Explicitly inspect:
+- hero scale/crop;
+- typography hierarchy;
+- vertical rhythm;
+- Readiness visual quality;
+- surface proportions;
+- excessive green;
+- tiny text;
+- generic dashboard appearance;
+- bottom-nav dominance.
 
-Run targeted tests and bounded regression for changed production code. Verify:
-- Training semantics/navigation unchanged;
-- Readiness unchanged;
-- Elevation Bank unchanged;
-- artwork fail-closed behavior unchanged;
-- DEV/demo isolation;
-- reduced-motion behavior;
-- bottom-tab routes unchanged;
-- protected Expedition files untouched.
+## V3-C12 — Verification and STOP
 
-Run TypeScript and production iOS/Android Expo exports if shared production mobile code changed.
-
-No production deploy/release.
-
-## VR2-C08 — Report and STOP
+Run targeted tests, bounded regression, TypeScript and production Expo exports as appropriate.
 
 Create:
-`docs/PREMIUM_BASECAMP_V2_REPORT.md`
+`docs/PREMIUM_BASECAMP_V3_REPORT.md`
 
 Update:
 - `docs/AI_HANDOFF.md`
@@ -187,25 +209,16 @@ Update:
 - visual QA manifest as appropriate.
 
 Report:
-- exact visual changes;
-- container/card reduction;
-- exact Mont Blanc approved asset/version consumed and deterministic demo goal mapping;
+- exact implementation changes;
+- exact approved asset/version consumed;
 - screenshots;
 - tests/builds;
-- remaining shortcomings;
+- remaining differences from the locked reference;
 - protected-boundary confirmation.
 
-Commit/push and STOP after the GREEN refinement and visual QA are complete.
+Commit/push and STOP.
 
-Do NOT:
-- reskin Explore/Track/Expeditions/You;
-- generate Ben Nevis artwork or Batch 02;
-- generate a mountain catalogue;
-- auto-approve or publish new artwork;
-- alter Readiness logic;
-- alter protected Progress Mountain/cinematic;
-- start Stage 9;
-- deploy/release.
+Do not propagate this design to Explore, Track, Expeditions, You or any other screen until product-owner + lead-designer visual acceptance.
 
 End response with exactly one status:
 COMPLETE
