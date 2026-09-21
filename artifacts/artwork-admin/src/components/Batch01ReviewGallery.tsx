@@ -22,6 +22,7 @@ type ReviewCandidate = {
   family: string;
   placement: string;
   cropGuidance: string;
+  prompt: string;
   provider: string;
   model: string;
   dimensions: string;
@@ -61,7 +62,13 @@ function statusClass(status: CandidateStatus) {
   return "border-amber-500/30 bg-amber-500/10 text-amber-300";
 }
 
-export function Batch01ReviewGallery() {
+type ReviewGalleryProps = {
+  batchId: "batch-01" | "batch-02";
+  title: string;
+  allowRegeneration: boolean;
+};
+
+function ReviewBatchGallery({ batchId, title, allowRegeneration }: ReviewGalleryProps) {
   const [manifest, setManifest] = useState<ReviewManifest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -70,7 +77,7 @@ export function Batch01ReviewGallery() {
   const [reason, setReason] = useState<ObjectiveFailureReason>("UNUSABLE_CROP");
 
   const loadManifest = async () => {
-    const response = await fetch("/api/artwork/batches/batch-01", { cache: "no-store" });
+    const response = await fetch(`/api/artwork/batches/${batchId}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`Review batch request failed (${response.status})`);
     setManifest(await response.json());
   };
@@ -102,8 +109,8 @@ export function Batch01ReviewGallery() {
     setBusy(`${candidate.assetId}:${kind}`);
     try {
       const path = kind === "regenerate"
-        ? "/api/artwork/batches/batch-01/generate"
-        : `/api/artwork/batches/batch-01/${candidate.assetId}/v${candidate.version}/${kind}`;
+        ? `/api/artwork/batches/${batchId}/generate`
+        : `/api/artwork/batches/${batchId}/${candidate.assetId}/v${candidate.version}/${kind}`;
       const body = kind === "regenerate"
         ? { assetId: candidate.assetId, objectiveFailureReason: reason, confirmed: true }
         : kind === "reject"
@@ -116,7 +123,7 @@ export function Batch01ReviewGallery() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? `${kind} failed (${response.status})`);
-      setManifest(kind === "regenerate" ? await (await fetch("/api/artwork/batches/batch-01", { cache: "no-store" })).json() : result);
+      setManifest(kind === "regenerate" ? await (await fetch(`/api/artwork/batches/${batchId}`, { cache: "no-store" })).json() : result);
       toast.success(kind === "approve" ? "Exact version approved" : kind === "reject" ? "Version rejected and retained" : "New review version generated");
       setAction(null);
     } catch (failure) {
@@ -128,14 +135,14 @@ export function Batch01ReviewGallery() {
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!manifest) {
-    return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Batch 01 review candidates</div>;
+    return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading {title} review candidates</div>;
   }
 
   return (
-    <section className="flex flex-col gap-5" data-testid="section-batch-01">
+    <section className="flex flex-col gap-5" data-testid={`section-${batchId}`}>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h3 className="text-xl font-medium">Flagship Artwork — Batch 01</h3>
+          <h3 className="text-xl font-medium">{title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{manifest.candidates.length}/12 candidates · persistent versioned curation</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -167,12 +174,12 @@ export function Batch01ReviewGallery() {
           return (
             <article key={candidate.assetId} className="overflow-hidden rounded-xl border border-border bg-card">
               <a href={candidate.masterPath} target="_blank" rel="noreferrer" className="group relative block">
-                <img src={candidate.masterPath} alt={`${candidate.title} master candidate`} className="aspect-[3/2] w-full object-cover" />
+                <img loading="lazy" src={candidate.masterPath} alt={`${candidate.title} master candidate`} className="aspect-[3/2] w-full object-cover" />
                 <span className="absolute right-3 top-3 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"><ExternalLink className="h-3 w-3" /> View master</span>
               </a>
               <div className="grid grid-cols-2 gap-3 border-t border-border bg-background/40 p-3">
-                <figure><img src={candidate.heroPath} alt={`${candidate.title} 16:9 crop`} className="aspect-video w-full rounded-md object-cover" /><figcaption className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Master derivative · 16:9 hero</figcaption></figure>
-                <figure className="flex items-start gap-3"><img src={candidate.cardPath} alt={`${candidate.title} 4:5 crop`} className="aspect-[4/5] w-24 rounded-md object-cover" /><figcaption className="text-[10px] uppercase tracking-wider text-muted-foreground">Placement derivative · 4:5 card</figcaption></figure>
+                <figure><img loading="lazy" src={candidate.heroPath} alt={`${candidate.title} 16:9 crop`} className="aspect-video w-full rounded-md object-cover" /><figcaption className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Master derivative · 16:9 hero</figcaption></figure>
+                <figure className="flex items-start gap-3"><img loading="lazy" src={candidate.cardPath} alt={`${candidate.title} 4:5 crop`} className="aspect-[4/5] w-24 rounded-md object-cover" /><figcaption className="text-[10px] uppercase tracking-wider text-muted-foreground">Placement derivative · 4:5 card</figcaption></figure>
               </div>
               <div className="space-y-4 border-t border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -182,11 +189,15 @@ export function Batch01ReviewGallery() {
                 <div><p className="text-xs font-semibold uppercase tracking-wider text-foreground">Intended app use</p><p className="mt-1 text-sm text-muted-foreground">{candidate.placement}</p></div>
                 <p className="text-xs text-muted-foreground">{candidate.cropGuidance}</p>
                 <p className="font-mono text-[11px] text-muted-foreground">{candidate.provider} · {candidate.model} · {candidate.dimensions} · v{candidate.version} · ${candidate.generationCost.toFixed(2)}</p>
+                <details className="rounded-lg border border-border bg-background/50 p-3">
+                  <summary className="cursor-pointer text-sm font-medium">Prompt · v{candidate.version}</summary>
+                  <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{candidate.prompt}</p>
+                </details>
 
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => setAction({ kind: "approve", candidate })} disabled={isBusy || candidate.status === "APPROVED"}><CheckCircle className="mr-1.5 h-4 w-4" /> Approve v{candidate.version}</Button>
                   <Button size="sm" variant="destructive" onClick={() => { setReason("UNUSABLE_CROP"); setAction({ kind: "reject", candidate }); }} disabled={isBusy || candidate.status === "REJECTED"}><XCircle className="mr-1.5 h-4 w-4" /> Reject</Button>
-                  <Button size="sm" variant="outline" onClick={() => { setReason("UNUSABLE_CROP"); setAction({ kind: "regenerate", candidate }); }} disabled={isBusy || history.length >= 3}><RotateCw className="mr-1.5 h-4 w-4" /> Regenerate</Button>
+                  {allowRegeneration && <Button size="sm" variant="outline" onClick={() => { setReason("UNUSABLE_CROP"); setAction({ kind: "regenerate", candidate }); }} disabled={isBusy || history.length >= 3}><RotateCw className="mr-1.5 h-4 w-4" /> Regenerate</Button>}
                   <Button size="sm" variant="outline" disabled title="Requires persistent Media catalogue">Publish unavailable</Button>
                 </div>
 
@@ -244,4 +255,12 @@ export function Batch01ReviewGallery() {
       </Dialog>
     </section>
   );
+}
+
+export function Batch01ReviewGallery() {
+  return <ReviewBatchGallery batchId="batch-01" title="Flagship Artwork — Batch 01" allowRegeneration />;
+}
+
+export function Batch02ReviewGallery() {
+  return <ReviewBatchGallery batchId="batch-02" title="Mock-up Support Pack — Batch 02" allowRegeneration={false} />;
 }
