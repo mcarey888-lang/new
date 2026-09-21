@@ -1,5 +1,20 @@
 # SummitReady Visual QA Manifest
 
+## Explore Premium V3 — 390×844 scale correction
+
+Persisted real Expo web captures:
+
+- `docs/visual-qa/explore-premium-v3/01-pass-a-macro.png`
+- `docs/visual-qa/explore-premium-v3/02-final-first-viewport.png`
+- `docs/visual-qa/explore-premium-v3/03-final-scrolled.png`
+- `docs/visual-qa/explore-premium-v3/04-hard-filter.png`
+- `docs/visual-qa/explore-premium-v3/05-snowdon-search.png`
+- `docs/visual-qa/explore-premium-v3/06-image-fallback.png`
+
+The final set verifies compact same-viewport density, bundled hero use, Hard
+filtering, Snowdon search, branded image fallback and bottom-nav clearance.
+Details: `docs/EXPLORE_PREMIUM_V3_REPORT.md`.
+
 ## Explore Premium V2 — locked mock-up match
 
 Managed real-browser evidence:
