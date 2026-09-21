@@ -1,158 +1,210 @@
-# SummitReady Explore — Restore Full Discovery Architecture
+# SummitReady Artwork Batch 02 — Mock-up Support Pack
 
-**Command:** EX3-C01
+**Command:** ART2-C01
 **Authority:** ChatGPT lead product/design/architecture
-**Baseline:** 2d6b36cb12a5706b74100e11b1f237e0a7a8ce1d
-**Priority:** Capability restoration before further visual polish
-**Stage 9:** PAUSED / NOT AUTHORIZED
+**Purpose:** Create a tightly curated second artwork batch through the EXISTING SummitReady Artwork Admin / Media Studio pipeline used for Batch 01.
+**Production publication:** NOT AUTHORIZED.
+**App integration:** NOT AUTHORIZED in this task.
+**Stage 9:** PAUSED.
 
 ## Objective
 
-Keep the new Explore V2 premium visual direction, but restore the depth of SummitReady discovery. The V2 redesign must not reduce Explore to the small local `CURATED_HILLS` demo/route set.
+The approved app mock-ups currently contain a richer visual language than the live asset library can support. Create Batch 02 as a coherent premium support pack for Explore, Track, Expeditions and You/Profile so later UI implementation can match those mock-ups without substituting generic/satellite imagery.
 
-Explore should present one coherent discovery experience over:
-1. the Summit Data Engine canonical mountain catalogue;
-2. curated/verified route data where available;
-3. the existing AI mountain lookup/fallback capability where canonical data is unavailable or insufficient.
+This is an artwork-generation/review task only. Do not redesign screens in this task.
 
-Do not create a new mountain database or duplicate existing systems.
+## Non-negotiable architecture
 
-## EX3-C01 — Audit before editing
+Use the existing canonical SummitReady artwork system:
+Artwork Admin + artwork API/services + existing ImageProvider + prompt/version/status/approval/crop/storage workflow.
 
-Trace the pre-existing mountain discovery/search/AI lookup implementation across the repository and document:
-- existing UI/routes/components;
-- API endpoints/services;
-- Summit Data Engine search/catalogue access;
-- AI fallback behavior and provider;
-- provenance/verification flags;
-- route linking;
-- any functionality hidden or disconnected by Explore V2.
+Follow the same lifecycle as Batch 01:
+**curated batch definition → cost/count confirmation → generation → review gallery → manual approval/rejection → variants/publication later**
 
-Use code as source of truth. Do not assume the old `CURATED_HILLS` screen was the complete prior system.
+Do NOT:
+- create another media/artwork subsystem;
+- bypass Artwork Admin;
+- directly hard-code generated files into app screens;
+- auto-approve assets;
+- publish to production;
+- perform catalogue-wide generation;
+- alter the Summit Data Engine;
+- touch protected Progress Mountain/cinematic files.
 
-## EX3-C02 — Restore canonical catalogue discovery
+Retain the server-side generation safety limit and existing cost controls.
 
-Connect premium Explore search/browse to the existing Summit Data Engine rather than limiting discovery to `CURATED_HILLS`.
+## ART2-C01 — Curated Batch 02 manifest
 
-Requirements:
-- canonical mountain identity remains `mountains.id`;
-- preserve SDE provenance and classifications;
-- search should expose the full appropriate published/searchable catalogue available through the existing SDE implementation;
-- do not load tens of thousands of records into the client at once;
-- use existing server-side search/pagination/query patterns where available;
-- curated routes remain useful enrichment, not the catalogue boundary;
-- route cards/detail links must preserve existing route identity/version semantics.
+Create exactly these 12 masters with stable IDs and intended placement metadata:
 
-The small curated set may still be used for editorial Featured content if appropriate.
+1. **SR-EXPLORE-HERO-002 — Explore — Into the Mountains**
+   Placement: `explore.discovery.hero`
+   Cinematic British mountain discovery landscape; dramatic ridge leading the eye into distant peaks/valley; early light; adventurous but credible; generous dark/quiet negative space for native UI.
 
-## EX3-C03 — Restore AI lookup/fallback
+2. **SR-EXPLORE-RIDGE-002 — Explore Route — Exposed Ridge**
+   Placement: `explore.route.card.ridge`
+   Authentic-feeling UK high ridge hiking scene; strong trail line; atmospheric depth; small distant hiker for scale only; no identifiable named mountain claim.
 
-Find and reconnect the existing AI mountain lookup/fallback path.
+3. **SR-EXPLORE-SUMMIT-002 — Explore Route — Summit Day**
+   Placement: `explore.route.card.summit`
+   Rugged British summit approach; stone/rock foreground, layered mountains, changing weather, premium editorial photography.
 
-Expected behavior:
-- canonical/SDE results are primary;
-- if a user searches for a mountain with no adequate canonical result, expose the existing AI lookup/fallback affordance;
-- AI-derived geographic/mountain information must be clearly labelled as AI-derived/unverified according to the established product rule;
-- do not silently promote AI output into trusted canonical SDE data;
-- do not auto-merge AI results with canonical mountains by name;
-- retain provenance;
-- if the prior AI lookup requires explicit user action, preserve that safety pattern.
+4. **SR-EXPLORE-VALLEY-002 — Explore Route — Valley to Mountain**
+   Placement: `explore.route.card.valley`
+   Mountain route beginning in green valley and rising toward imposing high ground; route journey readable visually.
 
-If the prior capability no longer exists in runnable form, STOP before inventing a replacement. Report exactly what existed and what is missing.
+5. **SR-TRACK-HERO-002 — Track — Into the Wild**
+   Placement: `track.hero`
+   Lone hillwalker moving through rugged upland trail; strong forward motion/composition; room for GPS/tracking UI overlay; realistic weather and terrain.
 
-## EX3-C04 — Premium UI integration
+6. **SR-TRACK-ACTIVITY-002 — Track — Mountain Activity**
+   Placement: `track.activity.hero`
+   Elevated view across winding mountain trail and terrain; visual sense of distance/elevation; no drawn GPS line baked into image.
 
-Do not revert the Explore V2 visual redesign.
+7. **SR-EXPEDITION-HERO-002 — Expeditions — Bigger Objective**
+   Placement: `expedition.discovery.hero`
+   Grand high-mountain expedition atmosphere; distant climbers for scale; dramatic but realistic; should feel aspirational and premium, not fantasy.
 
-Integrate the restored content architecture into the premium visual system:
-- Featured Mountains = editorial/curated discovery;
-- search = full mountain discovery;
-- results clearly distinguish mountain catalogue results from routes where useful;
-- verified/curated information receives appropriate trust treatment;
-- AI fallback appears naturally only when needed;
-- retain cinematic photography and rich mountain surfaces;
-- avoid turning Explore back into a dense database/list UI.
+8. **SR-EXPEDITION-STAGE-002 — Expedition — The Ascent**
+   Placement: `expedition.stage.hero`
+   Climbers ascending broad mountain terrain toward a high objective; clear vertical journey; safe space for stage/progress UI.
 
-The supplied Explore mock-up remains the visual specification.
+9. **SR-YOU-HERO-002 — You — Mountain Identity**
+   Placement: `profile.hero`
+   Mountaineer/hillwalker viewed from behind at a summit/ridge overlook; identity/achievement mood; no recognisable face; ample overlay space.
 
-## EX3-C05 — Search states
+10. **SR-RANK-ASCENT-002 — Rank — The Ascent**
+    Placement: `rank.progress.background`
+    Abstract-real photographic mountain ascent composition with layered elevation/ridges; designed to support rank/progression overlays without becoming busy.
 
-Verify at minimum:
-1. known SDE mountain with curated route(s);
-2. known SDE mountain without curated route;
-3. search returning multiple mountains;
-4. no canonical result → AI lookup affordance;
-5. AI result state with clear provenance;
-6. loading;
-7. offline/network failure;
-8. empty/error;
-9. long mountain names;
-10. pagination/load-more where applicable.
+11. **SR-DNA-TERRAIN-002 — Mountain DNA — Terrain Layers**
+    Placement: `mountain.dna.background`
+    Highly detailed mountain terrain/ridge composition emphasizing steepness, exposure, rock, trail and relief; clean enough for analytical overlays; no labels baked in.
 
-Offline/network failure must not misrepresent remote search as “no mountains exist.”
+12. **SR-ATMOSPHERE-002 — SummitReady — Alpine Atmosphere**
+    Placement: `app.atmosphere.background`
+    Flexible dark cinematic mountain atmosphere master for transitions/empty states/supporting surfaces; deliberately low-detail safe zones.
 
-## EX3-C06 — Preserve boundaries
+## ART2-C02 — Shared art direction
 
-Do not:
-- modify or replace the Summit Data Engine schema;
-- run production migrations;
-- create a second summit table/catalogue;
-- change canonical IDs;
-- publish AI-generated geographic data into trusted SDE records;
-- modify Readiness algorithms;
-- modify tracking/activity architecture;
-- modify protected Progress Mountain/cinematic files;
-- change payments/auth;
-- begin Track/Expeditions/You redesign;
-- begin Stage 9.
+All 12 must feel like one SummitReady campaign/library:
+- premium outdoor editorial photography;
+- National Geographic / high-end technical outdoor campaign quality target;
+- photorealistic, physically plausible terrain/weather/light;
+- dark cinematic grading compatible with SummitReady;
+- restrained natural greens/blues/stone/earth;
+- realistic atmospheric depth;
+- no fantasy mountains;
+- no oversaturated HDR;
+- no glossy AI-ad aesthetic;
+- no text, logos, badges, UI, route lines or fake map data baked into imagery;
+- no close-up faces;
+- no unsafe/impossible climbing depiction;
+- deliberate focal point plus negative/safe space for native UI;
+- compositions designed for mobile crops.
 
-No destructive work.
+Generate landscape masters using the existing Batch 01 provider/master settings unless the existing architecture requires a documented equivalent. Derive crops through the existing crop system, not separate generations.
 
-## EX3-C07 — Regression rule
+## ART2-C03 — Geographic truth
 
-Add/document a regression principle:
+Batch 02 intentionally uses mostly non-named terrain so generated art cannot falsely represent a named mountain.
 
-> Visual redesigns must preserve existing product capability unless removal is explicitly authorized.
+For actual named mountains/routes in Explore, later runtime integration must continue to prefer exact approved geographically truthful photography/artwork according to the existing hierarchy.
 
-Add targeted tests that would have caught the V2 regression: Explore must not be bounded to the small `CURATED_HILLS` collection when canonical catalogue search is available, and the existing AI fallback path must remain reachable under its intended conditions.
+Do not label a Batch 02 generic image as Ben Nevis, Snowdon/Yr Wyddfa, Helvellyn, Mont Blanc, Matterhorn, etc.
 
-## EX3-C08 — Visual QA
+## ART2-C04 — Mock-up-aware composition
 
-Render the restored Explore experience at phone dimensions. Inspect:
-- premium V2 appearance retained;
-- canonical search does not visually overwhelm the screen;
-- full catalogue feels discoverable;
-- AI fallback is obvious but secondary;
-- provenance is understandable;
-- route/mountain distinctions are clear;
-- no fake data.
+Prompts must explicitly account for later native UI overlays.
 
-Do at least one self-correction pass if integration damages the visual hierarchy.
+Explore assets:
+- landscape is the star;
+- strong visual route through scene;
+- suitable for premium editorial discovery cards;
+- avoid important detail at extreme crop edges.
 
-If browser PNG persistence remains unavailable, record capture IDs and continue; product owner will perform final visual acceptance.
+Track:
+- sense of movement, terrain and real outdoor effort;
+- preserve quiet overlay area for tracking controls/data.
 
-## EX3-C09 — Verification
+Expedition:
+- bigger scale and ambition than Explore;
+- preserve the protected Progress Mountain/cinematic as a separate system; these images do not replace it.
 
-Run targeted tests, TypeScript, bounded regression and relevant Expo exports.
+You/Profile:
+- identity, accumulated experience, aspiration;
+- subject secondary to mountain environment.
+
+DNA/Rank:
+- background supports information hierarchy; it must not fight charts/labels.
+
+## ART2-C05 — Generation safety and cost gate
+
+Before generation:
+- confirm count = exactly 12;
+- calculate/display estimated provider cost using the existing provider estimate;
+- confirm no other assets are queued;
+- verify no catalogue-wide generation path is invoked.
+
+This task authorizes generation of **only these 12 Batch 02 masters** using the existing configured provider. It does not authorize retries/regenerations beyond one initial candidate per asset.
+
+If any generation fails, leave it failed/retryable and report it; do not silently spend on repeated attempts.
+
+## ART2-C06 — Review workflow
+
+Add Batch 02 to the existing Artwork Admin review experience with the same useful review controls as Batch 01.
+
+Each candidate must expose:
+- asset ID/name;
+- intended placement;
+- prompt/version where already supported;
+- generation/review status;
+- approve/reject controls;
+- preview of useful derived crop(s) where existing system supports it.
+
+**All generated assets must remain unapproved/review-only.**
+The product owner will manually review and approve/reject them.
+
+Approval does NOT mean production publication.
+
+## ART2-C07 — Verification
+
+Verify:
+- exactly 12 Batch 02 manifest entries;
+- no duplicate IDs;
+- generation restricted to Batch 02;
+- generated assets stored/versioned through existing storage;
+- review gallery loads;
+- approve/reject state path remains functional;
+- Batch 01 remains intact;
+- no production publication;
+- no SDE changes;
+- no protected Progress Mountain/cinematic changes.
+
+Run targeted tests/TypeScript only as necessary; avoid unrelated expensive full-suite work.
+
+## ART2-C08 — Report and STOP
 
 Create:
-`docs/EXPLORE_DISCOVERY_RESTORATION_REPORT.md`
+`docs/ARTWORK_BATCH_02_REPORT.md`
 
 Report:
-- exact prior capability discovered;
-- root cause of V2 capability loss/disconnection;
-- canonical SDE endpoint/data path now used;
-- AI fallback path/provider and provenance behavior;
+- exact 12 assets;
+- prompts/prompt version;
+- provider/model/master dimensions;
+- count generated/succeeded/failed;
+- actual/estimated cost if available;
+- review URL/path;
 - files changed;
 - tests;
-- visual QA evidence;
-- any remaining limitations.
+- confirmation Batch 01 unchanged;
+- confirmation nothing was auto-approved or published.
 
-Update AI_HANDOFF and AI_CHANGELOG.
+Update AI_HANDOFF and AI_CHANGELOG as appropriate.
 
-Commit/push and STOP. Do not perform the cosmetic Explore polish pass yet.
+Commit/push and STOP. Do not begin Explore V3 or any screen integration.
 
-End with exactly one status:
+End with exactly one:
 COMPLETE
 PARTIAL
 BLOCKED
