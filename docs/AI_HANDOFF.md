@@ -643,3 +643,23 @@ At the end of every meaningful SummitReady development task:
 - No artwork was generated, approved, rejected or published during this work.
   No production migration/data change, Stage 9 work, mobile calculation,
   Progress Mountain or protected cinematic change occurred.
+
+## Explore Premium V3 handoff
+
+- `docs/EXPLORE_PREMIUM_V3_REPORT.md` is the controlling EX3-C01–EX3-C09
+  completion record.
+- Explore is now calibrated to the approved 390×844 density. The composition,
+  catalogue, search, filters and navigation are unchanged; only screen-level
+  visual geometry and weight were corrected.
+- The hero is the unchanged bundled
+  `artifacts/summit-ready/assets/images/hero-base-camp.png`. Do not replace it
+  with generated, remote, approved-batch or resolver media in follow-on work.
+- Persisted evidence is under
+  `docs/visual-qa/explore-premium-v3/`: Pass A, final first viewport, final
+  scrolled state, Hard filter, Snowdon search and genuine image fallback.
+- TypeScript, 16 focused tests, 166 bounded regression tests, and web/iOS/Android
+  Expo exports passed.
+- Standard preview routing exposed the separate landing artifact; use the local
+  Metro endpoint for Expo visual QA until that environment mapping is fixed.
+- No production data/schema, SDE, auth, payment, artwork publication, release,
+  deployment, Stage 9 or Track work occurred. Stop after Explore.

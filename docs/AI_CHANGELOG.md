@@ -405,6 +405,31 @@ unchanged. Stage 6 is a runbook completion, not mobile release approval.
 
 **Commit:** Reported in the completion message after this entry is committed.
 
+## 2026-09-21 UTC — Explore Premium V3 scale correction
+
+**Task:** Execute EX3-C01–EX3-C09 as a precision same-viewport correction of the
+approved Explore screen and stop before Track.
+
+**Implementation:** Replaced the V2 remote hero request with the unchanged
+bundled `hero-base-camp.png`, then completed two rendered correction passes.
+Pass A reduced macro geometry across the hero, search, filters, cards, map and
+results. Pass B refined crop behavior, typography, spacing, borders, metadata,
+long-name handling, fallback placement and the dark bottom-inset surface. All
+catalogue identities, search/filter logic, route navigation and media resolver
+boundaries remain unchanged.
+
+**Evidence:** Added six persisted 390×844 real Expo web captures under
+`docs/visual-qa/explore-premium-v3/`. They cover Pass A, final first/scrolled
+views, Hard filtering, Snowdon search and genuine branded image failure.
+
+**Tests/result:** COMPLETE. SummitReady TypeScript passed; focused verification
+passed 3 files / 16 tests; bounded regression passed 25 files / 166 tests;
+production web, iOS and Android Expo exports passed; `git diff --check` passed.
+No Track, production schema/data, deployment, release, artwork publication or
+Stage 9 work was performed.
+
+**Commit:** Reported in the completion message after this entry is committed.
+
 ## 2026-09-20 UTC — GREEN Media Studio curation workflow
 
 **Task:** Turn Flagship Artwork Batch 01 from a static development gallery into
