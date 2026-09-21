@@ -11,6 +11,23 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### EX2-C01–EX2-C10 Explore Premium V2
+
+- The locked mock-up match is complete. The authoritative report is
+  `docs/EXPLORE_PREMIUM_V2_REPORT.md`.
+- Explore now uses cinematic truthful mountain photography, editorial discovery
+  hierarchy, integrated search, the four existing filters, rich featured cards,
+  landscape result cards and only existing route intelligence fields.
+- The existing catalogue, canonical IDs, detail navigation, route browser, hill
+  finder, tab order and shell-mode behavior are preserved.
+- Rendered QA covered six required states at 390×844/360×800. The managed tester
+  exposed capture IDs but could not persist PNG bytes; IDs are recorded in the
+  report and visual QA manifest.
+- The correction pass improved image brightness/authenticity, exact mountain
+  subject resolution, filter fit, shell-toggle scrolling and branded fallback.
+- Track, Expeditions, You, Profile, SDE, schemas, protected Progress Mountain and
+  Stage 9 remain untouched.
+
 ### BP-C01–BP-C10 Basecamp cleanup and Explore Premium V1
 
 - The implementation and real-browser visual QA are complete. The authoritative report is `docs/EXPLORE_PREMIUM_V1_REPORT.md`.

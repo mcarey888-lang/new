@@ -2,6 +2,29 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-21 UTC — EX2-C01–EX2-C10 Explore Premium V2
+
+**Task:** Match the functioning Explore tab to the supplied locked visual
+specification without changing route identity, catalogue or navigation semantics.
+
+**Implementation:** Explore now uses a cinematic Helvellyn opening, compact
+SummitReady header, embedded shell switch, editorial discovery hierarchy, integrated
+search, four existing functional filters, featured mountain photography, rich route
+cards, landscape search results and a branded failure treatment. All visible route
+intelligence comes from existing trail fields.
+
+**Correction loop:** Rendered 390×844 review led to brighter image treatment,
+exact normalized mountain subjects, a stronger Helvellyn feature, fully visible
+filters, a non-sticky mode switch and an explicit branded image fallback.
+
+**Evidence:** Required first, scrolled, search, filter, forced-fallback and
+small-phone/long-name states were captured and inspected. IDs are recorded in
+`docs/EXPLORE_PREMIUM_V2_REPORT.md`; the managed tester could not export PNG bytes.
+
+**Safety:** No new catalogue, fabricated Mountain DNA/readiness/popularity,
+schema/data migration, protected component, Track, Expeditions, You, Profile,
+Community or Stage 9 change occurred.
+
 ## 2026-09-21 UTC — BP-C01–BP-C10 Basecamp cleanup and Explore Premium V1
 
 **Task:** Apply only the four authorized Basecamp cleanups, then refine Explore using the accepted Basecamp V3 language.

@@ -60,7 +60,7 @@ export default function TabLayout() {
         <Tabs.Screen name="v-hills" options={{ href: null }} />
         <Tabs.Screen name="v-progress" options={{ href: null }} />
       </Tabs>
-      {currentRoute !== "dashboard" && <ModeTogglePill />}
+      {currentRoute !== "dashboard" && currentRoute !== "explore" && <ModeTogglePill />}
     </>
   );
 }
