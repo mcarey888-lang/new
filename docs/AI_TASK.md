@@ -1,188 +1,156 @@
-# SummitReady Explore Premium V2 — Mock-up Match
+# SummitReady Explore — Restore Full Discovery Architecture
 
-**Command:** EX2-C01
+**Command:** EX3-C01
 **Authority:** ChatGPT lead product/design/architecture
-**Baseline:** e2950574a9d8ff5de62ad6d2621ae488a8d9a6f0
-**Goal:** Make the functioning Explore tab match the approved Explore mock-up as closely as practical.
-**Stage 9:** PAUSED / NOT AUTHORIZED.
+**Baseline:** 2d6b36cb12a5706b74100e11b1f237e0a7a8ce1d
+**Priority:** Capability restoration before further visual polish
+**Stage 9:** PAUSED / NOT AUTHORIZED
 
-## Locked visual direction
+## Objective
 
-The approved SummitReady mock-ups are now visual specifications, not loose inspiration. Training Basecamp V3 establishes the shared design language. The supplied Explore mock-up is authoritative for Explore composition, hierarchy, imagery, typography, spacing, surfaces and overall premium outdoor character.
+Keep the new Explore V2 premium visual direction, but restore the depth of SummitReady discovery. The V2 redesign must not reduce Explore to the small local `CURATED_HILLS` demo/route set.
 
-Do not reinterpret “premium” into another generic route list. Preserve real functionality/data while matching the mock-up.
+Explore should present one coherent discovery experience over:
+1. the Summit Data Engine canonical mountain catalogue;
+2. curated/verified route data where available;
+3. the existing AI mountain lookup/fallback capability where canonical data is unavailable or insufficient.
 
-IMPORTANT: visual-QA screenshots may be displayed inside a mock iPhone/device frame containing an artificial camera/Dynamic Island. Do **not** move or pad app UI to avoid that artificial frame element. Respect only the real runtime safe-area insets reported by the device/app.
+Do not create a new mountain database or duplicate existing systems.
 
-## EX2-C01 — Preserve functional foundation
+## EX3-C01 — Audit before editing
 
-Keep existing Explore search, filters, canonical IDs, route navigation, curated catalogue/SDE boundaries, loading/error/empty behavior and real data.
+Trace the pre-existing mountain discovery/search/AI lookup implementation across the repository and document:
+- existing UI/routes/components;
+- API endpoints/services;
+- Summit Data Engine search/catalogue access;
+- AI fallback behavior and provider;
+- provenance/verification flags;
+- route linking;
+- any functionality hidden or disconnected by Explore V2.
 
-Do not:
-- create another mountain/route catalogue;
-- merge mountains by display name;
-- invent route metrics, difficulty, Mountain DNA or readiness;
-- alter Stage 7 algorithms;
-- change production schema/data;
-- touch protected Progress Mountain/cinematic;
-- start Stage 9.
+Use code as source of truth. Do not assume the old `CURATED_HILLS` screen was the complete prior system.
 
-## EX2-C02 — Hero/discovery composition
+## EX3-C02 — Restore canonical catalogue discovery
 
-Rework the first viewport to closely match the supplied Explore mock-up.
-
-Target:
-- cinematic mountain discovery image as the dominant opening visual;
-- strong editorial Explore/discovery heading;
-- search integrated elegantly rather than visually dominating the photograph;
-- restrained filter controls;
-- featured mountain/route identity given substantial visual presence;
-- deliberate dark gradient for text legibility;
-- location/elevation/difficulty/route context limited to the most decision-useful real fields;
-- clear tap-through into existing detail.
-
-The opening should feel like discovering a mountain, not operating a database search screen.
-
-Do not create giant dead space. Keep useful discovery available within the first viewport.
-
-## EX2-C03 — Search and filters
-
-Retain current practical search/filter behavior.
-
-Visually match the mock-up:
-- search should feel integrated into the premium dark system;
-- filter controls compact and restrained;
-- active state clear;
-- do not use excessive pills/chips;
-- maintain touch targets/accessibility;
-- ensure keyboard/search states remain usable on small phones.
-
-## EX2-C04 — Featured discovery
-
-The featured mountain/route should use the strongest truthful imagery available under the existing hierarchy:
-1. exact approved SummitReady artwork for the exact named mountain when available and appropriate;
-2. approved/reviewed real photography where supported;
-3. exact mountain image resolver;
-4. branded atmospheric fallback.
-
-Never show artwork for the wrong mountain.
-
-Use the mock-up's strong editorial hierarchy: image → mountain/route name → concise useful context → action/navigation.
-
-## EX2-C05 — More mountains/routes
-
-Replace the current generic compact list-card feeling with the richer discovery treatment shown in the mock-up.
+Connect premium Explore search/browse to the existing Summit Data Engine rather than limiting discovery to `CURATED_HILLS`.
 
 Requirements:
-- larger, consistent landscape imagery;
-- mountain/route name visually dominant;
-- region/location secondary;
-- only a few useful real metrics;
-- consistent image aspect ratio/crop;
-- graceful missing-image fallback;
-- clear navigation affordance;
-- avoid satellite-looking imagery where a truthful photographic mountain image can be resolved;
-- no repetitive metadata clutter.
+- canonical mountain identity remains `mountains.id`;
+- preserve SDE provenance and classifications;
+- search should expose the full appropriate published/searchable catalogue available through the existing SDE implementation;
+- do not load tens of thousands of records into the client at once;
+- use existing server-side search/pagination/query patterns where available;
+- curated routes remain useful enrichment, not the catalogue boundary;
+- route cards/detail links must preserve existing route identity/version semantics.
 
-Use fewer stronger visual elements per result rather than many tiny labels.
+The small curated set may still be used for editorial Featured content if appropriate.
 
-## EX2-C06 — SummitReady differentiation
+## EX3-C03 — Restore AI lookup/fallback
 
-Explore must communicate more than “find hiking routes.”
+Find and reconnect the existing AI mountain lookup/fallback path.
 
-Where verified existing data supports it, surface a restrained preview of SummitReady intelligence such as:
-- route character/terrain;
-- Mountain DNA;
-- capability/readiness relationship;
-- training relevance;
-- elevation/technical context.
+Expected behavior:
+- canonical/SDE results are primary;
+- if a user searches for a mountain with no adequate canonical result, expose the existing AI lookup/fallback affordance;
+- AI-derived geographic/mountain information must be clearly labelled as AI-derived/unverified according to the established product rule;
+- do not silently promote AI output into trusted canonical SDE data;
+- do not auto-merge AI results with canonical mountains by name;
+- retain provenance;
+- if the prior AI lookup requires explicit user action, preserve that safety pattern.
 
-Only show claims backed by existing real data. If verified Mountain DNA is unavailable for a result, omit it rather than inventing it.
+If the prior capability no longer exists in runnable form, STOP before inventing a replacement. Report exactly what existed and what is missing.
 
-Design the result architecture so verified Mountain DNA can become a signature visual later without requiring another structural redesign.
+## EX3-C04 — Premium UI integration
 
-## EX2-C07 — Shared visual system
+Do not revert the Explore V2 visual redesign.
 
-Match accepted Basecamp/mock-up language:
-- dark cinematic outdoor palette;
-- editorial typography;
-- purposeful surfaces;
-- subtle borders/translucency;
-- restrained green for active/progress/action meaning;
-- generous but efficient spacing;
-- premium imagery;
-- coherent icon treatment;
-- no SaaS/dashboard visual rhythm.
+Integrate the restored content architecture into the premium visual system:
+- Featured Mountains = editorial/curated discovery;
+- search = full mountain discovery;
+- results clearly distinguish mountain catalogue results from routes where useful;
+- verified/curated information receives appropriate trust treatment;
+- AI fallback appears naturally only when needed;
+- retain cinematic photography and rich mountain surfaces;
+- avoid turning Explore back into a dense database/list UI.
 
-Bottom navigation remains exactly:
-**Basecamp | Explore | Track | Expeditions | You**
+The supplied Explore mock-up remains the visual specification.
 
-Do not alter tab order or navigation architecture.
+## EX3-C05 — Search states
 
-## EX2-C08 — Real-device responsiveness
+Verify at minimum:
+1. known SDE mountain with curated route(s);
+2. known SDE mountain without curated route;
+3. search returning multiple mountains;
+4. no canonical result → AI lookup affordance;
+5. AI result state with clear provenance;
+6. loading;
+7. offline/network failure;
+8. empty/error;
+9. long mountain names;
+10. pagination/load-more where applicable.
 
-Explicitly verify:
-- actual safe-area inset behavior;
-- no layout adjustment for artificial mock-device camera/Dynamic Island;
-- small Android phone;
-- modern iPhone dimensions;
-- long mountain/route names;
-- image failures;
-- search keyboard state;
-- bottom-nav content clearance;
-- readable metadata/contrast.
+Offline/network failure must not misrepresent remote search as “no mountains exist.”
 
-Do not shrink typography excessively just to fit more content.
+## EX3-C06 — Preserve boundaries
 
-## EX2-C09 — Mandatory visual QA
+Do not:
+- modify or replace the Summit Data Engine schema;
+- run production migrations;
+- create a second summit table/catalogue;
+- change canonical IDs;
+- publish AI-generated geographic data into trusted SDE records;
+- modify Readiness algorithms;
+- modify tracking/activity architecture;
+- modify protected Progress Mountain/cinematic files;
+- change payments/auth;
+- begin Track/Expeditions/You redesign;
+- begin Stage 9.
 
-Capture real populated 390×844 states under:
-`docs/visual-qa/explore-premium-v2/`
+No destructive work.
 
-Minimum:
-1. first viewport;
-2. scrolled discovery/results;
-3. search state;
-4. filter state;
-5. image fallback state;
-6. long-name/small-phone stress state.
+## EX3-C07 — Regression rule
 
-If the managed browser cannot persist PNGs, do not mark the implementation failed solely for that. Record the capture IDs and exact limitation, but complete all other work. The product owner will supply real-phone screenshots for final visual acceptance.
+Add/document a regression principle:
 
-Perform at least one visual self-correction pass based on rendered output.
+> Visual redesigns must preserve existing product capability unless removal is explicitly authorized.
 
-Inspect specifically:
-- similarity to supplied mock-up;
-- image prominence and authenticity;
-- whether result cards still feel like generic list rows;
-- search/filter visual weight;
-- text density;
-- hierarchy;
-- excessive green;
-- safe areas;
-- bottom-nav obstruction.
+Add targeted tests that would have caught the V2 regression: Explore must not be bounded to the small `CURATED_HILLS` collection when canonical catalogue search is available, and the existing AI fallback path must remain reachable under its intended conditions.
 
-## EX2-C10 — Verification and STOP
+## EX3-C08 — Visual QA
 
-Run targeted tests, bounded regression, TypeScript and relevant Expo exports. Avoid unrelated full-suite work.
+Render the restored Explore experience at phone dimensions. Inspect:
+- premium V2 appearance retained;
+- canonical search does not visually overwhelm the screen;
+- full catalogue feels discoverable;
+- AI fallback is obvious but secondary;
+- provenance is understandable;
+- route/mountain distinctions are clear;
+- no fake data.
+
+Do at least one self-correction pass if integration damages the visual hierarchy.
+
+If browser PNG persistence remains unavailable, record capture IDs and continue; product owner will perform final visual acceptance.
+
+## EX3-C09 — Verification
+
+Run targeted tests, TypeScript, bounded regression and relevant Expo exports.
 
 Create:
-`docs/EXPLORE_PREMIUM_V2_REPORT.md`
-
-Update AI_HANDOFF, AI_CHANGELOG and visual QA manifest as appropriate.
+`docs/EXPLORE_DISCOVERY_RESTORATION_REPORT.md`
 
 Report:
-- exact files changed;
-- real data/media sources used;
-- screenshots/capture IDs;
-- self-corrections;
-- tests/builds;
-- remaining differences from the supplied mock-up;
-- protected-boundary confirmation.
+- exact prior capability discovered;
+- root cause of V2 capability loss/disconnection;
+- canonical SDE endpoint/data path now used;
+- AI fallback path/provider and provenance behavior;
+- files changed;
+- tests;
+- visual QA evidence;
+- any remaining limitations.
 
-Commit/push and STOP.
+Update AI_HANDOFF and AI_CHANGELOG.
 
-Do not begin Track, Expeditions, You, Profile, Community or another design pass.
+Commit/push and STOP. Do not perform the cosmetic Explore polish pass yet.
 
 End with exactly one status:
 COMPLETE
