@@ -1,204 +1,188 @@
-# SummitReady Basecamp Final Polish → Explore Visual Pilot
+# SummitReady Explore Premium V2 — Mock-up Match
 
-**Command:** BP-C01
+**Command:** EX2-C01
 **Authority:** ChatGPT lead product/design/architecture
-**Baseline:** e12e77b0b6e114f2bd15c447d000e2b8f56cb468
-**Status:** Training Basecamp V3 visual direction ACCEPTED.
-**Scope:** Small Basecamp cleanup, then Explore visual pilot only.
+**Baseline:** e2950574a9d8ff5de62ad6d2621ae488a8d9a6f0
+**Goal:** Make the functioning Explore tab match the approved Explore mock-up as closely as practical.
 **Stage 9:** PAUSED / NOT AUTHORIZED.
 
-## Locked design language
+## Locked visual direction
 
-Training Basecamp V3 is now the accepted SummitReady master visual language:
-- cinematic mountain imagery;
-- strong editorial typography;
-- purposeful premium surfaces rather than generic card stacks;
-- restrained green;
-- dark outdoor palette;
-- signature feature visuals;
-- clear hierarchy and breathing room;
-- real data and real interactions;
-- approved artwork where appropriate.
+The approved SummitReady mock-ups are now visual specifications, not loose inspiration. Training Basecamp V3 establishes the shared design language. The supplied Explore mock-up is authoritative for Explore composition, hierarchy, imagery, typography, spacing, surfaces and overall premium outdoor character.
 
-Do not redesign Basecamp again. Make only the four bounded cleanup items below, verify, then use the accepted language as the reference for Explore.
+Do not reinterpret “premium” into another generic route list. Preserve real functionality/data while matching the mock-up.
 
-## BP-C01 — Basecamp bounded cleanup
+IMPORTANT: visual-QA screenshots may be displayed inside a mock iPhone/device frame containing an artificial camera/Dynamic Island. Do **not** move or pad app UI to avoid that artificial frame element. Respect only the real runtime safe-area insets reported by the device/app.
 
-1. Remove the user-facing line `HIGHER VERSIONS OF YOU`. Do not replace it with another slogan.
-2. Easy Run thumbnail: remove/avoid any thumbnail with baked-in text. Use an existing clean local/approved training asset if one is appropriate; otherwise use a restrained native visual treatment rather than inventing or generating artwork.
-3. Training Insight: retain the same warning logic/copy meaning but move away from red/error styling to a restrained dark amber/earth coaching treatment. It must still meet contrast/accessibility requirements.
-4. Alpine Requirements: reduce visual density in Basecamp. Present a premium compact summary (title, meaningful completion/status, essential risk/context cues) with a clear tap-through/expand path to existing detail. Preserve all underlying requirement/risk data and behavior. Do not delete information; reduce first-level density.
+## EX2-C01 — Preserve functional foundation
 
-Capture one 390×844 first viewport and one lower-content screenshot after cleanup.
+Keep existing Explore search, filters, canonical IDs, route navigation, curated catalogue/SDE boundaries, loading/error/empty behavior and real data.
 
-## BP-C02 — Explore audit before implementation
+Do not:
+- create another mountain/route catalogue;
+- merge mountains by display name;
+- invent route metrics, difficulty, Mountain DNA or readiness;
+- alter Stage 7 algorithms;
+- change production schema/data;
+- touch protected Progress Mountain/cinematic;
+- start Stage 9.
 
-Before changing Explore, inspect its current implementation, data sources, navigation, Mountain/Route/SDE integrations, loading/error/empty states, and existing approved-artwork/mountain-image usage.
+## EX2-C02 — Hero/discovery composition
 
-Preserve the Summit Data Engine boundary and canonical mountain/route identities.
+Rework the first viewport to closely match the supplied Explore mock-up.
 
-Do not create a second mountain catalogue, duplicate route data, auto-merge by name, or move progression state into SDE.
+Target:
+- cinematic mountain discovery image as the dominant opening visual;
+- strong editorial Explore/discovery heading;
+- search integrated elegantly rather than visually dominating the photograph;
+- restrained filter controls;
+- featured mountain/route identity given substantial visual presence;
+- deliberate dark gradient for text legibility;
+- location/elevation/difficulty/route context limited to the most decision-useful real fields;
+- clear tap-through into existing detail.
 
-Document a concise implementation note in the final report; do not spend a separate audit cycle.
+The opening should feel like discovering a mountain, not operating a database search screen.
 
-## BP-C03 — Explore visual objective
+Do not create giant dead space. Keep useful discovery available within the first viewport.
 
-Refine the existing functioning Explore surface using the accepted Basecamp V3 visual language.
+## EX2-C03 — Search and filters
 
-Explore should answer:
-**Where could I go, what mountain is this, what is the route like, and how does it relate to my capability?**
+Retain current practical search/filter behavior.
 
-It should feel like premium mountain discovery, not a generic list/search screen.
+Visually match the mock-up:
+- search should feel integrated into the premium dark system;
+- filter controls compact and restrained;
+- active state clear;
+- do not use excessive pills/chips;
+- maintain touch targets/accessibility;
+- ensure keyboard/search states remain usable on small phones.
 
-Priorities:
-- cinematic discovery imagery;
-- strong search/discovery hierarchy;
-- clear mountain identity;
-- useful route context;
-- Mountain DNA where existing real data supports it;
-- obvious path into mountain/route detail;
-- restrained filters;
-- editorial spacing and typography;
-- visually coherent with Basecamp without copying Basecamp's layout.
+## EX2-C04 — Featured discovery
 
-Use real existing data only.
-
-## BP-C04 — Artwork hierarchy
-
-For named mountains, use this hierarchy:
-1. approved SummitReady mountain artwork when an exact approved asset exists for that mountain/placement;
-2. approved/reviewed real mountain photography where already supported;
-3. existing mountain-image resolver;
+The featured mountain/route should use the strongest truthful imagery available under the existing hierarchy:
+1. exact approved SummitReady artwork for the exact named mountain when available and appropriate;
+2. approved/reviewed real photography where supported;
+3. exact mountain image resolver;
 4. branded atmospheric fallback.
 
-Do not use artwork for the wrong named mountain merely because it looks attractive.
+Never show artwork for the wrong mountain.
 
-Existing approved flagship mountain assets such as Mont Blanc, Matterhorn and Kilimanjaro may be used for their matching mountains.
+Use the mock-up's strong editorial hierarchy: image → mountain/route name → concise useful context → action/navigation.
 
-No new generation.
-No Batch 02.
-No auto-approval.
-No publication/schema work.
+## EX2-C05 — More mountains/routes
 
-Production must remain fail-closed according to the existing media boundary.
+Replace the current generic compact list-card feeling with the richer discovery treatment shown in the mock-up.
 
-## BP-C05 — Explore composition
+Requirements:
+- larger, consistent landscape imagery;
+- mountain/route name visually dominant;
+- region/location secondary;
+- only a few useful real metrics;
+- consistent image aspect ratio/crop;
+- graceful missing-image fallback;
+- clear navigation affordance;
+- avoid satellite-looking imagery where a truthful photographic mountain image can be resolved;
+- no repetitive metadata clutter.
 
-Use judgment based on the current Explore feature set, but target this hierarchy where supported by real functionality:
+Use fewer stronger visual elements per result rather than many tiny labels.
 
-**Explore header / search**
-→ **featured or relevant mountain discovery**
-→ **mountain/route context**
-→ **Mountain DNA / terrain intelligence preview where available**
-→ **additional discovery/results**
+## EX2-C06 — SummitReady differentiation
 
-Avoid:
-- repetitive same-sized cards;
-- tiny metadata overload;
-- decorative chips everywhere;
-- excessive green;
-- giant empty hero areas;
-- hiding useful existing discovery functionality merely to match a mock-up.
+Explore must communicate more than “find hiking routes.”
 
-Filters/search should remain fast and practical.
+Where verified existing data supports it, surface a restrained preview of SummitReady intelligence such as:
+- route character/terrain;
+- Mountain DNA;
+- capability/readiness relationship;
+- training relevance;
+- elevation/technical context.
 
-## BP-C06 — Mountain cards / discovery surfaces
+Only show claims backed by existing real data. If verified Mountain DNA is unavailable for a result, omit it rather than inventing it.
 
-Where mountain cards are appropriate:
-- image should do meaningful visual work;
-- mountain name should dominate;
-- region/location and essential elevation/route context should be secondary;
-- use only a few decision-useful metrics;
-- preserve tap target and existing navigation;
-- handle missing imagery/data gracefully.
+Design the result architecture so verified Mountain DNA can become a signature visual later without requiring another structural redesign.
 
-Do not fabricate difficulty, route metrics, readiness or Mountain DNA.
+## EX2-C07 — Shared visual system
 
-If Readiness relationship is shown, use existing deterministic Readiness data/entitlement semantics only.
+Match accepted Basecamp/mock-up language:
+- dark cinematic outdoor palette;
+- editorial typography;
+- purposeful surfaces;
+- subtle borders/translucency;
+- restrained green for active/progress/action meaning;
+- generous but efficient spacing;
+- premium imagery;
+- coherent icon treatment;
+- no SaaS/dashboard visual rhythm.
 
-## BP-C07 — Mountain DNA
+Bottom navigation remains exactly:
+**Basecamp | Explore | Track | Expeditions | You**
 
-Mountain DNA is a signature SummitReady concept.
+Do not alter tab order or navigation architecture.
 
-Where current Explore data already exposes valid Mountain DNA/route intelligence, give it a distinctive but restrained preview treatment consistent with the Basecamp Readiness visual language.
+## EX2-C08 — Real-device responsiveness
 
-Do not calculate new DNA in UI code.
-Do not invent missing DNA.
-Do not change Stage 7 algorithms.
+Explicitly verify:
+- actual safe-area inset behavior;
+- no layout adjustment for artificial mock-device camera/Dynamic Island;
+- small Android phone;
+- modern iPhone dimensions;
+- long mountain/route names;
+- image failures;
+- search keyboard state;
+- bottom-nav content clearance;
+- readable metadata/contrast.
 
-## BP-C08 — Functional/protected boundaries
+Do not shrink typography excessively just to fit more content.
 
-Preserve:
-- Basecamp accepted architecture and functionality;
-- bottom navigation: Basecamp | Explore | Track | Expeditions | You;
-- canonical activity architecture;
-- offline tracking;
-- Readiness 2.0 calculations;
-- Elevation Bank;
-- Summit Data Engine;
-- existing search/filter/navigation semantics unless a clear UI-only refinement is needed;
-- accessibility, reduced motion, safe areas and small-phone behavior.
+## EX2-C09 — Mandatory visual QA
 
-Do not touch protected:
-- MountainProgress.tsx
-- ExpeditionMountainProgress.tsx
-- Expedition Basecamp progress integration
-- CinematicPrototype.tsx
-- summit transition/live-3D behavior.
-
-No schema migration.
-No production data mutation.
-No deploy/release.
-No payments/pricing/auth changes.
-No Stage 9/community work.
-
-## BP-C09 — Mandatory visual QA
-
-Capture real populated 390×844 screenshots under:
-
-`docs/visual-qa/explore-premium-v1/`
+Capture real populated 390×844 states under:
+`docs/visual-qa/explore-premium-v2/`
 
 Minimum:
-1. Explore first viewport;
-2. populated discovery/results;
-3. mountain/route intelligence state if accessible from Explore;
-4. search/filter state;
-5. missing-image/data fallback;
-6. small-phone or constrained-content state if materially different.
+1. first viewport;
+2. scrolled discovery/results;
+3. search state;
+4. filter state;
+5. image fallback state;
+6. long-name/small-phone stress state.
 
-Also retain the two Basecamp cleanup screenshots.
+If the managed browser cannot persist PNGs, do not mark the implementation failed solely for that. Record the capture IDs and exact limitation, but complete all other work. The product owner will supply real-phone screenshots for final visual acceptance.
 
-Self-review actual screenshots and perform at least one correction pass. Do not claim visual success based on tests alone.
+Perform at least one visual self-correction pass based on rendered output.
 
-Inspect:
-- photographic quality/authenticity;
-- hierarchy;
-- typography;
-- card repetition;
-- Mountain DNA prominence;
-- filter/search usability;
-- excessive green;
+Inspect specifically:
+- similarity to supplied mock-up;
+- image prominence and authenticity;
+- whether result cards still feel like generic list rows;
+- search/filter visual weight;
 - text density;
-- bottom-nav dominance;
-- consistency with accepted Basecamp V3.
+- hierarchy;
+- excessive green;
+- safe areas;
+- bottom-nav obstruction.
 
-## BP-C10 — Verification and STOP
+## EX2-C10 — Verification and STOP
 
-Run targeted tests, bounded regression, TypeScript and relevant Expo exports. Avoid wasteful unrelated full-suite work.
+Run targeted tests, bounded regression, TypeScript and relevant Expo exports. Avoid unrelated full-suite work.
 
 Create:
-`docs/EXPLORE_PREMIUM_V1_REPORT.md`
+`docs/EXPLORE_PREMIUM_V2_REPORT.md`
 
-Update:
-- `docs/AI_HANDOFF.md`
-- `docs/AI_CHANGELOG.md`
-- visual QA manifest/inventory where appropriate.
+Update AI_HANDOFF, AI_CHANGELOG and visual QA manifest as appropriate.
 
-Report exact files changed, tests/builds, screenshots, artwork sources, fallback behavior, and any remaining visual differences/limitations.
+Report:
+- exact files changed;
+- real data/media sources used;
+- screenshots/capture IDs;
+- self-corrections;
+- tests/builds;
+- remaining differences from the supplied mock-up;
+- protected-boundary confirmation.
 
 Commit/push and STOP.
 
-Do not redesign Track, Expeditions, You, Profile, Stage 9 or other screens until Explore is visually reviewed by product owner + lead designer.
+Do not begin Track, Expeditions, You, Profile, Community or another design pass.
 
 End with exactly one status:
 COMPLETE
