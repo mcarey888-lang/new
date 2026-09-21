@@ -1,208 +1,145 @@
-# SummitReady Artwork Batch 02 — Mock-up Support Pack
+# SummitReady Explore V3 — Precision Mock-up Match
 
-**Command:** ART2-C01
+**Command:** EX3-C01
 **Authority:** ChatGPT lead product/design/architecture
-**Purpose:** Create a tightly curated second artwork batch through the EXISTING SummitReady Artwork Admin / Media Studio pipeline used for Batch 01.
-**Production publication:** NOT AUTHORIZED.
-**App integration:** NOT AUTHORIZED in this task.
-**Stage 9:** PAUSED.
+**Baseline:** 2d6b36cb12a5706b74100e11b1f237e0a7a8ce1d
+**Goal:** Correct Explore V2 so the real app matches the approved Explore mock-up in visual scale, density, composition and hierarchy.
+**Stage 9:** PAUSED / NOT AUTHORIZED.
 
-## Objective
+## Locked decisions
 
-The approved app mock-ups currently contain a richer visual language than the live asset library can support. Create Batch 02 as a coherent premium support pack for Explore, Track, Expeditions and You/Profile so later UI implementation can match those mock-ups without substituting generic/satellite imagery.
+1. The approved Explore mock-up is the visual specification. Do not reinterpret it.
+2. Use the EXISTING bundled Asset Library image `sumit-ready/assets/images/hero-base-camp.png` as the Explore hero. Do not generate a new hero, substitute another image, call an external image resolver for the hero, or alter the source asset.
+3. Batch 2 artwork is approved and may be used for supporting placements where it matches the mock-up and subject truthfully.
+4. No new artwork generation is authorized in this gate.
+5. Preserve existing Explore functionality: search, filters, canonical identities, route data, navigation, SDE boundaries, loading/error/empty states.
+6. Do not compensate for artificial camera/Dynamic Island elements shown by mock device frames. Use only real runtime safe-area insets.
 
-This is an artwork-generation/review task only. Do not redesign screens in this task.
+## EX3-C01 — Same-viewport calibration
 
-## Non-negotiable architecture
+The main V2 defect is scale/density. Compare implementation and mock-up at the SAME logical viewport, using 390×844 as the primary QA reference.
 
-Use the existing canonical SummitReady artwork system:
-Artwork Admin + artwork API/services + existing ImageProvider + prompt/version/status/approval/crop/storage workflow.
+Measure and correct:
+- hero height and crop;
+- title size/line height;
+- search height;
+- filter/chip height and gaps;
+- horizontal gutters;
+- vertical section spacing;
+- route/discovery card height;
+- image-to-text proportions;
+- metadata size/line height;
+- bottom-nav clearance.
 
-Follow the same lifecycle as Batch 01:
-**curated batch definition → cost/count confirmation → generation → review gallery → manual approval/rejection → variants/publication later**
+Do not simply apply a global scale transform. Correct component tokens/styles so touch targets, accessibility and responsive behavior remain valid.
 
-Do NOT:
-- create another media/artwork subsystem;
-- bypass Artwork Admin;
-- directly hard-code generated files into app screens;
-- auto-approve assets;
-- publish to production;
-- perform catalogue-wide generation;
-- alter the Summit Data Engine;
-- touch protected Progress Mountain/cinematic files.
+Target: approximately the same amount of meaningful content should be visible at 390×844 as in the approved mock-up.
 
-Retain the server-side generation safety limit and existing cost controls.
+## EX3-C02 — Exact Explore hero asset
 
-## ART2-C01 — Curated Batch 02 manifest
+Wire Explore's primary hero to the existing bundled asset:
+`sumit-ready/assets/images/hero-base-camp.png`
 
-Create exactly these 12 masters with stable IDs and intended placement metadata:
+Verify the actual repository path/casing before changing imports. If the literal path above is an Asset Library display/storage identifier rather than the source import path, resolve it to its existing bundled source; do NOT duplicate the file.
 
-1. **SR-EXPLORE-HERO-002 — Explore — Into the Mountains**
-   Placement: `explore.discovery.hero`
-   Cinematic British mountain discovery landscape; dramatic ridge leading the eye into distant peaks/valley; early light; adventurous but credible; generous dark/quiet negative space for native UI.
+Crop/position it to reproduce the approved Explore mock-up composition as closely as possible. Preserve the hiker and primary mountain focal points. Use restrained gradient treatment for text readability.
 
-2. **SR-EXPLORE-RIDGE-002 — Explore Route — Exposed Ridge**
-   Placement: `explore.route.card.ridge`
-   Authentic-feeling UK high ridge hiking scene; strong trail line; atmospheric depth; small distant hiker for scale only; no identifiable named mountain claim.
+Record the resolved source path and rendered placement in the completion report.
 
-3. **SR-EXPLORE-SUMMIT-002 — Explore Route — Summit Day**
-   Placement: `explore.route.card.summit`
-   Rugged British summit approach; stone/rock foreground, layered mountains, changing weather, premium editorial photography.
+## EX3-C03 — First viewport
 
-4. **SR-EXPLORE-VALLEY-002 — Explore Route — Valley to Mountain**
-   Placement: `explore.route.card.valley`
-   Mountain route beginning in green valley and rising toward imposing high ground; route journey readable visually.
+Reproduce the approved Explore mock-up's first viewport closely:
+- compact, intentional top composition;
+- editorial discovery title;
+- integrated search;
+- restrained filters;
+- hero photography remains visually dominant;
+- featured discovery text/metadata positioned and sized like the mock-up;
+- avoid oversized controls and excessive padding.
 
-5. **SR-TRACK-HERO-002 — Track — Into the Wild**
-   Placement: `track.hero`
-   Lone hillwalker moving through rugged upland trail; strong forward motion/composition; room for GPS/tracking UI overlay; realistic weather and terrain.
+The screen must feel like premium mountain discovery, not a large-font accessibility demo or generic route database.
 
-6. **SR-TRACK-ACTIVITY-002 — Track — Mountain Activity**
-   Placement: `track.activity.hero`
-   Elevated view across winding mountain trail and terrain; visual sense of distance/elevation; no drawn GPS line baked into image.
+Maintain valid touch targets even when visible chrome is compact.
 
-7. **SR-EXPEDITION-HERO-002 — Expeditions — Bigger Objective**
-   Placement: `expedition.discovery.hero`
-   Grand high-mountain expedition atmosphere; distant climbers for scale; dramatic but realistic; should feel aspirational and premium, not fantasy.
+## EX3-C04 — Results/discovery surfaces
 
-8. **SR-EXPEDITION-STAGE-002 — Expedition — The Ascent**
-   Placement: `expedition.stage.hero`
-   Climbers ascending broad mountain terrain toward a high objective; clear vertical journey; safe space for stage/progress UI.
+Bring the result section to mock-up scale:
+- larger/better imagery relative to text than V2, but smaller overall card footprint where the mock-up is denser;
+- consistent editorial crops;
+- concise hierarchy: name first, location/context second, only useful verified metrics;
+- remove redundant badges/labels;
+- avoid satellite imagery where approved/bundled truthful photography exists;
+- use approved Batch 2 assets where appropriate and truthful;
+- no invented mountain identity, metrics or Mountain DNA.
 
-9. **SR-YOU-HERO-002 — You — Mountain Identity**
-   Placement: `profile.hero`
-   Mountaineer/hillwalker viewed from behind at a summit/ridge overlook; identity/achievement mood; no recognisable face; ample overlay space.
+## EX3-C05 — SummitReady intelligence
 
-10. **SR-RANK-ASCENT-002 — Rank — The Ascent**
-    Placement: `rank.progress.background`
-    Abstract-real photographic mountain ascent composition with layered elevation/ridges; designed to support rank/progression overlays without becoming busy.
+Where existing verified data is already available, retain restrained SummitReady-specific capability intelligence (Mountain DNA/training relevance/terrain/elevation context). It must not increase card bulk or overpower discovery imagery.
 
-11. **SR-DNA-TERRAIN-002 — Mountain DNA — Terrain Layers**
-    Placement: `mountain.dna.background`
-    Highly detailed mountain terrain/ridge composition emphasizing steepness, exposure, rock, trail and relief; clean enough for analytical overlays; no labels baked in.
+If verified data is absent, omit the intelligence element. Never fabricate it.
 
-12. **SR-ATMOSPHERE-002 — SummitReady — Alpine Atmosphere**
-    Placement: `app.atmosphere.background`
-    Flexible dark cinematic mountain atmosphere master for transitions/empty states/supporting surfaces; deliberately low-detail safe zones.
+## EX3-C06 — Pixel-density self-review
 
-## ART2-C02 — Shared art direction
+Render at 390×844 and compare directly against the approved Explore mock-up.
 
-All 12 must feel like one SummitReady campaign/library:
-- premium outdoor editorial photography;
-- National Geographic / high-end technical outdoor campaign quality target;
-- photorealistic, physically plausible terrain/weather/light;
-- dark cinematic grading compatible with SummitReady;
-- restrained natural greens/blues/stone/earth;
-- realistic atmospheric depth;
-- no fantasy mountains;
-- no oversaturated HDR;
-- no glossy AI-ad aesthetic;
-- no text, logos, badges, UI, route lines or fake map data baked into imagery;
-- no close-up faces;
-- no unsafe/impossible climbing depiction;
-- deliberate focal point plus negative/safe space for native UI;
-- compositions designed for mobile crops.
+Perform at least TWO correction passes:
+Pass A: macro geometry — hero, sections, card dimensions, content density.
+Pass B: typography, spacing, crop/focal point, borders, metadata and visual weight.
 
-Generate landscape masters using the existing Batch 01 provider/master settings unless the existing architecture requires a documented equivalent. Derive crops through the existing crop system, not separate generations.
+Explicitly check for the V2 failure mode: “everything is larger than the mock-up.” If the implementation still visibly shows materially less content because components are oversized, it is not complete.
 
-## ART2-C03 — Geographic truth
+Do not claim mock-up match based only on tests.
 
-Batch 02 intentionally uses mostly non-named terrain so generated art cannot falsely represent a named mountain.
-
-For actual named mountains/routes in Explore, later runtime integration must continue to prefer exact approved geographically truthful photography/artwork according to the existing hierarchy.
-
-Do not label a Batch 02 generic image as Ben Nevis, Snowdon/Yr Wyddfa, Helvellyn, Mont Blanc, Matterhorn, etc.
-
-## ART2-C04 — Mock-up-aware composition
-
-Prompts must explicitly account for later native UI overlays.
-
-Explore assets:
-- landscape is the star;
-- strong visual route through scene;
-- suitable for premium editorial discovery cards;
-- avoid important detail at extreme crop edges.
-
-Track:
-- sense of movement, terrain and real outdoor effort;
-- preserve quiet overlay area for tracking controls/data.
-
-Expedition:
-- bigger scale and ambition than Explore;
-- preserve the protected Progress Mountain/cinematic as a separate system; these images do not replace it.
-
-You/Profile:
-- identity, accumulated experience, aspiration;
-- subject secondary to mountain environment.
-
-DNA/Rank:
-- background supports information hierarchy; it must not fight charts/labels.
-
-## ART2-C05 — Generation safety and cost gate
-
-Before generation:
-- confirm count = exactly 12;
-- calculate/display estimated provider cost using the existing provider estimate;
-- confirm no other assets are queued;
-- verify no catalogue-wide generation path is invoked.
-
-This task authorizes generation of **only these 12 Batch 02 masters** using the existing configured provider. It does not authorize retries/regenerations beyond one initial candidate per asset.
-
-If any generation fails, leave it failed/retryable and report it; do not silently spend on repeated attempts.
-
-## ART2-C06 — Review workflow
-
-Add Batch 02 to the existing Artwork Admin review experience with the same useful review controls as Batch 01.
-
-Each candidate must expose:
-- asset ID/name;
-- intended placement;
-- prompt/version where already supported;
-- generation/review status;
-- approve/reject controls;
-- preview of useful derived crop(s) where existing system supports it.
-
-**All generated assets must remain unapproved/review-only.**
-The product owner will manually review and approve/reject them.
-
-Approval does NOT mean production publication.
-
-## ART2-C07 — Verification
+## EX3-C07 — Responsive/safety verification
 
 Verify:
-- exactly 12 Batch 02 manifest entries;
-- no duplicate IDs;
-- generation restricted to Batch 02;
-- generated assets stored/versioned through existing storage;
-- review gallery loads;
-- approve/reject state path remains functional;
-- Batch 01 remains intact;
-- no production publication;
-- no SDE changes;
-- no protected Progress Mountain/cinematic changes.
+- 390×844 primary;
+- smaller phone;
+- modern iPhone;
+- long route/mountain names;
+- search keyboard;
+- filter state;
+- image fallback;
+- bottom-nav content inset;
+- actual safe-area behavior.
 
-Run targeted tests/TypeScript only as necessary; avoid unrelated expensive full-suite work.
+Artificial screenshot/device-frame camera cutouts are irrelevant.
 
-## ART2-C08 — Report and STOP
+## EX3-C08 — Evidence
+
+Save screenshots if tooling permits under:
+`docs/visual-qa/explore-premium-v3/`
+
+Minimum:
+- 390×844 first viewport;
+- 390×844 scrolled results;
+- search/filter state;
+- small-phone stress state.
+
+If browser tooling cannot persist PNGs, record capture identifiers/limitation and continue. Final visual acceptance will be made from the product owner's real-phone screenshot.
 
 Create:
-`docs/ARTWORK_BATCH_02_REPORT.md`
+`docs/EXPLORE_PREMIUM_V3_REPORT.md`
 
 Report:
-- exact 12 assets;
-- prompts/prompt version;
-- provider/model/master dimensions;
-- count generated/succeeded/failed;
-- actual/estimated cost if available;
-- review URL/path;
-- files changed;
-- tests;
-- confirmation Batch 01 unchanged;
-- confirmation nothing was auto-approved or published.
+- exact files changed;
+- exact resolved path for `hero-base-camp.png`;
+- approved Batch 2 assets used;
+- before/after scale/density corrections;
+- two visual correction passes;
+- tests/builds;
+- remaining known visual differences from mock-up;
+- protected-boundary confirmation.
 
-Update AI_HANDOFF and AI_CHANGELOG as appropriate.
+Update AI_HANDOFF, AI_CHANGELOG and visual QA manifest as appropriate.
 
-Commit/push and STOP. Do not begin Explore V3 or any screen integration.
+## EX3-C09 — Verification and STOP
+
+Run targeted tests, bounded regression, TypeScript and relevant Expo exports. Avoid unrelated work.
+
+Commit/push and STOP.
+
+Do NOT start Track, Expeditions, You, Profile, Community, production migrations, artwork generation or another stage.
 
 End with exactly one:
 COMPLETE
