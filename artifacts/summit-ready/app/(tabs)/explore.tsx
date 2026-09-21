@@ -42,11 +42,13 @@ const DIFF_COLOR: Record<string, string> = {
   Hard: T.orange,
 };
 
-const FILTERS = ["All", "Mountains", "Hills", "Hard"];
+const FILTERS = ["All", "Mountains", "Hills", "Loops", "Moderate", "Hard"];
 const FILTER_CONFIG: Record<string, { icon: React.ElementType, subtitle: string }> = {
   All: { icon: Mountain, subtitle: `${CURATED_HILLS.length}+` },
   Mountains: { icon: Mountain, subtitle: `${CURATED_HILLS.filter(h => h.terrain === "mountain").length}` },
   Hills: { icon: RouteIcon, subtitle: `${CURATED_HILLS.filter(h => h.terrain === "hill").length}` },
+  Loops: { icon: RouteIcon, subtitle: `${CURATED_HILLS.filter(h => h.routeType === "loop").length}` },
+  Moderate: { icon: TrendingUp, subtitle: `${CURATED_HILLS.filter(h => h.difficulty === "Moderate").length}` },
   Hard: { icon: Activity, subtitle: `${CURATED_HILLS.filter(h => h.difficulty === "Hard").length}` },
 };
 
@@ -211,7 +213,7 @@ function LandscapeMountainRow({ trail, index, reducedMotion }: { trail: Trail, i
 export default function ExploreScreen() {
   useScreenView("explore");
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  useWindowDimensions();
   const reducedMotion = useReducedMotion() ?? false;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -234,6 +236,8 @@ export default function ExploreScreen() {
     if (activeFilter !== "All") {
        if (activeFilter === "Mountains") list = list.filter(h => h.terrain === "mountain");
        if (activeFilter === "Hills") list = list.filter(h => h.terrain === "hill");
+       if (activeFilter === "Loops") list = list.filter(h => h.routeType === "loop");
+       if (activeFilter === "Moderate") list = list.filter(h => h.difficulty === "Moderate");
        if (activeFilter === "Hard") list = list.filter(h => h.difficulty === "Hard");
     }
 
@@ -277,12 +281,10 @@ export default function ExploreScreen() {
         <View style={s.header}>
           <View style={s.logoContainer}>
             <Mountain color={T.basecampText} size={22} strokeWidth={2.5} />
-            {screenWidth >= 430 ? (
-              <View style={s.logoTextContainer}>
-                <Text style={s.logoTitle}>SUMMITREADY</Text>
-                <Text style={s.logoSubtitle}>TRAIN MORE. GO FURTHER.</Text>
-              </View>
-            ) : null}
+            <View style={s.logoTextContainer}>
+              <Text style={s.logoTitle}>SUMMITREADY</Text>
+              <Text style={s.logoSubtitle}>TRAIN MORE. GO FURTHER.</Text>
+            </View>
           </View>
           <ModeTogglePill embedded />
           <View style={s.headerActions}>
@@ -403,7 +405,7 @@ export default function ExploreScreen() {
               </ScrollView>
 
               <View style={[s.sectionHeaderRow, s.sectionHeaderSpaced]}>
-                <Text style={s.sectionTitle}>Mountain Routes</Text>
+                <Text style={s.sectionTitle}>Popular This Month</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   style={s.viewAllButton}
@@ -423,7 +425,7 @@ export default function ExploreScreen() {
               <View style={[s.sectionHeaderRow, s.sectionHeaderSpaced]}>
                 <Text style={s.sectionTitle}>Explore by Map</Text>
               </View>
-              <Text style={s.sectionSubtitle}>Find nearby hills and routes for your next training day.</Text>
+              <Text style={s.sectionSubtitle}>Browse mountains and routes on an interactive map.</Text>
 
               <View style={{ paddingHorizontal: 18 }}>
                 <TouchableOpacity
@@ -482,7 +484,7 @@ const s = StyleSheet.create({
   heroBgContainer: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
-    height: 380,
+    height: 430,
     zIndex: 0,
   },
   scrollContent: {
@@ -492,23 +494,23 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    marginBottom: 32,
-    minHeight: 40,
+    paddingHorizontal: 16,
+    marginBottom: 42,
+    minHeight: 38,
   },
-  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   logoTextContainer: { justifyContent: 'center' },
-  logoTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.basecampText, letterSpacing: 1 },
-  logoSubtitle: { fontSize: 8, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, letterSpacing: 0.5 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.basecampText, letterSpacing: 2.1 },
+  logoSubtitle: { fontSize: 5.5, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, letterSpacing: 1.1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center'
   },
   heroTextContainer: {
     paddingHorizontal: 18,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   heroEyebrow: {
     fontSize: 11,
@@ -518,14 +520,14 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
     color: T.basecampText,
     lineHeight: 32,
     marginBottom: 10,
   },
   heroDesc: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: T.basecampTextMuted,
   },
@@ -537,9 +539,9 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 22,
     paddingHorizontal: 16,
-    height: 44,
+    height: 46,
     marginHorizontal: 18,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   searchInput: {
     flex: 1,
@@ -552,27 +554,27 @@ const s = StyleSheet.create({
   clearBtn: { padding: 4 },
   filterScroll: {
     paddingHorizontal: 18,
-    gap: 8,
+    gap: 7,
     paddingRight: 18
   },
   filterChip: {
-    width: 76,
-    height: 86,
-    borderRadius: 12,
+    width: 68,
+    height: 78,
+    borderRadius: 11,
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   filterChipActive: {
     backgroundColor: 'rgba(62,207,117,0.08)',
     borderColor: 'rgba(62,207,117,0.4)',
   },
-  filterIcon: { marginBottom: 6 },
+  filterIcon: { marginBottom: 4 },
   filterText: {
-    fontSize: 12,
+    fontSize: 10.5,
     fontFamily: "Inter_600SemiBold",
     color: T.basecampText,
     marginBottom: 2,
@@ -581,12 +583,12 @@ const s = StyleSheet.create({
     color: T.basecampText,
   },
   filterSubtitle: {
-    fontSize: 10,
+    fontSize: 8.5,
     fontFamily: "Inter_400Regular",
     color: T.basecampTextDim,
   },
   contentSection: {
-    paddingTop: 20,
+    paddingTop: 22,
     paddingBottom: 160,
     backgroundColor: T.basecampBg,
   },
@@ -601,7 +603,7 @@ const s = StyleSheet.create({
     marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
     color: T.basecampText,
   },
@@ -629,8 +631,8 @@ const s = StyleSheet.create({
     paddingRight: 36,
   },
   featuredCard: {
-    width: 280,
-    height: 180,
+    width: 292,
+    height: 174,
     borderRadius: 14,
     overflow: 'hidden',
     marginRight: 12,
@@ -671,8 +673,8 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center'
   },
   popularCard: {
-    width: 124,
-    height: 158,
+    width: 118,
+    height: 154,
     borderRadius: 14,
     overflow: 'hidden',
     marginRight: 10,
