@@ -15,6 +15,11 @@ viewport before capture. React Native Web `ScrollView` uses an internal
 `overflow-y: auto` element, so scroll that element rather than `window` when
 capturing content below the fold.
 
+The managed browser tester can reach local Metro and expose inspectable screenshot
+IDs, but it may not provide the image bytes for committing into the workspace.
+Do not treat those IDs as substitutes when a contract explicitly requires PNG
+files at repository paths.
+
 For the editor's web simulation, keep the mobile artifact preview wrapper at `/mobile-preview.html`; using `/mobile/` makes Expo Router interpret `mobile` as an app route and show its not-found screen. The wrapper is served by the root landing artifact, not Metro, so regenerate its pnpm-resolved Expo Router entry whenever the mobile workflow starts. Use `lazy=false`: Metro lazy chunks resolve against the normal web domain and can receive landing-page HTML.
 
 The managed editor artifact workflow must use Expo LAN mode, not forced tunnel mode: Replit already exposes Metro through its Expo development domain, while an ngrok session closure exits the whole workflow and shows an artifact-crashed screen. If a physical device specifically needs a remote native tunnel, run that as a separate interactive preview rather than making the managed web artifact depend on ngrok.

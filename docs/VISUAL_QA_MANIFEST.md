@@ -1,5 +1,12 @@
 # SummitReady Visual QA Manifest
 
+## Basecamp cleanup and Explore Premium V1 — 390 × 844 managed-browser evidence
+
+The managed tester captured and exposed screenshot IDs but could not export PNG
+bytes into the workspace. See `docs/EXPLORE_PREMIUM_V1_REPORT.md` for the full
+inventory. Final IDs: Explore `qpn40s`, `m3qvev`, `ro004x`, `5cwcf4`, `owl4dr`,
+`3bb4h9`; Basecamp `n09skh`, `nr39ni`, `spuntd`, `2t0e7l`.
+
 **Scope:** VQ-C01–C09, VR-C04, Premium Basecamp pilot, VR2 Basecamp V2, and V3 Basecamp evidence
 **Date:** 2026-09-21 UTC
 **Viewport:** 390 × 844 CSS pixels, phone portrait
