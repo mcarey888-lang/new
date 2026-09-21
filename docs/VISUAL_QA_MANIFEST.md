@@ -1,5 +1,19 @@
 # SummitReady Visual QA Manifest
 
+## Explore Premium V2 — locked mock-up match
+
+Managed real-browser evidence:
+
+- `nxd78m` — corrected 390×844 populated first viewport
+- `trhllr` — corrected 390×844 scrolled discovery/results
+- `4mov4j` — 390×844 Snowdon search
+- `oootiv` — 390×844 Hard filter
+- `loymbp` — 390×844 genuine branded image fallback
+- `lk3xgf` — 360×800 Sca Fell long-name stress
+
+The tester could not export PNG bytes into the workspace. Details and correction
+history: `docs/EXPLORE_PREMIUM_V2_REPORT.md`.
+
 ## Basecamp cleanup and Explore Premium V1 — 390 × 844 managed-browser evidence
 
 The managed tester captured and exposed screenshot IDs but could not export PNG

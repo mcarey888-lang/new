@@ -2,18 +2,26 @@ import {
   MapPin,
   Search,
   X,
-  Compass
+  Compass,
+  Mountain,
+  Map as MapIcon,
+  SlidersHorizontal,
+  ChevronRight,
+  Navigation,
+  Route as RouteIcon,
+  Activity,
+  TrendingUp
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   Image
 } from "react-native";
@@ -22,6 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
+import { ModeTogglePill } from "@/components/ModeTogglePill";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -34,59 +43,156 @@ const DIFF_COLOR: Record<string, string> = {
 };
 
 const FILTERS = ["All", "Mountains", "Hills", "Hard"];
+const FILTER_CONFIG: Record<string, { icon: React.ElementType, subtitle: string }> = {
+  All: { icon: Mountain, subtitle: `${CURATED_HILLS.length}+` },
+  Mountains: { icon: Mountain, subtitle: `${CURATED_HILLS.filter(h => h.terrain === "mountain").length}` },
+  Hills: { icon: RouteIcon, subtitle: `${CURATED_HILLS.filter(h => h.terrain === "hill").length}` },
+  Hard: { icon: Activity, subtitle: `${CURATED_HILLS.filter(h => h.difficulty === "Hard").length}` },
+};
+
+function mountainSubject(name: string) {
+  return name
+    .replace(/\s+via\s+.+$/i, "")
+    .replace(/\s+(North|South)\s+Ridge$/i, "")
+    .replace(/\s+Circular$/i, "")
+    .replace(/\s+&\s+Great\s+Ridge$/i, "")
+    .replace(/^Sca Fell & Scafell Pike Loop$/i, "Scafell Pike")
+    .trim();
+}
 
 function FallbackImage() {
   return (
     <LinearGradient
-      colors={[T.basecampSurfaceHover, T.basecampBg]}
+      colors={[T.card, T.basecampBg]}
       style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}
     >
-      <Compass size={40} color={T.basecampTextDim} opacity={0.3} />
+      <View style={s.fallbackMark}>
+        <Mountain size={26} color={T.green} strokeWidth={1.6} />
+        <Text style={s.fallbackBrand}>SUMMITREADY</Text>
+        <Text style={s.fallbackLabel}>MOUNTAIN IMAGE UNAVAILABLE</Text>
+      </View>
     </LinearGradient>
   );
 }
 
-function CompactMountainRow({ trail, index, reducedMotion }: { trail: Trail, index: number, reducedMotion: boolean }) {
+function FeaturedCard({ trail }: { trail: Trail }) {
   const [imgError, setImgError] = useState(false);
-  const imageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=300&height=300&routeIdentityKey=${encodeURIComponent(trail.id)}${trail.lat != null ? `&lat=${trail.lat}` : ""}${trail.lng != null ? `&lng=${trail.lng}` : ""}`;
+  const mountainName = mountainSubject(trail.name);
+  const imageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=800&height=500`;
+  const routeType = trail.routeType === "out-and-back"
+    ? "Out & back"
+    : trail.routeType === "point-to-point"
+      ? "Point-to-point"
+      : "Loop";
+  const trainingFocus = trail.bestFor[0]
+    ? trail.bestFor[0].replace(/\b\w/g, character => character.toUpperCase())
+    : null;
 
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={s.featuredCard}
+      onPress={() => router.push(`/trail-detail?id=${trail.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`Featured route: ${trail.name}, ${trail.location}.`}
+    >
+      {imgError ? <FallbackImage /> : <Image source={{uri: imageUrl}} style={StyleSheet.absoluteFillObject} onError={() => setImgError(true)} />}
+      <LinearGradient colors={['transparent', 'rgba(11,13,17,0.12)', 'rgba(11,13,17,0.78)']} style={StyleSheet.absoluteFillObject} />
+
+      <View style={s.featuredTop}>
+         <View style={s.featuredBadge}><Text style={s.featuredBadgeText}>FEATURED</Text></View>
+      </View>
+
+      <View style={s.featuredBottom}>
+         <View style={s.featuredInfo}>
+            <Text style={s.featuredTitle}>{trail.name}</Text>
+            <Text style={s.featuredSubtitle}>{trail.elevationGain}m gain • {trail.location}</Text>
+
+            <View style={s.featuredTags}>
+              <View style={s.tag}><Activity size={12} color={DIFF_COLOR[trail.difficulty] || T.basecampTextMuted}/><Text style={s.tagText}>{trail.difficulty}</Text></View>
+              <View style={s.tag}><RouteIcon size={12} color={T.basecampTextMuted}/><Text style={s.tagText}>{routeType}</Text></View>
+              {trainingFocus ? <View style={s.tag}><TrendingUp size={12} color={T.basecampTextMuted}/><Text style={s.tagText}>{trainingFocus}</Text></View> : null}
+            </View>
+         </View>
+         <View style={s.goButton}>
+            <ChevronRight size={18} color={T.green} />
+         </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function PopularCard({ trail }: { trail: Trail }) {
+  const [imgError, setImgError] = useState(false);
+  const mountainName = mountainSubject(trail.name);
+  const imageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=400&height=600`;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={s.popularCard}
+      onPress={() => router.push(`/trail-detail?id=${trail.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${trail.name}. Difficulty: ${trail.difficulty}.`}
+    >
+      {imgError ? <FallbackImage /> : <Image source={{uri: imageUrl}} style={StyleSheet.absoluteFillObject} onError={() => setImgError(true)} />}
+      <LinearGradient colors={['rgba(11,13,17,0.04)', 'rgba(11,13,17,0.82)']} style={StyleSheet.absoluteFillObject} />
+
+      <View style={s.popularTop}>
+        <View style={s.terrainBadge}><Mountain size={13} color={T.white} /></View>
+      </View>
+
+      <View style={s.popularBottom}>
+        <Text style={s.popularTitle} numberOfLines={1}>{trail.name}</Text>
+        <Text style={s.popularSubtitle}>{trail.elevationGain}m</Text>
+        <View style={s.popularTag}>
+           <Activity size={12} color={DIFF_COLOR[trail.difficulty] || T.green} />
+           <Text style={[s.popularTagText, {color: T.basecampTextMuted}]}>{trail.difficulty}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function LandscapeMountainRow({ trail, index, reducedMotion }: { trail: Trail, index: number, reducedMotion: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const mountainName = mountainSubject(trail.name);
+  const imageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=800&height=500`;
   const routeCharacter = [
-    trail.terrain ? trail.terrain.charAt(0).toUpperCase() + trail.terrain.slice(1) : null,
-    trail.routeType === "out-and-back" ? "Out & back" : trail.routeType === "loop" ? "Loop" : trail.routeType === "point-to-point" ? "Point-to-point" : null
-  ].filter(Boolean).join(" • ");
+    trail.terrain.charAt(0).toUpperCase() + trail.terrain.slice(1),
+    trail.routeType === "out-and-back" ? "Out & back" : trail.routeType === "point-to-point" ? "Point-to-point" : "Loop",
+  ].join(" • ");
 
   const Content = (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => router.push(`/trail-detail?id=${trail.id}`)}
-      style={s.rowCard}
+      style={s.resultCard}
       accessibilityRole="button"
       accessibilityLabel={`${trail.name}, ${trail.location}. Difficulty: ${trail.difficulty}.`}
     >
-      <View style={s.rowImageContainer}>
-        {imgError ? (
-          <FallbackImage />
-        ) : (
-          <Image source={{ uri: imageUrl }} style={s.rowImage} onError={() => setImgError(true)} accessible={false} />
-        )}
-      </View>
-      <View style={s.rowContent}>
-        <Text style={s.rowName} numberOfLines={1}>{trail.name}</Text>
-        <Text style={s.rowLocation} numberOfLines={1}>{trail.location}</Text>
+      <View style={s.resultImageWrapper}>
+         {imgError ? (
+           <FallbackImage />
+         ) : (
+           <Image source={{ uri: imageUrl }} style={s.resultImage} onError={() => setImgError(true)} accessible={false} />
+         )}
+         <LinearGradient colors={['transparent', 'rgba(11,13,17,0.42)', 'rgba(11,13,17,0.86)']} style={StyleSheet.absoluteFillObject} />
 
-        <View style={s.rowMetrics}>
-          <Text style={[s.rowDiff, { color: DIFF_COLOR[trail.difficulty] || T.basecampTextMuted }]}>
-            {trail.difficulty}
-          </Text>
-          <Text style={s.metricDot}>·</Text>
-          <Text style={s.rowMetricText}>{trail.distance}km</Text>
-          <Text style={s.metricDot}>·</Text>
-          <Text style={s.rowMetricText}>{trail.elevationGain}m</Text>
-        </View>
+         <View style={s.resultImageContent}>
+             <View style={s.resultHeader}>
+                <Text style={s.resultTitle} numberOfLines={2}>{trail.name}</Text>
+                <View style={s.resultChevron}><ChevronRight size={16} color={T.green}/></View>
+             </View>
+            <Text style={s.resultLocation} numberOfLines={1}>{trail.location}</Text>
 
-        {routeCharacter ? (
-          <Text style={s.rowCharacter} numberOfLines={1}>{routeCharacter}</Text>
-        ) : null}
+            <View style={s.resultStats}>
+               <View style={s.resultStat}><TrendingUp size={14} color={T.basecampTextMuted}/><Text style={s.resultStatText}>{trail.elevationGain}m</Text></View>
+               <View style={s.resultStat}><Navigation size={14} color={T.basecampTextMuted}/><Text style={s.resultStatText}>{trail.distance}km</Text></View>
+               <View style={s.resultStat}><Activity size={14} color={DIFF_COLOR[trail.difficulty] || T.basecampTextMuted}/><Text style={[s.resultStatText, {color: DIFF_COLOR[trail.difficulty] || T.basecampTextMuted}]}>{trail.difficulty}</Text></View>
+            </View>
+             <Text style={s.resultCharacter} numberOfLines={1}>{routeCharacter}</Text>
+         </View>
       </View>
     </TouchableOpacity>
   );
@@ -105,13 +211,14 @@ function CompactMountainRow({ trail, index, reducedMotion }: { trail: Trail, ind
 export default function ExploreScreen() {
   useScreenView("explore");
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const reducedMotion = useReducedMotion() ?? false;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [featuredImgError, setFeaturedImgError] = useState(false);
+  const [heroImgError, setHeroImgError] = useState(false);
 
-  const featuredTrail = useMemo(() => CURATED_HILLS.find(h => h.id === "h004") || CURATED_HILLS[0], []);
+  const isSearchActive = searchQuery.trim().length > 0 || activeFilter !== "All";
 
   const filteredHills = useMemo(() => {
     let list = CURATED_HILLS;
@@ -131,129 +238,217 @@ export default function ExploreScreen() {
        if (activeFilter === "Hard") list = list.filter(h => h.difficulty === "Hard");
     }
 
-    if (searchQuery.trim().length === 0 && activeFilter === "All") {
-      list = list.filter(h => h.id !== featuredTrail.id);
-    }
-
     return list;
-  }, [searchQuery, activeFilter, featuredTrail]);
+  }, [searchQuery, activeFilter]);
 
-  const isSearchActive = searchQuery.trim().length > 0 || activeFilter !== "All";
-  const featuredMountainName = featuredTrail.name.split(/\s+via\s+/i)[0].trim();
-  const featuredImageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(featuredMountainName)}&width=1000&height=800`;
+  const featuredTrails = useMemo(() => [
+    CURATED_HILLS.find(h => h.id === "h004") || CURATED_HILLS[0],
+    CURATED_HILLS.find(h => h.id === "h002") || CURATED_HILLS[1],
+  ], []);
+
+  const popularTrails = useMemo(() => [
+    CURATED_HILLS.find(h => h.id === "h005") || CURATED_HILLS[2],
+    CURATED_HILLS.find(h => h.id === "h016") || CURATED_HILLS[3],
+    CURATED_HILLS.find(h => h.id === "h003") || CURATED_HILLS[4],
+    CURATED_HILLS.find(h => h.id === "h018") || CURATED_HILLS[5],
+  ], []);
+
+  const heroImageUrl = `${API_BASE}/mountain-image?name=Helvellyn&width=1000&height=800`;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.basecampBg }}>
+      {/* Background stays anchored top for parallax effect */}
+      <View style={s.heroBgContainer}>
+        {heroImgError ? (
+          <FallbackImage />
+        ) : (
+          <Image
+            source={{ uri: heroImageUrl }}
+            style={StyleSheet.absoluteFillObject}
+            onError={() => setHeroImgError(true)}
+            accessible={false}
+          />
+        )}
+        <LinearGradient
+          colors={['rgba(11,13,17,0.08)', 'rgba(11,13,17,0.58)', T.basecampBg]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </View>
+
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={[s.scrollContent, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <View style={[s.leadContainer, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16 }]}>
-          {!isSearchActive && (
-            <View style={StyleSheet.absoluteFill}>
-              {featuredImgError ? (
-                <FallbackImage />
-              ) : (
-                <Image
-                  source={{ uri: featuredImageUrl }}
-                  style={StyleSheet.absoluteFill}
-                  onError={() => setFeaturedImgError(true)}
-                  accessible={false}
-                />
-              )}
-              <LinearGradient
-                colors={["rgba(11,13,17,0.7)", "rgba(11,13,17,0.4)", T.basecampBg]}
-                style={StyleSheet.absoluteFill}
-              />
-            </View>
-          )}
-
-          <View style={s.leadContent}>
-            <Text style={s.headerTitle}>Find your mountain</Text>
-
-            <View style={s.searchContainer}>
-              <Search size={18} color={T.basecampTextMuted} />
-              <TextInput
-                style={s.searchInput}
-                placeholder="Search routes or regions..."
-                placeholderTextColor={T.basecampTextDim}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="search"
-                clearButtonMode="while-editing"
-                accessibilityLabel="Search routes or regions"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery("")}
-                  style={s.clearBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Clear search"
-                >
-                  <X size={16} color={T.basecampTextMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
-              {FILTERS.map(f => {
-                const isActive = activeFilter === f;
-                return (
-                  <TouchableOpacity
-                    key={f}
-                    style={[s.filterChip, isActive && s.filterChipActive]}
-                    onPress={() => setActiveFilter(f)}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={`Filter by ${f}`}
-                  >
-                    <Text style={[s.filterText, isActive && s.filterTextActive]}>{f}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {!isSearchActive && (
-              <TouchableOpacity
-                style={s.featuredRouteContent}
-                activeOpacity={0.8}
-                onPress={() => router.push(`/trail-detail?id=${featuredTrail.id}`)}
-                accessibilityRole="button"
-                accessibilityLabel={`Featured route: ${featuredTrail.name}`}
-              >
-                <Text style={s.featuredEyebrow}>FEATURED DISCOVERY</Text>
-                <Text style={s.featuredName}>{featuredTrail.name}</Text>
-                <View style={s.featuredMetrics}>
-                  <Text style={s.featuredMetricText}>{featuredTrail.region || featuredTrail.location}</Text>
-                  <Text style={s.metricDot}>·</Text>
-                  <Text style={s.featuredMetricText}>{featuredTrail.elevationGain}m</Text>
-                  <Text style={s.metricDot}>·</Text>
-                  <Text style={[s.featuredMetricText, { color: DIFF_COLOR[featuredTrail.difficulty] || T.basecampText }]}>{featuredTrail.difficulty}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
+        <View style={s.header}>
+          <View style={s.logoContainer}>
+            <Mountain color={T.basecampText} size={22} strokeWidth={2.5} />
+            {screenWidth >= 430 ? (
+              <View style={s.logoTextContainer}>
+                <Text style={s.logoTitle}>SUMMITREADY</Text>
+                <Text style={s.logoSubtitle}>TRAIN MORE. GO FURTHER.</Text>
+              </View>
+            ) : null}
+          </View>
+          <ModeTogglePill embedded />
+          <View style={s.headerActions}>
+            <TouchableOpacity
+              style={s.iconButton}
+              onPress={() => router.push("/trail-list")}
+              accessibilityRole="button"
+              accessibilityLabel="Browse all routes"
+            >
+              <MapIcon size={18} color={T.basecampText} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.iconButton}
+              onPress={() => setActiveFilter(activeFilter === "Hard" ? "All" : "Hard")}
+              accessibilityRole="button"
+              accessibilityLabel={activeFilter === "Hard" ? "Show all routes" : "Filter hard routes"}
+              accessibilityState={{ selected: activeFilter === "Hard" }}
+            >
+              <SlidersHorizontal size={18} color={activeFilter === "Hard" ? T.green : T.basecampText} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={s.listContainer}>
-          <Text style={s.sectionTitle}>
-            {isSearchActive ? `${filteredHills.length} Results` : "More Routes"}
-          </Text>
+        <View style={s.heroTextContainer}>
+          <Text style={s.heroEyebrow}>EXPLORE</Text>
+          <Text style={s.heroTitle}>Discover{'\n'}Your Next Peak</Text>
+          <Text style={s.heroDesc}>Real mountains. Real routes. Real progress.</Text>
+        </View>
 
-          {filteredHills.length === 0 ? (
-            <View style={s.emptyState}>
-              <MapPin size={32} color={T.basecampTextDim} />
-              <Text style={s.emptyStateText}>No routes found.</Text>
+        <View style={s.searchContainer}>
+          <Search size={18} color={T.basecampTextMuted} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search mountains, regions or countries..."
+            placeholderTextColor={T.basecampTextDim}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            accessibilityLabel="Search routes or regions"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              style={s.clearBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <X size={16} color={T.basecampTextMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+          {FILTERS.map(f => {
+            const isActive = activeFilter === f;
+            const config = FILTER_CONFIG[f] || FILTER_CONFIG.All;
+            const Icon = config.icon;
+            return (
+              <TouchableOpacity
+                key={f}
+                style={[s.filterChip, isActive && s.filterChipActive]}
+                onPress={() => setActiveFilter(f)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Filter by ${f}`}
+              >
+                <Icon size={24} color={isActive ? T.green : T.basecampTextMuted} style={s.filterIcon} />
+                <Text style={[s.filterText, isActive && s.filterTextActive]}>{f}</Text>
+                <Text style={s.filterSubtitle}>{config.subtitle}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={s.contentSection}>
+          {isSearchActive ? (
+            <View style={s.listContainer}>
+              <Text style={s.resultsCount}>
+                {filteredHills.length} Results
+              </Text>
+
+              {filteredHills.length === 0 ? (
+                <View style={s.emptyState}>
+                  <MapPin size={32} color={T.basecampTextDim} />
+                  <Text style={s.emptyStateText}>No routes found.</Text>
+                </View>
+              ) : (
+                <View style={s.resultsGrid}>
+                  {filteredHills.map((hill, i) => (
+                    <LandscapeMountainRow key={hill.id} trail={hill} index={i} reducedMotion={reducedMotion} />
+                  ))}
+                </View>
+              )}
             </View>
           ) : (
-            <View style={s.resultsGrid}>
-              {filteredHills.map((hill, i) => (
-                <CompactMountainRow key={hill.id} trail={hill} index={i} reducedMotion={reducedMotion} />
-              ))}
-            </View>
+            <>
+              <View style={s.sectionHeaderRow}>
+                <Text style={s.sectionTitle}>Featured Mountains</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={s.viewAllButton}
+                  onPress={() => router.push("/trail-list")}
+                  accessibilityRole="button"
+                  accessibilityLabel="View all mountain routes"
+                >
+                  <Text style={s.viewAllBtn}>View all</Text>
+                  <ChevronRight size={14} color={T.basecampTextMuted} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizontalListPad}>
+                {featuredTrails.map(t => <FeaturedCard key={t.id} trail={t} />)}
+              </ScrollView>
+
+              <View style={[s.sectionHeaderRow, { marginTop: 32 }]}>
+                <Text style={s.sectionTitle}>Mountain Routes</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={s.viewAllButton}
+                  onPress={() => router.push("/trail-list")}
+                  accessibilityRole="button"
+                  accessibilityLabel="View all mountain routes"
+                >
+                  <Text style={s.viewAllBtn}>View all</Text>
+                  <ChevronRight size={14} color={T.basecampTextMuted} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizontalListPad}>
+                {popularTrails.map((t) => <PopularCard key={t.id} trail={t} />)}
+              </ScrollView>
+
+              <View style={[s.sectionHeaderRow, { marginTop: 32 }]}>
+                <Text style={s.sectionTitle}>Explore by Map</Text>
+              </View>
+              <Text style={s.sectionSubtitle}>Find nearby hills and routes for your next training day.</Text>
+
+              <View style={{ paddingHorizontal: 18 }}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={s.mapPreviewCard}
+                  onPress={() => router.push("/hills-finder")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open nearby hill finder"
+                >
+                  <LinearGradient colors={[T.card, T.bg]} style={StyleSheet.absoluteFillObject} />
+
+                  <MapPin size={24} color={T.green} style={{position: 'absolute', left: '20%', top: '30%'}} />
+                  <MapPin size={18} color={T.green} style={{position: 'absolute', left: '55%', top: '50%'}} />
+                  <MapPin size={20} color={T.green} style={{position: 'absolute', left: '80%', top: '25%'}} />
+
+                  <View style={s.openMapPill}>
+                    <MapIcon size={16} color={T.white} />
+                    <Text style={s.openMapPillText}>Open Map</Text>
+                    <ChevronRight size={16} color={T.white} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
         </View>
       </ScrollView>
@@ -262,29 +457,86 @@ export default function ExploreScreen() {
 }
 
 const s = StyleSheet.create({
-  leadContainer: {
-    position: 'relative',
+  fallbackMark: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
   },
-  leadContent: {
+  fallbackBrand: {
+    color: T.basecampText,
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.1,
+  },
+  fallbackLabel: {
+    color: T.basecampTextMuted,
+    fontSize: 7,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.4,
+    textAlign: 'center',
+  },
+  heroBgContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: 550,
+    zIndex: 0,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 18,
-    paddingBottom: 24,
+    marginBottom: 32,
+    minHeight: 40,
   },
-  headerTitle: {
-    fontSize: 28,
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoTextContainer: { justifyContent: 'center' },
+  logoTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.basecampText, letterSpacing: 1 },
+  logoSubtitle: { fontSize: 8, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, letterSpacing: 0.5 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconButton: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center'
+  },
+  heroTextContainer: {
+    paddingHorizontal: 18,
+    marginBottom: 20,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: T.basecampTextMuted,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  heroTitle: {
+    fontSize: 34,
     fontFamily: "Inter_700Bold",
     color: T.basecampText,
-    marginBottom: 16,
+    lineHeight: 38,
+    marginBottom: 10,
+  },
+  heroDesc: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: T.basecampSurface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: T.basecampBorder,
-    marginBottom: 16,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    height: 52,
+    marginHorizontal: 18,
+    marginBottom: 24,
   },
   searchInput: {
     flex: 1,
@@ -295,132 +547,201 @@ const s = StyleSheet.create({
     fontSize: 15,
   },
   clearBtn: { padding: 4 },
-  filterScroll: { gap: 8, paddingBottom: 4 },
+  filterScroll: {
+    paddingHorizontal: 18,
+    gap: 8,
+    paddingRight: 18
+  },
   filterChip: {
+    width: 82,
+    height: 96,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(62,207,117,0.08)',
+    borderColor: 'rgba(62,207,117,0.4)',
+  },
+  filterIcon: { marginBottom: 8 },
+  filterText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: T.basecampText,
+    marginBottom: 2,
+  },
+  filterTextActive: {
+    color: T.basecampText,
+  },
+  filterSubtitle: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: T.basecampTextDim,
+  },
+  contentSection: {
+    paddingTop: 32,
+    paddingBottom: 40,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: T.basecampText,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted,
+    paddingHorizontal: 18,
+    marginBottom: 16,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    minHeight: 44,
+    paddingLeft: 12,
+  },
+  viewAllBtn: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: T.basecampTextMuted,
+  },
+  horizontalListPad: {
+    paddingHorizontal: 18,
+    paddingRight: 36,
+  },
+  featuredCard: {
+    width: 320,
+    height: 210,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 16,
+    backgroundColor: T.basecampSurfaceHover,
+  },
+  featuredTop: { padding: 16 },
+  featuredBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  featuredBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: T.white,
+    letterSpacing: 1,
+  },
+  featuredBottom: {
+    position: 'absolute',
+    bottom: 16, left: 16, right: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  featuredInfo: { flex: 1, paddingRight: 16 },
+  featuredTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4 },
+  featuredSubtitle: { fontSize: 13, fontFamily: "Inter_500Medium", color: 'rgba(255,255,255,0.7)', marginBottom: 12 },
+  featuredTags: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  tag: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  tagText: { fontSize: 11, fontFamily: "Inter_500Medium", color: 'rgba(255,255,255,0.6)' },
+  goButton: {
+    width: 34, height: 34, borderRadius: 17,
+    borderWidth: 1.5, borderColor: T.green,
+    alignItems: 'center', justifyContent: 'center'
+  },
+  popularCard: {
+    width: 140,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+    backgroundColor: T.basecampSurfaceHover,
+  },
+  popularTop: { padding: 10, alignItems: 'flex-end' },
+  terrainBadge: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  popularBottom: {
+    position: 'absolute', bottom: 12, left: 12, right: 12,
+  },
+  popularTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 2 },
+  popularSubtitle: { fontSize: 12, fontFamily: "Inter_500Medium", color: 'rgba(255,255,255,0.7)', marginBottom: 6 },
+  popularTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  popularTagText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  mapPreviewCard: {
+    height: 140,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 40,
+    backgroundColor: T.basecampSurfaceHover,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  openMapPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(11,13,17,0.8)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: T.basecampSurface,
+    gap: 8,
     borderWidth: 1,
-    borderColor: T.basecampBorder,
-    marginRight: 8,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  filterChipActive: {
-    backgroundColor: T.basecampText,
-    borderColor: T.basecampText,
-  },
-  filterText: {
-    color: T.basecampTextMuted,
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-  },
-  filterTextActive: {
-    color: T.basecampBg,
-    fontFamily: "Inter_600SemiBold",
-  },
-  featuredRouteContent: {
-    marginTop: 48,
-    marginBottom: 10,
-  },
-  featuredEyebrow: {
-    color: T.green,
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  featuredName: {
-    color: T.basecampText,
-    fontSize: 34,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 8,
-  },
-  featuredMetrics: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  featuredMetricText: {
-    color: T.basecampText,
+  openMapPillText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-  },
-  metricDot: {
-    fontSize: 14,
-    color: T.basecampTextDim,
+    color: T.white,
   },
   listContainer: {
     paddingHorizontal: 18,
-    paddingTop: 16,
     gap: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: T.basecampText,
+  resultsCount: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: T.basecampTextMuted,
     marginBottom: 4,
   },
   resultsGrid: {
     gap: 12,
   },
-  rowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: T.basecampSurface,
+  resultCard: {
+    marginBottom: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.basecampBorder,
-    padding: 10,
-    gap: 14,
-  },
-  rowImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: T.basecampSurfaceHover,
+    height: 220,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
   },
-  rowImage: {
-    width: '100%',
-    height: '100%',
+  resultImageWrapper: { flex: 1 },
+  resultImage: { ...StyleSheet.absoluteFillObject },
+  resultImageContent: {
+    position: 'absolute', bottom: 16, left: 16, right: 16,
   },
-  rowContent: {
-    flex: 1,
-    gap: 2,
-    justifyContent: 'center',
-  },
-  rowName: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: T.basecampText,
-  },
-  rowLocation: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampTextMuted,
-  },
-  rowMetrics: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  rowDiff: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  rowMetricText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextMuted,
-  },
-  rowCharacter: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextDim,
-    marginTop: 2,
-  },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  resultTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, flex: 1 },
+  resultLocation: { fontSize: 13, fontFamily: "Inter_500Medium", color: 'rgba(255,255,255,0.7)', marginBottom: 12 },
+  resultChevron: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(11,13,17,0.72)', alignItems: 'center', justifyContent: 'center' },
+  resultStats: { flexDirection: 'row', gap: 16 },
+  resultStat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resultStatText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted },
+  resultCharacter: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.66)", marginTop: 8 },
   emptyState: {
     padding: 40,
     alignItems: 'center',
