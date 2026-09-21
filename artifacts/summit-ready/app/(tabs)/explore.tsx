@@ -283,7 +283,7 @@ export default function ExploreScreen() {
             <Mountain color={T.basecampText} size={22} strokeWidth={2.5} />
             <View style={s.logoTextContainer}>
               <Text style={s.logoTitle}>SUMMITREADY</Text>
-              <Text style={s.logoSubtitle}>TRAIN MORE. GO FURTHER.</Text>
+              <Text style={s.logoSubtitle}>TRAIN • CLIMB • ACHIEVE</Text>
             </View>
           </View>
           <ModeTogglePill embedded />
@@ -320,7 +320,7 @@ export default function ExploreScreen() {
           <Search size={18} color={T.basecampTextMuted} />
           <TextInput
             style={s.searchInput}
-            placeholder="Search mountains, regions or countries..."
+            placeholder="Search mountains, routes and places"
             placeholderTextColor={T.basecampTextDim}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -484,7 +484,7 @@ const s = StyleSheet.create({
   heroBgContainer: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
-    height: 430,
+    height: 326,
     zIndex: 0,
   },
   scrollContent: {
@@ -495,13 +495,13 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 42,
+    marginBottom: 28,
     minHeight: 38,
   },
   logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   logoTextContainer: { justifyContent: 'center' },
-  logoTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.basecampText, letterSpacing: 2.1 },
-  logoSubtitle: { fontSize: 5.5, fontFamily: "Inter_500Medium", color: T.basecampTextMuted, letterSpacing: 1.1 },
+  logoTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.basecampText, letterSpacing: 1.2 },
+  logoSubtitle: { fontSize: 5.5, fontFamily: "Inter_600SemiBold", color: T.basecampTextMuted, letterSpacing: 0.8 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {
     width: 34, height: 34, borderRadius: 17,
@@ -510,7 +510,7 @@ const s = StyleSheet.create({
   },
   heroTextContainer: {
     paddingHorizontal: 18,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   heroEyebrow: {
     fontSize: 11,
@@ -520,10 +520,10 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 30,
+    fontSize: 32,
     fontFamily: "Inter_700Bold",
     color: T.basecampText,
-    lineHeight: 32,
+    lineHeight: 35,
     marginBottom: 10,
   },
   heroDesc: {
@@ -537,7 +537,7 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 22,
+    borderRadius: 12,
     paddingHorizontal: 16,
     height: 46,
     marginHorizontal: 18,
@@ -560,13 +560,13 @@ const s = StyleSheet.create({
   filterChip: {
     width: 68,
     height: 78,
-    borderRadius: 11,
+    borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   filterChipActive: {
     backgroundColor: 'rgba(62,207,117,0.08)',
@@ -574,7 +574,7 @@ const s = StyleSheet.create({
   },
   filterIcon: { marginBottom: 4 },
   filterText: {
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontFamily: "Inter_600SemiBold",
     color: T.basecampText,
     marginBottom: 2,
@@ -583,12 +583,12 @@ const s = StyleSheet.create({
     color: T.basecampText,
   },
   filterSubtitle: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     fontFamily: "Inter_400Regular",
     color: T.basecampTextDim,
   },
   contentSection: {
-    paddingTop: 22,
+    paddingTop: 26,
     paddingBottom: 160,
     backgroundColor: T.basecampBg,
   },
@@ -597,13 +597,13 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 18,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionHeaderSpaced: {
     marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
     color: T.basecampText,
   },
@@ -696,7 +696,7 @@ const s = StyleSheet.create({
   popularTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   popularTagText: { fontSize: 10, fontFamily: "Inter_500Medium" },
   mapPreviewCard: {
-    height: 112,
+    height: 158,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 40,
