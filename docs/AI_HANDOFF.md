@@ -11,6 +11,17 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### BP-C01–BP-C10 Basecamp cleanup and Explore Premium V1
+
+- The implementation and real-browser visual QA are complete. The authoritative report is `docs/EXPLORE_PREMIUM_V1_REPORT.md`.
+- The four authorized Basecamp cleanups are complete: exact slogan removal, text-free native Up Next visual, amber/earth insight, and collapsed/expandable Alpine requirements.
+- `app/(tabs)/explore.tsx` implements a photographic featured lead that integrates search and practical filters without vertical dead space.
+- Discovery rhythm improved at 390px by replacing repetitive giant cards with compact editorial rows containing truthful route character previews.
+- Legacy achievements and progress elements were completely removed from the view to keep the focus strictly on discovery.
+- Missing images use an atmospheric branded fallback. Accessibility roles and reduced motion are applied.
+- Real 390×844 managed-browser captures were inspected; IDs are recorded in the report. The managed browser could not export PNG bytes into the workspace, which remains the only incomplete BP-C09 deliverable.
+- No changes to Track, Expeditions, Profile, SDE schemas, protected components, or offline tracking boundaries occurred.
+
 ### V3-C01–V3-C12 Premium Training Basecamp V3
 
 - The bounded reference-match implementation is complete. The authoritative

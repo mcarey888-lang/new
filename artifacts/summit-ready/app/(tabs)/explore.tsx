@@ -1,344 +1,440 @@
 import {
-  Award,
-  CheckCircle,
-  ChevronRight,
-  Flag,
-  Map,
-  Mountain,
-  TrendingUp,
-  Footprints,
-  Medal,
-  Flame,
-  Star,
   MapPin,
-  Lock
+  Search,
+  X,
+  Compass
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  Image
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp, type ExploreHike } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
+import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 
-// ── Achievements ─────────────────────────────────────────────────────────────
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "/api";
 
-interface ExploreAchievement {
-  id: string;
-  icon: typeof Footprints;
-  label: string;
-  desc: string;
-  condition: (hikes: ExploreHike[]) => boolean;
-  progressFn?: (hikes: ExploreHike[]) => { current: number; target: number };
-}
+const DIFF_COLOR: Record<string, string> = {
+  Easy: T.green,
+  Moderate: T.blue,
+  Hard: T.orange,
+};
 
-const ACHIEVEMENTS: ExploreAchievement[] = [
-  {
-    id: "first_hike",
-    icon: Footprints,
-    label: "First Steps",
-    desc: "Log your first hike",
-    condition: h => h.length >= 1,
-    progressFn: h => ({ current: Math.min(h.length, 1), target: 1 }),
-  },
-  {
-    id: "five_hikes",
-    icon: Medal,
-    label: "Getting Going",
-    desc: "Complete 5 hikes",
-    condition: h => h.length >= 5,
-    progressFn: h => ({ current: Math.min(h.length, 5), target: 5 }),
-  },
-  {
-    id: "thousand_m",
-    icon: Mountain,
-    label: "1000m Club",
-    desc: "Gain 1,000m elevation",
-    condition: h => h.reduce((s, x) => s + x.elevationGain, 0) >= 1000,
-    progressFn: h => ({ current: Math.min(h.reduce((s, x) => s + x.elevationGain, 0), 1000), target: 1000 }),
-  },
-  {
-    id: "streak_3",
-    icon: Flame,
-    label: "On a Roll",
-    desc: "3 hikes in 7 days",
-    condition: h => {
-      const week = 7 * 24 * 60 * 60 * 1000;
-      return h.filter(x => Date.now() - new Date(x.date).getTime() <= week).length >= 3;
-    },
-    progressFn: h => {
-      const week = 7 * 24 * 60 * 60 * 1000;
-      const recent = h.filter(x => Date.now() - new Date(x.date).getTime() <= week).length;
-      return { current: Math.min(recent, 3), target: 3 };
-    },
-  },
-  {
-    id: "ten_hikes",
-    icon: Star,
-    label: "Trail Regular",
-    desc: "Complete 10 hikes",
-    condition: h => h.length >= 10,
-    progressFn: h => ({ current: Math.min(h.length, 10), target: 10 }),
-  },
-  {
-    id: "fifty_km",
-    icon: MapPin,
-    label: "Explorer",
-    desc: "Cover 50km total",
-    condition: h => h.reduce((s, x) => s + x.distance, 0) >= 50,
-    progressFn: h => ({ current: Math.min(h.reduce((s, x) => s + x.distance, 0), 50), target: 50 }),
-  },
-];
+const FILTERS = ["All", "Mountains", "Hills", "Hard"];
 
-// ── Suggested Next Challenge ──────────────────────────────────────────────────
-
-function SuggestedChallenge({ hikes }: { hikes: ExploreHike[] }) {
-  const totalElev = hikes.reduce((s, h) => s + h.elevationGain, 0);
-  const count = hikes.length;
-
-  let title: string;
-  let desc: string;
-  let btnLabel: string;
-  let btnColor: string[];
-  let onPress: () => void;
-
-  if (count === 0) {
-    title = "Log your first hike";
-    desc = "Head out on any local trail and log it — every adventure counts.";
-    btnLabel = "Browse hikes";
-    btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/trails");
-  } else if (count < 3) {
-    title = `Complete ${3 - count} more hike${3 - count > 1 ? "s" : ""}`;
-    desc = "Build your foundation with a few more local outings before taking on bigger terrain.";
-    btnLabel = "View trails";
-    btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/trails");
-  } else if (totalElev < 1000) {
-    title = `${1000 - totalElev}m to the 1000m badge`;
-    desc = `You've climbed ${totalElev}m so far. Find a hillier route to keep gaining altitude.`;
-    btnLabel = "Find a bigger hill";
-    btnColor = ["#FF9030", "#E07820"];
-    onPress = () => router.push("/(tabs)/trails");
-  } else if (count >= 5) {
-    title = "Ready for a summit goal?";
-    desc = `${count} hikes and ${totalElev}m climbed — you have the base to train for a real summit.`;
-    btnLabel = "Set a summit goal";
-    btnColor = ["#4A9FF5", "#3080D0"];
-    onPress = () => router.push("/questionnaire");
-  } else {
-    title = "Try a bigger hill challenge";
-    desc = "You've built solid base fitness. Look for a route with 400m+ elevation gain.";
-    btnLabel = "Browse trails";
-    btnColor = ["#3ECF75", "#2AB860"];
-    onPress = () => router.push("/(tabs)/trails");
-  }
-
+function FallbackImage() {
   return (
-    <View style={ch.card}>
-      <View style={ch.badge}>
-        <Flag size={14} color={T.orange} />
-        <Text style={ch.badgeText}>Suggested next challenge</Text>
-      </View>
-      <Text style={ch.title}>{title}</Text>
-      <Text style={ch.desc}>{desc}</Text>
-      <TouchableOpacity style={ch.btn} onPress={onPress} activeOpacity={0.82}>
-        <LinearGradient colors={btnColor as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ch.btnGrad}>
-          <Text style={ch.btnText}>{btnLabel}</Text>
-          <ChevronRight size={16} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const ch = StyleSheet.create({
-  card: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,144,48,0.2)", padding: 20, gap: 12 },
-  badge: { flexDirection: "row", alignItems: "center", gap: 6 },
-  badgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
-  desc: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 21 },
-  btn: { alignSelf: "flex-start", borderRadius: 12, overflow: "hidden", marginTop: 4 },
-  btnGrad: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
-  btnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-});
-
-// ── Achievement Card ──────────────────────────────────────────────────────────
-
-function AchievementCard({ a, hikes }: { a: ExploreAchievement; hikes: ExploreHike[] }) {
-  const done = a.condition(hikes);
-  const progress = a.progressFn?.(hikes);
-  const pct = progress ? progress.current / progress.target : done ? 1 : 0;
-  const Icon = a.icon;
-
-  return (
-    <View style={[ac.card, done && ac.cardDone]}>
-      <View style={[ac.iconWrap, done && { backgroundColor: T.greenDim }]}>
-        {done ? <Icon size={22} color={T.green} /> : <Lock size={20} color={T.textDim} />}
-      </View>
-      <Text style={[ac.label, done && { color: T.text }]}>{a.label}</Text>
-      <Text style={ac.desc}>{a.desc}</Text>
-      <View style={ac.barTrack}>
-        <View style={[ac.barFill, { width: `${Math.round(pct * 100)}%` as unknown as number, backgroundColor: done ? T.green : T.textDim }]} />
-      </View>
-      {done && (
-        <View style={ac.doneRow}>
-          <CheckCircle size={11} color={T.green} />
-          <Text style={ac.doneText}>Unlocked</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-const ac = StyleSheet.create({
-  card: {
-    width: "48%",
-    backgroundColor: "transparent",
-    borderRadius: 16,
-    padding: 12,
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-  },
-  cardDone: { backgroundColor: "rgba(255,255,255,0.03)", borderColor: "transparent" },
-  iconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.05)", marginBottom: 4 },
-  label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted, textAlign: "center" },
-  desc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 16 },
-  barTrack: { width: "100%", height: 4, backgroundColor: T.surface, borderRadius: 2, overflow: "hidden", marginTop: 6 },
-  barFill: { height: 4, borderRadius: 2 },
-  doneRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  doneText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
-});
-
-// ── Main screen ───────────────────────────────────────────────────────────────
-
-export default function ExploreScreen() {
-  useScreenView("explore");
-  const insets = useSafeAreaInsets();
-  const { exploreHikes } = useApp();
-
-  const totalDistance = useMemo(() => parseFloat(exploreHikes.reduce((s, h) => s + h.distance, 0).toFixed(1)), [exploreHikes]);
-  const totalElev = useMemo(() => exploreHikes.reduce((s, h) => s + h.elevationGain, 0), [exploreHikes]);
-  const recentCount = useMemo(() => {
-    const week = 7 * 24 * 60 * 60 * 1000;
-    return exploreHikes.filter(h => Date.now() - new Date(h.date).getTime() <= week).length;
-  }, [exploreHikes]);
-
-  const stats = [
-    { label: "Hikes Logged", value: String(exploreHikes.length), color: T.green },
-    { label: "Distance", value: `${totalDistance}km`, color: T.blue },
-    { label: "Elevation", value: `${totalElev}m`, color: T.orange },
-    { label: "This Week", value: `${recentCount} hike${recentCount !== 1 ? "s" : ""}`, color: T.purple },
-  ];
-
-  return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={[
-          s.scroll,
-          { paddingTop: Platform.OS === "web" ? 60 : insets.top + 20, paddingBottom: 120 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View entering={FadeInDown.delay(60).duration(600)} style={s.header}>
-          <Text style={s.eyebrow}>Explore mode</Text>
-          <Text style={s.headline}>Start local.{"\n"}Build your mountain fitness.</Text>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(140).duration(600)} style={s.statsGrid}>
-          {stats.map((st, i) => (
-            <TouchableOpacity
-              key={i}
-              style={s.statCard}
-              onPress={() => router.push("/(tabs)/account")}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.statValue, { color: st.color }]}>{st.value}</Text>
-              <Text style={s.statLabel}>{st.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(220).duration(600)}>
-          <SuggestedChallenge hikes={exploreHikes} />
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(300).duration(600)}>
-          <TouchableOpacity style={s.logBtn} onPress={() => router.push("/(tabs)/trails")} activeOpacity={0.85}>
-            <LinearGradient colors={["#3ECF75", "#2AB860"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.logBtnGrad}>
-              <TrendingUp size={20} color="#fff" />
-              <Text style={s.logBtnText}>Log a hike</Text>
-              <ChevronRight size={18} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(380).duration(600)}>
-          <View style={s.sectionRow}>
-            <Award size={16} color={T.textDim} />
-            <Text style={s.sectionHead}>Achievements</Text>
-          </View>
-          <View style={s.achieveGrid}>
-            {ACHIEVEMENTS.map(a => (
-              <AchievementCard key={a.id} a={a} hikes={exploreHikes} />
-            ))}
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(460).duration(600)} style={s.switchCard}>
-          <Mountain size={18} color={T.blue} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={s.switchTitle}>Ready for a summit goal?</Text>
-            <Text style={s.switchDesc}>Switch to goal mode and train for a specific mountain.</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push("/mode-select")} style={s.switchBtn} activeOpacity={0.8}>
-            <Text style={s.switchBtnText}>Switch</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </ScrollView>
+    <LinearGradient
+      colors={[T.basecampSurfaceHover, T.basecampBg]}
+      style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}
+    >
+      <Compass size={40} color={T.basecampTextDim} opacity={0.3} />
     </LinearGradient>
   );
 }
 
+function CompactMountainRow({ trail, index, reducedMotion }: { trail: Trail, index: number, reducedMotion: boolean }) {
+  const [imgError, setImgError] = useState(false);
+  const imageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=300&height=300&routeIdentityKey=${encodeURIComponent(trail.id)}${trail.lat != null ? `&lat=${trail.lat}` : ""}${trail.lng != null ? `&lng=${trail.lng}` : ""}`;
+
+  const routeCharacter = [
+    trail.terrain ? trail.terrain.charAt(0).toUpperCase() + trail.terrain.slice(1) : null,
+    trail.routeType === "out-and-back" ? "Out & back" : trail.routeType === "loop" ? "Loop" : trail.routeType === "point-to-point" ? "Point-to-point" : null
+  ].filter(Boolean).join(" • ");
+
+  const Content = (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => router.push(`/trail-detail?id=${trail.id}`)}
+      style={s.rowCard}
+      accessibilityRole="button"
+      accessibilityLabel={`${trail.name}, ${trail.location}. Difficulty: ${trail.difficulty}.`}
+    >
+      <View style={s.rowImageContainer}>
+        {imgError ? (
+          <FallbackImage />
+        ) : (
+          <Image source={{ uri: imageUrl }} style={s.rowImage} onError={() => setImgError(true)} accessible={false} />
+        )}
+      </View>
+      <View style={s.rowContent}>
+        <Text style={s.rowName} numberOfLines={1}>{trail.name}</Text>
+        <Text style={s.rowLocation} numberOfLines={1}>{trail.location}</Text>
+
+        <View style={s.rowMetrics}>
+          <Text style={[s.rowDiff, { color: DIFF_COLOR[trail.difficulty] || T.basecampTextMuted }]}>
+            {trail.difficulty}
+          </Text>
+          <Text style={s.metricDot}>·</Text>
+          <Text style={s.rowMetricText}>{trail.distance}km</Text>
+          <Text style={s.metricDot}>·</Text>
+          <Text style={s.rowMetricText}>{trail.elevationGain}m</Text>
+        </View>
+
+        {routeCharacter ? (
+          <Text style={s.rowCharacter} numberOfLines={1}>{routeCharacter}</Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (reducedMotion) {
+    return Content;
+  }
+
+  return (
+    <Animated.View entering={FadeInDown.delay(Math.min(index * 30, 300)).duration(400)}>
+      {Content}
+    </Animated.View>
+  );
+}
+
+export default function ExploreScreen() {
+  useScreenView("explore");
+  const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion() ?? false;
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [featuredImgError, setFeaturedImgError] = useState(false);
+
+  const featuredTrail = useMemo(() => CURATED_HILLS.find(h => h.id === "h004") || CURATED_HILLS[0], []);
+
+  const filteredHills = useMemo(() => {
+    let list = CURATED_HILLS;
+
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(h =>
+        h.name.toLowerCase().includes(q) ||
+        h.location.toLowerCase().includes(q) ||
+        (h.region && h.region.toLowerCase().includes(q))
+      );
+    }
+
+    if (activeFilter !== "All") {
+       if (activeFilter === "Mountains") list = list.filter(h => h.terrain === "mountain");
+       if (activeFilter === "Hills") list = list.filter(h => h.terrain === "hill");
+       if (activeFilter === "Hard") list = list.filter(h => h.difficulty === "Hard");
+    }
+
+    if (searchQuery.trim().length === 0 && activeFilter === "All") {
+      list = list.filter(h => h.id !== featuredTrail.id);
+    }
+
+    return list;
+  }, [searchQuery, activeFilter, featuredTrail]);
+
+  const isSearchActive = searchQuery.trim().length > 0 || activeFilter !== "All";
+  const featuredMountainName = featuredTrail.name.split(/\s+via\s+/i)[0].trim();
+  const featuredImageUrl = `${API_BASE}/mountain-image?name=${encodeURIComponent(featuredMountainName)}&width=1000&height=800`;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.basecampBg }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={[s.leadContainer, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16 }]}>
+          {!isSearchActive && (
+            <View style={StyleSheet.absoluteFill}>
+              {featuredImgError ? (
+                <FallbackImage />
+              ) : (
+                <Image
+                  source={{ uri: featuredImageUrl }}
+                  style={StyleSheet.absoluteFill}
+                  onError={() => setFeaturedImgError(true)}
+                  accessible={false}
+                />
+              )}
+              <LinearGradient
+                colors={["rgba(11,13,17,0.7)", "rgba(11,13,17,0.4)", T.basecampBg]}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          )}
+
+          <View style={s.leadContent}>
+            <Text style={s.headerTitle}>Find your mountain</Text>
+
+            <View style={s.searchContainer}>
+              <Search size={18} color={T.basecampTextMuted} />
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search routes or regions..."
+                placeholderTextColor={T.basecampTextDim}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+                accessibilityLabel="Search routes or regions"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery("")}
+                  style={s.clearBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
+                  <X size={16} color={T.basecampTextMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
+              {FILTERS.map(f => {
+                const isActive = activeFilter === f;
+                return (
+                  <TouchableOpacity
+                    key={f}
+                    style={[s.filterChip, isActive && s.filterChipActive]}
+                    onPress={() => setActiveFilter(f)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Filter by ${f}`}
+                  >
+                    <Text style={[s.filterText, isActive && s.filterTextActive]}>{f}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {!isSearchActive && (
+              <TouchableOpacity
+                style={s.featuredRouteContent}
+                activeOpacity={0.8}
+                onPress={() => router.push(`/trail-detail?id=${featuredTrail.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Featured route: ${featuredTrail.name}`}
+              >
+                <Text style={s.featuredEyebrow}>FEATURED DISCOVERY</Text>
+                <Text style={s.featuredName}>{featuredTrail.name}</Text>
+                <View style={s.featuredMetrics}>
+                  <Text style={s.featuredMetricText}>{featuredTrail.region || featuredTrail.location}</Text>
+                  <Text style={s.metricDot}>·</Text>
+                  <Text style={s.featuredMetricText}>{featuredTrail.elevationGain}m</Text>
+                  <Text style={s.metricDot}>·</Text>
+                  <Text style={[s.featuredMetricText, { color: DIFF_COLOR[featuredTrail.difficulty] || T.basecampText }]}>{featuredTrail.difficulty}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={s.listContainer}>
+          <Text style={s.sectionTitle}>
+            {isSearchActive ? `${filteredHills.length} Results` : "More Routes"}
+          </Text>
+
+          {filteredHills.length === 0 ? (
+            <View style={s.emptyState}>
+              <MapPin size={32} color={T.basecampTextDim} />
+              <Text style={s.emptyStateText}>No routes found.</Text>
+            </View>
+          ) : (
+            <View style={s.resultsGrid}>
+              {filteredHills.map((hill, i) => (
+                <CompactMountainRow key={hill.id} trail={hill} index={i} reducedMotion={reducedMotion} />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
-  scroll: { paddingHorizontal: 18, gap: 24 },
-  header: { gap: 6 },
-  eyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.green },
-  headline: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text, lineHeight: 32 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  statCard: {
-    flex: 1, minWidth: "44%",
-    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 18, paddingHorizontal: 16, gap: 6,
+  leadContainer: {
+    position: 'relative',
   },
-  statValue: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
-  logBtn: {
-    borderRadius: 18, overflow: "hidden",
-    shadowColor: T.green, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+  leadContent: {
+    paddingHorizontal: 18,
+    paddingBottom: 24,
   },
-  logBtnGrad: { height: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-  logBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
-  sectionRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  sectionHead: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textDim },
-  achieveGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" },
-  switchCard: {
-    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 18, flexDirection: "row", alignItems: "center", gap: 14,
+  headerTitle: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    color: T.basecampText,
+    marginBottom: 16,
   },
-  switchTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.text, marginBottom: 2 },
-  switchDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  switchBtn: { backgroundColor: T.blueDim, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  switchBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.blue },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: T.basecampSurface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    marginLeft: 10,
+    color: T.basecampText,
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
+  },
+  clearBtn: { padding: 4 },
+  filterScroll: { gap: 8, paddingBottom: 4 },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: T.basecampSurface,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: T.basecampText,
+    borderColor: T.basecampText,
+  },
+  filterText: {
+    color: T.basecampTextMuted,
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+  },
+  filterTextActive: {
+    color: T.basecampBg,
+    fontFamily: "Inter_600SemiBold",
+  },
+  featuredRouteContent: {
+    marginTop: 48,
+    marginBottom: 10,
+  },
+  featuredEyebrow: {
+    color: T.green,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  featuredName: {
+    color: T.basecampText,
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 8,
+  },
+  featuredMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  featuredMetricText: {
+    color: T.basecampText,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  metricDot: {
+    fontSize: 14,
+    color: T.basecampTextDim,
+  },
+  listContainer: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    gap: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: T.basecampText,
+    marginBottom: 4,
+  },
+  resultsGrid: {
+    gap: 12,
+  },
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: T.basecampSurface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
+    padding: 10,
+    gap: 14,
+  },
+  rowImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: T.basecampSurfaceHover,
+  },
+  rowImage: {
+    width: '100%',
+    height: '100%',
+  },
+  rowContent: {
+    flex: 1,
+    gap: 2,
+    justifyContent: 'center',
+  },
+  rowName: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: T.basecampText,
+  },
+  rowLocation: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted,
+  },
+  rowMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  rowDiff: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  rowMetricText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: T.basecampTextMuted,
+  },
+  rowCharacter: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: T.basecampTextDim,
+    marginTop: 2,
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: T.basecampSurface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: T.basecampBorder,
+    gap: 12,
+    marginTop: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: T.basecampTextMuted,
+  },
 });

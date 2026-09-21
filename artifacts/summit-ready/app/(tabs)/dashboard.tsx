@@ -8,7 +8,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   ImageBackground,
   Keyboard,
   Modal,
@@ -277,7 +276,6 @@ function HeroContent({
           <Text style={heroStyles.editorialStats}>
             {dateStr ? `${dateStr.toUpperCase()} · ` : ""}{elevationGain.toLocaleString()}M GAIN · {distance}KM · {highestAltitude.toLocaleString()}M MAX ALT
           </Text>
-          <Text style={heroStyles.higherVersions}>HIGHER VERSIONS OF YOU</Text>
         </View>
       </View>
     </View>
@@ -332,13 +330,6 @@ const heroStyles = StyleSheet.create({
   mountainName: {
     fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff",
     letterSpacing: -0.5, lineHeight: 44,
-  },
-  higherVersions: {
-    fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.3)",
-    letterSpacing: 2,
-    marginTop: 14,
   },
 });
 
@@ -397,6 +388,7 @@ function AlpineCard({
   loading: boolean;
 }) {
   const reducedMotion = useReducedMotion();
+  const [expanded, setExpanded] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weeksElapsed = trainingPlan.filter(w => new Date(w.endDate) < today).length;
@@ -460,32 +452,7 @@ function AlpineCard({
           </View>
         </View>
 
-        <View style={styles.alpineDivider} />
-
-        {/* Requirements checklist */}
-        {requirements.map((req) => {
-          const met = isRequirementMet(req, sessions, weeksElapsed);
-          const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
-          const AlpineIcon = ALPINE_CATEGORY_ICON[req.category] ?? CheckCircle;
-          return (
-            <View key={req.id} style={styles.alpineReqRow}>
-              <View style={[styles.alpineReqIconWrap, { backgroundColor: color + "18" }]}>
-                <AlpineIcon size={12} color={color} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.alpineReqLabel}>{req.label}</Text>
-                <Text style={styles.alpineReqDetail}>{req.detail}</Text>
-              </View>
-              <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : "rgba(255,255,255,0.05)" }]}>
-                {met ? <Check size={12} color={T.green} /> : <Minus size={12} color={T.textMuted} />}
-              </View>
-            </View>
-          );
-        })}
-
-        <View style={styles.alpineDivider} />
-
-        {/* Key risks */}
+        {/* Essential context remains visible while detailed requirements stay one tap away. */}
         <View style={styles.alpineRisksRow}>
           <Text style={styles.alpineRisksLabel}>Key risks</Text>
           <View style={styles.alpineRisksChips}>
@@ -498,11 +465,53 @@ function AlpineCard({
           </View>
         </View>
 
-        {/* Acclimatization note */}
-        <View style={styles.alpineAcclimRow}>
-          <Info size={12} color={T.blue} />
-          <Text style={styles.alpineAcclimText}>{profile.acclimatizationNote}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.alpineExpandButton}
+          onPress={() => setExpanded(value => !value)}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={expanded ? "Hide alpine requirement details" : "View alpine requirement details"}
+        >
+          <Text style={styles.alpineExpandText}>
+            {expanded ? "Hide requirements" : `View ${requirements.length} requirements`}
+          </Text>
+          <ChevronRight
+            size={14}
+            color={T.blue}
+            style={{ transform: [{ rotate: expanded ? "90deg" : "0deg" }] }}
+          />
+        </TouchableOpacity>
+
+        {expanded && (
+          <View style={styles.alpineExpandedContent}>
+            <View style={styles.alpineDivider} />
+            {requirements.map((req) => {
+              const met = isRequirementMet(req, sessions, weeksElapsed);
+              const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
+              const AlpineIcon = ALPINE_CATEGORY_ICON[req.category] ?? CheckCircle;
+              return (
+                <View key={req.id} style={styles.alpineReqRow}>
+                  <View style={[styles.alpineReqIconWrap, { backgroundColor: color + "18" }]}>
+                    <AlpineIcon size={12} color={color} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.alpineReqLabel}>{req.label}</Text>
+                    <Text style={styles.alpineReqDetail}>{req.detail}</Text>
+                  </View>
+                  <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : "rgba(255,255,255,0.05)" }]}>
+                    {met ? <Check size={12} color={T.green} /> : <Minus size={12} color={T.textMuted} />}
+                  </View>
+                </View>
+              );
+            })}
+            <View style={styles.alpineDivider} />
+            <View style={styles.alpineAcclimRow}>
+              <Info size={12} color={T.blue} />
+              <Text style={styles.alpineAcclimText}>{profile.acclimatizationNote}</Text>
+            </View>
+          </View>
+        )}
       </View>
     </Animated.View>
   );
@@ -937,21 +946,17 @@ export default function DashboardScreen() {
                   })}
                 >
                   <View style={styles.upNextBlock}>
-                    <Image
-                      source={
-                        nextSession.gymExercise
-                          ? ({
-                              treadmill: require("@/assets/images/exercise-treadmill.png"),
-                              stepper: require("@/assets/images/exercise-stepper.png"),
-                              outdoor: require("@/assets/images/exercise-outdoor.png"),
-                              "box-steps": require("@/assets/images/exercise-box-steps.png"),
-                              "weighted-stairs": require("@/assets/images/exercise-weighted-stairs.png"),
-                              elliptical: require("@/assets/images/exercise-elliptical.png"),
-                            } as const)[nextSession.gymExercise]
-                          : require("@/assets/images/exercise-outdoor.png")
-                      }
-                      style={styles.upNextImage}
-                    />
+                    <View style={styles.upNextVisual} accessible={false}>
+                      <LinearGradient
+                        colors={["rgba(52,211,153,0.24)", "rgba(20,30,45,0.35)"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <View style={styles.upNextContourBack} />
+                      <View style={styles.upNextContourFront} />
+                      <Footprints size={25} color={T.green} strokeWidth={1.6} />
+                    </View>
                     <View style={styles.upNextBody}>
                       <Text style={styles.upNextLabel}>UP NEXT</Text>
                       <Text style={styles.upNextTitle}>{nextSession.label}</Text>
@@ -995,15 +1000,13 @@ export default function DashboardScreen() {
               <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}>
                 <View style={[
                   styles.insightCard,
-                  timeAssessment.status === "tight"
-                    ? { backgroundColor: "rgba(217, 119, 6, 0.08)", borderColor: "rgba(217, 119, 6, 0.15)" }
-                    : { backgroundColor: "rgba(255,68,68,0.10)", borderColor: T.red + "40" },
+                  { backgroundColor: "rgba(120,78,28,0.16)", borderColor: "rgba(217,145,52,0.28)" },
                 ]}>
                   <View style={styles.insightIconWrap}>
-                    {timeAssessment.status === "tight" ? <Lightbulb size={16} color="#D97706" /> : <AlertTriangle size={16} color={T.red} />}
+                    <Lightbulb size={16} color="#E3A64A" />
                   </View>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.insightEyebrow, { color: timeAssessment.status === "tight" ? "#F59E0B" : T.red }]}>
+                    <Text style={[styles.insightEyebrow, { color: "#E3A64A" }]}>
                       TRAINING INSIGHT
                     </Text>
                     <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
@@ -1321,6 +1324,23 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     flex: 1,
   },
+  alpineExpandButton: {
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    paddingTop: 10,
+  },
+  alpineExpandText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: T.blue,
+  },
+  alpineExpandedContent: {
+    gap: 12,
+  },
   alpineLoadingText: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
@@ -1415,10 +1435,37 @@ const styles = StyleSheet.create({
     padding: 11,
     gap: 12,
   },
-  upNextImage: {
+  upNextVisual: {
     width: 76,
     height: 64,
     borderRadius: 8,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(52,211,153,0.16)",
+  },
+  upNextContourBack: {
+    position: "absolute",
+    left: -8,
+    right: -8,
+    bottom: 13,
+    height: 18,
+    borderTopWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    borderRadius: 50,
+    transform: [{ rotate: "-8deg" }],
+  },
+  upNextContourFront: {
+    position: "absolute",
+    left: -4,
+    right: -12,
+    bottom: 4,
+    height: 24,
+    borderTopWidth: 1,
+    borderColor: "rgba(52,211,153,0.22)",
+    borderRadius: 50,
+    transform: [{ rotate: "7deg" }],
   },
   upNextBody: {
     flex: 1,

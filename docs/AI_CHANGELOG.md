@@ -2,6 +2,18 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-21 UTC — BP-C01–BP-C10 Basecamp cleanup and Explore Premium V1
+
+**Task:** Apply only the four authorized Basecamp cleanups, then refine Explore using the accepted Basecamp V3 language.
+
+**Implementation:** Removed the exact Basecamp slogan, replaced the baked-text Easy Run art with a native visual, restyled Training Insight in amber/earth, and collapsed Alpine Requirements without deleting detail. Explore now uses a photographic Helvellyn lead, integrated search, four filters, compact editorial rows, truthful route character, accessible interactions and an atmospheric fallback. No Mountain DNA was fabricated.
+
+**Artwork/evidence:** Uses the existing resolver only. Real 390×844 managed-browser captures covered first viewport, results, detail, search, filter, fallback and both Basecamp cleanup states. Screenshot IDs are in the report; the managed browser could not export PNG bytes to the workspace.
+
+**Verification:** SummitReady TypeScript, bounded tests, relevant Expo exports, diff hygiene and real-browser interactions were run. Scope is limited to Basecamp cleanup, Explore and handoff documentation.
+
+**Safety:** No production schema/data migration, artwork generation/publication, deploy/release, Stage 9, or protected Progress Mountain change occurred.
+
 ## 2026-09-21 UTC — Premium Training Basecamp V3
 
 **Implementation:** Training Basecamp now follows the locked cinematic
