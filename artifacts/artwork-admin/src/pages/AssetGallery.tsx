@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { ImageIcon, Layers, FileImage } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Batch01ReviewGallery } from "@/components/Batch01ReviewGallery";
+import { Batch01ReviewGallery, Batch02ReviewGallery } from "@/components/Batch01ReviewGallery";
 
 // Direct Vite imports from the inventoried product source roots.
 import boxStepUpsImg from "@summit-assets/images/exercise-box-steps.png";
@@ -197,11 +197,12 @@ export default function AssetGallery() {
           <h2 className="text-3xl font-semibold tracking-tight">Existing-Asset Gallery</h2>
           <p className="text-muted-foreground max-w-3xl">
             Internal review surface for inspecting hardcoded SummitReady source assets.
-            This view is bounded to development only; Batch 01 curation persists in its isolated review manifest.
+            This view is bounded to development only; Batch 01 and Batch 02 curation persist in isolated review manifests.
           </p>
         </div>
 
         <div className="flex flex-col gap-12">
+          <Batch02ReviewGallery />
           <Batch01ReviewGallery />
           {ASSET_FAMILIES.map((family) => (
             <section key={family.id} className="flex flex-col gap-4" data-testid={`section-family-${family.id}`}>

@@ -46,6 +46,13 @@ import {
   rejectBatch01Version,
 } from "../services/artwork/reviewBatchService.js";
 import { BATCH_01_ID, isObjectiveFailureReason } from "../services/artwork/batch01.js";
+import { BATCH_02_ID } from "../services/artwork/batch02.js";
+import {
+  approveBatch02Version,
+  generateBatch02Candidate,
+  getBatch02Manifest,
+  rejectBatch02Version,
+} from "../services/artwork/reviewBatch02Service.js";
 import {
   APPROVED_ARTWORK_PLACEMENTS,
   resolveApprovedBatch01Artwork,
@@ -109,10 +116,10 @@ artworkRouter.get("/approved/:assetId/:placement", requireDevelopment, async (re
 });
 
 artworkRouter.get("/batches/:batchId", requireDevelopment, async (req, res) => {
-  if (param(req.params.batchId) !== BATCH_01_ID) {
-    return res.status(404).json({ error: "Review batch not found" });
-  }
-  return res.json(await getBatch01Manifest());
+  const batchId = param(req.params.batchId);
+  if (batchId === BATCH_01_ID) return res.json(await getBatch01Manifest());
+  if (batchId === BATCH_02_ID) return res.json(await getBatch02Manifest());
+  return res.status(404).json({ error: "Review batch not found" });
 });
 
 artworkRouter.get("/batches/:batchId/:assetId/v:version/:crop", requireDevelopment, async (req, res) => {
@@ -120,7 +127,7 @@ artworkRouter.get("/batches/:batchId/:assetId/v:version/:crop", requireDevelopme
   const assetId = param(req.params.assetId);
   const crop = param(req.params.crop) as CropType;
   const version = Number(param(req.params.version));
-  if (batchId !== BATCH_01_ID || !VALID_CROPS.includes(crop) || !Number.isInteger(version) || version < 1) {
+  if (![BATCH_01_ID, BATCH_02_ID].includes(batchId) || !VALID_CROPS.includes(crop) || !Number.isInteger(version) || version < 1) {
     return res.status(400).json({ error: "Invalid review candidate request" });
   }
   await streamReviewCandidate(batchId, assetId, version, crop, res);
@@ -128,11 +135,18 @@ artworkRouter.get("/batches/:batchId/:assetId/v:version/:crop", requireDevelopme
 });
 
 artworkRouter.post("/batches/:batchId/generate", requireDevelopment, requireAdminKey, async (req, res) => {
-  if (param(req.params.batchId) !== BATCH_01_ID) {
-    return res.status(404).json({ error: "Review batch not found" });
-  }
+  const batchId = param(req.params.batchId);
   try {
-    if (typeof req.body?.assetId === "string") {
+    if (batchId === BATCH_02_ID) {
+      if (typeof req.body?.assetId !== "string" || req.body?.confirmed !== true) {
+        return res.status(400).json({ error: "Batch 02 initial generation requires one asset and explicit confirmation" });
+      }
+      if (req.body?.objectiveFailureReason !== undefined) {
+        return res.status(400).json({ error: "Batch 02 regeneration is not authorized" });
+      }
+      return res.json(await generateBatch02Candidate(req.body.assetId));
+    }
+    if (batchId === BATCH_01_ID && typeof req.body?.assetId === "string") {
       const reason = req.body?.objectiveFailureReason;
       if (!isObjectiveFailureReason(reason)) {
         return res.status(400).json({ error: "Invalid objectiveFailureReason" });
@@ -142,9 +156,12 @@ artworkRouter.post("/batches/:batchId/generate", requireDevelopment, requireAdmi
       }
       return res.json(await generateBatch01Candidate(req.body.assetId, reason));
     }
+    if (![BATCH_01_ID, BATCH_02_ID].includes(batchId)) {
+      return res.status(404).json({ error: "Review batch not found" });
+    }
     return res.status(400).json({ error: "Whole-batch generation is disabled; choose one asset" });
   } catch (err) {
-    console.error("[artwork/batch-01/generate]", err);
+    console.error(`[artwork/${batchId}/generate]`, err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Batch generation failed" });
   }
 });
@@ -154,7 +171,8 @@ artworkRouter.post(
   requireDevelopment,
   requireAdminKey,
   async (req, res) => {
-    if (param(req.params.batchId) !== BATCH_01_ID) {
+    const batchId = param(req.params.batchId);
+    if (![BATCH_01_ID, BATCH_02_ID].includes(batchId)) {
       return res.status(404).json({ error: "Review batch not found" });
     }
     const version = Number(param(req.params.version));
@@ -162,7 +180,10 @@ artworkRouter.post(
       return res.status(400).json({ error: "Invalid version" });
     }
     try {
-      return res.json(await approveBatch01Version(param(req.params.assetId), version));
+      const assetId = param(req.params.assetId);
+      return res.json(batchId === BATCH_01_ID
+        ? await approveBatch01Version(assetId, version)
+        : await approveBatch02Version(assetId, version));
     } catch (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Approval failed" });
     }
@@ -174,7 +195,8 @@ artworkRouter.post(
   requireDevelopment,
   requireAdminKey,
   async (req, res) => {
-    if (param(req.params.batchId) !== BATCH_01_ID) {
+    const batchId = param(req.params.batchId);
+    if (![BATCH_01_ID, BATCH_02_ID].includes(batchId)) {
       return res.status(404).json({ error: "Review batch not found" });
     }
     const version = Number(param(req.params.version));
@@ -182,11 +204,10 @@ artworkRouter.post(
       return res.status(400).json({ error: "Version and rejection reason are required" });
     }
     try {
-      return res.json(await rejectBatch01Version(
-        param(req.params.assetId),
-        version,
-        req.body.reason,
-      ));
+      const assetId = param(req.params.assetId);
+      return res.json(batchId === BATCH_01_ID
+        ? await rejectBatch01Version(assetId, version, req.body.reason)
+        : await rejectBatch02Version(assetId, version, req.body.reason));
     } catch (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Rejection failed" });
     }

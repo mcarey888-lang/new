@@ -2,6 +2,32 @@
 
 Append-only coordination log. Do not include secrets, credentials, private user information, raw production data, or production connection strings.
 
+## 2026-09-21 UTC — ART2-C01–ART2-C08 artwork Batch 02
+
+**Task:** Generate exactly the 12 runbook-authorized Mock-up Support Pack masters
+through the existing controlled artwork pipeline, expose successful candidates
+for review only, verify, document, commit and stop.
+
+**Implementation:** Added the fixed Batch 02 manifest and placement-aware prompts,
+an isolated persistent review service over the existing image provider, cropper,
+Object Storage, lock, attempt ledger and immutable versions, and Batch 02 API
+routing. Its contract allows one initial attempt per ID and forbids regeneration.
+Artwork Admin now presents Batch 02 before Batch 01 with prompt/version metadata,
+exact-version approve/reject, no regenerate control and no publish action.
+
+**Generation:** Exactly 12 provider attempts produced 12 version-1 1536×1024
+masters and 48 stored derivatives. Recorded cost is $0.48. Final state is
+12 REVIEW REQUIRED, 0 approved and 0 published.
+
+**Verification:** Focused artwork **5 files / 24 tests**, API and Artwork Admin
+production bundles, manifest/ledger invariants, 48/48 derivative requests,
+workflow logs and rendered Artwork Admin review passed. The complete record is
+`docs/ARTWORK_BATCH_02_REPORT.md`.
+
+**Safety:** No additional candidate, regeneration, approval, publication,
+runtime resolver, app-screen integration, Explore V3, SDE/schema, protected
+Progress Mountain/cinematic, production deployment or release change occurred.
+
 ## 2026-09-21 UTC — EX2-C01–EX2-C10 Explore Premium V2
 
 **Task:** Match the functioning Explore tab to the supplied locked visual

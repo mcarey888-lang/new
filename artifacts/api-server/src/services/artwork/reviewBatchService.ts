@@ -60,7 +60,7 @@ export interface ReviewCandidate {
 }
 
 export interface ReviewBatchManifest {
-  batchId: typeof BATCH_01_ID;
+  batchId: string;
   status: "REVIEW REQUIRED";
   approved: false;
   published: false;
@@ -162,7 +162,7 @@ export function updateVersionStatus(
   const target = versions.find(
     (candidate) => candidate.assetId === assetId && candidate.version === version,
   );
-  if (!target) throw new Error(`Unknown Batch 01 version: ${assetId} v${version}`);
+  if (!target) throw new Error(`Unknown review version: ${assetId} v${version}`);
   if (status === "REJECTED" && !rejectionReason?.trim()) {
     throw new Error("Rejecting a candidate requires a reason");
   }

@@ -11,6 +11,23 @@ SummitReady is an Expo mobile app with a TypeScript API server and managed Postg
 
 ## Current task
 
+### ART2-C01–ART2-C08 Mock-up Support Artwork Batch 02
+
+- Complete. The authoritative report is `docs/ARTWORK_BATCH_02_REPORT.md`.
+- Exactly 12 authorized 1536×1024 masters were generated through the existing
+  Artwork Admin pipeline, one initial attempt each, with no retries or additional
+  candidates.
+- All 12 version-1 candidates and four derivatives per candidate are persisted
+  under isolated `batch-02` review storage. Recorded cost is $0.48.
+- State remains **12 REVIEW REQUIRED, 0 approved, 0 published**.
+- Review is development-only at Artwork Admin `/assets`, in the
+  **Mock-up Support Pack — Batch 02** section. Batch 02 has no regenerate control.
+- Verification passed: focused artwork **5 files / 24 tests**, API and Artwork
+  Admin builds, 48/48 derivative requests, manifest invariants and rendered
+  gallery inspection.
+- No Explore V3, app-screen integration, resolver/publication, SDE/schema,
+  protected Progress Mountain/cinematic or release work was started.
+
 ### EX2-C01–EX2-C10 Explore Premium V2
 
 - The locked mock-up match is complete. The authoritative report is
