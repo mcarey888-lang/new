@@ -2,10 +2,10 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/summit-landing-redesign/Redesign.tsx": () => import("../components/mockups/summit-landing-redesign/Redesign.tsx"),
-  "./components/mockups/summitready-explore/ApprovedReference.tsx": () => import("../components/mockups/summitready-explore/ApprovedReference.tsx"),
   "./components/mockups/summit-ui/AlpineLight.tsx": () => import("../components/mockups/summit-ui/AlpineLight.tsx"),
   "./components/mockups/summit-ui/NightTrail.tsx": () => import("../components/mockups/summit-ui/NightTrail.tsx"),
   "./components/mockups/summit-ui/PaywallMockup.tsx": () => import("../components/mockups/summit-ui/PaywallMockup.tsx"),
   "./components/mockups/summit-ui/SavedHikes.tsx": () => import("../components/mockups/summit-ui/SavedHikes.tsx"),
-  "./components/mockups/summit-ui/SummitRefined.tsx": () => import("../components/mockups/summit-ui/SummitRefined.tsx")
+  "./components/mockups/summit-ui/SummitRefined.tsx": () => import("../components/mockups/summit-ui/SummitRefined.tsx"),
+  "./components/mockups/summitready-explore/ApprovedReference.tsx": () => import("../components/mockups/summitready-explore/ApprovedReference.tsx")
 };
