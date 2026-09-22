@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SummitReady — Training Plan</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════════════════
+  SUMMITREADY · TRAINING PLAN — high-fidelity visual prototype
+  Continuation of summitready-training-basecamp-mockup.html: same tokens,
+  surfaces, type scale, icon set, imagery treatment and bottom navigation.
+  The schedule is generated from structured plan data, not hand-laid days.
+  Prototype only — no production logic, scoring, plan engine or data.
+  ════════════════════════════════════════════════════════════════════════════
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { ink: '#05090B', accent: '#24EFA4' },
+      fontFamily: { sans: ['Inter','system-ui','-apple-system','sans-serif'], script: ['Caveat','cursive'] },
+    } }
+  }
+</script>
+<style>
+  /* ── tokens and surfaces carried over from Training Basecamp ── */
+  body { background:#000; }
+  .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { display:none; }
+  .ph { background-color:#12202a; background-image:
+        linear-gradient(165deg, rgba(36,239,164,.10), rgba(0,0,0,0) 48%),
+        linear-gradient(to top, #070c0e 0%, #12202a 42%, #24405a 72%, #56738c 100%); }
+  .ph > img { opacity:0; transition:opacity .5s ease; }
+  .ph > img.ok { opacity:1; }
+  .glass     { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+  .navglass  { background:rgba(5,9,11,.92); backdrop-filter:blur(22px) saturate(140%); }
+  .panel     { background:linear-gradient(158deg, rgba(20,36,32,.92) 0%, rgba(10,17,19,.94) 62%, rgba(8,13,15,.96) 100%);
+               border:1px solid rgba(255,255,255,.075); }
+  .panel-sub { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); }
+  .pressable { transition:transform .12s ease, filter .12s ease; }
+  .pressable:active { transform:scale(.975); filter:brightness(1.12); }
+  /* selected day / current session share one accent treatment */
+  .is-selected { border-color:rgba(36,239,164,.75) !important;
+                 box-shadow:0 0 18px -8px rgba(36,239,164,.85), inset 0 0 22px -14px rgba(36,239,164,.9); }
+  #toast, #sheet, #scrim { transition:opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); }
+</style>
+</head>
+<body class="font-sans text-white antialiased min-h-screen flex items-center justify-center overflow-auto">
+
+<div class="relative w-[430px] h-[932px] bg-ink overflow-hidden sm:rounded-[46px]
+            sm:shadow-[0_40px_120px_-24px_rgba(0,0,0,.9),0_0_0_10px_#0b0e10,0_0_0_11px_#232829]">
+
+  <div id="scroll" class="absolute inset-0 overflow-y-auto no-sb">
+    <main id="screen"></main>
+    <div class="h-[104px]"></div>
+  </div>
+
+  <!-- BottomNavigation (locked tab set, reused from Training Basecamp) -->
+  <div class="absolute inset-x-0 bottom-0 h-[97px] navglass border-t border-white/[.07]">
+    <div id="tabs" class="flex items-start justify-around pt-[11px]"></div>
+    <div class="absolute left-1/2 -translate-x-1/2 bottom-[12px] h-[5px] w-[132px] rounded-full bg-white/90"></div>
+  </div>
+
+  <!-- RescheduleSheet -->
+  <div id="scrim" style="opacity:0;pointer-events:none" class="absolute inset-0 z-40 bg-black/65 backdrop-blur-[2px]"></div>
+  <div id="sheet" style="transform:translateY(105%)"
+       class="absolute inset-x-0 bottom-0 z-50 rounded-t-[22px] border-t border-white/10
+              bg-[#0B1113] px-[17px] pt-[14px] pb-[26px]"></div>
+
+  <div id="toast" style="opacity:0;transform:translate(-50%,8px)"
+       class="pointer-events-none absolute left-1/2 bottom-[112px] z-[60]
+              px-[15px] py-[9px] rounded-full glass text-[11.5px] font-semibold whitespace-nowrap"></div>
+</div>
+
+<script>
+/* ═══════════════════ PLAN DATA (structured, not hand-laid) ═══════════════════
+   The schedule is generated from a plan definition plus a weekly pattern, so
+   every week renders from data and week navigation is real.                   */
+
+const PLAN = {
+  mountain:   { name: 'Mont Blanc', elevation: '4,808 m', place: 'Alps, France' },
+  targetDate: '2027-07-12',
+  readiness:  52,
+  startDate:  '2026-09-07',   /* Monday of week 1 → week 3 is 21–27 Sep 2026 */
+  totalWeeks: 12,
+};
+
+/* A session type is a template; per-week numbers come from progression().   */
+const SESSION_TYPES = {
+  rest: {
+    short: 'Rest', title: 'Rest Day', icon: 'bed', training: false,
+    facts: () => ['Recovery', 'No session'],
+    benefits: ['Repair and adapt', 'Protect readiness'],
+    description: 'Rest is prescribed work. Adaptation happens between sessions, not during them — keep the day easy and let the load settle.',
+    img: null,
+  },
+  hill: {
+    short: 'Hill', title: 'Hill Session', icon: 'walk', training: true,
+    facts: w => [`${600 + (w - 1) * 50} m gain`, '2–3 hours'],
+    benefits: ['Build endurance', 'Increase elevation', 'Boost readiness'],
+    description: 'Sustained uphill walking at a conversational pace. Pick the longest continuous climb you can reach and keep the effort steady.',
+    img: 'mockup-assets/tb-mission.jpg',
+  },
+  stairmaster: {
+    short: 'Stairmaster', title: 'Stairmaster Session', icon: 'stairs', training: true,
+    facts: () => ['60 minutes', 'Indoor'],
+    benefits: ['Build endurance', 'Improve cardiovascular fitness', 'Boost readiness'],
+    description: 'Steady state stairmaster session to build aerobic endurance and leg strength. Maintain a moderate to challenging pace throughout.',
+    img: 'mockup-assets/tb-session-stairs.jpg',
+  },
+  strength: {
+    short: 'Strength', title: 'Strength Session', icon: 'dumbbell', training: true,
+    facts: () => ['45 minutes', 'Lower body'],
+    benefits: ['Build leg strength', 'Protect knees on descent'],
+    description: 'Lower body strength work — step-ups, split squats and calf raises. Load the descent muscles that fail first on a long day out.',
+    img: 'mockup-assets/tp-strength.jpg',
+  },
+  longhike: {
+    short: 'Long Hike', title: 'Long Hike', icon: 'peak', training: true,
+    facts: w => [`${(900 + (w - 1) * 50).toLocaleString('en-GB')} m gain`, '4–6 hours'],
+    benefits: ['Build endurance', 'Increase elevation', 'Boost readiness'],
+    description: 'Your weekly mountain day. Time on feet with a loaded pack — this is the session that moves readiness the most.',
+    img: 'mockup-assets/tb-session-hike.jpg',
+  },
+};
+
+/* Mon → Sun */
+const WEEK_PATTERN = ['rest', 'hill', 'stairmaster', 'strength', 'rest', 'longhike', 'rest'];
+
+/* Prototype history: one deliberately missed session so the plan reads real. */
+const MISSED = new Set(['2026-09-16']);
+/* Reschedules made in-session: ISO date → session type id (rest clears a day) */
+const OVERRIDES = {};
+
+/* ═════════════════════════════ DATE HELPERS ═════════════════════════════ */
+const DAY = 86400000;
+const iso = d => d.toISOString().slice(0, 10);
+const parse = s => new Date(s + 'T00:00:00');
+const addDays = (s, n) => iso(new Date(parse(s).getTime() + n * DAY));
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return iso(d); };
+const daysUntil = s => Math.max(0, Math.round((parse(s) - parse(today())) / DAY));
+const fmtDay   = s => parse(s).toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+const fmtDate  = s => parse(s).getDate();
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const mon = s => MONTHS[parse(s).getMonth()];
+const fmtLong  = s => `${parse(s).getDate()} ${mon(s)} ${parse(s).getFullYear()}`;
+const fmtShort = s => `${parse(s).getDate()} ${mon(s)}`;
+const fmtRange = (a, b) => {
+  const A = parse(a), B = parse(b);
+  const m = d => MONTHS[d.getMonth()];
+  return m(A) === m(B) ? `${A.getDate()} – ${B.getDate()} ${m(B)} ${B.getFullYear()}`
+                       : `${A.getDate()} ${m(A)} – ${B.getDate()} ${m(B)} ${B.getFullYear()}`;
+};
+
+/* ═══════════════════════ SCHEDULE GENERATION ═══════════════════════ */
+function weekStart(weekNo) { return addDays(PLAN.startDate, (weekNo - 1) * 7); }
+
+function buildSession(date, weekNo) {
+  const typeId = OVERRIDES[date] ?? WEEK_PATTERN[(parse(date).getDay() + 6) % 7];
+  const t = SESSION_TYPES[typeId];
+  const completed = t.training && date <= today() && !MISSED.has(date);
+  const missed    = t.training && date < today() && MISSED.has(date);
+  return {
+    date, typeId, weekNo,
+    short: t.short, title: t.title, icon: t.icon, training: t.training,
+    facts: t.facts(weekNo), benefits: t.benefits, description: t.description, img: t.img,
+    completed, missed,
+    isToday: date === today(),
+    status: completed ? 'completed' : missed ? 'missed' : date === today() ? 'today' : 'upcoming',
+  };
+}
+function buildWeek(weekNo) {
+  const start = weekStart(weekNo);
+  return Array.from({ length: 7 }, (_, i) => buildSession(addDays(start, i), weekNo));
+}
+
+/* ═════════════════════════════ VIEW STATE ═════════════════════════════ */
+let currentWeek  = 3;
+let selectedDate = null;   /* resolved per week by defaultSelection() */
+let activeSection = 'Schedule';
+let activeTab = 'basecamp';
+
+/* the next session still to do, else the week's first training day */
+function defaultSelection(week) {
+  return (week.find(s => s.training && !s.completed) || week.find(s => s.training) || week[0]).date;
+}
+
+/* ═════════════════════════════ ICONS ═════════════════════════════ */
+const S = (d, extra = '') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+
+const ICONS = {
+  /* carried over from Training Basecamp */
+  mark:    S(`<path d="M1.6 19.2 6.9 12l2.3 2.9 4.1-6.2 8.1 10.5z"/><path d="M7.4 11.2 9.6 8l1.6 2.2"/>`, 'stroke-width="1.5"'),
+  peak:    S(`<path d="M2.6 19.4h18.8L15.2 5.4l-3.8 6.8-2.8-3.6z"/>`, 'stroke-width="1.6"'),
+  compass: S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  home:    S(`<path d="M3.5 10.1 12 3.4l8.5 6.7v9.5a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9.5Z"/>`),
+  boots:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <ellipse cx="7.4" cy="7" rx="2.7" ry="4.3"/><ellipse cx="7.4" cy="15.4" rx="2.2" ry="2.2"/>
+              <ellipse cx="16.6" cy="10.4" rx="2.7" ry="4.3"/><ellipse cx="16.6" cy="18.8" rx="2.2" ry="2.2"/>
+            </svg>`,
+  user:    S(`<circle cx="12" cy="7.8" r="3.7"/><path d="M4.9 20.4a7.1 7.1 0 0 1 14.2 0"/>`),
+  chev:    S(`<path d="m9 5 7 7-7 7"/>`),
+  chevL:   S(`<path d="m15 5-7 7 7 7"/>`),
+  arrowR:  S(`<path d="M4.5 12h15M13.5 6l6 6-6 6"/>`),
+  clock:   S(`<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3 1.8"/>`),
+  heart:   S(`<path d="M12 20.2 3.9 12.4a4.9 4.9 0 0 1 .5-7.2 4.9 4.9 0 0 1 6.6.5l1 1 1-1a4.9 4.9 0 0 1 6.6-.5 4.9 4.9 0 0 1 .5 7.2L12 20.2Z"/>`),
+  calendar:S(`<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 10.1h17.2M8.4 3.4v3.6M15.6 3.4v3.6"/>`),
+  bars:    `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14.5" width="3.6" height="5.5" rx="1.2"/><rect x="10.2" y="10" width="3.6" height="10" rx="1.2"/><rect x="16.4" y="4.8" width="3.6" height="15.2" rx="1.2"/></svg>`,
+  plusC:   S(`<circle cx="12" cy="12" r="8.8"/><path d="M12 8.2v7.6M8.2 12h7.6"/>`),
+  sliders: S(`<path d="M3.5 7h9.5M19 7h1.5M3.5 12h2.5M10.5 12h10M3.5 17h7.5M15.5 17h5"/><circle cx="15.8" cy="7" r="2.1"/><circle cx="8.3" cy="12" r="2.1"/><circle cx="13.3" cy="17" r="2.1"/>`),
+  /* new for the schedule */
+  bed:     S(`<path d="M3 18.4v-9M3 13.4h18v5M3 13.4a3 3 0 0 1 3-3h3.4a3 3 0 0 1 3 3"/><circle cx="7.2" cy="9" r="1.9"/><path d="M21 18.4v-2.2a3 3 0 0 0-3-3h-2"/>`),
+  walk:    S(`<circle cx="13.4" cy="4.4" r="2"/><path d="M11 21.6l2-5.6-2.4-2.2.9-4.6-3 1.8-1.3 3"/><path d="M13 16l2.6 2.2 1.4 3.4M11.5 9.2l3 1.2 2.4-1.6"/>`),
+  stairs:  S(`<path d="M3.6 20.4h4.2v-4.2H12v-4.2h4.2V7.8h4.2"/><path d="M20.4 7.8v12.6H3.6"/>`, 'stroke-width="1.6"'),
+  dumbbell:S(`<path d="M3.2 9.4v5.2M6.2 7.4v9.2M17.8 7.4v9.2M20.8 9.4v5.2M6.2 12h11.6"/>`, 'stroke-width="1.9"'),
+  play:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.4 5.6 19 12 8.4 18.4z"/></svg>`,
+  gear:    S(`<circle cx="12" cy="12" r="3.1"/><path d="M19.2 14.4a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.56 1Z"/>`, 'stroke-width="1.5"'),
+  check:   S(`<path d="m5 12.6 4.6 4.4L19 6.8"/>`, 'stroke-width="2.4"'),
+  alert:   S(`<path d="M12 7.6v5M12 16.2v.1"/><circle cx="12" cy="12" r="8.8"/>`),
+};
+
+function icon(name, size) {
+  const h = document.createElement('span');
+  h.innerHTML = ICONS[name] || '';
+  const svg = h.firstElementChild;
+  if (svg) { svg.setAttribute('width', size); svg.setAttribute('height', size); svg.style.display = 'block'; }
+  return h.innerHTML;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(n => {
+    n.innerHTML = icon(n.dataset.icon, n.dataset.size || 16);
+    n.style.display = 'inline-flex';
+  });
+}
+function loadPhotos(root = document) {
+  root.querySelectorAll('img[data-src]').forEach(img => {
+    if (img.dataset.started || !img.dataset.src) return;
+    img.dataset.started = '1';
+    img.addEventListener('load', () => img.classList.add('ok'));
+    img.addEventListener('error', () => img.remove());
+    img.src = img.dataset.src;
+  });
+}
+
+/* ═════════════════════════════ COMPONENTS ═════════════════════════════ */
+
+function PlanHeader() {
+  return `<div class="relative flex items-center justify-between px-[17px] pt-[4px]">
+    <button data-act="Back to Basecamp" class="pressable flex items-center gap-[5px] text-[14px] font-medium">
+      <span data-icon="chevL" data-size="17"></span> Back
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 text-center">
+      <div class="text-[12px] font-bold tracking-[0.22em]">TRAINING PLAN</div>
+      <div class="mt-[3px] text-[8.5px] font-semibold tracking-[0.18em] text-white/58">MONT BLANC PREPARATION</div>
+    </div>
+    <button data-act="Plan Settings" class="pressable text-white/85"><span data-icon="gear" data-size="19"></span></button>
+  </div>`;
+}
+
+/* TrainingGoalHero — the compact variant of Training Basecamp's hero */
+function TrainingGoalHero() {
+  const m = PLAN.mountain;
+  return `<header class="relative h-[246px]">
+    <div class="absolute inset-0 ph overflow-hidden">
+      <img data-src="mockup-assets/tb-hero.jpg" alt="" class="w-full h-full object-cover" style="object-position:62% 38%"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to bottom, rgba(5,9,11,.66) 0%, rgba(5,9,11,.14) 26%, rgba(5,9,11,.4) 58%, rgba(5,9,11,.93) 90%, #05090B 100%);"></div>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.88) 0%, rgba(5,9,11,.34) 52%, rgba(5,9,11,0) 88%);"></div>
+    </div>
+
+    <div class="relative">
+      <div class="flex items-center justify-between px-[21px] pt-[9px] select-none">
+        <span class="text-[13px] leading-[16px] font-semibold tracking-[-0.01em]">9:41</span>
+        <div class="flex items-center gap-[5px]">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect y="7.5" width="2.6" height="3.5" rx=".9"/><rect x="4.5" y="5" width="2.6" height="6" rx=".9"/><rect x="9" y="2.5" width="2.6" height="8.5" rx=".9"/><rect x="13.4" width="2.6" height="11" rx=".9"/></svg>
+          <svg width="15" height="11" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.2 5.6 8.6a3.4 3.4 0 0 1 4.8 0L8 11.2Z"/><path d="M8 6.1c1.5 0 2.9.6 3.9 1.6l1.3-1.4A7.4 7.4 0 0 0 8 4.1a7.4 7.4 0 0 0-5.2 2.2l1.3 1.4A5.5 5.5 0 0 1 8 6.1Z"/><path d="M8 1.6c2.4 0 4.6 1 6.2 2.5l1.3-1.4A10.6 10.6 0 0 0 8-.4a10.6 10.6 0 0 0-7.5 3.1l1.3 1.4A8.6 8.6 0 0 1 8 1.6Z"/></svg>
+          <span class="text-[10.5px] font-semibold ml-[1px]">100</span>
+          <span class="relative inline-flex items-center">
+            <span class="w-[21px] h-[10.5px] rounded-[3px] border border-white/45 p-[1.4px] inline-block">
+              <span class="block w-full h-full rounded-[1.4px] bg-white"></span></span>
+            <span class="w-[1.4px] h-[4px] rounded-r bg-white/45 ml-[1px]"></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="mt-[7px]">${PlanHeader()}</div>
+
+      <div class="mt-[22px] px-[17px]">
+        <div class="text-[10px] font-bold tracking-[0.26em] text-accent">YOUR GOAL</div>
+        <h1 class="mt-[4px] text-[33px] leading-[35px] font-bold tracking-[-0.03em]">${m.name}</h1>
+        <div class="mt-[4px] flex items-center gap-[9px] text-[13px] text-white/78">
+          <span>${m.elevation}</span><span class="text-white/25">|</span><span>${m.place}</span>
+        </div>
+      </div>
+
+      <div class="mt-[15px] px-[17px] flex items-end gap-[14px]">
+        <div class="w-[196px]">
+          <div class="text-[11px] text-white/62 leading-[14px]">Readiness</div>
+          <div class="mt-[1px] text-[17px] font-bold leading-[20px] tracking-[-0.02em]">${PLAN.readiness}%</div>
+          <div class="mt-[6px] h-[7px] rounded-full bg-white/14 overflow-hidden">
+            <div class="h-full rounded-full bg-accent" style="width:${PLAN.readiness}%"></div>
+          </div>
+        </div>
+        <div class="w-px h-[36px] bg-white/18 mb-[3px]"></div>
+        <div class="mb-[3px]">
+          <div class="text-[19px] font-bold leading-[22px] tracking-[-0.02em]">${daysUntil(PLAN.targetDate).toLocaleString('en-GB')}</div>
+          <div class="text-[10.5px] text-white/62 leading-[13px]">days to go</div>
+        </div>
+      </div>
+
+      <div class="absolute right-[20px] top-[164px] text-right font-script text-[18px] leading-[20px] text-white/85 -rotate-3">
+        Higher<br/>tomorrow.
+        <div class="mt-[4px] ml-auto w-[58px] h-px bg-white/35"></div>
+      </div>
+    </div>
+  </header>`;
+}
+
+/* PlanTabs — Schedule is the built section; the others acknowledge the tap */
+const SECTIONS = ['Schedule', 'Progress', 'Details'];
+function PlanTabs() {
+  return `<nav class="px-[17px] border-b border-white/[.08]">
+    <div class="flex">
+      ${SECTIONS.map(s => {
+        const on = s === activeSection;
+        return `<button data-section="${s}" class="flex-1 pb-[10px] pt-[2px] text-[13.5px] font-semibold transition-colors
+                  ${on ? 'text-white' : 'text-white/48'}">
+          ${s}
+          <span class="block mt-[9px] h-[2.5px] rounded-full ${on ? 'bg-accent' : 'bg-transparent'}"></span>
+        </button>`;
+      }).join('')}
+    </div>
+  </nav>`;
+}
+
+/* WeekNavigator */
+function WeekNavigator(week) {
+  return `<div class="mt-[15px] px-[17px] flex items-center justify-center gap-[16px]">
+    <button data-week="-1" ${currentWeek <= 1 ? 'disabled' : ''}
+      class="pressable w-[32px] h-[32px] rounded-full panel-sub grid place-items-center
+             ${currentWeek <= 1 ? 'opacity-30' : 'text-white/85'}">
+      <span data-icon="chevL" data-size="14"></span>
+    </button>
+    <div class="text-center min-w-[168px]">
+      <div class="text-[13px] font-bold tracking-[0.16em]">WEEK ${currentWeek} OF ${PLAN.totalWeeks}</div>
+      <div class="mt-[3px] text-[11px] text-white/58">${fmtRange(week[0].date, week[6].date)}</div>
+    </div>
+    <button data-week="1" ${currentWeek >= PLAN.totalWeeks ? 'disabled' : ''}
+      class="pressable w-[32px] h-[32px] rounded-full panel-sub grid place-items-center
+             ${currentWeek >= PLAN.totalWeeks ? 'opacity-30' : 'text-white/85'}">
+      <span data-icon="chev" data-size="14"></span>
+    </button>
+  </div>`;
+}
+
+/* TrainingDay — one cell of the week strip */
+function TrainingDay(s) {
+  const sel = s.date === selectedDate;
+  const dot = s.completed ? 'bg-accent'
+            : s.missed    ? 'bg-[#F0813C]'
+            : s.training  ? 'bg-accent/45'
+            : 'bg-transparent';
+  return `<button data-day="${s.date}"
+    class="pressable shrink-0 w-[52px] h-[84px] rounded-[12px] border flex flex-col items-center pt-[8px] px-[2px] overflow-hidden
+           ${sel ? 'panel is-selected' : 'panel-sub'}">
+    <span class="text-[8.5px] font-semibold tracking-[0.1em] ${s.isToday ? 'text-accent' : 'text-white/55'}">${fmtDay(s.date)}</span>
+    <span class="mt-[1px] text-[17px] font-bold leading-[20px] tracking-[-0.02em]">${fmtDate(s.date)}</span>
+    <span class="mt-[4px] ${s.training ? (s.completed ? 'text-accent' : 'text-accent/85') : 'text-white/38'}"
+          data-icon="${s.icon}" data-size="17"></span>
+    <span class="mt-[3px] text-[7.5px] leading-[9px] ${s.training ? 'text-white/82' : 'text-white/45'} whitespace-nowrap">${s.short}</span>
+    <span class="mt-[3px] w-[5px] h-[5px] rounded-full ${dot}"></span>
+  </button>`;
+}
+
+function WeekStrip(week) {
+  /* 7 cells of 52px inside a 396px track: the leftover splits into 6 gaps */
+  const idx = Math.max(0, week.findIndex(s => s.date === selectedDate));
+  const gap = (396 - 7 * 52) / 6;
+  const caretX = 17 + idx * (52 + gap) + 26;
+  return `<div class="mt-[13px] px-[17px] relative">
+    <div class="flex justify-between">${week.map(TrainingDay).join('')}</div>
+    <span class="absolute block w-[11px] h-[11px] rotate-45 rounded-[2px]"
+          style="left:${caretX - 5.5}px; bottom:-6px;
+                 background:linear-gradient(135deg, rgba(20,36,32,.95), rgba(10,17,19,.95));
+                 border-right:1px solid rgba(36,239,164,.75); border-bottom:1px solid rgba(36,239,164,.75);"></span>
+  </div>`;
+}
+
+/* SelectedTrainingSession — driven entirely by the selected day */
+function SelectedTrainingSession(s) {
+  const statusPill = s.completed ? `<span class="ml-[8px] inline-flex items-center gap-[4px] px-[8px] py-[2px] rounded-full bg-accent/15 border border-accent/50 text-accent text-[8.5px] font-bold tracking-[0.1em] align-middle">
+        <span data-icon="check" data-size="9"></span>COMPLETED</span>`
+    : s.missed ? `<span class="ml-[8px] inline-flex items-center gap-[4px] px-[8px] py-[2px] rounded-full bg-[#F0813C]/15 border border-[#F0813C]/50 text-[#F0813C] text-[8.5px] font-bold tracking-[0.1em] align-middle">MISSED</span>`
+    : s.isToday ? `<span class="ml-[8px] inline-flex items-center px-[8px] py-[2px] rounded-full bg-white/10 border border-white/20 text-white/85 text-[8.5px] font-bold tracking-[0.1em] align-middle">TODAY</span>`
+    : '';
+
+  const primary = !s.training
+    ? `<button data-act="Log Activity" class="pressable w-full flex items-center justify-center gap-[7px] h-[40px] rounded-[11px]
+              panel-sub text-[11px] font-bold tracking-[0.07em]">
+         <span data-icon="plusC" data-size="14"></span> LOG ACTIVITY</button>`
+    : `<button id="startBtn" data-act="Start Session" class="pressable w-full flex items-center justify-center gap-[7px] h-[40px] rounded-[11px]
+              bg-accent text-ink text-[11px] font-extrabold tracking-[0.06em]
+              shadow-[0_8px_24px_-8px_rgba(36,239,164,.75)]">
+         <span data-icon="play" data-size="12"></span> START SESSION</button>`;
+
+  const secondary = s.training
+    ? `<button data-act="Reschedule" class="pressable w-full flex items-center justify-center gap-[7px] h-[40px] rounded-[11px]
+              panel-sub text-[11px] font-bold tracking-[0.07em]">
+         <span data-icon="calendar" data-size="14"></span> RESCHEDULE</button>` : '';
+
+  return `<section class="mt-[14px] px-[17px]">
+    <div class="panel rounded-[18px] p-[15px] relative overflow-hidden ${s.isToday ? 'is-selected' : ''}">
+      ${s.img ? `<div class="absolute right-0 top-0 w-[118px] h-[126px] ph">
+          <img data-src="${s.img}" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+          <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(11,18,19,.98) 0%, rgba(11,18,19,.32) 46%, rgba(11,18,19,0) 100%);"></div>
+          <div class="absolute inset-0" style="background:linear-gradient(to bottom, rgba(11,18,19,0) 55%, rgba(11,18,19,.92) 100%);"></div>
+        </div>` : ''}
+
+      <div class="relative ${s.img ? 'pr-[108px]' : ''}">
+        <div class="text-[10px] font-semibold tracking-[0.16em] text-white/68">${fmtLong(s.date)}${statusPill}</div>
+        <h3 class="mt-[6px] text-[21px] leading-[24px] font-bold tracking-[-0.025em]">${s.title}</h3>
+        <div class="mt-[5px] flex items-center gap-[9px] text-[12.5px] text-white/75">
+          <span>${s.facts[0]}</span><span class="text-white/22">|</span><span>${s.facts[1]}</span>
+        </div>
+        <div class="mt-[10px] flex flex-wrap gap-x-[14px] gap-y-[5px]">
+          ${s.benefits.map((b, i) => `<span class="flex items-center gap-[5px] text-[10.5px] text-white/70 whitespace-nowrap">
+            <span class="${i === 1 ? 'text-[#8FB6FF]' : 'text-accent/85'}" data-icon="${i === 0 ? 'bars' : i === 1 ? 'heart' : 'mark'}" data-size="13"></span>${b}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="relative mt-[13px] flex items-end gap-[13px]">
+        <p class="flex-1 text-[11.5px] leading-[16px] text-white/62">${s.description}</p>
+        <div class="w-[152px] shrink-0 flex flex-col gap-[8px]">${primary}${secondary}</div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* TrainingSessionCard — reused shape from Training Basecamp's Up Next rail */
+function TrainingSessionCard(s) {
+  const sel = s.date === selectedDate;
+  const badge = s.completed
+      ? `<span class="w-[22px] h-[22px] rounded-full bg-accent text-ink grid place-items-center"><span data-icon="check" data-size="12"></span></span>`
+    : s.missed
+      ? `<span class="w-[22px] h-[22px] rounded-full bg-[#F0813C] text-ink grid place-items-center"><span data-icon="alert" data-size="13"></span></span>`
+    : sel
+      ? `<span class="w-[22px] h-[22px] rounded-full bg-black/55 border border-accent/70 text-accent backdrop-blur-md grid place-items-center"><span data-icon="chev" data-size="11"></span></span>`
+      : `<span class="w-[22px] h-[22px] rounded-full bg-black/45 border border-white/35 backdrop-blur-md"></span>`;
+
+  return `<article data-day="${s.date}" class="pressable cursor-pointer shrink-0 w-[112px] rounded-[15px] overflow-hidden border
+      ${sel ? 'panel is-selected' : 'panel-sub'}">
+    <div class="relative h-[64px] ph">
+      <img data-src="${s.img}" alt="" class="absolute inset-0 w-full h-full object-cover ${s.completed ? '' : 'opacity-90'}"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(10,17,19,.88) 0%, rgba(5,9,11,.05) 62%);"></div>
+      <span class="absolute top-[6px] right-[6px]">${badge}</span>
+    </div>
+    <div class="p-[10px] pt-[8px]">
+      <div class="text-[9px] leading-[11px] font-semibold tracking-[0.08em] text-white/55 whitespace-nowrap">${fmtShort(s.date)}</div>
+      <h4 class="mt-[3px] text-[13.5px] leading-[16px] font-bold tracking-[-0.02em] whitespace-nowrap">${s.title.replace(' Session', '')}</h4>
+      <div class="mt-[3px] text-[10.5px] leading-[13px] text-white/70 whitespace-nowrap">${s.facts[0]}</div>
+      <div class="text-[10.5px] leading-[13px] text-white/52 whitespace-nowrap">${s.facts[1]}</div>
+    </div>
+  </article>`;
+}
+
+/* WeeklyProgress + the week's training sessions (rest days excluded) */
+function ThisWeek(week) {
+  const training = week.filter(s => s.training);
+  const done = training.filter(s => s.completed).length;
+  const pct = training.length ? Math.round((done / training.length) * 100) : 0;
+  return `<section class="mt-[18px]">
+    <div class="px-[17px] flex items-center justify-between gap-[12px]">
+      <h2 class="text-[11.5px] font-semibold tracking-[0.2em] text-white/70 whitespace-nowrap">THIS WEEK</h2>
+      <div class="flex items-center gap-[9px] flex-1 justify-end">
+        <span class="text-[10px] font-semibold tracking-[0.08em] text-white/55 whitespace-nowrap">${done} OF ${training.length} SESSIONS</span>
+        <div class="w-[96px] h-[7px] rounded-full bg-white/12 overflow-hidden">
+          <div class="h-full rounded-full bg-accent" style="width:${pct}%"></div>
+        </div>
+      </div>
+    </div>
+    <div id="weekRail" class="mt-[11px] flex gap-[8px] overflow-x-auto no-sb px-[17px] pb-[2px]">
+      ${training.map(TrainingSessionCard).join('')}
+    </div>
+  </section>`;
+}
+
+/* LocalHillBanner — the SummitReady link from prescription to real mountains */
+function LocalHillBanner() {
+  return `<section class="mt-[16px] px-[17px]">
+    <div data-act="Find Local Hills" class="pressable cursor-pointer relative h-[96px] rounded-[16px] overflow-hidden ph border border-white/[.07]">
+      <img data-src="mockup-assets/tp-hills.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" style="object-position:74% 50%"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.94) 18%, rgba(5,9,11,.55) 58%, rgba(5,9,11,.25) 100%);"></div>
+      <div class="absolute left-[15px] top-1/2 -translate-y-1/2 pr-[54px]">
+        <div class="text-[9.5px] font-semibold tracking-[0.2em] text-white/62">EXPLORE ROUTES</div>
+        <div class="mt-[5px] text-[15px] leading-[19px] font-bold tracking-[-0.02em]">Find hills that match<br/>your training plan.</div>
+      </div>
+      <span class="absolute right-[14px] top-1/2 -translate-y-1/2 w-[30px] h-[30px] rounded-full
+                   bg-black/55 border border-white/25 backdrop-blur-md grid place-items-center">
+        <span data-icon="chev" data-size="13"></span></span>
+    </div>
+  </section>`;
+}
+
+/* PlanControls — deliberately quiet next to START SESSION */
+const CONTROLS = [
+  { icon: 'sliders', label: 'Adjust Plan',   sub: 'Move or swap sessions' },
+  { icon: 'plusC',   label: 'Add Session',   sub: 'Log extra activity'    },
+  { icon: 'gear',    label: 'Plan Settings', sub: 'Training days, goals'  },
+];
+function PlanControls() {
+  return `<section class="mt-[13px] px-[17px] grid grid-cols-3 gap-[8px]">
+    ${CONTROLS.map(c => `<button data-act="${c.label}" class="pressable panel-sub rounded-[13px] p-[10px] text-left">
+      <span class="w-[26px] h-[26px] rounded-full bg-accent/[.13] text-accent grid place-items-center">
+        <span data-icon="${c.icon}" data-size="14"></span></span>
+      <div class="mt-[8px] text-[11px] font-semibold leading-[13px]">${c.label}</div>
+      <div class="mt-[2px] text-[9px] leading-[11px] text-white/50">${c.sub}</div>
+    </button>`).join('')}
+  </section>`;
+}
+
+/* placeholder for the sections not built out in this prototype */
+function SectionPlaceholder(name) {
+  return `<section class="mt-[26px] px-[17px]">
+    <div class="panel rounded-[18px] p-[22px] text-center">
+      <span class="inline-flex text-accent/80" data-icon="${name === 'Progress' ? 'bars' : 'mark'}" data-size="26"></span>
+      <h3 class="mt-[10px] text-[17px] font-bold tracking-[-0.02em]">${name}</h3>
+      <p class="mt-[6px] text-[12px] leading-[17px] text-white/58">
+        ${name === 'Progress'
+          ? 'Week-by-week readiness, elevation banked and session adherence across the full 12-week plan.'
+          : 'Plan structure, progression rules and the Mountain DNA requirements this plan is built against.'}
+      </p>
+      <div class="mt-[12px] inline-block px-[11px] py-[4px] rounded-full panel-sub text-[9.5px] font-bold tracking-[0.12em] text-white/60">NOT IN THIS PROTOTYPE</div>
+    </div>
+  </section>`;
+}
+
+/* BottomNavigation — locked tab set */
+const TABS = [
+  { id: 'basecamp',    icon: 'home',    label: 'Basecamp'    },
+  { id: 'explore',     icon: 'compass', label: 'Explore'     },
+  { id: 'track',       icon: 'boots',   label: 'Track'       },
+  { id: 'expeditions', icon: 'peak',    label: 'Expeditions' },
+  { id: 'you',         icon: 'user',    label: 'You'         },
+];
+function BottomNavigation() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TABS.map(t => {
+    const on = t.id === activeTab;
+    return `<button data-tab="${t.id}" class="flex flex-col items-center w-[86px] active:scale-95 transition">
+      <span class="grid place-items-center w-[36px] h-[30px] rounded-[11px] transition-colors ${on ? 'bg-accent/[.13]' : ''}">
+        ${on ? `<span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-accent text-ink" data-icon="${t.icon}" data-size="12"></span>`
+             : `<span class="text-white/55" data-icon="${t.icon}" data-size="25"></span>`}
+      </span>
+      <span class="mt-[3px] text-[9.5px] leading-[12px] font-medium ${on ? 'text-accent' : 'text-white/55'}">${t.label}</span>
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+  el.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    activeTab = b.dataset.tab; BottomNavigation();
+    toast(`→ ${TABS.find(t => t.id === activeTab).label}`);
+  }));
+}
+
+/* ═══════════════════════════════ RENDER ═══════════════════════════════ */
+function renderScreen() {
+  const week = buildWeek(currentWeek);
+  if (!selectedDate || !week.some(s => s.date === selectedDate)) selectedDate = defaultSelection(week);
+  const selected = week.find(s => s.date === selectedDate);
+
+  document.getElementById('screen').innerHTML =
+      TrainingGoalHero()
+    + PlanTabs()
+    + (activeSection !== 'Schedule'
+        ? SectionPlaceholder(activeSection)
+        : WeekNavigator(week)
+          + WeekStrip(week)
+          + SelectedTrainingSession(selected)
+          + ThisWeek(week)
+          + LocalHillBanner()
+          + PlanControls());
+
+  hydrateIcons();
+  loadPhotos();
+}
+
+/* ═══════════════════════════ INTERACTIONS ═══════════════════════════ */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1'; t.style.transform = 'translate(-50%,0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%,8px)'; }, 1600);
+}
+
+/* RescheduleSheet — move a prescribed session without rebuilding the plan */
+function openReschedule() {
+  const week = buildWeek(currentWeek);
+  const s = week.find(x => x.date === selectedDate);
+  if (!s || !s.training) return;
+
+  const rows = week.filter(d => d.date !== s.date).map(d => {
+    const free = !d.training;
+    return `<button ${free ? `data-move="${d.date}"` : 'disabled'}
+      class="pressable w-full flex items-center justify-between px-[13px] h-[48px] rounded-[12px] mb-[7px]
+             ${free ? 'panel-sub' : 'opacity-40 border border-white/[.06]'}">
+      <span class="flex items-center gap-[10px]">
+        <span class="${free ? 'text-accent' : 'text-white/45'}" data-icon="${d.icon}" data-size="16"></span>
+        <span class="text-[13px] font-semibold">${fmtDay(d.date)} ${fmtDate(d.date)}</span>
+      </span>
+      <span class="text-[10.5px] ${free ? 'text-white/55' : 'text-white/45'}">${free ? 'Free' : d.short}</span>
+    </button>`;
+  }).join('');
+
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="mx-auto mb-[13px] h-[4px] w-[38px] rounded-full bg-white/25"></div>
+    <div class="text-[10px] font-semibold tracking-[0.18em] text-white/58">RESCHEDULE</div>
+    <h3 class="mt-[5px] text-[19px] font-bold tracking-[-0.025em]">${s.title}</h3>
+    <p class="mt-[5px] mb-[13px] text-[11.5px] leading-[16px] text-white/58">
+      Move this session to another day this week. The rest of your plan stays as it is.
+    </p>
+    ${rows}
+    <button data-close-sheet class="pressable w-full h-[42px] mt-[4px] rounded-[12px] panel-sub text-[11.5px] font-bold tracking-[0.06em]">CANCEL</button>`;
+  hydrateIcons(sheet);
+  sheet.style.transform = 'translateY(0)';
+  const scrim = document.getElementById('scrim');
+  scrim.style.opacity = '1'; scrim.style.pointerEvents = 'auto';
+}
+function closeReschedule() {
+  document.getElementById('sheet').style.transform = 'translateY(105%)';
+  const scrim = document.getElementById('scrim');
+  scrim.style.opacity = '0'; scrim.style.pointerEvents = 'none';
+}
+function moveSession(toDate) {
+  const from = selectedDate;
+  const week = buildWeek(currentWeek);
+  const s = week.find(x => x.date === from);
+  OVERRIDES[from] = 'rest';
+  OVERRIDES[toDate] = s.typeId;
+  selectedDate = toDate;
+  closeReschedule();
+  renderScreen();
+  toast(`${s.title} moved to ${fmtDay(toDate)} ${fmtDate(toDate)}`);
+}
+
+function startSession() {
+  const btn = document.getElementById('startBtn');
+  if (!btn || btn.dataset.running) return;
+  btn.dataset.running = '1';
+  btn.innerHTML = `${icon('clock', 13)} SESSION STARTED`;
+  btn.classList.add('opacity-90');
+  toast('Session started · tracking elevation');
+  setTimeout(() => {
+    btn.innerHTML = `${icon('play', 12)} START SESSION`;
+    btn.classList.remove('opacity-90');
+    delete btn.dataset.running;
+  }, 2600);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  const day = t.closest('[data-day]');
+  if (day) { selectedDate = day.dataset.day; renderScreen(); return; }
+
+  const wk = t.closest('[data-week]');
+  if (wk && !wk.disabled) {
+    const next = currentWeek + Number(wk.dataset.week);
+    if (next >= 1 && next <= PLAN.totalWeeks) { currentWeek = next; selectedDate = null; renderScreen(); }
+    return;
+  }
+
+  const sec = t.closest('[data-section]');
+  if (sec) {
+    activeSection = sec.dataset.section; renderScreen();
+    if (activeSection !== 'Schedule') toast(`${activeSection} — not in this prototype`);
+    return;
+  }
+
+  const mv = t.closest('[data-move]');
+  if (mv) { moveSession(mv.dataset.move); return; }
+  if (t.closest('[data-close-sheet]') || t.id === 'scrim') { closeReschedule(); return; }
+
+  const act = t.closest('[data-act]');
+  if (act) {
+    e.stopPropagation();
+    if (act.dataset.act === 'Start Session') { startSession(); return; }
+    if (act.dataset.act === 'Reschedule')    { openReschedule(); return; }
+    toast(`→ ${act.dataset.act}`);
+  }
+});
+
+/* prototype hooks for evaluating the schedule without editing the file */
+window.goToWeek = n => { currentWeek = Math.max(1, Math.min(PLAN.totalWeeks, n)); selectedDate = null; renderScreen(); return currentWeek; };
+window.selectDay = d => { selectedDate = d; renderScreen(); return d; };
+
+/* ═════════════════════════════ BOOT ═════════════════════════════ */
+renderScreen();
+BottomNavigation();
+</script>
+</body>
+</html>
