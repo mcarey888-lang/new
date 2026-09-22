@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SummitReady — Training Basecamp</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════════════════
+  SUMMITREADY · TRAINING BASECAMP  — high-fidelity visual prototype
+  Shares the Explore prototype's style contract (tokens, gutters, type scale,
+  surfaces, bottom nav). Branding uses the real repo lockup in mockup-assets/.
+  Prototype only — no production logic, no Summit Data Engine, no scoring.
+  ════════════════════════════════════════════════════════════════════════════
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { ink: '#05090B', accent: '#24EFA4' },
+      fontFamily: { sans: ['Inter','system-ui','-apple-system','sans-serif'], script: ['Caveat','cursive'] },
+    } }
+  }
+</script>
+<style>
+  body { background:#000; }
+  .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { display:none; }
+  /* gradient stand-in shown while a photo loads, or if it never does */
+  .ph { background-color:#12202a; background-image:
+        linear-gradient(165deg, rgba(36,239,164,.10), rgba(0,0,0,0) 48%),
+        linear-gradient(to top, #070c0e 0%, #12202a 42%, #24405a 72%, #56738c 100%); }
+  .ph > img { opacity:0; transition:opacity .5s ease; }
+  .ph > img.ok { opacity:1; }
+  .glass   { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+  .navglass{ background:rgba(5,9,11,.92); backdrop-filter:blur(22px) saturate(140%); }
+  /* the screen's primary surface — a dark green-tinted panel */
+  .panel   { background:linear-gradient(158deg, rgba(20,36,32,.92) 0%, rgba(10,17,19,.94) 62%, rgba(8,13,15,.96) 100%);
+             border:1px solid rgba(255,255,255,.075); }
+  .panel-sub { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); }
+  .pressable { transition:transform .12s ease, filter .12s ease; }
+  .pressable:active { transform:scale(.975); filter:brightness(1.12); }
+  .gauge-arc { transition:stroke-dasharray .9s cubic-bezier(.22,1,.36,1); }
+  #toast { transition:opacity .25s ease, transform .25s ease; }
+</style>
+</head>
+<body class="font-sans text-white antialiased min-h-screen flex items-center justify-center overflow-auto">
+
+<div class="relative w-[430px] h-[932px] bg-ink overflow-hidden sm:rounded-[46px]
+            sm:shadow-[0_40px_120px_-24px_rgba(0,0,0,.9),0_0_0_10px_#0b0e10,0_0_0_11px_#232829]">
+
+  <div id="scroll" class="absolute inset-0 overflow-y-auto no-sb">
+    <main id="screen"></main>
+    <div class="h-[104px]"></div>
+  </div>
+
+  <!-- BottomNavigation -->
+  <div class="absolute inset-x-0 bottom-0 h-[97px] navglass border-t border-white/[.07]">
+    <div id="tabs" class="flex items-start justify-around pt-[11px]"></div>
+    <div class="absolute left-1/2 -translate-x-1/2 bottom-[12px] h-[5px] w-[132px] rounded-full bg-white/90"></div>
+  </div>
+
+  <!-- interaction feedback -->
+  <div id="toast" style="opacity:0;transform:translate(-50%,8px)"
+       class="pointer-events-none absolute left-1/2 bottom-[110px] z-50
+              px-[15px] py-[9px] rounded-full glass text-[11.5px] font-semibold whitespace-nowrap"></div>
+</div>
+
+<script>
+/* ═══════════════════════════ PROTOTYPE STATE ═══════════════════════════
+   Everything the screen renders comes from here, so each block below can
+   become a production component driven by real data.                     */
+const STATE = {
+  mountain: { name: 'Mont Blanc', elevation: '4,808 m', range: 'Alps', country: 'France' },
+  targetDate: '2027-07-12',
+
+  readiness: {
+    current:   52,            /* achieved  — solid accent   */
+    projected: 55,            /* projected — translucent    */
+    status:    'BUILDING',
+    action:    { title: "Complete this week's mountain day", target: 'Target 900 m elevation gain' },
+  },
+
+  mission: {
+    eyebrow: "TODAY'S MISSION",
+    title:   'Hill Session',
+    facts:   ['900 m elevation gain', '3–5 hours'],
+    benefits: [
+      { icon: 'bars',  label: 'Build endurance'   },
+      { icon: 'mark',  label: 'Increase elevation'},
+      { icon: 'heart', label: 'Boost readiness'   },
+    ],
+    cta: 'START SESSION',
+    img: 'mockup-assets/tb-mission.jpg',
+  },
+
+  upNext: [
+    { week: 'Week 3 · Session 2', title: 'Long Hike',   detail: '1,000 m gain', meta: '4–6 hours', img: 'mockup-assets/tb-session-hike.jpg'     },
+    { week: 'Week 3 · Session 3', title: 'Stairmaster', detail: '60 minutes',   meta: 'Indoor',    img: 'mockup-assets/tb-session-stairs.jpg'   },
+    { week: 'Week 4 · Session 1', title: 'Strength',    detail: 'Lower body',   meta: '45 minutes',img: 'mockup-assets/tb-session-strength.jpg' },
+  ],
+
+  elevationBank: { banked: 12450, required: 88429 },
+
+  week: {
+    completed: 3, target: 5,
+    days: [ {d:'M',v:.72,done:true}, {d:'T',v:.78,done:true}, {d:'W',v:.70,done:true},
+            {d:'F',v:1,  done:true}, {d:'S',v:.34,done:false},{d:'S',v:.30,done:false} ],
+  },
+
+  quickActions: [
+    { icon: 'mapFold', label: 'Find Local Hills' },
+    { icon: 'book',    label: 'Training Plan'    },
+    { icon: 'plusC',   label: 'Log Activity'     },
+    { icon: 'mark',    label: 'Change Mountain'  },
+  ],
+};
+
+/* ═════════════════════════════ ICONS ═════════════════════════════ */
+const S = (d, extra = '') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+
+const ICONS = {
+  /* SummitReady mark, redrawn from the repo lockup for small inline use */
+  mark:    S(`<path d="M1.6 19.2 6.9 12l2.3 2.9 4.1-6.2 8.1 10.5z"/><path d="M7.4 11.2 9.6 8l1.6 2.2"/>`, 'stroke-width="1.5"'),
+  peak:    S(`<path d="M2.6 19.4h18.8L15.2 5.4l-3.8 6.8-2.8-3.6z"/>`, 'stroke-width="1.6"'),
+  compass: S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  home:    S(`<path d="M3.5 10.1 12 3.4l8.5 6.7v9.5a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9.5Z"/>`),
+  boots:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <ellipse cx="7.4" cy="7" rx="2.7" ry="4.3"/><ellipse cx="7.4" cy="15.4" rx="2.2" ry="2.2"/>
+              <ellipse cx="16.6" cy="10.4" rx="2.7" ry="4.3"/><ellipse cx="16.6" cy="18.8" rx="2.2" ry="2.2"/>
+            </svg>`,
+  user:    S(`<circle cx="12" cy="7.8" r="3.7"/><path d="M4.9 20.4a7.1 7.1 0 0 1 14.2 0"/>`),
+  bell:    S(`<path d="M18.2 8.8a6.2 6.2 0 1 0-12.4 0c0 6.6-2.5 8.4-2.5 8.4h17.4s-2.5-1.8-2.5-8.4Z"/><path d="M13.8 20.6a2.1 2.1 0 0 1-3.6 0"/>`),
+  chev:    S(`<path d="m9 5 7 7-7 7"/>`),
+  arrowR:  S(`<path d="M4.5 12h15M13.5 6l6 6-6 6"/>`),
+  info:    S(`<circle cx="12" cy="12" r="8.8"/><path d="M12 11.2v5M12 7.9v.1"/>`),
+  clock:   S(`<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3 1.8"/>`),
+  heart:   S(`<path d="M12 20.2 3.9 12.4a4.9 4.9 0 0 1 .5-7.2 4.9 4.9 0 0 1 6.6.5l1 1 1-1a4.9 4.9 0 0 1 6.6-.5 4.9 4.9 0 0 1 .5 7.2L12 20.2Z"/>`),
+  calendar:S(`<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 10.1h17.2M8.4 3.4v3.6M15.6 3.4v3.6"/>`),
+  bars:    `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14.5" width="3.6" height="5.5" rx="1.2"/><rect x="10.2" y="10" width="3.6" height="10" rx="1.2"/><rect x="16.4" y="4.8" width="3.6" height="15.2" rx="1.2"/></svg>`,
+  mapFold: S(`<path d="M9 4 3 6.6v13.2L9 17.2l6 2.6 6-2.6V4l-6 2.6L9 4Z"/><path d="M9 4v13.2"/><path d="M15 6.6v13.2"/>`),
+  book:    S(`<path d="M3.4 5.2A2.4 2.4 0 0 1 5.8 3h5.4v16.2H5.8a2.4 2.4 0 0 0-2.4 2.4V5.2Z"/><path d="M20.6 5.2A2.4 2.4 0 0 0 18.2 3h-5.4v16.2h5.4a2.4 2.4 0 0 1 2.4 2.4V5.2Z"/>`),
+  plusC:   S(`<circle cx="12" cy="12" r="8.8"/><path d="M12 8.2v7.6M8.2 12h7.6"/>`),
+};
+
+function icon(name, size) {
+  const holder = document.createElement('span');
+  holder.innerHTML = ICONS[name] || '';
+  const svg = holder.firstElementChild;
+  if (svg) { svg.setAttribute('width', size); svg.setAttribute('height', size); svg.style.display = 'block'; }
+  return holder.innerHTML;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(n => {
+    n.innerHTML = icon(n.dataset.icon, n.dataset.size || 16);
+    n.style.display = 'inline-flex';
+  });
+}
+function loadPhotos(root = document) {
+  root.querySelectorAll('img[data-src]').forEach(img => {
+    if (img.dataset.started || !img.dataset.src) return;
+    img.dataset.started = '1';
+    img.addEventListener('load', () => img.classList.add('ok'));
+    img.addEventListener('error', () => img.remove());   /* .ph gradient stays */
+    img.src = img.dataset.src;
+  });
+}
+
+/* ═══════════════════════════ HELPERS ═══════════════════════════ */
+const fmt = n => n.toLocaleString('en-GB');
+
+/* TargetDate — days remaining are derived, never hard-coded */
+function daysUntil(iso) {
+  const DAY = 86400000;
+  const target = new Date(iso + 'T00:00:00');
+  const today  = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((target - today) / DAY));
+}
+function prettyDate(iso) {
+  return new Date(iso + 'T00:00:00')
+    .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/* ═════════════════════ ReadinessGauge ═════════════════════
+   Geometry is derived from the values, not drawn by hand.
+     0%  = 12 o'clock      50% = 6 o'clock
+     25% = 3 o'clock       75% = 9 o'clock      sweep is CLOCKWISE
+   An <svg> circle starts at 3 o'clock and runs clockwise, so rotating the
+   group -90° puts 0% at 12 o'clock with the direction preserved.
+   The projected arc begins exactly where the achieved arc ends by offsetting
+   its dash pattern by the achieved length. Both arcs use butt caps so the
+   join is exact — a round cap would add stroke/2 of overlap.               */
+function ReadinessGauge(current, projected, size = 106, stroke = 9) {
+  const clamp = v => Math.max(0, Math.min(100, Number(v) || 0));
+  const cur  = clamp(current) / 100;
+  const proj = Math.max(cur, clamp(projected) / 100);
+
+  const r = (size - stroke) / 2;
+  const C = 2 * Math.PI * r;
+  const c = size / 2;
+
+  const achievedLen  = cur * C;
+  const projectedLen = (proj - cur) * C;
+
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="block">
+    <g transform="rotate(-90 ${c} ${c})">
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="${stroke}"/>
+      <circle id="gaugeProjected" class="gauge-arc" cx="${c}" cy="${c}" r="${r}" fill="none"
+              stroke="rgba(36,239,164,.34)" stroke-width="${stroke}" stroke-linecap="butt"
+              stroke-dasharray="${projectedLen} ${C}" stroke-dashoffset="${-achievedLen}"/>
+      <circle id="gaugeAchieved" class="gauge-arc" cx="${c}" cy="${c}" r="${r}" fill="none"
+              stroke="#24EFA4" stroke-width="${stroke}" stroke-linecap="butt"
+              stroke-dasharray="${achievedLen} ${C}" stroke-dashoffset="0"/>
+    </g>
+  </svg>`;
+}
+
+function ReadinessDial(r) {
+  const size = 106;
+  return `<div class="relative shrink-0" style="width:${size}px;height:${size + 8}px">
+    ${ReadinessGauge(r.current, r.projected, size)}
+    <div class="absolute inset-x-0 top-0 h-[${size}px] flex flex-col items-center justify-center pointer-events-none">
+      <span class="text-accent mb-[1px]" data-icon="mark" data-size="16"></span>
+      <div class="flex items-end">
+        <span id="readyValue" class="text-[26px] leading-[26px] font-extrabold tracking-[-0.03em]">${Math.round(r.current)}</span>
+        <span class="text-[11px] leading-[16px] font-semibold text-white/70 ml-[1px]">%</span>
+      </div>
+      <div class="mt-[1px] text-[8.5px] font-bold tracking-[0.16em] text-white/62">READY</div>
+    </div>
+    <div class="absolute left-1/2 -translate-x-1/2 bottom-0">
+      <span class="inline-block px-[10px] py-[3px] rounded-full bg-ink border border-accent/60 text-accent
+                   text-[8.5px] font-bold tracking-[0.13em] whitespace-nowrap">${r.status}</span>
+    </div>
+  </div>`;
+}
+
+/* ═════════════════════════ COMPONENTS ═════════════════════════ */
+
+function TrainingHero(m, targetDate) {
+  return `<header class="relative h-[272px]">
+    <div class="absolute inset-0 ph overflow-hidden">
+      <img data-src="mockup-assets/tb-hero.jpg" alt="" class="w-full h-full object-cover" style="object-position:72% 42%"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to bottom, rgba(5,9,11,.62) 0%, rgba(5,9,11,.12) 22%, rgba(5,9,11,.34) 56%, rgba(5,9,11,.9) 88%, #05090B 100%);"></div>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.88) 0%, rgba(5,9,11,.4) 46%, rgba(5,9,11,0) 82%);"></div>
+    </div>
+
+    <div class="relative">
+      <!-- status bar -->
+      <div class="flex items-center justify-between px-[21px] pt-[9px] select-none">
+        <span class="text-[13px] leading-[16px] font-semibold tracking-[-0.01em]">9:41</span>
+        <div class="flex items-center gap-[5px]">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect y="7.5" width="2.6" height="3.5" rx=".9"/><rect x="4.5" y="5" width="2.6" height="6" rx=".9"/><rect x="9" y="2.5" width="2.6" height="8.5" rx=".9"/><rect x="13.4" width="2.6" height="11" rx=".9"/></svg>
+          <svg width="15" height="11" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.2 5.6 8.6a3.4 3.4 0 0 1 4.8 0L8 11.2Z"/><path d="M8 6.1c1.5 0 2.9.6 3.9 1.6l1.3-1.4A7.4 7.4 0 0 0 8 4.1a7.4 7.4 0 0 0-5.2 2.2l1.3 1.4A5.5 5.5 0 0 1 8 6.1Z"/><path d="M8 1.6c2.4 0 4.6 1 6.2 2.5l1.3-1.4A10.6 10.6 0 0 0 8-.4a10.6 10.6 0 0 0-7.5 3.1l1.3 1.4A8.6 8.6 0 0 1 8 1.6Z"/></svg>
+          <span class="text-[10.5px] font-semibold ml-[1px]">100</span>
+          <span class="relative inline-flex items-center">
+            <span class="w-[21px] h-[10.5px] rounded-[3px] border border-white/45 p-[1.4px] inline-block">
+              <span class="block w-full h-full rounded-[1.4px] bg-white"></span></span>
+            <span class="w-[1.4px] h-[4px] rounded-r bg-white/45 ml-[1px]"></span>
+          </span>
+        </div>
+      </div>
+
+      <!-- brand lockup: the real repo assets -->
+      <div class="mt-[9px] px-[17px] flex items-center justify-between">
+        <div class="flex items-center gap-[9px]">
+          <img src="mockup-assets/sr-mark.png" alt="SummitReady" class="w-[34px] block"/>
+          <img src="mockup-assets/sr-wordmark.png" alt="SUMMIT READY" class="w-[116px] block opacity-95"/>
+        </div>
+        <div class="flex items-center gap-[11px]">
+          <button data-act="Notifications" class="pressable text-white/90"><span data-icon="bell" data-size="19"></span></button>
+          <button data-act="Profile" class="pressable w-[32px] h-[32px] rounded-full overflow-hidden ph border border-white/25">
+            <img data-src="mockup-assets/tb-avatar.jpg" alt="" class="w-full h-full object-cover"/>
+          </button>
+        </div>
+      </div>
+
+      <!-- target mountain -->
+      <div class="mt-[24px] px-[17px]">
+        <div class="text-[10.5px] font-semibold tracking-[0.3em] text-white/72">TRAINING BASECAMP</div>
+        <h1 class="mt-[5px] text-[38px] leading-[40px] font-bold tracking-[-0.03em]">${m.name}</h1>
+        <div class="mt-[5px] flex items-center gap-[10px] text-[14px] text-white/78">
+          <span>${m.elevation}</span><span class="text-white/25">|</span>
+          <span>${m.range}</span><span class="text-white/25">|</span>
+          <span>${m.country}</span>
+        </div>
+      </div>
+
+      <!-- TargetDate -->
+      <div class="mt-[15px] px-[17px]">
+        <div class="inline-flex items-center gap-[13px] pl-[14px] pr-[18px] py-[10px] rounded-[14px] glass">
+          <span class="text-white/75" data-icon="calendar" data-size="19"></span>
+          <div>
+            <div class="text-[10.5px] text-white/60 leading-[13px]">Target Date</div>
+            <div class="text-[13.5px] font-semibold leading-[17px]">${prettyDate(targetDate)}</div>
+          </div>
+          <div class="w-px h-[30px] bg-white/15"></div>
+          <div>
+            <div class="text-[19px] font-bold leading-[21px] tracking-[-0.02em]">${fmt(daysUntil(targetDate))}</div>
+            <div class="text-[10.5px] text-white/60 leading-[13px]">days to go</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute right-[21px] top-[186px] text-right font-script text-[18px] leading-[20px] text-white/85 -rotate-3">
+        Higher<br/>tomorrow.
+        <div class="mt-[4px] ml-auto w-[58px] h-px bg-white/35"></div>
+      </div>
+    </div>
+  </header>`;
+}
+
+/* ReadinessCompact — the whole panel is the tap target for Full Readiness */
+function ReadinessCompact(r) {
+  return `<section class="px-[17px] -mt-[14px] relative">
+    <div data-act="Full Readiness" class="pressable cursor-pointer panel rounded-[18px] p-[15px]">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-[5px] text-[10.5px] font-semibold tracking-[0.2em] text-white/62">
+          READINESS <span class="text-white/38" data-icon="info" data-size="12"></span>
+        </div>
+        <span class="text-white/45" data-icon="chev" data-size="15"></span>
+      </div>
+
+      <div class="mt-[10px] flex items-start gap-[15px]">
+        ${ReadinessDial(r)}
+        <div class="flex-1 min-w-0 pt-[4px]">
+          <h3 class="text-[16px] leading-[20px] font-bold tracking-[-0.015em]">${r.action.title}</h3>
+          <p class="mt-[5px] text-[12px] leading-[15px] text-white/58">${r.action.target}</p>
+
+          <div class="mt-[12px] flex items-center justify-between gap-[8px]">
+            <div class="text-[14.5px] leading-[17px] font-semibold whitespace-nowrap">
+              Projected <span class="text-accent">+${Math.round(r.projected - r.current)}%</span>
+            </div>
+            <button data-act="Full Readiness" class="pressable shrink-0 flex items-center justify-center gap-[6px]
+                           h-[34px] px-[11px] rounded-[10px] panel-sub text-[9.5px] font-bold tracking-[0.05em] whitespace-nowrap">
+              VIEW READINESS <span data-icon="arrowR" data-size="12"></span>
+            </button>
+          </div>
+          <p class="mt-[5px] text-[10.5px] leading-[13px] text-white/55 whitespace-nowrap">
+            ${Math.round(r.current)}% → ${Math.round(r.projected)}% after next session
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function TodaysMission(m) {
+  return `<section class="mt-[15px] px-[17px]">
+    <div class="panel rounded-[18px] overflow-hidden flex">
+      <div class="relative w-[92px] shrink-0 ph">
+        <img data-src="${m.img}" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+        <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,0) 55%, rgba(12,20,20,.92) 100%);"></div>
+      </div>
+
+      <div class="flex-1 min-w-0 p-[12px] pl-[13px]">
+        <div class="flex items-start justify-between gap-[10px]">
+          <div class="min-w-0">
+            <div class="text-[9.5px] font-semibold tracking-[0.18em] text-white/62 whitespace-nowrap">${m.eyebrow}</div>
+            <h3 class="mt-[4px] text-[21px] leading-[23px] font-bold tracking-[-0.025em] whitespace-nowrap">${m.title}</h3>
+          </div>
+          <button data-act="Start Session" class="pressable shrink-0 flex items-center gap-[6px] h-[38px] px-[12px] rounded-[11px] whitespace-nowrap
+                         bg-accent text-ink text-[10.5px] font-extrabold tracking-[0.05em]
+                         shadow-[0_8px_24px_-8px_rgba(36,239,164,.75)]">
+            ${m.cta} <span data-icon="arrowR" data-size="13"></span>
+          </button>
+        </div>
+
+        <div class="mt-[7px] flex items-center gap-[9px] text-[12.5px] text-white/75">
+          <span>${m.facts[0]}</span><span class="text-white/22">|</span><span>${m.facts[1]}</span>
+        </div>
+
+        <div class="mt-[10px] flex items-center gap-[7px]">
+          ${m.benefits.map(b => `<span class="flex items-center gap-[3px] text-[9px] text-white/68 whitespace-nowrap">
+            <span class="${b.icon === 'heart' ? 'text-[#8FB6FF]' : b.icon === 'bars' ? 'text-accent/85' : 'text-white/80'}"
+                  data-icon="${b.icon}" data-size="12"></span>${b.label}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* TrainingSessionCard — one template, every upcoming session */
+function TrainingSessionCard(s, i) {
+  return `<article data-act="${s.title}" class="pressable cursor-pointer shrink-0 w-[129px] panel rounded-[15px] overflow-hidden">
+    <div class="relative h-[76px] ph">
+      <img data-src="${s.img}" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(10,17,19,.85) 0%, rgba(5,9,11,0) 55%);"></div>
+      <span class="absolute top-[7px] right-[7px] w-[21px] h-[21px] rounded-full bg-black/55 border border-white/18
+                   backdrop-blur-md grid place-items-center text-white/90"><span data-icon="chev" data-size="11"></span></span>
+    </div>
+    <div class="p-[11px] pt-[9px]">
+      <div class="text-[10px] leading-[12px] text-white/58 whitespace-nowrap">${s.week}</div>
+      <h4 class="mt-[4px] text-[15px] leading-[17px] font-bold tracking-[-0.02em] whitespace-nowrap">${s.title}</h4>
+      <div class="mt-[3px] text-[11px] leading-[13px] text-white/72 whitespace-nowrap">${s.detail}</div>
+      <div class="mt-[7px] flex items-center gap-[5px] text-[10.5px] leading-[13px] text-white/62 whitespace-nowrap">
+        <span class="text-white/55" data-icon="clock" data-size="12"></span>${s.meta}
+      </div>
+    </div>
+  </article>`;
+}
+
+function UpNext(list) {
+  return `<section class="mt-[19px]">
+    <div class="px-[17px] flex items-center justify-between">
+      <h2 class="text-[11px] font-semibold tracking-[0.2em] text-white/62">UP NEXT</h2>
+      <button data-act="Full Plan" class="pressable flex items-center gap-[6px] text-[12px] font-medium text-white/72">
+        View full plan <span data-icon="arrowR" data-size="13"></span>
+      </button>
+    </div>
+    <div id="upNext" class="mt-[10px] flex gap-[7px] overflow-x-auto no-sb px-[17px] pb-[2px]">
+      ${list.map(TrainingSessionCard).join('')}
+    </div>
+  </section>`;
+}
+
+function ElevationBank(b) {
+  const pct = Math.min(100, Math.round((b.banked / b.required) * 100));
+  return `<div data-act="Elevation Bank" class="pressable cursor-pointer flex-1 min-w-0 panel rounded-[16px] p-[13px]">
+    <div class="flex items-start justify-between">
+      <div class="flex items-center gap-[7px] min-w-0">
+        <span class="text-accent shrink-0" data-icon="mark" data-size="20"></span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-[4px] text-[8.5px] font-semibold tracking-[0.13em] text-white/62 whitespace-nowrap">
+            ELEVATION BANK <span class="text-white/35" data-icon="info" data-size="10"></span>
+          </div>
+          <div class="mt-[2px] text-[18px] leading-[21px] font-bold tracking-[-0.025em] whitespace-nowrap">${fmt(b.banked)} m</div>
+          <div class="text-[10px] leading-[13px] text-white/52 whitespace-nowrap">of ${fmt(b.required)} m required</div>
+        </div>
+      </div>
+      <span class="shrink-0 w-[24px] h-[24px] rounded-full panel-sub grid place-items-center text-white/80">
+        <span data-icon="chev" data-size="12"></span></span>
+    </div>
+    <div class="mt-[12px] flex items-center gap-[9px]">
+      <div class="flex-1 h-[7px] rounded-full bg-white/10 overflow-hidden">
+        <div class="h-full rounded-full bg-accent" style="width:${pct}%"></div>
+      </div>
+      <span class="text-[11.5px] font-semibold text-white/72">${pct}%</span>
+    </div>
+  </div>`;
+}
+
+function WeeklyTrainingProgress(w) {
+  return `<div data-act="Training Progress" class="pressable cursor-pointer flex-1 min-w-0 panel rounded-[16px] p-[13px]">
+    <div class="flex items-center gap-[7px] text-[8.5px] font-semibold tracking-[0.13em] text-white/62 whitespace-nowrap">
+      <span class="text-accent" data-icon="bars" data-size="16"></span> TRAINING PROGRESS
+    </div>
+    <div class="mt-[10px] flex items-end justify-between gap-[8px]">
+      <div class="min-w-0">
+        <div class="text-[24px] leading-[26px] font-bold tracking-[-0.03em]">
+          ${w.completed}<span class="text-white/38"> / ${w.target}</span>
+        </div>
+        <div class="mt-[3px] text-[10px] leading-[13px] text-white/58 whitespace-nowrap">sessions this week</div>
+      </div>
+      <div class="flex items-end gap-[4px]">
+        ${w.days.map(d => `<div class="flex flex-col items-center gap-[5px]">
+          <div class="w-[6px] rounded-[3px] ${d.done ? 'bg-accent' : 'bg-white/14'}" style="height:${Math.round(d.v * 36)}px"></div>
+          <span class="text-[9px] ${d.done ? 'text-white/70' : 'text-white/38'}">${d.d}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function PromoBanner() {
+  return `<section class="mt-[13px] px-[17px]">
+    <div class="relative h-[94px] rounded-[16px] overflow-hidden ph border border-white/[.07]">
+      <img data-src="mockup-assets/tb-banner.jpg" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.9) 12%, rgba(5,9,11,.48) 52%, rgba(5,9,11,.3) 100%);"></div>
+      <div class="absolute left-[16px] top-1/2 -translate-y-1/2">
+        <div class="text-[13.5px] leading-[19px] font-semibold tracking-[0.17em]">SMALL STEPS<br/>BIG MOUNTAINS</div>
+        <div class="mt-[6px] w-[46px] h-px bg-white/40"></div>
+      </div>
+      <button data-act="Explore Routes" class="pressable absolute right-[12px] top-1/2 -translate-y-1/2 flex items-center gap-[7px]
+                     h-[38px] pl-[15px] pr-[13px] rounded-full bg-black/62 border border-white/15 backdrop-blur-md
+                     text-[11.5px] font-bold tracking-[0.06em]">
+        EXPLORE ROUTES <span data-icon="arrowR" data-size="13"></span>
+      </button>
+    </div>
+  </section>`;
+}
+
+function QuickAction(a) {
+  return `<button data-act="${a.label}" class="pressable panel-sub rounded-[14px] h-[74px] flex flex-col items-center justify-center gap-[8px] px-[4px]">
+    <span class="text-white/80" data-icon="${a.icon}" data-size="21"></span>
+    <span class="text-[10px] font-medium text-white/85 text-center leading-[12px] whitespace-nowrap">${a.label}</span>
+  </button>`;
+}
+
+function QuickActions(list) {
+  return `<section class="mt-[19px] px-[17px]">
+    <h2 class="text-[11px] font-semibold tracking-[0.2em] text-white/62">QUICK ACTIONS</h2>
+    <div class="mt-[10px] grid grid-cols-4 gap-[8px]">${list.map(QuickAction).join('')}</div>
+  </section>`;
+}
+
+/* BottomNavigation — the locked SummitReady tab set */
+const TABS = [
+  { id: 'basecamp',    icon: 'home',    label: 'Basecamp'    },
+  { id: 'explore',     icon: 'compass', label: 'Explore'     },
+  { id: 'track',       icon: 'boots',   label: 'Track'       },
+  { id: 'expeditions', icon: 'peak',    label: 'Expeditions' },
+  { id: 'you',         icon: 'user',    label: 'You'         },
+];
+let activeTab = 'basecamp';
+
+function BottomNavigation() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TABS.map(t => {
+    const on = t.id === activeTab;
+    return `<button data-tab="${t.id}" class="flex flex-col items-center w-[86px] active:scale-95 transition">
+      <span class="grid place-items-center w-[36px] h-[30px] rounded-[11px] transition-colors ${on ? 'bg-accent/[.13]' : ''}">
+        ${on ? `<span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-accent text-ink" data-icon="${t.icon}" data-size="12"></span>`
+             : `<span class="text-white/55" data-icon="${t.icon}" data-size="25"></span>`}
+      </span>
+      <span class="mt-[3px] text-[9.5px] leading-[12px] font-medium ${on ? 'text-accent' : 'text-white/55'}">${t.label}</span>
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+  el.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    activeTab = b.dataset.tab;
+    BottomNavigation();
+    toast(`→ ${TABS.find(t => t.id === activeTab).label}`);
+  }));
+}
+
+/* ═══════════════════════════ RENDER ═══════════════════════════ */
+function renderScreen() {
+  const s = STATE;
+  document.getElementById('screen').innerHTML =
+      TrainingHero(s.mountain, s.targetDate)
+    + ReadinessCompact(s.readiness)
+    + TodaysMission(s.mission)
+    + UpNext(s.upNext)
+    + `<section class="mt-[13px] px-[17px] flex gap-[9px] items-stretch">
+         ${ElevationBank(s.elevationBank)}${WeeklyTrainingProgress(s.week)}
+       </section>`
+    + PromoBanner()
+    + QuickActions(s.quickActions);
+
+  hydrateIcons();
+  loadPhotos();
+}
+
+/* ═══════════════════════ INTERACTIONS ═══════════════════════ */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translate(-50%, 0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translate(-50%, 8px)';
+  }, 1500);
+}
+
+/* every data-act element reports the navigation it stands for */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  e.stopPropagation();
+  const act = el.dataset.act;
+  if (act === 'Start Session') { startSession(); return; }
+  toast(`→ ${act}`);
+});
+
+/* Start Session gives the button a real state change to evaluate */
+function startSession() {
+  const btn = document.querySelector('[data-act="Start Session"]');
+  if (!btn || btn.dataset.running) return;
+  btn.dataset.running = '1';
+  btn.innerHTML = `SESSION STARTED ${icon('clock', 14)}`;
+  btn.classList.add('opacity-90');
+  toast('Hill Session started · tracking elevation');
+  setTimeout(() => {
+    btn.innerHTML = `${STATE.mission.cta} ${icon('arrowR', 14)}`;
+    btn.classList.remove('opacity-90');
+    delete btn.dataset.running;
+  }, 2600);
+}
+
+/* prototype hook — setReadiness(60, 68) redraws the gauge from the maths */
+window.setReadiness = (current, projected) => {
+  STATE.readiness.current = current;
+  STATE.readiness.projected = projected;
+  renderScreen();
+  return { current, projected };
+};
+
+/* shift + wheel scrolls the Up Next rail; plain wheel still scrolls the page */
+function wheelRail(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('wheel', ev => {
+    if (ev.shiftKey && Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) { el.scrollLeft += ev.deltaY; ev.preventDefault(); }
+  }, { passive: false });
+}
+
+/* ═══════════════════════════ BOOT ═══════════════════════════ */
+renderScreen();
+BottomNavigation();
+wheelRail('upNext');
+</script>
+</body>
+</html>
