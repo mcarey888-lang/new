@@ -106,10 +106,18 @@ const STATE = {
 
   elevationBank: { banked: 12450, required: 88429 },
 
+  /* Week 3 of the 12-week plan — the same week the Training Plan screen shows.
+     Four prescribed sessions; rest days carry no load and are not counted.    */
   week: {
-    completed: 3, target: 5,
-    days: [ {d:'M',v:.72,done:true}, {d:'T',v:.78,done:true}, {d:'W',v:.70,done:true},
-            {d:'F',v:1,  done:true}, {d:'S',v:.34,done:false},{d:'S',v:.30,done:false} ],
+    days: [
+      { d: 'M', rest: true                },
+      { d: 'T', load: .74, done: true     },   /* Hill        */
+      { d: 'W', load: .62, done: false    },   /* Stairmaster */
+      { d: 'T', load: .54, done: false    },   /* Strength    */
+      { d: 'F', rest: true                },
+      { d: 'S', load: 1,   done: false    },   /* Long Hike   */
+      { d: 'S', rest: true                },
+    ],
   },
 
   quickActions: [
@@ -445,6 +453,8 @@ function ElevationBank(b) {
 }
 
 function WeeklyTrainingProgress(w) {
+  const sessions = w.days.filter(d => !d.rest);
+  const done = sessions.filter(d => d.done).length;
   return `<div data-act="Training Progress" class="pressable cursor-pointer flex-1 min-w-0 panel rounded-[16px] p-[13px]">
     <div class="flex items-center gap-[7px] text-[8.5px] font-semibold tracking-[0.13em] text-white/62 whitespace-nowrap">
       <span class="text-accent" data-icon="bars" data-size="16"></span> TRAINING PROGRESS
@@ -452,13 +462,14 @@ function WeeklyTrainingProgress(w) {
     <div class="mt-[10px] flex items-end justify-between gap-[8px]">
       <div class="min-w-0">
         <div class="text-[24px] leading-[26px] font-bold tracking-[-0.03em]">
-          ${w.completed}<span class="text-white/38"> / ${w.target}</span>
+          ${done}<span class="text-white/38"> / ${sessions.length}</span>
         </div>
         <div class="mt-[3px] text-[10px] leading-[13px] text-white/58 whitespace-nowrap">sessions this week</div>
       </div>
       <div class="flex items-end gap-[4px]">
         ${w.days.map(d => `<div class="flex flex-col items-center gap-[5px]">
-          <div class="w-[6px] rounded-[3px] ${d.done ? 'bg-accent' : 'bg-white/14'}" style="height:${Math.round(d.v * 36)}px"></div>
+          <div class="w-[6px] rounded-[3px] ${d.rest ? 'bg-white/10' : d.done ? 'bg-accent' : 'bg-white/16'}"
+               style="height:${d.rest ? 6 : Math.round(d.load * 36)}px"></div>
           <span class="text-[9px] ${d.done ? 'text-white/70' : 'text-white/38'}">${d.d}</span>
         </div>`).join('')}
       </div>
