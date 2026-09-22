@@ -216,6 +216,10 @@ const UI = {
   descExpanded: false,
 };
 const route = () => ROUTES.find(r => r.id === UI.selectedRoute) || null;
+/* SummitReady only enables navigation once a route's geometry is verified.
+   Candidate routes stay fully selectable and inspectable — they simply do not
+   offer Start This Route or offline packaging. */
+const isNavigable = r => !!r && r.state === 'verified';
 const fmt = n => Number(n).toLocaleString('en-GB');
 
 /* ═════════════════════════ ICONS ═════════════════════════ */
@@ -326,7 +330,11 @@ function RouteCard(r) {
     <div class="w-[64px] h-[58px] rounded-[11px] overflow-hidden ph shrink-0">
       <img data-src="${r.img}" alt="" class="w-full h-full object-cover"/></div>
     <div class="flex-1 min-w-0">
-      ${r.badge ? `<span class="inline-block mb-[4px] px-[7px] py-[2px] rounded-[6px] bg-train/15 border border-train/45 text-train text-[8.5px] font-bold tracking-[0.08em]">${r.badge.toUpperCase()}</span>` : ''}
+      <span class="flex flex-wrap items-center gap-[5px] mb-[4px]">
+        ${r.badge ? `<span class="inline-block px-[7px] py-[2px] rounded-[6px] bg-train/15 border border-train/45 text-train text-[8.5px] font-bold tracking-[0.08em]">${r.badge.toUpperCase()}</span>` : ''}
+        ${!isNavigable(r) ? `<span class="inline-flex items-center gap-[3px] px-[7px] py-[2px] rounded-[6px] bg-warn/12 border border-warn/45 text-warn text-[8.5px] font-bold tracking-[0.08em]">
+          <span data-icon="shield" data-size="9"></span>UNVERIFIED</span>` : ''}
+      </span>
       <div class="text-[13.5px] font-bold leading-[17px] tracking-[-0.015em] break-words">${r.name}</div>
       <div class="mt-[4px] flex flex-wrap gap-x-[10px] gap-y-[2px] text-[10.5px] text-white/62">
         <span class="flex items-center gap-[4px] whitespace-nowrap"><span class="text-white/40" data-icon="dist" data-size="11"></span>${r.km} km</span>
@@ -391,7 +399,7 @@ function SelectedRoute(r) {
         </div>
         <span class="shrink-0 flex items-center gap-[4px] px-[8px] py-[4px] rounded-full text-[8.5px] font-bold tracking-[0.08em]
           ${r.state==='verified'?'bg-train/12 border border-train/45 text-train':'bg-warn/12 border border-warn/45 text-warn'}">
-          <span data-icon="shield" data-size="10"></span>${r.state==='verified'?'VERIFIED':'CANDIDATE'}</span>
+          <span data-icon="shield" data-size="10"></span>${r.state==='verified'?'VERIFIED':'UNVERIFIED'}</span>
       </div>
 
       <div class="mt-[12px] grid grid-cols-3 gap-[8px]">
@@ -450,7 +458,24 @@ function SelectedRoute(r) {
       ${DnaBars(r)}
     </div>
 
-    <div class="p-[13px] border-t border-white/[.06]">${OfflineControl(off)}</div>
+    <div class="p-[13px] border-t border-white/[.06]">${isNavigable(r) ? OfflineControl(off) : VerificationNotice()}</div>
+  </div>`;
+}
+
+/* shown in place of offline/navigation actions while a route is unverified */
+function VerificationNotice() {
+  return `<div class="rounded-[13px] border border-warn/40 bg-warn/[.07] p-[12px]">
+    <div class="flex items-start gap-[10px]">
+      <span class="text-warn shrink-0 mt-[1px]" data-icon="shield" data-size="16"></span>
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-bold text-warn">Route verification in progress</div>
+        <p class="mt-[4px] text-[11px] leading-[15px] text-white/62">
+          We are still confirming this route's geometry against recorded tracks. SummitReady enables
+          navigation and offline download once a route is verified — until then you can explore the
+          detail and add it to your plan.
+        </p>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -535,9 +560,13 @@ function ActionBar() {
       <button data-act="Add to Plan" class="pressable h-[50px] rounded-[14px] ${UI.planned ? 'bg-train/12 border border-train/50 text-train' : 'panel-sub'}
         flex items-center justify-center gap-[8px] text-[13px] font-bold">
         <span data-icon="${UI.planned ? 'check' : 'calendar'}" data-size="15"></span> ${UI.planned ? 'Added to Plan' : 'Add to Plan'}</button>
-      <button data-act="Start This Route" class="pressable h-[50px] rounded-[14px] bg-accent text-white flex items-center justify-center gap-[8px] text-[13px] font-bold
-        shadow-[0_10px_26px_-12px_rgba(22,125,247,.95)]">
-        <span data-icon="play" data-size="13"></span> Start This Route</button>
+      ${isNavigable(r)
+        ? `<button data-act="Start This Route" class="pressable h-[50px] rounded-[14px] bg-accent text-white flex items-center justify-center gap-[8px] text-[13px] font-bold
+             shadow-[0_10px_26px_-12px_rgba(22,125,247,.95)]">
+             <span data-icon="play" data-size="13"></span> Start This Route</button>`
+        : `<button disabled aria-disabled="true" title="Available once this route is verified"
+             class="h-[50px] rounded-[14px] panel-sub text-white/45 flex items-center justify-center gap-[8px] text-[12px] font-bold cursor-not-allowed">
+             <span data-icon="shield" data-size="13"></span> Verification in progress</button>`}
     </div>
   </div>`;
   hydrateIcons(bar);
@@ -623,11 +652,16 @@ function View3D() {
                 <div class="text-[9px] text-white/45">${l}</div></div>`).join('')}
           </div></div>` : ''}
 
-        <div class="mt-[13px]">${OfflineControl(UI.offline)}</div>
-        <button data-act="Start This Route" class="pressable mt-[10px] w-full h-[54px] rounded-[15px] bg-accent text-white
-                       flex items-center justify-center gap-[9px] text-[15px] font-bold
-                       shadow-[0_12px_30px_-12px_rgba(22,125,247,.95)]">
-          <span data-icon="play" data-size="14"></span> Start This Route</button>
+        <div class="mt-[13px]">${isNavigable(r) ? OfflineControl(UI.offline) : VerificationNotice()}</div>
+        ${isNavigable(r)
+          ? `<button data-act="Start This Route" class="pressable mt-[10px] w-full h-[54px] rounded-[15px] bg-accent text-white
+                 flex items-center justify-center gap-[9px] text-[15px] font-bold
+                 shadow-[0_12px_30px_-12px_rgba(22,125,247,.95)]">
+               <span data-icon="play" data-size="14"></span> Start This Route</button>`
+          : `<button disabled aria-disabled="true" title="Available once this route is verified"
+               class="mt-[10px] w-full h-[54px] rounded-[15px] panel-sub text-white/45
+                      flex items-center justify-center gap-[9px] text-[14px] font-bold cursor-not-allowed">
+               <span data-icon="shield" data-size="14"></span> Verification in progress</button>`}
         <div class="h-[26px] safe-bot"></div>
       </div>
     </div>`;
@@ -695,6 +729,7 @@ function chooseRoute(id, { scroll = true } = {}) {
   return r;
 }
 function startDownload() {
+  if (!isNavigable(route())) return;
   UI.offline = 'downloading'; renderScreen();
   let p = 0;
   clearInterval(dlTimer);
@@ -738,6 +773,7 @@ function closeGallery(){ const g=document.getElementById('gallery'); g.style.opa
    route. It does NOT reimplement Track Ready. */
 function trackHandoff() {
   const r = route(); if (!r) return;
+  if (!isNavigable(r)) { toast('Navigation opens once this route is verified'); return; }
   const h = document.getElementById('handoff');
   h.innerHTML = `
     <div class="mx-auto mb-[14px] h-[4px] w-[38px] rounded-full bg-white/25"></div>
@@ -817,6 +853,7 @@ window.clearRouteSelection = () => { UI.selectedRoute = null; renderScreen(); re
 window.setOfflineState = s => {
   if (!['not_downloaded','downloading','available'].includes(s)) { console.warn('states: not_downloaded | downloading | available'); return; }
   clearInterval(dlTimer);
+  if (!isNavigable(route())) { console.warn('offline packaging requires a verified route'); return UI.offline; }
   if (s === 'downloading') startDownload(); else { UI.offline = s; renderScreen(); }
   return UI.offline;
 };
