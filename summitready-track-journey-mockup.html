@@ -154,12 +154,13 @@ function consequences(a) {
   out.push(READINESS_DELTA
     ? { icon:'gauge', label:'READINESS', head:`${READINESS_DELTA.from}% → ${READINESS_DELTA.to}%`,
         note:`Evidence improved: ${READINESS_DELTA.evidence.join(', ')}`, tone:'train' }
-    : { icon:'gauge', label:'READINESS', head:'Recalculating',
-        note:'Your score updates once the Readiness engine has processed this activity.', tone:'muted' });
+    : { icon:'gauge', label:'READINESS', head:'Updating your readiness…',
+        note:'Your activity is being assessed against your mountain goal.', tone:'pending' });
   return out;
 }
-/* set to null to see the honest "recalculating" state the engine-free case needs */
-let READINESS_DELTA = { from:52, to:54, evidence:['Elevation', 'Experience'] };
+/* Default is PENDING. The Readiness engine owns this number, so the UI never
+   manufactures one — a result only appears once setReadinessDelta() supplies it. */
+let READINESS_DELTA = null;
 
 const PHOTO_POOL = ['mockup-assets/tr-p1.jpg','mockup-assets/tr-p2.jpg','mockup-assets/tr-p3.jpg','mockup-assets/tr-p4.jpg'];
 
@@ -492,9 +493,10 @@ function TrackRecording() {
 
 /* ═══════════════════ STATE 3 — ACTIVITY COMPLETE ═══════════════════ */
 function ConsequenceRow(c) {
-  const tone = c.tone === 'train' ? 'text-train' : c.tone === 'muted' ? 'text-white/55' : 'text-accent';
+  const iconTone = c.tone === 'train' ? 'text-train' : 'text-accent';
+  const tone = c.tone === 'train' ? 'text-train' : c.tone === 'pending' ? 'text-white/88' : 'text-accent';
   return `<div class="p-[12px] flex items-start gap-[11px]">
-    <span class="shrink-0 mt-[1px] ${tone}" data-icon="${c.icon}" data-size="18"></span>
+    <span class="shrink-0 mt-[1px] ${iconTone}" data-icon="${c.icon}" data-size="18"></span>
     <div class="min-w-0 flex-1">
       <div class="text-[9px] font-bold tracking-[0.16em] text-white/50">${c.label}</div>
       <div class="mt-[4px] text-[14.5px] font-bold leading-[18px] ${tone} break-words">${c.head}</div>
@@ -585,8 +587,8 @@ function EditDetails() {
   return `<div class="safe-top px-[17px] flex items-center gap-[12px]">
     <button data-act="Back to Complete" aria-label="Back" class="pressable text-white/85"><span data-icon="chevL" data-size="20"></span></button>
     <div class="min-w-0">
-      <h1 class="text-[17px] font-bold tracking-[-0.02em]">Save to Your Journey</h1>
-      <p class="text-[11px] text-white/55">Add some details to your activity.</p>
+      <h1 class="text-[17px] font-bold tracking-[-0.02em]">Activity Details</h1>
+      <p class="text-[11px] text-white/55">Add photos, notes and details to your hike.</p>
     </div>
   </div>
 
@@ -631,6 +633,12 @@ function EditDetails() {
         </button>
       </div>
     </div>`)}
+
+    ${TRACK.activity.context === 'training' ? Field('Training session', `<div class="mt-[5px] panel-sub rounded-[12px] px-[13px] py-[11px] flex items-center gap-[10px]">
+      <span class="text-train shrink-0" data-icon="calendar" data-size="15"></span>
+      <span class="text-[13px] flex-1 min-w-0 truncate">Mountain Day · Week 3</span>
+      <span class="shrink-0 text-[9px] font-bold tracking-[0.1em] px-[8px] py-[3px] rounded-full bg-train/15 border border-train/45 text-train">LINKED</span>
+    </div>`) : ''}
 
     ${Field('Notes (optional)', `<div class="mt-[5px]">
       <textarea id="fNotes" rows="3" maxlength="500" placeholder="How was it?"
@@ -853,8 +861,16 @@ window.setTrackContext = c => {
   return { context: c };
 };
 window.setGps = g => { TRACK.gps = g; renderScreen(); return g; };
+/* setReadinessDelta({from,to,evidence:[...]}) shows a returned result;
+   setReadinessDelta(null) restores the pending state. */
+window.setReadinessDelta = d => {
+  READINESS_DELTA = d || null;
+  if (TRACK.state === 'complete') renderScreen();
+  return READINESS_DELTA;
+};
 window.trackDebug = () => ({ state:TRACK.state, context:TRACK.context, view:TRACK.view,
-  activityId: TRACK.activity?.id ?? null, savedLocally: TRACK.activity?.savedLocally ?? null });
+  activityId: TRACK.activity?.id ?? null, savedLocally: TRACK.activity?.savedLocally ?? null,
+  readiness: READINESS_DELTA ? 'result' : 'pending' });
 
 /* ═════════════════════════ BOOT ═════════════════════════ */
 renderScreen();
