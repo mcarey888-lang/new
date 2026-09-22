@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SummitReady — Full Readiness</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════════════════
+  SUMMITREADY · FULL READINESS — high-fidelity visual prototype
+  Lives inside Training mode: Basecamp → compact Readiness → here → pillar
+  detail. Basecamp stays the active tab; Readiness is not a tab.
+  Same tokens, surfaces, type scale and icon set as the Training Basecamp,
+  Training Plan and Explore prototypes. The gauge maths is the one established
+  in Training Basecamp, parameterised by size.
+  Prototype only — no scoring formula, Summit Data Engine or production data.
+  ════════════════════════════════════════════════════════════════════════════
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { ink:'#05090B', accent:'#24EFA4', gap:'#E9B949' },
+      fontFamily: { sans: ['Inter','system-ui','-apple-system','sans-serif'] },
+    } }
+  }
+</script>
+<style>
+  :root {
+    --ink:#05090B; --accent:#24EFA4; --gap:#E9B949;
+    --ink-1:rgba(255,255,255,.92); --ink-2:rgba(255,255,255,.62); --ink-3:rgba(255,255,255,.42);
+    --grid:rgba(255,255,255,.09);
+  }
+  html, body { margin:0; background:var(--ink); color-scheme:dark; }
+  .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { display:none; }
+  .ph { background-color:#12202a; background-image:
+        linear-gradient(165deg, rgba(36,239,164,.10), rgba(0,0,0,0) 48%),
+        linear-gradient(to top, #070c0e 0%, #12202a 42%, #24405a 72%, #56738c 100%); }
+  .ph > img { opacity:0; transition:opacity .5s ease; }
+  .ph > img.ok { opacity:1; }
+  .glass     { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+  .navglass  { background:rgba(5,9,11,.94); backdrop-filter:blur(22px) saturate(140%); }
+  .panel     { background:linear-gradient(158deg, rgba(20,36,32,.92) 0%, rgba(10,17,19,.94) 62%, rgba(8,13,15,.96) 100%);
+               border:1px solid rgba(255,255,255,.075); }
+  .panel-sub { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); }
+  .pressable { transition:transform .12s ease, filter .12s ease; }
+  .pressable:active { transform:scale(.975); filter:brightness(1.12); }
+  /* gauge: achieved sweeps first, the projected sliver then fades in behind it */
+  .arc-achieved  { transition:stroke-dasharray 1.15s cubic-bezier(.22,1,.36,1); }
+  .arc-projected { transition:stroke-dasharray .6s ease .95s, opacity .5s ease .95s; }
+  .proj-lead     { transition:opacity .5s ease 1.25s; }
+  #sheet { background:#0B1113; }
+  #sheet, #scrim, #toast { transition:opacity .28s ease, transform .3s cubic-bezier(.22,1,.36,1); }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+</style>
+</head>
+<body class="font-sans text-white antialiased">
+
+<div class="relative mx-auto w-full max-w-[430px] min-h-screen bg-ink">
+  <main id="screen"></main>
+  <div class="h-[104px]"></div>
+
+  <!-- BottomNavigation — locked tab set, Basecamp active -->
+  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-[90px] navglass border-t border-white/[.07] z-30">
+    <div id="tabs" class="flex items-start justify-around pt-[11px]"></div>
+  </div>
+
+  <!-- ReadinessPillarDetail -->
+  <div id="scrim" style="opacity:0;pointer-events:none" class="fixed inset-0 z-40 bg-black/70 backdrop-blur-[2px]"></div>
+  <div id="sheet" style="transform:translate(-50%,105%)" role="dialog" aria-modal="true" aria-label="Pillar detail"
+       class="fixed bottom-0 left-1/2 w-full max-w-[430px] z-50 max-h-[86vh] overflow-y-auto no-sb
+              rounded-t-[22px] border-t border-white/10 px-[17px] pt-[14px] pb-[30px]"></div>
+
+  <div id="toast" style="opacity:0;transform:translate(-50%,8px)"
+       class="pointer-events-none fixed left-1/2 bottom-[104px] z-[60]
+              px-[15px] py-[9px] rounded-full glass text-[11.5px] font-semibold whitespace-nowrap"></div>
+</div>
+
+<script>
+/* ═══════════════════════ READINESS STATE ═══════════════════════
+   current and projected are supplied independently — the production build
+   will fill them from calculateReadiness(evidence) and
+   calculateReadiness(evidence + expectedSessionEvidence).                    */
+const READINESS = {
+  current:   52,
+  projected: 55,          /* NOT earned — conditional on the prescribed session */
+  status:    'BUILDING',
+  blurb:     "You're making strong progress. Keep going!",
+
+  goal: { name:'Mont Blanc', elevation:'4,808 m', targetDate:'2027-07-12', img:'mockup-assets/rd-goal.jpg' },
+
+  pillars: [
+    { id:'endurance', name:'Endurance', value:65, icon:'heart',
+      blurb:'Cardiovascular fitness for long days.',
+      measures:'Your ability to keep moving at a steady effort for many hours, not how fast you can go.',
+      evidence:[ ['Long-duration hikes','3 sessions over 3 hours in the last 8 weeks'],
+                 ['Zone 2 work','4h 20m of steady aerobic work per week'],
+                 ['Sustained duration','Longest continuous session 4h 32m — Helvellyn'] ],
+      why:'You hold a steady effort well, but Mont Blanc summit day runs 10–12 hours. The gap is duration, not pace.',
+      improve:{ head:'Add one 4-hour-plus day every fortnight', body:'Keep it conversational. Time on feet moves this pillar far more than intensity.' } },
+
+    { id:'elevation', name:'Elevation', value:65, icon:'mark',
+      blurb:'Your body’s ability to handle climbing.',
+      measures:'Total height gained and descended, and how repeatably you can do it week after week.',
+      evidence:[ ['Elevation banked','12,450 m of 88,429 m required'],
+                 ['Weekly average','1,850 m per week over the last 4 weeks'],
+                 ['Indoor equivalent','600 m credited from stairmaster sessions'] ],
+      why:'Your weekly gain is solid for a UK base, but single-day gain is still short of an Alpine summit day.',
+      improve:{ head:'Hit the 900 m mountain day prescribed this week', body:'Repeating a 900 m day weekly lifts this pillar faster than any other session.' } },
+
+    { id:'consistency', name:'Consistency', value:33, icon:'bars',
+      blurb:'Regular training builds resilience.',
+      measures:'How reliably you complete prescribed sessions, weighted towards the last 8 weeks.',
+      evidence:[ ['Sessions completed','1 of 4 prescribed this week'],
+                 ['Missed sessions','1 missed in week 2'],
+                 ['Longest streak','2 consecutive full weeks'] ],
+      why:'This is your largest gap. Readiness rewards repeatable weeks, and broken weeks reset momentum faster than they build it.',
+      improve:{ head:'Complete four full weeks back to back', body:'Four weeks at 4 of 4 sessions is the single fastest lift available to you right now.' } },
+
+    { id:'experience', name:'Experience', value:33, icon:'peak',
+      blurb:'Skills and time in the mountains.',
+      measures:'Real mountain days, height reached, and exposure to the terrain your goal demands.',
+      evidence:[ ['Distinct peaks','3 logged — Helvellyn, Cat Bells, Scafell Pike'],
+                 ['Highest point reached','950 m'],
+                 ['Technical days','None logged — no glacier or roped travel'] ],
+      why:'Mont Blanc is 4,808 m with glacier travel. Your logged days are valuable UK hill days, but none carry altitude or technical ground.',
+      improve:{ head:'Log a UK day above 900 m, then an Alpine 3,000 m objective', body:'Altitude and technical exposure are the two inputs this pillar cannot get from training volume alone.' } },
+  ],
+
+  nextAction: {
+    kind:'MOUNTAIN DAY', title:'Mountain Day',
+    facts:[ ['clock','3–5 hours'], ['mark','900 m elevation gain'], ['bars','Moderate'] ],
+    why:'This session targets your two weakest inputs — elevation gain and sustained duration — in a single day out.',
+    img:'mockup-assets/rd-action.jpg',
+  },
+
+  /* Readiness history. Every series ends at the current score.               */
+  history: {
+    '4W': [['24 Aug',25],['31 Aug',34],['7 Sep',41],['14 Sep',47],['21 Sep',52]],
+    '3M': [['Jul',14],['mid Jul',19],['Aug',26],['mid Aug',31],['Sep',41],['mid Sep',47],['Now',52]],
+    '1Y': [['Oct',6],['Dec',9],['Feb',13],['Apr',19],['Jun',27],['Aug',38],['Now',52]],
+    'ALL':[['2024',0],['2025 H1',5],['2025 H2',11],['2026 H1',24],['Now',52]],
+  },
+
+  evidence: [
+    { name:'Helvellyn',   date:'14 Sep 2026', img:'mockup-assets/rd-act1.jpg',
+      stats:[['mark','950 m'],['route','14 km'],['clock','4h 32m']] },
+    { name:'Stairmaster', date:'12 Sep 2026', img:'mockup-assets/rd-act2.jpg',
+      stats:[['clock','45 min'],['mark','600 m eq.']] },
+    { name:'Cat Bells',   date:'9 Sep 2026',  img:'mockup-assets/rd-act3.jpg',
+      stats:[['mark','451 m'],['route','7 km'],['clock','2h 18m']] },
+  ],
+};
+
+/* ═══════════════════════════ ICONS ═══════════════════════════ */
+const S = (d, extra='') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+const ICONS = {
+  mark:    S(`<path d="M1.6 19.2 6.9 12l2.3 2.9 4.1-6.2 8.1 10.5z"/><path d="M7.4 11.2 9.6 8l1.6 2.2"/>`, 'stroke-width="1.5"'),
+  peak:    S(`<path d="M2.6 19.4h18.8L15.2 5.4l-3.8 6.8-2.8-3.6z"/>`, 'stroke-width="1.6"'),
+  compass: S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  home:    S(`<path d="M3.5 10.1 12 3.4l8.5 6.7v9.5a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9.5Z"/>`),
+  boots:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <ellipse cx="7.4" cy="7" rx="2.7" ry="4.3"/><ellipse cx="7.4" cy="15.4" rx="2.2" ry="2.2"/>
+              <ellipse cx="16.6" cy="10.4" rx="2.7" ry="4.3"/><ellipse cx="16.6" cy="18.8" rx="2.2" ry="2.2"/>
+            </svg>`,
+  user:    S(`<circle cx="12" cy="7.8" r="3.7"/><path d="M4.9 20.4a7.1 7.1 0 0 1 14.2 0"/>`),
+  chev:    S(`<path d="m9 5 7 7-7 7"/>`),
+  arrowR:  S(`<path d="M4.5 12h15M13.5 6l6 6-6 6"/>`),
+  clock:   S(`<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3 1.8"/>`),
+  heart:   S(`<path d="M12 20.2 3.9 12.4a4.9 4.9 0 0 1 .5-7.2 4.9 4.9 0 0 1 6.6.5l1 1 1-1a4.9 4.9 0 0 1 6.6-.5 4.9 4.9 0 0 1 .5 7.2L12 20.2Z"/>`),
+  calendar:S(`<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 10.1h17.2M8.4 3.4v3.6M15.6 3.4v3.6"/>`),
+  bars:    `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14.5" width="3.6" height="5.5" rx="1.2"/><rect x="10.2" y="10" width="3.6" height="10" rx="1.2"/><rect x="16.4" y="4.8" width="3.6" height="15.2" rx="1.2"/></svg>`,
+  route:   S(`<circle cx="5.1" cy="17.7" r="1.9"/><circle cx="18.9" cy="6.3" r="1.9"/><path d="M6.7 16.9c2.8-.5 2.5-4.3 4.9-5.5s5 .2 6.1-3.2"/>`),
+  play:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.4 5.6 19 12 8.4 18.4z"/></svg>`,
+  gear:    S(`<circle cx="12" cy="12" r="3.1"/><path d="M19.2 14.4a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.56 1Z"/>`, 'stroke-width="1.5"'),
+  info:    S(`<circle cx="12" cy="12" r="8.8"/><path d="M12 11.2v5M12 7.9v.1"/>`),
+  bolt:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.6 2 4.8 13.4h5.3L9.4 22l9-11.6h-5.4z"/></svg>`,
+  trend:   S(`<path d="M3.4 16.6 9 10.8l3.6 3.4 7.8-8"/><path d="M15.4 6.2h5v5"/>`),
+  x:       S(`<path d="M6 6l12 12M18 6 6 18"/>`),
+  check:   S(`<path d="m5 12.6 4.6 4.4L19 6.8"/>`, 'stroke-width="2.4"'),
+};
+function icon(n, s) {
+  const h = document.createElement('span'); h.innerHTML = ICONS[n] || '';
+  const g = h.firstElementChild;
+  if (g) { g.setAttribute('width', s); g.setAttribute('height', s); g.style.display = 'block'; }
+  return h.innerHTML;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(n => {
+    n.innerHTML = icon(n.dataset.icon, n.dataset.size || 16); n.style.display = 'inline-flex';
+  });
+}
+function loadPhotos(root = document) {
+  root.querySelectorAll('img[data-src]').forEach(i => {
+    if (i.dataset.started || !i.dataset.src) return;
+    i.dataset.started = '1';
+    i.addEventListener('load', () => i.classList.add('ok'));
+    i.addEventListener('error', () => i.remove());
+    i.src = i.dataset.src;
+  });
+}
+const prettyDate = s => new Date(s + 'T00:00:00')
+  .toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+
+/* ═══════════════════════ ReadinessGauge ═══════════════════════
+   The same geometry as the Training Basecamp compact gauge, parameterised by
+   size — one implementation, two presentations.
+     0% = 12 o'clock, 25% = 3, 50% = 6, 75% = 9, sweeping CLOCKWISE.
+   An SVG <circle> starts at 3 o'clock and runs clockwise, so rotating the
+   group -90deg puts 0% at 12 o'clock with the direction preserved.
+   The projected arc starts exactly where the achieved arc ends by offsetting
+   its dash pattern by the achieved length; both use butt caps, because a round
+   cap would add stroke/2 of overlap and swallow the projected sliver.
+   `animate` renders at zero length so the caller can grow it to the real
+   value on the next frame.                                                   */
+function ReadinessGauge({ current, projected, size = 200, stroke = 14, animate = false, lead = false }) {
+  const clamp = v => Math.max(0, Math.min(100, Number(v) || 0));
+  const cur  = clamp(current) / 100;
+  const proj = Math.max(cur, clamp(projected) / 100);
+
+  const r = (size - stroke) / 2;
+  const C = 2 * Math.PI * r;
+  const c = size / 2;
+  const achievedLen  = cur * C;
+  const projectedLen = (proj - cur) * C;
+
+  /* marker sits at the midpoint of the projected sliver, on the true arc */
+  const midPct = (cur + proj) / 2;
+  const theta  = (-90 + midPct * 360) * Math.PI / 180;
+  const mx = c + r * Math.cos(theta), my = c + r * Math.sin(theta);
+  const lx = c + (r + 26) * Math.cos(theta), ly = c + (r + 26) * Math.sin(theta);
+
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="block overflow-visible"
+               role="img" aria-label="Readiness ${Math.round(current)} per cent, projected ${Math.round(projected)} per cent after the next session">
+    <g transform="rotate(-90 ${c} ${c})">
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="${stroke}"/>
+      <circle class="arc-projected" cx="${c}" cy="${c}" r="${r}" fill="none"
+              stroke="rgba(36,239,164,.34)" stroke-width="${stroke}" stroke-linecap="butt"
+              stroke-dasharray="${animate ? 0 : projectedLen} ${C}" stroke-dashoffset="${-achievedLen}"
+              style="opacity:${animate ? 0 : 1}"
+              data-full="${projectedLen} ${C}"/>
+      <circle class="arc-achieved" cx="${c}" cy="${c}" r="${r}" fill="none"
+              stroke="#24EFA4" stroke-width="${stroke}" stroke-linecap="butt"
+              stroke-dasharray="${animate ? 0 : achievedLen} ${C}" stroke-dashoffset="0"
+              data-full="${achievedLen} ${C}"/>
+    </g>
+    ${lead ? `<g class="proj-lead" style="opacity:${animate ? 0 : 1}">
+      <line x1="${mx}" y1="${my}" x2="${lx}" y2="${ly}" stroke="rgba(255,255,255,.5)" stroke-width="1.5" stroke-dasharray="2 3"/>
+      <circle cx="${mx}" cy="${my}" r="4.5" fill="#24EFA4" stroke="#05090B" stroke-width="2"/>
+    </g>` : ''}
+  </svg>`;
+}
+/* grow every gauge on the page from zero to its real geometry */
+function playGauges(root = document) {
+  const arcs  = [...root.querySelectorAll('[data-full]')];
+  const leads = [...root.querySelectorAll('.proj-lead')];
+  if (!arcs.length) return;
+  void arcs[0].getBoundingClientRect();   /* force the zero-length start to compute */
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    arcs.forEach(el => { el.style.strokeDasharray = el.dataset.full; el.style.opacity = '1'; });
+    leads.forEach(el => { el.style.opacity = '1'; });
+  }));
+}
+
+/* ═══════════════════════════ COMPONENTS ═══════════════════════════ */
+
+function AppHeader() {
+  return `<div class="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-[17px] pt-[14px]">
+    <div class="flex items-center gap-[9px]">
+      <img src="mockup-assets/sr-mark.png" alt="SummitReady" class="w-[34px] block"/>
+      <img src="mockup-assets/sr-wordmark.png" alt="SUMMIT READY" class="w-[112px] block opacity-95"/>
+    </div>
+    <button data-act="Settings" class="pressable text-white/85"><span data-icon="gear" data-size="19"></span></button>
+  </div>`;
+}
+
+/* ReadinessHero */
+function ReadinessHero(r) {
+  return `<header class="relative h-[368px]">
+    <div class="absolute inset-0 ph overflow-hidden">
+      <img data-src="mockup-assets/rd-hero.jpg" alt="" class="w-full h-full object-cover" style="object-position:52% 40%"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to bottom, rgba(5,9,11,.74) 0%, rgba(5,9,11,.3) 26%, rgba(5,9,11,.5) 62%, rgba(5,9,11,.94) 90%, #05090B 100%);"></div>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.9) 0%, rgba(5,9,11,.42) 48%, rgba(5,9,11,.1) 100%);"></div>
+    </div>
+    ${AppHeader()}
+
+    <div class="absolute left-[17px] top-[74px] w-[190px]">
+      <div class="text-[9.5px] font-semibold tracking-[0.28em] text-white/68">YOUR READINESS</div>
+      <h1 class="mt-[7px] text-[25px] leading-[28px] font-bold tracking-[-0.03em]">Build for<br/>Bigger Mountains</h1>
+      <p class="mt-[9px] text-[11.5px] leading-[16px] text-white/62">
+        Track your progress across the four pillars and see how prepared you are for your goal.
+      </p>
+    </div>
+
+    <div class="absolute" style="left:196px; top:70px;">
+      ${ReadinessGauge({ current:r.current, projected:r.projected, size:196, stroke:14, animate:true, lead:true })}
+      <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div class="flex items-start">
+          <span id="readyValue" class="text-[52px] leading-[52px] font-extrabold tracking-[-0.045em]">${Math.round(r.current)}</span>
+          <span class="text-[19px] leading-[26px] font-semibold text-white/72 mt-[6px]">%</span>
+        </div>
+        <div class="mt-[2px] text-[14px] font-bold tracking-[0.13em] text-accent">${r.status}</div>
+      </div>
+    </div>
+
+    <div class="absolute right-[17px] bottom-[56px] flex items-center gap-[8px] pl-[11px] pr-[13px] py-[7px] rounded-full glass">
+      <span class="text-accent" data-icon="trend" data-size="14"></span>
+      <div class="leading-none">
+        <div class="text-[13px] font-bold">${Math.round(r.projected)}%</div>
+        <div class="mt-[2px] text-[9px] text-white/58">after next session</div>
+      </div>
+    </div>
+
+    <p class="absolute left-[17px] right-[17px] bottom-[16px] text-[12px] leading-[16px] text-white/66">${r.blurb}</p>
+  </header>`;
+}
+
+/* TargetMountainSummary */
+function TargetMountainSummary(g) {
+  return `<section class="px-[17px] -mt-[6px]">
+    <div class="panel rounded-[16px] p-[11px] flex items-center gap-[12px]">
+      <div class="w-[68px] h-[52px] rounded-[11px] overflow-hidden ph shrink-0">
+        <img data-src="${g.img}" alt="" class="w-full h-full object-cover"/>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] text-white/55 leading-[12px]">Target mountain</div>
+        <div class="mt-[2px] text-[17px] font-bold leading-[20px] tracking-[-0.025em]">${g.name}</div>
+        <div class="mt-[4px] flex items-center gap-[12px] text-[11px] text-white/68">
+          <span class="flex items-center gap-[5px]"><span class="text-white/50" data-icon="mark" data-size="13"></span>${g.elevation}</span>
+          <span class="flex items-center gap-[5px]"><span class="text-white/50" data-icon="calendar" data-size="12"></span>${prettyDate(g.targetDate)}</span>
+        </div>
+      </div>
+      <button data-act="Change Goal" class="pressable shrink-0 flex items-center gap-[5px] h-[32px] pl-[12px] pr-[9px]
+                     rounded-full panel-sub text-[11px] font-semibold whitespace-nowrap">
+        Change goal <span class="text-white/55" data-icon="chev" data-size="12"></span>
+      </button>
+    </div>
+  </section>`;
+}
+
+/* ReadinessPillar — compact bar, not a doughnut; the gauge is the one circle */
+function ReadinessPillar(p) {
+  const weak = p.value < 50;
+  return `<button data-pillar="${p.id}" class="pressable w-full panel-sub rounded-[14px] p-[12px] text-left">
+    <div class="flex items-center gap-[9px]">
+      <span class="${weak ? 'text-gap' : 'text-accent'}" data-icon="${p.icon}" data-size="16"></span>
+      <span class="text-[13px] font-semibold flex-1">${p.name}</span>
+      ${weak ? `<span class="px-[7px] py-[2px] rounded-full bg-gap/15 border border-gap/45 text-gap text-[8px] font-bold tracking-[0.1em]">GAP</span>` : ''}
+      <span class="text-[15px] font-bold tabular-nums">${p.value}<span class="text-[10px] text-white/45">%</span></span>
+      <span class="text-white/35" data-icon="chev" data-size="13"></span>
+    </div>
+    <div class="mt-[9px] h-[6px] rounded-full bg-white/10 overflow-hidden">
+      <div class="h-full rounded-full ${weak ? 'bg-gap' : 'bg-accent'}" style="width:${p.value}%"></div>
+    </div>
+    <p class="mt-[7px] text-[10.5px] leading-[13px] text-white/52">${p.blurb}</p>
+  </button>`;
+}
+function FourPillars(pillars) {
+  return `<section class="mt-[18px]">
+    <div class="px-[17px] flex items-center justify-between">
+      <h2 class="text-[11px] font-semibold tracking-[0.2em] text-white/70">THE FOUR PILLARS</h2>
+      <button data-act="How it works" class="pressable flex items-center gap-[5px] text-[11px] text-white/58">
+        How it works <span data-icon="info" data-size="13"></span>
+      </button>
+    </div>
+    <div class="mt-[10px] px-[17px] grid grid-cols-2 gap-[8px]">${pillars.map(ReadinessPillar).join('')}</div>
+  </section>`;
+}
+
+/* NextBestAction */
+function NextBestAction(a, r) {
+  return `<section class="mt-[18px] px-[17px]">
+    <div class="flex items-center justify-between">
+      <h2 class="flex items-center gap-[7px] text-[11px] font-semibold tracking-[0.2em] text-white/70">
+        <span class="text-accent" data-icon="bolt" data-size="14"></span> NEXT BEST ACTION
+      </h2>
+      <button data-act="Training Plan" class="pressable flex items-center gap-[5px] text-[11px] text-white/58">
+        View plan <span data-icon="chev" data-size="12"></span>
+      </button>
+    </div>
+
+    <div class="mt-[10px] panel rounded-[18px] overflow-hidden">
+      <div class="flex">
+        <div class="relative w-[108px] shrink-0 ph">
+          <img data-src="${a.img}" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+          <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,0) 50%, rgba(12,20,20,.94) 100%);"></div>
+        </div>
+        <div class="flex-1 min-w-0 p-[13px]">
+          <span class="inline-block px-[8px] py-[3px] rounded-full panel-sub text-[8px] font-bold tracking-[0.12em] text-white/72">${a.kind}</span>
+          <h3 class="mt-[7px] text-[20px] leading-[22px] font-bold tracking-[-0.025em]">${a.title}</h3>
+          <div class="mt-[7px] flex flex-wrap gap-x-[12px] gap-y-[4px]">
+            ${a.facts.map(([ic, txt]) => `<span class="flex items-center gap-[5px] text-[10.5px] text-white/70 whitespace-nowrap">
+              <span class="text-white/45" data-icon="${ic}" data-size="12"></span>${txt}</span>`).join('')}
+          </div>
+          <p class="mt-[8px] text-[11px] leading-[15px] text-white/60">${a.why}</p>
+        </div>
+      </div>
+
+      <div class="px-[13px] pb-[13px] flex items-center gap-[11px]">
+        <div class="flex items-center gap-[9px] shrink-0">
+          <div>
+            <div class="text-[9px] text-white/50 leading-[11px]">Now</div>
+            <div class="text-[17px] font-bold leading-[20px] tabular-nums">${Math.round(r.current)}%</div>
+          </div>
+          <span class="text-white/35" data-icon="arrowR" data-size="15"></span>
+          <div>
+            <div class="text-[9px] text-white/50 leading-[11px]">After</div>
+            <div class="text-[17px] font-bold leading-[20px] text-accent tabular-nums">${Math.round(r.projected)}%</div>
+          </div>
+          <span class="ml-[2px] px-[7px] py-[2px] rounded-full bg-accent/15 border border-accent/45 text-accent text-[10px] font-bold">+${Math.round(r.projected - r.current)}%</span>
+        </div>
+        <button id="startBtn" data-act="Start Session" class="pressable flex-1 flex items-center justify-center gap-[7px] h-[42px] rounded-[12px]
+                       bg-accent text-ink text-[11.5px] font-extrabold tracking-[0.05em] whitespace-nowrap
+                       shadow-[0_8px_24px_-8px_rgba(36,239,164,.75)]">
+          <span data-icon="play" data-size="12"></span> START SESSION
+        </button>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ProjectedReadiness — supports Next Best Action, never competes with the hero */
+function ProjectedReadiness(r) {
+  const steps = 3, gained = 1;   /* the prescribed session is step 1 of 3 key sessions */
+  return `<section class="mt-[13px] px-[17px]">
+    <div class="panel-sub rounded-[16px] p-[13px]">
+      <div class="flex items-center justify-between gap-[10px]">
+        <h2 class="text-[10px] font-semibold tracking-[0.18em] text-white/62 whitespace-nowrap">PROJECTED READINESS</h2>
+        <span class="text-[9.5px] text-white/45 whitespace-nowrap">Not yet earned</span>
+      </div>
+      <div class="mt-[9px] flex items-center gap-[10px]">
+        <span class="text-[15px] font-bold tabular-nums">${Math.round(r.current)}%</span>
+        <div class="flex-1 relative h-[6px] rounded-full bg-white/10">
+          <div class="absolute inset-y-0 left-0 rounded-full bg-accent" style="width:${(gained / steps) * 100}%"></div>
+          <div class="absolute inset-y-0 rounded-full bg-accent/30"
+               style="left:${(gained / steps) * 100}%; right:0;"></div>
+          ${Array.from({ length: steps + 1 }, (_, i) => `<span class="absolute top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border-2 border-ink
+              ${i <= gained ? 'bg-accent' : 'bg-white/30'}" style="left:calc(${(i / steps) * 100}% - 4.5px)"></span>`).join('')}
+        </div>
+        <span class="text-[15px] font-bold text-accent tabular-nums">${Math.round(r.projected)}%</span>
+      </div>
+      <p class="mt-[9px] text-[10.5px] leading-[14px] text-white/55">
+        Projection assumes you complete the prescribed ${READINESS.nextAction.title.toLowerCase()}. It is not added to your score until the session is logged.
+      </p>
+    </div>
+  </section>`;
+}
+
+/* ═══════════════ ReadinessHistory — single series, direct-labelled ═══════════════
+   One scale places the line, the markers and the labels. Y ticks are the values
+   the axis reaches; only the current point carries a number.                  */
+let historyPeriod = '4W';
+const CHART = { w: 362, h: 132, padL: 30, padR: 16, padT: 14, padB: 22 };
+
+function historyPath(series) {
+  const { w, h, padL, padR, padT, padB } = CHART;
+  const iw = w - padL - padR, ih = h - padT - padB;
+  const x = i => padL + (series.length === 1 ? iw / 2 : (i / (series.length - 1)) * iw);
+  const y = v => padT + ih - (v / 100) * ih;
+  return { x, y, iw, ih,
+           pts: series.map(([lab, v], i) => ({ lab, v, cx: x(i), cy: y(v) })) };
+}
+
+function ReadinessHistory() {
+  const series = READINESS.history[historyPeriod];
+  const { w, h, padL, padR, padT, padB } = CHART;
+  const { y, pts } = historyPath(series);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p.cx.toFixed(1)} ${p.cy.toFixed(1)}`).join(' ');
+  const area = `${line} L${pts[pts.length - 1].cx.toFixed(1)} ${(h - padB).toFixed(1)} L${pts[0].cx.toFixed(1)} ${(h - padB).toFixed(1)} Z`;
+  const last = pts[pts.length - 1];
+
+  return `<section class="mt-[18px] px-[17px]">
+    <div class="panel rounded-[16px] p-[13px]">
+      <div class="flex items-center justify-between gap-[10px]">
+        <h2 class="flex items-center gap-[7px] text-[10px] font-semibold tracking-[0.18em] text-white/70 whitespace-nowrap">
+          <span class="text-accent" data-icon="bars" data-size="14"></span> READINESS HISTORY
+        </h2>
+        <div class="flex gap-[3px] p-[2px] rounded-full panel-sub">
+          ${Object.keys(READINESS.history).map(k => `<button data-period="${k}"
+            class="px-[9px] h-[21px] rounded-full text-[9.5px] font-bold transition-colors
+                   ${k === historyPeriod ? 'bg-white/90 text-ink' : 'text-white/55'}">${k}</button>`).join('')}
+        </div>
+      </div>
+
+      <div id="chartWrap" class="relative mt-[10px]">
+        <svg viewBox="0 0 ${w} ${h}" class="w-full block" role="img"
+             aria-label="Readiness over ${historyPeriod}, rising to ${last.v} per cent">
+          <defs><linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#24EFA4" stop-opacity=".30"/>
+            <stop offset="100%" stop-color="#24EFA4" stop-opacity="0"/>
+          </linearGradient></defs>
+
+          ${[0, 25, 50, 75, 100].map(v => `
+            <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${w - padR}" y2="${y(v).toFixed(1)}"
+                  stroke="var(--grid)" stroke-width="1" fill="none"/>
+            <text x="${padL - 6}" y="${(y(v) + 3.4).toFixed(1)}" text-anchor="end"
+                  fill="var(--ink-3)" font-size="8.5" font-family="Inter, sans-serif">${v}%</text>`).join('')}
+
+          <path d="${area}" fill="url(#fillGrad)" stroke="none"/>
+          <path d="${line}" fill="none" stroke="#24EFA4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+          ${pts.map(p => `<circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="3.4"
+                    fill="#05090B" stroke="#24EFA4" stroke-width="2"/>`).join('')}
+          <circle cx="${last.cx.toFixed(1)}" cy="${last.cy.toFixed(1)}" r="5"
+                  fill="#24EFA4" stroke="#05090B" stroke-width="2"/>
+
+          ${pts.map((p, i) => (pts.length <= 6 || i % 2 === 0 || i === pts.length - 1)
+            ? `<text x="${p.cx.toFixed(1)}" y="${h - 6}" text-anchor="middle"
+                     fill="var(--ink-3)" font-size="8.5" font-family="Inter, sans-serif">${p.lab}</text>` : '').join('')}
+
+          <line id="crosshair" x1="0" y1="${padT}" x2="0" y2="${h - padB}" stroke="rgba(255,255,255,.35)"
+                stroke-width="1" stroke-dasharray="3 3" fill="none" style="opacity:0"/>
+        </svg>
+
+        <div class="absolute px-[7px] py-[3px] rounded-[7px] bg-accent text-ink text-[10px] font-bold tabular-nums pointer-events-none"
+             style="left:${(last.cx / w) * 100}%; top:${(last.cy / h) * 100}%; transform:translate(-62%, -168%)">${last.v}%</div>
+
+        <div id="chartTip" class="absolute px-[8px] py-[5px] rounded-[8px] glass text-[10px] font-semibold whitespace-nowrap
+                    pointer-events-none" style="opacity:0; transform:translate(-50%,-120%)"></div>
+      </div>
+      <p class="mt-[4px] text-[9.5px] text-white/40">Readiness recalculated weekly from logged evidence.</p>
+    </div>
+  </section>`;
+}
+
+/* ReadinessEvidence */
+function ReadinessEvidence(list) {
+  return `<section class="mt-[15px] px-[17px]">
+    <div class="flex items-center justify-between">
+      <h2 class="flex items-center gap-[7px] text-[11px] font-semibold tracking-[0.2em] text-white/70">
+        <span class="text-accent" data-icon="clock" data-size="14"></span> RECENT EVIDENCE
+      </h2>
+      <button data-act="All Activity" class="pressable flex items-center gap-[5px] text-[11px] text-white/58">
+        View all <span data-icon="chev" data-size="12"></span>
+      </button>
+    </div>
+    <p class="mt-[6px] text-[10.5px] leading-[14px] text-white/48">These are the activities SummitReady used to calculate your score.</p>
+    <div class="mt-[10px] panel rounded-[16px] divide-y divide-white/[.06]">
+      ${list.map(a => `<button data-act="${a.name}" class="pressable w-full flex items-center gap-[11px] p-[11px] text-left">
+        <div class="w-[46px] h-[46px] rounded-[10px] overflow-hidden ph shrink-0">
+          <img data-src="${a.img}" alt="" class="w-full h-full object-cover"/>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-baseline justify-between gap-[8px]">
+            <span class="text-[13.5px] font-bold tracking-[-0.015em] truncate">${a.name}</span>
+            <span class="text-[10px] text-white/48 whitespace-nowrap">${a.date}</span>
+          </div>
+          <div class="mt-[4px] flex flex-wrap gap-x-[11px] gap-y-[2px]">
+            ${a.stats.map(([ic, t]) => `<span class="flex items-center gap-[4px] text-[10.5px] text-white/62 whitespace-nowrap">
+              <span class="text-white/38" data-icon="${ic}" data-size="11"></span>${t}</span>`).join('')}
+          </div>
+        </div>
+      </button>`).join('')}
+    </div>
+  </section>`;
+}
+
+function PlanBanner() {
+  return `<section class="mt-[16px] px-[17px]">
+    <div data-act="Training Plan" class="pressable cursor-pointer relative h-[92px] rounded-[16px] overflow-hidden ph border border-white/[.07]">
+      <img data-src="mockup-assets/tb-banner.jpg" alt="" class="absolute inset-0 w-full h-full object-cover"/>
+      <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.94) 16%, rgba(5,9,11,.5) 62%, rgba(5,9,11,.28) 100%);"></div>
+      <div class="absolute left-[15px] top-1/2 -translate-y-1/2 pr-[52px]">
+        <div class="text-[14.5px] font-bold tracking-[-0.02em]">Small steps. Bigger summits.</div>
+        <div class="mt-[4px] flex items-center gap-[6px] text-[11px] font-semibold text-accent">
+          VIEW TRAINING PLAN <span data-icon="arrowR" data-size="12"></span>
+        </div>
+      </div>
+      <span class="absolute right-[13px] top-1/2 -translate-y-1/2 w-[30px] h-[30px] rounded-full
+                   bg-black/55 border border-white/25 backdrop-blur-md grid place-items-center">
+        <span data-icon="chev" data-size="13"></span></span>
+    </div>
+  </section>`;
+}
+
+/* BottomNavigation — Basecamp is active: Readiness lives inside Training mode */
+const TABS = [
+  { id:'basecamp', icon:'home', label:'Basecamp' }, { id:'explore', icon:'compass', label:'Explore' },
+  { id:'track', icon:'boots', label:'Track' }, { id:'expeditions', icon:'peak', label:'Expeditions' },
+  { id:'you', icon:'user', label:'You' },
+];
+let activeTab = 'basecamp';
+function BottomNavigation() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TABS.map(t => {
+    const on = t.id === activeTab;
+    return `<button data-tab="${t.id}" class="flex flex-col items-center w-[86px] active:scale-95 transition">
+      <span class="grid place-items-center w-[36px] h-[30px] rounded-[11px] transition-colors ${on ? 'bg-accent/[.13]' : ''}">
+        ${on ? `<span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-accent text-ink" data-icon="${t.icon}" data-size="12"></span>`
+             : `<span class="text-white/55" data-icon="${t.icon}" data-size="25"></span>`}
+      </span>
+      <span class="mt-[3px] text-[9.5px] leading-[12px] font-medium ${on ? 'text-accent' : 'text-white/55'}">${t.label}</span>
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+  el.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    activeTab = b.dataset.tab; BottomNavigation();
+    toast(`→ ${TABS.find(t => t.id === activeTab).label}`);
+  }));
+}
+
+/* ═══════════════════════════ RENDER ═══════════════════════════ */
+function renderScreen({ animate = true } = {}) {
+  const r = READINESS;
+  document.getElementById('screen').innerHTML =
+      ReadinessHero(r) + TargetMountainSummary(r.goal) + FourPillars(r.pillars)
+    + NextBestAction(r.nextAction, r) + ProjectedReadiness(r)
+    + ReadinessHistory() + ReadinessEvidence(r.evidence) + PlanBanner();
+  hydrateIcons(); loadPhotos();
+  if (animate) playGauges();
+  bindChart();
+}
+
+/* ══════════════════ ReadinessPillarDetail ══════════════════ */
+function openPillar(id) {
+  const p = READINESS.pillars.find(x => x.id === id);
+  if (!p) return;
+  const weak = p.value < 50;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="mx-auto mb-[14px] h-[4px] w-[38px] rounded-full bg-white/25"></div>
+    <div class="flex items-start justify-between gap-[12px]">
+      <div class="min-w-0">
+        <div class="flex items-center gap-[8px]">
+          <span class="${weak ? 'text-gap' : 'text-accent'}" data-icon="${p.icon}" data-size="18"></span>
+          <h3 class="text-[19px] font-bold tracking-[-0.025em]">${p.name}</h3>
+          ${weak ? `<span class="px-[7px] py-[2px] rounded-full bg-gap/15 border border-gap/45 text-gap text-[8px] font-bold tracking-[0.1em]">GAP</span>` : ''}
+        </div>
+        <p class="mt-[7px] text-[11.5px] leading-[16px] text-white/62">${p.measures}</p>
+      </div>
+      <div class="shrink-0 text-right">
+        <div class="text-[30px] leading-[30px] font-extrabold tracking-[-0.04em] tabular-nums ${weak ? 'text-gap' : 'text-accent'}">${p.value}<span class="text-[14px] text-white/45">%</span></div>
+      </div>
+    </div>
+    <div class="mt-[11px] h-[6px] rounded-full bg-white/10 overflow-hidden">
+      <div class="h-full rounded-full ${weak ? 'bg-gap' : 'bg-accent'}" style="width:${p.value}%"></div>
+    </div>
+
+    <h4 class="mt-[18px] text-[10px] font-semibold tracking-[0.18em] text-white/58">EVIDENCE USED</h4>
+    <div class="mt-[8px] panel-sub rounded-[13px] divide-y divide-white/[.06]">
+      ${p.evidence.map(([k, v]) => `<div class="flex items-start justify-between gap-[12px] p-[11px]">
+        <span class="text-[11.5px] font-semibold shrink-0">${k}</span>
+        <span class="text-[11px] text-white/58 text-right">${v}</span>
+      </div>`).join('')}
+    </div>
+
+    <h4 class="mt-[16px] text-[10px] font-semibold tracking-[0.18em] text-white/58">WHY IT IS ${p.value}%</h4>
+    <p class="mt-[7px] text-[12px] leading-[17px] text-white/72">${p.why}</p>
+
+    <h4 class="mt-[16px] text-[10px] font-semibold tracking-[0.18em] text-white/58">WHAT WILL IMPROVE THIS?</h4>
+    <div class="mt-[8px] panel rounded-[14px] p-[12px]">
+      <div class="flex items-start gap-[9px]">
+        <span class="text-accent shrink-0 mt-[1px]" data-icon="bolt" data-size="15"></span>
+        <div>
+          <div class="text-[13px] font-bold leading-[17px]">${p.improve.head}</div>
+          <p class="mt-[4px] text-[11.5px] leading-[16px] text-white/62">${p.improve.body}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-[15px] flex gap-[8px]">
+      <button data-act="Training Plan" class="pressable flex-1 h-[42px] rounded-[12px] panel-sub text-[11.5px] font-bold tracking-[0.05em]">VIEW PLAN</button>
+      <button data-close-sheet class="pressable flex-1 h-[42px] rounded-[12px] bg-accent text-ink text-[11.5px] font-extrabold tracking-[0.05em]">CLOSE</button>
+    </div>`;
+  hydrateIcons(sheet);
+  sheet.scrollTop = 0;
+  sheet.style.transform = 'translate(-50%,0)';
+  const scrim = document.getElementById('scrim');
+  scrim.style.opacity = '1'; scrim.style.pointerEvents = 'auto';
+}
+function closeSheet() {
+  document.getElementById('sheet').style.transform = 'translate(-50%,105%)';
+  const scrim = document.getElementById('scrim');
+  scrim.style.opacity = '0'; scrim.style.pointerEvents = 'none';
+}
+
+/* ══════════════════ chart hover: crosshair + tooltip ══════════════════ */
+function bindChart() {
+  const wrap = document.getElementById('chartWrap');
+  if (!wrap) return;
+  const svg = wrap.querySelector('svg');
+  const cross = wrap.querySelector('#crosshair');
+  const tip = wrap.querySelector('#chartTip');
+  const series = READINESS.history[historyPeriod];
+  const { pts } = historyPath(series);
+
+  const move = ev => {
+    const box = svg.getBoundingClientRect();
+    const px = ((ev.clientX - box.left) / box.width) * CHART.w;
+    let near = pts[0];
+    pts.forEach(p => { if (Math.abs(p.cx - px) < Math.abs(near.cx - px)) near = p; });
+    cross.setAttribute('x1', near.cx); cross.setAttribute('x2', near.cx);
+    cross.style.opacity = '1';
+    tip.textContent = `${near.lab} · ${near.v}%`;
+    tip.style.left = `${(near.cx / CHART.w) * 100}%`;
+    tip.style.top = `${(near.cy / CHART.h) * 100}%`;
+    tip.style.opacity = '1';
+  };
+  const leave = () => { cross.style.opacity = '0'; tip.style.opacity = '0'; };
+  wrap.addEventListener('pointermove', move);
+  wrap.addEventListener('pointerleave', leave);
+}
+
+/* ══════════════════════════ INTERACTIONS ══════════════════════════ */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1'; t.style.transform = 'translate(-50%,0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%,8px)'; }, 1600);
+}
+function startSession() {
+  const btn = document.getElementById('startBtn');
+  if (!btn || btn.dataset.running) return;
+  btn.dataset.running = '1';
+  btn.innerHTML = `${icon('clock', 13)} SESSION STARTED`;
+  btn.classList.add('opacity-90');
+  toast('Mountain day started · tracking elevation');
+  setTimeout(() => {
+    btn.innerHTML = `${icon('play', 12)} START SESSION`;
+    btn.classList.remove('opacity-90'); delete btn.dataset.running;
+  }, 2600);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const pil = t.closest('[data-pillar]');   if (pil) { openPillar(pil.dataset.pillar); return; }
+  if (t.closest('[data-close-sheet]') || t.id === 'scrim') { closeSheet(); return; }
+
+  const per = t.closest('[data-period]');
+  if (per) { historyPeriod = per.dataset.period; renderScreen({ animate:false }); toast(`History · ${historyPeriod}`); return; }
+
+  const act = t.closest('[data-act]');
+  if (act) {
+    e.stopPropagation();
+    if (act.dataset.act === 'Start Session') { startSession(); return; }
+    toast(`→ ${act.dataset.act}`);
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+/* prototype hook — current and projected are supplied independently */
+window.setReadiness = (current, projected) => {
+  READINESS.current = current; READINESS.projected = projected;
+  renderScreen(); return { current, projected };
+};
+
+/* ═════════════════════════════ BOOT ═════════════════════════════ */
+renderScreen();
+BottomNavigation();
+</script>
+</body>
+</html>
