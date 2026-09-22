@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SummitReady — Explore</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { ink: '#05090B', accent: '#24EFA4' },
+        fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+      }
+    }
+  }
+</script>
+<style>
+  body { background:#000; }
+  .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { display:none; }
+  /* gradient stand-in that shows while a photo loads, or if it never does */
+  .ph { background-color:#12202a; background-image:
+        linear-gradient(165deg, rgba(36,239,164,.10), rgba(0,0,0,0) 48%),
+        linear-gradient(to top, #070c0e 0%, #12202a 42%, #24405a 72%, #56738c 100%); }
+  .ph > img { opacity:0; transition:opacity .5s ease; }
+  .ph > img.ok { opacity:1; }
+  .glass { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+  .navglass { background:rgba(5,9,11,.92); backdrop-filter:blur(22px) saturate(140%); }
+  .chip-on { background:rgba(36,239,164,.08); border-color:rgba(36,239,164,.65);
+             box-shadow:0 0 18px -8px rgba(36,239,164,.9), inset 0 0 22px -14px rgba(36,239,164,.9); }
+  .pin { position:absolute; width:21px; height:21px; margin:-10.5px 0 0 -10.5px; border-radius:9999px;
+         display:grid; place-items:center; background:rgba(36,239,164,.16);
+         border:1px solid rgba(36,239,164,.5); box-shadow:0 0 13px -2px rgba(36,239,164,.55); color:#24EFA4; }
+</style>
+</head>
+<body class="font-sans text-white antialiased min-h-screen flex items-center justify-center overflow-auto">
+
+<div class="relative w-[430px] h-[932px] bg-ink overflow-hidden sm:rounded-[46px]
+            sm:shadow-[0_40px_120px_-24px_rgba(0,0,0,.9),0_0_0_10px_#0b0e10,0_0_0_11px_#232829]">
+
+  <div id="scroll" class="absolute inset-0 overflow-y-auto no-sb">
+   <div class="relative">
+
+    <!-- ══════════ HERO PHOTO (behind everything) ══════════ -->
+    <div class="absolute inset-x-0 top-0 h-[285px] ph overflow-hidden">
+      <img data-src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=880&q=80"
+           alt="" class="w-full h-full object-cover" />
+      <div class="absolute inset-0"
+           style="background:linear-gradient(to bottom, rgba(5,9,11,.74) 0%, rgba(5,9,11,.26) 20%, rgba(5,9,11,.48) 52%, rgba(5,9,11,.92) 84%, #05090B 100%);"></div>
+      <div class="absolute inset-0"
+           style="background:linear-gradient(to right, rgba(5,9,11,.92) 0%, rgba(5,9,11,.52) 40%, rgba(5,9,11,0) 76%);"></div>
+    </div>
+
+    <!-- ══════════ FOREGROUND ══════════ -->
+    <div class="relative">
+
+      <!-- status bar -->
+      <div class="flex items-center justify-between px-[21px] pt-[9px] select-none">
+        <span class="text-[13px] leading-[16px] font-semibold tracking-[-0.01em]">9:41</span>
+        <div class="flex items-center gap-[5px]">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect y="7.5" width="2.6" height="3.5" rx=".9"/><rect x="4.5" y="5" width="2.6" height="6" rx=".9"/><rect x="9" y="2.5" width="2.6" height="8.5" rx=".9"/><rect x="13.4" width="2.6" height="11" rx=".9"/></svg>
+          <svg width="15" height="11" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.2 5.6 8.6a3.4 3.4 0 0 1 4.8 0L8 11.2Z"/><path d="M8 6.1c1.5 0 2.9.6 3.9 1.6l1.3-1.4A7.4 7.4 0 0 0 8 4.1a7.4 7.4 0 0 0-5.2 2.2l1.3 1.4A5.5 5.5 0 0 1 8 6.1Z"/><path d="M8 1.6c2.4 0 4.6 1 6.2 2.5l1.3-1.4A10.6 10.6 0 0 0 8-.4a10.6 10.6 0 0 0-7.5 3.1l1.3 1.4A8.6 8.6 0 0 1 8 1.6Z"/></svg>
+          <span class="text-[10.5px] font-semibold ml-[1px]">100</span>
+          <span class="relative inline-flex items-center">
+            <span class="w-[21px] h-[10.5px] rounded-[3px] border border-white/45 p-[1.4px] inline-block">
+              <span class="block w-full h-full rounded-[1.4px] bg-white"></span>
+            </span>
+            <span class="w-[1.4px] h-[4px] rounded-r bg-white/45 ml-[1px]"></span>
+          </span>
+        </div>
+      </div>
+
+      <!-- app bar -->
+      <div class="mt-[5px] px-[17px] flex items-center justify-between">
+        <div class="flex items-center gap-[7px]">
+          <span class="text-white" data-icon="mark" data-size="21"></span>
+          <span class="block leading-none">
+            <span class="block text-[10.5px] font-extrabold tracking-[0.145em]">SUMMITREADY</span>
+            <span class="block mt-[3px] text-[5.6px] font-semibold tracking-[0.225em] text-white/45">TRAIN MORE. GO FURTHER.</span>
+          </span>
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <div id="seg" class="relative flex items-center rounded-full glass p-[2.5px]">
+            <span id="segPill" class="absolute top-[2.5px] left-[2.5px] h-[23px] rounded-full bg-black/60 border border-white/10 transition-all duration-300 ease-out"></span>
+            <button data-seg="training"    class="seg relative z-10 h-[23px] px-[12px] rounded-full text-[10px] font-semibold text-white transition-colors">Training</button>
+            <button data-seg="expeditions" class="seg relative z-10 h-[23px] px-[12px] rounded-full text-[10px] font-semibold text-white/55 transition-colors">Expeditions</button>
+          </div>
+          <button class="w-[27px] h-[27px] rounded-full glass grid place-items-center text-white/85 active:scale-90 transition" aria-label="Map">
+            <span data-icon="map" data-size="13"></span>
+          </button>
+          <button class="w-[27px] h-[27px] rounded-full glass grid place-items-center text-white/85 active:scale-90 transition" aria-label="Filters">
+            <span data-icon="sliders" data-size="13"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- hero copy -->
+      <div class="px-[21px]">
+        <div class="mt-[50px] text-[10.5px] font-semibold tracking-[0.3em] text-white/62 leading-[13px]">EXPLORE</div>
+        <h1 class="mt-[7px] text-[26px] leading-[26px] font-bold tracking-[-0.028em]">Discover<br/>Your Next Peak</h1>
+        <p class="mt-[7px] text-[12.5px] leading-[15px] text-white/58">Real mountains. Real routes. Real progress.</p>
+
+        <div class="mt-[8px] flex items-center gap-[9px] h-[32px] rounded-full glass pl-[14px] pr-[12px]
+                    focus-within:border-accent/55 transition-colors">
+          <span class="text-white/55 shrink-0" data-icon="search" data-size="13"></span>
+          <input id="search" type="text" placeholder="Search mountains, regions or countries..."
+                 class="w-full bg-transparent outline-none text-[12px] placeholder:text-white/48" />
+          <button id="clear" class="hidden shrink-0 text-white/45 hover:text-white"><span data-icon="x" data-size="12"></span></button>
+        </div>
+      </div>
+
+      <!-- filter chips -->
+      <nav id="chips" class="mt-[14px] flex gap-[6px] overflow-x-auto no-sb px-[17px]"></nav>
+
+      <!-- featured -->
+      <section class="mt-[14px]">
+        <div class="px-[17px] flex items-center justify-between">
+          <h2 class="text-[16.5px] leading-[20px] font-bold tracking-[-0.018em]">Featured Mountains</h2>
+          <button class="flex items-center gap-[3px] text-[11.5px] font-medium text-white/58 hover:text-white transition">
+            View all <span data-icon="chev" data-size="12"></span>
+          </button>
+        </div>
+        <div id="featured" class="mt-[5px] flex gap-[7px] overflow-x-auto no-sb px-[17px]"></div>
+      </section>
+
+      <!-- popular -->
+      <section class="mt-[16px]">
+        <div class="px-[17px] flex items-center justify-between">
+          <h2 class="text-[16.5px] leading-[20px] font-bold tracking-[-0.018em]">Popular This Month</h2>
+          <button class="flex items-center gap-[3px] text-[11.5px] font-medium text-white/58 hover:text-white transition">
+            View all <span data-icon="chev" data-size="12"></span>
+          </button>
+        </div>
+        <div id="popular" class="mt-[3px] flex gap-[8px] overflow-x-auto no-sb px-[17px]"></div>
+        <p id="empty" class="hidden px-[17px] pt-[8px] text-[11.5px] text-white/40">No mountains match that search.</p>
+      </section>
+
+      <!-- map -->
+      <section class="mt-[12px] px-[17px]">
+        <h2 class="text-[16.5px] leading-[20px] font-bold tracking-[-0.018em]">Explore by Map</h2>
+        <p class="mt-[1px] text-[11.5px] leading-[14px] text-white/50">Browse mountains and routes on an interactive map.</p>
+
+        <div class="relative mt-[7px] h-[76px] rounded-[15px] overflow-hidden border border-white/[.09]">
+          <div class="absolute inset-0" style="background:
+                radial-gradient(58px 34px at 20% 70%, #24432f 0%, rgba(36,67,47,0) 72%),
+                radial-gradient(76px 40px at 50% 36%, #2b4d35 0%, rgba(43,77,53,0) 74%),
+                radial-gradient(62px 36px at 76% 62%, #26472f 0%, rgba(38,71,47,0) 72%),
+                radial-gradient(104px 54px at 60% 112%, #17352f 0%, rgba(23,53,47,0) 72%),
+                linear-gradient(140deg, #0e2632 0%, #123240 42%, #0b1e27 100%);"></div>
+          <div class="absolute inset-0 opacity-[.3]" style="background:
+                repeating-linear-gradient(112deg, rgba(255,255,255,.06) 0 1px, rgba(0,0,0,0) 1px 8px),
+                repeating-linear-gradient(28deg, rgba(0,0,0,.2) 0 1px, rgba(0,0,0,0) 1px 12px);"></div>
+          <div class="absolute inset-0" style="background:linear-gradient(to right, rgba(5,9,11,.12), rgba(5,9,11,.52));"></div>
+
+          <span class="pin" style="left:31%;top:26%"  data-icon="mark" data-size="11"></span>
+          <span class="pin" style="left:14%;top:64%"  data-icon="mark" data-size="11"></span>
+          <span class="pin" style="left:28%;top:82%"  data-icon="mark" data-size="11"></span>
+          <span class="pin" style="left:47%;top:54%"  data-icon="mark" data-size="11"></span>
+          <span class="pin" style="left:56%;top:89%"  data-icon="mark" data-size="11"></span>
+
+          <button class="absolute right-[11px] top-1/2 -translate-y-1/2 flex items-center gap-[6px] h-[32px] pl-[13px] pr-[11px]
+                         rounded-full bg-black/70 border border-white/12 backdrop-blur-md text-[11.5px] font-semibold active:scale-95 transition">
+            <span data-icon="map" data-size="13"></span> Open Map
+            <span class="text-white/55" data-icon="chev" data-size="11"></span>
+          </button>
+        </div>
+      </section>
+
+      <div class="h-[101px]"></div>
+    </div>
+   </div>
+  </div>
+
+  <!-- bottom nav -->
+  <div class="absolute inset-x-0 bottom-0 h-[97px] navglass border-t border-white/[.07]">
+    <div id="tabs" class="flex items-start justify-around pt-[11px]"></div>
+    <div class="absolute left-1/2 -translate-x-1/2 bottom-[12px] h-[5px] w-[132px] rounded-full bg-white/90"></div>
+  </div>
+</div>
+
+<script>
+/* ───────────────────────────── ICONS ───────────────────────────── */
+const S = (d, extra = '') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+
+const ICONS = {
+  /* SummitReady mark — two overlapping peaks */
+  mark:    S(`<path d="M1.5 20.5h14L8.5 7.4z"/><path d="M8.5 20.5h14l-7-16z"/>`, 'stroke-width="1.5"'),
+  /* single two-peak mountain (Expeditions tab) */
+  peak:    S(`<path d="M2.6 19.4h18.8L15.2 5.4l-3.8 6.8-2.8-3.6z"/>`, 'stroke-width="1.6"'),
+  map:     S(`<path d="M9 4 3 6.6v13.2L9 17.2l6 2.6 6-2.6V4l-6 2.6L9 4Z"/><path d="M9 4v13.2"/><path d="M15 6.6v13.2"/>`),
+  sliders: S(`<path d="M3.5 7h9.5M19 7h1.5M3.5 12h2.5M10.5 12h10M3.5 17h7.5M15.5 17h5"/><circle cx="15.8" cy="7" r="2.1"/><circle cx="8.3" cy="12" r="2.1"/><circle cx="13.3" cy="17" r="2.1"/>`),
+  search:  S(`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>`),
+  x:       S(`<path d="M6 6l12 12M18 6 6 18"/>`),
+  chev:    S(`<path d="m9 5 7 7-7 7"/>`),
+  heart:   S(`<path d="M12 20.2 3.9 12.4a4.9 4.9 0 0 1 .5-7.2 4.9 4.9 0 0 1 6.6.5l1 1 1-1a4.9 4.9 0 0 1 6.6-.5 4.9 4.9 0 0 1 .5 7.2L12 20.2Z"/>`),
+  star:    S(`<path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9L12 3.6Z"/>`),
+  /* winding route between two waypoints */
+  route:   S(`<circle cx="5.1" cy="17.7" r="1.9"/><circle cx="18.9" cy="6.3" r="1.9"/><path d="M6.7 16.9c2.8-.5 2.5-4.3 4.9-5.5s5 .2 6.1-3.2"/>`),
+  /* ascending bars, solid */
+  bars:    `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14.5" width="3.6" height="5.5" rx="1.2"/><rect x="10.2" y="10" width="3.6" height="10" rx="1.2"/><rect x="16.4" y="4.8" width="3.6" height="15.2" rx="1.2"/></svg>`,
+  /* crossed pickaxes */
+  axes:    S(`<path d="M6.2 19.6 17.4 5.8"/><path d="M17.8 19.6 6.6 5.8"/><path d="M6.6 5.8C4.6 6.5 3.5 8 3.4 9.9"/><path d="M17.4 5.8c2 .7 3.1 2.2 3.2 4.1"/>`, 'stroke-width="1.6"'),
+  /* Great Britain + Ireland */
+  uk:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round"><path d="M13.2 2.3 L14.8 4.2 L13.9 5.6 L15.4 6.6 L14.6 8.4 L16.0 9.6 L17.2 12.0 L18.6 13.4 L16.6 15.2 L17.4 16.6 L14.6 17.6 L12.8 19.4 L9.8 21.3 L11.0 18.6 L9.2 18.0 L10.6 16.4 L8.2 15.8 L7.4 13.2 L9.6 12.2 L8.6 10.6 L10.4 9.4 L9.0 8.0 L10.8 6.8 L9.8 5.0 L11.6 4.4 Z"/></svg>`,
+  /* two footprints */
+  boots:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <ellipse cx="7.4" cy="7" rx="2.7" ry="4.3"/><ellipse cx="7.4" cy="15.4" rx="2.2" ry="2.2"/>
+              <ellipse cx="16.6" cy="10.4" rx="2.7" ry="4.3"/><ellipse cx="16.6" cy="18.8" rx="2.2" ry="2.2"/>
+            </svg>`,
+  home:    S(`<path d="M3.5 10.1 12 3.4l8.5 6.7v9.5a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9.5Z"/>`),
+  compass: S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  user:    S(`<circle cx="12" cy="7.8" r="3.7"/><path d="M4.9 20.4a7.1 7.1 0 0 1 14.2 0"/>`),
+};
+
+/* difficulty meter — three ascending bars */
+const LEVELS = {
+  'Moderate':         { n: 2, c: '#24EFA4' },
+  'Challenging':      { n: 3, c: '#E9B949' },
+  'Very Challenging': { n: 3, c: '#F0813C' },
+};
+function meter(label, neutral = false, h = [4, 6.5, 9]) {
+  const lv = LEVELS[label] || LEVELS.Moderate;
+  const col = neutral ? 'rgba(255,255,255,.8)' : lv.c;
+  return `<span style="display:inline-flex;align-items:flex-end;gap:1.8px;height:${h[2]}px">` +
+    h.map((hh, i) => `<span style="width:2.2px;height:${hh}px;border-radius:1.2px;background:${i < lv.n ? col : 'rgba(255,255,255,.22)'}"></span>`).join('') +
+    `</span>`;
+}
+
+/* ───────────────────────────── DATA ───────────────────────────── */
+const U = id => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=620&q=80`;
+
+const CHIPS = [
+  { id: 'all',      icon: 'mark',  label: 'All',                count: '1,200+' },
+  { id: 'europe',   icon: 'mark',  label: 'Europe',             count: '428'    },
+  { id: 'uk',       icon: 'uk',    label: 'UK',                 count: '184'    },
+  { id: 'classic',  icon: 'route', label: 'Classic\nRoutes'                     },
+  { id: 'beginner', icon: 'bars',  label: 'Beginner\nFriendly'                  },
+  { id: 'tech',     icon: 'axes',  label: 'Technical'                           },
+];
+
+const FEATURED = [
+  { name: 'Mont Blanc',  alt: '4,808 m', place: 'France / Italy', badge: 'FEATURED',
+    diff: 'Challenging', img: U('1506905925346-21bda4d32df4') },
+  { name: 'Kilimanjaro', alt: '5,895 m', place: 'Tanzania',
+    diff: 'Challenging', img: U('1519681393784-d120267933ba') },
+  { name: 'Matterhorn',  alt: '4,478 m', place: 'Switzerland',
+    diff: 'Very Challenging', img: U('1470071459604-3b5ec3a7fe05') },
+];
+
+const POPULAR = [
+  { name: 'Ben Nevis',  alt: '1,345 m', diff: 'Moderate',         img: U('1483728642387-6c3bdd6c93e5'), fav: false },
+  { name: 'Tryfan',     alt: '918 m',   diff: 'Challenging',      img: U('1454496522488-7a8e488e8606'), fav: false },
+  { name: 'Snowdon',    alt: '1,085 m', diff: 'Moderate',         img: U('1439853949127-fa647821eba0'), fav: false },
+  { name: 'Matterhorn', alt: '4,478 m', diff: 'Very Challenging', img: U('1501785888041-af3ef285b470'), fav: false },
+];
+
+const TABS = [
+  { id: 'basecamp',    icon: 'home',    label: 'Basecamp'    },
+  { id: 'explore',     icon: 'compass', label: 'Explore'     },
+  { id: 'track',       icon: 'boots',   label: 'Track'       },
+  { id: 'expeditions', icon: 'peak',    label: 'Expeditions' },
+  { id: 'you',         icon: 'user',    label: 'You'         },
+];
+
+/* ─────────────────────────── HYDRATION ─────────────────────────── */
+function icon(name, size) {
+  const holder = document.createElement('span');
+  holder.innerHTML = ICONS[name] || '';
+  const svg = holder.firstElementChild;
+  if (svg) { svg.setAttribute('width', size); svg.setAttribute('height', size); svg.style.display = 'block'; }
+  return holder.innerHTML;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(n => {
+    n.innerHTML = icon(n.dataset.icon, n.dataset.size || 16);
+    if (!n.classList.contains('pin')) n.style.display = 'inline-flex';
+  });
+}
+function loadPhotos(root = document) {
+  root.querySelectorAll('img[data-src]').forEach(img => {
+    if (img.dataset.started) return;
+    img.dataset.started = '1';
+    img.addEventListener('load', () => img.classList.add('ok'));
+    img.addEventListener('error', () => img.remove());
+    img.src = img.dataset.src;
+  });
+}
+
+/* ──────────────────────────── RENDER ──────────────────────────── */
+let activeChip = 'all', activeTab = 'explore', query = '';
+
+function renderChips() {
+  const el = document.getElementById('chips');
+  el.innerHTML = CHIPS.map(c => {
+    const on = c.id === activeChip;
+    return `<button data-chip="${c.id}"
+      class="shrink-0 w-[62px] h-[72px] rounded-[13px] border flex flex-col items-center pt-[10px] px-[3px]
+             transition-all duration-200 active:scale-[.96]
+             ${on ? 'chip-on' : 'bg-white/[.035] border-white/[.085] hover:bg-white/[.06]'}">
+      <span class="${on ? 'text-accent' : 'text-white/85'}" data-icon="${c.icon}" data-size="24"></span>
+      <span class="mt-[4px] block text-center text-[9.5px] font-semibold leading-[11px] whitespace-pre-line
+                   ${on ? 'text-accent' : 'text-white/88'}">${c.label}</span>
+      ${c.count ? `<span class="mt-[1px] block text-[10px] leading-[11px] text-white/42">${c.count}</span>` : ''}
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+}
+
+function featuredCard(m) {
+  return `<article class="shrink-0 w-[297px] h-[167px] rounded-[16px] overflow-hidden relative ph border border-white/[.08] cursor-pointer group">
+    <img data-src="${m.img}" alt="${m.name}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+    <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(5,9,11,.94) 0%, rgba(5,9,11,.62) 34%, rgba(5,9,11,.05) 68%, rgba(5,9,11,.3) 100%);"></div>
+    ${m.badge ? `<span class="absolute top-[11px] left-[11px] px-[8px] py-[4px] rounded-[6px] bg-black/60 border border-white/12 backdrop-blur-md text-[8px] font-bold tracking-[0.14em]">${m.badge}</span>` : ''}
+    <button class="absolute right-[13px] bottom-[50px] w-[30px] h-[30px] rounded-full border border-accent/80 bg-accent/10 backdrop-blur-sm grid place-items-center text-accent active:scale-90 transition">
+      <span data-icon="chev" data-size="13"></span>
+    </button>
+    <div class="absolute left-[14px] right-[14px] bottom-[14px]">
+      <h3 class="text-[21px] leading-[22px] font-extrabold tracking-[-0.022em]">${m.name}</h3>
+      <p class="mt-[3px] text-[12px] leading-[14px] text-white/72">${m.alt} &nbsp;•&nbsp; ${m.place}</p>
+      <div class="mt-[6px] flex items-center gap-[14px] text-[10.5px] leading-[13px] text-white/72">
+        <span class="flex items-center gap-[5px]">${meter(m.diff, true)} ${m.diff}</span>
+        <span class="flex items-center gap-[5px]"><span data-icon="route" data-size="12"></span> Multiple routes</span>
+        <span class="flex items-center gap-[5px]"><span data-icon="star" data-size="12"></span> Popular</span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function popularCard(m, i) {
+  return `<article class="shrink-0 w-[96px] cursor-pointer group">
+    <div class="relative w-[96px] h-[84px] rounded-[13px] overflow-hidden ph border border-white/[.07]">
+      <img data-src="${m.img}" alt="${m.name}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.06]" />
+      <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(5,9,11,.5) 0%, rgba(5,9,11,0) 45%);"></div>
+      <button data-fav="${i}" class="fav absolute top-[6px] right-[6px] w-[21px] h-[21px] rounded-full bg-black/45 border border-white/15 backdrop-blur-md grid place-items-center active:scale-90 transition ${m.fav ? 'text-accent' : 'text-white/90'}">
+        <span data-icon="heart" data-size="11"></span>
+      </button>
+    </div>
+    <h3 class="mt-[2px] text-[11px] leading-[13px] font-bold tracking-[-0.01em]">${m.name}</h3>
+    <p class="mt-[3px] text-[10.5px] leading-[12px] text-white/62">${m.alt}</p>
+    <div class="mt-[1px] flex items-center gap-[4px] text-[9.5px] leading-[11px] text-white/62">${meter(m.diff)} ${m.diff}</div>
+  </article>`;
+}
+
+function renderLists() {
+  const q = query.trim().toLowerCase();
+  const hit = m => !q || m.name.toLowerCase().includes(q) || (m.place || '').toLowerCase().includes(q);
+
+  const fEl = document.getElementById('featured'), pEl = document.getElementById('popular');
+  const f = FEATURED.filter(hit);
+  fEl.innerHTML = f.map(featuredCard).join('');
+  pEl.innerHTML = POPULAR.map((m, i) => (hit(m) ? popularCard(m, i) : '')).join('');
+  document.getElementById('empty').classList.toggle('hidden', f.length + POPULAR.filter(hit).length > 0);
+
+  [fEl, pEl].forEach(el => { hydrateIcons(el); loadPhotos(el); });
+
+  pEl.querySelectorAll('.fav').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const m = POPULAR[+btn.dataset.fav];
+    m.fav = !m.fav;
+    btn.classList.toggle('text-accent', m.fav);
+    btn.classList.toggle('text-white/90', !m.fav);
+    btn.querySelector('svg').setAttribute('fill', m.fav ? 'currentColor' : 'none');
+  }));
+}
+
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TABS.map(t => {
+    const on = t.id === activeTab;
+    return `<button data-tab="${t.id}" class="flex flex-col items-center w-[86px] active:scale-95 transition">
+      <span class="grid place-items-center w-[36px] h-[30px] rounded-[11px] transition-colors ${on ? 'bg-accent/[.13]' : ''}">
+        ${on
+          ? `<span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-accent text-ink" data-icon="${t.icon}" data-size="12"></span>`
+          : `<span class="text-white/55" data-icon="${t.icon}" data-size="25"></span>`}
+      </span>
+      <span class="mt-[3px] text-[9.5px] leading-[12px] font-medium ${on ? 'text-accent' : 'text-white/55'}">${t.label}</span>
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+  el.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { activeTab = b.dataset.tab; renderTabs(); }));
+}
+
+function moveSeg(btn) {
+  const pill = document.getElementById('segPill');
+  pill.style.width = btn.offsetWidth + 'px';
+  pill.style.transform = `translateX(${btn.offsetLeft - 2.5}px)`;
+  document.querySelectorAll('.seg').forEach(b => {
+    b.classList.toggle('text-white', b === btn);
+    b.classList.toggle('text-white/55', b !== btn);
+  });
+}
+
+/* ───────────────────────────── BOOT ───────────────────────────── */
+hydrateIcons();
+loadPhotos();
+renderChips();
+renderLists();
+renderTabs();
+
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('[data-chip]');
+  if (b) { activeChip = b.dataset.chip; renderChips(); }
+});
+
+const segs = document.querySelectorAll('.seg');
+requestAnimationFrame(() => moveSeg(segs[0]));
+segs.forEach(b => b.addEventListener('click', () => moveSeg(b)));
+
+const searchEl = document.getElementById('search'), clearEl = document.getElementById('clear');
+searchEl.addEventListener('input', () => {
+  query = searchEl.value;
+  clearEl.classList.toggle('hidden', !query);
+  renderLists();
+});
+clearEl.addEventListener('click', () => {
+  searchEl.value = ''; query = ''; clearEl.classList.add('hidden'); renderLists();
+});
+
+/* shift + wheel scrolls the horizontal rails; plain wheel still scrolls the page */
+['featured', 'popular', 'chips'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('wheel', e => {
+    if (e.shiftKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); }
+  }, { passive: false });
+});
+</script>
+</body>
+</html>
