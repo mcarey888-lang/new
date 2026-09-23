@@ -96,7 +96,7 @@ export default function ReadinessDetailScreen() {
                 statusLabel={STATUS_COPY[status].label}
                 tone={STATUS_TONE[status]}
               />
-              <SRGaugeLegend projected={Boolean(proj)} />
+              <SRGaugeLegend projected={Boolean(proj)} tone={STATUS_TONE[status]} />
               <Text style={styles.scoreLabel}>Overall Readiness Score</Text>
               <SRStatusPill label={STATUS_COPY[status].label} tone={STATUS_TONE[status]} style={{ alignSelf: "center", marginTop: 8 }} />
               <Text style={[styles.scoreDesc, { marginTop: 6 }]}>{STATUS_COPY[status].detail}</Text>

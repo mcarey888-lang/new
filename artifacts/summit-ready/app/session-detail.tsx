@@ -897,7 +897,12 @@ const s = StyleSheet.create({
   },
   chipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 32 },
+  title: {
+    /* Matches the confident heading scale now used on Training Plan and
+       Training Basecamp, so the three screens read as one system. */
+    fontSize: 26, lineHeight: 31, fontFamily: "Inter_700Bold",
+    color: T.text, letterSpacing: -0.5, marginTop: 14,
+  },
   // "Why this session" — the mountain-preparation relationship.
   purposeBlock: {
     marginTop: 12, marginBottom: 4, paddingVertical: 12, paddingHorizontal: 14,
