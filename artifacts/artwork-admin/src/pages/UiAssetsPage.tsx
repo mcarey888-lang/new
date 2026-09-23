@@ -4,17 +4,29 @@ import { UiAssetSystemCatalogue } from "@/components/UiAssetSystemCatalogue";
 import { UiAssetFamilies } from "@/components/UiAssetFamilies";
 import { UiAssetCandidates } from "@/components/UiAssetCandidates";
 import { UiAssetHistoryView } from "@/components/UiAssetHistoryView";
+import { UiAssetConcepts } from "@/components/UiAssetConcepts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, LockKeyhole } from "lucide-react";
 import { AdminKeyContext } from "@/contexts/AdminKeyContext";
 import { UiAssetManifestError, useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
 
-type TabValue = "catalogue" | "families" | "candidates" | "history";
+const tabs = ["catalogue", "concepts", "families", "candidates", "history"] as const;
+type TabValue = (typeof tabs)[number];
 
 export default function UiAssetsPage() {
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem("summitready-admin-key") ?? "");
-  const [activeTab, setActiveTab] = useState<TabValue>("catalogue");
+  const [activeTab, setActiveTab] = useState<TabValue>(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tabs.find((value) => value === tab) ?? "catalogue";
+  });
+
+  const selectTab = (tab: TabValue) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url);
+    setActiveTab(tab);
+  };
 
   const persistAdminKey = (value: string) => {
     setAdminKey(value);
@@ -69,23 +81,24 @@ export default function UiAssetsPage() {
           />
           <div className="w-full">
             <div className="flex border-b border-border overflow-x-auto no-scrollbar">
-              {(["catalogue", "families", "candidates", "history"] as TabValue[]).map((tab) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => selectTab(tab)}
                   className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
                     activeTab === tab
                       ? "border-b-2 border-primary text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === "concepts" ? "Concepts (12)" : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
 
             <div className="mt-6">
               {activeTab === "catalogue" && <UiAssetSystemCatalogue />}
+              {activeTab === "concepts" && <UiAssetConcepts />}
               {activeTab === "families" && <UiAssetFamilies />}
               {activeTab === "candidates" && <UiAssetCandidates />}
               {activeTab === "history" && <UiAssetHistoryView />}

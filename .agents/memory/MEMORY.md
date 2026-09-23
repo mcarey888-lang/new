@@ -54,3 +54,4 @@
 - [UI artwork reference lineage](ui-artwork-reference-lineage.md) — family generation uses immutable candidate/version/object paths, required-reference cap priority, and run-scoped uploads.
 - [Long artwork generation requests](long-artwork-generation-requests.md) — persist then return 202; poll history and repair orphaned GENERATING runs only after the storage lock is absent.
 - [Artwork admin request budgets](artwork-admin-request-budgets.md) — protected image fan-out must not starve admin control requests; distinguish throttling from rejected keys.
+- [Artwork concept references](artwork-concept-references.md) — canvas directions are reviewable references, never workflow candidates; published admin needs its own snapshots.
