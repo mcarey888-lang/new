@@ -37,7 +37,11 @@ export function SelectedRoute({
 }) {
   const [expanded, setExpanded] = useState(false);
   const { route, eligibility } = selected;
-  const description = route.description;
+  /* A one-sentence description is already the summary at the top. Printing
+     it again under its own heading reads as a rendering fault. */
+  const description = route.description && route.description !== route.summary
+    ? route.description
+    : null;
   const longDescription = !!description && description.length > 180;
 
   return (
@@ -59,17 +63,21 @@ export function SelectedRoute({
         </View>
       ) : null}
 
-      {/* Altitude, kept explicitly apart from ascent. */}
-      <View style={styles.altitudes}>
-        <Altitude fact={route.startElevation} />
-        <Altitude fact={mountainSummitElevation} overrideLabel="Mountain summit" />
-        <Altitude fact={selected.facts.find(f => f.key === "ascent") ?? route.ascent} />
-      </View>
-
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>ELEVATION PROFILE</Text>
         <View style={styles.profile}>
           <ElevationProfile points={selected.profile} routeName={route.name} />
+        </View>
+        {/* Three ALTITUDES, directly under the curve they belong to. Total
+            ascent is deliberately not repeated here — it is a different kind
+            of number and already has its own tile above. */}
+        <View style={styles.altitudes}>
+          <Altitude fact={route.startElevation} />
+          <Altitude fact={mountainSummitElevation} overrideLabel="Mountain summit" />
+          <Altitude
+            fact={selected.facts.find(f => f.key === "routeSummit") ?? route.routeSummitElevation}
+            overrideLabel="Route high point"
+          />
         </View>
       </View>
 
@@ -165,7 +173,7 @@ const styles = StyleSheet.create({
   metricValue: { marginTop: 5, fontSize: 14.5, lineHeight: 18, fontFamily: "Inter_700Bold", color: BASECAMP.text },
   metricLabel: { fontSize: 9, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
 
-  altitudes: { flexDirection: "row", gap: SP.sm, paddingHorizontal: 13, marginTop: 10 },
+  altitudes: { flexDirection: "row", gap: SP.sm, marginTop: 6 },
   altitude: { flex: 1, minWidth: 0 },
   altitudeValue: { fontSize: 13, lineHeight: 17, fontFamily: "Inter_700Bold", color: BASECAMP.text },
   altitudeLabel: { fontSize: 9, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },

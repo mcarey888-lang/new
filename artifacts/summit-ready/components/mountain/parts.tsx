@@ -152,7 +152,9 @@ const styles = StyleSheet.create({
   noticeText: { marginTop: 4, fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
 
   footnote: {
-    marginTop: SP.sm, fontSize: 9.5, lineHeight: 13,
-    fontFamily: "Inter_400Regular", color: BASECAMP.textFaint,
+    /* Small type needs real contrast to be read at all — textFaint is for
+       decoration, not for a sentence that explains a number. */
+    marginTop: SP.sm, fontSize: 10, lineHeight: 14,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
   },
 });

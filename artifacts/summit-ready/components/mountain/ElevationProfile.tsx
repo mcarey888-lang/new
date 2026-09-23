@@ -132,7 +132,7 @@ export function ElevationProfile({
 
 const styles = StyleSheet.create({
   caption: {
-    marginTop: 2, fontSize: 9.5, lineHeight: 13,
-    fontFamily: "Inter_400Regular", color: BASECAMP.textFaint,
+    marginTop: 2, fontSize: 10, lineHeight: 14,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
   },
 });
