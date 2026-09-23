@@ -119,3 +119,40 @@ export const BASECAMP = {
   /** The prototype's 17px screen gutter. */
   gutter: 17,
 } as const;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   EXPLORE — the approved Explore / Mountain Detail visual language.
+
+   From `summitready-explore-mockup.html` and
+   `summitready-mountain-detail-mockup.html`. It EXTENDS `BASECAMP` rather
+   than replacing it: surfaces, text, glass and the gutter are shared, so a
+   mountain page and a training page are recognisably the same app.
+
+   What differs is the accent, and it differs on purpose. The prototypes use
+   three colours to say three different things, and the meanings must not be
+   collapsed into one:
+
+     accent (blue)   navigation and exploring — the primary action on a
+                     mountain page, and never a claim about verification
+     verified (green) the engine vouches for this — the same green Training
+                     Basecamp uses for earned progress, because both mean
+                     "confirmed", and "Added to Plan", which is training
+     unverified (amber) held but not confirmed. Attention, not alarm.
+
+   Colour only. No spacing, no behaviour, no data.
+   ────────────────────────────────────────────────────────────────────────── */
+export const EXPLORE = {
+  /** The Mountain Detail accent — actions and navigation. */
+  accent: "#167DF7",
+  accentInk: "#FFFFFF",
+  accentDim: "rgba(22,125,247,0.12)",
+  accentLine: "rgba(22,125,247,0.70)",
+  /** Verified. The same green as earned training progress. */
+  verified: BASECAMP.accent,
+  verifiedDim: "rgba(36,239,164,0.12)",
+  verifiedLine: "rgba(36,239,164,0.45)",
+  /** Held, not confirmed. */
+  unverified: "#E9B949",
+  unverifiedDim: "rgba(233,185,73,0.10)",
+  unverifiedLine: "rgba(233,185,73,0.45)",
+} as const;

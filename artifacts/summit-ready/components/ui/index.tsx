@@ -191,9 +191,24 @@ export function SRScreenHeader({
    A photograph that resolves into the page background, with the approved
    two-axis scrim. `uri` null renders the designed gradient instead — never an
    empty box and never a broken-image state. The frame sizes to its content
-   above `minHeight`, so long names push it taller rather than clipping. */
+   above `minHeight`, so long names push it taller rather than clipping.
+
+   ── ARTWORK MUST NOT COMPETE WITH THE INTERFACE ─────────────────────────
+   Generated artwork often carries its own lettering and its own subject
+   framing. Left alone it bleeds down the page and argues with the title and
+   controls drawn over it — the Incline Treadmill session artwork did exactly
+   that, its title text showing through behind functional content.
+
+   So a hero TERMINATES. `artwork="generated"` clips the image to the top of
+   the frame and ramps to solid ink well before the bottom edge, which is
+   where a screen's functional content sits. Nothing of the source survives
+   past that ramp, whatever the image contains. `artwork="photo"` (the
+   default) keeps the softer treatment that suits a real photograph.
+   Either way the bottom of the frame is opaque ink, so content below the
+   hero never has artwork behind it. */
 export function SRHeroFrame({
   uri, source, onImageError, minHeight = 280, children, style, dim = 1,
+  artwork = "photo",
 }: {
   uri?: string | null;
   /** A local asset (require(...)) where the screen already has one. */
@@ -204,16 +219,31 @@ export function SRHeroFrame({
   style?: ViewStyle;
   /** 0–1 multiplier on the scrim, for heroes that need more of the photo. */
   dim?: number;
+  /**
+   * "photo" — a real photograph; the soft two-axis scrim.
+   * "generated" — artwork that may contain its own lettering or framing; it
+   * is clipped to the top of the frame and inked out before the content band.
+   */
+  artwork?: "photo" | "generated";
 }) {
+  const generated = artwork === "generated";
   const a = (v: number) => Math.min(1, v * dim).toFixed(2);
   const body = (
     <View style={[{ minHeight }, style]}>
       <LinearGradient
-        colors={[
-          `rgba(5,9,11,${a(0.66)})`, `rgba(5,9,11,${a(0.1)})`,
-          `rgba(5,9,11,${a(0.42)})`, `rgba(5,9,11,${a(0.94)})`, BASECAMP.ink,
-        ]}
-        locations={[0, 0.22, 0.56, 0.88, 1]}
+        colors={generated
+          ? [
+              `rgba(5,9,11,${a(0.5)})`, `rgba(5,9,11,${a(0.22)})`,
+              `rgba(5,9,11,${a(0.82)})`, BASECAMP.ink, BASECAMP.ink,
+            ]
+          : [
+              `rgba(5,9,11,${a(0.66)})`, `rgba(5,9,11,${a(0.1)})`,
+              `rgba(5,9,11,${a(0.42)})`, `rgba(5,9,11,${a(0.94)})`, BASECAMP.ink,
+            ]}
+        /* Generated artwork is fully inked by 62% of the frame, so the whole
+           lower band — where titles, metrics and controls live — is drawn on
+           flat ink rather than on someone else's typography. */
+        locations={generated ? [0, 0.16, 0.46, 0.62, 1] : [0, 0.22, 0.56, 0.88, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -240,14 +270,21 @@ export function SRHeroFrame({
   return (
     <View style={{ backgroundColor: BASECAMP.ink }}>
       {/* Absolutely filled rather than an ImageBackground so the frame's
-          height is driven by its content, not by the image. */}
-      <Image
-        source={resolved}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
-        onError={onImageError}
-        accessible={false}
-      />
+          height is driven by its content, not by the image. Generated
+          artwork is additionally clipped to the top 70% of the frame, so
+          even a fully opaque source cannot reach the content band. */}
+      <View
+        style={[StyleSheet.absoluteFill, generated && { bottom: "30%", overflow: "hidden" }]}
+        pointerEvents="none"
+      >
+        <Image
+          source={resolved}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          onError={onImageError}
+          accessible={false}
+        />
+      </View>
       {body}
     </View>
   );
