@@ -27,6 +27,7 @@ import {
 import {
   streamArtworkImage,
   streamReviewCandidate,
+  streamReviewObject,
   type CropType,
 } from "../services/artwork/artworkStorage.js";
 import { buildExpeditionPrompt } from "../services/artwork/promptBuilder.js";
@@ -57,10 +58,60 @@ import {
   APPROVED_ARTWORK_PLACEMENTS,
   resolveApprovedBatch01Artwork,
 } from "../services/artwork/approvedArtworkResolver.js";
+import {
+  FAMILY_IDS,
+  getUiAssetManifest,
+  createUiAssetCandidates,
+  resolveUiAsset,
+  transitionUiAsset,
+  setUiAssetFamilyLock,
+  type FamilyId,
+  validateUiAssetCandidate,
+  UI_ASSET_BATCH_ID,
+} from "../services/artwork/uiAssetWorkflowService.js";
 
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
+
+// UI asset family workflow. All mutations are private, draft/review-only and
+// protected by the same admin key as the existing artwork review pipeline.
+artworkRouter.get("/ui-assets/workflow", requireAdminKey, async (_req, res) => {
+  return res.json(await getUiAssetManifest());
+});
+artworkRouter.get("/ui-assets/:assetKey/resolve", requireAdminKey, async (req, res) => {
+  try { return res.json(await resolveUiAsset(param(req.params.assetKey))); }
+  catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Asset resolution failed" }); }
+});
+artworkRouter.post("/ui-assets/generate", requireAdminKey, async (req, res) => {
+  try { return res.json(await createUiAssetCandidates(req.body ?? {})); }
+  catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "UI asset generation failed" }); }
+});
+artworkRouter.post("/ui-assets/candidates/:candidateId/:action", requireAdminKey, async (req, res) => {
+  const action = String(req.params.action);
+  if (!["select", "reject", "approve-as-asset", "approve-as-family-reference"].includes(action)) {
+    return res.status(400).json({ error: "Unsupported candidate transition" });
+  }
+  try { return res.json(await transitionUiAsset(param(req.params.candidateId), action as "select" | "reject" | "approve-as-asset" | "approve-as-family-reference", req.body?.reason)); }
+  catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Candidate transition failed" }); }
+});
+artworkRouter.post("/ui-assets/families/:familyId/lock", requireAdminKey, async (req, res) => {
+  const familyId = param(req.params.familyId);
+  if (!FAMILY_IDS.includes(familyId as FamilyId)) return res.status(400).json({ error: "Unknown asset family" });
+  try { return res.json(await setUiAssetFamilyLock(familyId as FamilyId, req.body?.locked === true, req.body?.confirmed === true)); }
+  catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Family lock failed" }); }
+});
+artworkRouter.get("/ui-assets/candidates/:candidateId/v:version/:crop", requireAdminKey, async (req, res) => {
+  try {
+    const candidate = await validateUiAssetCandidate(param(req.params.candidateId), Number(param(req.params.version)), param(req.params.crop));
+    const objectPath = candidate.paths.objectPaths?.[param(req.params.crop)];
+    if (!objectPath) return res.status(404).json({ error: "UI asset image not found" });
+    await streamReviewObject(objectPath, res);
+    return;
+  } catch (error) {
+    return res.status(404).json({ error: error instanceof Error ? error.message : "UI asset image not found" });
+  }
+});
 
 // Normalise Express route params (string in real requests, string | string[] in Express 5 types).
 function param(value: string | string[]): string {

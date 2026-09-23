@@ -41,6 +41,7 @@ function getBucket() {
 
 export type CropType = "hero" | "card" | "thumbnail" | "master";
 const CROP_TYPES: CropType[] = ["hero", "card", "thumbnail", "master"];
+const UI_WORKFLOW_BATCH_PREFIX = "ui-asset-family-workflow";
 
 function gcsPath(challengeId: string, version: number, crop: CropType): string {
   return `expedition-artwork/${challengeId}/v${version}/${crop}.jpg`;
@@ -66,8 +67,10 @@ export interface ReviewCandidatePaths {
   objectPaths: Record<CropType, string>;
 }
 
-function candidateGcsPath(batchId: string, assetId: string, version: number, crop: CropType) {
-  return `expedition-artwork/review-batches/${batchId}/${assetId}/v${version}/${crop}.jpg`;
+function candidateGcsPath(batchId: string, assetId: string, version: number, crop: CropType, extension = "jpg", runId?: string) {
+  return runId
+    ? `expedition-artwork/review-batches/${batchId}/${assetId}/v${version}/${runId}/${crop}.${extension}`
+    : `expedition-artwork/review-batches/${batchId}/${assetId}/v${version}/${crop}.${extension}`;
 }
 
 function candidateServingPath(batchId: string, assetId: string, version: number, crop: CropType) {
@@ -79,12 +82,15 @@ export async function uploadReviewCandidate(
   assetId: string,
   version: number,
   crops: { hero: Buffer; card: Buffer; thumbnail: Buffer; master: Buffer },
+  options: { format?: "jpeg" | "png"; runId?: string } = {},
 ): Promise<ReviewCandidatePaths> {
   const bucket = getBucket();
+  const format = options.format ?? "jpeg";
+  const extension = format === "png" ? "png" : "jpg";
   await Promise.all(
     CROP_TYPES.map((crop) =>
-      bucket.file(candidateGcsPath(batchId, assetId, version, crop)).save(crops[crop], {
-        contentType: "image/jpeg",
+      bucket.file(candidateGcsPath(batchId, assetId, version, crop, extension, options.runId)).save(crops[crop], {
+        contentType: format === "png" ? "image/png" : "image/jpeg",
         metadata: { cacheControl: "private, max-age=3600" },
         resumable: false,
         preconditionOpts: { ifGenerationMatch: 0 },
@@ -97,7 +103,7 @@ export async function uploadReviewCandidate(
     cardPath: candidateServingPath(batchId, assetId, version, "card"),
     thumbnailPath: candidateServingPath(batchId, assetId, version, "thumbnail"),
     objectPaths: Object.fromEntries(
-      CROP_TYPES.map((crop) => [crop, candidateGcsPath(batchId, assetId, version, crop)]),
+      CROP_TYPES.map((crop) => [crop, candidateGcsPath(batchId, assetId, version, crop, extension, options.runId)]),
     ) as Record<CropType, string>,
   };
 }
@@ -239,17 +245,70 @@ export async function streamReviewCandidate(
   res: ExpressResponse,
   cacheControl = "private, max-age=3600",
 ) {
-  const file = getBucket().file(candidateGcsPath(batchId, assetId, version, crop));
-  const [exists] = await file.exists();
+  const bucket = getBucket();
+  let file = bucket.file(candidateGcsPath(batchId, assetId, version, crop, "jpg"));
+  let [exists] = await file.exists();
+  if (!exists) {
+    file = bucket.file(candidateGcsPath(batchId, assetId, version, crop, "png"));
+    [exists] = await file.exists();
+  }
   if (!exists) {
     res.status(404).json({ error: "Review candidate not found" });
     return;
   }
-  res.setHeader("Content-Type", "image/jpeg");
+  const [metadata] = await file.getMetadata();
+  res.setHeader("Content-Type", metadata.contentType || (file.name.endsWith(".png") ? "image/png" : "image/jpeg"));
   res.setHeader("Cache-Control", cacheControl);
   file.createReadStream()
     .on("error", () => res.status(500).end())
     .pipe(res);
+}
+
+/** Download a private review image for a provider edit request. */
+export async function downloadReviewCandidate(
+  batchId: string,
+  assetId: string,
+  version: number,
+  crop: CropType = "master",
+): Promise<Buffer> {
+  const bucket = getBucket();
+  let file = bucket.file(candidateGcsPath(batchId, assetId, version, crop, "jpg"));
+  let [exists] = await file.exists();
+  if (!exists) {
+    file = bucket.file(candidateGcsPath(batchId, assetId, version, crop, "png"));
+    [exists] = await file.exists();
+  }
+  if (!exists) throw new Error("Reference image is not available in review storage");
+  const [contents] = await file.download();
+  return contents;
+}
+
+export async function downloadReviewObject(
+  objectPath: string,
+): Promise<{ buffer: Buffer; mimeType: string; objectPath: string }> {
+  const prefix = `expedition-artwork/review-batches/${UI_WORKFLOW_BATCH_PREFIX}/`;
+  if (!objectPath.startsWith(prefix) || objectPath.includes("..")) {
+    throw new Error("Unsafe review object path");
+  }
+  const file = getBucket().file(objectPath);
+  const [exists] = await file.exists();
+  if (!exists) throw new Error("Reference image is not available in review storage");
+  const [buffer, metadata] = await Promise.all([file.download(), file.getMetadata()]);
+  return { buffer: buffer[0], mimeType: metadata[0].contentType || (objectPath.endsWith(".png") ? "image/png" : "image/jpeg"), objectPath };
+}
+
+export async function streamReviewObject(objectPath: string, res: ExpressResponse) {
+  const prefix = `expedition-artwork/review-batches/${UI_WORKFLOW_BATCH_PREFIX}/`;
+  if (!objectPath.startsWith(prefix) || objectPath.includes("..")) {
+    res.status(404).json({ error: "Review candidate not found" }); return;
+  }
+  const file = getBucket().file(objectPath);
+  const [exists] = await file.exists();
+  if (!exists) { res.status(404).json({ error: "Review candidate not found" }); return; }
+  const [metadata] = await file.getMetadata();
+  res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  file.createReadStream().on("error", () => res.status(500).end()).pipe(res);
 }
 
 /**
