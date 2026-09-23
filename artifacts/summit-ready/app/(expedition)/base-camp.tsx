@@ -46,6 +46,10 @@ import {
   type SummitTransitionState,
 } from "@/utils/expeditionSummitTransition";
 import { CompactBasecampMountain } from "@/components/CompactBasecampMountain";
+import { SRHeroFrame, SRPanel, SRSectionHeader, SRStatusPill } from "@/components/ui";
+import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
+import { CurrentStageCard } from "@/components/expedition/CurrentStageCard";
+import { StageRail } from "@/components/expedition/StageRail";
 import { JourneyHistory } from "@/components/JourneyHistory";
 
 const CinematicPrototype = React.lazy(async () => {
@@ -1124,71 +1128,51 @@ export default function BaseCampScreen() {
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
       >
 
-        {/* ── Hero ──────────────────────────────────────────────────────────── */}
-        <View style={s.activeHero}>
-          {heroUri ? (
-            <ExpoImage
-              source={{ uri: heroUri }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              onError={() => {
-                // If the artwork URL failed, fall back to the mountain photo.
-                // If even the fallback failed, go blank (gradient).
-                if (challengeHeroUri && !artworkError) {
-                  setArtworkError(true);
-                } else {
-                  setFallbackError(true);
-                }
-              }}
-            />
-          ) : (
-            <LinearGradient colors={["#0E2240", "#071428"]} style={StyleSheet.absoluteFill} />
-          )}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.52)", "transparent"]}
-            style={[StyleSheet.absoluteFill, { height: "42%" as any }]}
-          />
-          <LinearGradient
-            colors={["transparent", "rgba(6,10,20,0.88)", T.bg]}
-            style={[StyleSheet.absoluteFill, { top: "44%" as any }]}
-          />
-
-          <View style={[s.activeHeroContent, { paddingTop: PILL_OFFSET + topInset + 12 }]}>
-            {/* Active badge + refresh */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <View style={s.activeBadge}>
-                <View style={s.activeBadgeDot} />
-                <Text style={s.activeBadgeText}>Active expedition</Text>
-              </View>
+        {/* ── Hero ──────────────────────────────────────────────────────────
+            The objective's own artwork, resolved by the existing artwork
+            service with the mountain photo as its fallback. SRHeroFrame is
+            told this is generated artwork so any lettering the source carries
+            is inked out before the content below it. */}
+        <SRHeroFrame
+          uri={heroUri}
+          artwork={challengeHeroUri && !artworkError ? "generated" : "photo"}
+          onImageError={() => {
+            /* Artwork first, then the mountain photograph, then the designed
+               gradient. Nothing is substituted from another mountain. */
+            if (challengeHeroUri && !artworkError) setArtworkError(true);
+            else setFallbackError(true);
+          }}
+          minHeight={300}
+          dim={0.95}
+          style={{ justifyContent: "space-between" }}
+        >
+          <View style={{ paddingTop: PILL_OFFSET + topInset + 12, paddingHorizontal: BASECAMP.gutter }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <SRStatusPill label="Active expedition" tone={EXPLORE.accent} />
               <TouchableOpacity
                 onPress={() => fetchExpedition(true)}
                 style={s.refreshBtn}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Refresh expedition"
+                accessibilityState={{ disabled: loading }}
+                hitSlop={HIT.slop}
               >
                 {loading
-                  ? <ActivityIndicator size="small" color={T.blue} />
-                  : <RefreshCw size={14} color={T.blue} />}
+                  ? <ActivityIndicator size="small" color={EXPLORE.accent} />
+                  : <RefreshCw size={14} color={EXPLORE.accent} />}
               </TouchableOpacity>
             </View>
-
-            {/* Title */}
-            <View style={{ marginTop: 10, marginRight: 10 }}>
-              <Text
-                style={[
-                  s.activeTitle,
-                  expTitle.length > 22 && { fontSize: 26, lineHeight: 31 },
-                  expTitle.length > 32 && { fontSize: 22, lineHeight: 27 },
-                ]}
-              >
-                {expTitle}
-              </Text>
-              {!!expSub && <Text style={s.activeSub}>{expSub}</Text>}
-              {!!concept && (
-                <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>
-              )}
-            </View>
           </View>
-        </View>
+
+          <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
+            <Text style={s.activeTitle} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.62}>
+              {expTitle}
+            </Text>
+            {!!expSub && <Text style={s.activeSub} numberOfLines={2}>{expSub}</Text>}
+            {!!concept && <Text style={s.expConcept} numberOfLines={3}>{concept}</Text>}
+          </View>
+        </SRHeroFrame>
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
@@ -1201,109 +1185,83 @@ export default function BaseCampScreen() {
         </Animated.View>
 
 
-        {/* ── Next Local Stage ──────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginHorizontal: 14, marginTop: 14 }}>
-          <View style={[s.card, { padding: 16 }]}>
-            <Text style={[s.sectionLabel, { marginBottom: 12 }]}>Next local stage</Text>
-            {nextHill ? (
-              <View>
-                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
-                  <View style={[s.nextHillThumb, { width: 80, height: 60, borderRadius: 8 }]}>
-                    <ExpoImage
-                      source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=160&height=120${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}` }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                    />
-                  </View>
-                  <View style={{ flex: 1, justifyContent: "center" }}>
-                    <Text style={[s.nextHillName, { fontSize: 16, marginBottom: 4 }]} numberOfLines={2}>{englishPlaceName(nextHill.name)}</Text>
-                    <Text style={[s.nextHillMeta, { fontSize: 13 }]}>{nextHill.distance} km · {nextHill.elevation.toLocaleString()} m gain</Text>
-                  </View>
-                </View>
+        {/* ── Every stage at a glance ─────────────────────────────────── */}
+        {presentation.stages.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(90).duration(400)} style={{ marginTop: 16 }}>
+            <View style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: SP.sm }}>
+              <SRSectionHeader
+                title="Stages"
+                action="Full progress"
+                onAction={() => router.push("/(expedition)/progress" as any)}
+              />
+            </View>
+            <StageRail stages={presentation.stages} />
+          </Animated.View>
+        ) : null}
 
-                {/* Primary Start Next Stage Action */}
-                <TouchableOpacity
-                  style={s.quickStartBtn}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/hike-tracking" as any,
-                      params: {
-                        hillName: nextHill.name,
-                        routeIdentityKey: nextHill.routeIdentityKey ?? "",
-                        summitIdentityKey: nextHill.summitIdentityKey ?? "",
-                        objectiveType: nextHill.objectiveType ?? "",
-                        trackingMode: "expedition-route",
-                        expeditionId: activeExpeditionId,
-                        stageSnapshot: JSON.stringify({
-                          ...nextHill,
-                          expeditionProgress: activeExpedition?.virtualHikeProgress,
-                        }),
-                      },
-                    });
-                  }}
-                >
-                  <LinearGradient
-                    colors={[T.green, "#2AB860"]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={s.quickStartGrad}
-                  >
-                    <Play size={14} color="#fff" fill="#fff" />
-                    <Text style={s.quickStartText}>Start Next Stage</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            ) : presentation.progress.isComplete ? (
-              <View style={{ paddingVertical: 10, alignItems: "stretch" }}>
-                <TouchableOpacity
-                  style={s.quickStartBtn}
-                  activeOpacity={0.85}
-                  onPress={() => router.push("/(expedition)/expedition-complete" as any)}
-                >
-                  <LinearGradient
-                    colors={["#7C3AED", "#5B21B6"]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={s.quickStartGrad}
-                  >
-                    <Play size={14} color="#fff" fill="#fff" />
-                    <Text style={s.quickStartText}>View Expedition Completion</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={{ paddingVertical: 20, alignItems: "center" }}>
-                <Text style={{ fontSize: 13, color: T.textDim, fontFamily: "Inter_400Regular" }}>
-                  Loading...
-                </Text>
-              </View>
-            )}
-
-            {/* Free Hike secondary action */}
-            <TouchableOpacity
-              style={[s.quickStartBtn, { marginTop: 8 }]}
-              activeOpacity={0.85}
-              testID="free-hike-base-camp-cta"
-              onPress={() => {
-                if (!activeExpeditionId) return;
+        {/* ── The next stage — a real hill, with a real route ──────────── */}
+        <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginTop: 14 }}>
+          {nextHill ? (
+            <CurrentStageCard
+              eyebrow={presentation.progress.totalStageCount > 0
+                ? `NEXT STAGE · ${String(presentation.progress.completedStageCount + 1).padStart(2, "0")}`
+                : "NEXT STAGE"}
+              name={englishPlaceName(nextHill.name)}
+              routeName={nextHill.routeName ?? null}
+              gainM={Number.isFinite(nextHill.elevation) ? nextHill.elevation : null}
+              imageUri={`${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=240&height=240${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}`}
+              complete={false}
+              primaryLabel="Start next stage"
+              onPrimary={() => {
                 router.push({
                   pathname: "/hike-tracking" as any,
-                  params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+                  params: {
+                    hillName: nextHill.name,
+                    routeIdentityKey: nextHill.routeIdentityKey ?? "",
+                    summitIdentityKey: nextHill.summitIdentityKey ?? "",
+                    objectiveType: nextHill.objectiveType ?? "",
+                    trackingMode: "expedition-route",
+                    expeditionId: activeExpeditionId,
+                    stageSnapshot: JSON.stringify({
+                      ...nextHill,
+                      expeditionProgress: activeExpedition?.virtualHikeProgress,
+                    }),
+                  },
                 });
               }}
-              disabled={!activeExpeditionId}
-            >
-              <LinearGradient
-                colors={["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[s.quickStartGrad, { borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }]}
-              >
-                <Footprints size={14} color={T.textMuted} />
-                <Text style={[s.quickStartText, { color: T.text }]}>Record Free Hike</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-          </View>
+              onFreeHike={activeExpeditionId
+                ? () => router.push({
+                    pathname: "/hike-tracking" as any,
+                    params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+                  })
+                : undefined}
+            />
+          ) : presentation.progress.isComplete ? (
+            <CurrentStageCard
+              eyebrow="EXPEDITION COMPLETE"
+              name={expTitle}
+              gainM={presentation.progress.currentSimulatedElevationM}
+              imageUri={heroUri}
+              complete
+              primaryLabel="View your summit"
+              onPrimary={() => router.push("/(expedition)/expedition-complete" as any)}
+              onFreeHike={activeExpeditionId
+                ? () => router.push({
+                    pathname: "/hike-tracking" as any,
+                    params: { trackingMode: "freehike", expeditionId: activeExpeditionId },
+                  })
+                : undefined}
+            />
+          ) : (
+            <SRPanel radius={18} style={{ marginHorizontal: BASECAMP.gutter }}>
+              <View style={{ padding: 20, alignItems: "center", gap: 10 }}>
+                <ActivityIndicator size="small" color={EXPLORE.accent} />
+                <Text style={{ ...TYPE.caption, color: BASECAMP.textDim }}>
+                  Loading your next stage…
+                </Text>
+              </View>
+            </SRPanel>
+          )}
         </Animated.View>
 
         {/* ── Journey History ─────────────────────────────────────────────── */}
@@ -1587,8 +1545,6 @@ const s = StyleSheet.create({
     color: T.textDim,
     textAlign: "center",
   },
-  activeHero: { overflow: "hidden" },
-  activeHeroContent: { paddingHorizontal: 16, paddingBottom: 20 },
   activeBadge: {
     flexDirection: "row", alignItems: "center", gap: 6,
     alignSelf: "flex-start",
@@ -1598,8 +1554,10 @@ const s = StyleSheet.create({
   },
   activeBadgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
   activeBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
-  activeTitle: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 39 },
-  activeSub:   { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.52)", marginTop: 4, lineHeight: 18 },
+  /* The title shrinks to fit rather than clipping — expedition names run
+     long, and a truncated objective is the one thing this screen is for. */
+  activeTitle: { ...TYPE.hero, fontSize: 30, lineHeight: 34, color: BASECAMP.text },
+  activeSub:   { marginTop: 4, ...TYPE.small, fontSize: 12.5, color: BASECAMP.textMuted },
 
   refreshBtn: {
     width: 32, height: 32, borderRadius: 10,

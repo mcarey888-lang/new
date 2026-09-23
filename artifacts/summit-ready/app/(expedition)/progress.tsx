@@ -1,16 +1,22 @@
 /**
- * Progress — Expedition progress screen.
- * Header with name + overall %, shared ExpeditionProgressCard,
- * and a progress insight row at the bottom.
+ * EXPEDITION PROGRESS — the expanded view of the journey.
+ *
+ * Rebuilt to the approved premium presentation: the shared expedition
+ * header, the stage rail, then the existing ExpeditionProgressCard with its
+ * chart and stage cards, then the insight row back to Basecamp.
+ *
+ * Every figure still comes from `selectExpeditionPresentation()`, which is
+ * the one place that decides what simulated expedition progress is. This
+ * screen derives nothing of its own and the recovery pass below — which
+ * relinks a session logged outside the expedition to the stage it matches —
+ * is untouched.
  */
 
 import { TrendingUp } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
-  Dimensions, Platform, ScrollView, StyleSheet, Text,
-  TouchableOpacity, View,
+  Platform, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,19 +27,18 @@ import {
   expeditionRouteIdentityMatches,
   routeCompletionKey,
 } from "@/utils/stateReliability";
-import { T } from "@/constants/theme";
+import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
+import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
+import { ExpeditionHeader } from "@/components/expedition/ExpeditionHeader";
+import { StageRail } from "@/components/expedition/StageRail";
 import { useScreenView } from "@/lib/analytics";
-import {
-  ExpeditionProgressCard,
-  fmtM,
-} from "@/components/ExpeditionProgressCard";
+import { ExpeditionProgressCard } from "@/components/ExpeditionProgressCard";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 import { buildExpeditionStageLaunchContext } from "@/utils/trackingLaunchContext";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
 const PILL_OFFSET = 52;
-const CARD_MX = 16;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -128,61 +133,49 @@ export default function ExpeditionProgressScreen() {
   // ── Empty state ──────────────────────────────────────────────────────────────
   if (!activeExpedition) {
     return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 18, padding: 32, marginTop: PILL_OFFSET }}>
-          <View style={{ width: 66, height: 66, borderRadius: 18, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" }}>
-            <TrendingUp size={30} color={T.blue} />
-          </View>
-          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center" }}>
-            No expedition yet
-          </Text>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 21 }}>
-            Start a virtual expedition to track your progress toward a summit.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/(expedition)/mountains" as any)}
-            style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: T.blue }}
-          >
-            <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Choose Mountain</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <View style={s.screen}>
+        <SREmptyState
+          icon={<TrendingUp size={22} color={EXPLORE.accent} />}
+          title="No expedition yet"
+          body="Start an expedition to climb a real objective using the hills around you. Every stage you complete moves you higher."
+          action="Choose a mountain"
+          onAction={() => router.push("/(expedition)/mountains" as any)}
+          style={{ marginTop: topInset + PILL_OFFSET + 40, marginHorizontal: BASECAMP.gutter }}
+        />
+      </View>
     );
   }
 
   // ── Filled state ─────────────────────────────────────────────────────────────
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+    <View style={s.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop:    topInset + PILL_OFFSET + 16,
           paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120,
-          gap: 12,
+          gap: 14,
         }}
       >
 
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(0).duration(400)} style={s.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.headerLabel}>EXPEDITION PROGRESS</Text>
-            <Text style={s.headerTitle} numberOfLines={2}>{expName}</Text>
-            {(daysText || regionText) && (
-              <Text style={s.headerSub}>
-                {[daysText, regionText].filter(Boolean).join(" • ")}
-              </Text>
-            )}
-          </View>
-          <View style={s.headerRight}>
-            <Text style={s.headerRightLabel}>OVERALL PROGRESS</Text>
-            <Text style={[s.headerPct, { color: pct >= 80 ? T.green : pct >= 40 ? T.blue : T.orange }]}>
-              {pct}%
-            </Text>
-            <Text style={s.headerRightSub}>
-              {fmtM(totalTrained)}m of {fmtM(totalElevGoal)}m
-            </Text>
-          </View>
+        {/* ── Header: what you are climbing and how far up you are ───────── */}
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <ExpeditionHeader
+            presentation={presentation}
+            title={expName}
+            tagline={[daysText, regionText].filter(Boolean).join(" · ") || null}
+          />
         </Animated.View>
+
+        {/* ── Every stage at a glance ────────────────────────────────────── */}
+        {presentation.stages.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(50).duration(400)}>
+            <View style={s.railHead}>
+              <SRSectionHeader title="Stages" />
+            </View>
+            <StageRail stages={presentation.stages} />
+          </Animated.View>
+        ) : null}
 
         {/* ── Chart + stage cards + summary (shared) ──────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)}>
@@ -206,73 +199,45 @@ export default function ExpeditionProgressScreen() {
           />
         </Animated.View>
 
-        {/* ── Insight row ─────────────────────────────────────────────────────── */}
+        {/* ── Insight row ─────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-          <TouchableOpacity
-            style={s.insightRow}
-            activeOpacity={0.8}
+          <SRPanel
+            radius={18}
             onPress={() => router.push("/(expedition)/base-camp" as any)}
+            accessibilityLabel={`${insight.title}. ${insight.body}`}
+            accessibilityHint="Opens Expedition Basecamp"
+            style={s.insightPanel}
           >
-            <LinearGradient
-              colors={["rgba(255,255,255,0.04)", "transparent"]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={s.insightIcon}>
-              <Text style={{ fontSize: 22 }}>🏆</Text>
+            <View style={s.insightRow}>
+              <View style={s.insightIcon}>
+                <TrendingUp size={20} color={EXPLORE.accent} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.insightTitle} numberOfLines={2}>{insight.title}</Text>
+                <Text style={s.insightBody}>{insight.body}</Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.insightTitle}>{insight.title}</Text>
-              <Text style={s.insightBody}>{insight.body}</Text>
-            </View>
-            <Text style={{ fontSize: 18, color: "rgba(255,255,255,0.2)", marginLeft: 8 }}>›</Text>
-          </TouchableOpacity>
+          </SRPanel>
         </Animated.View>
 
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  header: {
-    flexDirection: "row", alignItems: "flex-start",
-    paddingHorizontal: CARD_MX, gap: 12,
-  },
-  headerLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold",
-    color: T.blue, letterSpacing: 1.4, marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 26,
-  },
-  headerSub: {
-    fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 4,
-  },
-  headerRight:      { alignItems: "flex-end", minWidth: 100 },
-  headerRightLabel: {
-    fontSize: 9, fontFamily: "Inter_700Bold",
-    color: T.textDim, letterSpacing: 1.2, marginBottom: 2,
-  },
-  headerPct: { fontSize: 36, fontFamily: "Inter_700Bold", lineHeight: 38 },
-  headerRightSub: {
-    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2,
-  },
+  screen: { flex: 1, backgroundColor: BASECAMP.ink },
+  railHead: { paddingHorizontal: BASECAMP.gutter, marginBottom: SP.sm },
 
-  insightRow: {
-    marginHorizontal: CARD_MX,
-    borderRadius: 18, overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: 16, paddingVertical: 14,
-    flexDirection: "row", alignItems: "center", gap: 12,
-  },
+  insightPanel: { marginHorizontal: BASECAMP.gutter },
+  insightRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   insightIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: "rgba(74,159,245,0.10)",
-    alignItems: "center", justifyContent: "center",
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: EXPLORE.accentDim,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  insightTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 3 },
-  insightBody:  { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
+  insightTitle: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.text },
+  insightBody: { marginTop: 3, ...TYPE.caption, fontSize: 11.5, lineHeight: 16, color: BASECAMP.textMuted },
 });
