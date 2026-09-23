@@ -51,6 +51,9 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
+import {
+  ACTIVITY_DETAILS_COPY, formatPace, offlineNotice, paceMinPerKm, statusLabel,
+} from "@/utils/trackPresentation";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
@@ -308,7 +311,12 @@ export default function HikeTrackingScreen() {
     ? expeditions.find(expedition => expedition.id === hillMeta.expeditionId) ?? null
     : null;
 
-  // ── Route name (mandatory, locked once tracking starts) ──────────────────
+  /* Route name — OPTIONAL, and locked once tracking starts.
+     It has never gated Start: handleStart falls back to localActivityTitle()
+     when it is blank (see `effectiveName`), which is what keeps recording
+     offline-first. `nameError` was left over from an earlier design and was
+     never set, so its message could not appear; the field below now states
+     plainly that the name is optional instead. */
   const [routeName, setRouteName]       = useState(
     params.hillName?.trim() || params.referenceRouteName?.trim() || localActivityTitle(),
   );
@@ -1624,18 +1632,30 @@ export default function HikeTrackingScreen() {
               </TouchableOpacity>
             )}
 
+            {/* Activity Details — approved wording. The canonical activity was
+                minted at Start and already persisted; this step only adds
+                photos, notes and detail to it. It never creates a second one. */}
+            <View style={s.detailsIntro}>
+              <Text style={s.detailsTitle}>{ACTIVITY_DETAILS_COPY.title}</Text>
+              <Text style={s.detailsSubtitle}>{ACTIVITY_DETAILS_COPY.subtitle}</Text>
+              <Text style={s.detailsReassurance}>{ACTIVITY_DETAILS_COPY.reassurance}</Text>
+            </View>
+
             <TouchableOpacity
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
               onPress={handleSave}
               disabled={saving}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={ACTIVITY_DETAILS_COPY.cta}
+              accessibilityState={{ disabled: saving }}
             >
               <LinearGradient
                 colors={["#3ECF75", "#2AB860"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.saveBtnGrad}
               >
-                <Text style={s.saveBtnText}>{saving ? "Saving…" : "Save Route"}</Text>
+                <Text style={s.saveBtnText}>{saving ? "Saving…" : ACTIVITY_DETAILS_COPY.cta}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -1811,8 +1831,10 @@ export default function HikeTrackingScreen() {
             returnKeyType="done"
             maxLength={60}
           />
-          {nameError && (
+          {nameError ? (
             <Text style={s.nameErrorText}>Please name your route before starting</Text>
+          ) : (
+            <Text style={s.nameHintText}>Optional — you can start without it and rename later.</Text>
           )}
 
           {/* ── Nearby route picker ── */}
@@ -1909,6 +1931,27 @@ export default function HikeTrackingScreen() {
         {!isIdle && drawerOpen && (
           <Animated.View entering={FadeIn.duration(200)} style={s.sheetBody}>
 
+            {/* Recording state, including offline, stated plainly. */}
+            <View style={s.trackStatusRow}>
+              <View
+                style={[
+                  s.trackStatusPill,
+                  isPaused && { borderColor: `${T.orange}66`, backgroundColor: `${T.orange}1F` },
+                ]}
+              >
+                <Text
+                  style={[s.trackStatusText, isPaused && { color: T.orange }]}
+                  numberOfLines={1}
+                  accessibilityLiveRegion="polite"
+                >
+                  {statusLabel(status, isOffline)}
+                </Text>
+              </View>
+            </View>
+            {offlineNotice(isOffline, status) ? (
+              <Text style={s.trackOfflineNote}>{offlineNotice(isOffline, status)}</Text>
+            ) : null}
+
             {/* 4-stat row: distance · gained · altitude · descended */}
             <View style={s.statsRow}>
               <View style={s.statCell}>
@@ -1933,6 +1976,13 @@ export default function HikeTrackingScreen() {
                 </View>
                 <Text style={s.statLabel}>Descended</Text>
               </View>
+            </View>
+
+            {/* Pace, from recorded distance and elapsed time only. Shows an
+                em dash until there is enough movement to state one. */}
+            <View style={s.speedRow}>
+              <Activity size={12} color={T.textMuted} />
+              <Text style={s.speedText}>{formatPace(paceMinPerKm(distanceKm, elapsedSecs))}</Text>
             </View>
 
             {/* Speed */}
@@ -2147,6 +2197,12 @@ const s = StyleSheet.create({
   },
   nameInputError: { borderColor: T.red + "80" },
   nameErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
+  nameHintText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 },
+  // Activity Details — approved wording block above the Save Details CTA.
+  detailsIntro: { marginTop: 22, marginBottom: 12, gap: 4 },
+  detailsTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
+  detailsSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  detailsReassurance: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 },
 
   // Bottom sheet
   sheet: {
@@ -2190,6 +2246,17 @@ const s = StyleSheet.create({
   statCell: { flex: 1, alignItems: "center", gap: 4 },
   statCellBorder: { borderLeftWidth: 1, borderLeftColor: "rgba(255,255,255,0.07)" },
   statValueRow: { flexDirection: "row", alignItems: "center" },
+  // Recording status + offline notice.
+  trackStatusRow: { flexDirection: "row", marginBottom: 10 },
+  trackStatusPill: {
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, borderWidth: 1,
+    borderColor: `${T.green}66`, backgroundColor: `${T.green}1F`,
+  },
+  trackStatusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.8, color: T.green },
+  trackOfflineNote: {
+    fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular",
+    color: T.textMuted, marginBottom: 10,
+  },
   statValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
   statLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
 

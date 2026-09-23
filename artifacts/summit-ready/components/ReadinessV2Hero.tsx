@@ -7,9 +7,14 @@ import { Lock, Heart, Wind, Zap, Mountain } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { useSubscription } from "@/lib/revenuecat";
+import { SRReadinessGauge } from "@/components/SRReadinessGauge";
+import { STATUS_COPY, projection, readinessStatus } from "@/utils/readinessPresentation";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+const STATUS_TONE: Record<string, string> = {
+  ready: T.green, nearly: T.blue, building: T.orange, pending: T.textMuted, unavailable: T.textMuted,
+};
 const DIM_COLORS: Record<string, string> = {
   endurance: T.green,
   elevationCapacity: T.blue,
@@ -93,8 +98,13 @@ export function ReadinessV2Hero() {
   const { result } = v2;
   const { overallScore, dimensions } = result;
 
-  const score = overallScore ?? 0;
-  const statusColor = score >= 70 ? T.green : score >= 40 ? T.orange : T.red;
+  /* A missing score is NOT zero. It stays null so the gauge shows an em dash
+     and the status reads UNAVAILABLE, rather than a confident-looking 0. */
+  const score = overallScore ?? null;
+  const status = readinessStatus(result.state, overallScore);
+  const statusColor = STATUS_TONE[status];
+  /* Projected readiness only when the Readiness engine actually produced one. */
+  const proj = projection(overallScore, v2.nextAction?.projectedImpact?.delta ?? null);
 
   return (
     <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(80).duration(500)}>
@@ -107,7 +117,23 @@ export function ReadinessV2Hero() {
       >
         <View style={styles.topRow}>
           <View>
-            <FourSegmentRing size={110} hideScore={!isSubscribed} score={score} ringColor={statusColor} />
+            {/* Training Basecamp and Full Readiness now share one gauge.
+                The previous FourSegmentRing drew four fixed equal segments and
+                encoded no value at all — it looked like a score and was not one.
+                The Pro lock is unchanged: unsubscribed users still see the
+                locked treatment rather than the figure. */}
+            {isSubscribed ? (
+              <SRReadinessGauge
+                score={score}
+                projected={proj ? proj.projected : null}
+                size={110}
+                strokeWidth={10}
+                statusLabel={STATUS_COPY[status].label}
+                tone={statusColor}
+              />
+            ) : (
+              <FourSegmentRing size={110} hideScore score={0} ringColor={statusColor} />
+            )}
           </View>
           <View style={styles.metaCol}>
             <View style={styles.titleRow}>
