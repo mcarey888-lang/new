@@ -13,7 +13,6 @@ const ROOT = join(__dirname, "..");
 const PRODUCTION_SOURCES = [
   "components/SRReadinessGauge.tsx",
   "components/CoachInsight.tsx",
-  "components/ReadinessV2Hero.tsx",
   "components/ui/index.tsx",
   "utils/readinessGauge.ts",
   "utils/readinessPresentation.ts",
@@ -21,6 +20,16 @@ const PRODUCTION_SOURCES = [
   "utils/coachFactsAdapter.ts",
   "utils/trackPresentation.ts",
   "utils/sessionPurpose.ts",
+  /* Training Basecamp production rebuild */
+  "utils/basecampPresentation.ts",
+  "components/basecamp/BasecampHero.tsx",
+  "components/basecamp/BasecampReadiness.tsx",
+  "components/basecamp/MissionSection.tsx",
+  "components/basecamp/ProgressTiles.tsx",
+  "components/basecamp/QuickActions.tsx",
+  "components/basecamp/primitives.tsx",
+  "components/SharedTabBar.tsx",
+  "hooks/useElevationBank.ts",
 ];
 
 /** Strip // and block comments so prose about the example does not trip this. */
@@ -43,6 +52,16 @@ describe("no prototype fixture values in production paths", () => {
       expect(body).not.toMatch(/Everest Simulation/);
     });
   }
+
+  it("Training Basecamp names no mountain, date or figure of its own", () => {
+    const body = code(readFileSync(join(ROOT, "app/(tabs)/dashboard.tsx"), "utf8"));
+    expect(body).not.toMatch(/Mont Blanc/);
+    expect(body).not.toMatch(/12,?420/);
+    /* every objective value on screen must come from the summit goal */
+    expect(body).toMatch(/mountainName=\{summitGoal\.mountainName\}/);
+    expect(body).toMatch(/summitDate=\{summitGoal\.summitDate\}/);
+    expect(body).toMatch(/goal=\{summitGoal\}/);
+  });
 
   it("the gauge derives everything from its props", () => {
     const body = code(readFileSync(join(ROOT, "components/SRReadinessGauge.tsx"), "utf8"));

@@ -20,7 +20,7 @@ import {
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { ChevronRight, Lock, RefreshCw, WifiOff } from "lucide-react-native";
 import { T } from "@/constants/theme";
-import { HIT, MOTION, RADIUS, SP, TYPE } from "@/constants/tokens";
+import { BASECAMP, HIT, MOTION, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { SRProgress } from "@/components/ui";
 import {
   CoachInsightState, compactCoach, hasProjection,
@@ -75,7 +75,7 @@ export function CoachInsight({
           accessibilityLabel="Unlock your AI coach"
         >
           <Text style={styles.actionText}>Meet your coach</Text>
-          <ChevronRight size={14} color={T.blue} />
+          <ChevronRight size={14} color={BASECAMP.accent} />
         </TouchableOpacity>
       </View>
     );
@@ -178,12 +178,16 @@ export function CoachInsight({
                 <SRProgress
                   value={compact.facts.currentReadiness!}
                   projected={compact.facts.projectedReadiness}
+                  /* the same two-tone treatment as the Readiness ring: earned
+                     is solid, projected is the same hue softened */
+                  tone={BASECAMP.accent}
+                  projectedTone={BASECAMP.accent}
                   style={{ flex: 1 }}
                   accessibilityLabel={`Readiness ${compact.facts.currentReadiness} percent, projected ${compact.facts.projectedReadiness} percent`}
                 />
                 <View style={styles.projectionEnd}>
                   <Text style={styles.projectionProjected}>{compact.facts.projectedReadiness}%</Text>
-                  <Text style={[styles.projectionCap, { color: T.blue }]}>PROJECTED</Text>
+                  <Text style={[styles.projectionCap, { color: BASECAMP.accent }]}>PROJECTED</Text>
                 </View>
               </View>
             </View>
@@ -199,7 +203,7 @@ export function CoachInsight({
               <Text style={styles.actionText}>
                 {compact.hasMore ? "See all guidance" : "Ask your coach"}
               </Text>
-              <ChevronRight size={14} color={T.blue} />
+              <ChevronRight size={14} color={BASECAMP.accent} />
             </TouchableOpacity>
           ) : null}
 
@@ -211,15 +215,18 @@ export function CoachInsight({
 }
 
 const styles = StyleSheet.create({
+  /* The surface is the caller's: Training Basecamp wraps this in the approved
+     panel so the Coach sits inside the composition rather than on a card of
+     its own. Left as a self-contained surface for any other host. */
   card: {
-    backgroundColor: T.basecampSurface,
-    borderWidth: 1, borderColor: "rgba(74,159,245,0.25)",
+    backgroundColor: "transparent",
+    borderWidth: 0,
     borderRadius: RADIUS.xl, padding: SP.md, gap: SP.sm,
   },
   header: { flexDirection: "row", alignItems: "center", gap: SP.sm },
   headerText: { flex: 1, minWidth: 0 },
-  eyebrow: { ...TYPE.eyebrow, color: T.blue },
-  title: { ...TYPE.heading, color: T.basecampText, marginTop: 2 },
+  eyebrow: { ...TYPE.eyebrow, color: BASECAMP.accent },
+  title: { ...TYPE.heading, color: BASECAMP.text, marginTop: 2 },
   iconBtn: {
     minWidth: HIT.minTarget, minHeight: HIT.minTarget,
     alignItems: "center", justifyContent: "center", marginRight: -SP.sm,
@@ -246,13 +253,13 @@ const styles = StyleSheet.create({
      example is not worth weakening that check for. */
   projectionEnd: { alignItems: "center", minWidth: 54 },
   projectionCurrent: { ...TYPE.metric, fontSize: 22, color: T.basecampText },
-  projectionProjected: { ...TYPE.metric, fontSize: 22, color: T.blue },
+  projectionProjected: { ...TYPE.metric, fontSize: 22, color: BASECAMP.accent },
   projectionCap: { ...TYPE.eyebrow, fontSize: 8.5, color: T.basecampTextDim, marginTop: 3 },
   action: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
     minHeight: HIT.minTarget, borderRadius: RADIUS.md,
     backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: T.basecampBorder,
   },
-  actionText: { ...TYPE.smallBold, color: T.blue },
+  actionText: { ...TYPE.smallBold, color: BASECAMP.accent },
   disclaimer: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_400Regular", color: T.basecampTextDim },
 });

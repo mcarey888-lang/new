@@ -1,14 +1,10 @@
-import type { LucideIcon } from "lucide-react-native";
-import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, Lock, Pencil, Shield, AlertTriangle, Info, Compass, ChevronRight, Clock, Flag, Check, Minus, RefreshCw, WifiOff, Plus, Footprints, Trophy, Mountain, MessageCircle, Send, X, Target, Award, Lightbulb } from "lucide-react-native";
-import { BlurView } from "expo-blur";
+import { Heart, Wind, Wrench, Zap, Moon, Calendar, TrendingUp, CheckCircle, Lock, Shield, AlertTriangle, Info, Compass, ChevronRight, Flag, Check, Minus, Plus, Footprints, Trophy, Mountain, Send, X, Lightbulb } from "lucide-react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
-  ImageBackground,
   Keyboard,
   Modal,
   Platform,
@@ -25,19 +21,23 @@ import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
-import { T, PHASE_COLOR } from "@/constants/theme";
+import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
 import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
-import { ACHIEVEMENTS, TIER_COLOR } from "@/utils/achievements";
-import { ProgressRing } from "@/components/ProgressRing";
-import { ReadinessV2Hero } from "@/components/ReadinessV2Hero";
-import { ElevationBankCard } from "@/components/ElevationBankCard";
-import { ModeTogglePill } from "@/components/ModeTogglePill";
-import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
+import { BASECAMP } from "@/constants/tokens";
+import { BasecampHero } from "@/components/basecamp/BasecampHero";
+import { BasecampReadiness } from "@/components/basecamp/BasecampReadiness";
+import {
+  MissionCard, MissionComplete, UpNextRail,
+} from "@/components/basecamp/MissionSection";
+import { ProgressTiles } from "@/components/basecamp/ProgressTiles";
+import { EditorialBand, QuickActionsGrid } from "@/components/basecamp/QuickActions";
+import { BasecampPanel, BasecampSectionHeader } from "@/components/basecamp/primitives";
+import { missionQueue, weekProgress } from "@/utils/basecampPresentation";
 import { CoachInsight } from "@/components/CoachInsight";
 import { buildCoachInsight } from "@/utils/coachInsightPresentation";
 import { buildCoachFacts } from "@/utils/coachFactsAdapter";
@@ -57,285 +57,11 @@ interface CoachAssessment {
   tips: string[];
 }
 
-const { width } = Dimensions.get("window");
-const CARD_W = (width - 48) / 2;
+/* The previous MountainHero / HeroContent pair and their `heroStyles` sheet
+   were REPLACED, not restyled: the approved composition is a different object.
+   The artwork resolver and its fallback chain moved verbatim into
+   `components/basecamp/BasecampHero.tsx`. */
 
-function getIconForCategory(category: string, color: string, size = 20) {
-  switch (category) {
-    case "mountain": return <Mountain size={size} color={color} />;
-    case "elevation": return <TrendingUp size={size} color={color} />;
-    case "expedition": return <Compass size={size} color={color} />;
-    case "training": return <Target size={size} color={color} />;
-    default: return <Award size={size} color={color} />;
-  }
-}
-
-// ── Mountain Hero ─────────────────────────────────────────────────────────────
-function MountainHero({
-  mountainName,
-  summitDate,
-  topInset,
-  onEdit,
-  isSubscribed,
-  hasViewedPlan,
-  elevationGain,
-  distance,
-  highestAltitude,
-}: {
-  mountainName: string;
-  summitDate: string;
-  topInset: number;
-  onEdit: () => void;
-  isSubscribed: boolean;
-  hasViewedPlan: boolean;
-  elevationGain: number;
-  distance: number;
-  highestAltitude: number;
-}) {
-  const mountainFallbackUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
-  type HeroSource =
-    | { kind: "resolving" }
-    | { kind: "approved"; uri: string; assetId: string; version: number; placement: string }
-    | { kind: "mountain-image"; uri: string; reason: string }
-    | { kind: "gradient"; reason: string };
-  const [heroSource, setHeroSource] = useState<HeroSource>({ kind: "resolving" });
-
-  const logSource = useCallback((source: HeroSource) => {
-    if (!__DEV__ || source.kind === "resolving") return;
-    const details = source.kind === "approved"
-      ? {
-          source: source.kind,
-          assetId: source.assetId,
-          version: source.version,
-          placement: source.placement,
-          uri: source.uri,
-        }
-      : { source: source.kind, reason: source.reason, uri: "uri" in source ? source.uri : null };
-    console.info("[Basecamp hero source]", details);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setHeroSource({ kind: "resolving" });
-
-    async function loadArtwork() {
-      const devProfileId = await AsyncStorage.getItem("summitready_dev_profile_id");
-      const approved = await resolveTrainingBasecampArtwork({ devProfileId, mountainName });
-      if (!active) return;
-      const next: HeroSource = approved
-        ? {
-            kind: "approved",
-            uri: approved.uri,
-            assetId: approved.assetId,
-            version: approved.version,
-            placement: approved.placement,
-          }
-        : {
-            kind: "mountain-image",
-            uri: mountainFallbackUri,
-            reason: "approved artwork unavailable or identity mismatch",
-          };
-      logSource(next);
-      setHeroSource(next);
-    }
-    void loadArtwork();
-    return () => { active = false; };
-  }, [logSource, mountainFallbackUri, mountainName]);
-
-  const heroImageUri = heroSource.kind === "approved" || heroSource.kind === "mountain-image"
-    ? heroSource.uri
-    : null;
-
-  const dateStr = summitDate
-    ? new Date(summitDate + "T12:00:00").toLocaleDateString("en-GB", {
-        day: "numeric", month: "short", year: "numeric",
-      })
-    : "";
-
-  return (
-    <View style={[heroStyles.container, { height: 320 }]}>
-      {heroImageUri ? (
-        <ImageBackground
-          source={{ uri: heroImageUri }}
-          style={heroStyles.image}
-          resizeMode="cover"
-          onError={() => {
-            if (heroSource.kind === "approved") {
-              const fallback: HeroSource = {
-                kind: "mountain-image",
-                uri: mountainFallbackUri,
-                reason: `approved artwork image failed to render: ${heroSource.assetId} v${heroSource.version} ${heroSource.placement}`,
-              };
-              logSource(fallback);
-              setHeroSource(fallback);
-              return;
-            }
-            const gradient: HeroSource = {
-              kind: "gradient",
-              reason: "mountain-image fallback failed to render",
-            };
-            logSource(gradient);
-            setHeroSource(gradient);
-          }}
-        >
-          {/* Top subtle vignette */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.5)", "transparent"]}
-            style={[StyleSheet.absoluteFill, { height: "40%" }]}
-          />
-          {/* Bottom fade into basecamp bg */}
-          <LinearGradient
-            colors={["transparent", "rgba(11,13,17,0.7)", T.basecampBg]}
-            style={[StyleSheet.absoluteFill, { top: "30%" }]}
-          />
-          <HeroContent
-            mountainName={mountainName}
-            dateStr={dateStr}
-            topInset={topInset}
-            onEdit={onEdit}
-            isSubscribed={isSubscribed}
-            hasViewedPlan={hasViewedPlan}
-            elevationGain={elevationGain}
-            distance={distance}
-            highestAltitude={highestAltitude}
-          />
-        </ImageBackground>
-      ) : (
-        /* Gradient fallback */
-        <LinearGradient
-          colors={["#1E293B", "#0F172A", T.basecampBg]}
-          style={heroStyles.image}
-        >
-          <HeroContent
-            mountainName={mountainName}
-            dateStr={dateStr}
-            topInset={topInset}
-            onEdit={onEdit}
-            isSubscribed={isSubscribed}
-            hasViewedPlan={hasViewedPlan}
-            elevationGain={elevationGain}
-            distance={distance}
-            highestAltitude={highestAltitude}
-          />
-        </LinearGradient>
-      )}
-    </View>
-  );
-}
-
-function HeroContent({
-  mountainName, dateStr, topInset, onEdit, isSubscribed, hasViewedPlan,
-  elevationGain, distance, highestAltitude,
-}: { mountainName: string; dateStr: string; topInset: number; onEdit: () => void; isSubscribed: boolean; hasViewedPlan: boolean; elevationGain: number; distance: number; highestAltitude: number }) {
-  return (
-    <View style={[heroStyles.overlay, { paddingTop: topInset }]}>
-      <View style={heroStyles.topRow}>
-        <View style={heroStyles.headerLeft}>
-          <Mountain size={20} color="#fff" strokeWidth={1.5} />
-          <View style={{ marginLeft: 8 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 2 }}>SUMMITREADY</Text>
-            <Text style={{ fontSize: 7, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.68)", letterSpacing: 1.2, marginTop: 1 }}>TRAIN MORE · GO FURTHER.</Text>
-          </View>
-        </View>
-
-        <ModeTogglePill embedded />
-
-        <View style={heroStyles.headerButtons}>
-          <TouchableOpacity
-            onPress={() => router.push(isSubscribed ? "/subscription" : "/paywall")}
-            style={heroStyles.editBtn}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={isSubscribed ? "Manage subscription" : "View SummitReady Pro"}
-          >
-            <Lock size={12} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={onEdit}
-            style={heroStyles.editBtn}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Edit training objective"
-          >
-            <Pencil size={12} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={heroStyles.bottomText}>
-        <View style={{ gap: 4 }}>
-          <Text style={heroStyles.trainingFor}>TRAINING OBJECTIVE</Text>
-          <View style={heroStyles.mountainNameRow}>
-            <Text style={heroStyles.mountainName} numberOfLines={2}>{mountainName}</Text>
-            <TouchableOpacity
-              onPress={() => router.push("/setup?mode=change")}
-              style={heroStyles.namePencil}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Change mountain objective"
-            >
-              <Pencil size={14} color={"rgba(255,255,255,0.5)"} />
-            </TouchableOpacity>
-          </View>
-          <Text style={heroStyles.editorialStats}>
-            {dateStr ? `${dateStr.toUpperCase()} · ` : ""}{elevationGain.toLocaleString()}M GAIN · {distance}KM · {highestAltitude.toLocaleString()}M MAX ALT
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const heroStyles = StyleSheet.create({
-  container: { width: "100%" },
-  image: { width: "100%", height: "100%" },
-  overlay: {
-    flex: 1,
-    paddingHorizontal: 16,
-    justifyContent: "space-between",
-    paddingBottom: 20,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: 115,
-  },
-  headerButtons: {
-    flexDirection: "row",
-    gap: 8,
-    width: 64,
-    justifyContent: "flex-end",
-  },
-  editBtn: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center", justifyContent: "center",
-  },
-  bottomText: { gap: 4 },
-  mountainNameRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  namePencil: { marginTop: 4 },
-  editorialStats: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  trainingFor: {
-    fontSize: 9, fontFamily: "Inter_700Bold",
-    color: "rgba(255,255,255,0.6)", letterSpacing: 2,
-    marginBottom: 2,
-  },
-  mountainName: {
-    fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff",
-    letterSpacing: -0.5, lineHeight: 44,
-  },
-});
 
 // ── Alpine Guide Mascot ───────────────────────────────────────────────────────
 function AlpineGuide({ tone: _tone, flush }: { tone?: "positive" | "warning" | "neutral"; flush?: boolean }) {
@@ -697,7 +423,11 @@ export default function DashboardScreen() {
 
   if (!summitGoal) {
     return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      /* The no-goal state keeps its existing content and actions — it is not
+         part of the approved Training Basecamp composition, which assumes an
+         objective. Only its ground colour moves, so it does not clash with the
+         restyled shell above and below it. */
+      <LinearGradient colors={[BASECAMP.ink, "#0A1114", BASECAMP.ink]} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{
             paddingTop: Platform.OS === "web" ? 56 : insets.top + 20,
@@ -872,263 +602,227 @@ export default function DashboardScreen() {
   const sessionsPerWeek = summitGoal?.trainingDaysPerWeek ?? 4;
   const weekCompletion = currentWeek ? getWeeklyCompletion(sessions, currentWeek.weekNumber, sessionsPerWeek) : 0;
 
-  let nextSession = null;
-  let nextSessionIndex = -1;
-  if (currentWeek) {
-    const idx = currentWeek.sessions.findIndex((s, i) => !completedPlanSessions[s.id ?? `${currentWeek.weekNumber}-${i}`]);
-    if (idx !== -1) {
-      nextSession = currentWeek.sessions[idx];
-      nextSessionIndex = idx;
-    }
-  }
+  /* The mission and the Up Next rail both come from the plan's own order and
+     the completion map the plan screen writes, through one adapter — so
+     Basecamp cannot disagree with the Training Plan about what is next. */
+  const { mission, upNext } = missionQueue(trainingPlan, completedPlanSessions, {
+    fromWeekNumber: currentWeek?.weekNumber ?? null,
+  });
+  const week = weekProgress(currentWeek, completedPlanSessions);
+
+  /* The Coach reads the same session — it is told what is next, it does not
+     decide it. */
+  const nextSession = mission
+    ? currentWeek?.sessions?.[mission.sessionIndex] ?? null
+    : null;
+
+  const openSession = (s: { weekNumber: number; sessionIndex: number }) => router.push({
+    pathname: "/session-detail",
+    params: { weekNum: String(s.weekNumber), sessionIdx: String(s.sessionIndex) },
+  });
+
+  const quickActions = [
+    { id: "hills", label: "Find Hills", Icon: Mountain, onPress: () => router.push("/(tabs)/hills") },
+    { id: "plan", label: "Training Plan", Icon: Calendar, onPress: () => router.push("/(tabs)/plan") },
+    { id: "log", label: "Log Activity", Icon: Plus, onPress: () => router.push("/(tabs)/log") },
+    { id: "change", label: "Change Mountain", Icon: Flag, onPress: () => router.push("/setup?mode=change") },
+  ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.basecampBg }}>
+    <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={{
           paddingTop: 0,
-          paddingBottom: Platform.OS === "web" ? 110 : insets.bottom + 110,
+          paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <MountainHero
+        {/* ── Objective ─────────────────────────────────────────────────
+            The mountain, its real figures and the target date. */}
+        <BasecampHero
           mountainName={summitGoal.mountainName}
           summitDate={summitGoal.summitDate}
-          topInset={Platform.OS === "web" ? 20 : insets.top + 44}
-          onEdit={() => router.push("/setup")}
+          goal={summitGoal}
+          topInset={Platform.OS === "web" ? 20 : insets.top + 12}
           isSubscribed={isSubscribed}
-          hasViewedPlan={hasViewedPlan}
-          elevationGain={summitGoal.elevationGain}
-          distance={summitGoal.distance}
-          highestAltitude={summitGoal.highestAltitude}
+          onEditObjective={() => router.push("/setup")}
+          onChangeMountain={() => router.push("/setup?mode=change")}
+          onPressSubscription={() => router.push(isSubscribed ? "/subscription" : "/paywall")}
         />
 
-        <View style={styles.editorialContent}>
-          {/* Mission & Up Next Card */}
-          {currentWeek && (
-            <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(90).duration(500)} style={styles.missionGroup}>
-              <View style={styles.basecampCard}>
-                <View style={styles.missionHeader}>
-                  <Text style={styles.missionTitle}>This week's mission</Text>
-                  <TouchableOpacity style={styles.missionPlanBtn} onPress={() => router.push("/(tabs)/plan")}>
-                    <Text style={styles.missionPlanText}>View plan</Text>
-                    <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
-                  </TouchableOpacity>
+        {/* ── Readiness ─────────────────────────────────────────────────
+            Readiness 2.0's score, its next action and its own projection.
+            Locked keeps the ring and withholds the figure. */}
+        <BasecampReadiness
+          result={readinessV2?.result ?? null}
+          nextAction={readinessV2?.nextAction ?? null}
+          isSubscribed={isSubscribed}
+          onOpen={() => router.push(isSubscribed ? "/readiness-detail" as any : "/paywall")}
+        />
+
+        {/* ── This week's mission ───────────────────────────────────── */}
+        {trainingPlan.length > 0 && (
+          <View style={styles.section}>
+            <BasecampSectionHeader
+              title="This week's mission"
+              action="View plan"
+              onAction={() => router.push("/(tabs)/plan")}
+            />
+            <View style={{ marginTop: 10 }}>
+              {mission ? (
+                <MissionCard
+                  session={mission}
+                  phase={currentWeek?.phase ?? null}
+                  onStart={() => openSession(mission)}
+                  onOpen={() => openSession(mission)}
+                />
+              ) : (
+                <MissionComplete onOpenPlan={() => router.push("/(tabs)/plan")} />
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Up next ───────────────────────────────────────────────── */}
+        <UpNextRail
+          sessions={upNext}
+          onOpenSession={openSession}
+          onOpenPlan={() => router.push("/(tabs)/plan")}
+        />
+
+        {/* ── Progression ───────────────────────────────────────────── */}
+        <ProgressTiles
+          week={week}
+          onOpenBank={() => router.push("/elevation-history")}
+          onOpenPlan={() => router.push("/(tabs)/plan")}
+        />
+
+        {/* ── Training insight ──────────────────────────────────────────
+            The existing time assessment, in the composition's own voice.
+            Its wording and thresholds are the engine's, unchanged. */}
+        {timeAssessment
+          && (timeAssessment.status === "insufficient"
+            || timeAssessment.status === "impossible"
+            || timeAssessment.status === "tight") && (
+          <Animated.View
+            entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}
+            style={styles.section}
+          >
+            <BasecampPanel style={styles.insightPanel}>
+              <View style={styles.insightRow}>
+                <View style={styles.insightIcon}>
+                  <Lightbulb size={15} color={T.orange} />
                 </View>
-
-                <Text style={[styles.missionStatus, { color: PHASE_COLOR[currentWeek.phase] }]}>
-                  Week {currentWeek.weekNumber} · {currentWeek.phase}
-                </Text>
-
-                <View
-                  style={styles.missionProgressContainer}
-                  accessible
-                  accessibilityRole="progressbar"
-                  accessibilityLabel={`Week ${currentWeek.weekNumber} completion`}
-                  accessibilityValue={{ min: 0, max: 100, now: weekCompletion }}
-                >
-                  <View style={styles.missionProgressTrack}>
-                    <View
-                      style={[
-                        styles.missionProgressFill,
-                        { width: `${weekCompletion}%` as any },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.missionProgressLabel}>{weekCompletion}% complete</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.insightEyebrow}>TRAINING INSIGHT</Text>
+                  <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
+                  <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
                 </View>
               </View>
-
-              {nextSession && (
-                <TouchableOpacity
-                  style={styles.upNextCard}
-                  activeOpacity={0.8}
-                  onPress={() => router.push({
-                    pathname: "/session-detail",
-                    params: {
-                      weekNum: String(currentWeek.weekNumber),
-                      sessionIdx: String(nextSessionIndex),
-                    },
-                  })}
-                >
-                  <View style={styles.upNextBlock}>
-                    <View style={styles.upNextVisual} accessible={false}>
-                      <LinearGradient
-                        colors={["rgba(52,211,153,0.24)", "rgba(20,30,45,0.35)"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFill}
-                      />
-                      <View style={styles.upNextContourBack} />
-                      <View style={styles.upNextContourFront} />
-                      <Footprints size={25} color={T.green} strokeWidth={1.6} />
-                    </View>
-                    <View style={styles.upNextBody}>
-                      <Text style={styles.upNextLabel}>UP NEXT</Text>
-                      <Text style={styles.upNextTitle}>{nextSession.label}</Text>
-                      <Text style={styles.upNextDesc} numberOfLines={2}>{nextSession.description}</Text>
-                      <View style={styles.upNextStats}>
-                        <Clock size={11} color="rgba(255,255,255,0.4)" />
-                        <Text style={styles.upNextStatText}>
-                          {nextSession.duration}
-                        </Text>
-                        {nextSession.targetElevation > 0 && (
-                          <>
-                            <TrendingUp size={11} color="rgba(255,255,255,0.4)" style={{ marginLeft: 10 }} />
-                            <Text style={styles.upNextStatText}>{nextSession.targetElevation.toLocaleString()}m</Text>
-                          </>
-                        )}
-                      </View>
-                    </View>
-                    <View style={styles.upNextAction}>
-                      <ChevronRight size={14} color={T.green} />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </Animated.View>
-          )}
-
-          {/* Readiness */}
-          <View style={styles.editorialSection}>
-            <ReadinessV2Hero />
-          </View>
-
-          {/* Progress */}
-          <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(110).duration(500)} style={styles.editorialSection}>
-            {/* Elevation Bank is a first-class concept on Basecamp, so the
-                lifetime figure gets its own hierarchy. Values and credit
-                rules are unchanged. */}
-            <ElevationBankCard emphasis onPress={() => router.push("/elevation-history")} />
+            </BasecampPanel>
           </Animated.View>
+        )}
 
-          {/* Secondary content */}
-          <View style={styles.editorialSection}>
-            {/* Time Warning */}
-            {timeAssessment && (timeAssessment.status === "insufficient" || timeAssessment.status === "impossible" || timeAssessment.status === "tight") && (
-              <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}>
-                <View style={[
-                  styles.insightCard,
-                  { backgroundColor: "rgba(120,78,28,0.16)", borderColor: "rgba(217,145,52,0.28)" },
-                ]}>
-                  <View style={styles.insightIconWrap}>
-                    <Lightbulb size={16} color="#E3A64A" />
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.insightEyebrow, { color: "#E3A64A" }]}>
-                      TRAINING INSIGHT
-                    </Text>
-                    <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
-                    <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
-                  </View>
-                  <ChevronRight size={16} color={T.basecampTextDim} />
-                </View>
+        {/* ── Alpine requirements ───────────────────────────────────────
+            Alpine objectives only. Existing content and logic. */}
+        {summitGoal.difficulty === "Alpine" && (
+          <View style={styles.section}>
+            <AlpineCard
+              goal={summitGoal}
+              sessions={sessions}
+              trainingPlan={trainingPlan}
+              loading={alpineProfileLoading}
+            />
+          </View>
+        )}
+
+        {/* ── AI Coach ──────────────────────────────────────────────────
+            SummitReady's existing Coach, inside the composition rather than
+            on a card of its own. The fetch, the retry, the ask box and the
+            SUBSCRIPTION GATE are exactly as they were: `buildCoachInsight`
+            returns the locked state for an unentitled user, so no assessment
+            text reaches them. The Coach still authors no figure — the
+            mountain, readiness, projection and next session are all passed in
+            as engine-supplied facts. */}
+        <View
+          style={styles.section}
+          onLayout={(e) => { coachY.current = e.nativeEvent.layout.y; }}
+        >
+          {/* CoachInsight carries its own tracked-out AI COACH header and the
+              mascot, so the section does not repeat it. */}
+          <BasecampPanel>
+            <CoachInsight
+              state={buildCoachInsight({
+                hasGoal: Boolean(summitGoal),
+                entitled: isSubscribed,
+                loading: coachLoading,
+                error: coachError,
+                assessment: coach,
+                facts: buildCoachFacts({
+                  mountainName: summitGoal?.mountainName ?? null,
+                  overallScore: readinessV2?.result?.overallScore ?? null,
+                  projectedDelta: readinessV2?.nextAction?.projectedImpact?.delta ?? null,
+                  nextSession,
+                }),
+              })}
+              mascot={<AlpineGuide />}
+              variant="compact"
+              onRetry={fetchCoach}
+              onRefresh={isSubscribed ? fetchCoach : undefined}
+              onOpen={isSubscribed ? () => askInputRef.current?.focus() : undefined}
+              onUnlock={() => router.push("/paywall")}
+            />
+
+            {isSubscribed && (
+              <View style={styles.askBox}>
+                <TextInput
+                  ref={askInputRef}
+                  style={styles.askInput}
+                  placeholder="Ask your coach..."
+                  placeholderTextColor={BASECAMP.textDim}
+                  value={askText}
+                  onChangeText={setAskText}
+                  onSubmitEditing={handleAsk}
+                  returnKeyType="send"
+                  accessibilityLabel="Ask your coach a question"
+                />
+                <TouchableOpacity
+                  style={styles.askBtn}
+                  onPress={handleAsk}
+                  disabled={!askText.trim() || askLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send question to your coach"
+                >
+                  {askLoading
+                    ? <ActivityIndicator size="small" color={BASECAMP.accentInk} />
+                    : <Send size={16} color={BASECAMP.accentInk} />}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isSubscribed && askAnswer && (
+              <Animated.View
+                entering={reducedMotion ? undefined : FadeInDown.duration(400)}
+                style={styles.answerBubble}
+              >
+                <Text style={styles.answerText}>{askAnswer}</Text>
+                <TouchableOpacity
+                  onPress={() => setAskAnswer(null)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss answer"
+                >
+                  <X size={13} color={BASECAMP.textDim} />
+                </TouchableOpacity>
               </Animated.View>
             )}
-
-            {/* Alpine Requirements */}
-            {summitGoal.difficulty === "Alpine" && (
-              <AlpineCard
-                goal={summitGoal}
-                sessions={sessions}
-                trainingPlan={trainingPlan}
-                loading={alpineProfileLoading}
-              />
-            )}
-
-            {/* Achievements & AI Coach paired */}
-            <View style={styles.pairedModules}>
-              <TouchableOpacity style={styles.pairedCard} onPress={() => router.push("/(tabs)/account")} activeOpacity={0.7}>
-                <View style={styles.pairedIconWrap}>
-                  <Trophy size={16} color="#F59E0B" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pairedTitle} numberOfLines={1}>Achievements</Text>
-                  <Text style={styles.pairedDesc}>{unlockedAchievements.length} unlocked</Text>
-                </View>
-                <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.pairedCard} onPress={isSubscribed ? scrollToCoach : () => router.push("/paywall")} activeOpacity={0.7}>
-                <View style={styles.pairedIconWrapBlue}>
-                  <MessageCircle size={16} color={T.blue} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pairedTitle} numberOfLines={1}>AI Coach</Text>
-                  <Text style={styles.pairedDesc}>{isSubscribed ? "Ask advice" : "Pro feature"}</Text>
-                </View>
-                <ChevronRight size={14} color="rgba(255,255,255,0.3)" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Upgrade Prompt */}
-            {!isSubscribed && (
-              <TouchableOpacity style={styles.quietUpsell} onPress={() => router.push("/paywall")} activeOpacity={0.7}>
-                <Zap size={14} color={T.green} />
-                <Text style={styles.quietUpsellText}>Upgrade to Summit Ready Pro</Text>
-                <ChevronRight size={14} color={T.basecampTextMuted} />
-              </TouchableOpacity>
-            )}
-
-            {/* Coach Query area */}
-            {isSubscribed && (
-              <View style={styles.coachContainer} onLayout={(e) => { coachY.current = e.nativeEvent.layout.y; }}>
-                {/* The approved CoachInsight treatment. The fetch, retry,
-                    entitlement gate and ask box all stay exactly where they
-                    were — this only changes how the assessment is drawn, and
-                    adds the engine-supplied facts (mountain, readiness,
-                    projection, next session) that the card shows alongside it.
-                    The Coach still authors none of those numbers. */}
-                <CoachInsight
-                  state={buildCoachInsight({
-                    hasGoal: Boolean(summitGoal),
-                    entitled: isSubscribed,
-                    loading: coachLoading,
-                    error: coachError,
-                    assessment: coach,
-                    facts: buildCoachFacts({
-                      mountainName: summitGoal?.mountainName ?? null,
-                      overallScore: readinessV2?.result?.overallScore ?? null,
-                      projectedDelta: readinessV2?.nextAction?.projectedImpact?.delta ?? null,
-                      nextSession,
-                    }),
-                  })}
-                  mascot={<AlpineGuide />}
-                  variant="compact"
-                  onRetry={fetchCoach}
-                  onRefresh={fetchCoach}
-                  onOpen={() => askInputRef.current?.focus()}
-                  onUnlock={() => router.push("/paywall")}
-                />
-
-                <View style={styles.askBox}>
-                  <TextInput
-                    ref={askInputRef}
-                    style={styles.askInput}
-                    placeholder="Ask your coach..."
-                    placeholderTextColor={T.basecampTextDim}
-                    value={askText}
-                    onChangeText={setAskText}
-                    onSubmitEditing={handleAsk}
-                    returnKeyType="send"
-                  />
-                  <TouchableOpacity style={styles.askBtn} onPress={handleAsk} disabled={!askText.trim() || askLoading}>
-                    {askLoading ? <ActivityIndicator size="small" color="#000" /> : <Send size={16} color="#000" />}
-                  </TouchableOpacity>
-                </View>
-                {askAnswer && (
-                  <Animated.View entering={reducedMotion ? undefined : FadeInDown.duration(400)} style={styles.answerBubble}>
-                    <Text style={styles.answerText}>{askAnswer}</Text>
-                    <TouchableOpacity onPress={() => setAskAnswer(null)} hitSlop={8}>
-                      <X size={13} color={T.basecampTextMuted} />
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-              </View>
-            )}
-          </View>
+          </BasecampPanel>
         </View>
+
+        {/* ── Close ─────────────────────────────────────────────────── */}
+        <EditorialBand onPress={() => router.push("/(tabs)/explore")} />
+        <QuickActionsGrid actions={quickActions} />
       </ScrollView>
 
       {newlyUnlocked.length > 0 && (
@@ -1330,185 +1024,23 @@ const styles = StyleSheet.create({
     color: T.basecampTextMuted,
   },
 
-  scroll: {},
-  editorialContent: {
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    gap: 16,
+
+  /* ── The approved Training Basecamp composition ──────────────────────
+     A single rhythm: everything below the hero sits on the same 17pt
+     gutter with generous vertical air between sections, rather than a
+     stack of equally-weighted cards. */
+  section: {
+    paddingHorizontal: BASECAMP.gutter,
+    marginTop: 22,
   },
-  missionGroup: {
-    gap: 8,
+  insightPanel: { borderColor: "rgba(227,166,74,0.28)" },
+  insightRow: { flexDirection: "row", alignItems: "flex-start", gap: 11, padding: 14 },
+  insightIcon: {
+    width: 28, height: 28, borderRadius: 9,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(227,166,74,0.14)",
   },
-  editorialSection: {
-  },
-  basecampCard: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    overflow: "hidden",
-  },
-  missionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 13,
-    paddingBottom: 6,
-  },
-  missionTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  missionPlanBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  missionPlanText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.6)",
-  },
-  missionProgressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 12,
-  },
-  missionStatus: {
-    paddingHorizontal: 16,
-    paddingBottom: 5,
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.7,
-    textTransform: "uppercase",
-  },
-  missionProgressTrack: {
-    flex: 1,
-    height: 4,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  missionProgressFill: {
-    height: "100%",
-    backgroundColor: T.green,
-    borderRadius: 2,
-  },
-  missionProgressLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.6)",
-    width: 80,
-    textAlign: "right",
-  },
-  upNextCard: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    overflow: "hidden",
-  },
-  upNextBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 11,
-    gap: 12,
-  },
-  upNextVisual: {
-    width: 76,
-    height: 64,
-    borderRadius: 8,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(52,211,153,0.16)",
-  },
-  upNextContourBack: {
-    position: "absolute",
-    left: -8,
-    right: -8,
-    bottom: 13,
-    height: 18,
-    borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 50,
-    transform: [{ rotate: "-8deg" }],
-  },
-  upNextContourFront: {
-    position: "absolute",
-    left: -4,
-    right: -12,
-    bottom: 4,
-    height: 24,
-    borderTopWidth: 1,
-    borderColor: "rgba(52,211,153,0.22)",
-    borderRadius: 50,
-    transform: [{ rotate: "7deg" }],
-  },
-  upNextBody: {
-    flex: 1,
-    gap: 3,
-  },
-  upNextLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-    color: T.green,
-    letterSpacing: 1.2,
-  },
-  upNextTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  upNextDesc: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
-    lineHeight: 16,
-  },
-  upNextStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  upNextStatText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.5)",
-  },
-  upNextAction: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  insightCard: {
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
-  },
-  insightIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  insightBody: {
-    flex: 1,
-    gap: 3,
-  },
+
   insightEyebrow: {
     fontSize: 9,
     fontFamily: "Inter_700Bold",
@@ -1527,220 +1059,24 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 2,
   },
-  pairedModules: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  pairedCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 7,
-  },
-  pairedIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pairedIconWrapBlue: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pairedTitle: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
-  },
-  pairedDesc: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: T.basecampBorder,
-    marginHorizontal: 18,
-  },
-  flatStatsGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  flatStat: {
-    flex: 1,
-  },
-  flatStatValue: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    color: T.basecampText,
-  },
-  flatStatUnit: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextMuted,
-  },
-  flatStatLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextMuted,
-    marginTop: 2,
-  },
-  flatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: T.basecampBorder,
-  },
-  flatRowIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  flatRowTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: T.basecampText,
-  },
-  flatRowDesc: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampTextMuted,
-    marginTop: 2,
-  },
-  proBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: T.greenDim,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  proBadgeText: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: T.green,
-  },
-  quietUpsell: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 12,
-  },
-  quietUpsellText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampTextMuted,
-    flex: 1,
-  },
-  coachContainer: {
-    marginTop: 16,
-    gap: 12,
-  },
-  coachHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  coachChatArea: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-  },
-  coachHeaderTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: T.basecampText,
-  },
-  coachHeaderSub: {
-    marginTop: 2,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampTextMuted,
-  },
-  coachRefresh: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  coachBubble: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-  },
-  coachBubbleText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampText,
-    lineHeight: 18,
-  },
-  coachRetry: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  coachTips: {
-    gap: 8,
-  },
-  coachTip: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 9,
-  },
-  coachTipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 6,
-    flexShrink: 0,
-  },
-  coachTipText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: T.basecampText,
-    lineHeight: 18,
-  },
-  coachDisclaimer: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    color: T.basecampTextDim,
-    lineHeight: 14,
-  },
   askBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 12,
+    marginHorizontal: 12,
+    marginBottom: 12,
   },
   askInput: {
     flex: 1,
+    minWidth: 0,
     height: 44,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1,
+    borderColor: BASECAMP.panelSubBorder,
     borderRadius: 22,
     paddingHorizontal: 16,
-    color: T.basecampText,
+    color: BASECAMP.text,
     fontFamily: "Inter_400Regular",
     fontSize: 14,
   },
@@ -1748,25 +1084,28 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: T.green,
+    backgroundColor: BASECAMP.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   answerBubble: {
+    marginHorizontal: 12,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: T.blueDim,
+    backgroundColor: BASECAMP.accentDim,
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: T.blue + "30",
+    borderColor: "rgba(36,239,164,0.28)",
   },
   answerText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    color: T.basecampText,
+    color: BASECAMP.text,
     lineHeight: 20,
+    flex: 1,
   },
   baselineOverlay: {
     flex: 1,

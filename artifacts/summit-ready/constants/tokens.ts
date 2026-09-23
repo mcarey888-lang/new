@@ -74,3 +74,48 @@ export const ELEVATION = {
     default: {},
   }),
 } as const;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   BASECAMP — the approved Training Basecamp visual language.
+
+   Taken from `summitready-training-basecamp-mockup.html`, which is the visual
+   authority for this screen. These are deliberately SEPARATE from the legacy
+   `T.basecamp*` values rather than a redefinition of them: the rest of the app
+   still renders against the old palette, and nothing here changes what any
+   other screen looks like except the shared tab bar, which the approved design
+   owns.
+
+   Colour only. No spacing, no behaviour, no data.
+   ────────────────────────────────────────────────────────────────────────── */
+export const BASECAMP = {
+  /** Near-black with a blue-green cast — the prototype's `ink`. */
+  ink: "#05090B",
+  /** The training accent. Restrained: it marks progress and actions, nothing else. */
+  accent: "#24EFA4",
+  accentInk: "#05090B",
+  accentDim: "rgba(36,239,164,0.13)",
+  accentLine: "rgba(36,239,164,0.60)",
+
+  /** `.panel` — the screen's primary surface, a dark green-tinted gradient. */
+  panelGradient: ["rgba(20,36,32,0.92)", "rgba(10,17,19,0.94)", "rgba(8,13,15,0.96)"] as const,
+  panelBorder: "rgba(255,255,255,0.075)",
+  /** `.panel-sub` — a quieter surface nested inside a panel. */
+  panelSub: "rgba(255,255,255,0.035)",
+  panelSubBorder: "rgba(255,255,255,0.07)",
+  /** `.glass` — used over photography. */
+  glass: "rgba(255,255,255,0.07)",
+  glassBorder: "rgba(255,255,255,0.13)",
+  /** `.navglass` — the shared bottom navigation. */
+  navGlass: "rgba(5,9,11,0.92)",
+  navBorder: "rgba(255,255,255,0.07)",
+
+  text: "#FFFFFF",
+  textStrong: "rgba(255,255,255,0.88)",
+  textMuted: "rgba(255,255,255,0.62)",
+  textDim: "rgba(255,255,255,0.45)",
+  textFaint: "rgba(255,255,255,0.28)",
+  hairline: "rgba(255,255,255,0.10)",
+
+  /** The prototype's 17px screen gutter. */
+  gutter: 17,
+} as const;
