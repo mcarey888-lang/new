@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>SummitReady — You</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════════════════
+  SUMMITREADY · YOU / MOUNTAIN PROFILE — high-fidelity interactive prototype
+
+  The identity layer. One connected prototype, five local sections —
+  PROFILE · ACHIEVEMENTS · ACTIVITY · PHOTOS · STATS — plus the sharing
+  experience that makes that identity portable: Share Profile, Photo Detail,
+  Achievement Detail, Activity Detail, the Share Card composer with 9:16 and
+  4:5 formats, and the external destinations.
+
+  ⚠ ILLUSTRATIVE PROTOTYPE DATA — NOT PRODUCTION SEED DATA ⚠
+    Every figure below — 12,420 m banked, 127 hikes, 38 mountains, 5
+    expeditions, 317 h moving, every date, distance, ascent, duration, rank
+    signal, achievement and photograph — exists so the interface can be
+    judged. None of it is real user data and none of it has been through the
+    engines that own it. It must NEVER be lifted into a seed script, a
+    fixture or a migration. See PROTOTYPE_DATA below.
+
+  ── What this prototype does NOT do ───────────────────────────────────────
+  • The Profile is a PRESENTATION LAYER, never a source of truth. It reads
+    canonical activities, canonical mountains and routes, the Elevation Bank,
+    the Rank ladder, Achievements and Expeditions. It defines none of them.
+        USER → ACTIVITIES → ELEVATION BANK / MOUNTAINS / EXPERIENCE
+             → RANK + ACHIEVEMENTS → PROFILE
+  • It holds no second activity store. One physical hike exists once; the
+    Profile is another way of looking at it, and opening one hands off to the
+    existing Activity Detail.
+  • The Rank ladder is the real one (artifacts/summit-ready/utils/
+    rankDomain.ts): seven levels, each with its own evidence signals. Nothing
+    here re-scores it.
+  • It does not recreate Expedition Basecamp. Current Expedition hands over.
+  • No social network. No feed, no follower counts, and deliberately NO like
+    or comment counts on photographs — those appear when the community system
+    exists, not before. The structure is built so a public profile can reuse
+    it by dropping the owner-only controls.
+  ════════════════════════════════════════════════════════════════════════════
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { ink:'#05090B', accent:'#167DF7', train:'#24EFA4', warn:'#E9B949', stop:'#E4483C', gold:'#E4A93C' },
+    fontFamily: { sans:['Inter','system-ui','-apple-system','sans-serif'] },
+  } } }
+</script>
+<style>
+  :root { --ink:#05090B; --accent:#167DF7; --train:#24EFA4; --warn:#E9B949; --gold:#E4A93C; }
+  html, body { margin:0; background:var(--ink); color-scheme:dark; }
+  .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { display:none; }
+  .ph { background-color:#101c28; background-image:
+        linear-gradient(165deg, rgba(22,125,247,.12), rgba(0,0,0,0) 48%),
+        linear-gradient(to top, #070c0e 0%, #101c28 42%, #21405e 72%, #4d6d8e 100%); }
+  .ph > img { opacity:0; transition:opacity .5s ease; }
+  .ph > img.ok { opacity:1; }
+  .glass     { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+  .navglass  { background:rgba(5,9,11,.94); backdrop-filter:blur(22px) saturate(140%); }
+  .panel     { background:linear-gradient(158deg, rgba(18,30,44,.92) 0%, rgba(10,16,21,.94) 62%, rgba(8,12,16,.96) 100%);
+               border:1px solid rgba(255,255,255,.075); }
+  .panel-sub { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); }
+  .pressable { transition:transform .12s ease, filter .12s ease; }
+  .pressable:active { transform:scale(.975); filter:brightness(1.14); }
+  .bar-fill  { transition:width 1s cubic-bezier(.22,1,.36,1); }
+  .bar-rise  { transition:height .9s cubic-bezier(.22,1,.36,1); }
+  #sheet, #scrim, #toast { transition:opacity .28s ease, transform .3s cubic-bezier(.22,1,.36,1); }
+  .fadein { animation:fadein .34s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes fadein { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { *, .fadein { animation:none !important; transition:none !important; } }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+  .safe-top { padding-top:calc(14px + env(safe-area-inset-top, 0px)); }
+  .safe-bot { padding-bottom:env(safe-area-inset-bottom, 0px); }
+  /* the badge hexagon — one clip path, many fills */
+  .hexa { clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+  input::placeholder, textarea::placeholder { color:rgba(255,255,255,.34); }
+</style>
+</head>
+<body class="font-sans text-white antialiased">
+
+<div class="relative mx-auto w-full max-w-[430px] min-h-screen bg-ink overflow-x-hidden">
+  <main id="screen"></main>
+  <div id="spacer" class="h-[104px]"></div>
+
+  <!-- LOCAL navigation, pinned once the hero has scrolled away. It is a
+       different level from the global bar below and never replaces it. -->
+  <div id="stickyNav" style="opacity:0;pointer-events:none"
+       class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-20 navglass
+              border-b border-white/[.07] transition-opacity duration-200 safe-top"></div>
+
+  <div id="bottomStack" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-30">
+    <div class="navglass border-t border-white/[.07] safe-bot">
+      <div id="tabs" class="flex items-start justify-around pt-[11px] pb-[13px]"></div>
+    </div>
+  </div>
+
+  <div id="scrim" style="opacity:0;pointer-events:none" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-[2px]"></div>
+  <div id="sheet" style="transform:translate(-50%,105%)" role="dialog" aria-modal="true"
+       class="fixed bottom-0 left-1/2 w-full max-w-[430px] z-50 max-h-[92vh] overflow-y-auto no-sb
+              rounded-t-[22px] border-t border-white/10 px-[17px] pt-[14px] pb-[30px] safe-bot"></div>
+
+  <div id="toast" style="opacity:0;transform:translate(-50%,8px)"
+       class="pointer-events-none fixed left-1/2 bottom-[112px] z-[60] max-w-[92vw]
+              px-[15px] py-[9px] rounded-full glass text-[11.5px] font-semibold text-center"></div>
+</div>
+
+<script>
+/* ⚠ ILLUSTRATIVE PROTOTYPE DATA — NOT PRODUCTION SEED DATA ⚠
+   Read this before copying anything below into a seed file, a fixture or a
+   migration: don't. Every number here is hand-written so the interface can be
+   judged. Production resolves all of it from the systems named in
+   canonicalSource — the Profile computes none of it. */
+const PROTOTYPE_DATA = Object.freeze({
+  illustrative: true,
+  canonicalSource: {
+    activities:    'canonical activity store → one physical hike, one record',
+    elevationBank: 'Elevation Bank → lifetimeAscentM + credits',
+    rank:          'Rank ladder → rankDomain.ts (summitready-rank-v1)',
+    achievements:  'Achievement system → canonical definitions and award dates',
+    mountains:     'Summit Data Engine → canonical mountains',
+    routes:        'Route Engine → canonical routes',
+    expeditions:   'Expedition engine → virtual_expeditions + stages',
+    photos:        'Media store → photos belong to activities, mountains and users',
+    mountainDna:   'Mountain DNA → accumulated route DNA across eligible activities',
+  },
+  illustrativeFields: Object.freeze([
+    'lifetimeAscentM', 'yearOnYearPct', 'monthlyAscentM', 'hikes', 'mountains',
+    'expeditions', 'movingHours', 'distanceKm', 'ascentM', 'durationH', 'date',
+    'earnedOn', 'rankSignals', 'dnaScores', 'topMountains',
+  ]),
+  notice:
+    'Illustrative prototype data. Elevation, counts, dates, activity metrics, rank ' +
+    'signals, achievement awards, mountain statistics and photography in this file are ' +
+    'written to exercise the UI and must never be treated as canonical. Production ' +
+    'resolves every one of these values from the user’s real activity record.',
+});
+const ILLUSTRATIVE = Symbol.for('summitready.illustrativeData');
+
+/* ════════════════════ THE PERSON ════════════════════
+   Identity only. Not a statistics store — every number on this screen is read
+   from the system that owns it, further down. */
+const USER = {
+  id:'usr_marcc', handle:'marcc', name:'Marc Carey', location:'Rossendale, UK',
+  bio:'Mountains, family and a healthier, happier me. Turning everyday hills into extraordinary adventures.',
+  /* Cover and avatar are two separate images with two separate subjects and
+     two separate resolution chains. They are never one asset. */
+  cover:{ subject:'cover', source:'user_photo', caption:'Sunrise on the ridge' },
+  avatar:{ subject:'avatar', source:'user_photo' },
+  /* Visibility is a first-class field from the start. Nothing in the layout
+     assumes everything is public — see visibilityOf(). */
+  visibility:'public',                       /* public | followers | private */
+};
+
+/* ════════════════════ ELEVATION BANK ════════════════════
+   SummitReady's currency. The Profile reads the bank; it never adds to it.
+   Credit is earned by activities and spent by nothing. */
+const ELEVATION_BANK = {
+  lifetimeAscentM: 12420,
+  yearOnYearPct: 28,
+  /* Jan–Sep, metres credited per month. The chart is a view of these. */
+  monthlyAscentM: [640, 720, 880, 1010, 1180, 1460, 1720, 1540, 1610],
+  months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
+  status:'available',                        /* available | unavailable | empty */
+};
+
+/* ════════════════════ HEADLINE IDENTITY STATS ════════════════════
+   Elevation is deliberately NOT among these: it has its own component and
+   must not be reduced to one tile in a row of four. */
+const IDENTITY_STATS = [
+  { key:'hikes',       value:127,  label:'Hikes',       icon:'walk'   },
+  { key:'mountains',   value:38,   label:'Mountains',   icon:'peak'   },
+  { key:'expeditions', value:5,    label:'Expeditions', icon:'flag'   },
+  { key:'movingHours', value:317,  label:'Moving Time', icon:'clock', suffix:'h' },
+];
+const STAT_DISTANCE_KM = 1486;               /* shown in Stats, not on Profile */
+
+/* ════════════════════ RANK ════════════════════
+   The seven-level ladder from rankDomain.ts, reproduced here as a READ-ONLY
+   presentation copy. Rank is who you have become through accumulated mountain
+   evidence — not a list of things you did (Achievements) and not something you
+   are currently attempting (Challenges). Thresholds and evaluation stay in the
+   Rank engine; this prototype only displays what it would return. */
+const RANKS = [
+  { order:1, name:'Trailhead',    identity:'Beginning a deliberate mountain practice.' },
+  { order:2, name:'Hillwalker',   identity:'Building dependable hill experience.' },
+  { order:3, name:'Summiteer',    identity:'Turning repeated outings into summit experience.' },
+  { order:4, name:'Mountaineer',  identity:'A broad, sustained mountain capability identity.' },
+  { order:5, name:'Alpinist',     identity:'Proving depth across sustained, authoritative mountain objectives.' },
+  { order:6, name:'Expeditioner', identity:'A long-term record of prepared mountain progression.' },
+  { order:7, name:'Summit Elite', identity:'The highest record of verified, sustained mountain progression.' },
+];
+/* What the Rank engine reported for this user. `value: null` means the
+   producer was unavailable — never silently read as zero. */
+const RANK_STATE = {
+  current:4,
+  domainVersion:'summitready-rank-v1',
+  next: {
+    order:5,
+    requirements:[
+      { signal:'eligibleActivities',  label:'eligible outdoor activities',        value:127,   minimum:75    },
+      { signal:'eligibleElevation',   label:'metres of eligible elevation',       value:12420, minimum:25000 },
+      { signal:'distinctMountains',   label:'distinct canonical mountains',       value:38,    minimum:16    },
+      { signal:'summitCompletions',   label:'canonical summit completions',       value:31,    minimum:12    },
+      { signal:'activeWeeks',         label:'active weeks',                       value:41,    minimum:16    },
+      { signal:'expeditionMilestones',label:'authoritative Expedition milestones',value:5,     minimum:5     },
+    ],
+  },
+};
+
+/* ════════════════════ CANONICAL ACTIVITIES ════════════════════
+   One physical hike exists ONCE. These rows are references into that store —
+   the Profile is another way of viewing it, never a second copy of it.
+   Opening one hands off to the existing Activity Detail. */
+const ACTIVITIES = [
+  { id:'act_2026_0914_helv', mountainId:'mtn_helvellyn', routeId:'rt_striding_edge',
+    mountain:'Helvellyn', route:'Striding Edge', date:'2026-09-14', kind:'mountain',
+    distanceKm:10.4, ascentM:820, durationH:4.6, subject:'act_helvellyn',
+    expeditionId:null, achievementIds:['mtn_25'], visibility:'public',
+    caption:'Cloud inversion the whole way along the Edge.' },
+  { id:'act_2026_0907_bowf', mountainId:'mtn_bowfell', routeId:'rt_the_band',
+    mountain:'Bowfell', route:'The Band', date:'2026-09-07', kind:'mountain',
+    distanceKm:9.8, ascentM:760, durationH:3.87, subject:'act_bowfell',
+    expeditionId:'vexp_everest_lakes', achievementIds:[], visibility:'public' },
+  { id:'act_2026_0824_scaf', mountainId:'mtn_scafell_pike', routeId:'rt_corridor',
+    mountain:'Scafell Pike', route:'Corridor Route', date:'2026-08-24', kind:'mountain',
+    distanceKm:11.2, ascentM:978, durationH:4.47, subject:'act_scafell',
+    expeditionId:'vexp_everest_lakes', achievementIds:[], visibility:'public' },
+  { id:'act_2026_0812_tryf', mountainId:'mtn_tryfan', routeId:'rt_north_ridge',
+    mountain:'Tryfan', route:'North Ridge', date:'2026-08-12', kind:'mountain',
+    distanceKm:8.1, ascentM:917, durationH:3.75, subject:'act_tryfan',
+    expeditionId:null, achievementIds:['chal_solo'], visibility:'followers' },
+  { id:'act_2026_0728_snow', mountainId:'mtn_snowdon', routeId:'rt_pyg_track',
+    mountain:'Snowdon', route:'Pyg Track', date:'2026-07-28', kind:'mountain',
+    distanceKm:11.0, ascentM:1085, durationH:4.2, subject:'act_snowdon',
+    expeditionId:'vexp_everest_lakes', achievementIds:[], visibility:'public' },
+  { id:'act_2026_0719_pend', mountainId:'mtn_pendle', routeId:'rt_big_end',
+    mountain:'Pendle Hill', route:'Big End', date:'2026-07-19', kind:'hike',
+    distanceKm:7.4, ascentM:412, durationH:2.3, subject:'act_pendle',
+    expeditionId:null, achievementIds:[], visibility:'public' },
+  { id:'act_2026_0705_ben', mountainId:'mtn_ben_nevis', routeId:'rt_cmd_arete',
+    mountain:'Ben Nevis', route:'CMD Arête', date:'2026-07-05', kind:'expedition',
+    distanceKm:17.5, ascentM:1345, durationH:8.1, subject:'act_bennevis',
+    expeditionId:'vexp_everest_lakes', achievementIds:['exp_first'], visibility:'public' },
+];
+
+/* ════════════════════ ACHIEVEMENTS ════════════════════
+   Collectible, prestigious, and NOT the same thing as Rank. Rank is identity;
+   an achievement is a thing you did. The four groups below are VISUAL
+   EXAMPLES: the canonical definitions, thresholds and award dates come from
+   the Achievement system, and nothing here creates a new production rule. */
+const ACHIEVEMENT_GROUPS = [
+  { id:'milestone', title:'Milestone Badges', items:[
+    { id:'hike_1',  name:'First Hike',   tier:1, earned:true,  earnedOn:'2024-03-09', activityId:'act_2026_0719_pend',
+      description:'Your first recorded hike. Everything on this profile started here.' },
+    { id:'hike_10', name:'10 Hikes',     tier:2, earned:true,  earnedOn:'2024-06-22', description:'Ten recorded hikes.' },
+    { id:'hike_25', name:'25 Hikes',     tier:3, earned:true,  earnedOn:'2024-11-03', description:'Twenty-five recorded hikes.' },
+    { id:'hike_50', name:'50 Hikes',     tier:4, earned:true,  earnedOn:'2025-04-18', description:'Fifty recorded hikes — a genuine hill habit.' },
+  ]},
+  { id:'mountain', title:'Mountain Badges', items:[
+    { id:'mtn_1',  name:'First Mountain', tier:1, earned:true, earnedOn:'2024-03-30', description:'Your first canonical mountain summit.' },
+    { id:'mtn_10', name:'10 Mountains',   tier:2, earned:true, earnedOn:'2024-09-15', description:'Ten distinct canonical mountains.' },
+    { id:'mtn_25', name:'25 Mountains',   tier:3, earned:true, earnedOn:'2026-09-14', activityId:'act_2026_0914_helv',
+      description:'Twenty-five distinct canonical mountains, earned on Helvellyn.' },
+    { id:'mtn_50', name:'50 Mountains',   tier:4, earned:false, description:'Fifty distinct canonical mountains.' },
+  ]},
+  { id:'challenge', title:'Challenge Badges', items:[
+    { id:'chal_winter', name:'Winter Hike', tier:'ice',  earned:true, earnedOn:'2026-01-11', description:'A full mountain day in winter conditions.' },
+    { id:'chal_night',  name:'Night Hike',  tier:'night',earned:true, earnedOn:'2025-11-02', description:'A summit reached in darkness.' },
+    { id:'chal_solo',   name:'Solo Hike',   tier:'solo', earned:true, earnedOn:'2026-08-12', activityId:'act_2026_0812_tryf',
+      description:'A mountain route completed alone, on Tryfan’s North Ridge.' },
+    { id:'chal_multi',  name:'Multi-day',   tier:'multi',earned:false, description:'Consecutive mountain days with an overnight.' },
+  ]},
+  { id:'expedition', title:'Expedition Badges', items:[
+    { id:'exp_first',  name:'First Expedition',  tier:1, earned:true, earnedOn:'2026-07-05', activityId:'act_2026_0705_ben',
+      description:'Your first Expedition stage completed.' },
+    { id:'exp_3',      name:'3 Expeditions',     tier:2, earned:true, earnedOn:'2026-05-30', description:'Three Expeditions completed.' },
+    { id:'exp_everest',name:'Everest Simulation',tier:3, earned:false, description:'Complete every stage of the Everest Simulation.' },
+    { id:'exp_custom', name:'Custom Expedition', tier:4, earned:true, earnedOn:'2026-02-14', description:'An Expedition you built yourself, finished.' },
+  ]},
+];
+
+/* ════════════════════ EXPEDITION (reference only) ════════════════════
+   The Profile shows that an expedition is under way and hands over. It never
+   recreates Expedition Basecamp, its Progress Mountain or its progress maths. */
+const CURRENT_EXPEDITION = {
+  id:'vexp_everest_lakes', name:'Everest Simulation',
+  stagesComplete:3, stagesTotal:7, subject:'act_scafell',
+};
+/* NEXT UP is resolved from the user's existing plan / training / expedition
+   context. This prototype states which of those produced it rather than
+   inventing a planning system of its own. */
+const NEXT_UP = {
+  source:'expedition',                        /* expedition | training | plan */
+  sourceLabel:'Everest Simulation · stage 4',
+  mountain:'Helvellyn', route:'Striding Edge', date:'2026-09-14', subject:'act_helvellyn',
+};
+
+/* ════════════════════ PHOTOS ════════════════════
+   Photos belong to activities, mountains, routes and users. There are
+   deliberately NO like or comment counts: the community system does not exist
+   yet, and inventing its numbers here would be a lie in the UI. */
+const PHOTOS = [
+  { id:'ph_1', subject:'p1', activityId:'act_2026_0914_helv', ratio:'4/5', caption:'The Edge, just after sunrise.' },
+  { id:'ph_2', subject:'p2', activityId:'act_2026_0705_ben',  ratio:'1/1', caption:'Looking back down the arête.' },
+  { id:'ph_3', subject:'p3', activityId:'act_2026_0824_scaf', ratio:'4/5', caption:'Corridor Route in full sun.' },
+  { id:'ph_4', subject:'p4', activityId:'act_2026_0812_tryf', ratio:'1/1', caption:null },
+  { id:'ph_5', subject:'p5', activityId:'act_2026_0728_snow', ratio:'4/5', caption:'Pyg Track, early light.' },
+  { id:'ph_6', subject:'p6', activityId:'act_2026_0907_bowf', ratio:'1/1', caption:null },
+  { id:'ph_7', subject:'p7', activityId:'act_2026_0719_pend', ratio:'4/5', caption:'Local hill, best light of the year.' },
+];
+
+/* ════════════════════ MOUNTAIN STATISTICS ════════════════════ */
+/* Ranked by ELEVATION EARNED on that mountain across every eligible activity —
+   not by summit altitude. The two are different measurements and the criterion
+   is stated in the UI so the ranking can never be misread. */
+const TOP_MOUNTAINS = [
+  { id:'mtn_toubkal',     name:'Toubkal',     earnedM:4167, ascents:2, subject:'m1' },
+  { id:'mtn_ben_nevis',   name:'Ben Nevis',   earnedM:1345, ascents:1, subject:'m2' },
+  { id:'mtn_scafell_pike',name:'Scafell Pike',earnedM:978,  ascents:1, subject:'m3' },
+];
+/* Mountain DNA: what kind of mountain experience this person has accumulated.
+   Secondary to the Elevation Bank by design — this is a profile, not a lab. */
+const MOUNTAIN_DNA = [
+  { key:'elevation',    label:'Elevation Gain', score:82 },
+  { key:'steepness',    label:'Steepness',      score:74 },
+  { key:'terrain',      label:'Terrain',        score:68 },
+  { key:'exposure',     label:'Exposure',       score:61 },
+  { key:'technicality', label:'Technicality',   score:47 },
+];
+
+[ACTIVITIES, ACHIEVEMENT_GROUPS, PHOTOS, TOP_MOUNTAINS, MOUNTAIN_DNA, RANKS]
+  .forEach(c => { c[ILLUSTRATIVE] = true; });
+[USER, ELEVATION_BANK, RANK_STATE, CURRENT_EXPEDITION, NEXT_UP]
+  .forEach(c => { c[ILLUSTRATIVE] = true; });
+</script>
+
+<script>
+/* ════════════════════ MEDIA SOURCE POLICY ════════════════════
+   Imagery is deliberately indirect. A view asks for a SUBJECT; the policy
+   decides which source supplies it. The cover has its own chain — a user's own
+   photograph first, then community work, then curated editorial, then a
+   designed gradient — so the hero is never wired to one source and swapping a
+   source never touches a component. This prototype builds the component, not
+   the moderation system behind it. */
+const MEDIA = {
+  policy: ['user_photo', 'community_potm', 'community', 'curated', 'fallback'],
+  sources: {
+    user_photo: {
+      cover:'mockup-assets/pf-cover.jpg', avatar:'mockup-assets/pf-avatar.jpg',
+      p1:'mockup-assets/pf-p1.jpg', p2:'mockup-assets/pf-p2.jpg', p3:'mockup-assets/pf-p3.jpg',
+      p4:'mockup-assets/pf-p4.jpg', p5:'mockup-assets/pf-p5.jpg', p6:'mockup-assets/pf-p6.jpg',
+      p7:'mockup-assets/pf-p7.jpg',
+    },
+    community_potm: {},
+    community: {},
+    curated: {
+      act_helvellyn:'mockup-assets/ex-s4.jpg', act_bowfell:'mockup-assets/ex-s2.jpg',
+      act_scafell:'mockup-assets/ex-s5.jpg',   act_tryfan:'mockup-assets/ex-s3.jpg',
+      act_snowdon:'mockup-assets/ex-s6.jpg',   act_pendle:'mockup-assets/ex-s1.jpg',
+      act_bennevis:'mockup-assets/ex-s7.jpg',
+      m1:'mockup-assets/pf-m1.jpg', m2:'mockup-assets/pf-m2.jpg', m3:'mockup-assets/pf-m3.jpg',
+      share:'mockup-assets/pf-share.jpg',
+    },
+  },
+  resolve(subject) {
+    for (const src of this.policy) {
+      const hit = (this.sources[src] || {})[subject];
+      if (hit) return { url:hit, source:src };
+    }
+    /* The gradient fallback is a designed state, not a broken image. */
+    return { url:null, source:'fallback' };
+  },
+};
+const CREDIT = { user_photo:'Your photo', community_potm:'Photo of the Month',
+                 community:'Community photo', curated:'Curated artwork', fallback:'' };
+
+/* ═══════════════════════ ICONS ═══════════════════════ */
+const S = (d, a = 'stroke-width="1.8"') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ${a} stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICONS = {
+  mark:   S(`<path d="M1.6 19.2 6.9 12l2.3 2.9 4.1-6.2 8.1 10.5z"/><path d="M7.4 11.2 9.6 8l1.6 2.2"/>`, 'stroke-width="1.5"'),
+  peak:   S(`<path d="M2.6 19.4h18.8L15.2 5.4l-3.8 6.8-2.8-3.6z"/>`, 'stroke-width="1.6"'),
+  compass:S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  home:   S(`<path d="M3.5 10.1 12 3.4l8.5 6.7v9.5a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9.5Z"/>`),
+  boots:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+             <ellipse cx="7.4" cy="7" rx="2.7" ry="4.3"/><ellipse cx="7.4" cy="15.4" rx="2.2" ry="2.2"/>
+             <ellipse cx="16.6" cy="10.4" rx="2.7" ry="4.3"/><ellipse cx="16.6" cy="18.8" rx="2.2" ry="2.2"/></svg>`,
+  user:   S(`<circle cx="12" cy="7.8" r="3.7"/><path d="M4.9 20.4a7.1 7.1 0 0 1 14.2 0"/>`),
+  gear:   S(`<circle cx="12" cy="12" r="3.1"/><path d="M19.4 14.6a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0-1.2-2.9h-.2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"/>`, 'stroke-width="1.5"'),
+  chev:   S(`<path d="m9 5 7 7-7 7"/>`),
+  back:   S(`<path d="M19.5 12h-15M10.5 6l-6 6 6 6"/>`),
+  check:  S(`<path d="m5 12.6 4.6 4.4L19 6.8"/>`, 'stroke-width="2.6"'),
+  lock:   S(`<rect x="4.4" y="10.4" width="15.2" height="10.2" rx="2.4"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/>`),
+  clock:  S(`<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3 1.8"/>`),
+  calendar:S(`<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 10.1h17.2M8.4 3.4v3.6M15.6 3.4v3.6"/>`),
+  route:  S(`<circle cx="5.1" cy="17.7" r="1.9"/><circle cx="18.9" cy="6.3" r="1.9"/><path d="M6.7 16.9c2.8-.5 2.5-4.3 4.9-5.5s5 .2 6.1-3.2"/>`),
+  dna:    S(`<path d="M5 3.4c0 5.4 14 7.8 14 13.2M19 3.4c0 5.4-14 7.8-14 13.2"/><path d="M5 20.6h14M5 3.4h14M7.6 7.6h8.8M7.6 14.4h8.8"/>`, 'stroke-width="1.5"'),
+  info:   S(`<circle cx="12" cy="12" r="8.8"/><path d="M12 11.2v5M12 7.9v.1"/>`),
+  plus:   S(`<path d="M12 5v14M5 12h14"/>`, 'stroke-width="2.2"'),
+  close:  S(`<path d="m6 6 12 12M18 6 6 18"/>`, 'stroke-width="2.2"'),
+  share:  S(`<circle cx="18" cy="5.6" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.4" r="2.6"/><path d="m8.3 10.7 7.4-3.8M8.3 13.3l7.4 3.8"/>`, 'stroke-width="1.7"'),
+  camera: S(`<path d="M3.6 8.6h3.2l1.5-2.2h7.4l1.5 2.2h3.2v10.6H3.6z"/><circle cx="12" cy="13.6" r="3.4"/>`, 'stroke-width="1.7"'),
+  image:  S(`<rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.4"/><circle cx="8.8" cy="10" r="1.6"/><path d="m4.4 17.2 4.8-4.4 3.4 3 2.8-2.4 4.2 3.8"/>`, 'stroke-width="1.6"'),
+  walk:   S(`<circle cx="13.4" cy="4.4" r="2"/><path d="M11 21.6l2-5.6-2.4-2.2.9-4.6-3 1.8-1.3 3"/><path d="M13 16l2.6 2.2 1.4 3.4M11.5 9.2l3 1.2 2.4-1.6"/>`),
+  flag:   S(`<path d="M6 21V4.2M6 4.8h11.8l-2.3 3.9 2.3 3.9H6"/>`),
+  bars:   `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="14.5" width="3.6" height="5.5" rx="1.2"/><rect x="10.2" y="10" width="3.6" height="10" rx="1.2"/><rect x="16.4" y="4.8" width="3.6" height="15.2" rx="1.2"/></svg>`,
+  medal:  S(`<circle cx="12" cy="15.2" r="5.2"/><path d="M8.4 10.4 5.6 3.4h12.8l-2.8 7"/><path d="m12 13 .8 1.7 1.8.2-1.3 1.3.3 1.8-1.6-.9-1.6.9.3-1.8-1.3-1.3 1.8-.2z"/>`, 'stroke-width="1.5"'),
+  trend:  S(`<path d="M3.6 16.4 9 11l3.4 3.4 7.4-7.4"/><path d="M15.4 7h4.4v4.4"/>`, 'stroke-width="2"'),
+  globe:  S(`<circle cx="12" cy="12" r="8.8"/><path d="M3.3 12h17.4M12 3.2a14 14 0 0 1 0 17.6 14 14 0 0 1 0-17.6"/>`),
+  users:  S(`<circle cx="9.4" cy="8.2" r="3.2"/><path d="M3.6 19.4a5.8 5.8 0 0 1 11.6 0"/><path d="M16.2 5.4a3.2 3.2 0 0 1 0 5.9M17.6 14.4a5.8 5.8 0 0 1 2.8 5"/>`, 'stroke-width="1.6"'),
+  snow:   S(`<path d="M12 2.8v18.4M4 7.4l16 9.2M20 7.4 4 16.6"/><path d="m9.4 4.8 2.6 2.4 2.6-2.4M9.4 19.2l2.6-2.4 2.6 2.4"/>`, 'stroke-width="1.6"'),
+  moon:   S(`<path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/>`, 'stroke-width="1.7"'),
+  tent:   S(`<path d="m12 4.4 8.6 15H3.4z"/><path d="M12 9.2 8.2 19.4M12 9.2l3.8 10.2"/>`, 'stroke-width="1.6"'),
+  axe:    S(`<path d="M4.4 19.6 15 9"/><path d="M13.2 5.2a6 6 0 0 1 6.2 6.2 8.4 8.4 0 0 0-6.2-6.2Z"/><path d="m3.4 20.6 2.2-.6-.6-2.2"/>`, 'stroke-width="1.7"'),
+  target: S(`<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1"/>`, 'stroke-width="1.7"'),
+  instagram:S(`<rect x="3.6" y="3.6" width="16.8" height="16.8" rx="4.8"/><circle cx="12" cy="12" r="4"/><circle cx="16.9" cy="7.1" r=".9" fill="currentColor"/>`, 'stroke-width="1.7"'),
+  facebook:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.3 21.8v-8h2.7l.5-3.3h-3.2V8.3c0-.9.3-1.6 1.7-1.6h1.7V3.7c-.8-.1-1.7-.2-2.7-.2-2.7 0-4.5 1.6-4.5 4.6v2.4H7.5v3.3h3v8z"/></svg>`,
+  reddit: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 11.8a2.2 2.2 0 0 0-3.7-1.6 10.7 10.7 0 0 0-5.5-1.7l.9-4.2 2.9.6a1.6 1.6 0 1 0 .2-1.2l-3.6-.8a.6.6 0 0 0-.7.5l-1.1 5a10.7 10.7 0 0 0-5.6 1.7 2.2 2.2 0 1 0-2.4 3.6 4 4 0 0 0 0 .6c0 3.2 3.7 5.8 8.3 5.8s8.3-2.6 8.3-5.8a4 4 0 0 0 0-.6 2.2 2.2 0 0 0 1.2-1.9zM7.4 13.3a1.6 1.6 0 1 1 1.6 1.6 1.6 1.6 0 0 1-1.6-1.6zm8.9 4.2a5.6 5.6 0 0 1-3.6 1.1 5.6 5.6 0 0 1-3.6-1.1.5.5 0 0 1 .7-.7 4.7 4.7 0 0 0 2.9.8 4.7 4.7 0 0 0 2.9-.8.5.5 0 1 1 .7.7zm-.4-2.6a1.6 1.6 0 1 1 1.6-1.6 1.6 1.6 0 0 1-1.6 1.6z"/></svg>`,
+  dots:   `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.4" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="18.6" r="1.9"/></svg>`,
+  download:S(`<path d="M12 3.6v11.2M7.4 10.4 12 15l4.6-4.6M4.4 19.6h15.2"/>`, 'stroke-width="1.9"'),
+  link:   S(`<path d="M10.2 13.8a3.8 3.8 0 0 0 5.6 0l2.6-2.6a3.8 3.8 0 0 0-5.4-5.4L11.6 7.2"/><path d="M13.8 10.2a3.8 3.8 0 0 0-5.6 0l-2.6 2.6a3.8 3.8 0 0 0 5.4 5.4l1.4-1.4"/>`, 'stroke-width="1.7"'),
+};
+function icon(n, s) {
+  const h = document.createElement('span'); h.innerHTML = ICONS[n] || '';
+  const g = h.firstElementChild;
+  if (g) { g.setAttribute('width', s); g.setAttribute('height', s); g.style.display = 'block'; }
+  return h.innerHTML;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(n => {
+    n.innerHTML = icon(n.dataset.icon, n.dataset.size || 16); n.style.display = 'inline-flex';
+  });
+}
+function loadPhotos(root = document) {
+  root.querySelectorAll('img[data-src]').forEach(i => {
+    if (i.dataset.started || !i.dataset.src) return;
+    i.dataset.started = '1';
+    i.addEventListener('load',  () => i.classList.add('ok'));
+    i.addEventListener('error', () => i.remove());
+    i.src = i.dataset.src;
+  });
+}
+
+/* ═══════════════════════ HELPERS ═══════════════════════ */
+const fmt  = n => Math.round(n).toLocaleString('en-GB');
+const esc  = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function niceDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+function monthYear(iso) { const d = new Date(iso + 'T00:00:00'); return `${['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()]} ${d.getFullYear()}`; }
+const dur = h => { const w = Math.floor(h), m = Math.round((h - w) * 60); return `${w}h ${String(m).padStart(2,'0')}m`; };
+
+/* The Photo primitive. A caller that stretches the image passes its own
+   positioning; emitting `relative` as well would lose to it in Tailwind's
+   cascade and collapse the box, so pick one. */
+function Photo(subject, cls, credit = false) {
+  const m = MEDIA.resolve(subject);
+  const positioned = /\b(absolute|fixed|sticky)\b/.test(cls);
+  const c = credit && CREDIT[m.source]
+    ? `<span class="absolute top-[8px] right-[9px] z-10 px-[6px] py-[2px] rounded-[5px] bg-black/40
+                   text-[8px] font-semibold tracking-[.05em] text-white/55 backdrop-blur-[3px]">${CREDIT[m.source]}</span>` : '';
+  return `<div class="ph ${positioned ? '' : 'relative'} overflow-hidden ${cls}">
+    ${m.url ? `<img data-src="${m.url}" alt="" class="absolute inset-0 w-full h-full object-cover">` : ''}${c}</div>`;
+}
+function Chip(text, tone = 'neutral', ic) {
+  const tones = {
+    neutral:'bg-white/[.07] text-white/70 border-white/10',
+    accent:'bg-accent/[.15] text-accent border-accent/30',
+    warn:'bg-warn/[.13] text-warn border-warn/30',
+    good:'bg-train/[.13] text-train border-train/30',
+    gold:'bg-gold/[.14] text-gold border-gold/30',
+  };
+  return `<span class="inline-flex items-center gap-[4px] px-[7px] py-[3px] rounded-[6px] border ${tones[tone]}
+                       text-[9.5px] font-bold tracking-[.055em] uppercase whitespace-nowrap">
+    ${ic ? `<span data-icon="${ic}" data-size="10"></span>` : ''}${esc(text)}</span>`;
+}
+/* Visibility is surfaced, never assumed. A private or followers-only item says
+   so, which is what lets the same layout serve a public profile later. */
+const VIS = { public:{ icon:'globe', label:'Public' }, followers:{ icon:'users', label:'Followers' },
+              private:{ icon:'lock', label:'Private' } };
+const visibilityOf = o => VIS[(o && o.visibility) || 'public'];
+function VisibilityChip(o) {
+  const v = visibilityOf(o);
+  if (v === VIS.public) return '';            /* public is the quiet default */
+  return Chip(v.label, 'neutral', v.icon);
+}
+</script>
+
+<script>
+/* ═══════════════════════ TWO LEVELS OF NAVIGATION ═══════════════════════
+   GLOBAL picks the app section; YOU stays active across everything here.
+   LOCAL picks the section within You. They are never confused: the local bar
+   is not a tab bar and the tab bar is not a profile switcher. */
+const TABS = [
+  { id:'basecamp', icon:'home', label:'Basecamp' }, { id:'explore', icon:'compass', label:'Explore' },
+  { id:'track', icon:'boots', label:'Track' }, { id:'expeditions', icon:'peak', label:'Expeditions' },
+  { id:'you', icon:'user', label:'You' },
+];
+let activeTab = 'you';
+function BottomNavigation() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TABS.map(t => {
+    const on = t.id === activeTab;
+    return `<button data-tab="${t.id}" class="flex flex-col items-center flex-1 min-w-0 active:scale-95 transition">
+      <span class="grid place-items-center w-[36px] h-[30px] rounded-[11px] transition-colors ${on ? 'bg-accent/[.16]' : ''}">
+        ${on ? `<span class="grid place-items-center w-[19px] h-[19px] rounded-full bg-accent text-white" data-icon="${t.icon}" data-size="12"></span>`
+             : `<span class="text-white/55" data-icon="${t.icon}" data-size="24"></span>`}
+      </span>
+      <span class="mt-[3px] text-[9.5px] leading-[12px] font-medium truncate max-w-full px-[2px] ${on ? 'text-accent' : 'text-white/55'}">${t.label}</span>
+    </button>`;
+  }).join('');
+  hydrateIcons(el);
+  el.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.tab === 'you') { go('profile'); return; }
+    activeTab = b.dataset.tab; BottomNavigation();
+    toast(`→ ${TABS.find(t => t.id === activeTab).label}`);
+  }));
+}
+
+const SECTIONS = [
+  { id:'profile', label:'Profile' }, { id:'achievements', label:'Achievements' },
+  { id:'activity', label:'Activity' }, { id:'photos', label:'Photos' }, { id:'stats', label:'Stats' },
+];
+/* The same markup in both places: inline under the header, and in the sticky
+   bar that takes over once the hero has scrolled past. One source, so the two
+   can never drift apart. */
+function LocalNav(id) {
+  return `<nav aria-label="Profile sections" data-localnav="${id}"
+      class="flex items-stretch justify-between gap-[1px] overflow-x-auto no-sb px-[12px]"
+      style="container-type:inline-size">
+    ${SECTIONS.map(s => {
+      const on = s.id === UI.view;
+      return `<button data-section="${s.id}" ${on ? 'aria-current="page"' : ''}
+        class="relative shrink-0 px-[clamp(3px,1.5cqw,8px)] pt-[9px] pb-[10px] font-bold transition-colors
+               text-[clamp(10px,3.15cqw,12.5px)] ${on ? 'text-white' : 'text-white/50'}">
+        ${s.label}
+        <span class="absolute left-[4px] right-[4px] bottom-0 h-[2.5px] rounded-full transition-colors
+                     ${on ? 'bg-accent' : 'bg-transparent'}"></span>
+      </button>`;
+    }).join('')}
+  </nav>`;
+}
+/* Every section carries the identity header, so the person and the way back to
+   the other sections are always on screen. */
+function SectionHeader() {
+  return `<header class="safe-top px-[17px] pb-[11px]">
+    <div class="flex items-center gap-[11px]">
+      <button id="backBtn" aria-label="Back to profile"
+        class="grid place-items-center w-[32px] h-[32px] rounded-full glass pressable shrink-0" data-icon="back" data-size="16"></button>
+      <img src="mockup-assets/sr-mark.png" alt="" class="w-[22px] h-[22px] object-contain">
+      <img src="mockup-assets/sr-wordmark.png" alt="SummitReady" class="h-[13px] object-contain">
+    </div>
+    <div class="mt-[12px] flex items-center gap-[11px]">
+      ${Photo('avatar', 'w-[44px] h-[44px] rounded-full shrink-0 ring-2 ring-white/15')}
+      <div class="min-w-0 flex-1">
+        <div class="text-[16.5px] font-extrabold leading-[20px] truncate">${esc(USER.name)}</div>
+      </div>
+      <button id="settingsBtn" aria-label="Settings"
+        class="grid place-items-center w-[32px] h-[32px] rounded-full glass pressable shrink-0 text-white/75"
+        data-icon="gear" data-size="16"></button>
+    </div>
+  </header>`;
+}
+
+/* ═══════════════════════ SHEET / TOAST ═══════════════════════ */
+let sheetOpen = false, sheetStack = [];
+function openSheet(html, label = 'Detail', opts = {}) {
+  const s = document.getElementById('sheet'), c = document.getElementById('scrim');
+  s.className = s.className.replace(/\s(panel|bg-ink)\b/g, '') + (opts.solid ? ' bg-ink' : ' panel');
+  s.setAttribute('aria-label', label);
+  s.innerHTML = `<div class="mx-auto mb-[12px] h-[4px] w-[38px] rounded-full bg-white/22"></div>` + html;
+  hydrateIcons(s); loadPhotos(s);
+  /* A sheet is part of the UI, not a poster of it: wire it exactly like the
+     screen so every action inside it works. Sheets that need extra handlers
+     add them after this call. */
+  if (typeof bind === 'function') bind(s);
+  c.style.opacity = '1'; c.style.pointerEvents = 'auto';
+  s.style.transform = 'translate(-50%, 0)';
+  sheetOpen = true; s.scrollTop = 0;
+  const x = s.querySelector('[data-sheet-close]');
+  if (x) x.addEventListener('click', closeSheet);
+  return s;
+}
+function closeSheet() {
+  const s = document.getElementById('sheet'), c = document.getElementById('scrim');
+  s.style.transform = 'translate(-50%, 105%)';
+  c.style.opacity = '0'; c.style.pointerEvents = 'none';
+  sheetOpen = false; sheetStack = [];
+}
+const SheetHead = (kicker, title, sub) => `
+  <div class="flex items-start justify-between gap-[10px]">
+    <div class="min-w-0">
+      ${kicker ? `<div class="text-[10px] font-bold tracking-[.16em] text-accent">${esc(kicker)}</div>` : ''}
+      <h2 class="mt-[4px] text-[20px] font-extrabold leading-[24px] truncate">${esc(title)}</h2>
+      ${sub ? `<div class="mt-[2px] text-[12px] text-white/60 truncate">${esc(sub)}</div>` : ''}
+    </div>
+    <button data-sheet-close aria-label="Close"
+      class="shrink-0 grid place-items-center w-[30px] h-[30px] rounded-full glass pressable" data-icon="close" data-size="14"></button>
+  </div>`;
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1'; t.style.transform = 'translate(-50%, 0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 8px)'; }, 2100);
+}
+
+/* ═══════════════════════ ELEVATION BANK ═══════════════════════
+   SummitReady's currency, and the most valuable thing on this profile. It gets
+   its own component at its own scale — never one tile in a row of four. The
+   Profile reads the bank; the bank is filled by activities. */
+function ElevationBankCard(compact) {
+  const b = ELEVATION_BANK;
+  if (b.status !== 'available') {
+    return `<div class="panel rounded-[17px] p-[15px] text-[12.5px] text-white/55">
+      Elevation Bank is being prepared for this environment.</div>`;
+  }
+  return `<button data-open-bank class="w-full text-left panel rounded-[17px] pressable
+      border-accent/25 bg-gradient-to-br from-accent/[.13] via-transparent to-transparent overflow-hidden">
+    <div class="p-[15px] flex items-start gap-[13px]">
+      <span class="grid place-items-center w-[46px] h-[46px] shrink-0 rounded-[15px]
+                   bg-gradient-to-br from-accent to-[#0C57B4] text-white shadow-lg shadow-accent/20"
+            data-icon="mark" data-size="24"></span>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-[6px]">
+          <span class="text-[10.5px] font-bold tracking-[.14em] text-white/60">ELEVATION BANK</span>
+          <span class="text-white/30" data-icon="info" data-size="12"></span>
+        </div>
+        <div class="mt-[4px] flex items-baseline gap-[4px]">
+          <span class="text-[${compact ? '34' : '32'}px] font-extrabold tabular-nums leading-[1.05] tracking-[-.02em]">${fmt(b.lifetimeAscentM)}</span>
+          <span class="text-[17px] font-bold text-white/70">m</span>
+        </div>
+        ${compact ? `<div class="mt-[2px] text-[11.5px] text-white/50">Total elevation gained</div>` : ''}
+        <div class="mt-[6px] flex items-center gap-[5px] text-[12px] font-bold text-train">
+          <span data-icon="trend" data-size="13"></span>+${b.yearOnYearPct}% vs last year
+        </div>
+      </div>
+      ${compact ? '' : `<span class="self-center shrink-0 text-white/35" data-icon="chev" data-size="17"></span>`}
+    </div>
+  </button>`;
+}
+
+/* ═══════════════════════ A · PROFILE ═══════════════════════ */
+function ProfileHero() {
+  return `<section class="relative">
+    <!-- COVER: a large cinematic image that carries identity and impact.
+         Separate asset, separate subject, separate source chain from the
+         avatar below — the two are never combined. -->
+    <div class="relative h-[212px]">
+      ${Photo('cover', 'absolute inset-0')}
+      <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/25 to-ink/45"></div>
+      <div class="safe-top absolute inset-x-0 top-0 px-[17px] flex items-center justify-between">
+        <div class="flex items-center gap-[8px]">
+          <img src="mockup-assets/sr-mark.png" alt="" class="w-[26px] h-[26px] object-contain">
+          <img src="mockup-assets/sr-wordmark.png" alt="SummitReady" class="h-[15px] object-contain">
+        </div>
+        <button id="settingsBtn" aria-label="Settings"
+          class="grid place-items-center w-[34px] h-[34px] rounded-full glass pressable text-white/85"
+          data-icon="gear" data-size="18"></button>
+      </div>
+      <!-- owner-only: a public profile reuses this layout with the edit
+           controls removed, nothing else changes -->
+      ${OWNER ? `<button id="editCover"
+        class="absolute right-[17px] bottom-[13px] flex items-center gap-[6px] px-[10px] py-[6px] rounded-full
+               glass pressable text-[11px] font-bold">
+        <span data-icon="image" data-size="13"></span> Change cover</button>` : ''}
+    </div>
+
+    <!-- AVATAR: the person, overlapping the cover.
+         The negative margin belongs to the AVATAR BOX, and the wrapper is a
+         flow root so that margin cannot collapse through it. Without both, the
+         wrapper itself rides up over the cover at full width and silently eats
+         taps on the cover's own controls. -->
+    <div class="px-[17px] relative" style="display:flow-root">
+      <div class="relative w-[96px] h-[96px] -mt-[46px]">
+        ${Photo('avatar', 'w-[96px] h-[96px] rounded-full ring-[3px] ring-ink')}
+        ${OWNER ? `<button id="editAvatar" aria-label="Change profile picture"
+          class="absolute -right-[2px] bottom-[2px] grid place-items-center w-[29px] h-[29px] rounded-full
+                 bg-accent ring-[3px] ring-ink pressable text-white" data-icon="camera" data-size="15"></button>` : ''}
+      </div>
+
+      <div class="mt-[11px] flex items-start gap-[10px]">
+        <div class="min-w-0 flex-1">
+          <h1 class="text-[25px] font-extrabold leading-[29px] tracking-[-.015em] truncate">${esc(USER.name)}</h1>
+          <div class="mt-[1px] text-[13px] text-white/50">@${esc(USER.handle)}</div>
+          <div class="mt-[5px] flex items-center gap-[5px] text-[12.5px] text-white/62">
+            <span class="shrink-0 text-white/40" data-icon="target" data-size="13"></span>
+            <span class="truncate">${esc(USER.location)}</span>
+          </div>
+        </div>
+        <button id="shareProfile"
+          class="shrink-0 mt-[3px] flex items-center gap-[6px] px-[13px] py-[9px] rounded-[11px]
+                 bg-white/[.10] border border-white/15 pressable text-[12px] font-bold">
+          <span data-icon="share" data-size="14"></span> Share Profile</button>
+      </div>
+      <p class="mt-[10px] text-[12.5px] leading-[18px] text-white/68">${esc(USER.bio)}</p>
+    </div>
+  </section>`;
+}
+function RankCard() {
+  const r = RANKS[RANK_STATE.current - 1];
+  return `<button id="viewRank" class="mt-[11px] w-full text-left panel rounded-[15px] px-[13px] py-[12px]
+      pressable flex items-center gap-[12px]">
+    <span class="grid place-items-center w-[40px] h-[40px] shrink-0 hexa bg-gradient-to-br from-gold/90 to-gold/40 text-ink"
+          data-icon="peak" data-size="20"></span>
+    <span class="min-w-0 flex-1">
+      <span class="block text-[15px] font-extrabold leading-[18px] truncate">${esc(r.name)}</span>
+      <span class="block mt-[2px] text-[11.5px] text-white/50">Level ${r.order} of ${RANKS.length}</span>
+    </span>
+    <span class="shrink-0 text-[12px] font-bold text-accent">View Rank</span>
+    <span class="shrink-0 text-accent" data-icon="chev" data-size="14"></span>
+  </button>`;
+}
+function CurrentExpeditionCard() {
+  const e = CURRENT_EXPEDITION;
+  /* Stage-count progress, which is what this card claims to show. The
+     Expedition's own ascent-based progress lives in Expedition Basecamp and is
+     not restated here. */
+  const pct = Math.floor(e.stagesComplete / e.stagesTotal * 100);
+  return `<div class="mt-[11px] panel rounded-[15px] p-[12px]">
+    <div class="text-[10px] font-bold tracking-[.16em] text-white/45">CURRENT EXPEDITION</div>
+    <button data-open-expedition class="mt-[9px] w-full text-left flex items-center gap-[11px] pressable">
+      ${Photo(e.subject, 'w-[52px] h-[52px] rounded-[12px] shrink-0')}
+      <span class="min-w-0 flex-1">
+        <span class="block text-[14.5px] font-bold truncate">${esc(e.name)}</span>
+        <span class="block mt-[2px] text-[11.5px] text-white/50">${e.stagesComplete} / ${e.stagesTotal} stages complete</span>
+      </span>
+      <span class="shrink-0 text-white/35" data-icon="chev" data-size="15"></span>
+    </button>
+    <div class="mt-[10px] flex items-center gap-[9px]">
+      <div class="flex-1 h-[7px] rounded-full bg-white/[.08] overflow-hidden">
+        <div class="bar-fill h-full rounded-full bg-train" style="width:0%" data-bar="${pct}"></div>
+      </div>
+      <span class="text-[12.5px] font-extrabold tabular-nums text-train">${pct}%</span>
+    </div>
+  </div>`;
+}
+function NextUpCard() {
+  const n = NEXT_UP;
+  return `<div class="mt-[11px] panel rounded-[15px] p-[12px]">
+    <div class="flex items-baseline justify-between gap-[8px]">
+      <span class="text-[10px] font-bold tracking-[.16em] text-white/45">NEXT UP</span>
+      <span class="text-[9.5px] text-white/35 truncate">from ${esc(n.sourceLabel)}</span>
+    </div>
+    <button data-open-nextup class="mt-[9px] w-full text-left flex items-center gap-[11px] pressable">
+      ${Photo(n.subject, 'w-[52px] h-[52px] rounded-[12px] shrink-0')}
+      <span class="min-w-0 flex-1">
+        <span class="block text-[14.5px] font-bold truncate">${esc(n.mountain)}</span>
+        <span class="block mt-[2px] text-[11.5px] text-white/50 truncate">${esc(n.route)}</span>
+        <span class="mt-[4px] flex items-center gap-[5px] text-[11px] text-white/62">
+          <span class="text-accent" data-icon="calendar" data-size="12"></span>${niceDate(n.date)}</span>
+      </span>
+      <span class="shrink-0 text-white/35" data-icon="chev" data-size="15"></span>
+    </button>
+  </div>`;
+}
+function IdentityStatRow() {
+  return `<div class="mt-[11px] grid grid-cols-4 gap-[7px]">
+    ${IDENTITY_STATS.map(s => `
+      <div class="panel-sub rounded-[13px] px-[5px] py-[10px] text-center min-w-0" data-stat>
+        <div class="text-[17px] font-extrabold tabular-nums leading-none truncate" data-stat-value>${fmt(s.value)}${s.suffix || ''}</div>
+        <div class="mt-[4px] text-[9px] font-semibold leading-[11px] text-white/45 break-words">${esc(s.label)}</div>
+      </div>`).join('')}
+  </div>`;
+}
+function ProfileView() {
+  return ProfileHero()
+    + `<div class="mt-[14px] border-b border-white/[.07]">${LocalNav('inline')}</div>`
+    + `<section class="px-[17px] pt-[14px] pb-[20px] fadein">
+        ${ElevationBankCard(false)}
+        ${IdentityStatRow()}
+        ${RankCard()}
+        ${CurrentExpeditionCard()}
+        ${NextUpCard()}
+      </section>`;
+}
+</script>
+
+<script>
+/* ═══════════════════════ B · ACHIEVEMENTS ═══════════════════════
+   Collectible and prestigious. An achievement is a thing you accomplished —
+   distinct from Rank (who you have become) and from a Challenge (what you are
+   currently attempting). */
+const BADGE_FILL = {
+  1:'from-[#2E6FD6] to-[#123C7E]', 2:'from-[#2FA36B] to-[#124A2E]',
+  3:'from-[#2F8FA3] to-[#123F4A]', 4:'from-[#C98A2E] to-[#5E3C10]',
+  ice:'from-[#5FC9E8] to-[#12465A]', night:'from-[#A469E0] to-[#3C1A66]',
+  solo:'from-[#3D6DB0] to-[#14263F]', multi:'from-[#2E80D6] to-[#123256]',
+};
+const BADGE_ICON = { ice:'snow', night:'moon', solo:'walk', multi:'tent' };
+const allAchievements = () => ACHIEVEMENT_GROUPS.flatMap(g => g.items.map(a => ({ ...a, groupId:g.id, groupTitle:g.title })));
+const achievement = id => allAchievements().find(a => a.id === id) || null;
+const earnedCount = () => allAchievements().filter(a => a.earned).length;
+
+function Badge(a, groupId) {
+  const ic = BADGE_ICON[a.tier] || (groupId === 'expedition' ? 'flag' : groupId === 'mountain' ? 'peak' : 'walk');
+  return `<button data-achievement="${esc(a.id)}"
+      class="flex flex-col items-center min-w-0 pressable ${a.earned ? '' : 'opacity-40'}">
+    <span class="relative grid place-items-center w-[58px] h-[64px] hexa
+                 bg-gradient-to-b ${BADGE_FILL[a.tier] || BADGE_FILL[1]}">
+      <span class="text-white/95" data-icon="${ic}" data-size="26"></span>
+    </span>
+    <span class="mt-[7px] text-[10px] font-semibold leading-[12px] text-center text-white/72 break-words w-full">${esc(a.name)}</span>
+    ${a.earned ? '' : `<span class="mt-[3px] text-[8.5px] font-bold tracking-[.06em] text-white/35">LOCKED</span>`}
+  </button>`;
+}
+function AchievementsView() {
+  return SectionHeader()
+    + `<div class="border-b border-white/[.07]">${LocalNav('inline')}</div>`
+    + `<section class="px-[17px] pt-[15px] pb-[20px] fadein">
+        <div class="panel-sub rounded-[13px] px-[12px] py-[10px] flex items-center gap-[9px]">
+          <span class="shrink-0 text-gold" data-icon="medal" data-size="16"></span>
+          <span class="text-[12px] text-white/65">
+            <strong class="text-white/90 tabular-nums">${earnedCount()}</strong> of ${allAchievements().length} badges earned</span>
+        </div>
+        ${ACHIEVEMENT_GROUPS.map(g => `
+          <div class="mt-[18px]">
+            <div class="mb-[12px] flex items-baseline justify-between gap-[8px]">
+              <h2 class="text-[15.5px] font-extrabold truncate">${esc(g.title)}</h2>
+              <button data-seeall="${esc(g.id)}" class="shrink-0 flex items-center gap-[3px] text-[12px] font-bold text-accent pressable">
+                See all <span data-icon="chev" data-size="12"></span></button>
+            </div>
+            <div class="grid grid-cols-4 gap-[8px]">${g.items.map(a => Badge(a, g.id)).join('')}</div>
+          </div>`).join('')}
+        <div class="mt-[22px] panel rounded-[15px] px-[15px] py-[16px] text-center">
+          <span class="inline-block text-accent" data-icon="mark" data-size="18"></span>
+          <p class="mt-[7px] text-[13px] leading-[19px] italic text-white/75">
+            &ldquo;A little progress each day adds up to big mountains.&rdquo;</p>
+          <div class="mt-[8px] text-[9px] font-bold tracking-[.2em] text-white/35">SUMMITREADY</div>
+        </div>
+      </section>`;
+}
+function AchievementSheet(id) {
+  const a = achievement(id); if (!a) { toast('Achievement could not be resolved'); return; }
+  const act = a.activityId ? ACTIVITIES.find(x => x.id === a.activityId) : null;
+  const ic = BADGE_ICON[a.tier] || (a.groupId === 'expedition' ? 'flag' : a.groupId === 'mountain' ? 'peak' : 'walk');
+  openSheet(`
+    ${SheetHead(a.groupTitle.toUpperCase(), a.name, a.earned ? `Earned ${niceDate(a.earnedOn)}` : 'Not yet earned')}
+    <div class="mt-[16px] grid place-items-center">
+      <span class="relative grid place-items-center w-[124px] h-[138px] hexa
+                   bg-gradient-to-b ${BADGE_FILL[a.tier] || BADGE_FILL[1]} ${a.earned ? '' : 'opacity-45'}">
+        <span class="text-white/95" data-icon="${ic}" data-size="54"></span>
+      </span>
+    </div>
+    <p class="mt-[15px] text-center text-[13px] leading-[19px] text-white/72">${esc(a.description)}</p>
+    <div class="mt-[13px] flex flex-wrap justify-center gap-[5px]">
+      ${a.earned ? Chip('Earned', 'good', 'check') : Chip('Locked', 'neutral', 'lock')}
+      ${a.earned && a.earnedOn ? Chip(monthYear(a.earnedOn), 'neutral', 'calendar') : ''}
+    </div>
+    ${act ? `<button data-open-activity="${esc(act.id)}"
+        class="mt-[15px] w-full panel-sub rounded-[13px] p-[10px] flex items-center gap-[10px] text-left pressable">
+        ${Photo(act.subject, 'w-[46px] h-[46px] rounded-[10px] shrink-0')}
+        <span class="min-w-0 flex-1">
+          <span class="block text-[9.5px] font-bold tracking-[.1em] uppercase text-white/40">Earned on</span>
+          <span class="block mt-[2px] text-[13px] font-bold truncate">${esc(act.mountain)}</span>
+          <span class="block text-[10.5px] text-white/45 truncate">${esc(act.route)} · ${niceDate(act.date)}</span>
+        </span>
+        <span class="shrink-0 text-white/35" data-icon="chev" data-size="14"></span>
+      </button>` : ''}
+    ${a.earned ? `<button data-share="achievement:${esc(a.id)}"
+      class="mt-[16px] w-full h-[46px] rounded-[13px] bg-accent text-white text-[13.5px] font-bold pressable
+             flex items-center justify-center gap-[8px]">
+      <span data-icon="share" data-size="15"></span> Share Achievement</button>`
+    : `<div class="mt-[16px] panel-sub rounded-[12px] px-[12px] py-[10px] text-[11.5px] leading-[16px] text-white/50">
+         Definitions and award dates come from the SummitReady achievement system. This badge appears on your
+         profile the moment that system awards it.</div>`}`, 'Achievement detail');
+}
+
+/* ═══════════════════════ C · ACTIVITY ═══════════════════════
+   The canonical mountain history. These rows REFERENCE the activity store —
+   one physical hike exists once, and the Profile is simply another way of
+   looking at it. Opening one hands off to the existing Activity Detail. */
+const ACTIVITY_FILTERS = [
+  { id:'all', label:'All' }, { id:'hike', label:'Hikes' },
+  { id:'mountain', label:'Mountains' }, { id:'expedition', label:'Expeditions' },
+];
+const filteredActivities = () => UI.activityFilter === 'all'
+  ? ACTIVITIES : ACTIVITIES.filter(a => a.kind === UI.activityFilter);
+function groupByMonth(list) {
+  const out = [];
+  list.forEach(a => {
+    const key = monthYear(a.date);
+    const g = out.find(x => x.key === key);
+    (g ? g.items : (out.push({ key, items:[] }), out[out.length - 1].items)).push(a);
+  });
+  return out;
+}
+function ActivityRow(a) {
+  return `<div class="panel rounded-[15px] p-[10px] flex items-center gap-[11px]">
+    <button data-open-activity="${esc(a.id)}" class="flex items-center gap-[11px] min-w-0 flex-1 text-left pressable">
+      ${Photo(a.subject, 'w-[62px] h-[62px] rounded-[12px] shrink-0')}
+      <span class="min-w-0 flex-1">
+        <span class="flex items-center gap-[6px] min-w-0">
+          <span class="text-[14px] font-bold truncate">${esc(a.mountain)}</span>
+          ${a.visibility !== 'public' ? `<span class="shrink-0 text-white/35" data-icon="${visibilityOf(a).icon}" data-size="11"></span>` : ''}
+        </span>
+        <span class="block mt-[1px] text-[11.5px] text-white/52 truncate">${esc(a.route)}</span>
+        <span class="mt-[4px] flex items-center gap-[5px] text-[10.5px] text-white/45">
+          <span data-icon="calendar" data-size="11"></span>${niceDate(a.date)}</span>
+        <span class="mt-[4px] flex items-center gap-[9px] text-[10.5px] text-white/62 tabular-nums">
+          <span class="flex items-center gap-[3px]"><span class="text-white/40" data-icon="route" data-size="11"></span>${a.distanceKm.toFixed(1)} km</span>
+          <span class="flex items-center gap-[3px]"><span class="text-accent" data-icon="mark" data-size="11"></span>${fmt(a.ascentM)} m</span>
+          <span class="flex items-center gap-[3px]"><span class="text-white/40" data-icon="clock" data-size="11"></span>${dur(a.durationH)}</span>
+        </span>
+      </span>
+    </button>
+    <button data-activity-menu="${esc(a.id)}" aria-label="Actions for ${esc(a.mountain)}"
+      class="self-start shrink-0 grid place-items-center w-[26px] h-[26px] rounded-[8px] text-white/45 pressable"
+      data-icon="dots" data-size="15"></button>
+  </div>`;
+}
+function ActivityView() {
+  const groups = groupByMonth(filteredActivities());
+  return SectionHeader()
+    + `<div class="border-b border-white/[.07]">${LocalNav('inline')}</div>`
+    + `<section class="px-[17px] pt-[13px] pb-[20px] fadein">
+        <div class="flex gap-[7px] overflow-x-auto no-sb -mx-[17px] px-[17px] pb-[2px]">
+          ${ACTIVITY_FILTERS.map(f => {
+            const on = UI.activityFilter === f.id;
+            return `<button data-filter="${f.id}" class="shrink-0 px-[14px] py-[8px] rounded-full text-[12px] font-bold pressable border
+              ${on ? 'bg-accent border-accent text-white' : 'panel-sub text-white/68'}">${f.label}</button>`;
+          }).join('')}
+        </div>
+        ${groups.length ? groups.map(g => `
+          <div class="mt-[16px]">
+            <h2 class="mb-[9px] text-[13.5px] font-extrabold">${esc(g.key)}</h2>
+            <div class="grid gap-[9px]">${g.items.map(ActivityRow).join('')}</div>
+          </div>`).join('')
+        : `<div class="mt-[24px] panel rounded-[15px] px-[15px] py-[22px] text-center">
+             <span class="inline-grid place-items-center w-[38px] h-[38px] rounded-full bg-white/[.07] text-white/45"
+                   data-icon="boots" data-size="18"></span>
+             <div class="mt-[10px] text-[13.5px] font-bold">Nothing here yet</div>
+             <p class="mt-[4px] text-[11.5px] text-white/52">No activities of this kind in your history.</p>
+           </div>`}
+      </section>`;
+}
+/* Activity Detail is an EXISTING screen. This sheet is the seam: it shows what
+   the Profile knows and hands over, rather than re-implementing it. */
+function ActivitySheet(id) {
+  const a = ACTIVITIES.find(x => x.id === id);
+  if (!a) { toast('Activity could not be resolved'); return; }
+  const badges = (a.achievementIds || []).map(achievement).filter(Boolean);
+  openSheet(`
+    ${SheetHead(a.kind === 'expedition' ? 'EXPEDITION STAGE' : a.kind === 'mountain' ? 'MOUNTAIN DAY' : 'HIKE',
+                a.mountain, `${a.route} · ${niceDate(a.date)}`)}
+    ${Photo(a.subject, 'mt-[13px] h-[158px] rounded-[15px]', true)}
+    <div class="mt-[13px] grid grid-cols-3 gap-[7px]">
+      <div class="panel-sub rounded-[12px] px-[7px] py-[9px]" data-stat>
+        <div class="text-[8.5px] font-semibold tracking-[.05em] uppercase text-white/45">Distance</div>
+        <div class="mt-[3px] text-[14px] font-bold tabular-nums" data-stat-value>${a.distanceKm.toFixed(1)} km</div></div>
+      <div class="panel-sub rounded-[12px] px-[7px] py-[9px]" data-stat>
+        <div class="text-[8.5px] font-semibold tracking-[.05em] uppercase text-white/45">Ascent</div>
+        <div class="mt-[3px] text-[14px] font-bold tabular-nums text-accent" data-stat-value>${fmt(a.ascentM)} m</div></div>
+      <div class="panel-sub rounded-[12px] px-[7px] py-[9px]" data-stat>
+        <div class="text-[8.5px] font-semibold tracking-[.05em] uppercase text-white/45">Moving</div>
+        <div class="mt-[3px] text-[14px] font-bold tabular-nums" data-stat-value>${dur(a.durationH)}</div></div>
+    </div>
+    <div class="mt-[11px] panel-sub rounded-[12px] px-[11px] py-[10px] flex items-center gap-[9px]">
+      <span class="shrink-0 text-accent" data-icon="mark" data-size="15"></span>
+      <span class="text-[11.5px] leading-[16px] text-white/62">
+        Credited <strong class="text-white/85 tabular-nums">${fmt(a.ascentM)} m</strong> to your Elevation Bank
+        ${a.expeditionId ? ` and counted toward <strong class="text-white/85">${esc(CURRENT_EXPEDITION.name)}</strong>` : ''}.</span>
+    </div>
+    ${badges.length ? `<div class="mt-[11px] flex flex-wrap gap-[5px]">
+      ${badges.map(b => Chip(b.name + ' earned', 'gold', 'medal')).join('')}</div>` : ''}
+    <div class="mt-[11px] flex flex-wrap gap-[5px]">${VisibilityChip(a)}</div>
+    ${a.caption ? `<p class="mt-[11px] text-[12.5px] leading-[18px] text-white/70">${esc(a.caption)}</p>` : ''}
+    <div class="mt-[16px] flex gap-[9px]">
+      <button data-open-activity-full="${esc(a.id)}"
+        class="flex-1 h-[46px] rounded-[13px] glass text-[13px] font-bold pressable flex items-center justify-center gap-[7px]">
+        <span data-icon="route" data-size="14"></span> View Activity</button>
+      <button data-share="activity:${esc(a.id)}"
+        class="flex-1 h-[46px] rounded-[13px] bg-accent text-white text-[13px] font-bold pressable
+               flex items-center justify-center gap-[7px]">
+        <span data-icon="share" data-size="14"></span> Share</button>
+    </div>
+    <p class="mt-[11px] text-[10.5px] leading-[14px] text-white/38">
+      Route, elevation profile, photographs and the full statistics for this day live in Activity Detail.
+      Your profile shows the same single record — there is no separate profile copy of it.</p>`,
+    'Activity detail');
+}
+
+/* ═══════════════════════ D · PHOTOS ═══════════════════════
+   A gallery of memories. Deliberately NO like or comment counts: the community
+   system does not exist yet, and a fabricated number would be a lie. Photos
+   belong to activities, mountains, routes and users. */
+function PhotosView() {
+  const cols = [[], []];
+  PHOTOS.forEach((p, i) => cols[i % 2].push(p));
+  const tile = p => `<button data-photo="${esc(p.id)}"
+      class="block w-full pressable rounded-[13px] overflow-hidden">
+      ${Photo(p.subject, `w-full ${p.ratio === '1/1' ? 'aspect-square' : 'aspect-[4/5]'}`)}
+    </button>`;
+  return SectionHeader()
+    + `<div class="border-b border-white/[.07]">${LocalNav('inline')}</div>`
+    + `<section class="px-[17px] pt-[13px] pb-[20px] fadein">
+        <div class="flex items-baseline justify-between gap-[8px]">
+          <h2 class="text-[13.5px] font-extrabold">${PHOTOS.length} photographs</h2>
+          <span class="text-[10.5px] text-white/40">From your activities</span>
+        </div>
+        <div class="mt-[11px] grid grid-cols-2 gap-[9px] items-start">
+          <div class="grid gap-[9px]">${cols[0].map(tile).join('')}</div>
+          <div class="grid gap-[9px]">${cols[1].map(tile).join('')}
+            ${OWNER ? `<button id="addPhotos"
+              class="w-full aspect-square rounded-[13px] panel-sub grid place-items-center pressable">
+              <span class="grid place-items-center w-[38px] h-[38px] rounded-full bg-white/[.09] text-white/70"
+                    data-icon="plus" data-size="20"></span>
+              <span class="mt-[8px] text-[11.5px] font-bold text-white/70">Add Photos</span>
+            </button>` : ''}
+          </div>
+        </div>
+      </section>`;
+}
+function PhotoSheet(id) {
+  const p = PHOTOS.find(x => x.id === id);
+  if (!p) { toast('Photo could not be resolved'); return; }
+  const a = ACTIVITIES.find(x => x.id === p.activityId);
+  openSheet(`
+    <div class="flex justify-end -mt-[4px] mb-[8px]">
+      <button data-sheet-close aria-label="Close"
+        class="grid place-items-center w-[30px] h-[30px] rounded-full glass pressable" data-icon="close" data-size="14"></button>
+    </div>
+    <!-- the photograph is the hero; context sits beneath it -->
+    ${Photo(p.subject, `w-full ${p.ratio === '1/1' ? 'aspect-square' : 'aspect-[4/5]'} rounded-[16px]`, true)}
+    ${p.caption ? `<p class="mt-[13px] text-[13px] leading-[19px] text-white/78">${esc(p.caption)}</p>` : ''}
+    ${a ? `
+      <button data-open-activity="${esc(a.id)}" class="mt-[13px] w-full text-left pressable">
+        <div class="text-[18px] font-extrabold leading-[22px] truncate">${esc(a.mountain)}</div>
+        <div class="mt-[1px] flex items-center gap-[6px] text-[12px] text-white/60">
+          <span class="shrink-0 text-accent" data-icon="route" data-size="13"></span>
+          <span class="truncate">${esc(a.route)}</span><span class="text-white/25">•</span>
+          <span class="shrink-0">${niceDate(a.date)}</span>
+        </div>
+        <div class="mt-[9px] flex items-center gap-[13px] text-[11.5px] text-white/62 tabular-nums">
+          <span class="flex items-center gap-[4px]"><span class="text-white/40" data-icon="route" data-size="12"></span>${a.distanceKm.toFixed(1)} km</span>
+          <span class="flex items-center gap-[4px]"><span class="text-accent" data-icon="mark" data-size="12"></span>${fmt(a.ascentM)} m</span>
+          <span class="flex items-center gap-[4px]"><span class="text-white/40" data-icon="clock" data-size="12"></span>${dur(a.durationH)}</span>
+        </div>
+      </button>
+      <div class="mt-[11px] flex flex-wrap gap-[5px]">
+        ${Chip(a.mountain, 'neutral', 'peak')}${Chip(a.route, 'neutral', 'route')}${VisibilityChip(a)}
+      </div>` : ''}
+    <button data-share="photo:${esc(p.id)}"
+      class="mt-[16px] w-full h-[46px] rounded-[13px] bg-accent text-white text-[13.5px] font-bold pressable
+             flex items-center justify-center gap-[8px]">
+      <span data-icon="share" data-size="15"></span> Share Photo</button>`,
+    'Photo detail');
+}
+</script>
+
+<script>
+/* ═══════════════════════ E · STATS ═══════════════════════
+   Elevation Bank dominates again — it is the currency, not one metric among
+   many. Everything below it supports that story rather than competing with it. */
+function ElevationHistory() {
+  const b = ELEVATION_BANK, max = Math.max(...b.monthlyAscentM);
+  const total = b.monthlyAscentM.reduce((x, y) => x + y, 0);
+  return `<div class="mt-[13px] panel rounded-[17px] p-[15px]">
+    <div class="flex items-baseline justify-between gap-[8px]">
+      <span class="text-[10px] font-bold tracking-[.16em] text-white/45">ELEVATION HISTORY</span>
+      <div class="flex gap-[2px] p-[2px] rounded-[9px] bg-white/[.06]">
+        ${['month','year','all'].map(r => `<button data-range="${r}"
+          class="px-[9px] py-[4px] rounded-[7px] text-[10.5px] font-bold transition-colors
+                 ${UI.range === r ? 'bg-accent text-white' : 'text-white/55'}">${r === 'all' ? 'All' : r === 'year' ? 'Year' : 'Month'}</button>`).join('')}
+      </div>
+    </div>
+    ${UI.range === 'year' ? `
+      <div class="mt-[14px] flex items-end justify-between gap-[3px] h-[92px]">
+        ${b.monthlyAscentM.map((v, i) => `
+          <button data-month="${i}" class="group flex-1 min-w-0 flex flex-col items-center justify-end h-full pressable">
+            <span class="w-full max-w-[16px] rounded-t-[4px] bar-rise
+                         ${i === b.monthlyAscentM.length - 1 ? 'bg-accent' : 'bg-accent/55'}"
+                  style="height:0" data-rise="${Math.round(v / max * 76)}"></span>
+          </button>`).join('')}
+      </div>
+      <div class="mt-[6px] flex justify-between gap-[3px]">
+        ${b.months.map(m => `<span class="flex-1 min-w-0 text-center text-[8.5px] font-semibold text-white/40">${m}</span>`).join('')}
+      </div>
+      <div class="mt-[11px] text-[11px] text-white/45">
+        <strong class="text-white/75 tabular-nums">${fmt(total)} m</strong> banked so far this year
+        · best month <strong class="text-white/75">${b.months[b.monthlyAscentM.indexOf(max)]}</strong></div>`
+    : UI.range === 'month' ? `
+      <div class="mt-[14px] text-[11.5px] leading-[17px] text-white/55">
+        September is at <strong class="text-white/85 tabular-nums">${fmt(b.monthlyAscentM[8])} m</strong>
+        across ${ACTIVITIES.filter(a => a.date.startsWith('2026-09')).length} recorded activities.</div>
+      <div class="mt-[11px] grid gap-[7px]">
+        ${ACTIVITIES.filter(a => a.date.startsWith('2026-09')).map(a => `
+          <div class="flex items-center gap-[9px]">
+            <span class="w-[78px] shrink-0 text-[11px] text-white/55 truncate">${esc(a.mountain)}</span>
+            <span class="flex-1 h-[7px] rounded-full bg-white/[.08] overflow-hidden">
+              <span class="block h-full rounded-full bg-accent bar-fill" style="width:0%"
+                    data-bar="${Math.round(a.ascentM / 1100 * 100)}"></span></span>
+            <span class="w-[46px] shrink-0 text-right text-[11px] font-bold tabular-nums">${fmt(a.ascentM)} m</span>
+          </div>`).join('')}
+      </div>`
+    : `
+      <div class="mt-[14px] flex items-baseline gap-[5px]">
+        <span class="text-[30px] font-extrabold tabular-nums leading-none">${fmt(b.lifetimeAscentM)}</span>
+        <span class="text-[15px] font-bold text-white/65">m</span>
+      </div>
+      <p class="mt-[7px] text-[11.5px] leading-[17px] text-white/55">
+        Everything you have climbed since your first recorded activity — that is
+        ${(b.lifetimeAscentM / 8849).toFixed(1)}× the height of Everest from sea level.</p>`}
+  </div>`;
+}
+function StatsView() {
+  const rows = [
+    { v:IDENTITY_STATS[0].value, l:'Total Hikes', ic:'walk' },
+    { v:IDENTITY_STATS[1].value, l:'Mountains',   ic:'peak' },
+    { v:IDENTITY_STATS[2].value, l:'Expeditions', ic:'flag' },
+    { v:IDENTITY_STATS[3].value + 'h', l:'Moving Time', ic:'clock' },
+    { v:fmt(STAT_DISTANCE_KM) + ' km', l:'Distance', ic:'route' },
+    { v:earnedCount(), l:'Badges Earned', ic:'medal' },
+  ];
+  return SectionHeader()
+    + `<div class="border-b border-white/[.07]">${LocalNav('inline')}</div>`
+    + `<section class="px-[17px] pt-[14px] pb-[20px] fadein">
+        ${ElevationBankCard(true)}
+        ${ElevationHistory()}
+
+        <div class="mt-[13px] grid grid-cols-2 gap-[8px]">
+          ${rows.map(r => `
+            <div class="panel-sub rounded-[13px] px-[11px] py-[11px] flex items-center gap-[10px] min-w-0" data-stat>
+              <span class="grid place-items-center w-[30px] h-[30px] shrink-0 rounded-[10px] bg-white/[.07] text-accent"
+                    data-icon="${r.ic}" data-size="15"></span>
+              <span class="min-w-0">
+                <span class="block text-[15px] font-extrabold tabular-nums leading-none truncate" data-stat-value>${r.v}</span>
+                <span class="block mt-[3px] text-[9.5px] leading-[11px] text-white/45 break-words">${esc(r.l)}</span>
+              </span>
+            </div>`).join('')}
+        </div>
+
+        <div class="mt-[18px] flex items-baseline justify-between gap-[8px]">
+          <h2 class="text-[13.5px] font-extrabold">Top Mountains</h2>
+          <button data-seeall="mountains" class="shrink-0 flex items-center gap-[3px] text-[12px] font-bold text-accent pressable">
+            See all <span data-icon="chev" data-size="12"></span></button>
+        </div>
+        <!-- the criterion is stated, so the ranking can never be misread as
+             a list of the highest summits -->
+        <p class="mt-[3px] text-[10.5px] text-white/38">Ranked by elevation you have earned there, not by summit altitude.</p>
+        <div class="mt-[10px] grid gap-[8px]">
+          ${TOP_MOUNTAINS.map((m, i) => `
+            <div class="panel-sub rounded-[13px] p-[8px] flex items-center gap-[10px]">
+              <span class="grid place-items-center w-[22px] h-[22px] shrink-0 rounded-full bg-white/[.09]
+                           text-[11px] font-extrabold tabular-nums text-white/75">${i + 1}</span>
+              ${Photo(m.subject, 'w-[40px] h-[40px] rounded-[10px] shrink-0')}
+              <span class="min-w-0 flex-1">
+                <span class="block text-[13.5px] font-bold truncate">${esc(m.name)}</span>
+                <span class="block mt-[1px] text-[10px] text-white/45">${m.ascents} ascent${m.ascents === 1 ? '' : 's'}</span>
+              </span>
+              <span class="shrink-0 text-[13.5px] font-extrabold tabular-nums text-accent">${fmt(m.earnedM)} m</span>
+            </div>`).join('')}
+        </div>
+
+        <!-- Mountain DNA: secondary by design. A profile, not a laboratory. -->
+        <div class="mt-[18px] panel rounded-[15px] p-[14px]">
+          <div class="flex items-center gap-[7px]">
+            <span class="text-accent" data-icon="dna" data-size="15"></span>
+            <span class="text-[10px] font-bold tracking-[.16em] text-white/50">YOUR MOUNTAIN DNA</span>
+          </div>
+          <p class="mt-[6px] text-[11px] leading-[15px] text-white/48">
+            The kind of mountain experience you have built, accumulated across every eligible activity.</p>
+          <div class="mt-[12px] grid gap-[9px]">
+            ${MOUNTAIN_DNA.map(d => `
+              <div class="flex items-center gap-[9px]">
+                <span class="w-[86px] shrink-0 text-[11px] text-white/60 truncate">${esc(d.label)}</span>
+                <span class="flex-1 h-[6px] rounded-full bg-white/[.08] overflow-hidden">
+                  <span class="block h-full rounded-full bg-accent bar-fill" style="width:0%" data-bar="${d.score}"></span></span>
+                <span class="w-[24px] shrink-0 text-right text-[11px] font-bold tabular-nums text-white/70">${d.score}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <button id="fullStats" class="mt-[14px] w-full h-[48px] rounded-[14px] panel border-accent/25
+            text-[13.5px] font-bold text-accent pressable flex items-center justify-center gap-[8px]">
+          <span data-icon="bars" data-size="16"></span> View Full Statistics</button>
+      </section>`;
+}
+function ElevationBankSheet() {
+  const b = ELEVATION_BANK;
+  openSheet(`
+    ${SheetHead('SUMMITREADY CURRENCY', 'Elevation Bank', 'Every metre you have climbed')}
+    <div class="mt-[16px] text-center">
+      <div class="flex items-baseline justify-center gap-[5px]">
+        <span class="text-[46px] font-extrabold tabular-nums leading-none tracking-[-.02em]">${fmt(b.lifetimeAscentM)}</span>
+        <span class="text-[22px] font-bold text-white/65">m</span>
+      </div>
+      <div class="mt-[8px] inline-flex items-center gap-[5px] px-[10px] py-[5px] rounded-full bg-train/[.12] text-train text-[12px] font-bold">
+        <span data-icon="trend" data-size="13"></span>+${b.yearOnYearPct}% vs last year</div>
+    </div>
+    <p class="mt-[16px] text-[12.5px] leading-[18px] text-white/68">
+      Elevation is what SummitReady counts. Every eligible metre you climb is credited once and stays
+      banked — it is never spent, never reset, and it is what your Rank, your achievements and your
+      expedition progress are ultimately built from.</p>
+    <div class="mt-[14px] grid gap-[7px]">
+      ${[['Activities','Every recorded hike credits its ascent'],
+         ['Expeditions','Stage days bank their metres like any other'],
+         ['Rank','Eligible elevation is one of the ladder signals'],
+         ['Achievements','Elevation milestones award from the same total']].map(([h, t]) => `
+        <div class="panel-sub rounded-[12px] px-[11px] py-[9px] flex items-start gap-[9px]">
+          <span class="mt-[1px] shrink-0 text-accent" data-icon="mark" data-size="13"></span>
+          <span class="min-w-0"><span class="block text-[12px] font-bold">${h}</span>
+            <span class="block mt-[1px] text-[11px] leading-[15px] text-white/50">${t}</span></span>
+        </div>`).join('')}
+    </div>
+    <p class="mt-[13px] text-[10.5px] leading-[14px] text-white/38">
+      This prototype displays the bank. It does not compute it — the Elevation Bank owns the total and the
+      credit rules, and nothing on this screen changes them.</p>`, 'Elevation Bank');
+}
+
+/* ═══════════════════════ RANK ═══════════════════════
+   Who you have become through accumulated mountain evidence. Not achievements,
+   not challenges. The ladder and the evidence signals come from the Rank
+   engine; this sheet only presents what it reported. */
+function RankSheet() {
+  const cur = RANKS[RANK_STATE.current - 1], nxt = RANKS[RANK_STATE.next.order - 1];
+  const reqs = RANK_STATE.next.requirements;
+  const met = reqs.filter(r => r.value !== null && r.value >= r.minimum).length;
+  openSheet(`
+    ${SheetHead('MOUNTAIN RANK', cur.name, `Level ${cur.order} of ${RANKS.length}`)}
+    <div class="mt-[16px] grid place-items-center">
+      <span class="grid place-items-center w-[104px] h-[116px] hexa bg-gradient-to-b from-gold/90 to-gold/35 text-ink"
+            data-icon="peak" data-size="46"></span>
+    </div>
+    <p class="mt-[13px] text-center text-[13px] leading-[19px] text-white/72">${esc(cur.identity)}</p>
+
+    <div class="mt-[17px] flex items-center gap-[5px] overflow-x-auto no-sb">
+      ${RANKS.map(r => `
+        <div class="flex-1 min-w-[38px]">
+          <div class="h-[4px] rounded-full ${r.order <= cur.order ? 'bg-gold' : 'bg-white/[.10]'}"></div>
+          <div class="mt-[5px] text-[8px] font-semibold leading-[10px] text-center break-words
+                      ${r.order === cur.order ? 'text-gold' : 'text-white/35'}">${esc(r.name)}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="mt-[18px] panel-sub rounded-[14px] p-[13px]">
+      <div class="flex items-baseline justify-between gap-[8px]">
+        <span class="text-[10px] font-bold tracking-[.16em] text-white/45">NEXT: ${esc(nxt.name.toUpperCase())}</span>
+        <span class="text-[11px] font-bold tabular-nums text-white/60">${met} / ${reqs.length} signals met</span>
+      </div>
+      <div class="mt-[11px] grid gap-[9px]">
+        ${reqs.map(r => {
+          /* A missing producer is shown as unknown. It is never read as zero. */
+          if (r.value === null) return `
+            <div class="flex items-center gap-[9px]">
+              <span class="flex-1 min-w-0 text-[11.5px] text-white/45 truncate">${esc(r.label)}</span>
+              <span class="shrink-0 text-[11px] font-bold text-warn">Unavailable</span></div>`;
+          const done = r.value >= r.minimum, pct = Math.min(100, Math.round(r.value / r.minimum * 100));
+          return `<div>
+            <div class="flex items-baseline justify-between gap-[8px]">
+              <span class="min-w-0 text-[11.5px] truncate ${done ? 'text-white/70' : 'text-white/55'}">${esc(r.label)}</span>
+              <span class="shrink-0 text-[11px] font-bold tabular-nums ${done ? 'text-train' : 'text-white/60'}">
+                ${fmt(r.value)} / ${fmt(r.minimum)}</span>
+            </div>
+            <div class="mt-[4px] h-[5px] rounded-full bg-white/[.08] overflow-hidden">
+              <div class="h-full rounded-full bar-fill ${done ? 'bg-train' : 'bg-accent'}" style="width:0%" data-bar="${pct}"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <p class="mt-[12px] text-[10.5px] leading-[15px] text-white/38">
+      Rank is evidence, not a score you can spend toward. It is evaluated by the Rank engine
+      (${esc(RANK_STATE.domainVersion)}) from your real activity record — this screen only displays the result.</p>
+    <button data-share="rank:${RANK_STATE.current}"
+      class="mt-[16px] w-full h-[46px] rounded-[13px] bg-accent text-white text-[13.5px] font-bold pressable
+             flex items-center justify-center gap-[8px]">
+      <span data-icon="share" data-size="15"></span> Share Rank</button>`, 'Mountain rank');
+}
+</script>
+
+<script>
+/* ═══════════════════════ SHARING ═══════════════════════
+   Sharing is first-class, not an overflow-menu afterthought. Anything worth
+   showing someone — the profile, an activity, an achievement, a photograph, a
+   rank promotion, an expedition completion — becomes a DELIBERATELY DESIGNED
+   share asset. Never a screenshot of the UI.
+
+   This prototype demonstrates the experience only. It performs no platform
+   authentication and posts nothing: production wires these destinations to the
+   native share sheet and the platforms' own SDKs. */
+const FORMATS = {
+  story:{ id:'story', label:'9:16 Story', ratio:'aspect-[9/16]', hint:'Instagram & Facebook Stories' },
+  post: { id:'post',  label:'4:5 Post',   ratio:'aspect-[4/5]',  hint:'Feed posts' },
+};
+const DESTINATIONS = [
+  { id:'instagram', label:'Instagram', icon:'instagram', tint:'from-[#E1306C] to-[#C13584]' },
+  { id:'facebook',  label:'Facebook',  icon:'facebook',  tint:'from-[#1877F2] to-[#0C5BC4]' },
+  { id:'reddit',    label:'Reddit',    icon:'reddit',    tint:'from-[#FF4500] to-[#C33900]' },
+  { id:'more',      label:'More',      icon:'dots',      tint:'from-white/25 to-white/10' },
+];
+
+/* Resolve a share key into the material the card is built from. Everything
+   comes from the records already on screen — the card never invents a figure. */
+function shareSubject(key) {
+  const [kind, id] = String(key).split(':');
+  if (kind === 'profile') return { kind, title:USER.name, photo:'cover' };
+  if (kind === 'rank')    return { kind, title:RANKS[RANK_STATE.current - 1].name, photo:'cover' };
+  if (kind === 'activity') {
+    const a = ACTIVITIES.find(x => x.id === id); if (!a) return null;
+    return { kind, activity:a, title:a.mountain, photo:a.subject };
+  }
+  if (kind === 'achievement') {
+    const a = achievement(id); if (!a) return null;
+    return { kind, badge:a, title:a.name, photo:(a.activityId && (ACTIVITIES.find(x => x.id === a.activityId) || {}).subject) || 'cover' };
+  }
+  if (kind === 'photo') {
+    const p = PHOTOS.find(x => x.id === id); if (!p) return null;
+    return { kind, photo:p.subject, photoRec:p, activity:ACTIVITIES.find(x => x.id === p.activityId) || null,
+             title:(ACTIVITIES.find(x => x.id === p.activityId) || {}).mountain || 'Photograph' };
+  }
+  if (kind === 'expedition') return { kind, title:CURRENT_EXPEDITION.name, photo:CURRENT_EXPEDITION.subject };
+  return null;
+}
+/* A restrained elevation profile, derived from the activity's own numbers so
+   two different days never draw the same line. Editorial, not a chart. */
+function profilePath(a, w, h) {
+  const n = 40, pts = [];
+  let seed = 0; for (const c of a.id) seed = (seed * 31 + c.charCodeAt(0)) % 9973;
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const climb = Math.sin(t * Math.PI) ** 0.85;                 /* up and over */
+    const ripple = Math.sin(t * 13 + seed % 7) * 0.05 + Math.sin(t * 29 + seed % 11) * 0.025;
+    const y = Math.max(0, Math.min(1, climb + (i === 0 || i === n - 1 ? 0 : ripple)));
+    pts.push([t * w, h - y * h]);
+  }
+  return { line:pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+           area:`M0,${h} ` + pts.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(' ') + ` L${w},${h} Z` };
+}
+/* The card is previewed small and exported large, so every size is a container
+   query. The lower clamp bound has to survive the narrowest preview or the
+   metric it exists to communicate simply truncates. */
+const CardMetric = (v, l) => `
+  <div class="min-w-0" data-card-metric>
+    <div class="text-[clamp(11px,5.2cqw,22px)] font-extrabold tabular-nums leading-none truncate">${v}</div>
+    <div class="mt-[4px] text-[clamp(6.5px,2.3cqw,9.5px)] font-bold tracking-[.1em] text-white/55 truncate">${l}</div>
+  </div>`;
+
+/* ── the generated asset ─────────────────────────────────────────────────── */
+function ShareCard(subj, fmt) {
+  const F = FORMATS[fmt] || FORMATS.story;
+  const tall = F.id === 'story';
+  const mark = `<div class="flex items-center gap-[6px]">
+      <img src="mockup-assets/sr-mark.png" alt="" class="w-[clamp(16px,5cqw,22px)] object-contain">
+      <img src="mockup-assets/sr-wordmark.png" alt="SummitReady" class="h-[clamp(8px,2.8cqw,12px)] object-contain">
+    </div>`;
+  let body = '';
+
+  if (subj.kind === 'activity') {
+    const a = subj.activity, p = profilePath(a, 300, 54);
+    body = `
+      <div class="text-[clamp(8px,2.6cqw,10px)] font-bold tracking-[.22em] text-accent">SUMMIT COMPLETE</div>
+      <h3 class="mt-[6px] text-[clamp(24px,8.6cqw,40px)] font-extrabold leading-[1.02] tracking-[-.02em] break-words">${esc(a.mountain.toUpperCase())}</h3>
+      <div class="mt-[4px] text-[clamp(10px,3.4cqw,15px)] font-semibold text-white/72 break-words">${esc(a.route)}</div>
+      <div class="mt-[${tall ? '18' : '12'}px] grid grid-cols-3 gap-[6px]">
+        ${CardMetric(a.distanceKm.toFixed(1) + ' km', 'DISTANCE')}
+        ${CardMetric(fmt2(a.ascentM) + ' m', 'ASCENT')}
+        ${CardMetric(dur(a.durationH), 'MOVING')}
+      </div>
+      <svg viewBox="0 0 300 54" preserveAspectRatio="none" class="mt-[${tall ? '18' : '12'}px] w-full h-[clamp(28px,11cqw,54px)]">
+        <defs><linearGradient id="pf-${a.id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#167DF7" stop-opacity=".42"/><stop offset="1" stop-color="#167DF7" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="${p.area}" fill="url(#pf-${a.id})"/>
+        <path d="${p.line}" fill="none" stroke="#5FA9FF" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <div class="mt-[8px] text-[clamp(8px,2.5cqw,10px)] font-semibold text-white/45">${niceDate(a.date)}</div>`;
+  } else if (subj.kind === 'profile') {
+    body = `
+      <h3 class="text-[clamp(22px,7.8cqw,36px)] font-extrabold leading-[1.04] tracking-[-.02em] break-words">${esc(USER.name)}</h3>
+      <div class="mt-[7px] inline-flex items-center gap-[6px] px-[9px] py-[4px] rounded-full bg-gold/[.18] border border-gold/35">
+        <span class="text-gold" data-icon="peak" data-size="12"></span>
+        <span class="text-[clamp(9px,2.9cqw,12px)] font-extrabold tracking-[.12em] text-gold">${esc(RANKS[RANK_STATE.current - 1].name.toUpperCase())}</span>
+      </div>
+      <div class="mt-[${tall ? '20' : '14'}px] pt-[${tall ? '16' : '12'}px] border-t border-white/15">
+        <div class="text-[clamp(7px,2.3cqw,9.5px)] font-bold tracking-[.18em] text-white/50">ELEVATION BANK</div>
+        <div class="mt-[4px] flex items-baseline gap-[4px]">
+          <span class="text-[clamp(26px,9.4cqw,44px)] font-extrabold tabular-nums leading-none tracking-[-.02em]">${fmt2(ELEVATION_BANK.lifetimeAscentM)}</span>
+          <span class="text-[clamp(13px,4.2cqw,20px)] font-bold text-white/65">m</span>
+        </div>
+      </div>
+      <div class="mt-[${tall ? '16' : '11'}px] grid grid-cols-3 gap-[6px]">
+        ${CardMetric(IDENTITY_STATS[1].value, 'MOUNTAINS')}
+        ${CardMetric(IDENTITY_STATS[0].value, 'HIKES')}
+        ${CardMetric(IDENTITY_STATS[2].value, 'EXPEDITIONS')}
+      </div>`;
+  } else if (subj.kind === 'achievement') {
+    const b = subj.badge, ic = BADGE_ICON[b.tier] || (b.groupId === 'expedition' ? 'flag' : b.groupId === 'mountain' ? 'peak' : 'walk');
+    body = `
+      <div class="text-[clamp(8px,2.6cqw,10px)] font-bold tracking-[.22em] text-gold">ACHIEVEMENT UNLOCKED</div>
+      <div class="mt-[${tall ? '14' : '10'}px]">
+        <span class="inline-grid place-items-center w-[clamp(64px,24cqw,104px)] h-[clamp(72px,27cqw,116px)] hexa
+                     bg-gradient-to-b ${BADGE_FILL[b.tier] || BADGE_FILL[1]}">
+          <span class="text-white/95" data-icon="${ic}" data-size="40"></span></span>
+      </div>
+      <h3 class="mt-[${tall ? '16' : '11'}px] text-[clamp(20px,7.2cqw,32px)] font-extrabold leading-[1.06] break-words">${esc(b.name)}</h3>
+      <p class="mt-[6px] text-[clamp(9px,3cqw,13px)] leading-[1.45] text-white/68 break-words">${esc(b.description)}</p>
+      ${b.earnedOn ? `<div class="mt-[9px] text-[clamp(8px,2.5cqw,10px)] font-semibold text-white/45">${niceDate(b.earnedOn)}</div>` : ''}`;
+  } else if (subj.kind === 'rank') {
+    const r = RANKS[RANK_STATE.current - 1];
+    body = `
+      <div class="text-[clamp(8px,2.6cqw,10px)] font-bold tracking-[.22em] text-gold">MOUNTAIN RANK</div>
+      <div class="mt-[${tall ? '14' : '10'}px]">
+        <span class="inline-grid place-items-center w-[clamp(64px,24cqw,104px)] h-[clamp(72px,27cqw,116px)] hexa
+                     bg-gradient-to-b from-gold/90 to-gold/35 text-ink"><span data-icon="peak" data-size="40"></span></span>
+      </div>
+      <h3 class="mt-[${tall ? '16' : '11'}px] text-[clamp(22px,7.8cqw,36px)] font-extrabold leading-[1.04] break-words">${esc(r.name.toUpperCase())}</h3>
+      <div class="mt-[5px] text-[clamp(10px,3.2cqw,14px)] font-semibold text-white/65">Level ${r.order} of ${RANKS.length}</div>
+      <p class="mt-[8px] text-[clamp(9px,3cqw,13px)] leading-[1.45] text-white/62 break-words">${esc(r.identity)}</p>`;
+  } else if (subj.kind === 'photo') {
+    const a = subj.activity;
+    body = a ? `
+      <h3 class="text-[clamp(22px,7.8cqw,36px)] font-extrabold leading-[1.04] tracking-[-.02em] break-words">${esc(a.mountain.toUpperCase())}</h3>
+      <div class="mt-[4px] text-[clamp(10px,3.4cqw,15px)] font-semibold text-white/72 break-words">${esc(a.route)}</div>
+      ${subj.photoRec.caption ? `<p class="mt-[9px] text-[clamp(9px,3cqw,13px)] leading-[1.45] text-white/62 break-words">${esc(subj.photoRec.caption)}</p>` : ''}
+      <div class="mt-[${tall ? '16' : '11'}px] grid grid-cols-3 gap-[6px]">
+        ${CardMetric(a.distanceKm.toFixed(1) + ' km', 'DISTANCE')}
+        ${CardMetric(fmt2(a.ascentM) + ' m', 'ASCENT')}
+        ${CardMetric(niceDate(a.date).split(' ').slice(0, 2).join(' '), 'DATE')}
+      </div>` : `<h3 class="text-[clamp(22px,7.8cqw,36px)] font-extrabold">${esc(USER.name)}</h3>`;
+  } else {
+    body = `
+      <div class="text-[clamp(8px,2.6cqw,10px)] font-bold tracking-[.22em] text-train">EXPEDITION COMPLETE</div>
+      <h3 class="mt-[6px] text-[clamp(22px,7.8cqw,36px)] font-extrabold leading-[1.04] break-words">${esc(subj.title.toUpperCase())}</h3>
+      <div class="mt-[8px] text-[clamp(10px,3.2cqw,14px)] text-white/65">${CURRENT_EXPEDITION.stagesTotal} stages · every one a real hill</div>`;
+  }
+
+  return `<div id="shareCard" data-card-format="${F.id}"
+      class="relative w-full ${F.ratio} rounded-[16px] overflow-hidden ring-1 ring-white/12"
+      style="container-type:inline-size">
+    ${Photo(subj.photo, 'absolute inset-0')}
+    <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/72 to-ink/25"></div>
+    <div class="absolute inset-0 flex flex-col justify-between p-[clamp(13px,4.6cqw,22px)]">
+      <div class="flex items-start justify-between gap-[8px]">${mark}
+        <span class="text-[clamp(7px,2.2cqw,9px)] font-bold tracking-[.16em] text-white/45">@${esc(USER.handle)}</span></div>
+      <div class="min-w-0">${body}</div>
+    </div>
+  </div>`;
+}
+const fmt2 = n => Math.round(n).toLocaleString('en-GB');
+
+/* ── the composer ────────────────────────────────────────────────────────── */
+function ShareSheet(key) {
+  const subj = shareSubject(key);
+  if (!subj) { toast('Nothing to share'); return; }
+  UI.shareKey = key;
+  const KIND_LABEL = { profile:'SHARE PROFILE', activity:'SHARE ACTIVITY', achievement:'SHARE ACHIEVEMENT',
+                       photo:'SHARE PHOTO', rank:'SHARE RANK', expedition:'SHARE EXPEDITION' };
+  openSheet(`
+    ${SheetHead(KIND_LABEL[subj.kind] || 'SHARE', subj.title,
+                subj.kind === 'profile' ? 'Your mountain identity, as a card' : 'Generated from your own record')}
+
+    <div class="mt-[13px] flex gap-[2px] p-[3px] rounded-[12px] bg-white/[.06]">
+      ${Object.values(FORMATS).map(f => `
+        <button data-format="${f.id}"
+          class="flex-1 py-[8px] rounded-[10px] text-[12px] font-bold transition-colors
+                 ${UI.shareFormat === f.id ? 'bg-accent text-white' : 'text-white/60'}">${f.label}</button>`).join('')}
+    </div>
+    <div class="mt-[4px] text-center text-[10px] text-white/35">${FORMATS[UI.shareFormat].hint}</div>
+
+    <div id="cardStage" class="mt-[12px] mx-auto ${UI.shareFormat === 'story' ? 'max-w-[218px]' : 'max-w-[290px]'}">
+      <div class="w-full ${FORMATS[UI.shareFormat].ratio} rounded-[16px] panel grid place-items-center">
+        <div class="text-center">
+          <div class="mx-auto w-[26px] h-[26px] rounded-full border-2 border-white/15 border-t-accent animate-spin"></div>
+          <div class="mt-[9px] text-[11px] font-semibold text-white/50">Creating share card…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-[15px]">
+      <div class="text-[10px] font-bold tracking-[.16em] text-white/45">SHARE TO</div>
+      <div class="mt-[10px] grid grid-cols-4 gap-[9px]">
+        ${DESTINATIONS.map(d => `
+          <button data-destination="${d.id}" class="flex flex-col items-center gap-[7px] pressable min-w-0">
+            <span class="grid place-items-center w-[50px] h-[50px] rounded-[16px] bg-gradient-to-br ${d.tint} text-white"
+                  data-icon="${d.icon}" data-size="23"></span>
+            <span class="text-[10.5px] font-semibold text-white/68 truncate w-full text-center">${d.label}</span>
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <div class="mt-[14px] grid grid-cols-2 gap-[9px]">
+      <button data-share-action="save" class="h-[44px] rounded-[12px] glass text-[12.5px] font-bold pressable
+              flex items-center justify-center gap-[7px]"><span data-icon="download" data-size="14"></span> Save image</button>
+      <button data-share-action="link" class="h-[44px] rounded-[12px] glass text-[12.5px] font-bold pressable
+              flex items-center justify-center gap-[7px]"><span data-icon="link" data-size="14"></span> Copy link</button>
+    </div>
+
+    ${subj.kind === 'profile' ? `
+      <div class="mt-[13px] panel-sub rounded-[12px] px-[11px] py-[10px] flex items-start gap-[9px]">
+        <span class="mt-[1px] shrink-0 text-white/45" data-icon="${visibilityOf(USER).icon}" data-size="13"></span>
+        <span class="text-[11px] leading-[15px] text-white/50">
+          Your profile is <strong class="text-white/75">${visibilityOf(USER).label.toLowerCase()}</strong>.
+          A shared card always shows only what your visibility settings allow.</span>
+      </div>` : ''}
+    <p class="mt-[11px] text-[10.5px] leading-[14px] text-white/38">
+      The card is composed from your own record — it is not a screenshot of this screen. This prototype
+      demonstrates the experience only and posts nothing.</p>`,
+    'Share');
+
+  /* Compose after a beat so the generation reads as a real step rather than a
+     layout that happened to appear. */
+  setTimeout(() => {
+    const stage = document.getElementById('cardStage');
+    if (!stage || !sheetOpen) return;
+    stage.innerHTML = ShareCard(subj, UI.shareFormat);
+    hydrateIcons(stage); loadPhotos(stage);
+  }, 460);
+
+  const s = document.getElementById('sheet');
+  s.querySelectorAll('[data-format]').forEach(b => b.addEventListener('click', () => {
+    UI.shareFormat = b.dataset.format; ShareSheet(UI.shareKey);
+  }));
+  s.querySelectorAll('[data-destination]').forEach(b => b.addEventListener('click', () => {
+    const d = DESTINATIONS.find(x => x.id === b.dataset.destination);
+    toast(d.id === 'more' ? 'Opening the system share sheet…' : `Opening ${d.label} with your ${FORMATS[UI.shareFormat].label} card…`);
+  }));
+  s.querySelectorAll('[data-share-action]').forEach(b => b.addEventListener('click', () => {
+    toast(b.dataset.shareAction === 'save' ? 'Share card saved to your photos' : 'Link copied');
+  }));
+}
+</script>
+
+<script>
+/* ═══════════════════════ UI STATE ═══════════════════════ */
+const UI = {
+  view:'profile',              /* profile · achievements · activity · photos · stats */
+  activityFilter:'all',
+  range:'year',                /* elevation history: month · year · all */
+  shareFormat:'story',
+  shareKey:null,
+};
+/* This prototype is MY profile, so owner controls are present. A public
+   profile reuses every component here with OWNER false — the layout does not
+   change, the owner-only affordances simply do not render. */
+let OWNER = true;
+
+const VIEWS = { profile:ProfileView, achievements:AchievementsView, activity:ActivityView,
+                photos:PhotosView, stats:StatsView };
+
+/* ═══════════════════════ HANDOFF SEAMS ═══════════════════════
+   The three places the Profile stops and an existing screen takes over. It
+   never renders any of them. */
+const handoffToBasecamp = () => toast('→ Expedition Basecamp · ' + CURRENT_EXPEDITION.name);
+const handoffToActivity = a => toast('→ Activity Detail · ' + a.mountain);
+const handoffToMountain = m => toast('→ Mountain Detail · ' + m);
+
+/* ═══════════════════════ RENDER ═══════════════════════ */
+function go(view) {
+  if (!VIEWS[view]) return;
+  UI.view = view;
+  if (sheetOpen) closeSheet();
+  render();
+  window.scrollTo({ top:0, behavior:'auto' });
+}
+function render() {
+  const el = document.getElementById('screen');
+  el.innerHTML = (VIEWS[UI.view] || ProfileView)();
+  hydrateIcons(el); loadPhotos(el);
+  /* The sticky bar is the same component as the inline one. */
+  const sticky = document.getElementById('stickyNav');
+  sticky.innerHTML = LocalNav('sticky');
+  hydrateIcons(sticky);
+  bind(el); bind(sticky);
+  BottomNavigation();
+  sizeSpacer(); syncSticky();
+  /* Bars need a computed zero before they animate to their value. */
+  const bars = [...el.querySelectorAll('[data-bar]')], rises = [...el.querySelectorAll('[data-rise]')];
+  if (bars.length || rises.length) {
+    void el.getBoundingClientRect();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      bars.forEach(b => { b.style.width = b.dataset.bar + '%'; });
+      rises.forEach(r => { r.style.height = r.dataset.rise + 'px'; });
+    }));
+  }
+}
+function sizeSpacer() {
+  requestAnimationFrame(() => {
+    const h = document.getElementById('bottomStack').offsetHeight;
+    document.getElementById('spacer').style.height = (h + 14) + 'px';
+  });
+}
+/* The local bar must never be out of reach: once the inline copy scrolls off,
+   the pinned copy takes over. Nobody has to go back to Profile to change
+   section. */
+function syncSticky() {
+  const inline = document.querySelector('[data-localnav="inline"]');
+  const sticky = document.getElementById('stickyNav');
+  if (!inline) return;
+  const gone = inline.getBoundingClientRect().bottom <= (sticky.offsetHeight || 46);
+  sticky.style.opacity = gone ? '1' : '0';
+  sticky.style.pointerEvents = gone ? 'auto' : 'none';
+}
+window.addEventListener('scroll', syncSticky, { passive:true });
+window.addEventListener('resize', () => { sizeSpacer(); syncSticky(); });
+
+/* ═══════════════════════ INTERACTIONS ═══════════════════════ */
+function bind(root) {
+  const on = (sel, fn) => root.querySelectorAll(sel).forEach(n => n.addEventListener('click', ev => fn(ev, n)));
+
+  /* local navigation — identical behaviour inline and pinned */
+  on('[data-section]', (ev, n) => go(n.dataset.section));
+
+  const back = root.querySelector('#backBtn');   if (back) back.onclick = () => go('profile');
+  const gear = root.querySelector('#settingsBtn'); if (gear) gear.onclick = () => SettingsSheet();
+
+  /* profile */
+  const sp = root.querySelector('#shareProfile'); if (sp) sp.onclick = () => ShareSheet('profile');
+  const vr = root.querySelector('#viewRank');     if (vr) vr.onclick = RankSheet;
+  const ec = root.querySelector('#editCover');    if (ec) ec.onclick = () => MediaPickerSheet('cover');
+  const ea = root.querySelector('#editAvatar');   if (ea) ea.onclick = () => MediaPickerSheet('avatar');
+  on('[data-open-bank]', () => ElevationBankSheet());
+  on('[data-open-expedition]', () => handoffToBasecamp());
+  on('[data-open-nextup]', () => handoffToMountain(NEXT_UP.mountain));
+
+  /* achievements */
+  on('[data-achievement]', (ev, n) => AchievementSheet(n.dataset.achievement));
+  on('[data-seeall]', (ev, n) => {
+    const g = ACHIEVEMENT_GROUPS.find(x => x.id === n.dataset.seeall);
+    toast(g ? `→ All ${g.title.toLowerCase()}` : '→ All mountains');
+  });
+
+  /* activity */
+  on('[data-filter]', (ev, n) => { UI.activityFilter = n.dataset.filter; render(); });
+  on('[data-open-activity]', (ev, n) => ActivitySheet(n.dataset.openActivity));
+  on('[data-open-activity-full]', (ev, n) => {
+    const a = ACTIVITIES.find(x => x.id === n.dataset.openActivityFull);
+    closeSheet(); if (a) handoffToActivity(a);
+  });
+  on('[data-activity-menu]', (ev, n) => { ev.stopPropagation(); ActivityMenuSheet(n.dataset.activityMenu); });
+
+  /* photos */
+  on('[data-photo]', (ev, n) => PhotoSheet(n.dataset.photo));
+  const ap = root.querySelector('#addPhotos'); if (ap) ap.onclick = () => MediaPickerSheet('photos');
+
+  /* stats */
+  on('[data-range]', (ev, n) => { UI.range = n.dataset.range; render(); });
+  on('[data-month]', (ev, n) => {
+    const i = +n.dataset.month;
+    toast(`${ELEVATION_BANK.months[i]}: ${fmt(ELEVATION_BANK.monthlyAscentM[i])} m banked`);
+  });
+  const fs = root.querySelector('#fullStats'); if (fs) fs.onclick = () => toast('→ Full Statistics');
+
+  /* sharing — one entry point, wherever it is invoked from */
+  on('[data-share]', (ev, n) => { ev.stopPropagation(); ShareSheet(n.dataset.share); });
+}
+
+function ActivityMenuSheet(id) {
+  const a = ACTIVITIES.find(x => x.id === id); if (!a) return;
+  openSheet(`
+    ${SheetHead(null, a.mountain, `${a.route} · ${niceDate(a.date)}`)}
+    <div class="mt-[14px] grid gap-[8px]">
+      ${[['open','route','View Activity'],['share','share','Share Activity'],
+         ['visibility', visibilityOf(a).icon, `Visibility · ${visibilityOf(a).label}`]].map(([act, ic, label]) => `
+        <button data-menu="${act}" class="w-full panel-sub rounded-[13px] px-[13px] py-[13px] flex items-center gap-[11px]
+                text-left pressable text-[13.5px] font-bold">
+          <span class="shrink-0 text-accent" data-icon="${ic}" data-size="17"></span>${label}
+          <span class="ml-auto shrink-0 text-white/30" data-icon="chev" data-size="14"></span></button>`).join('')}
+    </div>`, 'Activity actions');
+  document.getElementById('sheet').querySelectorAll('[data-menu]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.menu;
+    if (k === 'share') { ShareSheet('activity:' + a.id); return; }
+    if (k === 'open')  { closeSheet(); handoffToActivity(a); return; }
+    toast('Visibility is set per activity — the privacy system owns this');
+  }));
+}
+/* Owner-only. The media chain is the point here, not a file browser: a cover
+   or a photograph can come from several sources and the component does not
+   care which. Moderation and upload belong to the media system. */
+function MediaPickerSheet(target) {
+  const T = { cover:{ t:'Change cover', s:'The image behind your identity' },
+              avatar:{ t:'Change profile picture', s:'The image that represents you' },
+              photos:{ t:'Add photos', s:'Photographs attach to an activity' } }[target];
+  const opts = target === 'photos'
+    ? [['camera','Take a photo'],['image','Choose from your library'],['route','Import from an activity']]
+    : [['image','Choose from your library'],['peak','Pick one of your mountain photos'],
+       ['camera','Take a new photo'],['mark','Use SummitReady curated imagery']];
+  openSheet(`
+    ${SheetHead(null, T.t, T.s)}
+    <div class="mt-[14px] grid gap-[8px]">
+      ${opts.map(([ic, label]) => `
+        <button data-pick class="w-full panel-sub rounded-[13px] px-[13px] py-[13px] flex items-center gap-[11px]
+                text-left pressable text-[13.5px] font-bold">
+          <span class="shrink-0 text-accent" data-icon="${ic}" data-size="17"></span>${label}
+          <span class="ml-auto shrink-0 text-white/30" data-icon="chev" data-size="14"></span></button>`).join('')}
+    </div>
+    <p class="mt-[13px] text-[10.5px] leading-[14px] text-white/38">
+      Cover and profile picture are two separate images and always have been — changing one never touches
+      the other. Where the image comes from is a source policy, not a fixed path.</p>`, T.t);
+  document.getElementById('sheet').querySelectorAll('[data-pick]').forEach(b =>
+    b.addEventListener('click', () => { closeSheet(); toast(T.t + ' — handled by the media system'); }));
+}
+function SettingsSheet() {
+  openSheet(`
+    ${SheetHead(null, 'Settings', 'Your profile and privacy')}
+    <div class="mt-[14px]">
+      <div class="text-[10px] font-bold tracking-[.16em] text-white/45">PROFILE VISIBILITY</div>
+      <div class="mt-[9px] grid gap-[7px]">
+        ${Object.entries(VIS).map(([k, v]) => `
+          <button data-visibility="${k}" class="w-full panel-sub rounded-[13px] px-[13px] py-[12px] flex items-center gap-[11px]
+                  text-left pressable ${USER.visibility === k ? 'border-accent/45' : ''}">
+            <span class="shrink-0 ${USER.visibility === k ? 'text-accent' : 'text-white/45'}" data-icon="${v.icon}" data-size="16"></span>
+            <span class="text-[13px] font-bold">${v.label}</span>
+            ${USER.visibility === k ? `<span class="ml-auto shrink-0 text-accent" data-icon="check" data-size="14"></span>` : ''}
+          </button>`).join('')}
+      </div>
+      <p class="mt-[11px] text-[10.5px] leading-[14px] text-white/38">
+        Individual activities and photographs carry their own visibility too. The full privacy system lives
+        outside this prototype — nothing here assumes everything is public.</p>
+    </div>`, 'Settings');
+  document.getElementById('sheet').querySelectorAll('[data-visibility]').forEach(b =>
+    b.addEventListener('click', () => { USER.visibility = b.dataset.visibility; SettingsSheet(); render(); }));
+}
+
+/* ═══════════════════════ QA HOOKS ═══════════════════════
+   Console only. Nothing here is exposed in the UI. */
+window.setProfileView = v => { if (!VIEWS[v]) return null; go(v); return v; };
+window.openShareProfile = () => { ShareSheet('profile'); return 'profile'; };
+window.openShareCard = (kind, id) => {
+  const key = kind === 'profile' || kind === 'rank' ? kind
+    : kind === 'activity'    ? 'activity:'    + (id || ACTIVITIES[0].id)
+    : kind === 'achievement' ? 'achievement:' + (id || 'mtn_25')
+    : kind === 'photo'       ? 'photo:'       + (id || PHOTOS[0].id)
+    : kind === 'expedition'  ? 'expedition:'  + CURRENT_EXPEDITION.id : null;
+  if (!key || !shareSubject(key)) return null;
+  ShareSheet(key); return key;
+};
+window.setShareFormat = f => {
+  if (!FORMATS[f]) return null;
+  UI.shareFormat = f;
+  if (sheetOpen && UI.shareKey) ShareSheet(UI.shareKey);
+  return f;
+};
+window.setActivityFilter = f => {
+  if (!ACTIVITY_FILTERS.some(x => x.id === f)) return null;
+  UI.activityFilter = f; render(); return f;
+};
+window.setStatsRange   = r => { if (!['month','year','all'].includes(r)) return null; UI.range = r; render(); return r; };
+window.openAchievement = id => { if (!achievement(id)) return null; AchievementSheet(id); return id; };
+window.openActivity    = id => { if (!ACTIVITIES.some(a => a.id === id)) return null; ActivitySheet(id); return id; };
+window.openPhoto       = id => { if (!PHOTOS.some(p => p.id === id)) return null; PhotoSheet(id); return id; };
+window.openRank        = () => { RankSheet(); return RANK_STATE.current; };
+window.openElevationBank = () => { ElevationBankSheet(); return ELEVATION_BANK.lifetimeAscentM; };
+window.setOwner        = v => { OWNER = !!v; render(); return OWNER; };   /* preview the public-profile shape */
+window.closeSheet      = closeSheet;
+window.__dataNotice    = () => PROTOTYPE_DATA;
+window.__state = () => ({ view:UI.view, owner:OWNER, activityFilter:UI.activityFilter, range:UI.range,
+  shareFormat:UI.shareFormat, shareKey:UI.shareKey, sheetOpen, visibility:USER.visibility });
+
+/* ═══════════════════════ BOOT ═══════════════════════ */
+console.info('%cSummitReady prototype', 'font-weight:700', '— ' + PROTOTYPE_DATA.notice);
+document.getElementById('scrim').addEventListener('click', closeSheet);
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
+render();
+</script>
+</body>
+</html>
