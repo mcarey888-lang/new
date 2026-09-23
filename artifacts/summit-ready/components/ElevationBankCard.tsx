@@ -22,9 +22,16 @@ import {
 type Props = {
   onPress?: () => void;
   expanded?: boolean;
+  /**
+   * Elevation Bank is a first-class SummitReady concept, not an ordinary stat.
+   * `emphasis` gives the lifetime figure the hierarchy the approved design
+   * calls for. It is PRESENTATION ONLY — the value, the credit rules and the
+   * qualification logic are unchanged and still come from the API.
+   */
+  emphasis?: boolean;
 };
 
-export function ElevationBankCard({ onPress, expanded = false }: Props) {
+export function ElevationBankCard({ onPress, expanded = false, emphasis = false }: Props) {
   const { isLoaded, isSignedIn } = useAuth();
   const { sessions, exploreHikes } = useApp();
   const query = useGetElevationBank({
@@ -115,7 +122,14 @@ export function ElevationBankCard({ onPress, expanded = false }: Props) {
       <View testID="elevation-bank-values">
         <View style={styles.metricsGrid}>
           <View style={styles.metricItem}>
-            <Text style={styles.metricValue}>{formatElevationBankMetres(data.lifetimeAscentM)}</Text>
+            <Text
+              style={[styles.metricValue, emphasis && styles.metricValueEmphasis]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {formatElevationBankMetres(data.lifetimeAscentM)}
+            </Text>
             <Text style={styles.metricLabel}>Credited ascent</Text>
           </View>
           <View style={styles.metricDivider} />
@@ -199,6 +213,8 @@ const styles = StyleSheet.create({
   metricsGrid: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   metricItem: { flex: 1, alignItems: "center" },
   metricValue: { color: "#fff", fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  /* Presentation only — the figure itself is unchanged. */
+  metricValueEmphasis: { fontSize: 30, lineHeight: 34, letterSpacing: -0.6 },
   metricLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: "Inter_500Medium", textAlign: "center" },
   metricDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.1)" },
 
