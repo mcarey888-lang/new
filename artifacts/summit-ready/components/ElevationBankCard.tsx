@@ -1,10 +1,5 @@
-import { useAuth } from "@clerk/expo";
-import {
-  getGetElevationBankQueryKey,
-  useGetElevationBank,
-} from "@workspace/api-client-react";
 import { ChevronRight, Mountain, RefreshCw, ShieldCheck } from "lucide-react-native";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -13,11 +8,8 @@ import {
   View,
 } from "react-native";
 import { T } from "@/constants/theme";
-import { useApp } from "@/context/AppContext";
-import {
-  formatElevationBankMetres,
-  getElevationBankPresentation,
-} from "@/utils/elevationBankPresentation";
+import { useElevationBank } from "@/hooks/useElevationBank";
+import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
 
 type Props = {
   onPress?: () => void;
@@ -32,33 +24,9 @@ type Props = {
 };
 
 export function ElevationBankCard({ onPress, expanded = false, emphasis = false }: Props) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { sessions, exploreHikes } = useApp();
-  const query = useGetElevationBank({
-    query: {
-      enabled: isLoaded && Boolean(isSignedIn),
-      staleTime: 30_000,
-      queryKey: getGetElevationBankQueryKey(),
-    },
-  });
-  const previousActivityCount = useRef<number | null>(null);
-  const completedActivityCount =
-    sessions.filter((session) => session.completed).length + exploreHikes.length;
-
-  useEffect(() => {
-    if (
-      previousActivityCount.current !== null
-      && completedActivityCount > previousActivityCount.current
-    ) {
-      void query.refetch();
-    }
-    previousActivityCount.current = completedActivityCount;
-  }, [completedActivityCount, query.refetch]);
-  const presentation = getElevationBankPresentation({
-    isLoading: !isLoaded || query.isLoading,
-    isError: query.isError,
-    data: query.data,
-  });
+  /* One query, shared with the Basecamp tile, so the two cannot disagree
+     about the same user's banked ascent. */
+  const { presentation, isSignedIn, refetch } = useElevationBank();
   const hasCollapsedRecentCredits =
     !expanded
     && presentation.kind === "ready"
@@ -93,7 +61,7 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
             unavailable or untrusted evidence do not count here.
           </Text>
           <TouchableOpacity
-            onPress={() => { void query.refetch(); }}
+            onPress={refetch}
             style={styles.retry}
             testID="elevation-bank-retry"
           >

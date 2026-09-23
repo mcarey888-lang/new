@@ -24,6 +24,7 @@ import Animated, {
   Easing, useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withTiming,
 } from "react-native-reanimated";
 import Svg, { Circle, G } from "react-native-svg";
+import { Lock } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { MOTION, TYPE } from "@/constants/tokens";
 import {
@@ -48,12 +49,21 @@ export interface SRReadinessGaugeProps {
   tone?: string;
   /** Shows the projected figure beside the ring, anchored to its endpoint. */
   showProjectedCallout?: boolean;
+  /**
+   * Entitlement gate. The ring keeps its geometry and its inactive track, but
+   * draws no arc and states no figure — a locked score must not be guessable
+   * from the sweep. This replaces the old four-segment multicolour ring, which
+   * drew four fixed equal segments that encoded no value at all.
+   */
+  locked?: boolean;
+  /** Shown under the lock, e.g. PRO. */
+  lockedLabel?: string;
   style?: ViewStyle;
 }
 
 export function SRReadinessGauge({
   score, projected = null, size = 150, strokeWidth = 12,
-  statusLabel, tone, showProjectedCallout = true, style,
+  statusLabel, tone, showProjectedCallout = true, locked = false, lockedLabel = "PRO", style,
 }: SRReadinessGaugeProps) {
   const reduced = useReducedMotion();
   const radius = (size - strokeWidth) / 2;
@@ -93,7 +103,9 @@ export function SRReadinessGauge({
      instead of sitting at a position tuned for one example. */
   const endpoint = projectedValue !== null ? pointOnRing(projectedValue, radius, cx, cx) : null;
 
-  const a11y = value === null
+  const a11y = locked
+    ? "Readiness score locked. Available with SummitReady Pro."
+    : value === null
     ? "Readiness unavailable"
     : `Readiness ${Math.round(value)} out of 100`
       + (statusLabel ? `, ${statusLabel.toLowerCase()}` : "")
@@ -106,7 +118,7 @@ export function SRReadinessGauge({
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={a11y}
-      accessibilityValue={value === null ? undefined : { min: 0, max: 100, now: Math.round(value) }}
+      accessibilityValue={locked || value === null ? undefined : { min: 0, max: 100, now: Math.round(value) }}
     >
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         {/* -90deg puts 0 at 12 o'clock; the dash then runs clockwise */}
@@ -118,7 +130,7 @@ export function SRReadinessGauge({
           />
           {/* current → projected : the same arc, softened.
               Drawn first so the solid arc always sits on top of it. */}
-          {proj ? (
+          {proj && !locked ? (
             <>
               {/* a faint wider pass reads as a glow without a blur filter,
                   which react-native-svg does not support consistently */}
@@ -142,16 +154,30 @@ export function SRReadinessGauge({
           {/* 0 → current : solid and bright.
               Butt caps — a round cap overruns the arc end and would eat into
               the projected continuation sitting immediately after it. */}
-          <AnimatedCircle
-            cx={cx} cy={cx} r={radius} fill="none"
-            stroke={ringTone} strokeWidth={strokeWidth} strokeLinecap="butt"
-            animatedProps={earnedProps}
-          />
+          {locked ? null : (
+            <AnimatedCircle
+              cx={cx} cy={cx} r={radius} fill="none"
+              stroke={ringTone} strokeWidth={strokeWidth} strokeLinecap="butt"
+              animatedProps={earnedProps}
+            />
+          )}
         </G>
       </Svg>
 
-      {/* Centre: the figure, READY, then status. No mountain mark. */}
+      {/* Centre: the figure, READY, then status. No mountain mark.
+          Locked keeps the same ring and the same centre structure — only the
+          figure is withheld, so the gated state still belongs to this design
+          rather than reaching for a different ring. */}
       <View style={[styles.centre, { paddingBottom: size * 0.06 }]} pointerEvents="none">
+        {locked ? (
+          <>
+            {/* No figure and no READY word: "PRO READY" would read as a
+                status the user has achieved. The lock is the whole message. */}
+            <Lock size={Math.round(size * 0.19)} color={ringTone} />
+            <Text style={[styles.lockedLabel, { color: ringTone }]} numberOfLines={1}>{lockedLabel}</Text>
+          </>
+        ) : (
+          <>
         <Text
           style={[
             TYPE.metricLg,
@@ -165,10 +191,12 @@ export function SRReadinessGauge({
         </Text>
         <Text style={styles.readyWord}>READY</Text>
         {statusLabel ? <Text style={[styles.status, { color: ringTone }]} numberOfLines={1}>{statusLabel}</Text> : null}
+        </>
+        )}
       </View>
 
       {/* Projected callout, anchored to the real endpoint of the soft arc. */}
-      {showProjectedCallout && endpoint && projectedValue !== null ? (
+      {showProjectedCallout && !locked && endpoint && projectedValue !== null ? (
         <View
           style={[
             styles.callout,
@@ -211,6 +239,10 @@ const styles = StyleSheet.create({
   readyWord: {
     fontSize: 11, lineHeight: 14, fontFamily: "Inter_700Bold",
     letterSpacing: 2, color: T.basecampTextMuted, marginTop: 1,
+  },
+  lockedLabel: {
+    fontSize: 12, lineHeight: 15, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.6, marginTop: 4,
   },
   status: { fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_700Bold", letterSpacing: 1.2, marginTop: 3, opacity: 0.9 },
   callout: {
