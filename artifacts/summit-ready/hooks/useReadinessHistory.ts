@@ -2,9 +2,12 @@
  * Readiness history for the Full Readiness chart.
  *
  * This replays the EXISTING Readiness 2.0 engine at past `asOf` dates. It adds
- * no scoring of its own: `evaluateReadiness` already discards evidence
- * completed after its `asOf`, so each sample is the score the user genuinely
- * had on that date, from the evidence they had logged by then.
+ * no scoring of its own.
+ *
+ * The result is RECONSTRUCTED history, not recorded history: activity
+ * inclusion and recency respect each sample date, but the summit goal, the
+ * plan's session count and any later edits or deletions to an activity are
+ * today's. `utils/readinessHistory.ts` documents the boundary in full.
  *
  * Only the selected period is evaluated, and the result is memoised on the
  * inputs that can change it, so switching period costs one pass and scrolling

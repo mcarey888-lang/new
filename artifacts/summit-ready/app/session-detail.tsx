@@ -489,6 +489,10 @@ export default function SessionDetailScreen() {
           onImageError={() => setImageError(true)}
           minHeight={286}
           dim={0.96}
+          /* the header sits at the top and the objective at the foot of the
+             photograph, as every other hero does — otherwise a short session
+             title leaves a dead band between them */
+          style={{ justifyContent: "space-between" }}
         >
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
             <SRScreenHeader

@@ -120,8 +120,11 @@ export function ReadinessHistoryChart({
                   ) : null)}
               </Svg>
             </View>
+            {/* Says what the chart is. It is reconstructed from the evidence
+                the user has now, not a record of what the score read at the
+                time — so it must not claim to be one. */}
             <Text style={styles.footnote}>
-              Recalculated from your logged evidence at each date.
+              Reconstructed from your logged evidence at each date.
             </Text>
           </>
         ) : (
