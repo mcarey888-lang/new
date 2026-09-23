@@ -238,6 +238,7 @@ const MEDIA = {
       proTrain:'mockup-assets/pro-train.jpg', proExped:'mockup-assets/pro-exped.jpg',
       proTools:'mockup-assets/pro-tools.jpg',
       coach:'mockup-assets/ob-coach.jpg',
+      coachScreen:'mockup-assets/ob-coach-screen.jpg',
     },
   },
   resolve(subject) {
@@ -726,88 +727,76 @@ function CoachMascot() {
   </div>`;
 }
 
-/* The approved progress header: "4 of 6", six segments, and Skip. */
-function StepProgress(index, total, skipAttr) {
-  return `<div class="flex items-center gap-[12px] min-h-[44px]">
-    <span class="shrink-0 text-[13px] font-semibold text-white/70 tabular-nums">${index + 1} of ${total}</span>
-    <div class="flex-1 flex items-center gap-[5px]" role="progressbar"
-         aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${index + 1}"
-         aria-label="Onboarding step ${index + 1} of ${total}">
-      ${Array.from({ length:total }, (_, k) => `<span class="h-[4px] rounded-full transition-all duration-300
-        ${k === index ? 'flex-[1.6] bg-accent' : 'flex-1 bg-white/[.16]'}"></span>`).join('')}
-    </div>
-    <button ${skipAttr} class="shrink-0 grid place-items-center min-w-[52px] h-[44px] -mr-[8px]
-            text-[15px] font-semibold text-white/80 pressable">Skip</button>
-  </div>`;
+/* ─────────────────────────────────────────────────────────────────────────
+   SCREEN 4 IS THE APPROVED ARTWORK ITSELF.
+
+   Every other screen in this prototype is composed from live markup. This one
+   is deliberately not: the approved AI Coach visual is signed off pixel for
+   pixel, and reproducing it in HTML kept drifting — mascot pose, lens flare,
+   the exact card gradient and the handwritten lettering are all painted, not
+   layout. So the page renders the artwork and puts real controls on top of it.
+
+   This is a PROTOTYPE-ONLY decision, asked for explicitly. The production
+   React Native screen must still be built from real components — and the
+   pieces for that already exist (CoachInsight, the mascot asset, the
+   facts/interpretation split in COACH_INSIGHT below, which the QA hooks
+   still drive). Nothing here replaces them.
+
+   Consequences to be aware of:
+     · the text in the artwork is not selectable and not readable by a screen
+       reader, so the whole image carries a full text alternative;
+     · it does not reflow, so it scales to the frame width and letterboxes
+       rather than cropping;
+     · only Next, Back and Skip are interactive, which is what was asked for.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Control positions, measured from the artwork itself rather than eyeballed,
+   as fractions of its 850 x 1850 frame. If the artwork is replaced these are
+   the only numbers that need remeasuring. */
+const COACH_HOTSPOTS = {
+  skip: { left:'80%',   top:'3.4%',  width:'19%',   height:'6.6%' },
+  back: { left:'6.5%',  top:'89.2%', width:'11.5%', height:'6.6%' },
+  next: { left:'22.0%', top:'90.2%', width:'72.1%', height:'4.9%' },
+};
+
+/* The full text of the screen, for anyone who cannot see the artwork. */
+const COACH_SCREEN_ALT = [
+  'Your AI mountain coach. Training that adapts to your mountain.',
+  'Your coach understands your goal, training, activities and readiness,',
+  'and helps you focus on what matters next.',
+  'AI Coach Insight for ' + COACH_INSIGHT.facts.mountain + '.',
+  'Your coach assessment, based on your current training data:',
+  COACH_INSIGHT.interpretation.summary,
+  ...COACH_INSIGHT.interpretation.tips,
+  COACH_INSIGHT.disclaimer,
+  'Understands your goal: tailored to your mountain and route.',
+  'Learns from your progress: uses your activities and training evidence.',
+  'Guides your next move: clear, personalised recommendations.',
+].join(' ');
+
+function CoachHotspot(area, attr, label) {
+  const a = COACH_HOTSPOTS[area];
+  return `<button ${attr} aria-label="${esc(label)}"
+    class="absolute z-20 rounded-full pressable focus-visible:ring-2 focus-visible:ring-white/70"
+    style="left:${a.left};top:${a.top};width:${a.width};height:${a.height};min-height:44px"></button>`;
 }
 
 function ScreenCoach() {
-  const idx = ONBOARDING_STEPS.indexOf('coach');
-  return Screen({
-    subject:'coach',
-    scrim:'bg-gradient-to-b from-ink/72 via-ink/80 to-ink',
-    top:StepProgress(idx, ONBOARDING_STEPS.length, 'data-skip="coach"'),
-    body:`
-      <div class="relative pt-[10px] rise">
-        <div class="text-[11px] font-extrabold tracking-[.26em] text-accent">YOUR AI MOUNTAIN COACH</div>
-        <!-- w-fit shrink-wraps the heading so its box cannot run under the
-             annotation on the right, whatever the line lengths are -->
-        <h1 style="width:fit-content"
-            class="mt-[10px] text-[clamp(23px,7.1vw,31px)] font-extrabold leading-[1.06] tracking-[-.025em]
-                   whitespace-nowrap">
-          TRAINING THAT<br>ADAPTS TO<br><span class="text-accent">YOUR MOUNTAIN.</span></h1>
-        <p class="mt-[11px] max-w-[72%] text-[clamp(12px,3.6vw,13.5px)] leading-[1.45] text-white/72">
-          Your coach understands your goal, training, activities and readiness &mdash; and helps you focus
-          on what matters next.</p>
+  const m = MEDIA.resolve('coachScreen');
+  return `
+    <div class="relative flex flex-col h-[100svh] bg-ink" style="height:100svh">
+      <!-- the approved artwork, scaled to the frame and never cropped -->
+      <div class="relative flex-1 min-h-0 w-full" data-coach-artwork>
+        ${m.url
+          ? `<img src="${m.url}" alt="${esc(COACH_SCREEN_ALT)}"
+                  class="absolute inset-0 w-full h-full object-contain object-top">`
+          : `<div class="ph absolute inset-0"></div>`}
 
-        <!-- handwritten annotation, as approved -->
-        <div class="pointer-events-none absolute right-[-2px] top-[102px] rotate-[-7deg] text-right rise"
-             style="animation-delay:.34s" aria-hidden="true">
-          <div class="font-script text-[clamp(19px,5.8vw,25px)] leading-[1.05] text-white/90">Bigger<br>Goals<br>Brighter<br>You</div>
-          <div class="ml-auto mt-[3px] h-[2px] w-[46px] rounded-full bg-white/45"></div>
-        </div>
+        ${CoachHotspot('skip', 'data-skip="coach"', 'Skip onboarding')}
+        ${CoachHotspot('back', 'data-go="bank"', 'Back')}
+        ${CoachHotspot('next', 'data-go="intent"', 'Next')}
       </div>
-
-      <!-- The mascot stands large on the left, as approved, with the Coach
-           Insight overlapping his right side. Both are sized against the
-           block so the composition holds from 320px to 430px. -->
-      <div class="relative mt-[46px]" style="container-type:inline-size">
-        <div class="absolute -left-[34px] top-[6%] w-[clamp(132px,60cqw,250px)] z-10 rise"
-             style="animation-delay:.18s">
-          ${CoachMascot()}
-        </div>
-        <div class="pointer-events-none absolute left-[2%] -top-[40px] rotate-[-9deg] z-30 rise"
-             style="animation-delay:.42s" aria-hidden="true">
-          <div class="font-script text-[clamp(16px,4.9vw,21px)] leading-[1.05] text-white/92 whitespace-nowrap">Let&rsquo;s<br>get higher!</div>
-          <div class="mt-[2px] h-[2px] w-[52px] rounded-full bg-accent/70"></div>
-        </div>
-        <div class="relative z-20 rise" style="animation-delay:.3s;
-             margin-left:clamp(58px, 62cqw - 118px, 150px)">${CoachInsight()}</div>
-      </div>
-
-      <div class="mt-[20px] grid grid-cols-3 rise" style="animation-delay:.5s">
-        ${COACH_BENEFITS.map((b, i) => `
-          <div class="flex flex-col items-center text-center min-w-0 px-[4px] rise
-                      ${i > 0 ? 'border-l border-white/[.10]' : ''}" style="animation-delay:${.54 + i * .07}s">
-            <span class="grid place-items-center w-[42px] h-[42px] rounded-full border-2 border-accent/70
-                         bg-accent/[.10] text-accent" data-icon="${b.icon}" data-size="20"></span>
-            <span class="mt-[10px] text-[clamp(9.5px,2.9vw,11px)] font-extrabold leading-[13px] w-full">${nl(b.title)}</span>
-            <span class="mt-[6px] text-[clamp(9px,2.7vw,10.5px)] leading-[14px] text-white/60 w-full">${nl(b.body)}</span>
-          </div>`).join('')}
-      </div>`,
-    /* Approved bottom bar: a circular Back beside a wide gradient Next. */
-    cta:`
-      <div class="flex items-center gap-[12px]">
-        <button data-go="bank" aria-label="Back"
-          class="shrink-0 grid place-items-center w-[52px] h-[52px] rounded-full
-                 border border-white/18 bg-white/[.06] pressable" data-icon="back" data-size="20"></button>
-        <button data-go="intent"
-          class="flex-1 h-[54px] rounded-full bg-gradient-to-r from-accent to-[#39B7FF] text-white
-                 text-[16px] font-bold pressable flex items-center justify-center gap-[9px]
-                 shadow-[0_10px_28px_rgba(22,125,247,.38)]">
-          Next <span data-icon="arrowR" data-size="17"></span></button>
-      </div>`,
-  });
+    </div>`;
 }
 
 /* 5 · INTENT — the only question in the whole flow, and it is optional.
