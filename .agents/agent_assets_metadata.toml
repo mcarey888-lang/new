@@ -438,3 +438,17 @@ mtime_ms = 1790185351456
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/224522bb-cc84-4ae7-960d-4c1ab4049259/d329468a-3b7f-4a84-bee3-af358bfa81f8"
 storage_version_token = "1790185364123119"
 content_type = "image/png"
+
+[[outputs]]
+id = "BzKpLIAtAdokD0wnU1fgW"
+uri = "file://screenshots/s2-c05-training-basecamp.png"
+type = "image"
+title = "Training Basecamp — imported production UI"
+description = "390px capture of the live SummitReady React Native Basecamp after integration, using existing development data."
+logical_id = "54caac4d-3f2e-4ea8-bdcc-42b2529a5a2b"
+content_hash = "sha256:1827ea1e637facfea1b3b99f561837a992abe7a61edab44af8114e79b96bbd35"
+size = 215287
+mtime_ms = 1790190778936
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/54caac4d-3f2e-4ea8-bdcc-42b2529a5a2b/0fb1970d-7abd-4b0c-a7f9-fc10bbccc78f"
+storage_version_token = "1790191161310235"
+content_type = "image/png"
