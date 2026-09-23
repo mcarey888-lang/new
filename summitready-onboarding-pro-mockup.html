@@ -52,11 +52,12 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <script>
   tailwind.config = { theme: { extend: {
     colors: { ink:'#05090B', accent:'#167DF7', train:'#24EFA4', warn:'#E9B949', gold:'#E4A93C' },
-    fontFamily: { sans:['Inter','system-ui','-apple-system','sans-serif'] },
+    fontFamily: { sans:['Inter','system-ui','-apple-system','sans-serif'],
+                  script:['Caveat','Bradley Hand','Segoe Script','cursive'] },
   } } }
 </script>
 <style>
@@ -296,26 +297,37 @@ const COACH_MASCOT = Object.freeze({
 });
 
 const COACH_INSIGHT = {
-  /* ── FACTS · produced by SummitReady's engines, never by the Coach ──────── */
+  /* ── FACTS · produced by SummitReady's engines, never by the Coach ────────
+     The Coach may quote these back in its prose, but it cannot author them. */
   facts: {
     mountain:'Mont Blanc',              /* Summit Data Engine */
-    currentReadiness:52,                /* Readiness 2.0      */
-    projectedReadiness:55,              /* Readiness 2.0      */
-    priority:'Mountain Day',            /* Training Plan      */
-    elevationM:900,                     /* Training Plan      */
-    duration:'3\u20135 hr',              /* Training Plan      */
-    day:'Saturday',                     /* Training Plan      */
+    sessionsCompleted:3,                /* Training Plan      */
+    elevationLoggedM:1740,              /* Elevation Bank     */
+    benchmarkShortfallM:290,            /* Training engine    */
+    daysRemaining:68,                   /* summit goal date   */
   },
-  /* ── INTERPRETATION · the only part the Coach authors ───────────────────── */
+  /* ── INTERPRETATION · the only part the Coach authors ─────────────────────
+     Exactly the shape the production /coach-assessment endpoint returns:
+     { summary, tone, tips[] }. */
   interpretation: {
-    improving:'Your endurance is improving.',
-    opportunity:'Your biggest opportunity now is sustained elevation.',
-    tone:'positive',                    /* positive | warning | neutral */
+    summary:
+      'You\u2019ve completed 3 sessions and logged 1,740m of elevation, which is a solid start, but ' +
+      'you\u2019re falling short of your benchmark by 290m with only 68 days remaining. At this pace, ' +
+      'you\u2019ll need to increase session elevation to ensure you\u2019re ready for Mont Blanc.',
+    tone:'warning',                     /* positive | warning | neutral */
+    tips:[
+      'Increase your hill session elevation by incorporating longer climbs or multiple repeats to surpass your benchmark.',
+      'Set a goal to complete at least 2 additional sessions this week to enhance your training volume before moving into the next phase.',
+      'Ensure you schedule adequate recovery days, especially after high-intensity workouts, to maximize your training effectiveness.',
+    ],
   },
-  /* Shown on the card, not buried: guidance, never a safety guarantee. */
-  disclaimer:'AI guidance only \u2014 not medical advice, and never a judgement that a mountain is safe for you. ' +
-             'Conditions change; always check forecasts and local guidance.',
+  /* Shown on the card, not buried: guidance, never a safety guarantee.
+     Word for word the disclaimer the production dashboard already shows. */
+  disclaimer:
+    'AI guidance only \u2014 not medical advice. Mountain conditions change; always check forecasts ' +
+    'and local guidance before heading out.',
 };
+
 /* The three supporting benefits. Restrained by design — they explain the
    Coach, they do not compete with it. */
 const COACH_BENEFITS = [
@@ -636,90 +648,67 @@ function ScreenBank() {
 /* 4 · THE AI COACH — the interpretation layer, demonstrated.
 
    ═══ CoachInsight ═══════════════════════════════════════════════════════
-   Built as a REUSABLE COMPONENT, not a flattened picture, because Training
-   Basecamp will render the same thing later. Its parts are separate and each
-   is addressable:
-       · header      — coach identity + mountain context
-       · insight     — what is improving / where the opportunity is
-       · priority    — the planned session to prioritise, with its metrics
-       · projection  — current → projected readiness
-       · action      — the affordance that opens the Coach
+   Built to the approved visual, and as a REUSABLE COMPONENT rather than a
+   flattened picture, because Training Basecamp renders the same thing. Its
+   parts are separate and each is addressable:
+       · header      — AI COACH INSIGHT + the mountain, with an overflow
+       · identity    — the coach, and what the assessment is based on
+       · assessment  — the Coach's own summary prose
+       · actions     — its recommendations
        · disclaimer  — guidance, never a safety guarantee
    Only the mascot is a raster asset. Everything else is real markup.
    ════════════════════════════════════════════════════════════════════════ */
 function CoachInsight(o = COACH_INSIGHT, opts = {}) {
   const f = o.facts, t = o.interpretation;
-  return `<article class="panel rounded-[20px] overflow-hidden border-accent/25
-      bg-gradient-to-br from-accent/[.12] via-[#0a131d]/90 to-[#080d14]/95 backdrop-blur-[6px]"
+  /* Tone colours the recommendation markers. Amber on a warning tone is what
+     the approved visual shows. */
+  const dot = { positive:'bg-train', warning:'bg-warn', neutral:'bg-accent' }[t.tone] || 'bg-accent';
+  return `<article class="relative rounded-[18px] border border-accent/35 overflow-hidden
+      bg-gradient-to-b from-[#0d1c2e]/95 to-[#07101b]/95 backdrop-blur-[8px]
+      shadow-[0_18px_44px_rgba(0,0,0,.55)]"
       data-coach-insight aria-label="Coach insight for ${esc(f.mountain)}">
 
-    <!-- header · coach identity and the mountain it is talking about -->
-    <header class="px-[13px] pt-[12px] pb-[10px] flex items-start gap-[10px] border-b border-white/[.07]">
-      <span class="relative shrink-0 w-[34px] h-[34px] rounded-full overflow-hidden bg-white/[.08] ring-1 ring-white/15">
-        <img src="${COACH_MASCOT.resting}" alt="" class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[46px] max-w-none">
-      </span>
+    <!-- header · AI COACH INSIGHT / MOUNT, with an overflow control -->
+    <header class="px-[14px] pt-[13px] pb-[11px] flex items-start gap-[10px]">
       <span class="min-w-0 flex-1">
-        <span class="block text-[10px] font-extrabold tracking-[.18em] text-accent">COACH INSIGHT</span>
-        <span class="block mt-[2px] text-[13px] font-bold tracking-[.06em] text-white/85 truncate"
+        <span class="block text-[clamp(9.5px,2.9vw,11px)] font-extrabold tracking-[.1em] text-accent
+                     whitespace-nowrap">AI COACH INSIGHT</span>
+        <span class="block mt-[3px] text-[13.5px] font-semibold tracking-[.13em] text-white/72 truncate"
               data-coach-mountain>${esc(f.mountain).toUpperCase()}</span>
       </span>
       ${opts.menu === false ? '' : `<button data-coach-menu aria-label="Coach options"
-        class="shrink-0 grid place-items-center w-[44px] h-[44px] -mr-[9px] -mt-[8px] -mb-[8px] text-white/40 pressable"
-        data-icon="dots" data-size="16"></button>`}
+        class="shrink-0 grid place-items-center w-[44px] h-[44px] -mr-[10px] -mt-[11px] -mb-[11px]
+               text-white/45 pressable" data-icon="dots" data-size="17"></button>`}
     </header>
 
-    <div class="px-[13px] pt-[12px] pb-[13px]">
-      <!-- insight · the only part the Coach authors -->
-      <p class="text-[13.5px] leading-[19px] font-semibold text-white/90" data-coach-improving>${esc(t.improving)}</p>
-      <p class="mt-[6px] text-[13px] leading-[19px] text-white/65" data-coach-opportunity>${esc(t.opportunity)}</p>
+    <!-- identity · whose assessment this is, and what it is based on -->
+    <div class="px-[14px] pb-[12px] flex items-center gap-[11px]">
+      <span class="relative shrink-0 w-[42px] h-[42px] rounded-full overflow-hidden
+                   bg-[#16283d] ring-1 ring-accent/30">
+        <img src="${COACH_MASCOT.resting}" alt=""
+             class="absolute left-1/2 -translate-x-1/2 -bottom-[3px] w-[58px] max-w-none">
+      </span>
+      <span class="min-w-0">
+        <span class="block text-[14px] font-bold leading-[18px]">Your coach assessment</span>
+        <span class="block mt-[1px] text-[12px] text-white/55 leading-[16px]">Based on your current training data</span>
+      </span>
+    </div>
 
-      <!-- priority · a session the Training Plan already holds -->
-      <div class="mt-[13px] rounded-[14px] bg-white/[.05] border border-white/[.08] p-[11px]" data-coach-priority>
-        <div class="text-[9.5px] font-extrabold tracking-[.16em] text-white/45">
-          ${esc(f.day).toUpperCase()}&rsquo;S PRIORITY</div>
-        <div class="mt-[6px] flex items-center gap-[10px]">
-          <span class="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-[11px] bg-accent/[.18] text-accent"
-                data-icon="peak" data-size="17"></span>
-          <span class="min-w-0 flex-1">
-            <span class="block text-[14px] font-extrabold truncate" data-coach-session>${esc(f.priority)}</span>
-            <span class="block mt-[2px] text-[11.5px] text-white/55 tabular-nums" data-coach-metrics>
-              ${fmt(f.elevationM)} m · ${esc(f.duration)}</span>
-          </span>
-        </div>
+    <!-- assessment · the Coach's own prose, on its own inset surface -->
+    <div class="mx-[10px] mb-[11px] rounded-[14px] bg-white/[.045] border border-white/[.06]
+                px-[13px] pt-[12px] pb-[13px]">
+      <p class="text-[12.5px] leading-[18px] text-white/88" data-coach-summary>${esc(t.summary)}</p>
+
+      <div class="mt-[13px] grid gap-[11px]">
+        ${t.tips.map(tip => `
+          <div class="flex items-start gap-[10px]" data-coach-tip>
+            <span class="mt-[6px] shrink-0 w-[7px] h-[7px] rounded-full ${dot}"></span>
+            <span class="text-[12px] leading-[17px] text-white/72">${esc(tip)}</span>
+          </div>`).join('')}
       </div>
 
-      <!-- projection · both numbers come from Readiness, never from the Coach -->
-      <p class="mt-[12px] text-[11.5px] leading-[16px] text-white/55">
-        Completing it could move your projected readiness:</p>
-      <div class="mt-[9px] flex items-center gap-[11px]" data-coach-projection>
-        <div class="min-w-0 text-center">
-          <div class="text-[clamp(22px,6.6vw,26px)] font-extrabold tabular-nums leading-none text-white/75"
-               data-readiness-current>${f.currentReadiness}<span class="text-[14px]">%</span></div>
-          <div class="mt-[4px] text-[8.5px] font-bold tracking-[.14em] text-white/40">CURRENT</div>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="relative h-[6px] rounded-full bg-white/[.09] overflow-hidden">
-            <div class="absolute inset-y-0 left-0 rounded-full bg-white/25" style="width:${f.currentReadiness}%"></div>
-            <div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent to-train bar-fill"
-                 style="width:0%" data-bar="${f.projectedReadiness}"></div>
-          </div>
-          <div class="mt-[5px] grid place-items-center text-train" data-icon="arrowR" data-size="13"></div>
-        </div>
-        <div class="min-w-0 text-center">
-          <div class="text-[clamp(22px,6.6vw,26px)] font-extrabold tabular-nums leading-none text-train"
-               data-readiness-projected data-count-to="${f.projectedReadiness}"
-               data-count-from="${f.currentReadiness}">${f.currentReadiness}<span class="text-[14px]">%</span></div>
-          <div class="mt-[4px] text-[8.5px] font-bold tracking-[.14em] text-train/70">PROJECTED</div>
-        </div>
-      </div>
-
-      ${opts.action === false ? '' : `<button data-coach-open
-        class="mt-[13px] w-full h-[44px] rounded-[12px] bg-white/[.09] border border-white/12 pressable
-               text-[12.5px] font-bold flex items-center justify-center gap-[7px]">
-        Ask your coach <span data-icon="chev" data-size="13"></span></button>`}
-
-      <!-- disclaimer · on the card, not in a footnote somewhere else -->
-      <p class="mt-[11px] text-[9.5px] leading-[13px] text-white/38" data-coach-disclaimer>${esc(o.disclaimer)}</p>
+      <!-- guidance, never a safety guarantee. On the card, not in a footnote. -->
+      <p class="mt-[13px] text-[10px] leading-[14px] text-white/38" data-coach-disclaimer>${esc(o.disclaimer)}</p>
     </div>
   </article>`;
 }
@@ -733,49 +722,91 @@ function CoachMascot() {
     <img id="coachMascot" alt="Your SummitReady AI mountain coach"
          src="${COACH_MASCOT.resting}" data-animated="${COACH_MASCOT.animated}"
          data-resting="${COACH_MASCOT.resting}"
-         class="w-full h-auto drop-shadow-[0_18px_34px_rgba(0,0,0,.6)]">
+         class="w-full h-auto drop-shadow-[0_22px_40px_rgba(0,0,0,.65)]">
   </div>`;
 }
+
+/* The approved progress header: "4 of 6", six segments, and Skip. */
+function StepProgress(index, total, skipAttr) {
+  return `<div class="flex items-center gap-[12px] min-h-[44px]">
+    <span class="shrink-0 text-[13px] font-semibold text-white/70 tabular-nums">${index + 1} of ${total}</span>
+    <div class="flex-1 flex items-center gap-[5px]" role="progressbar"
+         aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${index + 1}"
+         aria-label="Onboarding step ${index + 1} of ${total}">
+      ${Array.from({ length:total }, (_, k) => `<span class="h-[4px] rounded-full transition-all duration-300
+        ${k === index ? 'flex-[1.6] bg-accent' : 'flex-1 bg-white/[.16]'}"></span>`).join('')}
+    </div>
+    <button ${skipAttr} class="shrink-0 grid place-items-center min-w-[52px] h-[44px] -mr-[8px]
+            text-[15px] font-semibold text-white/80 pressable">Skip</button>
+  </div>`;
+}
+
 function ScreenCoach() {
+  const idx = ONBOARDING_STEPS.indexOf('coach');
   return Screen({
     subject:'coach',
-    scrim:'bg-gradient-to-b from-ink/80 via-ink/88 to-ink',
-    top:BackSkipBar('data-go="bank"', 'data-skip="coach"'),
+    scrim:'bg-gradient-to-b from-ink/72 via-ink/80 to-ink',
+    top:StepProgress(idx, ONBOARDING_STEPS.length, 'data-skip="coach"'),
     body:`
-      <div class="pt-[8px] rise">
-        <div class="text-[10.5px] font-extrabold tracking-[.22em] text-accent">YOUR AI MOUNTAIN COACH</div>
-        <h1 class="mt-[8px] text-[clamp(23px,7.2vw,29px)] font-extrabold leading-[1.08] tracking-[-.02em]">
+      <div class="relative pt-[10px] rise">
+        <div class="text-[11px] font-extrabold tracking-[.26em] text-accent">YOUR AI MOUNTAIN COACH</div>
+        <!-- w-fit shrink-wraps the heading so its box cannot run under the
+             annotation on the right, whatever the line lengths are -->
+        <h1 style="width:fit-content"
+            class="mt-[10px] text-[clamp(23px,7.1vw,31px)] font-extrabold leading-[1.06] tracking-[-.025em]
+                   whitespace-nowrap">
           TRAINING THAT<br>ADAPTS TO<br><span class="text-accent">YOUR MOUNTAIN.</span></h1>
-        <p class="mt-[9px] text-[clamp(11.5px,3.3vw,13px)] leading-[1.45] text-white/70">
+        <p class="mt-[11px] max-w-[72%] text-[clamp(12px,3.6vw,13.5px)] leading-[1.45] text-white/72">
           Your coach understands your goal, training, activities and readiness &mdash; and helps you focus
           on what matters next.</p>
+
+        <!-- handwritten annotation, as approved -->
+        <div class="pointer-events-none absolute right-[-2px] top-[102px] rotate-[-7deg] text-right rise"
+             style="animation-delay:.34s" aria-hidden="true">
+          <div class="font-script text-[clamp(19px,5.8vw,25px)] leading-[1.05] text-white/90">Bigger<br>Goals<br>Brighter<br>You</div>
+          <div class="ml-auto mt-[3px] h-[2px] w-[46px] rounded-full bg-white/45"></div>
+        </div>
       </div>
 
-      <!-- The mascot stands lower-left and the Coach Insight overlaps his right
-           side, as approved. Both are sized against the block rather than the
-           viewport, so the composition holds from 320px to 430px instead of
-           collapsing into a stack. -->
-      <div class="relative mt-[12px]" style="container-type:inline-size">
-        <div class="absolute -left-[26px] top-[14%] w-[clamp(112px,51cqw,214px)] z-10 rise"
-             style="animation-delay:.18s">${CoachMascot()}</div>
-        <!-- The offset is a linear ramp, not a flat percentage: a flat 26% left
-             the card at 207px on a 320px phone, which truncated the mountain
-             name and the session it exists to show. This gives the card back
-             ~30px at the narrow end and still clears the mascot at 430px. -->
+      <!-- The mascot stands large on the left, as approved, with the Coach
+           Insight overlapping his right side. Both are sized against the
+           block so the composition holds from 320px to 430px. -->
+      <div class="relative mt-[46px]" style="container-type:inline-size">
+        <div class="absolute -left-[34px] top-[6%] w-[clamp(132px,60cqw,250px)] z-10 rise"
+             style="animation-delay:.18s">
+          ${CoachMascot()}
+        </div>
+        <div class="pointer-events-none absolute left-[2%] -top-[40px] rotate-[-9deg] z-30 rise"
+             style="animation-delay:.42s" aria-hidden="true">
+          <div class="font-script text-[clamp(16px,4.9vw,21px)] leading-[1.05] text-white/92 whitespace-nowrap">Let&rsquo;s<br>get higher!</div>
+          <div class="mt-[2px] h-[2px] w-[52px] rounded-full bg-accent/70"></div>
+        </div>
         <div class="relative z-20 rise" style="animation-delay:.3s;
-             margin-left:clamp(44px, 55.5cqw - 111px, 118px)">${CoachInsight()}</div>
+             margin-left:clamp(58px, 62cqw - 118px, 150px)">${CoachInsight()}</div>
       </div>
 
-      <div class="mt-[16px] grid grid-cols-3 gap-[8px] rise" style="animation-delay:.5s">
+      <div class="mt-[20px] grid grid-cols-3 rise" style="animation-delay:.5s">
         ${COACH_BENEFITS.map((b, i) => `
-          <div class="flex flex-col items-center text-center min-w-0 rise" style="animation-delay:${.54 + i * .07}s">
-            <span class="grid place-items-center w-[40px] h-[40px] rounded-full border border-accent/40
-                         bg-accent/[.12] text-accent" data-icon="${b.icon}" data-size="19"></span>
-            <span class="mt-[9px] text-[clamp(9px,2.7vw,10.5px)] font-extrabold leading-[13px] tracking-[.01em] w-full">${nl(b.title)}</span>
-            <span class="mt-[5px] text-[clamp(8.5px,2.6vw,10px)] leading-[13px] text-white/55 w-full">${nl(b.body)}</span>
+          <div class="flex flex-col items-center text-center min-w-0 px-[4px] rise
+                      ${i > 0 ? 'border-l border-white/[.10]' : ''}" style="animation-delay:${.54 + i * .07}s">
+            <span class="grid place-items-center w-[42px] h-[42px] rounded-full border-2 border-accent/70
+                         bg-accent/[.10] text-accent" data-icon="${b.icon}" data-size="20"></span>
+            <span class="mt-[10px] text-[clamp(9.5px,2.9vw,11px)] font-extrabold leading-[13px] w-full">${nl(b.title)}</span>
+            <span class="mt-[6px] text-[clamp(9px,2.7vw,10.5px)] leading-[14px] text-white/60 w-full">${nl(b.body)}</span>
           </div>`).join('')}
       </div>`,
-    cta:`<div class="mb-[14px]">${Dots(4, 3)}</div>${Primary('Next', 'data-go="intent"')}`,
+    /* Approved bottom bar: a circular Back beside a wide gradient Next. */
+    cta:`
+      <div class="flex items-center gap-[12px]">
+        <button data-go="bank" aria-label="Back"
+          class="shrink-0 grid place-items-center w-[52px] h-[52px] rounded-full
+                 border border-white/18 bg-white/[.06] pressable" data-icon="back" data-size="20"></button>
+        <button data-go="intent"
+          class="flex-1 h-[54px] rounded-full bg-gradient-to-r from-accent to-[#39B7FF] text-white
+                 text-[16px] font-bold pressable flex items-center justify-center gap-[9px]
+                 shadow-[0_10px_28px_rgba(22,125,247,.38)]">
+          Next <span data-icon="arrowR" data-size="17"></span></button>
+      </div>`,
   });
 }
 
@@ -1400,17 +1431,21 @@ window.setTier = t => { if (!['free','pro'].includes(t)) return null; FLOW.tier 
    interpretation text is set separately and clearly labelled as such. */
 window.setCoachInsight = patch => {
   if (!patch || typeof patch !== 'object') return null;
-  const NUM = ['currentReadiness', 'projectedReadiness', 'elevationM'];
-  const STR = ['mountain', 'priority', 'duration', 'day'];
+  /* Only FACTS can be set from outside, because in production only the engines
+     supply them. The Coach's own prose is patched separately and stays clearly
+     labelled as interpretation. */
+  const NUM = ['sessionsCompleted', 'elevationLoggedM', 'benchmarkShortfallM', 'daysRemaining'];
   for (const k of NUM) if (k in patch) {
     const v = Number(patch[k]);
     if (!isFinite(v)) return null;
-    COACH_INSIGHT.facts[k] = k === 'elevationM' ? Math.max(0, Math.round(v))
-                                                : Math.max(0, Math.min(100, Math.round(v)));
+    COACH_INSIGHT.facts[k] = Math.max(0, Math.round(v));
   }
-  for (const k of STR) if (k in patch) COACH_INSIGHT.facts[k] = String(patch[k]);
-  for (const k of ['improving', 'opportunity', 'tone'])
-    if (k in patch) COACH_INSIGHT.interpretation[k] = String(patch[k]);
+  if ('mountain' in patch) COACH_INSIGHT.facts.mountain = String(patch.mountain);
+  for (const k of ['summary', 'tone']) if (k in patch) COACH_INSIGHT.interpretation[k] = String(patch[k]);
+  if ('tips' in patch) {
+    if (!Array.isArray(patch.tips)) return null;
+    COACH_INSIGHT.interpretation.tips = patch.tips.map(String);
+  }
   if ('disclaimer' in patch) COACH_INSIGHT.disclaimer = String(patch.disclaimer);
   if (FLOW.step === 'coach') render();
   return { ...COACH_INSIGHT.facts, ...COACH_INSIGHT.interpretation };
