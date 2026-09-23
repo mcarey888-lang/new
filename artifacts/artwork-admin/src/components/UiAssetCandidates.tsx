@@ -1,4 +1,4 @@
-import { useUiAssetManifest, UiAssetCandidate } from "@/hooks/useUiAssetWorkflow";
+import { useUiAssetManifest, UiAssetCandidate, uiAssetLoadError } from "@/hooks/useUiAssetWorkflow";
 import { CandidateCard } from "./CandidateCard";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +24,7 @@ export function UiAssetCandidates() {
   if (error || !manifest) {
     return (
       <div className="p-8 text-center text-red-400">
-        Failed to load candidates. Verify admin key.
+        {uiAssetLoadError(error, "candidates")}
       </div>
     );
   }

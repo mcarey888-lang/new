@@ -65,6 +65,18 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
+// Candidate galleries can request three protected crops per candidate at once.
+// Keep them rate-limited, but do not let a gallery fill the budget used by
+// admin manifest reads, actions, and the rest of the API.
+const artworkImageLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many artwork image requests. Please try again shortly." },
+});
+const artworkImagePath = /^\/artwork\/ui-assets\/candidates\/[^/]+\/v\d+\/(?:master|hero|card)$/;
+
 // Strict limit for AI/expensive endpoints (OpenAI cost protection).
 const aiLimiter = rateLimit({
   windowMs: 60_000,
@@ -74,7 +86,12 @@ const aiLimiter = rateLimit({
   message: { error: "Too many AI requests. Please wait a moment and try again." },
 });
 
-app.use("/api", generalLimiter);
+app.use("/api", (req, res, next) => {
+  if (req.method === "GET" && artworkImagePath.test(req.path)) {
+    return artworkImageLimiter(req, res, next);
+  }
+  return generalLimiter(req, res, next);
+});
 
 // AI-backed routes
 app.use("/api/coach-assessment",             aiLimiter);

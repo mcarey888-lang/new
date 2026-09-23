@@ -1,4 +1,4 @@
-import { useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
+import { uiAssetLoadError, useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -16,7 +16,7 @@ export function UiAssetHistoryView() {
   if (error || !manifest) {
     return (
       <div className="p-8 text-center text-red-400">
-        Failed to load history. Verify admin key.
+        {uiAssetLoadError(error, "history")}
       </div>
     );
   }

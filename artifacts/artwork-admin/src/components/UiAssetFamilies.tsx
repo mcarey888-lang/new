@@ -1,4 +1,4 @@
-import { useUiAssetManifest, useLockFamily, FamilyId } from "@/hooks/useUiAssetWorkflow";
+import { useUiAssetManifest, useLockFamily, FamilyId, uiAssetLoadError } from "@/hooks/useUiAssetWorkflow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Lock, Unlock, Plus } from "lucide-react";
@@ -24,7 +24,7 @@ export function UiAssetFamilies() {
   if (error || !manifest) {
     return (
       <div className="p-8 text-center text-red-400">
-        Failed to load families. Verify admin key.
+        {uiAssetLoadError(error, "families")}
       </div>
     );
   }

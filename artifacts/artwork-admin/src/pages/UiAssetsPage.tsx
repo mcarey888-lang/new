@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, LockKeyhole } from "lucide-react";
 import { AdminKeyContext } from "@/contexts/AdminKeyContext";
-import { useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
+import { UiAssetManifestError, useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
 
 type TabValue = "catalogue" | "families" | "candidates" | "history";
 
@@ -108,6 +108,9 @@ function AdminKeyStatus({
 
   if (!hasKey || manifest.isPending || manifest.data) return null;
 
+  const rejected = manifest.error instanceof UiAssetManifestError
+    && (manifest.error.status === 401 || manifest.error.status === 403);
+
   return (
     <div
       className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
@@ -116,14 +119,20 @@ function AdminKeyStatus({
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div>
-          <p className="font-semibold text-foreground">Admin key rejected</p>
+          <p className="font-semibold text-foreground">
+            {rejected ? "Admin key rejected" : "Artwork service temporarily unavailable"}
+          </p>
           <p className="text-muted-foreground">
-            The saved key is no longer valid. Clear it and enter the current workspace admin key.
+            {rejected
+              ? "The saved key is no longer valid. Clear it and enter the current workspace admin key."
+              : manifest.error instanceof UiAssetManifestError && manifest.error.status === 429
+                ? "Too many requests. Wait a minute and retry. Your admin key is still saved."
+                : "The workflow could not be loaded. Retry without clearing your saved admin key."}
           </p>
         </div>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={onClear}>
-        Clear and re-enter
+      <Button type="button" variant="outline" size="sm" onClick={rejected ? onClear : () => void manifest.refetch()}>
+        {rejected ? "Clear and re-enter" : "Retry"}
       </Button>
     </div>
   );

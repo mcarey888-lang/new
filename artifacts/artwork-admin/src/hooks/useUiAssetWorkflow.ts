@@ -56,6 +56,25 @@ export type UiAssetManifest = {
   history: UiAssetHistory[];
 };
 
+export class UiAssetManifestError extends Error {
+  constructor(readonly status: number) {
+    super(`Workflow request failed (${status})`);
+    this.name = "UiAssetManifestError";
+  }
+}
+
+export function uiAssetLoadError(error: unknown, section: string): string {
+  if (error instanceof UiAssetManifestError) {
+    if (error.status === 401 || error.status === 403) {
+      return `Failed to load ${section}. The admin key was rejected.`;
+    }
+    if (error.status === 429) {
+      return `Too many requests right now. Please wait a minute and retry ${section}. Your admin key is still saved.`;
+    }
+  }
+  return `Failed to load ${section}. Please retry; the admin key has not been cleared.`;
+}
+
 export function useUiAssetManifest() {
   const adminKey = useAdminKey();
   return useQuery({
@@ -67,7 +86,7 @@ export function useUiAssetManifest() {
         signal,
       });
       if (!res.ok) {
-        throw new Error(`Failed to fetch workflow manifest: ${res.statusText}`);
+        throw new UiAssetManifestError(res.status);
       }
       return res.json() as Promise<UiAssetManifest>;
     },
