@@ -13,6 +13,13 @@
   proposition → a plan decision → into the app. Every route through it ends
   somewhere useful, including every route that declines Pro.
 
+      1 HIGHER EVERY DAY   2 TWO WAYS TO GO HIGHER   3 EVERY METRE COUNTS
+      4 YOUR AI MOUNTAIN COACH   5 WHAT BRINGS YOU HERE?   6 YOU'RE READY
+
+  The AI Coach screen uses the EXISTING SummitReady mascot asset
+  (artifacts/summit-ready/assets/mascot.webp, the same one the production
+  dashboard requires). It is not redrawn, not approximated and not replaced.
+
   ⚠⚠ NOT APPROVED COMMERCIAL DECISIONS ⚠⚠
     £4.99, "7 day free trial", "Save 40%", the monthly/yearly split and the
     Free/Pro feature boundary shown here are ILLUSTRATIVE PLACEHOLDERS for
@@ -170,6 +177,8 @@ const PROTOTYPE_DATA = Object.freeze({
     readiness:    'Readiness 2.0 → scored per user and objective',
     expeditions:  'Expedition engine → stages and progress',
     mountains:    'Summit Data Engine', routes:'Route Engine',
+    readinessProjection:'Readiness 2.0 \u2014 the Coach reads it, never computes it',
+    coachInsight: 'AI Coach \u2014 interprets engine output; authors no facts',
     commercial:   'the store / billing provider at runtime — never the client',
   },
   notice:
@@ -220,13 +229,14 @@ const MEDIA = {
     curated: {
       hero:'mockup-assets/ob-hero.jpg',      bank:'mockup-assets/ob-bank.jpg',
       progress:'mockup-assets/ob-progress.jpg', intent:'mockup-assets/ob-intent.jpg',
-      ready:'mockup-assets/ob-ready.jpg',    paths:'mockup-assets/ob-progress.jpg',
+      ready:'mockup-assets/ob-ready.jpg',    paths:'mockup-assets/ob-paths.jpg',
       train:'mockup-assets/ob-train.jpg',    exped:'mockup-assets/ob-exped.jpg',
       i1:'mockup-assets/ob-i1.jpg', i2:'mockup-assets/ob-i2.jpg', i3:'mockup-assets/ob-i3.jpg',
       proHero:'mockup-assets/pro-hero.jpg',  proPlan:'mockup-assets/pro-plan.jpg',
       proFinal:'mockup-assets/pro-final.jpg',
       proTrain:'mockup-assets/pro-train.jpg', proExped:'mockup-assets/pro-exped.jpg',
       proTools:'mockup-assets/pro-tools.jpg',
+      coach:'mockup-assets/ob-coach.jpg',
     },
   },
   resolve(subject) {
@@ -247,15 +257,71 @@ const INTENTS = [
   { id:'explore',    subject:'i3', title:'I want to explore\nand track mountains',
     destination:'Explore',            why:'Find mountains, record hikes, build history.' },
 ];
-/* The progression ecosystem, in the badge language already established.
-   Every one of these is earned from real recorded activity — never points. */
-const PROGRESSION = [
-  { icon:'walk',  label:'Milestones',      fill:'from-[#2E6FD6] to-[#123C7E]' },
-  { icon:'peak',  label:'Mountains',       fill:'from-[#2FA36B] to-[#124A2E]' },
-  { icon:'snow',  label:'Challenges',      fill:'from-[#5FC9E8] to-[#12465A]' },
-  { icon:'flag',  label:'Expeditions',     fill:'from-[#2F8FA3] to-[#123F4A]' },
-  { icon:'medal', label:'Ranks',           fill:'from-[#C98A2E] to-[#5E3C10]' },
-  { icon:'trend', label:'Personal Growth', fill:'from-[#3D6DB0] to-[#14263F]' },
+/* ════════════════════ THE AI COACH ════════════════════
+   THE PRODUCT CONTRACT, and it matters more than the layout:
+
+     CANONICAL ACTIVITY + TRAINING DATA
+       → SUMMITREADY ENGINES
+       → READINESS / ELEVATION / PLAN STATE
+       → AI COACH
+       → PERSONALISED EXPLANATION + NEXT-BEST-ACTION
+
+   The Coach is the INTERPRETATION layer. It never calculates or invents a
+   readiness score, a projection, an elevation total, a plan state, a mountain
+   fact or a route fact — those are produced upstream by the systems that own
+   them and handed to it. It reads them and explains what to do next.
+
+   So COACH_INSIGHT below is deliberately split in two: `facts`, which in
+   production arrive from the engines and which the Coach may never author,
+   and `interpretation`, which is the only part the Coach produces. The UI
+   renders both but the boundary is visible in the data.
+
+   Safety: the Coach never states or implies that someone is safe or capable
+   enough to climb a mountain, and never gives medical advice. The existing
+   /api/coach prompt holds the same line. */
+const COACH_MASCOT = Object.freeze({
+  /* The EXISTING approved SummitReady mascot, unchanged. Production source:
+     artifacts/summit-ready/assets/mascot.webp — the same asset the dashboard
+     already uses (`const MASCOT = require("@/assets/mascot.webp")`). It is a
+     26-frame peek-in-and-wave, 800×817, ~2.6s.
+     This prototype copies it rather than redrawing it. The only change is a
+     crop to the frames' union alpha bounding box (0,149)-(690,817) — empty
+     margin removed, the character itself untouched — so he renders large
+     enough to hold the composition. It is paired with its own final frame so
+     the wave plays ONCE and settles instead of looping. */
+  animated:'mockup-assets/coach-mascot.webp',
+  resting:'mockup-assets/coach-mascot-rest.png',
+  durationMs:2600,
+  productionSource:'artifacts/summit-ready/assets/mascot.webp',
+});
+
+const COACH_INSIGHT = {
+  /* ── FACTS · produced by SummitReady's engines, never by the Coach ──────── */
+  facts: {
+    mountain:'Mont Blanc',              /* Summit Data Engine */
+    currentReadiness:52,                /* Readiness 2.0      */
+    projectedReadiness:55,              /* Readiness 2.0      */
+    priority:'Mountain Day',            /* Training Plan      */
+    elevationM:900,                     /* Training Plan      */
+    duration:'3\u20135 hr',              /* Training Plan      */
+    day:'Saturday',                     /* Training Plan      */
+  },
+  /* ── INTERPRETATION · the only part the Coach authors ───────────────────── */
+  interpretation: {
+    improving:'Your endurance is improving.',
+    opportunity:'Your biggest opportunity now is sustained elevation.',
+    tone:'positive',                    /* positive | warning | neutral */
+  },
+  /* Shown on the card, not buried: guidance, never a safety guarantee. */
+  disclaimer:'AI guidance only \u2014 not medical advice, and never a judgement that a mountain is safe for you. ' +
+             'Conditions change; always check forecasts and local guidance.',
+};
+/* The three supporting benefits. Restrained by design — they explain the
+   Coach, they do not compete with it. */
+const COACH_BENEFITS = [
+  { icon:'target', title:'UNDERSTANDS\nYOUR GOAL',    body:'Tailored to your\nmountain and route.' },
+  { icon:'chart',  title:'LEARNS FROM\nYOUR PROGRESS', body:'Uses your activities\nand training evidence.' },
+  { icon:'compass',title:'GUIDES YOUR\nNEXT MOVE',     body:'Clear, personalised\nrecommendations.' },
 ];
 const READY_POINTS = [
   'Train for your goals', 'Take on epic expeditions', 'Track your progress',
@@ -303,7 +369,8 @@ const PROMO = Object.freeze({
   tools:{ distanceKm:10.4, ascentM:820, duration:'4h 36m' },
 });
 
-[INTENTS, PROGRESSION, READY_POINTS, PRO_FEATURES].forEach(c => { c[ILLUSTRATIVE] = true; });
+[INTENTS, COACH_BENEFITS, READY_POINTS, PRO_FEATURES].forEach(c => { c[ILLUSTRATIVE] = true; });
+COACH_INSIGHT[ILLUSTRATIVE] = true;
 </script>
 
 <script>
@@ -333,6 +400,8 @@ const ICONS = {
   map:   S(`<path d="M3.4 6.6 9 4.4v13L3.4 19.6z"/><path d="M9 4.4l6 2.2v13l-6-2.2M15 6.6l5.6-2.2v13L15 19.6"/>`, 'stroke-width="1.5"'),
   lock:  S(`<rect x="4.4" y="10.4" width="15.2" height="10.2" rx="2.4"/><path d="M8 10.4V7.6a4 4 0 0 1 8 0v2.8"/>`),
   spark: S(`<path d="M12 3.2 13.9 9l5.8 1.9-5.8 1.9L12 18.6l-1.9-5.8L4.3 10.9 10.1 9z"/>`, 'stroke-width="1.5"'),
+  compass:S(`<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2 5.2-2Z"/>`, 'stroke-width="2"'),
+  dots:  `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.4" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="18.6" r="1.9"/></svg>`,
 };
 function icon(n, s) {
   const h = document.createElement('span'); h.innerHTML = ICONS[n] || '';
@@ -374,9 +443,9 @@ function Screen({ subject, scrim, top, body, cta, drift }) {
   return `
     ${Photo(subject, 'absolute inset-0', drift)}
     <div class="absolute inset-0 ${scrim || 'bg-gradient-to-b from-ink/70 via-ink/80 to-ink'}"></div>
-    <div class="relative flex flex-col min-h-[100svh]">
+    <div class="relative flex flex-col h-[100svh]" style="height:100svh">
       <div class="safe-top px-[20px]">${top || ''}</div>
-      <div class="flex-1 min-h-0 overflow-y-auto no-sb px-[20px] pt-[8px] pb-[10px]">${body || ''}</div>
+      <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain no-sb px-[20px] pt-[8px] pb-[10px]">${body || ''}</div>
       <div class="px-[20px] safe-bot">${cta || ''}</div>
     </div>`;
 }
@@ -560,32 +629,152 @@ function ScreenBank() {
             <span class="mt-[8px] text-[11px] leading-[14px] font-semibold text-white/65">${nl(l)}</span>
           </div>`).join('')}
       </div>`,
-    cta:`<div class="mb-[14px]">${Dots(4, 2)}</div>${Primary('Next', 'data-go="progress"')}`,
+    cta:`<div class="mb-[14px]">${Dots(4, 2)}</div>${Primary('Next', 'data-go="coach"')}`,
   });
 }
 
-/* 4 · PROGRESSION — what accumulates. Everything here is earned from real
-   recorded activity; nothing is a point you can buy or grind. */
-function ScreenProgress() {
+/* 4 · THE AI COACH — the interpretation layer, demonstrated.
+
+   ═══ CoachInsight ═══════════════════════════════════════════════════════
+   Built as a REUSABLE COMPONENT, not a flattened picture, because Training
+   Basecamp will render the same thing later. Its parts are separate and each
+   is addressable:
+       · header      — coach identity + mountain context
+       · insight     — what is improving / where the opportunity is
+       · priority    — the planned session to prioritise, with its metrics
+       · projection  — current → projected readiness
+       · action      — the affordance that opens the Coach
+       · disclaimer  — guidance, never a safety guarantee
+   Only the mascot is a raster asset. Everything else is real markup.
+   ════════════════════════════════════════════════════════════════════════ */
+function CoachInsight(o = COACH_INSIGHT, opts = {}) {
+  const f = o.facts, t = o.interpretation;
+  return `<article class="panel rounded-[20px] overflow-hidden border-accent/25
+      bg-gradient-to-br from-accent/[.12] via-[#0a131d]/90 to-[#080d14]/95 backdrop-blur-[6px]"
+      data-coach-insight aria-label="Coach insight for ${esc(f.mountain)}">
+
+    <!-- header · coach identity and the mountain it is talking about -->
+    <header class="px-[13px] pt-[12px] pb-[10px] flex items-start gap-[10px] border-b border-white/[.07]">
+      <span class="relative shrink-0 w-[34px] h-[34px] rounded-full overflow-hidden bg-white/[.08] ring-1 ring-white/15">
+        <img src="${COACH_MASCOT.resting}" alt="" class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[46px] max-w-none">
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="block text-[10px] font-extrabold tracking-[.18em] text-accent">COACH INSIGHT</span>
+        <span class="block mt-[2px] text-[13px] font-bold tracking-[.06em] text-white/85 truncate"
+              data-coach-mountain>${esc(f.mountain).toUpperCase()}</span>
+      </span>
+      ${opts.menu === false ? '' : `<button data-coach-menu aria-label="Coach options"
+        class="shrink-0 grid place-items-center w-[44px] h-[44px] -mr-[9px] -mt-[8px] -mb-[8px] text-white/40 pressable"
+        data-icon="dots" data-size="16"></button>`}
+    </header>
+
+    <div class="px-[13px] pt-[12px] pb-[13px]">
+      <!-- insight · the only part the Coach authors -->
+      <p class="text-[13.5px] leading-[19px] font-semibold text-white/90" data-coach-improving>${esc(t.improving)}</p>
+      <p class="mt-[6px] text-[13px] leading-[19px] text-white/65" data-coach-opportunity>${esc(t.opportunity)}</p>
+
+      <!-- priority · a session the Training Plan already holds -->
+      <div class="mt-[13px] rounded-[14px] bg-white/[.05] border border-white/[.08] p-[11px]" data-coach-priority>
+        <div class="text-[9.5px] font-extrabold tracking-[.16em] text-white/45">
+          ${esc(f.day).toUpperCase()}&rsquo;S PRIORITY</div>
+        <div class="mt-[6px] flex items-center gap-[10px]">
+          <span class="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-[11px] bg-accent/[.18] text-accent"
+                data-icon="peak" data-size="17"></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[14px] font-extrabold truncate" data-coach-session>${esc(f.priority)}</span>
+            <span class="block mt-[2px] text-[11.5px] text-white/55 tabular-nums" data-coach-metrics>
+              ${fmt(f.elevationM)} m · ${esc(f.duration)}</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- projection · both numbers come from Readiness, never from the Coach -->
+      <p class="mt-[12px] text-[11.5px] leading-[16px] text-white/55">
+        Completing it could move your projected readiness:</p>
+      <div class="mt-[9px] flex items-center gap-[11px]" data-coach-projection>
+        <div class="min-w-0 text-center">
+          <div class="text-[clamp(22px,6.6vw,26px)] font-extrabold tabular-nums leading-none text-white/75"
+               data-readiness-current>${f.currentReadiness}<span class="text-[14px]">%</span></div>
+          <div class="mt-[4px] text-[8.5px] font-bold tracking-[.14em] text-white/40">CURRENT</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="relative h-[6px] rounded-full bg-white/[.09] overflow-hidden">
+            <div class="absolute inset-y-0 left-0 rounded-full bg-white/25" style="width:${f.currentReadiness}%"></div>
+            <div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent to-train bar-fill"
+                 style="width:0%" data-bar="${f.projectedReadiness}"></div>
+          </div>
+          <div class="mt-[5px] grid place-items-center text-train" data-icon="arrowR" data-size="13"></div>
+        </div>
+        <div class="min-w-0 text-center">
+          <div class="text-[clamp(22px,6.6vw,26px)] font-extrabold tabular-nums leading-none text-train"
+               data-readiness-projected data-count-to="${f.projectedReadiness}"
+               data-count-from="${f.currentReadiness}">${f.currentReadiness}<span class="text-[14px]">%</span></div>
+          <div class="mt-[4px] text-[8.5px] font-bold tracking-[.14em] text-train/70">PROJECTED</div>
+        </div>
+      </div>
+
+      ${opts.action === false ? '' : `<button data-coach-open
+        class="mt-[13px] w-full h-[44px] rounded-[12px] bg-white/[.09] border border-white/12 pressable
+               text-[12.5px] font-bold flex items-center justify-center gap-[7px]">
+        Ask your coach <span data-icon="chev" data-size="13"></span></button>`}
+
+      <!-- disclaimer · on the card, not in a footnote somewhere else -->
+      <p class="mt-[11px] text-[9.5px] leading-[13px] text-white/38" data-coach-disclaimer>${esc(o.disclaimer)}</p>
+    </div>
+  </article>`;
+}
+
+/* The existing mascot. It is an IMAGE ASSET and stays one — never redrawn,
+   never approximated in CSS or SVG. The animated source plays its wave once
+   and is then swapped for its own final frame, so he settles rather than
+   waving at the user forever. */
+function CoachMascot() {
+  return `<div class="pointer-events-none select-none" data-mascot-wrap>
+    <img id="coachMascot" alt="Your SummitReady AI mountain coach"
+         src="${COACH_MASCOT.resting}" data-animated="${COACH_MASCOT.animated}"
+         data-resting="${COACH_MASCOT.resting}"
+         class="w-full h-auto drop-shadow-[0_18px_34px_rgba(0,0,0,.6)]">
+  </div>`;
+}
+function ScreenCoach() {
   return Screen({
-    subject:'progress',
-    scrim:'bg-gradient-to-b from-ink/88 via-ink/92 to-ink',
-    top:BackSkipBar('data-go="bank"', 'data-skip="progress"'),
+    subject:'coach',
+    scrim:'bg-gradient-to-b from-ink/80 via-ink/88 to-ink',
+    top:BackSkipBar('data-go="bank"', 'data-skip="coach"'),
     body:`
-      <div class="pt-[14px] text-center rise">
-        ${H1('REAL PROGRESS.\nREAL REWARDS.')}
-        ${Lede('Climb more. Achieve more.\nBecome the mountaineer you want to be.')}
+      <div class="pt-[8px] rise">
+        <div class="text-[10.5px] font-extrabold tracking-[.22em] text-accent">YOUR AI MOUNTAIN COACH</div>
+        <h1 class="mt-[8px] text-[clamp(23px,7.2vw,29px)] font-extrabold leading-[1.08] tracking-[-.02em]">
+          TRAINING THAT<br>ADAPTS TO<br><span class="text-accent">YOUR MOUNTAIN.</span></h1>
+        <p class="mt-[9px] text-[clamp(11.5px,3.3vw,13px)] leading-[1.45] text-white/70">
+          Your coach understands your goal, training, activities and readiness &mdash; and helps you focus
+          on what matters next.</p>
       </div>
-      <div class="mt-[20px] grid grid-cols-3 gap-x-[10px] gap-y-[18px] rise" style="animation-delay:.1s">
-        ${PROGRESSION.map((p, i) => `
-          <div class="flex flex-col items-center min-w-0 rise" style="animation-delay:${.12 + i * .05}s">
-            <span class="grid place-items-center w-[58px] h-[64px] hexa bg-gradient-to-b ${p.fill}">
-              <span class="text-white/95" data-icon="${p.icon}" data-size="26"></span></span>
-            <span class="mt-[8px] text-[11px] font-semibold text-center leading-[13px] text-white/72 break-words w-full">${esc(p.label)}</span>
+
+      <!-- The mascot stands lower-left and the Coach Insight overlaps his right
+           side, as approved. Both are sized against the block rather than the
+           viewport, so the composition holds from 320px to 430px instead of
+           collapsing into a stack. -->
+      <div class="relative mt-[12px]" style="container-type:inline-size">
+        <div class="absolute -left-[26px] top-[14%] w-[clamp(112px,51cqw,214px)] z-10 rise"
+             style="animation-delay:.18s">${CoachMascot()}</div>
+        <!-- The offset is a linear ramp, not a flat percentage: a flat 26% left
+             the card at 207px on a 320px phone, which truncated the mountain
+             name and the session it exists to show. This gives the card back
+             ~30px at the narrow end and still clears the mascot at 430px. -->
+        <div class="relative z-20 rise" style="animation-delay:.3s;
+             margin-left:clamp(44px, 55.5cqw - 111px, 118px)">${CoachInsight()}</div>
+      </div>
+
+      <div class="mt-[16px] grid grid-cols-3 gap-[8px] rise" style="animation-delay:.5s">
+        ${COACH_BENEFITS.map((b, i) => `
+          <div class="flex flex-col items-center text-center min-w-0 rise" style="animation-delay:${.54 + i * .07}s">
+            <span class="grid place-items-center w-[40px] h-[40px] rounded-full border border-accent/40
+                         bg-accent/[.12] text-accent" data-icon="${b.icon}" data-size="19"></span>
+            <span class="mt-[9px] text-[clamp(9px,2.7vw,10.5px)] font-extrabold leading-[13px] tracking-[.01em] w-full">${nl(b.title)}</span>
+            <span class="mt-[5px] text-[clamp(8.5px,2.6vw,10px)] leading-[13px] text-white/55 w-full">${nl(b.body)}</span>
           </div>`).join('')}
-      </div>
-      <p class="mt-[20px] text-center text-[11.5px] leading-[16px] text-white/45">
-        Every badge and every rank comes from activity you actually recorded — not points.</p>`,
+      </div>`,
     cta:`<div class="mb-[14px]">${Dots(4, 3)}</div>${Primary('Next', 'data-go="intent"')}`,
   });
 }
@@ -611,7 +800,7 @@ function ScreenIntent() {
   return Screen({
     subject:'intent',
     scrim:'bg-gradient-to-b from-ink/88 via-ink/92 to-ink',
-    top:BackSkipBar('data-go="progress"', 'data-skip="intent"'),
+    top:BackSkipBar('data-go="coach"', 'data-skip="intent"'),
     body:`
       <div class="pt-[14px] text-center rise">
         ${H1('WHAT BRINGS\nYOU HERE?')}
@@ -983,7 +1172,7 @@ function ScreenEnter() {
 
 <script>
 /* ═══════════════════════ FLOW STATE ═══════════════════════ */
-const ONBOARDING_STEPS = ['welcome', 'paths', 'bank', 'progress', 'intent', 'ready'];
+const ONBOARDING_STEPS = ['welcome', 'paths', 'bank', 'coach', 'intent', 'ready'];
 const PRO_STEPS        = ['intro', 'feature0', 'feature1', 'feature2', 'plans', 'confirm'];
 
 const FLOW = {
@@ -999,7 +1188,7 @@ const FLOW = {
   startedAt:Date.now(),
 };
 const SCREENS = {
-  welcome:ScreenWelcome, paths:ScreenPaths, bank:ScreenBank, progress:ScreenProgress,
+  welcome:ScreenWelcome, paths:ScreenPaths, bank:ScreenBank, coach:ScreenCoach,
   intent:ScreenIntent, ready:ScreenReady,
   intro:ProIntro, feature0:() => ProFeature(0), feature1:() => ProFeature(1), feature2:() => ProFeature(2),
   plans:ScreenPlans, confirm:ScreenConfirm, enter:ScreenEnter,
@@ -1023,6 +1212,8 @@ function render() {
     }));
   }
   if (counter) countUp(counter, +counter.dataset.count);
+  playMascot(el);
+  animateReadiness(el);
   window.scrollTo({ top:0, behavior:'auto' });
   /* Announce the new screen without stealing focus onto a control: the stage
      is programmatically focusable but not in the tab order, and never shows a
@@ -1033,6 +1224,41 @@ function render() {
   el.style.outline = 'none';
   el.focus({ preventScroll:true });
 }
+/* The existing wave, once. An animated GIF/WebP loops on its own, so the
+   entrance swaps in the animated source, lets it run its single 2.6s cycle and
+   then restores the final frame — he waves hello and settles, rather than
+   waving indefinitely. Reduced motion never starts it. */
+let mascotTimer;
+function playMascot(root) {
+  const img = root.querySelector('#coachMascot');
+  if (!img) return;
+  clearTimeout(mascotTimer);
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    img.src = img.dataset.resting; return;              /* resting pose only */
+  }
+  /* cache-bust so the animation restarts from frame 0 on every entrance */
+  img.src = img.dataset.animated + '?w=' + Date.now();
+  mascotTimer = setTimeout(() => { img.src = img.dataset.resting; }, COACH_MASCOT.durationMs);
+}
+/* The projection counts from the CURRENT figure to the PROJECTED one, so the
+   movement itself carries the meaning. Both numbers come from Readiness. */
+function animateReadiness(root) {
+  const el = root.querySelector('[data-readiness-projected]');
+  if (!el) return;
+  const from = +el.dataset.countFrom, to = +el.dataset.countTo;
+  const paint = v => { el.innerHTML = `${Math.round(v)}<span class="text-[14px]">%</span>`; };
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { paint(to); return; }
+  paint(from);
+  const t0 = performance.now() + 900, ms = 850;
+  const tick = now => {
+    if (now < t0) return requestAnimationFrame(tick);
+    const p = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - p, 3);
+    paint(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 /* A restrained count — it settles, it does not spin. Reduced motion skips it. */
 function countUp(el, to) {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1138,6 +1364,9 @@ function bind(root) {
   });
   on('[data-tools-tab]', (ev, n) => { FLOW.toolsTab = +n.dataset.toolsTab; render(); });
 
+  on('[data-coach-open]', () => toast('\u2192 Ask your coach \u00b7 existing AI Coach'));
+  on('[data-coach-menu]', () => toast('Coach options \u2014 not in scope for onboarding'));
+
   on('[data-open-pro]', () => { FLOW.entryPoint = 'app'; goStep('intro'); });
   on('[data-restart]', () => window.resetPrototype());
 }
@@ -1166,6 +1395,28 @@ window.setPrototypeTrialEnabled = v => {
 };
 window.__trialConfig = () => trialConfig();
 window.setTier = t => { if (!['free','pro'].includes(t)) return null; FLOW.tier = t; render(); return t; };
+/* Drive the CoachInsight demonstration. Only FACTS can be set from outside,
+   because in production only the engines supply them; the Coach's own
+   interpretation text is set separately and clearly labelled as such. */
+window.setCoachInsight = patch => {
+  if (!patch || typeof patch !== 'object') return null;
+  const NUM = ['currentReadiness', 'projectedReadiness', 'elevationM'];
+  const STR = ['mountain', 'priority', 'duration', 'day'];
+  for (const k of NUM) if (k in patch) {
+    const v = Number(patch[k]);
+    if (!isFinite(v)) return null;
+    COACH_INSIGHT.facts[k] = k === 'elevationM' ? Math.max(0, Math.round(v))
+                                                : Math.max(0, Math.min(100, Math.round(v)));
+  }
+  for (const k of STR) if (k in patch) COACH_INSIGHT.facts[k] = String(patch[k]);
+  for (const k of ['improving', 'opportunity', 'tone'])
+    if (k in patch) COACH_INSIGHT.interpretation[k] = String(patch[k]);
+  if ('disclaimer' in patch) COACH_INSIGHT.disclaimer = String(patch.disclaimer);
+  if (FLOW.step === 'coach') render();
+  return { ...COACH_INSIGHT.facts, ...COACH_INSIGHT.interpretation };
+};
+window.__coachInsight = () => JSON.parse(JSON.stringify(COACH_INSIGHT));
+window.__coachMascot  = () => COACH_MASCOT;
 window.resetPrototype = () => {
   Object.assign(FLOW, { phase:'onboarding', step:'welcome', intent:null, skipped:false,
     proContext:'onboarding', entryPoint:undefined, period:'yearly', plan:null, tier:'free',
