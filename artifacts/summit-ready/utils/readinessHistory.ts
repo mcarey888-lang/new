@@ -1,22 +1,47 @@
 /**
  * Readiness history.
  *
- * The approved Full Readiness design shows how the score has moved. Production
- * stores no such series — but it does not need to, because Readiness 2.0
- * already excludes evidence completed after its `asOf` (`invalid_or_future_timestamp`).
- * Evaluating the SAME engine at a past `asOf` therefore returns what the score
- * genuinely was on that date, from the evidence the user had logged by then.
+ * ── WHAT THIS IS ──────────────────────────────────────────────────────────
+ * RECONSTRUCTED HISTORY, NOT RECORDED HISTORY.
  *
- * That is what this module does, and all it does:
- *   · it picks the dates to sample for a period,
- *   · it asks the caller's `evaluate` for the score at each one,
- *   · it drops any date the engine could not score.
+ * Production stores no readiness time series. This module does not create one
+ * either: it picks dates to sample and asks the caller to evaluate the EXISTING
+ * Readiness 2.0 engine at each of them, with `asOf` set to that past date. The
+ * hook that supplies `evaluate` is `hooks/useReadinessHistory.ts`.
  *
- * It contains NO scoring, no smoothing, no interpolation and no default. If the
- * engine cannot produce at least two real points, this returns null and the
- * screen shows a designed empty state rather than a line. The hook that owns
- * the engine call is `hooks/useReadinessHistory.ts`; keeping the sampling here
- * means it can be tested without the engine at all.
+ * ── WHAT IS HISTORICAL, AND WHAT IS NOT ───────────────────────────────────
+ * Each sample is evaluated against the user's evidence AS IT EXISTS TODAY,
+ * filtered by date. Concretely:
+ *
+ *   HISTORICAL (respects the sample date)
+ *     · Activity inclusion. `evaluateReadiness` rejects evidence whose
+ *       `completedAt` is after its `asOf` (reason `invalid_or_future_timestamp`),
+ *       so an activity logged after the sampled date does not lift that point.
+ *     · Recency weighting, the 180-day cutoff and the rolling and cumulative
+ *       windows, all of which are measured from `asOf`.
+ *
+ *   NOT HISTORICAL (today's value is used at every point)
+ *     · The summit goal and the target demand derived from it. Change the
+ *       objective and every past point is rescored against the NEW target.
+ *     · `plan.plannedSessionCount`, taken from the current training plan.
+ *     · Any later edit to an activity's distance, ascent or duration — the
+ *       corrected figure is used at every date, including dates before the
+ *       correction.
+ *     · Any activity deleted since — it disappears from past points too.
+ *     · Current `gpsQuality` and `syncState` on each piece of evidence.
+ *
+ * So the chart answers "what would the engine say about each of these dates,
+ * given what I know now?" — NOT "what did my score actually read that week?".
+ * It is a faithful reconstruction from logged evidence and it moves for real
+ * reasons, but it is not an audit trail and must not be described as one. A
+ * recorded history would require persisting each evaluation at the time it was
+ * made; that is a product decision, not a presentation one.
+ *
+ * ── WHAT THIS MODULE ITSELF DOES ──────────────────────────────────────────
+ * It picks sample dates, asks `evaluate` for each, and drops any date the
+ * engine could not score. No scoring, no smoothing, no interpolation, no
+ * default. Fewer than two real points returns null and the screen shows a
+ * designed empty state rather than a line.
  */
 
 export type HistoryPeriod = "4W" | "3M" | "1Y" | "ALL";

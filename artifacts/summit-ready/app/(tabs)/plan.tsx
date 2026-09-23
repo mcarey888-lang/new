@@ -1582,6 +1582,7 @@ export default function PlanScreen() {
           onImageError={() => setHeroImageError(true)}
           minHeight={252}
           dim={0.95}
+          style={{ justifyContent: "space-between" }}
         >
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
             <SRScreenHeader

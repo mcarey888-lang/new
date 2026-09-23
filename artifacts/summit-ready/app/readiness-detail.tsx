@@ -133,6 +133,7 @@ export default function ReadinessDetailScreen() {
           onImageError={() => setHeroFailed(true)}
           minHeight={352}
           dim={0.94}
+          style={{ justifyContent: "space-between" }}
         >
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
             <SRScreenHeader

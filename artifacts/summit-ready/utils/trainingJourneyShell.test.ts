@@ -22,9 +22,10 @@ const PLAN = "app/(tabs)/plan.tsx";
 const SESSION = "app/session-detail.tsx";
 const TRACKING = "app/hike-tracking.tsx";
 const ACTIVITY = "app/hike-detail.tsx";
+const COMPLETE = "components/track/ActivityCompleteView.tsx";
 
 describe("the rebuilt screens share one design system", () => {
-  for (const rel of [READINESS, PLAN, SESSION, TRACKING, ACTIVITY]) {
+  for (const rel of [READINESS, PLAN, SESSION, COMPLETE, ACTIVITY]) {
     it(`${rel} composes from the shared primitives`, () => {
       expect(read(rel)).toMatch(/from "@\/components\/ui"/);
     });
@@ -49,7 +50,7 @@ describe("the rebuilt screens share one design system", () => {
   });
 
   it("the old Activity Complete presentation is gone", () => {
-    const body = code(read(TRACKING));
+    const body = code(read(TRACKING) + read(COMPLETE));
     for (const gone of ["summaryContainer", "summaryGrid", "summaryCellValue", "saveBtnGrad", "consequenceCard"]) {
       expect(body).not.toMatch(new RegExp(`\\b${gone}\\b`));
     }
@@ -159,30 +160,71 @@ describe("Training Session keeps its behaviour", () => {
 });
 
 describe("Activity Complete tells the truth about consequences", () => {
-  const src = read(TRACKING);
+  const view = read(COMPLETE);
+  const screen = read(TRACKING);
 
   it("keeps every consequence row the owning systems supply", () => {
     for (const id of [
       "completion-elevation-bank", "completion-readiness", "completion-training",
       "completion-expedition", "completion-challenge-achievement", "completion-offline",
     ]) {
-      expect(src).toContain(`testID="${id}"`);
+      expect(view).toContain(`testID="${id}"`);
+    }
+  });
+
+  /* The point of the whole screen: every consequence is the presentation's. */
+  it("reads every consequence from CompletionPresentation and nothing else", () => {
+    const body = code(view);
+    for (const field of [
+      "completionPresentation.elevationBank", "completionPresentation.training",
+      "completionPresentation.expedition", "completionPresentation.challengeAchievement",
+      "completionPresentation.sync", "completionPresentation.title",
+    ]) {
+      expect(body).toContain(field);
+    }
+  });
+
+  it("owns no data source of its own", () => {
+    const body = code(view);
+    /* no queries, no engines, no storage, no network — it is handed the
+       presentation and renders it */
+    for (const forbidden of [
+      "useGetElevationBank", "evaluateReadiness", "useReadinessV2", "useApp",
+      "AsyncStorage", "fetch(", "Location", "syncOutbox", "Crypto",
+    ]) {
+      expect(body).not.toContain(forbidden);
     }
   });
 
   it("never claims a readiness increase at the moment of finishing", () => {
-    expect(src).toMatch(/processing: true/);
-    const body = code(src);
+    expect(view).toMatch(/processing: true/);
+    const body = code(view);
     expect(body).not.toMatch(/readinessDelta|readinessGain|\+\d+\s*readiness/i);
   });
 
-  it("saves through the existing handler and creates no second activity", () => {
-    expect(src).toMatch(/onPress=\{handleSave\}/);
-    expect(src).toMatch(/ACTIVITY_DETAILS_COPY\.cta/);
+  it("saves and discards through the screen's own handlers", () => {
+    expect(view).toMatch(/onPress=\{onSave\}/);
+    expect(view).toMatch(/onPress=\{onDiscard\}/);
+    expect(view).toMatch(/ACTIVITY_DETAILS_COPY\.cta/);
+    /* the screen still owns the save path and the canonical activity */
+    expect(screen).toMatch(/onSave=\{handleSave\}/);
   });
 
   it("keeps the add-to-plan toggle", () => {
-    expect(src).toMatch(/setAddToPlan\(v => !v\)/);
+    expect(view).toMatch(/setAddToPlan\(v => !v\)/);
+  });
+
+  it("groups large metre figures so a lifetime total stays readable", () => {
+    /* rendering showed "Lifetime 1284500 m" before this */
+    expect(read(TRACKING)).toMatch(/Math\.round\(m\)\.toLocaleString\(\) } m|Math\.round\(m\)\.toLocaleString\(\)\} m/);
+  });
+
+  it("is the screen's only finished-state presentation", () => {
+    expect(screen).toMatch(/<ActivityCompleteView/);
+    const body = code(screen);
+    for (const gone of ["doneHead", "rewardValue", "consequenceRow", "planToggleRow"]) {
+      expect(body).not.toMatch(new RegExp(`\\b${gone}\\b`));
+    }
   });
 });
 
