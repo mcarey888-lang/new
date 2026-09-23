@@ -174,8 +174,8 @@ export function SRReadinessGauge({
           <>
             {/* No figure and no READY word: "PRO READY" would read as a
                 status the user has achieved. The lock is the whole message. */}
-            <Lock size={Math.round(size * 0.19)} color={ringTone} />
-            <Text style={[styles.lockedLabel, { color: ringTone }]} numberOfLines={1}>{lockedLabel}</Text>
+            <Lock size={Math.round(size * 0.19)} color={arcTone} />
+            <Text style={[styles.lockedLabel, { color: arcTone }]} numberOfLines={1}>{lockedLabel}</Text>
           </>
         ) : (
           <>
