@@ -1,3 +1,14 @@
+/**
+ * Basecamp's compact view of the expedition Progress Mountain.
+ *
+ * ⚠ The mountain itself is PROTECTED. `MountainProgress` and its summit
+ * behaviour are unchanged — this file only supplies the surface around it,
+ * so the premium shell integrates the existing production component rather
+ * than replacing it.
+ *
+ * The reduced-motion path is not a lesser version: it states the same
+ * progress and the same stage statuses without animating anything.
+ */
 import React, { useMemo } from "react";
 import { View, StyleSheet, TouchableOpacity, Dimensions, Text } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
@@ -5,6 +16,7 @@ import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import MountainProgress from "@/components/MountainProgress";
 import { T } from "@/constants/theme";
+import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import type { ExpeditionPresentationState } from "@/utils/expeditionProgress";
 
 interface Props {
@@ -43,15 +55,19 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
       style={styles.container}
     >
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerText}>
+          {/* Simulated, and labelled as such. This is what the expedition
+              credits towards the objective, not an altitude you stood at. */}
           <Text style={styles.label}>SIMULATED PROGRESS</Text>
-          <Text style={styles.title}>
-            {Math.round(progress.currentSimulatedElevationM).toLocaleString()}m / {Math.round(progress.targetSimulatedElevationM).toLocaleString()}m ({Math.round(progress.simulatedPercent * 100)}%)
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+            {`${Math.round(progress.currentSimulatedElevationM).toLocaleString()} m / ${Math.round(progress.targetSimulatedElevationM).toLocaleString()} m`}
           </Text>
         </View>
         <View style={styles.viewProgressBtn}>
-          <Text style={styles.viewProgressText}>View</Text>
-          <ChevronRight size={14} color={T.blue} />
+          <Text style={styles.viewProgressText}>
+            {`${Math.round(progress.simulatedPercent * 100)}%`}
+          </Text>
+          <ChevronRight size={13} color={EXPLORE.accent} />
         </View>
       </View>
 
@@ -89,48 +105,53 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 14,
+    marginHorizontal: BASECAMP.gutter,
     borderRadius: 18,
-    backgroundColor: "#080F20",
+    backgroundColor: BASECAMP.ink,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: BASECAMP.panelBorder,
     overflow: "hidden",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    gap: SP.sm,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 11,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.04)",
+    borderBottomColor: BASECAMP.hairline,
   },
+  headerText: { flex: 1, minWidth: 0 },
   label: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.45)",
-    letterSpacing: 0.8,
+    ...TYPE.eyebrow,
+    fontSize: 9.5,
+    color: BASECAMP.textDim,
     marginBottom: 4,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 21,
     fontFamily: "Inter_700Bold",
-    color: "#fff",
+    color: BASECAMP.text,
   },
   viewProgressBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(74,159,245,0.12)",
+    backgroundColor: EXPLORE.accentDim,
+    borderWidth: 1,
+    borderColor: EXPLORE.accentLine,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 2,
+    minHeight: 30,
+    borderRadius: 999,
+    gap: 3,
+    flexShrink: 0,
   },
   viewProgressText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: T.blue,
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: EXPLORE.accent,
   },
   mountain: {
     flex: 1,
@@ -150,7 +171,7 @@ const styles = StyleSheet.create({
   },
   fallbackFill: {
     height: "100%",
-    backgroundColor: T.green,
+    backgroundColor: EXPLORE.accent,
   },
   fallbackStages: {
     gap: 8,

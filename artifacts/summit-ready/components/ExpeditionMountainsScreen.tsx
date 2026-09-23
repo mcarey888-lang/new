@@ -12,7 +12,7 @@ import {
   Mountain, Search, MapPin, ChevronRight, Lock,
   ArrowLeft, RefreshCw, CheckCircle, Plus, Compass,
   ChevronDown, ChevronUp, Info, AlertTriangle, Star,
-  SlidersHorizontal, LayoutGrid, LayoutList, Globe, Clock,
+  SlidersHorizontal, LayoutGrid, LayoutList, Globe, Clock, Play,
 } from "lucide-react-native";
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { Image as ExpoImage } from "expo-image";
@@ -38,6 +38,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
+import { SREyebrow, SRPanel, SRSectionHeader, SRStatusPill } from "@/components/ui";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
 import { ChallengeDetailSheet, stripSuffix } from "@/components/ChallengeDetailSheet";
@@ -2057,23 +2059,23 @@ export default function ExpeditionMountainsScreen() {
       {mountainChooser}
       <ScrollView ref={browseScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
-        {/* ── Page header ─────────────────────────────────────────────────── */}
-        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-          <ExpoImage source={require("@/assets/images/logo.gif")} style={{ width: 140, height: 56, alignSelf: "center" }} contentFit="contain" />
-          {/* Title row */}
-          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 4 }}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={s.heroTitle}>Explore</Text>
-              <Text style={s.heroSub}>Explore signature expeditions or create{"\n"}your own adventure.</Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
-              <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
-                <Search size={15} color={T.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
-                <SlidersHorizontal size={15} color={T.textMuted} />
-              </TouchableOpacity>
-            </View>
+        {/* ── Library hero ──────────────────────────────────────────────────
+            The approved Expeditions presentation: what an expedition IS,
+            stated once, over the objective artwork. The count is the real
+            number of bundles this build ships, not a marketing figure. */}
+        <Animated.View entering={FadeIn.duration(400)} style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: 14 }}>
+          <SREyebrow tone={EXPLORE.accent}>EXPEDITIONS</SREyebrow>
+          <Text style={s.libraryTitle} numberOfLines={2}>Take on a real objective</Text>
+          <Text style={s.librarySub}>
+            Climb a legendary mountain using the real hills and routes around you.
+            Every stage you complete moves you higher.
+          </Text>
+          <View style={s.libraryChips}>
+            <SRStatusPill
+              label={`${VIRTUAL_BUNDLES.length} expeditions`}
+              tone={EXPLORE.accent}
+            />
+            <SRStatusPill label="Custom builder" tone={BASECAMP.textMuted} />
           </View>
         </Animated.View>
 
@@ -2103,41 +2105,55 @@ export default function ExpeditionMountainsScreen() {
           })}
         </ScrollView>
 
-        {/* ── Active goal banner ───────────────────────────────────────────── */}
+        {/* ── Your expedition ──────────────────────────────────────────────
+            The one already under way gets its own surface at the top: this
+            screen's job for that expedition is to hand you back to Basecamp,
+            not to sell it to you again. */}
         {isExpeditionActive && activeExpedition?.targetMountain && (
-          <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: 16, marginBottom: 14 }}>
-            <TouchableOpacity onPress={() => setView("progress")} activeOpacity={0.85} style={s.activeGoalBanner}>
-              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.activeGoalLabel}>ACTIVE GOAL</Text>
-                <Text style={s.activeGoalName}>{activeExpedition.challengeName}</Text>
-                <Text style={s.activeGoalSub}>{activeExpedition.location}</Text>
-                {activeExpedition.virtualHikeProgress.hikesLogged > 0 && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-                    <CheckCircle size={11} color={T.green} />
-                    <Text style={{ fontSize: 11, color: T.green, fontFamily: "Inter_500Medium" }}>
-                      {activeExpedition.virtualHikeProgress.hikesLogged}{" "}
-                      {activeExpedition.virtualHikeProgress.hikesLogged === 1 ? "hike" : "hikes"} logged
+          <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: 16 }}>
+            <SRSectionHeader title="Your expedition" />
+            <SRPanel
+              radius={17}
+              onPress={() => router.push("/(expedition)/base-camp" as any)}
+              accessibilityLabel={`Continue ${activeExpedition.challengeName ?? "your expedition"}`}
+              accessibilityHint="Opens Expedition Basecamp"
+              style={{ marginTop: 9 }}
+            >
+              <View style={s.continueBody}>
+                <View style={s.continueTop}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.continueName} numberOfLines={2}>
+                      {activeExpedition.challengeName ?? activeExpedition.targetMountain.name}
                     </Text>
+                    {activeExpedition.location ? (
+                      <Text style={s.continueSub} numberOfLines={1}>{activeExpedition.location}</Text>
+                    ) : null}
+                    {activeExpedition.virtualHikeProgress.hikesLogged > 0 ? (
+                      <View style={s.continueLogged}>
+                        <CheckCircle size={11} color={EXPLORE.verified} />
+                        <Text style={s.continueLoggedText}>
+                          {`${activeExpedition.virtualHikeProgress.hikesLogged} ${activeExpedition.virtualHikeProgress.hikesLogged === 1 ? "hike" : "hikes"} logged`}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                )}
+                  {activeExpedition.simulationScore != null ? (
+                    <View style={s.continueScore}>
+                      <Text style={[s.continueScoreValue, { color: scoreColor(activeExpedition.simulationScore) }]}>
+                        {activeExpedition.simulationScore}
+                      </Text>
+                      <Text style={s.continueScoreLabel}>MATCH</Text>
+                    </View>
+                  ) : (
+                    <ChevronRight size={18} color={EXPLORE.accent} />
+                  )}
+                </View>
+                <View style={s.continueCta}>
+                  <Play size={13} color={EXPLORE.accentInk} fill={EXPLORE.accentInk} />
+                  <Text style={s.continueCtaText}>Continue expedition</Text>
+                </View>
               </View>
-              <View style={{ alignItems: "center", gap: 2 }}>
-                {activeExpedition.simulationScore != null ? (
-                  <View style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: scoreColor(activeExpedition.simulationScore) }}>
-                      {activeExpedition.simulationScore}
-                    </Text>
-                    <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 }}>
-                      MATCH
-                    </Text>
-                  </View>
-                ) : (
-                  <ChevronRight size={18} color={T.blue} />
-                )}
-                {activeExpedition.simulationScore != null && <ChevronRight size={12} color={T.blue} />}
-              </View>
-            </TouchableOpacity>
+            </SRPanel>
           </Animated.View>
         )}
 
@@ -2558,6 +2574,26 @@ function HillStat({ value, label }: { value: string; label: string }) {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  libraryTitle: { marginTop: 6, ...TYPE.hero, fontSize: 27, lineHeight: 30, color: BASECAMP.text },
+  librarySub: { marginTop: 6, ...TYPE.small, fontSize: 12.5, lineHeight: 17, color: BASECAMP.textMuted },
+  libraryChips: { marginTop: 11, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+
+  continueBody: { padding: 13 },
+  continueTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  continueName: { ...TYPE.title, fontSize: 18, lineHeight: 22, color: BASECAMP.text },
+  continueSub: { marginTop: 2, ...TYPE.caption, fontSize: 11, color: BASECAMP.textDim },
+  continueLogged: { marginTop: 4, flexDirection: "row", alignItems: "center", gap: 4 },
+  continueLoggedText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: EXPLORE.verified },
+  continueScore: { alignItems: "center", flexShrink: 0 },
+  continueScoreValue: { fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold" },
+  continueScoreLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: BASECAMP.textDim, letterSpacing: 0.6 },
+  continueCta: {
+    marginTop: 12, minHeight: 42, borderRadius: 12,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    backgroundColor: EXPLORE.accent,
+  },
+  continueCtaText: { ...TYPE.bodyBold, fontSize: 13, color: EXPLORE.accentInk },
+
   choiceCard: { flex: 1, minHeight: 132, borderWidth: 1, borderRadius: 14, backgroundColor: "rgba(20,34,54,0.9)", padding: 13, gap: 7 },
   choiceTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 17 },
   choiceCopy: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },

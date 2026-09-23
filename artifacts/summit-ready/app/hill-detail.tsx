@@ -20,6 +20,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { useApp, type NearbyHill } from "@/context/AppContext";
+import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
+import { SRHeroFrame, SRScreenHeader } from "@/components/ui";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -258,64 +260,50 @@ export default function HillDetailScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero image */}
-        <View style={styles.heroContainer}>
-          {heroImageUri ? (
-            <ImageBackground
-              source={{ uri: heroImageUri }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              onError={() => setImageError(true)}
-            >
-              <LinearGradient
-                colors={["rgba(0,0,0,0.55)", "transparent"]}
-                style={[StyleSheet.absoluteFill, { height: "50%" }]}
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(6,13,27,0.9)", T.bg]}
-                style={[StyleSheet.absoluteFill, { top: "40%" }]}
-              />
-            </ImageBackground>
-          ) : (
-            <LinearGradient colors={["#1C3A2A", "#0F1E14", T.bg]} style={styles.heroImage}>
-              <Text style={[styles.fallbackEmoji, { marginTop: topInset + 40 }]}>
-                {emoji ?? "⛰️"}
-              </Text>
-            </LinearGradient>
-          )}
-
-          {/* Back button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.backBtn, { top: topInset + 12 }]}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={18} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Hill name overlay */}
-          <View style={[styles.heroOverlay, { paddingBottom: 20 }]}>
-            <View style={styles.heroMeta}>
-              <View style={[styles.gradeBadge, { backgroundColor: gradeColor + "25" }]}>
-                <Text style={[styles.gradeText, { color: gradeColor }]}>{grade}</Text>
-              </View>
-              {elevation && (
-                <View style={styles.elevBadge}>
-                  <TrendingUp size={11} color={T.orange} />
-                  <Text style={styles.elevText}>{elevation}m per climb</Text>
-                </View>
-              )}
-              {distance && (
-                <View style={styles.elevBadge}>
-                  <MapPin size={11} color={T.green} />
-                  <Text style={styles.elevText}>{Number.isFinite(Number(distance)) ? Number(distance).toFixed(1) : distance}km away</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.heroName}>{name}</Text>
-            {surface && <Text style={styles.heroSurface}>{surface}</Text>}
+        {/* ── Hero ──────────────────────────────────────────────────────────
+            The stage's own mountain photograph, through the existing
+            mountain-image service with its canonical identities attached, so
+            the picture is of THIS route and not a lookalike. A failure falls
+            through to the designed gradient. */}
+        <SRHeroFrame
+          uri={heroImageUri}
+          onImageError={() => setImageError(true)}
+          minHeight={300}
+          dim={0.95}
+          style={{ justifyContent: "space-between" }}
+        >
+          <View style={{ paddingTop: topInset + 8 }}>
+            <SRScreenHeader title="" onBack={() => router.back()} />
           </View>
-        </View>
+
+          <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
+            <View style={styles.heroMeta}>
+              {grade ? (
+                <View style={[styles.gradeBadge, { backgroundColor: gradeColor + "25" }]}>
+                  <Text style={[styles.gradeText, { color: gradeColor }]}>{grade}</Text>
+                </View>
+              ) : null}
+              {elevation ? (
+                <View style={styles.elevBadge}>
+                  <TrendingUp size={11} color={EXPLORE.accent} />
+                  <Text style={styles.elevText}>{`${elevation} m per climb`}</Text>
+                </View>
+              ) : null}
+              {distance ? (
+                <View style={styles.elevBadge}>
+                  <MapPin size={11} color={EXPLORE.verified} />
+                  <Text style={styles.elevText}>
+                    {`${Number.isFinite(Number(distance)) ? Number(distance).toFixed(1) : distance} km away`}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={styles.heroName} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.62}>
+              {name}
+            </Text>
+            {surface ? <Text style={styles.heroSurface} numberOfLines={2}>{surface}</Text> : null}
+          </View>
+        </SRHeroFrame>
 
         <View style={styles.body}>
           {/* Quick map actions */}
@@ -496,7 +484,7 @@ export default function HillDetailScreen() {
               })
             }
           >
-            <PlusCircle size={17} color={T.green} />
+            <PlusCircle size={16} color={BASECAMP.textMuted} />
             <Text style={styles.manualLogText}>Log manually</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -544,13 +532,13 @@ export default function HillDetailScreen() {
             }}
           >
             <LinearGradient
-              colors={[T.green, "#2AB860"]}
+              colors={[EXPLORE.accent, "#0E63C8"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.expeditionStartGrad}
             >
-              <Play size={16} color="#fff" fill="#fff" />
-              <Text style={styles.expeditionStartText}>Start Stage</Text>
+              <Play size={15} color={EXPLORE.accentInk} fill={EXPLORE.accentInk} />
+              <Text style={styles.expeditionStartText}>Start stage</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -709,20 +697,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
   },
   elevText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  heroName: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-    lineHeight: 32,
-  },
-  heroSurface: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.65)",
-  },
+  /* The scrim already carries the contrast, so the title no longer needs a
+     text shadow to be readable — the shadow was fighting the hero treatment. */
+  heroName: { ...TYPE.hero, fontSize: 32, lineHeight: 35, color: BASECAMP.text },
+  heroSurface: { marginTop: 4, ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted },
 
   body: { paddingHorizontal: 18, paddingTop: 16, gap: 4 },
 
@@ -1038,50 +1016,40 @@ const styles = StyleSheet.create({
   },
 
   // ── Expedition mode sticky CTA ─────────────────────────────────────────────
+  /* Stage actions: the same sticky bar the rest of the app uses, so Start
+     Stage reads identically to Start Route on a mountain page. */
   expeditionCtaBar: {
     position:        "absolute",
     bottom:          0,
     left:            0,
     right:           0,
-    paddingHorizontal: 18,
+    paddingHorizontal: BASECAMP.gutter,
     paddingTop:      12,
-    backgroundColor: T.bg,
+    backgroundColor: BASECAMP.navGlass,
     borderTopWidth:  1,
-    borderTopColor:  T.border,
+    borderTopColor:  BASECAMP.navBorder,
   },
-  expeditionStartBtn: {
-    borderRadius:  16,
-    overflow:      "hidden",
-  },
+  expeditionStartBtn: { borderRadius: 14, overflow: "hidden" },
   manualLogBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 12,
+    minHeight: 46,
     marginBottom: 8,
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
-    borderColor: T.green + "70",
-    backgroundColor: T.greenDim,
+    borderColor: BASECAMP.panelSubBorder,
+    backgroundColor: BASECAMP.panelSub,
   },
-  manualLogText: {
-    color: T.green,
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
+  manualLogText: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.textStrong },
   expeditionStartGrad: {
     flexDirection:  "row",
     alignItems:     "center",
     justifyContent: "center",
-    gap:             10,
-    paddingVertical: 16,
-    borderRadius:    16,
+    gap:             9,
+    minHeight:       50,
+    borderRadius:    14,
   },
-  expeditionStartText: {
-    fontSize:   17,
-    fontFamily: "Inter_700Bold",
-    color:      "#fff",
-    letterSpacing: 0.2,
-  },
+  expeditionStartText: { ...TYPE.bodyBold, fontSize: 15, color: EXPLORE.accentInk },
 });
