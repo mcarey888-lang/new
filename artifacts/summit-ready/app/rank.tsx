@@ -7,6 +7,8 @@ import { ArrowLeft, CheckCircle2, Lock, Mountain } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { T } from "@/constants/theme";
+import { BASECAMP, SP, TYPE } from "@/constants/tokens";
+import { SREyebrow, SRScreenHeader } from "@/components/ui";
 import { RANKS } from "@/utils/rankDomain";
 import { evaluateRank } from "@/utils/rankEvaluator";
 import { readDevRankEvidence } from "@/utils/devProfiles";
@@ -26,7 +28,7 @@ export default function RankJourneyScreen() {
   ) as Record<RankSignal, RankSignalAvailability>;
   const result = evaluateRank({ ownerUserId: "dev-fixture-owner", evidence, signalAvailability: availability });
   return (
-    <LinearGradient colors={T.bgGrad} style={styles.screen}>
+    <View style={styles.screen}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -34,15 +36,8 @@ export default function RankJourneyScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.back}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <ArrowLeft size={19} color={T.text} />
-        </TouchableOpacity>
-        <Text style={styles.eyebrow}>SUMMITREADY RANK</Text>
+        <SRScreenHeader title="" onBack={() => router.back()} style={styles.back} />
+        <SREyebrow tone={BASECAMP.accent}>SUMMITREADY RANK</SREyebrow>
         <Text style={styles.title}>Your mountain journey</Text>
         <Text style={styles.intro}>
           Rank reflects sustained, verified outdoor progression. It is not a professional
@@ -59,7 +54,7 @@ export default function RankJourneyScreen() {
             <View key={rank.rank} style={styles.rankRow}>
               <View style={styles.rail}>
                 <View style={styles.marker}>
-                  {achieved ? <Mountain size={16} color={T.green} /> : <Lock size={14} color={T.textDim} />}
+                  {achieved ? <Mountain size={16} color={BASECAMP.accent} /> : <Lock size={14} color={BASECAMP.textDim} />}
                 </View>
                 {index < RANKS.length - 1 && <View style={styles.line} />}
               </View>
@@ -91,39 +86,42 @@ export default function RankJourneyScreen() {
           </Text>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  content: { paddingHorizontal: 18 },
-  back: {
-    width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center",
-    marginBottom: 22, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
-  },
-  eyebrow: { fontSize: 10, letterSpacing: 1.5, fontFamily: "Inter_700Bold", color: T.green, marginBottom: 8 },
-  title: { fontSize: 30, lineHeight: 35, fontFamily: "Inter_700Bold", color: T.white },
-  intro: { marginTop: 10, fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular", color: T.textMuted },
+  screen: { flex: 1, backgroundColor: BASECAMP.ink },
+  content: { paddingHorizontal: BASECAMP.gutter },
+  back: { marginBottom: SP.lg, marginHorizontal: -BASECAMP.gutter },
+  title: { marginTop: 6, ...TYPE.hero, fontSize: 29, lineHeight: 33, color: BASECAMP.text },
+  intro: { marginTop: 10, ...TYPE.small, fontSize: 13, lineHeight: 20, color: BASECAMP.textMuted },
   ladder: { marginTop: 28 },
   rankRow: { flexDirection: "row", gap: 13 },
   rail: { width: 34, alignItems: "center" },
   marker: {
     width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center",
-    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
-  line: { width: 1, flex: 1, minHeight: 70, backgroundColor: T.border },
+  line: { width: 1, flex: 1, minHeight: 70, backgroundColor: BASECAMP.hairline },
   rankCard: {
     flex: 1, marginBottom: 18, padding: 14, borderRadius: 16,
-    backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   rankHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  rankName: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },
+  rankName: { ...TYPE.title, fontSize: 18, lineHeight: 22, color: BASECAMP.text },
   identity: { marginTop: 6, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
   requirementSummary: { marginTop: 10, fontSize: 11, lineHeight: 17, fontFamily: "Inter_500Medium", color: T.textDim },
-  statusPill: { flexDirection: "row", gap: 5, alignItems: "center", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: T.greenDim },
-  statusText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
-  notice: { marginTop: 4, padding: 15, borderRadius: 16, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "35" },
+  statusPill: {
+    flexDirection: "row", gap: 5, alignItems: "center",
+    paddingHorizontal: 9, minHeight: 24, borderRadius: 999,
+    backgroundColor: BASECAMP.accentDim, borderWidth: 1, borderColor: BASECAMP.accentLine,
+  },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: BASECAMP.accent, letterSpacing: 0.6 },
+  notice: {
+    marginTop: 4, padding: 15, borderRadius: 16,
+    backgroundColor: BASECAMP.accentDim, borderWidth: 1, borderColor: BASECAMP.accentLine,
+  },
   noticeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   noticeBody: { marginTop: 5, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
 });

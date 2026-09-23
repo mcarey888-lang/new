@@ -13,12 +13,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
 import { T } from "@/constants/theme";
+import { BASECAMP, SP, TYPE } from "@/constants/tokens";
+import { SREyebrow, SRScreenHeader } from "@/components/ui";
 
 export default function ElevationHistoryScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient colors={T.bgGrad} style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -29,15 +31,13 @@ export default function ElevationHistoryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
+        <SRScreenHeader
+          title=""
+          onBack={() => router.back()}
           style={styles.back}
-          testID="elevation-history-back"
-        >
-          <ArrowLeft size={18} color={T.textMuted} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.eyebrow}>PRIVATE ACTIVITY RECORD</Text>
+          backTestID="elevation-history-back"
+        />
+        <SREyebrow tone={BASECAMP.accent}>PRIVATE ACTIVITY RECORD</SREyebrow>
         <Text style={styles.title}>Elevation History</Text>
         <Text style={styles.subtitle}>
           One physical activity, one effective personal credit. Corrections
@@ -47,7 +47,7 @@ export default function ElevationHistoryScreen() {
         <ElevationBankCard expanded emphasis />
 
         <View style={styles.note}>
-          <Info size={16} color={T.blue} />
+          <Info size={16} color={BASECAMP.accent} />
           <Text style={styles.noteText}>
             Only qualified recorded outdoor ascent appears in this ledger.
             Manual, indoor, and unavailable or untrusted evidence remain in
@@ -56,18 +56,19 @@ export default function ElevationHistoryScreen() {
           </Text>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { paddingHorizontal: 16 },
-  back: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 28, alignSelf: "flex-start" },
-  backText: { color: T.textMuted, fontSize: 13, fontFamily: "Inter_500Medium" },
-  eyebrow: { color: T.green, fontSize: 10, letterSpacing: 1.2, fontFamily: "Inter_700Bold" },
-  title: { color: T.text, fontSize: 30, lineHeight: 36, fontFamily: "Inter_700Bold", marginTop: 4 },
-  subtitle: { color: T.textMuted, fontSize: 13, lineHeight: 19, fontFamily: "Inter_400Regular", marginTop: 8, marginBottom: 22 },
-  note: { flexDirection: "row", gap: 10, padding: 14, borderRadius: 14, backgroundColor: T.blueDim, borderWidth: 1, borderColor: T.blue + "30" },
-  noteText: { flex: 1, color: T.textMuted, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
+  container: { flex: 1, backgroundColor: BASECAMP.ink },
+  content: { paddingHorizontal: BASECAMP.gutter },
+  back: { marginBottom: SP.lg, marginHorizontal: -BASECAMP.gutter },
+  title: { marginTop: 5, ...TYPE.hero, fontSize: 29, lineHeight: 33, color: BASECAMP.text },
+  subtitle: { marginTop: 8, marginBottom: 20, ...TYPE.small, fontSize: 13, lineHeight: 19, color: BASECAMP.textMuted },
+  note: {
+    marginTop: SP.lg, flexDirection: "row", gap: 10, padding: 14, borderRadius: 14,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  },
+  noteText: { flex: 1, ...TYPE.caption, fontSize: 12, lineHeight: 18, color: BASECAMP.textMuted },
 });

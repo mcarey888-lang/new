@@ -152,7 +152,7 @@ export function SRFactDivider() {
    Back, a centred tracked-out title with an optional subtitle, and one
    optional action. Used by every pushed screen so they share one header. */
 export function SRScreenHeader({
-  title, subtitle, onBack, right, style, transparent = true,
+  title, subtitle, onBack, right, style, transparent = true, backTestID,
 }: {
   title: string;
   subtitle?: string | null;
@@ -160,6 +160,8 @@ export function SRScreenHeader({
   right?: React.ReactNode;
   style?: ViewStyle;
   transparent?: boolean;
+  /** Keeps an existing test hook working when a screen adopts this header. */
+  backTestID?: string;
 }) {
   return (
     <View style={[styles.screenHeader, !transparent && { backgroundColor: BASECAMP.ink }, style]}>
@@ -170,6 +172,7 @@ export function SRScreenHeader({
           style={styles.headerSide}
           accessibilityRole="button"
           accessibilityLabel="Back"
+          testID={backTestID}
         >
           <ChevronLeft size={22} color={BASECAMP.text} />
         </TouchableOpacity>
@@ -333,7 +336,11 @@ export function SRSegmented<TValue extends string>({
 }
 
 /* ── SRUnderlineTabs ───────────────────────────────────────────────────────
-   Full-width tabs with an accent underline, as the Training Plan uses. */
+   Full-width tabs with an accent underline, as the Training Plan uses.
+
+   Past four tabs the row scrolls instead of squeezing: at 320pt, five equal
+   columns truncate a word like "Achievements" to "Achie…", and a tab whose
+   label you cannot read is not a tab. */
 export function SRUnderlineTabs<TValue extends string>({
   options, value, onChange, style,
 }: {
@@ -342,25 +349,46 @@ export function SRUnderlineTabs<TValue extends string>({
   onChange: (v: TValue) => void;
   style?: ViewStyle;
 }) {
+  const scroll = options.length > 4;
+
+  const items = options.map(o => {
+    const on = o.value === value;
+    return (
+      <TouchableOpacity
+        key={o.value}
+        onPress={() => onChange(o.value)}
+        style={[styles.tab, scroll && styles.tabAuto]}
+        activeOpacity={0.8}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: on }}
+        accessibilityLabel={o.label}
+      >
+        <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{o.label}</Text>
+        <View style={[styles.tabRule, on && { backgroundColor: BASECAMP.accent }]} />
+      </TouchableOpacity>
+    );
+  });
+
+  /* The rule belongs to the row, not to the scroller, so it still spans the
+     screen when the tabs are scrolled part-way. */
+  if (!scroll) {
+    return (
+      <View style={[styles.tabsRow, style]} accessibilityRole="tablist">{items}</View>
+    );
+  }
   return (
-    <View style={[styles.tabsRow, style]} accessibilityRole="tablist">
-      {options.map(o => {
-        const on = o.value === value;
-        return (
-          <TouchableOpacity
-            key={o.value}
-            onPress={() => onChange(o.value)}
-            style={styles.tab}
-            activeOpacity={0.8}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={o.label}
-          >
-            <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{o.label}</Text>
-            <View style={[styles.tabRule, on && { backgroundColor: BASECAMP.accent }]} />
-          </TouchableOpacity>
-        );
-      })}
+    <View style={[styles.tabsRule, style]}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsScroll}
+        /* A horizontal ScrollView has no intrinsic height: without this it
+           collapses and the tabs vanish, leaving only the rule. */
+        style={styles.tabsScroller}
+        accessibilityRole="tablist"
+      >
+        {items}
+      </ScrollView>
     </View>
   );
 }
@@ -634,7 +662,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)",
     paddingHorizontal: BASECAMP.gutter,
   },
+  tabsRule: { borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  tabsScroller: { flexGrow: 0, height: HIT.minTarget + 4 },
+  tabsScroll: {
+    flexDirection: "row", gap: SP.xl, alignItems: "flex-start",
+    paddingHorizontal: BASECAMP.gutter,
+  },
   tab: { flex: 1, minWidth: 0, paddingTop: 4, minHeight: HIT.minTarget },
+  /* In a scrolling row a tab sizes to its label instead of sharing the width.
+     flexBasis must be "auto": `flex: 0` alone resolves to a 0% basis and
+     every tab collapses to zero width. */
+  tabAuto: { flexGrow: 0, flexShrink: 0, flexBasis: "auto" },
   tabText: {
     fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold",
     color: BASECAMP.textDim, textAlign: "center",

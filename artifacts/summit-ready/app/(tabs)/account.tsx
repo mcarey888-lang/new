@@ -1,4 +1,4 @@
-import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock } from "lucide-react-native";
+import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { useLocalSearchParams } from "expo-router";
 import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
+  Image,
   Alert,
   Linking,
   Platform,
@@ -25,6 +26,10 @@ import { useChallenges } from "@/context/ChallengesContext";
 import { getChallenge, DIFF_COLOR as CHALLENGE_DIFF_COLOR } from "@/constants/challenges";
 import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
+import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
+import {
+  SREmptyState, SREyebrow, SRSectionHeader, SRUnderlineTabs,
+} from "@/components/ui";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
 import { Mountain, Target, Award, CalendarDays } from "lucide-react-native";
@@ -103,6 +108,17 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
   return b;
 }
 
+type ProfileTab = "profile" | "achievements" | "activity" | "photos" | "stats";
+
+/** Five things, deliberately not merged. */
+const PROFILE_TABS: { value: ProfileTab; label: string }[] = [
+  { value: "profile", label: "Profile" },
+  { value: "achievements", label: "Achievements" },
+  { value: "activity", label: "Activity" },
+  { value: "photos", label: "Photos" },
+  { value: "stats", label: "Stats" },
+];
+
 export default function AccountScreen() {
   useScreenView("account");
   const insets = useSafeAreaInsets();
@@ -119,6 +135,9 @@ export default function AccountScreen() {
   const queryClient = useQueryClient();
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
+  const [tab, setTab] = useState<ProfileTab>("profile");
+
+
   const achievementsY = useRef<number>(0);
   const [devRankEvidence, setDevRankEvidence] = useState<readonly import("@/utils/challengeDomain").EvidenceReference[]>([]);
 
@@ -197,6 +216,32 @@ export default function AccountScreen() {
   const displayName = user?.fullName ?? user?.firstName ?? displayEmail ?? "Account";
   const avatarInitial = (user?.firstName ?? user?.primaryEmailAddress?.emailAddress ?? "?")[0].toUpperCase();
   const userId = user?.id ?? null;
+
+  /* SummitReady stores photos per expedition journal, on this device — there
+     is no account-wide photo library. The Photos tab shows what genuinely
+     exists rather than promising a gallery production does not have. */
+  const [journalPhotos, setJournalPhotos] = useState<{ id: string; uri: string }[]>([]);
+  const journalStorageKey = userId && activeExpedition?.id
+    ? `summitready:expedition-journal:${userId}:${activeExpedition?.id}`
+    : null;
+  useEffect(() => {
+    let cancelled = false;
+    setJournalPhotos([]);
+    if (!journalStorageKey) return () => { cancelled = true; };
+    AsyncStorage.getItem(journalStorageKey)
+      .then(raw => {
+        if (cancelled || !raw) return;
+        const saved: unknown = JSON.parse(raw);
+        if (Array.isArray(saved)) {
+          setJournalPhotos(saved.filter(
+            (item): item is { id: string; uri: string } =>
+              !!item && typeof item.id === "string" && typeof item.uri === "string",
+          ));
+        }
+      })
+      .catch(() => { if (!cancelled) setJournalPhotos([]); });
+    return () => { cancelled = true; };
+  }, [journalStorageKey]);
 
   const entitlement = customerInfo?.entitlements?.active?.["premium"];
   const expiresDate = entitlement?.expirationDate
@@ -330,12 +375,71 @@ export default function AccountScreen() {
         contentContainerStyle={[styles.scroll, { paddingTop: topPad, paddingBottom: botPad }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.delay(0).duration(400)} style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>YOU</Text>
-            <Text style={styles.title}>Profile</Text>
+        {/* ── Mountain identity ────────────────────────────────────────────
+            Rank is WHO YOU ARE — it is stated first and largest. Lifetime
+            elevation is what earned it. Both come from the engines; nothing
+            here is a placeholder or a projection. */}
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.identity}>
+          <View style={styles.identityRow}>
+            <View style={styles.identityAvatar}>
+              {isSignedIn
+                ? <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+                : <User size={24} color={BASECAMP.textMuted} />}
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              {/* The rank the engine awarded, or the fact that none is earned yet.
+                  Never a placeholder rank. */}
+              <SREyebrow tone={BASECAMP.accent}>
+                {(rankResult.currentRank ?? "Unranked").toUpperCase()}
+              </SREyebrow>
+              <Text style={styles.identityName} numberOfLines={2}>{displayName}</Text>
+              {displayEmail && displayEmail !== displayName ? (
+                <Text style={styles.identityMeta} numberOfLines={1}>{displayEmail}</Text>
+              ) : null}
+            </View>
           </View>
+          <View style={styles.identityStats}>
+            <View style={styles.identityStat}>
+              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {`${Math.round(lifetimeElevation).toLocaleString()} m`}
+              </Text>
+              <Text style={styles.identityStatLabel}>Lifetime ascent</Text>
+            </View>
+            <View style={styles.identityStat}>
+              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {String(lifetimeSessions)}
+              </Text>
+              <Text style={styles.identityStatLabel}>Activities</Text>
+            </View>
+            <View style={styles.identityStat}>
+              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {`${unlockedAchievements.length}/${ACHIEVEMENTS.length}`}
+              </Text>
+              <Text style={styles.identityStatLabel}>Achievements</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* ── Tabs ─────────────────────────────────────────────────────────
+            Rank is identity, achievements are what you have done, challenges
+            are what you are attempting, activity is the record and stats are
+            the totals. They are different things and stay separate. */}
+        <SRUnderlineTabs
+          options={PROFILE_TABS}
+          value={tab}
+          onChange={setTab}
+          style={styles.tabs}
+        />
+
+        {tab === "profile" && (<>
+        {/* ── Elevation Bank ───────────────────────────────────────────────
+            The headline of the profile, not a widget further down it: it is
+            the running total of everything the user has actually climbed. */}
+        <Animated.View entering={FadeInDown.delay(30).duration(400)} style={{ marginBottom: 16 }}>
+          <ElevationBankCard
+            expanded
+            onPress={() => router.push("/elevation-history")}
+          />
         </Animated.View>
 
         {/* Current Context Banner */}
@@ -367,25 +471,21 @@ export default function AccountScreen() {
         <Animated.View entering={FadeInDown.delay(40).duration(400)}>
           <View style={[styles.profileCard, { borderColor: T.green + "40" }]}>
             <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+            {/* The name and avatar are the identity hero's job now; this card
+                carries the ACCOUNT state — who you are signed in as and what
+                that guarantees — without repeating them. */}
             <View style={styles.avatarRow}>
-              <View style={[styles.avatar, { backgroundColor: T.greenDim }]}>
-                {isSignedIn
-                  ? <Text style={styles.avatarInitial}>{avatarInitial}</Text>
-                  : <User size={24} color={T.textMuted} />
-                }
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.displayName}>{displayName}</Text>
-                {displayEmail && displayEmail !== displayName && (
-                  <Text style={styles.userId}>{displayEmail}</Text>
-                )}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.sectionLabel}>ACCOUNT</Text>
                 {userId && (
-                  <Text style={[styles.userId, { marginTop: 1 }]}>ID: {maskId(userId)}</Text>
+                  <Text style={[styles.userId, { marginTop: 3 }]}>ID: {maskId(userId)}</Text>
                 )}
               </View>
               <View style={[styles.guestBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
                 <View style={[styles.guestDot, { backgroundColor: T.green }]} />
-                <Text style={[styles.guestBadgeText, { color: T.green }]}>Signed in</Text>
+                <Text style={[styles.guestBadgeText, { color: T.green }]}>
+                  {isSignedIn ? "Signed in" : "Guest"}
+                </Text>
               </View>
             </View>
             <View style={styles.signedInNote}>
@@ -397,12 +497,6 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(50).duration(400)}>
-          <ElevationBankCard
-            expanded
-            onPress={() => router.push("/elevation-history")}
-          />
-        </Animated.View>
 
         {/* Log Session button */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.section}>
@@ -418,6 +512,8 @@ export default function AccountScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        </>)}
+        {tab === "profile" && (<>
         {/* Subscription card */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
@@ -482,6 +578,8 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
+        </>)}
+        {tab === "stats" && (<>
         {/* Progress summary */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
@@ -543,6 +641,8 @@ export default function AccountScreen() {
 
         </Animated.View>
 
+        </>)}
+        {tab === "activity" && (<>
         {/* Training History */}
         {completedGoals.length === 0 && (
           <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
@@ -614,6 +714,8 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        </>)}
+        {tab === "activity" && (<>
         {/* Hills you're ready for */}
         {readyForPeaks.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -649,6 +751,8 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        </>)}
+        {tab === "profile" && (<>
         {/* ── Rank Experience ────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(128).duration(400)}>
           <RankExperience
@@ -663,6 +767,8 @@ export default function AccountScreen() {
           />
         </Animated.View>
 
+        </>)}
+        {tab === "achievements" && (<>
         {/* Verified progress */}
         {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
           <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
@@ -685,6 +791,8 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        </>)}
+        {tab === "achievements" && (<>
         {/* Achievements */}
         <Animated.View
           entering={FadeInDown.delay(130).duration(400)}
@@ -740,6 +848,8 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
+        </>)}
+        {tab === "achievements" && (<>
         {/* Active Challenges */}
         {inProgressChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -786,6 +896,8 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        </>)}
+        {tab === "achievements" && (<>
         {/* Completed Challenges */}
         {completedChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(129).duration(400)} style={styles.section}>
@@ -872,6 +984,8 @@ export default function AccountScreen() {
           </Animated.View>
         )}
 
+        </>)}
+        {tab === "profile" && (<>
         {/* Setup / Goal actions */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>TRAINING SETUP</Text>
@@ -958,6 +1072,38 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
+        </>)}
+        {tab === "photos" && (
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
+            <SRSectionHeader title="Your photos" />
+            {journalPhotos.length > 0 ? (
+              <View style={styles.photoGrid}>
+                {journalPhotos.map(photo => (
+                  <Image
+                    key={photo.id}
+                    source={{ uri: photo.uri }}
+                    style={styles.photo}
+                    accessibilityLabel="Expedition journal photo"
+                  />
+                ))}
+              </View>
+            ) : (
+              /* SummitReady stores photos against an EXPEDITION JOURNAL, on
+                 this device. There is no account-wide photo library, so this
+                 says what it can show rather than implying an empty gallery
+                 that would fill itself. */
+              <SREmptyState
+                icon={<Camera size={20} color={BASECAMP.textDim} />}
+                title="No photos yet"
+                body={activeExpedition?.id
+                  ? "Photos you add to your expedition journal appear here. They stay on this device."
+                  : "Start an expedition and add photos to its journal — they will appear here. Photos stay on this device."}
+                style={{ marginTop: 10 }}
+              />
+            )}
+          </Animated.View>
+        )}
+
         {/* App info */}
         <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.appInfo}>
           <Text style={styles.appInfoText}>SummitReady · v1.0</Text>
@@ -978,6 +1124,30 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
+  identity: { marginBottom: SP.md },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  identityAvatar: {
+    width: 58, height: 58, borderRadius: 18,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+    backgroundColor: BASECAMP.accentDim,
+    borderWidth: 1, borderColor: BASECAMP.accentLine,
+  },
+  identityName: { marginTop: 4, ...TYPE.title, fontSize: 22, lineHeight: 26, color: BASECAMP.text },
+  identityMeta: { marginTop: 2, ...TYPE.caption, color: BASECAMP.textDim },
+  identityStats: { marginTop: 16, flexDirection: "row", gap: SP.sm },
+  identityStat: { flex: 1, minWidth: 0 },
+  identityStatValue: { fontSize: 18, lineHeight: 22, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  identityStatLabel: { marginTop: 1, fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
+  /* The tabs span the screen, so they pull out of the scroll view's gutter
+     rather than sitting inside it. */
+  tabs: { marginHorizontal: -18, marginBottom: SP.xs },
+
+  photoGrid: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  photo: {
+    width: "32%", aspectRatio: 1, borderRadius: 12,
+    backgroundColor: BASECAMP.panelSub,
+  },
+
   scroll: { paddingHorizontal: 18, gap: 20 },
   header: { marginBottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
