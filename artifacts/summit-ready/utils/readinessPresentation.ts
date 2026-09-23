@@ -100,3 +100,69 @@ export function projection(
 export function formatScore(score: number | null | undefined): string {
   return score === null || score === undefined ? "—" : `${Math.round(score)}`;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Pillar detail — added for the Full Readiness rebuild.
+
+   The approved design opens a pillar and explains it in four parts: what it
+   measures, the evidence behind it, why it sits where it does, and what would
+   move it.
+
+   · WHAT IT MEASURES is fixed descriptive copy about the pillar itself. It is
+     the same sentence for every user, so it belongs here as UI copy, not as
+     data — and it states nothing about any particular person.
+   · WHY is the engine's own per-dimension `explanation`. Never rewritten.
+   · WHAT WILL MOVE IT is only shown when the engine's next action targets that
+     pillar. Production produces no per-pillar advice, and this layer does not
+     invent one.
+   ────────────────────────────────────────────────────────────────────────── */
+
+export const PILLAR_MEASURES: Record<ReadinessDimensionName, string> = {
+  endurance:
+    "Your ability to keep moving at a steady effort for many hours — time on feet, not pace.",
+  elevationCapacity:
+    "Height gained and how repeatably you can gain it, week after week.",
+  consistency:
+    "How reliably you complete training, weighted towards your recent weeks.",
+  mountainExperience:
+    "Real mountain days, height reached, and exposure to the terrain your goal demands.",
+};
+
+/** A pillar is a GAP when the engine listed it as one. Never a threshold here. */
+export interface PillarDetail extends PillarDisplay {
+  /** The engine's own explanation for this dimension. */
+  explanation: string | null;
+  /** True when Readiness 2.0 listed this dimension among its gaps. */
+  isGap: boolean;
+  /** True when Readiness 2.0 listed it among the user's strengths. */
+  isStrength: boolean;
+  /** True when the engine's next action targets this dimension. */
+  isFocus: boolean;
+  /** How many pieces of evidence the engine attributed to it. */
+  evidenceCount: number;
+  measures: string;
+}
+
+export function pillarDetails(
+  result: ReadinessResult | null | undefined,
+  focusDimension?: ReadinessDimensionName | null,
+): PillarDetail[] {
+  const gaps = new Set(result?.gaps ?? []);
+  const strengths = new Set(result?.strengths ?? []);
+  return PILLAR_ORDER.map((key) => {
+    const dim = result?.dimensions?.[key];
+    const score = dim?.score ?? null;
+    return {
+      key,
+      label: PILLAR_LABELS[key],
+      score,
+      missing: score === null,
+      explanation: dim?.explanation?.trim() || null,
+      isGap: gaps.has(key),
+      isStrength: strengths.has(key),
+      isFocus: focusDimension === key,
+      evidenceCount: dim?.evidenceIds?.length ?? 0,
+      measures: PILLAR_MEASURES[key],
+    };
+  });
+}

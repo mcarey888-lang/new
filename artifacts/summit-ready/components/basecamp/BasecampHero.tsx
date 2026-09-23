@@ -30,10 +30,7 @@ import {
   objectiveMetrics, targetDateDisplay,
   type ObjectiveMetricsInput,
 } from "@/utils/basecampPresentation";
-
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
+import { mountainImageUri } from "@/utils/mountainImage";
 
 type HeroSource =
   | { kind: "resolving" }
@@ -56,7 +53,7 @@ export function BasecampHero({
   mountainName, summitDate, goal, topInset,
   isSubscribed, onEditObjective, onChangeMountain, onPressSubscription,
 }: BasecampHeroProps) {
-  const mountainFallbackUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}`;
+  const mountainFallbackUri = mountainImageUri(mountainName) ?? "";
   const [heroSource, setHeroSource] = useState<HeroSource>({ kind: "resolving" });
 
   /* The existing resolver, fallback chain and dev logging, unchanged. */

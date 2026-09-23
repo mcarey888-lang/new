@@ -1,55 +1,401 @@
 /**
- * SummitReady reusable UI primitives — extracted while integrating Journey 1.
+ * SummitReady shared UI primitives.
  *
- * Deliberately small. These are the pieces that were being re-typed across
- * Training Basecamp, Full Readiness and the Training Plan; they are not a
- * speculative design system. Colours come from `constants/theme.ts`, everything
- * else from `constants/tokens.ts`.
+ * These are the pieces the approved prototypes use on every screen: the
+ * gradient panel, the tracked-out section header, the screen header, the hero
+ * frame, the segmented control, the bottom sheet and the designed
+ * missing-state. They were proven on Training Basecamp and are now the app's
+ * shared vocabulary, so a screen composes from them instead of re-typing them.
+ *
+ * Colours come from `constants/tokens.ts` (BASECAMP) and `constants/theme.ts`.
+ * Nothing here reads app state or computes a value.
  */
 import React from "react";
-import { StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from "react-native";
+import {
+  ActivityIndicator, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView,
+  StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { T } from "@/constants/theme";
-import { HIT, RADIUS, SP, SURFACE, TYPE } from "@/constants/tokens";
+import { BASECAMP, HIT, RADIUS, SP, TYPE } from "@/constants/tokens";
 
-/* ── SRSurface ─────────────────────────────────────────────────────────────
-   The panel / panel-sub / glass treatments from the approved kit. */
-export function SRSurface({
-  children, variant = "panel", style, padded = true,
+/* ── SRPanel ───────────────────────────────────────────────────────────────
+   The prototype's `.panel`: a dark green-tinted gradient with a hairline
+   border. The caller's style lands on the OUTERMOST element so a pressable
+   panel can still take part in its parent's layout. */
+export function SRPanel({
+  children, style, radius = 18, padded = 0, onPress, accessibilityLabel, accessibilityHint, testID,
 }: {
   children?: React.ReactNode;
-  variant?: "panel" | "panelSub" | "glass";
+  style?: ViewStyle | ViewStyle[] | (ViewStyle | false | null | undefined)[];
+  radius?: number;
+  padded?: number;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  testID?: string;
+}) {
+  const composed = [
+    styles.panel,
+    { borderRadius: radius },
+    padded ? { padding: padded } : null,
+    style,
+  ] as ViewStyle[];
+  const surface = (
+    <LinearGradient
+      colors={BASECAMP.panelGradient}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+      pointerEvents="none"
+    />
+  );
+  if (!onPress) {
+    return <View style={composed} testID={testID}>{surface}{children}</View>;
+  }
+  return (
+    <TouchableOpacity
+      style={composed}
+      onPress={onPress}
+      activeOpacity={0.88}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      testID={testID}
+    >
+      {surface}
+      {children}
+    </TouchableOpacity>
+  );
+}
+
+/* ── SRSubPanel ────────────────────────────────────────────────────────── */
+export function SRSubPanel({
+  children, style, radius = 14, onPress, accessibilityLabel, testID,
+}: {
+  children?: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
-  padded?: boolean;
+  radius?: number;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  testID?: string;
+}) {
+  const composed = [styles.subPanel, { borderRadius: radius }, style] as ViewStyle[];
+  if (!onPress) return <View style={composed} testID={testID}>{children}</View>;
+  return (
+    <TouchableOpacity
+      style={composed}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+}
+
+/* ── SRSectionHeader ───────────────────────────────────────────────────── */
+export function SRSectionHeader({
+  title, action, onAction, icon, style,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+  icon?: React.ReactNode;
+  style?: ViewStyle;
 }) {
   return (
-    <View style={[
-      SURFACE[variant],
-      { borderRadius: RADIUS.lg },
-      padded && { padding: SP.md },
-      style,
-    ]}>
-      {children}
+    <View style={[styles.sectionHeader, style]}>
+      <View style={styles.sectionTitleWrap}>
+        {icon}
+        <Text style={styles.sectionTitle} accessibilityRole="header" numberOfLines={1}>
+          {title.toUpperCase()}
+        </Text>
+      </View>
+      {action && onAction ? (
+        <TouchableOpacity
+          onPress={onAction}
+          hitSlop={HIT.slop}
+          style={styles.sectionAction}
+          accessibilityRole="button"
+          accessibilityLabel={action}
+        >
+          <Text style={styles.sectionActionText} numberOfLines={1}>{action}</Text>
+          <ChevronRight size={13} color={BASECAMP.textMuted} />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
 
-/* ── SRSectionHeader ───────────────────────────────────────────────────────
-   Tracked-out eyebrow with an optional trailing action. */
-export function SRSectionHeader({
-  title, action, onAction, style,
-}: { title: string; action?: string; onAction?: () => void; style?: ViewStyle }) {
+/** The small tracked-out label above a figure or a title. */
+export function SREyebrow({
+  children, tone, style,
+}: { children: React.ReactNode; tone?: string; style?: TextStyle }) {
   return (
-    <View style={[styles.sectionHeader, style]}>
-      <Text style={styles.eyebrow} accessibilityRole="header">{title.toUpperCase()}</Text>
-      {action ? (
+    <Text style={[styles.eyebrow, tone ? { color: tone } : null, style]} numberOfLines={1}>
+      {children}
+    </Text>
+  );
+}
+
+/** A thin vertical rule between inline facts. */
+export function SRFactDivider() {
+  return <View style={styles.factDivider} />;
+}
+
+/* ── SRScreenHeader ────────────────────────────────────────────────────────
+   Back, a centred tracked-out title with an optional subtitle, and one
+   optional action. Used by every pushed screen so they share one header. */
+export function SRScreenHeader({
+  title, subtitle, onBack, right, style, transparent = true,
+}: {
+  title: string;
+  subtitle?: string | null;
+  onBack?: () => void;
+  right?: React.ReactNode;
+  style?: ViewStyle;
+  transparent?: boolean;
+}) {
+  return (
+    <View style={[styles.screenHeader, !transparent && { backgroundColor: BASECAMP.ink }, style]}>
+      {onBack ? (
+        <TouchableOpacity
+          onPress={onBack}
+          hitSlop={HIT.slop}
+          style={styles.headerSide}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ChevronLeft size={22} color={BASECAMP.text} />
+        </TouchableOpacity>
+      ) : <View style={styles.headerSide} />}
+
+      <View style={styles.headerCentre} pointerEvents="none">
+        <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
+          {title.toUpperCase()}
+        </Text>
+        {subtitle ? <Text style={styles.headerSubtitle} numberOfLines={1}>{subtitle.toUpperCase()}</Text> : null}
+      </View>
+
+      <View style={[styles.headerSide, { alignItems: "flex-end" }]}>{right}</View>
+    </View>
+  );
+}
+
+/* ── SRHeroFrame ───────────────────────────────────────────────────────────
+   A photograph that resolves into the page background, with the approved
+   two-axis scrim. `uri` null renders the designed gradient instead — never an
+   empty box and never a broken-image state. The frame sizes to its content
+   above `minHeight`, so long names push it taller rather than clipping. */
+export function SRHeroFrame({
+  uri, source, onImageError, minHeight = 280, children, style, dim = 1,
+}: {
+  uri?: string | null;
+  /** A local asset (require(...)) where the screen already has one. */
+  source?: ImageSourcePropType | null;
+  onImageError?: () => void;
+  minHeight?: number;
+  children?: React.ReactNode;
+  style?: ViewStyle;
+  /** 0–1 multiplier on the scrim, for heroes that need more of the photo. */
+  dim?: number;
+}) {
+  const a = (v: number) => Math.min(1, v * dim).toFixed(2);
+  const body = (
+    <View style={[{ minHeight }, style]}>
+      <LinearGradient
+        colors={[
+          `rgba(5,9,11,${a(0.66)})`, `rgba(5,9,11,${a(0.1)})`,
+          `rgba(5,9,11,${a(0.42)})`, `rgba(5,9,11,${a(0.94)})`, BASECAMP.ink,
+        ]}
+        locations={[0, 0.22, 0.56, 0.88, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={[`rgba(5,9,11,${a(0.88)})`, `rgba(5,9,11,${a(0.34)})`, "rgba(5,9,11,0)"]}
+        locations={[0, 0.48, 0.84]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
+
+  const resolved: ImageSourcePropType | null = source ?? (uri ? { uri } : null);
+  if (!resolved) {
+    return (
+      <LinearGradient colors={["#1B2C2A", "#0C1417", BASECAMP.ink]} style={{ backgroundColor: BASECAMP.ink }}>
+        {body}
+      </LinearGradient>
+    );
+  }
+  return (
+    <View style={{ backgroundColor: BASECAMP.ink }}>
+      {/* Absolutely filled rather than an ImageBackground so the frame's
+          height is driven by its content, not by the image. */}
+      <Image
+        source={resolved}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        onError={onImageError}
+        accessible={false}
+      />
+      {body}
+    </View>
+  );
+}
+
+/* ── SRSegmented ───────────────────────────────────────────────────────────
+   The pill segmented control: chart period, plan section. */
+export function SRSegmented<TValue extends string>({
+  options, value, onChange, style, compact = false,
+}: {
+  options: { value: TValue; label: string }[];
+  value: TValue;
+  onChange: (v: TValue) => void;
+  style?: ViewStyle;
+  compact?: boolean;
+}) {
+  return (
+    <View style={[styles.segmented, style]} accessibilityRole="tablist">
+      {options.map(o => {
+        const on = o.value === value;
+        return (
+          <TouchableOpacity
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={[
+              styles.segment,
+              compact && { paddingHorizontal: 9, height: 22 },
+              on && styles.segmentOn,
+            ]}
+            activeOpacity={0.85}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={o.label}
+          >
+            <Text
+              style={[styles.segmentText, compact && { fontSize: 9.5 }, on && styles.segmentTextOn]}
+              numberOfLines={1}
+            >
+              {o.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ── SRUnderlineTabs ───────────────────────────────────────────────────────
+   Full-width tabs with an accent underline, as the Training Plan uses. */
+export function SRUnderlineTabs<TValue extends string>({
+  options, value, onChange, style,
+}: {
+  options: { value: TValue; label: string }[];
+  value: TValue;
+  onChange: (v: TValue) => void;
+  style?: ViewStyle;
+}) {
+  return (
+    <View style={[styles.tabsRow, style]} accessibilityRole="tablist">
+      {options.map(o => {
+        const on = o.value === value;
+        return (
+          <TouchableOpacity
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={styles.tab}
+            activeOpacity={0.8}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={o.label}
+          >
+            <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{o.label}</Text>
+            <View style={[styles.tabRule, on && { backgroundColor: BASECAMP.accent }]} />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ── SRSheet ───────────────────────────────────────────────────────────────
+   The bottom sheet the prototypes use for detail. Scrolls internally and
+   never covers the whole screen. */
+export function SRSheet({
+  visible, onClose, children, accessibilityLabel,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  children?: React.ReactNode;
+  accessibilityLabel?: string;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.sheetRoot}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        />
+        <View
+          style={[styles.sheet, { paddingBottom: (Platform.OS === "web" ? 20 : insets.bottom) + 16 }]}
+          accessibilityViewIsModal
+          accessibilityLabel={accessibilityLabel}
+        >
+          <View style={styles.sheetGrabber} />
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
+            {children}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/* ── SREmptyState ──────────────────────────────────────────────────────────
+   The designed missing / unavailable / empty state. A screen must never fall
+   back to a blank area or a fabricated number, so this is the one place that
+   says "we do not have this yet" and, where relevant, offers the way out. */
+export function SREmptyState({
+  title, body, icon, action, onAction, loading = false, compact = false, style, testID,
+}: {
+  title: string;
+  body?: string;
+  icon?: React.ReactNode;
+  action?: string;
+  onAction?: () => void;
+  loading?: boolean;
+  compact?: boolean;
+  style?: ViewStyle;
+  testID?: string;
+}) {
+  return (
+    <View style={[styles.empty, compact && { paddingVertical: SP.md }, style]} testID={testID}>
+      {loading ? <ActivityIndicator size="small" color={BASECAMP.accent} /> : icon}
+      <Text style={styles.emptyTitle} numberOfLines={2}>{title}</Text>
+      {body ? <Text style={styles.emptyBody}>{body}</Text> : null}
+      {action && onAction ? (
         <TouchableOpacity
           onPress={onAction}
+          style={styles.emptyAction}
           hitSlop={HIT.slop}
           accessibilityRole="button"
           accessibilityLabel={action}
-          style={styles.sectionAction}
         >
-          <Text style={styles.sectionActionText}>{action}</Text>
+          <Text style={styles.emptyActionText}>{action}</Text>
+          <ChevronRight size={13} color={BASECAMP.accent} />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -74,10 +420,10 @@ export function SRMetric({
   return (
     <View style={[{ minWidth: 0, alignItems: align === "center" ? "center" : "flex-start" }, style]}>
       <Text
-        style={[size === "lg" ? TYPE.metricLg : TYPE.metric, { color: tone ?? T.basecampText }]}
+        style={[size === "lg" ? TYPE.metricLg : TYPE.metric, { color: tone ?? BASECAMP.text }]}
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.75}
+        minimumFontScale={0.7}
       >
         {shown}
       </Text>
@@ -89,10 +435,10 @@ export function SRMetric({
 
 /* ── SRStatusPill ──────────────────────────────────────────────────────── */
 export function SRStatusPill({
-  label, tone = T.blue, icon, style,
+  label, tone = BASECAMP.accent, icon, style,
 }: { label: string; tone?: string; icon?: React.ReactNode; style?: ViewStyle }) {
   return (
-    <View style={[styles.pill, { borderColor: `${tone}66`, backgroundColor: `${tone}1F` }, style]}>
+    <View style={[styles.pill, { borderColor: `${tone}80`, backgroundColor: `${tone}26` }, style]}>
       {icon}
       <Text style={[styles.pillText, { color: tone }]} numberOfLines={1}>{label.toUpperCase()}</Text>
     </View>
@@ -103,7 +449,8 @@ export function SRStatusPill({
    A track with an earned fill and, optionally, a visually distinct projected
    extension drawn beyond it — never in place of it. */
 export function SRProgress({
-  value, projected, tone = T.green, projectedTone = T.blue, height = 7, style, accessibilityLabel,
+  value, projected, tone = BASECAMP.accent, projectedTone = BASECAMP.accent,
+  height = 7, style, accessibilityLabel,
 }: {
   value: number;
   projected?: number | null;
@@ -118,7 +465,7 @@ export function SRProgress({
     ? null : Math.max(pct, Math.min(100, projected));
   return (
     <View
-      style={[{ height, borderRadius: height / 2, backgroundColor: "rgba(255,255,255,0.09)", overflow: "hidden" }, style]}
+      style={[{ height, borderRadius: height / 2, backgroundColor: "rgba(255,255,255,0.10)", overflow: "hidden" }, style]}
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }}
@@ -141,7 +488,7 @@ export function SRProgress({
 /* ── SRButton ──────────────────────────────────────────────────────────────
    Always at least the minimum touch target. */
 export function SRButton({
-  label, onPress, variant = "primary", icon, disabled, style, accessibilityHint,
+  label, onPress, variant = "primary", icon, disabled, style, accessibilityHint, compact = false,
 }: {
   label: string;
   onPress?: () => void;
@@ -150,11 +497,12 @@ export function SRButton({
   disabled?: boolean;
   style?: ViewStyle;
   accessibilityHint?: string;
+  compact?: boolean;
 }) {
   const v = {
-    primary:   { backgroundColor: T.green, color: "#04140A", borderColor: "transparent" },
-    secondary: { backgroundColor: "rgba(255,255,255,0.08)", color: T.basecampText, borderColor: T.basecampBorder },
-    quiet:     { backgroundColor: "transparent", color: T.basecampTextMuted, borderColor: "transparent" },
+    primary:   { backgroundColor: BASECAMP.accent, color: BASECAMP.accentInk, borderColor: "transparent" },
+    secondary: { backgroundColor: BASECAMP.panelSub, color: BASECAMP.textStrong, borderColor: BASECAMP.panelSubBorder },
+    quiet:     { backgroundColor: "transparent", color: BASECAMP.textMuted, borderColor: "transparent" },
   }[variant];
   return (
     <TouchableOpacity
@@ -167,37 +515,135 @@ export function SRButton({
       accessibilityState={{ disabled: !!disabled }}
       style={[
         styles.button,
+        compact && { minHeight: 40, paddingHorizontal: SP.md },
         { backgroundColor: v.backgroundColor, borderColor: v.borderColor },
         disabled && { opacity: 0.45 },
         style,
       ]}
     >
       {icon}
-      <Text style={[styles.buttonText, { color: v.color }]} numberOfLines={1}>{label}</Text>
+      <Text
+        style={[styles.buttonText, compact && { fontSize: 11, letterSpacing: 0.6 }, { color: v.color }]}
+        numberOfLines={1}
+      >
+        {compact ? label.toUpperCase() : label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginBottom: SP.sm, minHeight: 20,
+  panel: { overflow: "hidden", borderWidth: 1, borderColor: BASECAMP.panelBorder },
+  subPanel: {
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
-  eyebrow: { ...TYPE.eyebrow, color: T.basecampTextMuted, flexShrink: 1 } as TextStyle,
-  sectionAction: { minHeight: HIT.minTarget, justifyContent: "center", paddingLeft: SP.sm },
-  sectionActionText: { ...TYPE.smallBold, color: T.blue } as TextStyle,
-  metricLabel: { ...TYPE.caption, color: T.basecampTextMuted, marginTop: 3 } as TextStyle,
+
+  sectionHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 24,
+  },
+  sectionTitleWrap: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, minWidth: 0 },
+  sectionTitle: {
+    fontSize: 11, lineHeight: 14, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 2, color: BASECAMP.textMuted, flexShrink: 1,
+  },
+  sectionAction: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    minHeight: HIT.minTarget, paddingLeft: 10,
+  },
+  sectionActionText: {
+    fontSize: 12, lineHeight: 16, fontFamily: "Inter_500Medium", color: BASECAMP.textMuted,
+  },
+  eyebrow: {
+    fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.8, color: BASECAMP.textMuted,
+  },
+  factDivider: { width: 1, height: 11, backgroundColor: BASECAMP.textFaint },
+
+  screenHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: BASECAMP.gutter, minHeight: HIT.minTarget,
+  },
+  headerSide: { width: 56, minHeight: HIT.minTarget, justifyContent: "center" },
+  headerCentre: { flex: 1, alignItems: "center", minWidth: 0 },
+  headerTitle: {
+    fontSize: 12, lineHeight: 15, fontFamily: "Inter_700Bold",
+    letterSpacing: 2.2, color: BASECAMP.text,
+  },
+  headerSubtitle: {
+    fontSize: 8.5, lineHeight: 11, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.8, color: BASECAMP.textDim, marginTop: 3,
+  },
+
+  segmented: {
+    flexDirection: "row", alignItems: "center", gap: 3, padding: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    alignSelf: "flex-start",
+  },
+  segment: {
+    paddingHorizontal: 11, height: 26, borderRadius: RADIUS.pill,
+    alignItems: "center", justifyContent: "center",
+  },
+  segmentOn: { backgroundColor: "rgba(255,255,255,0.92)" },
+  segmentText: {
+    fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_700Bold", color: BASECAMP.textMuted,
+  },
+  segmentTextOn: { color: BASECAMP.ink },
+
+  tabsRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: BASECAMP.gutter,
+  },
+  tab: { flex: 1, minWidth: 0, paddingTop: 4, minHeight: HIT.minTarget },
+  tabText: {
+    fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold",
+    color: BASECAMP.textDim, textAlign: "center",
+  },
+  tabTextOn: { color: BASECAMP.text },
+  tabRule: { marginTop: 9, height: 2.5, borderRadius: 2, backgroundColor: "transparent" },
+
+  sheetRoot: { flex: 1, backgroundColor: "rgba(0,0,0,0.62)", justifyContent: "flex-end" },
+  sheet: {
+    maxHeight: "86%",
+    backgroundColor: "#0B1214",
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    borderTopWidth: 1, borderColor: BASECAMP.panelBorder,
+    paddingHorizontal: BASECAMP.gutter, paddingTop: 12,
+  },
+  sheetGrabber: {
+    alignSelf: "center", width: 38, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.25)", marginBottom: 14,
+  },
+
+  empty: { alignItems: "flex-start", gap: 7, paddingVertical: SP.lg },
+  emptyTitle: { fontSize: 14, lineHeight: 19, fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
+  emptyBody: { fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
+  emptyAction: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    minHeight: HIT.minTarget, marginTop: -6,
+  },
+  emptyActionText: { fontSize: 12, lineHeight: 16, fontFamily: "Inter_600SemiBold", color: BASECAMP.accent },
+
+  metricLabel: {
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_500Medium",
+    color: BASECAMP.textDim, marginTop: 3,
+  },
   metricSub: { ...TYPE.caption, color: T.basecampTextDim, marginTop: 2 } as TextStyle,
+
   pill: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: SP.sm, paddingVertical: 3,
+    paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: RADIUS.sm, borderWidth: 1, alignSelf: "flex-start",
   },
-  pillText: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
+  pillText: { fontSize: 9, lineHeight: 12, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+
   button: {
     minHeight: HIT.minTarget, borderRadius: RADIUS.md, borderWidth: 1,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: SP.sm, paddingHorizontal: SP.lg,
   },
-  buttonText: { ...TYPE.bodyBold } as TextStyle,
+  buttonText: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_700Bold" },
 });

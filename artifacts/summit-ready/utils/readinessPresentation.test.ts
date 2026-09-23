@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  PILLAR_LABELS, PILLAR_ORDER, formatScore, pillars, projection, readinessStatus,
+  PILLAR_LABELS, PILLAR_ORDER, formatScore, pillarDetails, pillars, projection, readinessStatus,
 } from "./readinessPresentation";
 import type { ReadinessResult } from "./readinessV2";
 
@@ -81,5 +81,72 @@ describe("projection", () => {
   it("caps at 100 and drops a projection that adds nothing", () => {
     expect(projection(98, 10)).toEqual({ current: 98, projected: 100, delta: 2 });
     expect(projection(100, 5)).toBeNull();
+  });
+});
+
+describe("pillarDetails", () => {
+  const result = {
+    state: "available",
+    overallScore: 63,
+    dimensions: {
+      endurance: { score: 70, explanation: "Four long days in the last six weeks.", evidenceIds: ["a", "b"] },
+      elevationCapacity: { score: 41, explanation: "Weekly ascent is below the target's demand.", evidenceIds: ["a"] },
+      consistency: { score: null, explanation: "", evidenceIds: [] },
+      mountainExperience: { score: 55, explanation: "Three distinct peaks logged.", evidenceIds: ["c"] },
+    },
+    gaps: ["elevationCapacity"],
+    strengths: ["endurance"],
+  } as any;
+
+  it("returns the four approved pillars in order", () => {
+    expect(pillarDetails(result).map(p => p.key))
+      .toEqual(["endurance", "elevationCapacity", "consistency", "mountainExperience"]);
+  });
+
+  it("marks a gap from the engine's own list, not from a threshold", () => {
+    const p = pillarDetails(result);
+    expect(p.find(x => x.key === "elevationCapacity")?.isGap).toBe(true);
+    /* 55 is below a naive 60 cut but the engine did not call it a gap */
+    expect(p.find(x => x.key === "mountainExperience")?.isGap).toBe(false);
+    expect(p.find(x => x.key === "endurance")?.isStrength).toBe(true);
+  });
+
+  it("keeps a missing score null rather than zero", () => {
+    const c = pillarDetails(result).find(x => x.key === "consistency");
+    expect(c?.score).toBeNull();
+    expect(c?.missing).toBe(true);
+  });
+
+  it("carries the engine's explanation verbatim, or null when it has none", () => {
+    const p = pillarDetails(result);
+    expect(p.find(x => x.key === "endurance")?.explanation).toBe("Four long days in the last six weeks.");
+    expect(p.find(x => x.key === "consistency")?.explanation).toBeNull();
+  });
+
+  it("flags only the dimension the next action targets", () => {
+    const p = pillarDetails(result, "elevationCapacity");
+    expect(p.filter(x => x.isFocus).map(x => x.key)).toEqual(["elevationCapacity"]);
+  });
+
+  it("flags nothing as focus when there is no next action", () => {
+    expect(pillarDetails(result, null).some(x => x.isFocus)).toBe(false);
+  });
+
+  it("still returns four pillars with no result at all", () => {
+    const p = pillarDetails(null);
+    expect(p).toHaveLength(4);
+    expect(p.every(x => x.score === null && x.missing && !x.isGap)).toBe(true);
+  });
+
+  it("gives every pillar stable descriptive copy that names no person or number", () => {
+    for (const p of pillarDetails(result)) {
+      expect(p.measures.length).toBeGreaterThan(20);
+      expect(p.measures).not.toMatch(/\d/);
+    }
+  });
+
+  it("reports the engine's evidence count", () => {
+    expect(pillarDetails(result).find(x => x.key === "endurance")?.evidenceCount).toBe(2);
+    expect(pillarDetails(result).find(x => x.key === "consistency")?.evidenceCount).toBe(0);
   });
 });

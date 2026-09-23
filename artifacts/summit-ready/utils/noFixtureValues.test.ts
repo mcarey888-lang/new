@@ -27,9 +27,15 @@ const PRODUCTION_SOURCES = [
   "components/basecamp/MissionSection.tsx",
   "components/basecamp/ProgressTiles.tsx",
   "components/basecamp/QuickActions.tsx",
-  "components/basecamp/primitives.tsx",
   "components/SharedTabBar.tsx",
   "hooks/useElevationBank.ts",
+  /* Batch 1 — Training Journey */
+  "utils/readinessHistory.ts",
+  "utils/readinessEvidencePresentation.ts",
+  "utils/mountainImage.ts",
+  "components/readiness/PillarGrid.tsx",
+  "components/readiness/ReadinessHistoryChart.tsx",
+  "hooks/useReadinessHistory.ts",
 ];
 
 /** Strip // and block comments so prose about the example does not trip this. */
@@ -61,6 +67,24 @@ describe("no prototype fixture values in production paths", () => {
     expect(body).toMatch(/mountainName=\{summitGoal\.mountainName\}/);
     expect(body).toMatch(/summitDate=\{summitGoal\.summitDate\}/);
     expect(body).toMatch(/goal=\{summitGoal\}/);
+  });
+
+  it("the Training Journey screens name no mountain or figure of their own", () => {
+    for (const rel of [
+      "app/readiness-detail.tsx", "app/(tabs)/plan.tsx",
+      "app/session-detail.tsx", "app/hike-detail.tsx",
+    ]) {
+      const body = code(readFileSync(join(ROOT, rel), "utf8"));
+      expect(body).not.toMatch(/Mont Blanc/);
+      expect(body).not.toMatch(/12,?420/);
+      expect(body).not.toMatch(/88,?429/);
+    }
+  });
+
+  it("the readiness history replays the engine instead of storing a series", () => {
+    const body = code(readFileSync(join(ROOT, "hooks/useReadinessHistory.ts"), "utf8"));
+    expect(body).toMatch(/evaluateReadiness\(input\)\.overallScore/);
+    expect(body).not.toMatch(/\[\s*\d+\s*,\s*\d+\s*,\s*\d+/);
   });
 
   it("the gauge derives everything from its props", () => {

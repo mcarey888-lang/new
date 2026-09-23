@@ -36,7 +36,7 @@ import {
 } from "@/components/basecamp/MissionSection";
 import { ProgressTiles } from "@/components/basecamp/ProgressTiles";
 import { EditorialBand, QuickActionsGrid } from "@/components/basecamp/QuickActions";
-import { BasecampPanel, BasecampSectionHeader } from "@/components/basecamp/primitives";
+import { SRPanel, SRSectionHeader } from "@/components/ui";
 import { missionQueue, weekProgress } from "@/utils/basecampPresentation";
 import { CoachInsight } from "@/components/CoachInsight";
 import { buildCoachInsight } from "@/utils/coachInsightPresentation";
@@ -664,7 +664,7 @@ export default function DashboardScreen() {
         {/* ── This week's mission ───────────────────────────────────── */}
         {trainingPlan.length > 0 && (
           <View style={styles.section}>
-            <BasecampSectionHeader
+            <SRSectionHeader
               title="This week's mission"
               action="View plan"
               onAction={() => router.push("/(tabs)/plan")}
@@ -709,7 +709,7 @@ export default function DashboardScreen() {
             entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}
             style={styles.section}
           >
-            <BasecampPanel style={styles.insightPanel}>
+            <SRPanel style={styles.insightPanel}>
               <View style={styles.insightRow}>
                 <View style={styles.insightIcon}>
                   <Lightbulb size={15} color={T.orange} />
@@ -720,7 +720,7 @@ export default function DashboardScreen() {
                   <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
                 </View>
               </View>
-            </BasecampPanel>
+            </SRPanel>
           </Animated.View>
         )}
 
@@ -751,7 +751,7 @@ export default function DashboardScreen() {
         >
           {/* CoachInsight carries its own tracked-out AI COACH header and the
               mascot, so the section does not repeat it. */}
-          <BasecampPanel>
+          <SRPanel>
             <CoachInsight
               state={buildCoachInsight({
                 hasGoal: Boolean(summitGoal),
@@ -817,7 +817,7 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               </Animated.View>
             )}
-          </BasecampPanel>
+          </SRPanel>
         </View>
 
         {/* ── Close ─────────────────────────────────────────────────── */}

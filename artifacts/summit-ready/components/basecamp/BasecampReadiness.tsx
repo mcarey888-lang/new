@@ -22,7 +22,7 @@ import { ChevronRight, Info } from "lucide-react-native";
 import { T } from "@/constants/theme";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
 import { SRReadinessGauge } from "@/components/SRReadinessGauge";
-import { BasecampPanel } from "@/components/basecamp/primitives";
+import { SRPanel } from "@/components/ui";
 import {
   PILLAR_LABELS, STATUS_COPY, projection, readinessStatus,
 } from "@/utils/readinessPresentation";
@@ -67,7 +67,7 @@ export function BasecampReadiness({
       entering={reduced ? undefined : FadeInDown.delay(MOTION.stagger).duration(MOTION.enter)}
       style={styles.wrap}
     >
-      <BasecampPanel
+      <SRPanel
         onPress={onOpen}
         accessibilityLabel={isSubscribed ? "Readiness" : "Unlock readiness with SummitReady Pro"}
         accessibilityHint={isSubscribed ? "Opens your full readiness breakdown" : undefined}
@@ -128,7 +128,7 @@ export function BasecampReadiness({
             </View>
           </View>
         </View>
-      </BasecampPanel>
+      </SRPanel>
     </Animated.View>
   );
 }

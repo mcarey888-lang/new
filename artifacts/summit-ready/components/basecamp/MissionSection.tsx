@@ -25,7 +25,7 @@ import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated"
 import { LinearGradient } from "expo-linear-gradient";
 import { Activity, ChevronRight, Clock, Mountain, TrendingUp } from "lucide-react-native";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
-import { BasecampPanel, BasecampSectionHeader, FactDivider } from "@/components/basecamp/primitives";
+import { SRPanel, SRSectionHeader, SRFactDivider } from "@/components/ui";
 import { sessionFacts, type QueuedSession } from "@/utils/basecampPresentation";
 
 /** Visual identity per plan session type. Icons only — no invented copy. */
@@ -59,7 +59,7 @@ export function MissionCard({ session, phase, onStart, onOpen }: MissionCardProp
   const visualWidth = width < 360 ? 68 : width < 400 ? 82 : 92;
 
   return (
-    <BasecampPanel
+    <SRPanel
       onPress={onOpen}
       accessibilityLabel={`This week's mission: ${session.title}`}
       accessibilityHint="Opens the session detail"
@@ -102,7 +102,7 @@ export function MissionCard({ session, phase, onStart, onOpen }: MissionCardProp
             <View style={styles.factRow}>
               {facts.map((f, i) => (
                 <React.Fragment key={f}>
-                  {i > 0 && <FactDivider />}
+                  {i > 0 && <SRFactDivider />}
                   <Text style={styles.factText} numberOfLines={1}>{f}</Text>
                 </React.Fragment>
               ))}
@@ -114,21 +114,21 @@ export function MissionCard({ session, phase, onStart, onOpen }: MissionCardProp
           )}
         </View>
       </View>
-    </BasecampPanel>
+    </SRPanel>
   );
 }
 
 /** Shown in place of the mission once the plan has nothing outstanding. */
 export function MissionComplete({ onOpenPlan }: { onOpenPlan: () => void }) {
   return (
-    <BasecampPanel onPress={onOpenPlan} accessibilityLabel="Training plan" testID="basecamp-mission-clear">
+    <SRPanel onPress={onOpenPlan} accessibilityLabel="Training plan" testID="basecamp-mission-clear">
       <View style={styles.clearWrap}>
         <Text style={styles.clearTitle}>Nothing outstanding</Text>
         <Text style={styles.clearBody}>
           Every prescribed session in your plan is logged. Open the plan to look further ahead.
         </Text>
       </View>
-    </BasecampPanel>
+    </SRPanel>
   );
 }
 
@@ -149,7 +149,7 @@ export function UpNextRail({
       entering={reduced ? undefined : FadeInDown.delay(MOTION.stagger * 2).duration(MOTION.enter)}
       style={styles.railSection}
     >
-      <BasecampSectionHeader
+      <SRSectionHeader
         title="Up next"
         action="View full plan"
         onAction={onOpenPlan}
@@ -174,7 +174,7 @@ function SessionCard({ session, onPress }: { session: QueuedSession; onPress: ()
   const elevation = session.elevationM !== null ? `${session.elevationM.toLocaleString()} m gain` : null;
 
   return (
-    <BasecampPanel
+    <SRPanel
       radius={15}
       style={styles.card}
       onPress={onPress}
@@ -199,7 +199,7 @@ function SessionCard({ session, onPress }: { session: QueuedSession; onPress: ()
           </View>
         )}
       </View>
-    </BasecampPanel>
+    </SRPanel>
   );
 }
 
