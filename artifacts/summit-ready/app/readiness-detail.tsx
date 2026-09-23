@@ -7,18 +7,23 @@ import { ChevronLeft, Info, Activity, ShieldAlert, Heart, Wind, Zap, Mountain, A
 import { T } from "@/constants/theme";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { useApp } from "@/context/AppContext";
+import { SRGaugeLegend, SRReadinessGauge } from "@/components/SRReadinessGauge";
+import { SRStatusPill } from "@/components/ui";
+import {
+  PILLAR_LABELS, STATUS_COPY, projection, readinessStatus,
+} from "@/utils/readinessPresentation";
 
-const LABELS: Record<string, string> = {
-  endurance: "Endurance",
-  elevationCapacity: "Elevation Capacity",
-  consistency: "Consistency",
-  mountainExperience: "Mountain Experience",
-};
+/* Approved short labels: Endurance · Elevation · Consistency · Experience.
+   Sourced from the shared presentation module so the two screens agree. */
+const LABELS: Record<string, string> = PILLAR_LABELS;
 const ICONS: Record<string, any> = {
   endurance: Heart,
   elevationCapacity: Wind,
   consistency: Zap,
   mountainExperience: Mountain,
+};
+const STATUS_TONE: Record<string, string> = {
+  ready: T.green, nearly: T.blue, building: T.orange, pending: T.textMuted, unavailable: T.textMuted,
 };
 const COLORS: Record<string, string> = {
   endurance: T.green,
@@ -33,6 +38,10 @@ export default function ReadinessDetailScreen() {
   const { summitGoal } = useApp();
 
   const { result, nextAction, trend, input } = v2 ?? {};
+
+  /* Presentation only — both derived from what the engine already returned. */
+  const status = readinessStatus(result?.state, result?.overallScore);
+  const proj = projection(result?.overallScore, nextAction?.projectedImpact?.delta ?? null);
 
   const evidenceMap = useMemo(() => {
     if (!input) return new Map();
@@ -75,13 +84,22 @@ export default function ReadinessDetailScreen() {
               </View>
             </View>
 
-            {/* Overall Score Box */}
+            {/* Overall Score Box — approved gauge.
+                Both figures come from Readiness 2.0: the ring draws
+                result.overallScore, and the projected arc is drawn only from
+                the engine's own next-action projection. */}
             <View style={styles.mainScoreBox}>
-              <View style={styles.scoreRow}>
-                <Text style={styles.scoreValue}>{result.overallScore ?? "—"}</Text>
-                <Text style={styles.scoreMax}>/100</Text>
-              </View>
+              <SRReadinessGauge
+                score={result.overallScore}
+                projected={proj ? proj.projected : null}
+                size={156}
+                statusLabel={STATUS_COPY[status].label}
+                tone={STATUS_TONE[status]}
+              />
+              <SRGaugeLegend projected={Boolean(proj)} />
               <Text style={styles.scoreLabel}>Overall Readiness Score</Text>
+              <SRStatusPill label={STATUS_COPY[status].label} tone={STATUS_TONE[status]} style={{ alignSelf: "center", marginTop: 8 }} />
+              <Text style={[styles.scoreDesc, { marginTop: 6 }]}>{STATUS_COPY[status].detail}</Text>
               
               <View style={styles.badgesRow}>
                 {trend !== null && trend !== undefined && (

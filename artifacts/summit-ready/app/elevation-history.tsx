@@ -44,7 +44,7 @@ export default function ElevationHistoryScreen() {
           remain visible without rewriting the original record.
         </Text>
 
-        <ElevationBankCard expanded />
+        <ElevationBankCard expanded emphasis />
 
         <View style={styles.note}>
           <Info size={16} color={T.blue} />

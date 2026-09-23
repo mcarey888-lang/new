@@ -38,6 +38,10 @@ import { ReadinessV2Hero } from "@/components/ReadinessV2Hero";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
+import { CoachInsight } from "@/components/CoachInsight";
+import { buildCoachInsight } from "@/utils/coachInsightPresentation";
+import { buildCoachFacts } from "@/utils/coachFactsAdapter";
+import { useReadinessV2 } from "@/hooks/useReadinessV2";
 
 // Animated WebP supports transparency on all platforms via expo-image.
 // GIF on Android fills transparent pixels with black, so we never use it.
@@ -523,6 +527,9 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions } = useApp();
   const { isSubscribed } = useSubscription();
+  /* Readiness 2.0 is read here only so the Coach card can DISPLAY authoritative
+     figures. The Coach still produces none of them. */
+  const readinessV2 = useReadinessV2();
   const [coach, setCoach] = useState<CoachAssessment | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState(false);
@@ -990,7 +997,10 @@ export default function DashboardScreen() {
 
           {/* Progress */}
           <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(110).duration(500)} style={styles.editorialSection}>
-            <ElevationBankCard onPress={() => router.push("/elevation-history")} />
+            {/* Elevation Bank is a first-class concept on Basecamp, so the
+                lifetime figure gets its own hierarchy. Values and credit
+                rules are unchanged. */}
+            <ElevationBankCard emphasis onPress={() => router.push("/elevation-history")} />
           </Animated.View>
 
           {/* Secondary content */}
@@ -1064,61 +1074,34 @@ export default function DashboardScreen() {
             {/* Coach Query area */}
             {isSubscribed && (
               <View style={styles.coachContainer} onLayout={(e) => { coachY.current = e.nativeEvent.layout.y; }}>
-                <View style={styles.coachHeader}>
-                  <View style={styles.coachChatArea}>
-                    <AlpineGuide flush />
-                    <View>
-                      <Text style={styles.coachHeaderTitle}>Your coach assessment</Text>
-                      <Text style={styles.coachHeaderSub}>Based on your current training data</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={fetchCoach}
-                    disabled={coachLoading}
-                    style={styles.coachRefresh}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Refresh coach assessment"
-                  >
-                    <RefreshCw size={14} color={T.basecampTextMuted} />
-                  </TouchableOpacity>
-                </View>
+                {/* The approved CoachInsight treatment. The fetch, retry,
+                    entitlement gate and ask box all stay exactly where they
+                    were — this only changes how the assessment is drawn, and
+                    adds the engine-supplied facts (mountain, readiness,
+                    projection, next session) that the card shows alongside it.
+                    The Coach still authors none of those numbers. */}
+                <CoachInsight
+                  state={buildCoachInsight({
+                    hasGoal: Boolean(summitGoal),
+                    entitled: isSubscribed,
+                    loading: coachLoading,
+                    error: coachError,
+                    assessment: coach,
+                    facts: buildCoachFacts({
+                      mountainName: summitGoal?.mountainName ?? null,
+                      overallScore: readinessV2?.result?.overallScore ?? null,
+                      projectedDelta: readinessV2?.nextAction?.projectedImpact?.delta ?? null,
+                      nextSession,
+                    }),
+                  })}
+                  mascot={<AlpineGuide />}
+                  variant="compact"
+                  onRetry={fetchCoach}
+                  onRefresh={fetchCoach}
+                  onOpen={() => askInputRef.current?.focus()}
+                  onUnlock={() => router.push("/paywall")}
+                />
 
-                <View style={styles.coachBubble}>
-                  {coachError ? (
-                    <TouchableOpacity onPress={fetchCoach} style={styles.coachRetry} activeOpacity={0.7}>
-                      <WifiOff size={15} color={T.basecampTextMuted} />
-                      <Text style={styles.coachBubbleText}>Couldn't reach coach — tap to retry</Text>
-                    </TouchableOpacity>
-                  ) : coachLoading || !coach ? (
-                    <View style={styles.coachRetry}>
-                      <ActivityIndicator size="small" color={T.green} />
-                      <Text style={styles.coachBubbleText}>Analysing your training...</Text>
-                    </View>
-                  ) : (
-                    <>
-                      <Text style={styles.coachBubbleText}>{coach.summary}</Text>
-                      <View style={styles.coachTips}>
-                        {coach.tips.map((tip, index) => (
-                          <View key={index} style={styles.coachTip}>
-                            <View style={[
-                              styles.coachTipDot,
-                              {
-                                backgroundColor:
-                                  coach.tone === "positive" ? T.green
-                                  : coach.tone === "warning" ? T.orange
-                                  : T.blue,
-                              },
-                            ]} />
-                            <Text style={styles.coachTipText}>{tip}</Text>
-                          </View>
-                        ))}
-                      </View>
-                      <Text style={styles.coachDisclaimer}>
-                        AI guidance only — not medical advice. Mountain conditions change; always check forecasts and local guidance before heading out.
-                      </Text>
-                    </>
-                  )}
-                </View>
                 <View style={styles.askBox}>
                   <TextInput
                     ref={askInputRef}
