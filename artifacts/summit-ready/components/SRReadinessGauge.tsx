@@ -61,7 +61,8 @@ export function SRReadinessGauge({
   const circ = circumference(radius);
 
   const value = clampScore(score);
-  const ringTone = tone ?? T.green;
+  const statusTone = tone ?? T.green;
+  const arcTone = T.green;
 
   const [earnedLen] = arcDash(value, radius);
   const proj = projectedArcDash(value, projected, radius);
@@ -125,14 +126,14 @@ export function SRReadinessGauge({
               <AnimatedG animatedProps={projProps}>
                 <Circle
                   cx={cx} cy={cx} r={radius} fill="none"
-                  stroke={ringTone} strokeWidth={strokeWidth + 6} strokeLinecap="butt"
+                  stroke={arcTone} strokeWidth={strokeWidth + 6} strokeLinecap="butt"
                   strokeDasharray={`${proj.dash[0]} ${proj.dash[1]}`}
                   strokeDashoffset={proj.offset}
                   opacity={0.16}
                 />
                 <Circle
                   cx={cx} cy={cx} r={radius} fill="none"
-                  stroke={ringTone} strokeWidth={strokeWidth} strokeLinecap="butt"
+                  stroke={arcTone} strokeWidth={strokeWidth} strokeLinecap="butt"
                   strokeDasharray={`${proj.dash[0]} ${proj.dash[1]}`}
                   strokeDashoffset={proj.offset}
                 />
@@ -144,7 +145,7 @@ export function SRReadinessGauge({
               the projected continuation sitting immediately after it. */}
           <AnimatedCircle
             cx={cx} cy={cx} r={radius} fill="none"
-            stroke={ringTone} strokeWidth={strokeWidth} strokeLinecap="butt"
+            stroke={arcTone} strokeWidth={strokeWidth} strokeLinecap="butt"
             animatedProps={earnedProps}
           />
         </G>
@@ -155,7 +156,7 @@ export function SRReadinessGauge({
         <Text
           style={[
             TYPE.metricLg,
-            { fontSize: size * 0.3, lineHeight: size * 0.33, color: value === null ? T.textMuted : ringTone },
+            { fontSize: size * 0.3, lineHeight: size * 0.33, color: value === null ? T.textMuted : arcTone },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -164,7 +165,7 @@ export function SRReadinessGauge({
           {value === null ? "—" : `${Math.round(value)}%`}
         </Text>
         <Text style={styles.readyWord}>READY</Text>
-        {statusLabel ? <Text style={[styles.status, { color: ringTone }]} numberOfLines={1}>{statusLabel}</Text> : null}
+        {statusLabel ? <Text style={[styles.status, { color: statusTone }]} numberOfLines={1}>{statusLabel}</Text> : null}
       </View>
 
       {/* Projected callout, anchored to the real endpoint of the soft arc. */}
@@ -174,13 +175,13 @@ export function SRReadinessGauge({
             styles.callout,
             /* centred on the endpoint, then nudged outward from the ring */
             {
-              left: endpoint.x - 22 + (endpoint.x - cx) * 0.22,
-              top: endpoint.y - 11 + (endpoint.y - cx) * 0.22,
+              left: Math.max(0, Math.min(size - 44, endpoint.x - 22 + (endpoint.x - cx) * 0.22)),
+              top: Math.max(0, Math.min(size - 22, endpoint.y - 11 + (endpoint.y - cx) * 0.22)),
             },
           ]}
           pointerEvents="none"
         >
-          <Text style={[styles.calloutText, { color: ringTone }]} numberOfLines={1}>
+          <Text style={[styles.calloutText, { color: arcTone }]} numberOfLines={1}>
             {Math.round(projectedValue)}%
           </Text>
         </View>
@@ -190,16 +191,16 @@ export function SRReadinessGauge({
 }
 
 /** Legend making the two arcs unambiguous wherever a projection is shown. */
-export function SRGaugeLegend({ projected, tone = T.green }: { projected: boolean; tone?: string }) {
+export function SRGaugeLegend({ projected }: { projected: boolean; tone?: string }) {
   if (!projected) return null;
   return (
     <View style={styles.legend}>
       <View style={styles.legendItem}>
-        <View style={[styles.swatch, { backgroundColor: tone }]} />
+        <View style={[styles.swatch, { backgroundColor: T.green }]} />
         <Text style={styles.legendText}>Earned</Text>
       </View>
       <View style={styles.legendItem}>
-        <View style={[styles.swatch, { backgroundColor: tone, opacity: PROJECTED_OPACITY }]} />
+        <View style={[styles.swatch, { backgroundColor: T.green, opacity: PROJECTED_OPACITY }]} />
         <Text style={styles.legendText}>After your next session</Text>
       </View>
     </View>

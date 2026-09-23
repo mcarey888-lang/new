@@ -45,7 +45,7 @@ const previewHtml = `<!DOCTYPE html>
       #root { display: flex; height: 100%; flex: 1; }
     </style>
     <script>
-      history.replaceState({}, '', '/');
+      history.replaceState({}, '', '/' + window.location.search);
     </script>
   </head>
   <body>
