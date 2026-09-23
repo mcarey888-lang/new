@@ -54,6 +54,7 @@ import {
   formatPace, offlineNotice, paceMinPerKm, statusLabel, trackContext,
 } from "@/utils/trackPresentation";
 import { T } from "@/constants/theme";
+import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
 import { useApp } from "@/context/AppContext";
 import { ActivityCompleteView } from "@/components/track/ActivityCompleteView";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
@@ -1667,13 +1668,13 @@ export default function HikeTrackingScreen() {
             onPress={fetchNearbyRoutes}
             activeOpacity={0.8}
           >
-            <MapPin size={14} color={selectedCanonical ? T.green : T.blue} />
-            <Text style={[s.nearbyBtnText, selectedCanonical && { color: T.green }]}>
+            <MapPin size={14} color={selectedCanonical ? BASECAMP.accent : BASECAMP.textMuted} />
+            <Text style={[s.nearbyBtnText, selectedCanonical && { color: BASECAMP.accent }]}>
               {selectedCanonical ? `Following: ${selectedCanonical.name}` : "Pick a nearby route"}
             </Text>
             {selectedCanonical
-              ? <CheckCircle size={14} color={T.green} />
-              : <ChevronRight size={14} color={T.textMuted} />
+              ? <CheckCircle size={14} color={BASECAMP.accent} />
+              : <ChevronRight size={14} color={BASECAMP.textDim} />
             }
           </TouchableOpacity>
         </Animated.View>
@@ -1767,11 +1768,11 @@ export default function HikeTrackingScreen() {
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#3ECF75", "#2AB860"]}
+                colors={[BASECAMP.accent, "#15C486"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.startBtnGrad}
               >
-                <Play size={20} color="#fff" fill="#fff" />
+                <Play size={20} color={BASECAMP.accentInk} fill={BASECAMP.accentInk} />
                 <Text style={s.startBtnText}>
                   Start Tracking
                 </Text>
@@ -1993,84 +1994,79 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
-  root: { flex: 1, backgroundColor: "#050D1A" },
+  root: { flex: 1, backgroundColor: BASECAMP.ink },
 
   // Top gradient overlay for header legibility
   topGradient: {
-    position: "absolute", top: 0, left: 0, right: 0, height: 160, zIndex: 1,
+    position: "absolute", top: 0, left: 0, right: 0, height: 170, zIndex: 1,
   },
 
   // Header — floats over the map
   header: {
     position: "absolute", top: 0, left: 0, right: 0, zIndex: 2,
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 20, paddingBottom: 16, gap: 12,
+    paddingHorizontal: BASECAMP.gutter, paddingBottom: 16, gap: 12,
   },
   headerTitleContainer: {
     flex: 1,
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 17, fontFamily: "Inter_600SemiBold",
-    color: T.text, textAlign: "center",
+    ...TYPE.bodyBold, fontSize: 16, color: BASECAMP.text, textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 11, fontFamily: "Inter_500Medium",
-    color: T.green, textAlign: "center",
-    marginTop: 2,
+    marginTop: 2, fontSize: 11, lineHeight: 14,
+    fontFamily: "Inter_600SemiBold", color: BASECAMP.accent, textAlign: "center",
   },
   backBtn: { padding: 4 },
 
   // GPS pill
   gpsPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(5,13,26,0.75)", borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: BASECAMP.navGlass, borderRadius: 999,
+    paddingHorizontal: 10, minHeight: 26,
+    borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
-  gpsPillReady: { borderColor: "rgba(62,207,117,0.5)", backgroundColor: "rgba(5,13,26,0.85)" },
-  gpsDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: T.textMuted },
-  gpsText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  gpsTextReady: { color: T.green },
+  gpsPillReady: { borderColor: BASECAMP.accentLine },
+  gpsDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: BASECAMP.textDim },
+  gpsText: { fontSize: 11, fontFamily: "Inter_700Bold", color: BASECAMP.textDim },
+  gpsTextReady: { color: BASECAMP.accent },
 
   // Route name card — absolute overlay, idle only
   nameOverlay: {
-    position: "absolute", left: 16, right: 16, zIndex: 2,
-    backgroundColor: "rgba(6,13,27,0.93)",
-    borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    position: "absolute", left: BASECAMP.gutter, right: BASECAMP.gutter, zIndex: 2,
+    backgroundColor: BASECAMP.navGlass,
+    borderRadius: 18, borderWidth: 1, borderColor: BASECAMP.glassBorder,
     padding: 16, gap: 8,
   },
-  nameLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.6 },
+  nameLabel: { ...TYPE.eyebrow, fontSize: 10, color: BASECAMP.textDim },
   nameRequired: { color: T.green },
   nameInput: {
-    backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 12,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    paddingHorizontal: 14, minHeight: 46,
+    fontSize: 16, fontFamily: "Inter_600SemiBold", color: BASECAMP.text,
   },
   nameInputError: { borderColor: T.red + "80" },
   nameErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
   nameHintText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 },
   // Track Ready composition.
   readyContext: { marginBottom: 14, gap: 3 },
-  readyContextEyebrow: {
-    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
-    letterSpacing: 1.6, color: T.textMuted,
-  },
-  readyContextTitle: { fontSize: 22, lineHeight: 27, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -0.3 },
-  readyContextSub: { fontSize: 13, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
+  readyContextEyebrow: { ...TYPE.eyebrow, color: BASECAMP.textDim },
+  readyContextTitle: { ...TYPE.title, fontSize: 22, lineHeight: 27, color: BASECAMP.text },
+  readyContextSub: { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted },
   readyStateRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)", borderRadius: 12,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1,
+    borderColor: BASECAMP.panelSubBorder, borderRadius: 12,
     paddingVertical: 10, paddingHorizontal: 12, marginBottom: 10,
   },
   readyStateItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, minWidth: 0 },
   readyStateDivider: { width: 1, alignSelf: "stretch", backgroundColor: "rgba(255,255,255,0.08)", marginHorizontal: 10 },
-  readyStateText: { fontSize: 12.5, fontFamily: "Inter_600SemiBold", color: T.textMuted, flexShrink: 1 },
+  readyStateText: { fontSize: 12.5, fontFamily: "Inter_600SemiBold", color: BASECAMP.textMuted, flexShrink: 1 },
   readyAssurance: {
     fontSize: 11.5, lineHeight: 16, fontFamily: "Inter_400Regular",
-    color: T.textDim, marginBottom: 14,
+    color: BASECAMP.textDim, marginBottom: 14,
   },
   // Activity Complete — the reward moment's headline figure.
   // Activity Details — approved wording block above the Save Details CTA.
@@ -2078,40 +2074,40 @@ const s = StyleSheet.create({
   // Bottom sheet
   sheet: {
     position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2,
-    backgroundColor: "rgba(6,13,27,0.97)",
+    backgroundColor: BASECAMP.navGlass,
     borderTopLeftRadius: 26, borderTopRightRadius: 26,
-    borderTopWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderTopWidth: 1, borderColor: BASECAMP.navBorder,
   },
   sheetHandleArea: { alignItems: "center", paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 },
   handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 8,
+    width: 38, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.25)", marginBottom: 8,
   },
   sheetStatusRow: {
     flexDirection: "row", alignItems: "center", gap: 10, width: "100%",
   },
-  timerInline: { flex: 1, fontSize: 30, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -0.5 },
-  chevron: { fontSize: 14, color: T.textMuted },
+  timerInline: { flex: 1, ...TYPE.metric, fontSize: 30, lineHeight: 34, color: BASECAMP.text },
+  chevron: { fontSize: 14, color: BASECAMP.textDim },
 
   // Status pill (inside sheet header row)
   statusPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: BASECAMP.panelSub, borderRadius: 999,
+    paddingHorizontal: 10, minHeight: 26,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
-  statusPillTracking: { backgroundColor: "rgba(62,207,117,0.1)", borderColor: "rgba(62,207,117,0.3)" },
-  statusPillPaused:   { backgroundColor: "rgba(251,146,60,0.1)", borderColor: "rgba(251,146,60,0.3)" },
-  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textMuted, letterSpacing: 0.8 },
+  statusPillTracking: { backgroundColor: BASECAMP.accentDim, borderColor: BASECAMP.accentLine },
+  statusPillPaused:   { backgroundColor: EXPLORE.unverifiedDim, borderColor: EXPLORE.unverifiedLine },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: BASECAMP.textDim, letterSpacing: 0.9 },
 
   // Sheet body (stats + controls)
-  sheetBody: { paddingHorizontal: 16, paddingBottom: 4, gap: 10 },
+  sheetBody: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 4, gap: 10 },
 
   // Stats row — 4 cells
   statsRow: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    backgroundColor: BASECAMP.panelSub,
+    borderRadius: 16, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     paddingVertical: 12,
   },
   statCell: { flex: 1, alignItems: "center", gap: 4 },
@@ -2128,8 +2124,8 @@ const s = StyleSheet.create({
     fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular",
     color: T.textMuted, marginBottom: 10,
   },
-  statValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
-  statLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  statValue: { fontSize: 17, lineHeight: 21, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  statLabel: { ...TYPE.eyebrow, fontSize: 9, letterSpacing: 0.9, color: BASECAMP.textDim },
 
   // Speed bar
   speedRow: {
@@ -2145,18 +2141,18 @@ const s = StyleSheet.create({
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
   },
-  controlBtnPause:  { backgroundColor: "rgba(96,165,250,0.1)", borderColor: "rgba(96,165,250,0.3)" },
-  controlBtnResume: { backgroundColor: "rgba(62,207,117,0.1)", borderColor: "rgba(62,207,117,0.3)" },
-  controlBtnStop:   { backgroundColor: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.25)" },
-  controlBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.blue },
+  controlBtnPause:  { backgroundColor: BASECAMP.panelSub, borderColor: BASECAMP.panelSubBorder },
+  controlBtnResume: { backgroundColor: BASECAMP.accentDim, borderColor: BASECAMP.accentLine },
+  controlBtnStop:   { backgroundColor: "rgba(239,68,68,0.10)", borderColor: "rgba(239,68,68,0.32)" },
+  controlBtnText: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.textStrong },
 
   // Start button
-  startBtn: { borderRadius: 18, overflow: "hidden" },
+  startBtn: { borderRadius: 16, overflow: "hidden" },
   startBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, paddingVertical: 16,
   },
-  startBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  startBtnText: { fontSize: 17, lineHeight: 21, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk },
 
   // GPS note
   gpsNote: {
@@ -2203,20 +2199,21 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     alignSelf: "center", marginBottom: 8,
   },
-  confirmTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
-  confirmSub:   { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19 },
+  confirmTitle: { ...TYPE.title, fontSize: 18, lineHeight: 23, color: BASECAMP.text, textAlign: "center" },
+  confirmSub:   { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted, textAlign: "center" },
   confirmPrimary: {
-    backgroundColor: T.green, borderRadius: 14,
-    paddingVertical: 15, alignItems: "center",
+    backgroundColor: BASECAMP.accent, borderRadius: 14,
+    minHeight: 50, alignItems: "center", justifyContent: "center",
   },
-  confirmPrimaryText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  confirmPrimaryText: { fontSize: 16, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk },
   confirmDestructive: {
     backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 14, borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)", paddingVertical: 15, alignItems: "center",
+    borderColor: "rgba(239,68,68,0.3)", minHeight: 50,
+    alignItems: "center", justifyContent: "center",
   },
   confirmDestructiveText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.red },
-  confirmCancel: { paddingVertical: 12, alignItems: "center" },
-  confirmCancelText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted },
+  confirmCancel: { minHeight: 44, alignItems: "center", justifyContent: "center" },
+  confirmCancelText: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.textMuted },
 
   // ── Nearby route picker (name overlay) ────────────────────────────────────
   orRow: {
@@ -2226,16 +2223,16 @@ const s = StyleSheet.create({
   orText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   nearbyBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "rgba(74,159,245,0.08)", borderRadius: 10,
-    borderWidth: 1, borderColor: "rgba(74,159,245,0.2)",
-    paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 12,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    paddingHorizontal: 12, minHeight: 44, marginTop: 4,
   },
   nearbyBtnSelected: {
-    backgroundColor: "rgba(62,207,117,0.08)",
-    borderColor: "rgba(62,207,117,0.3)",
+    backgroundColor: BASECAMP.accentDim,
+    borderColor: BASECAMP.accentLine,
   },
   nearbyBtnText: {
-    flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue,
+    flex: 1, ...TYPE.smallBold, fontSize: 13, color: BASECAMP.textStrong,
   },
 
   // ── Nearby routes picker modal ─────────────────────────────────────────────
