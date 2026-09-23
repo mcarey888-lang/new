@@ -19,6 +19,14 @@
   merely reads "Expeditions".
 
   ── What this prototype does NOT do ───────────────────────────────────────
+  ⚠ THE DATA BELOW IS ILLUSTRATIVE. Every distance, ascent, gradient, duration,
+    difficulty grade, match score, provenance value and geographic detail in this
+    file exists so the interface can be judged. None of it is survey data and
+    none of it has been through the import pipeline. It must NEVER be lifted
+    into a seed script, a migration, a fixture or any production store. In
+    production every one of these values is resolved at runtime from the Summit
+    Data Engine and the Route Engine. See PROTOTYPE_DATA below.
+
   • It does not redesign the Expedition product, its persistence or schema.
     The shapes below mirror the existing engine (lib/db/src/schema/
     virtual-expedition-engine.ts): virtual_expeditions → expedition_routes →
@@ -109,7 +117,38 @@
    presentation only, and two routes may legitimately share one.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* Target mountains. One record per mountain, referenced by many expeditions. */
+/* ⚠ ILLUSTRATIVE PROTOTYPE DATA — NOT PRODUCTION SEED DATA ⚠
+   Read this before copying anything below into a seed file, a fixture or a
+   migration: don't. The numbers are here to make the interface judgeable, and
+   they are hand-written, not surveyed. Production resolves all of them at
+   runtime from the engines that own them. */
+const PROTOTYPE_DATA = Object.freeze({
+  illustrative: true,
+  canonicalSource: {
+    mountains:       'Summit Data Engine \u2192 virtual_expeditions',
+    expeditionRoutes:'Route Engine \u2192 expedition_routes (+ route_dna)',
+    trainingRoutes:  'Route Engine \u2192 training_routes (+ route_dna)',
+    matchScores:     'Route Engine \u2192 route_matches',
+    provenance:      'import pipeline \u2192 data_confidence',
+  },
+  illustrativeFields: Object.freeze([
+    'ascentM', 'distanceKm', 'hours', 'days', 'summitM', 'difficulty',
+    'altitudeRisk', 'maxTechnicality', 'match', 'dataConfidence',
+    'country', 'continent', 'region', 'category',
+  ]),
+  notice:
+    'Illustrative prototype data. Distances, ascent, durations, difficulty, match ' +
+    'scores, provenance and geography in this file are written to exercise the UI ' +
+    'and must never be treated as canonical. Production resolves every one of these ' +
+    'values from the Summit Data Engine and the Route Engine.',
+});
+/* Stamped with a Symbol rather than a property: a plain key would look like a
+   field on the record and would defeat the "references only, no copied facts"
+   check these catalogues exist to demonstrate. */
+const ILLUSTRATIVE = Symbol.for('summitready.illustrativeData');
+
+/* Target mountains. One record per mountain, referenced by many expeditions.
+   Summit altitudes and grades below are ILLUSTRATIVE (see PROTOTYPE_DATA). */
 const MOUNTAINS = {
   mtn_everest: { id:'mtn_everest', slug:'everest', srcId:'M-0001', name:'Everest',
     country:'Nepal / Tibet', continent:'Asia', summitM:8849, category:'Trek / High Altitude',
@@ -129,7 +168,8 @@ const MOUNTAINS = {
 };
 
 /* Expedition routes on those mountains. ascentM is the ROUTE'S ascent — it is
-   never the mountain's summit altitude, and the two are never interchanged. */
+   never the mountain's summit altitude, and the two are never interchanged.
+   Every figure here is ILLUSTRATIVE; production reads expedition_routes. */
 const EXPEDITION_ROUTES = {
   eroute_everest_sc: { id:'eroute_everest_sc', mountainId:'mtn_everest', srcId:'R-0007',
     name:'Base Camp → Summit', ascentM:4500, distanceKm:19.3, days:'40–55 days',
@@ -150,7 +190,11 @@ const EXPEDITION_ROUTES = {
 
 /* UK training routes — the real hill challenges an expedition's stages are
    built from. A stage is ALWAYS one of these: a named hill and a named route,
-   with its own ascent, distance and provenance. Never a training phase. */
+   with its own ascent, distance and provenance. Never a training phase.
+
+   The hills and routes are real places; the ascent, distance, duration and
+   provenance attached to them here are ILLUSTRATIVE and are resolved from
+   training_routes in production. */
 const TRAINING_ROUTES = {
   troute_blencathra_hallsfell: { id:'troute_blencathra_hallsfell', srcId:'T-0102', hill:'Blencathra',
     route:'Hallsfell Top', region:'Lake District', ascentM:602, distanceKm:12.4, hours:3.5,
@@ -201,12 +245,13 @@ const TRAINING_ROUTES = {
 };
 
 /* Expeditions. Note what is NOT here: no mountain name, no summit altitude, no
-   route ascent, no hill data. Only references and the user's own progress. */
+   route ascent, no hill data. Only references and the user's own progress.
+   The per-stage `match` values are ILLUSTRATIVE stand-ins for route_matches. */
 const EXPEDITIONS = [
   { id:'vexp_everest_lakes', routeId:'eroute_everest_sc', version:'expedition v3',
     region:'Lake District + Snowdonia', tier:'free', status:'active',
     startedOn:'2026-08-31', weeks:16, tagline:'Real hills. A legendary goal.',
-    blurb:'Seven of Britain’s most demanding hill routes, sequenced so their combined ascent, gradient and terrain rehearse the climb from Base Camp to the summit.',
+    blurb:'Seven of Britain’s most demanding hill routes, sequenced so their combined ascent carries you the full height of the climb from Base Camp to the summit.',
     stages:[
       { trainingRouteId:'troute_blencathra_hallsfell', match:96, role:'Opening stage', done:true  },
       { trainingRouteId:'troute_bowfell_band',         match:88, role:'Sustained climb', done:false },
@@ -218,8 +263,8 @@ const EXPEDITIONS = [
     ] },
   { id:'vexp_kili_snowdonia', routeId:'eroute_kili_machame', version:'expedition v3',
     region:'Snowdonia', tier:'free', status:'not_started', weeks:12,
-    tagline:'Endurance for the roof of Africa.',
-    blurb:'Kilimanjaro is won on relentless, unglamorous ascent. These Welsh routes build exactly that — long days, big vertical, weather you would rather avoid.',
+    tagline:'Climb the roof of Africa, one Welsh summit at a time.',
+    blurb:'Kilimanjaro is won on relentless, unglamorous ascent — and so is this. Five Welsh routes, long days, big vertical, weather you would rather avoid.',
     stages:[
       { trainingRouteId:'troute_penyfan_horseshoe', match:91, role:'Opening stage',  done:false },
       { trainingRouteId:'troute_tryfan_north',      match:84, role:'Steep ground',   done:false },
@@ -230,7 +275,7 @@ const EXPEDITIONS = [
   { id:'vexp_montblanc_lakes', routeId:'eroute_mb_gouter', version:'expedition v3',
     region:'Lake District', tier:'premium', status:'not_started', weeks:14,
     tagline:'Alpine days, built in the Lakes.',
-    blurb:'The Goûter Route demands back-to-back mountain days with a pack. This sequence stacks ascent across consecutive weekends to rehearse that load.',
+    blurb:'The Goûter Route is won on back-to-back mountain days. Take it on across consecutive Lakeland weekends, each stage climbing higher than the last.',
     stages:[
       { trainingRouteId:'troute_skiddaw_jenkin',      match:87, role:'Opening stage',  done:false },
       { trainingRouteId:'troute_fairfield_horseshoe', match:80, role:'Long day',       done:false },
@@ -252,8 +297,8 @@ const EXPEDITIONS = [
   { id:'vexp_annapurna_brecon', routeId:'eroute_abc_trek', version:'expedition v3',
     region:'Brecon Beacons', tier:'premium', status:'completed', weeks:10,
     startedOn:'2026-02-10', completedOn:'2026-04-26',
-    tagline:'Ten days of walking, rehearsed in Wales.',
-    blurb:'The Sanctuary trek is about repeatable days rather than any single climb. These stages build the habit of moving well on day four.',
+    tagline:'Ten days of walking, taken on in Wales.',
+    blurb:'The Sanctuary trek is about repeatable days rather than any single climb. These five stages give you those days, one horseshoe at a time.',
     stages:[
       { trainingRouteId:'troute_penyfan_horseshoe',     match:89, role:'Opening stage',   done:true },
       { trainingRouteId:'troute_ingleborough_ingleton', match:83, role:'Long day',        done:true },
@@ -262,6 +307,10 @@ const EXPEDITIONS = [
       { trainingRouteId:'troute_snowdon_cribgoch',      match:80, role:'Final push',      done:true },
     ] },
 ];
+
+/* Every catalogue in this prototype carries the same stamp, so a reader, a test
+   or a console session can tell at a glance that its values are illustrative. */
+[MOUNTAINS, EXPEDITION_ROUTES, TRAINING_ROUTES, EXPEDITIONS].forEach(c => { c[ILLUSTRATIVE] = true; });
 
 /* ════════════════════ RESOLVERS ════════════════════
    The single path from a reference to a fact. If a lookup fails the UI says
@@ -426,10 +475,19 @@ function Stat(label, value, sub) {
                 leading-[17px] truncate" data-stat-value>${value}</div>
     ${sub ? `<div class="mt-[2px] text-[9px] leading-[12px] text-white/40 break-words">${esc(sub)}</div>` : ''}</div>`;
 }
-/* Provenance is always shown as it is. "Estimated" is not dressed up. */
+/* Provenance is always shown as it is — "Estimated" is never dressed up — but it
+   is shown in the reader's language. GPX_Verified and Verified are pipeline
+   states; a person choosing an expedition only needs to know the route has been
+   checked. The underlying value is unchanged and still reachable from QA
+   through confidenceOf(). */
+function confidenceLabel(r) {
+  if (!r) return 'Not available';
+  return isVerified(r) ? 'Verified route' : 'Verification pending';
+}
+const confidenceOf = r => (r ? r.dataConfidence : null);   /* QA/debug only */
 function ProvenanceChip(r) {
   if (!r) return Chip('Unresolved', 'warn', 'warn');
-  return isVerified(r) ? Chip(r.dataConfidence === 'GPX_Verified' ? 'GPX verified' : 'Verified', 'accent', 'check')
+  return isVerified(r) ? Chip('Verified route', 'accent', 'check')
                        : Chip('Unverified', 'warn', 'warn');
 }
 
@@ -568,8 +626,8 @@ function LibraryHero() {
     <div class="relative px-[17px] pt-[10px] pb-[18px]">
       <h1 class="text-[29px] font-extrabold leading-[33px] tracking-[-.02em]">Expeditions</h1>
       <p class="mt-[6px] max-w-[300px] text-[12.5px] leading-[17px] text-white/62">
-        Train for a real mountain on the hills you can actually reach. Every stage is a genuine
-        hill route, matched to your objective by Mountain DNA.</p>
+        Take on legendary mountain expeditions using real hills and mountains closer to home.
+        Every stage moves you higher.</p>
       <div class="mt-[11px] flex flex-wrap items-center gap-[6px]">
         ${Chip(`${n} expeditions`, 'accent', 'peak')}${Chip('Custom builder', 'neutral', 'plus')}
       </div>
@@ -777,12 +835,24 @@ function FilterSheet() {
 /* Entitlement is read, never decided here. The library only reflects it. */
 const ENTITLEMENT = { premium:false };
 
+/* Debug surfaces. Off in the consumer UI; turned on from the console by QA.
+   Internal identifiers and pipeline provenance values live behind this. */
+const DEBUG = { identity:false };
+
 /* ═══════════════════════ C · EXPEDITION DETAIL ═══════════════════════ */
-/* Identity strip: the ids this screen actually resolved. It is the visible
-   proof that the expedition references records rather than copying them. */
+/* Identity strip: the ids this screen actually resolved — the visible proof that
+   the expedition references records rather than copying them.
+
+   This is QA instrumentation, not consumer UI. Internal mountain ids, route ids
+   and data versions mean nothing to someone choosing an expedition, so the strip
+   is OFF by default and renders only when DEBUG.identity is set, through the
+   setDebugIdentity() hook. Everything it shows stays reachable from the console
+   via __ids(). */
 function IdentityStrip(exp, m, r) {
+  if (!DEBUG.identity) return '';
   return `<div class="panel-sub rounded-[11px] px-[11px] py-[8px] flex flex-wrap items-center gap-x-[10px] gap-y-[3px]
                       text-[9.5px] font-medium text-white/42">
+    <span class="text-warn font-bold">DEBUG</span>
     <span class="text-white/55">Resolved from</span>
     <span class="tabular-nums">mountain ${esc(m ? m.srcId : '—')}</span><span class="text-white/20">•</span>
     <span class="tabular-nums">route ${esc(r ? r.srcId : '—')}</span><span class="text-white/20">•</span>
@@ -844,7 +914,7 @@ function MatchPanel(exp, st) {
       <div class="min-w-0">
         <div class="text-[10px] font-bold tracking-[.16em] text-white/45">SUMMIT MATCH SCORE</div>
         <p class="mt-[5px] text-[11.5px] leading-[16px] text-white/62">
-          How closely this stage plan rehearses the objective &mdash; the mean Mountain DNA match across
+          How closely these hills mirror the objective &mdash; the mean Mountain DNA match across
           all ${st.length} stages, scored by the Route Engine.</p>
       </div>
     </div>
@@ -908,7 +978,7 @@ function DetailView() {
 
     <section class="px-[17px] pt-[13px] pb-[18px]">
       ${IdentityStrip(e, m, r)}
-      <p class="mt-[12px] text-[12.5px] leading-[18px] text-white/68">${esc(e.blurb)}</p>
+      <p class="${DEBUG.identity ? 'mt-[12px]' : ''} text-[12.5px] leading-[18px] text-white/68">${esc(e.blurb)}</p>
 
       <div class="mt-[13px] grid grid-cols-2 gap-[8px]">
         ${Stat('Summit altitude', m ? fmt(m.summitM) + ' m' : '—', 'Above sea level')}
@@ -934,10 +1004,10 @@ function DetailView() {
         </div>
         <div class="mt-[11px] flex items-start gap-[8px] text-[11px] leading-[15px] text-white/55">
           <span class="mt-[1px] shrink-0 text-accent" data-icon="info" data-size="13"></span>
-          <span>The plan delivers <strong class="text-white/80">${fmt(tot.ascentM)} m</strong> against a
-          <strong class="text-white/80">${r ? fmt(r.ascentM) : '—'} m</strong> objective
-          ${r ? `(${Math.round(tot.ascentM / r.ascentM * 100)}% of the climb)` : ''} &mdash; deliberately more,
-          so the objective is never the hardest day you have had.</span>
+          <span>Your stages climb <strong class="text-white/80">${fmt(tot.ascentM)} m</strong> against the
+          <strong class="text-white/80">${r ? fmt(r.ascentM) : '—'} m</strong> of the objective itself
+          ${r ? `(${Math.round(tot.ascentM / r.ascentM * 100)}%)` : ''} &mdash; every metre of it earned on a
+          real hill.</span>
         </div>
         <div class="mt-[10px] flex flex-wrap gap-[5px]">
           ${Chip(`${e.weeks} week window`, 'neutral', 'clock')}
@@ -1021,8 +1091,8 @@ function StagesView() {
       <div class="mt-[13px] flex items-start gap-[8px] rounded-[13px] panel-sub p-[11px] text-[11px] leading-[15px] text-white/58">
         <span class="mt-[1px] shrink-0 text-accent" data-icon="peak" data-size="13"></span>
         <span>Every stage is a real hill route you go and walk &mdash; a named summit, a named line, its own
-        ascent and provenance. Stages are objectives, not training phases; your Training Plan decides how you
-        build up to them.</span>
+        ascent. Stages are objectives you take on, not training phases: an Expedition simulates a legendary
+        climb through hills you can reach, while your Training Plan is where preparation lives.</span>
       </div>
 
       <h2 class="mt-[17px] mb-[9px] text-[10.5px] font-bold tracking-[.2em] text-white/55">STAGES IN ORDER</h2>
@@ -1052,9 +1122,10 @@ function StageSheet(trId, exp) {
       ${ProvenanceChip(s.tr)}${Chip(s.match + '% DNA match', 'accent', 'dna')}
       ${s.done ? Chip('Complete', 'good', 'check') : Chip('Not yet walked')}
     </div>
-    <div class="mt-[12px] panel-sub rounded-[12px] px-[11px] py-[9px] text-[9.5px] font-medium text-white/42">
-      Resolved from training route <span class="tabular-nums text-white/60">${esc(s.tr.srcId)}</span>
-    </div>
+    ${DEBUG.identity ? `<div class="mt-[12px] panel-sub rounded-[12px] px-[11px] py-[9px] text-[9.5px] font-medium text-white/42">
+      <span class="text-warn font-bold">DEBUG</span> training route
+      <span class="tabular-nums text-white/60">${esc(s.tr.srcId)}</span> &middot; ${esc(s.tr.dataConfidence)}
+    </div>` : ''}
     ${!isVerified(s.tr) ? `<div class="mt-[12px]">${VerificationNotice()}</div>` : ''}
     <button id="stageOpen" class="mt-[14px] w-full h-[44px] rounded-[12px] ${isVerified(s.tr) ? 'bg-accent text-white' : 'bg-white/[.07] text-white/40 cursor-not-allowed'}
                                    text-[13px] font-bold pressable flex items-center justify-center gap-[7px]"
@@ -1136,7 +1207,8 @@ function ObjectivePicker() {
     </button>
 
     ${r && !isVerified(r) ? `<div class="mt-[11px]">${VerificationNotice()}</div>` : ''}
-    ${r ? `<div class="mt-[9px] flex flex-wrap gap-[5px]">${ProvenanceChip(r)}${Chip(r.difficulty)}${Chip(r.srcId)}</div>` : ''}
+    ${r ? `<div class="mt-[9px] flex flex-wrap gap-[5px]">${ProvenanceChip(r)}${Chip(r.difficulty)}
+           ${DEBUG.identity ? Chip(r.srcId, 'warn') : ''}</div>` : ''}
     <p class="mt-[10px] text-[10.5px] leading-[14px] text-white/38">
       A mountain can have several routes with very different ascents. SummitReady always builds an
       expedition against the route you pick, never against the summit altitude.</p>
@@ -1299,7 +1371,7 @@ function openMountainPicker() {
 function openRoutePicker() {
   const mId = UI.custom.mountainId; if (!mId) return;
   const rows = Object.values(EXPEDITION_ROUTES).filter(r => r.mountainId === mId).map(r => ({
-    id:r.id, title:r.name, sub:`${fmt(r.ascentM)} m ascent · ${r.distanceKm.toFixed(1)} km · ${r.dataConfidence}`,
+    id:r.id, title:r.name, sub:`${fmt(r.ascentM)} m ascent · ${r.distanceKm.toFixed(1)} km · ${confidenceLabel(r)}`,
     subject:MOUNTAINS[mId].subject, warn:!isVerified(r), search:`${r.name} ${r.difficulty}`.toLowerCase(),
   }));
   pickerSheet('Choose a route', rows, id => {
@@ -1416,8 +1488,8 @@ function confirmStart(e) {
       ${Stat('Stages', st.length)}${Stat('Ascent', fmt(tot.ascentM) + ' m')}${Stat('Window', e.weeks + ' wks')}
     </div>
     <p class="mt-[12px] text-[12px] leading-[17px] text-white/62">
-      This becomes your active expedition. Your progress is tracked in Expedition Basecamp, and every stage
-      you walk is recorded as a normal activity &mdash; nothing about how you track changes.</p>
+      This becomes your active expedition. Every stage you walk climbs you higher up the objective, tracked
+      in Expedition Basecamp and recorded as a normal activity &mdash; nothing about how you track changes.</p>
     ${activeExp() && activeExp().id !== e.id ? `
       <div class="mt-[12px] rounded-[12px] border border-warn/35 bg-warn/[.07] p-[11px] flex items-start gap-[8px]">
         <span class="mt-[1px] shrink-0 text-warn" data-icon="warn" data-size="14"></span>
@@ -1606,10 +1678,31 @@ window.setFilter = (k, v) => {
   UI.filters[k] = k === 'maxAscent' ? +v : v; render(); return UI.filters[k];
 };
 window.setQuery = q => { UI.query = String(q || ''); render(); return UI.query; };
+
+/* Internal identifiers stay reachable for QA without ever reaching the consumer
+   UI: flip the debug surface on, or read them straight out of the catalogue. */
+window.setDebugIdentity = on => { DEBUG.identity = !!on; render(); return DEBUG.identity; };
+window.__ids = id => {
+  const e = expedition(id || UI.selected); if (!e) return null;
+  const m = mountain(e), r = eroute(e.routeId);
+  return {
+    expedition:{ id:e.id, version:e.version },
+    mountain:  m ? { id:m.id, slug:m.slug, srcId:m.srcId } : null,
+    route:     r ? { id:r.id, srcId:r.srcId, version:r.version, dataConfidence:r.dataConfidence } : null,
+    stages: stagesOf(e).map(st => ({ n:st.n, id:st.tr.id, srcId:st.tr.srcId,
+                                     dataConfidence:st.tr.dataConfidence, match:st.match })),
+  };
+};
+/* The standing reminder that none of these numbers are canonical. */
+window.__dataNotice = () => PROTOTYPE_DATA;
 window.__state = () => ({ view:UI.view, selected:UI.selected, query:UI.query,
   filters:{ ...UI.filters }, results:results().map(e => e.id), custom:{ ...UI.custom } });
 
 /* ═══════════════════════ BOOT ═══════════════════════ */
+/* Anyone who opens the console — a developer, a reviewer, whoever ends up
+   wondering where these numbers came from — is told before they ask. */
+console.info('%cSummitReady prototype', 'font-weight:700', '\u2014 ' + PROTOTYPE_DATA.notice);
+
 document.getElementById('scrim').addEventListener('click', closeSheet);
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
 window.addEventListener('resize', sizeSpacer);
