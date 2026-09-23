@@ -60,10 +60,11 @@ export function useUiAssetManifest() {
   const adminKey = useAdminKey();
   return useQuery({
     queryKey: ["ui-asset-workflow", adminKey],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!adminKey) return null;
       const res = await fetch("/api/artwork/ui-assets/workflow", {
         headers: adminKeyHeader(adminKey),
+        signal,
       });
       if (!res.ok) {
         throw new Error(`Failed to fetch workflow manifest: ${res.statusText}`);

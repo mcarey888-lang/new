@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useUiAssetManifest, useGenerateUiAsset, FamilyId } from "@/hooks/useUiAssetWorkflow";
 import { Loader2, AlertTriangle, Link as LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAdminKey } from "@/contexts/AdminKeyContext";
 
 export interface UiAssetRecordMinimal {
   asset_key: string;
@@ -32,6 +33,7 @@ export function UiAssetGenerateModal({
   isFamilyMaster?: boolean;
   refineCandidateId?: string;
 }) {
+  const adminKey = useAdminKey();
   const manifestQuery = useUiAssetManifest();
   const manifest = manifestQuery.data;
   const generateMut = useGenerateUiAsset();
@@ -58,21 +60,29 @@ export function UiAssetGenerateModal({
   }, [record?.asset_key, isFamilyMaster, refineCandidateId]);
 
   if (!manifest) {
+    const isWaitingForRequest = Boolean(adminKey.trim()) && manifestQuery.isPending;
+
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Candidate</DialogTitle>
             <DialogDescription>
-              {manifestQuery.isPending
+              {!adminKey.trim()
+                ? "Enter the current admin key at the top of the page before creating a candidate."
+                : isWaitingForRequest
                 ? "Loading the generation workflow…"
                 : "The generation workflow could not be loaded. Enter the current admin key at the top of the page, then try again."}
             </DialogDescription>
           </DialogHeader>
-          {!manifestQuery.isPending && (
+          {!isWaitingForRequest && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <p>The saved admin key was rejected or the workflow API is unavailable.</p>
+              <p>
+                {adminKey.trim()
+                  ? "The saved admin key was rejected or the workflow API is unavailable."
+                  : "No admin key is currently saved for this browser session."}
+              </p>
             </div>
           )}
           <DialogFooter>
