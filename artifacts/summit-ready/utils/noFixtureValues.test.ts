@@ -36,6 +36,15 @@ const PRODUCTION_SOURCES = [
   "components/readiness/PillarGrid.tsx",
   "components/readiness/ReadinessHistoryChart.tsx",
   "hooks/useReadinessHistory.ts",
+  /* Batch 2 — Explore journey */
+  "utils/routeEligibility.ts",
+  "utils/mountainDetailPresentation.ts",
+  "constants/capabilities.ts",
+  "components/mountain/parts.tsx",
+  "components/mountain/RouteCard.tsx",
+  "components/mountain/SelectedRoute.tsx",
+  "components/mountain/MountainDnaPanel.tsx",
+  "components/mountain/RouteActionBar.tsx",
 ];
 
 /** Strip // and block comments so prose about the example does not trip this. */
@@ -85,6 +94,46 @@ describe("no prototype fixture values in production paths", () => {
     const body = code(readFileSync(join(ROOT, "hooks/useReadinessHistory.ts"), "utf8"));
     expect(body).toMatch(/evaluateReadiness\(input\)\.overallScore/);
     expect(body).not.toMatch(/\[\s*\d+\s*,\s*\d+\s*,\s*\d+/);
+  });
+
+  it("the Explore journey names no prototype mountain, route or figure", () => {
+    for (const rel of [
+      "app/(tabs)/explore.tsx", "app/mountain.tsx",
+      "utils/mountainDetailPresentation.ts", "utils/routeEligibility.ts",
+      "components/mountain/parts.tsx", "components/mountain/RouteCard.tsx",
+      "components/mountain/SelectedRoute.tsx", "components/mountain/ElevationProfile.tsx",
+      "components/mountain/MountainDnaPanel.tsx", "components/mountain/RouteActionBar.tsx",
+    ]) {
+      const body = code(readFileSync(join(ROOT, rel), "utf8"));
+      /* The Mountain Detail prototype's worked example. */
+      expect(body).not.toMatch(/Helvellyn/);
+      expect(body).not.toMatch(/Striding Edge/);
+      expect(body).not.toMatch(/Swirral|Thirlmere|Grisedale|Glenridding/);
+      expect(body).not.toMatch(/uk-lake-helvellyn/);
+      /* Its figures: 950 m summit, 820 m ascent, 10.4 km, 4-6 hrs. */
+      expect(body).not.toMatch(/(?<![\w.])(950|820)(?![\w.%])/);
+      expect(body).not.toMatch(/(?<![\w.])10\.4(?![\w.])/);
+      expect(body).not.toMatch(/4[–-]6\s*hrs/);
+      /* The Explore prototype's example peaks. */
+      expect(body).not.toMatch(/Mont Blanc|Kilimanjaro|Matterhorn/);
+    }
+  });
+
+  it("no Explore surface decides navigability for itself", () => {
+    for (const rel of [
+      "app/mountain.tsx",
+      "components/mountain/SelectedRoute.tsx", "components/mountain/RouteActionBar.tsx",
+    ]) {
+      const body = code(readFileSync(join(ROOT, rel), "utf8"));
+      /* trackAvailability and the trust fields belong to the one predicate. */
+      expect(body).not.toMatch(/trackAvailability/);
+      expect(body).not.toMatch(/productLifecycle/);
+      expect(body).not.toMatch(/engineStatus/);
+    }
+    /* And the predicate is the only place that reads them. */
+    const guard = code(readFileSync(join(ROOT, "utils/routeEligibility.ts"), "utf8"));
+    expect(guard).toMatch(/trackAvailability === "can_track"/);
+    expect(guard).toMatch(/productLifecycle === "summitready_verified"/);
   });
 
   it("the gauge derives everything from its props", () => {

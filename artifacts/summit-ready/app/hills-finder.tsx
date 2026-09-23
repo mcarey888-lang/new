@@ -99,6 +99,11 @@ function HillCard({
       params: {
         name: hill.name,
         routeIdentityKey: hill.routeIdentityKey ?? "",
+        /* Without the summit identity, hill-detail's canonical read never
+           fires — it requires BOTH keys before it will ask the engine. This
+           was silently dropping every canonical route record opened from the
+           finder. */
+        summitIdentityKey: hill.summitIdentityKey ?? "",
         location,
         lat:       hill.lat?.toString()       ?? "",
         lng:       hill.lng?.toString()       ?? "",
