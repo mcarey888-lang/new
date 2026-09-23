@@ -1,8 +1,9 @@
 import React from "react";
-import { Link } from "wouter";
-import { ImageIcon, Layers, FileImage } from "lucide-react";
+import { Layers, FileImage } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Batch01ReviewGallery, Batch02ReviewGallery } from "@/components/Batch01ReviewGallery";
+import { UiAssetSystemCatalogue } from "@/components/UiAssetSystemCatalogue";
+import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 
 // Direct Vite imports from the inventoried product source roots.
 import boxStepUpsImg from "@summit-assets/images/exercise-box-steps.png";
@@ -172,25 +173,7 @@ export default function AssetGallery() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans" data-testid="page-asset-gallery">
-      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-primary" />
-            SummitReady <span className="text-muted-foreground font-normal">Artwork Admin</span>
-          </h1>
-          <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-md">
-            <Link href="/" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" data-testid="link-nav-signatures">
-              Signatures
-            </Link>
-            <Link href="/mountains" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" data-testid="link-nav-mountains">
-              Mountain Heroes
-            </Link>
-            <Link href="/assets" className="px-3 py-1.5 text-sm font-medium rounded bg-background text-foreground shadow-sm" data-testid="link-nav-assets">
-              Assets (DEV)
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <ArtworkAdminHeader activeSection="assets" />
 
       <main className="flex-1 p-6 flex flex-col gap-10 max-w-screen-2xl mx-auto w-full">
         <div className="flex flex-col gap-2">
@@ -202,6 +185,7 @@ export default function AssetGallery() {
         </div>
 
         <div className="flex flex-col gap-12">
+          <UiAssetSystemCatalogue />
           <Batch02ReviewGallery />
           <Batch01ReviewGallery />
           {ASSET_FAMILIES.map((family) => (

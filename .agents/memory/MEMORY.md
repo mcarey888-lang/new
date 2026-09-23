@@ -50,3 +50,4 @@
 - [Stable approved artwork caching](stable-approved-artwork-caching.md) — stable approved-media URLs must revalidate on every request; versioned review URLs may remain cacheable.
 - [Visual flattening preserves behavior](visual-flattening-preserves-behavior.md) — Basecamp may lose cards, never progress, routes, coach controls, or accessibility semantics.
 - [Exact GitHub Git Data commits](github-git-data-exact-commits.md) — Preserve a commit message's final newline when recreating local commits through GitHub's Git Data API.
+- [Prototype asset audit completeness](prototype-asset-audit-completeness.md) — map every declared icon registry file/key to a canonical asset or documented alias; never exclude keys.

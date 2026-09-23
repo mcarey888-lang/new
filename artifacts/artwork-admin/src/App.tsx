@@ -5,6 +5,8 @@ import ArtworkManager from './pages/ArtworkManager';
 import MountainQueue from './pages/MountainQueue';
 import { Toaster } from '@/components/ui/sonner';
 
+const UiAssetsPage = lazy(() => import('./pages/UiAssetsPage'));
+
 const AssetGallery = import.meta.env.DEV
   ? lazy(() => import('./pages/AssetGallery'))
   : null;
@@ -38,11 +40,20 @@ function DevAssetGalleryRoute() {
   );
 }
 
+function UiAssetsRoute() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <UiAssetsPage />
+    </Suspense>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={ArtworkManager} />
       <Route path="/mountains" component={MountainQueue} />
+      <Route path="/ui-assets" component={UiAssetsRoute} />
       {import.meta.env.DEV && <Route path="/assets" component={DevAssetGalleryRoute} />}
       <Route component={NotFound} />
     </Switch>

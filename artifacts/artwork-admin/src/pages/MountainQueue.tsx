@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "wouter";
-import { Search, ImageIcon, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle, ListChecks } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, Mountain, Candidate } from "../hooks/use-mountain-api";
+import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 
 export default function MountainQueue() {
   const [page, setPage] = useState(1);
@@ -38,27 +38,10 @@ export default function MountainQueue() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-primary" />
-            SummitReady <span className="text-muted-foreground font-normal">Artwork Admin</span>
-          </h1>
-          <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-md">
-            <Link href="/" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-              Signatures
-            </Link>
-            <Link href="/mountains" className="px-3 py-1.5 text-sm font-medium rounded bg-background text-foreground shadow-sm">
-              Mountain Heroes
-            </Link>
-            {import.meta.env.DEV && (
-              <Link href="/assets" className="px-3 py-1.5 text-sm font-medium rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" data-testid="link-asset-gallery">
-                Assets (DEV)
-              </Link>
-            )}
-          </nav>
-        </div>
-        <form onSubmit={(event) => event.preventDefault()}>
+      <ArtworkAdminHeader
+        activeSection="mountains"
+        actions={
+          <form onSubmit={(event) => event.preventDefault()}>
           <Input
             type="password"
             autoComplete="current-password"
@@ -71,9 +54,11 @@ export default function MountainQueue() {
               else sessionStorage.removeItem("summitready-admin-key");
             }}
             className="w-64"
+            data-testid="input-admin-key"
           />
-        </form>
-      </header>
+          </form>
+        }
+      />
 
       <main className="flex-1 p-6 flex flex-col gap-6 max-w-screen-2xl mx-auto w-full">
         <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
