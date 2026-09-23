@@ -23,6 +23,7 @@ import { HillPickerModal } from "@/components/HillPickerModal";
 import { ExercisePickerModal, type GymExercise } from "@/components/ExercisePickerModal";
 import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
+import { sessionPurpose } from "@/utils/sessionPurpose";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -488,6 +489,27 @@ export default function SessionDetailScreen() {
           {/* Session title */}
           <Text style={s.title}>{session.label}</Text>
 
+          {/* Why this session matters for the user's actual mountain.
+              Built from the plan's own session and the real summit goal —
+              nothing here is generated or estimated. */}
+          {(() => {
+            const purpose = sessionPurpose({
+              type: session.type,
+              description: session.description,
+              targetElevation: session.targetElevation,
+              mountainName: summitGoal?.mountainName ?? null,
+            });
+            return (
+              <View style={s.purposeBlock}>
+                <Text style={s.purposeEyebrow}>WHY THIS SESSION</Text>
+                <Text style={s.purposeBuilds}>{purpose.builds}</Text>
+                {purpose.relationship ? (
+                  <Text style={s.purposeRelationship}>{purpose.relationship}</Text>
+                ) : null}
+              </View>
+            );
+          })()}
+
           {/* Stats row */}
           <View style={s.statsRow}>
             <View style={s.statCell}>
@@ -876,6 +898,18 @@ const s = StyleSheet.create({
   chipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 32 },
+  // "Why this session" — the mountain-preparation relationship.
+  purposeBlock: {
+    marginTop: 12, marginBottom: 4, paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)", borderRadius: 14, gap: 5,
+  },
+  purposeEyebrow: {
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.6, color: T.textMuted,
+  },
+  purposeBuilds: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_600SemiBold", color: T.text },
+  purposeRelationship: { fontSize: 12.5, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   statsRow: {
     flexDirection: "row",

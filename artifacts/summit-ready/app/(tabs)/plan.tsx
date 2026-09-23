@@ -1636,11 +1636,14 @@ export default function PlanScreen() {
               style={[dashStyles.calNavBtn, viewedWeekNum <= 1 && { opacity: 0.25 }]}
               disabled={viewedWeekNum <= 1}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Previous week"
+              accessibilityState={{ disabled: viewedWeekNum <= 1 }}
             >
               <ChevronLeft size={16} color={T.white} />
             </TouchableOpacity>
             <View style={{ flex: 1, alignItems: "center" }}>
-              <Text style={dashStyles.calWeekLabel}>
+              <Text style={dashStyles.calWeekLabel} accessibilityRole="header">
                 Week {viewedWeekNum}
                 {viewedWeek?.isCurrentWeek ? " · Current" : ""}
               </Text>
@@ -1655,6 +1658,9 @@ export default function PlanScreen() {
               style={[dashStyles.calNavBtn, selectedSessionIdx === undefined && { opacity: 0.3 }]}
               disabled={selectedSessionIdx === undefined}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Edit selected session"
+              accessibilityState={{ disabled: selectedSessionIdx === undefined }}
             >
               <Pencil size={13} color={T.textMuted} />
             </TouchableOpacity>
@@ -1666,6 +1672,9 @@ export default function PlanScreen() {
               style={[dashStyles.calNavBtn, viewedWeekNum >= trainingPlan.length && { opacity: 0.25 }]}
               disabled={viewedWeekNum >= trainingPlan.length}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Next week"
+              accessibilityState={{ disabled: viewedWeekNum >= trainingPlan.length }}
             >
               <ChevronRight size={16} color={T.white} />
             </TouchableOpacity>
