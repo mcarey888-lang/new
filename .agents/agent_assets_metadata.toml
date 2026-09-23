@@ -424,3 +424,17 @@ mtime_ms = 1789804556986
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/efeb83f7-5697-4d0d-b3b4-aafcfc6123b9/3482d12a-3258-4fac-95a1-ef4c0194ddd8"
 storage_version_token = "1789804606128214"
 content_type = "text/plain"
+
+[[outputs]]
+id = "X4irirYbgJF5_Q0fC6b_n"
+uri = "file://screenshots/journey1-training-dashboard.png"
+type = "image"
+title = "Journey 1 — Training Basecamp"
+description = "The newly imported SummitReady Training dashboard UI at 390 × 844, loaded with the active hillwalker development fixture."
+logical_id = "224522bb-cc84-4ae7-960d-4c1ab4049259"
+content_hash = "sha256:bf433fa26a86a146baaf5f1277c2f10f927651794576ea8a355cc1efe0a1144d"
+size = 184055
+mtime_ms = 1790185351456
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/224522bb-cc84-4ae7-960d-4c1ab4049259/d329468a-3b7f-4a84-bee3-af358bfa81f8"
+storage_version_token = "1790185364123119"
+content_type = "image/png"
