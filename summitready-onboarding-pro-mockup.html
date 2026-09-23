@@ -476,6 +476,39 @@ const Primary = (label, attr, icon = 'arrowR') => `
 const Secondary = (label, attr) => `
   <button ${attr} class="w-full h-[48px] rounded-[14px] glass text-[13.5px] font-bold text-white/85 pressable">
     ${esc(label)}</button>`;
+/* ═══ SHARED ONBOARDING CHROME ═══
+   One progress header and one footer for every screen in the flow, so the
+   controls never move or change shape between pages. Both come from the
+   approved AI Coach visual. */
+function StepProgress(step, opts = {}) {
+  const i = ONBOARDING_STEPS.indexOf(step), total = ONBOARDING_STEPS.length;
+  return `<div class="flex items-center gap-[12px] min-h-[44px]">
+    <span class="shrink-0 text-[13px] font-semibold text-white/75 tabular-nums">${i + 1} of ${total}</span>
+    <div class="flex-1 flex items-center gap-[5px]" role="progressbar"
+         aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${i + 1}"
+         aria-label="Onboarding step ${i + 1} of ${total}">
+      ${Array.from({ length:total }, (_, k) => `<span class="h-[4px] rounded-full transition-all duration-300
+        ${k === i ? 'flex-[1.7] bg-accent' : 'flex-1 bg-white/[.18]'}"></span>`).join('')}
+    </div>
+    ${opts.skip === false ? `<span class="shrink-0 w-[52px]" aria-hidden="true"></span>`
+      : `<button data-skip="${step}" class="shrink-0 grid place-items-center min-w-[52px] h-[44px] -mr-[8px]
+            text-[15px] font-semibold text-white/85 pressable">Skip</button>`}
+  </div>`;
+}
+/* Circular Back beside a wide gradient Next pill — identical on every screen. */
+function StepFooter({ back, next, label = 'Next', icon = 'arrowR' }) {
+  return `<div class="flex items-center gap-[12px]">
+    ${back ? `<button ${back} aria-label="Back"
+      class="shrink-0 grid place-items-center w-[52px] h-[52px] rounded-full
+             border border-white/18 bg-white/[.06] pressable" data-icon="back" data-size="20"></button>` : ''}
+    <button ${next}
+      class="flex-1 h-[54px] rounded-full bg-gradient-to-r from-accent to-[#39B7FF] text-white
+             text-[16px] font-bold pressable flex items-center justify-center gap-[9px]
+             shadow-[0_10px_28px_rgba(22,125,247,.38)]">
+      ${esc(label)}${icon ? `<span data-icon="${icon}" data-size="17"></span>` : ''}</button>
+  </div>`;
+}
+
 function Dots(n, i) {
   return `<div class="flex items-center justify-center gap-[6px]" role="presentation">
     ${Array.from({ length:n }, (_, k) => `<span class="rounded-full transition-all duration-300
@@ -525,7 +558,7 @@ function ScreenWelcome() {
   return Screen({
     subject:'hero', drift:true,
     scrim:'bg-gradient-to-b from-ink/35 via-ink/55 to-ink',
-    top:`<div class="pt-[10px]">${Wordmark()}</div>`,
+    top:StepProgress('welcome', { skip:false }),
     body:`
       <div class="h-[16vh] min-h-[40px]"></div>
       <div class="rise">
@@ -537,8 +570,7 @@ function ScreenWelcome() {
         <p class="text-[clamp(13px,4vw,15px)] leading-[1.45] text-white/80">
           Train. Explore. Achieve.<br>
           <span class="text-white/60">Turn everyday hills into extraordinary adventures.</span></p>
-        <div class="mt-[16px]">${Dots(4, 0)}</div>
-        <div class="mt-[14px]">${Primary('Get Started', 'data-go="paths"')}</div>
+        <div class="mt-[18px]">${StepFooter({ next:'data-go="paths"', label:'Get Started' })}</div>
         <p class="mt-[13px] text-center text-[12.5px] text-white/50">
           Already have an account?
           <button data-signin class="ml-[3px] inline-grid place-items-center min-h-[44px] px-[6px] -my-[10px]
@@ -574,7 +606,7 @@ function ScreenPaths() {
   return Screen({
     subject:'paths',
     scrim:'bg-gradient-to-b from-ink/85 via-ink/90 to-ink',
-    top:BackSkipBar('data-go="welcome"', 'data-skip="paths"'),
+    top:StepProgress('paths'),
     body:`
       <div class="pt-[14px] text-center rise">
         ${H1('TWO WAYS\nTO GO HIGHER')}
@@ -588,7 +620,7 @@ function ScreenPaths() {
       </div>
       <p class="mt-[14px] text-center text-[11.5px] leading-[16px] text-white/40">
         You are not choosing permanently — both are always there.</p>`,
-    cta:`<div class="mb-[14px]">${Dots(4, 1)}</div>${Primary('Next', 'data-go="bank"')}`,
+    cta:StepFooter({ back:'data-go="welcome"', next:'data-go="bank"' }),
   });
 }
 
@@ -600,7 +632,7 @@ function ScreenBank() {
   return Screen({
     subject:'bank',
     scrim:'bg-gradient-to-b from-ink/86 via-ink/90 to-ink',
-    top:BackSkipBar('data-go="paths"', 'data-skip="bank"'),
+    top:StepProgress('bank'),
     body:`
       <div class="pt-[14px] text-center rise">
         ${H1('EVERY METRE\nCOUNTS.')}
@@ -642,7 +674,7 @@ function ScreenBank() {
             <span class="mt-[8px] text-[11px] leading-[14px] font-semibold text-white/65">${nl(l)}</span>
           </div>`).join('')}
       </div>`,
-    cta:`<div class="mb-[14px]">${Dots(4, 2)}</div>${Primary('Next', 'data-go="coach"')}`,
+    cta:StepFooter({ back:'data-go="paths"', next:'data-go="coach"' }),
   });
 }
 
@@ -750,15 +782,6 @@ function CoachMascot() {
      · only Next, Back and Skip are interactive, which is what was asked for.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Control positions, measured from the artwork itself rather than eyeballed,
-   as fractions of its 850 x 1850 frame. If the artwork is replaced these are
-   the only numbers that need remeasuring. */
-const COACH_HOTSPOTS = {
-  skip: { left:'80%',   top:'3.4%',  width:'19%',   height:'6.6%' },
-  back: { left:'6.5%',  top:'89.2%', width:'11.5%', height:'6.6%' },
-  next: { left:'22.0%', top:'90.2%', width:'72.1%', height:'4.9%' },
-};
-
 /* The full text of the screen, for anyone who cannot see the artwork. */
 const COACH_SCREEN_ALT = [
   'Your AI mountain coach. Training that adapts to your mountain.',
@@ -774,29 +797,24 @@ const COACH_SCREEN_ALT = [
   'Guides your next move: clear, personalised recommendations.',
 ].join(' ');
 
-function CoachHotspot(area, attr, label) {
-  const a = COACH_HOTSPOTS[area];
-  return `<button ${attr} aria-label="${esc(label)}"
-    class="absolute z-20 rounded-full pressable focus-visible:ring-2 focus-visible:ring-white/70"
-    style="left:${a.left};top:${a.top};width:${a.width};height:${a.height};min-height:44px"></button>`;
-}
-
 function ScreenCoach() {
   const m = MEDIA.resolve('coachScreen');
-  return `
-    <div class="relative flex flex-col h-[100svh] bg-ink" style="height:100svh">
-      <!-- the approved artwork, scaled to the frame and never cropped -->
-      <div class="relative flex-1 min-h-0 w-full" data-coach-artwork>
+  return Screen({
+    subject:'coach',
+    scrim:'bg-ink',
+    top:StepProgress('coach'),
+    /* The artwork fills the frame's width and scrolls with the body, exactly
+       like every other screen's content. Its own header and footer were
+       cropped off so the shared chrome supplies them instead — no letterbox,
+       and the controls never shift between pages. */
+    body:`
+      <div class="-mx-[20px] relative" data-coach-artwork>
         ${m.url
-          ? `<img src="${m.url}" alt="${esc(COACH_SCREEN_ALT)}"
-                  class="absolute inset-0 w-full h-full object-contain object-top">`
-          : `<div class="ph absolute inset-0"></div>`}
-
-        ${CoachHotspot('skip', 'data-skip="coach"', 'Skip onboarding')}
-        ${CoachHotspot('back', 'data-go="bank"', 'Back')}
-        ${CoachHotspot('next', 'data-go="intent"', 'Next')}
-      </div>
-    </div>`;
+          ? `<img src="${m.url}" alt="${esc(COACH_SCREEN_ALT)}" class="block w-full h-auto">`
+          : `<div class="ph w-full aspect-[850/1496]"></div>`}
+      </div>`,
+    cta:StepFooter({ back:'data-go="bank"', next:'data-go="intent"' }),
+  });
 }
 
 /* 5 · INTENT — the only question in the whole flow, and it is optional.
@@ -820,7 +838,7 @@ function ScreenIntent() {
   return Screen({
     subject:'intent',
     scrim:'bg-gradient-to-b from-ink/88 via-ink/92 to-ink',
-    top:BackSkipBar('data-go="coach"', 'data-skip="intent"'),
+    top:StepProgress('intent'),
     body:`
       <div class="pt-[14px] text-center rise">
         ${H1('WHAT BRINGS\nYOU HERE?')}
@@ -831,8 +849,7 @@ function ScreenIntent() {
       </div>
       <p class="mt-[13px] text-center text-[11.5px] leading-[16px] text-white/40">
         Not a permanent choice — it only decides where you start.</p>`,
-    cta:`<div class="mb-[14px]">${Dots(4, 3)}</div>
-      ${Primary(sel ? 'Next' : 'Next', 'data-go="ready"')}`,
+    cta:StepFooter({ back:'data-go="coach"', next:'data-go="ready"' }),
   });
 }
 
@@ -842,7 +859,7 @@ function ScreenReady() {
   return Screen({
     subject:'ready', drift:true,
     scrim:'bg-gradient-to-b from-ink/55 via-ink/82 to-ink',
-    top:`<div class="min-h-[34px]"></div>`,
+    top:StepProgress('ready', { skip:false }),
     body:`
       <div class="pt-[8px] text-center rise">
         ${H1("YOU'RE READY\nTO BEGIN")}
@@ -864,8 +881,7 @@ function ScreenReady() {
             <button data-go="intent" class="ml-[2px] inline-grid place-items-center min-h-[44px] px-[6px] -my-[12px]
               font-bold text-accent pressable align-middle">Change</button></span>
         </div>` : ''}`,
-    cta:`<div class="mb-[14px]">${Dots(4, 3)}</div>
-      ${Primary('Continue to SummitReady', 'data-complete')}`,
+    cta:StepFooter({ back:'data-go="intent"', next:'data-complete', label:'Continue to SummitReady' }),
   });
 }
 </script>

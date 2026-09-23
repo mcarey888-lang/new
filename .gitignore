@@ -57,3 +57,7 @@ Thumbs.db
 /backups/production-data-pre-overwrite-2026-09-11.json
 attached_assets/
 screenshots/
+
+# offline verification harness (generated)
+.shim-*.html
+shim.css
