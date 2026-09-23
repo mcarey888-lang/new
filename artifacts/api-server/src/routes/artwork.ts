@@ -69,6 +69,7 @@ import {
   validateUiAssetCandidate,
   UI_ASSET_BATCH_ID,
 } from "../services/artwork/uiAssetWorkflowService.js";
+import { logger } from "../lib/logger.js";
 
 export const artworkRouter = Router();
 
@@ -84,8 +85,33 @@ artworkRouter.get("/ui-assets/:assetKey/resolve", requireAdminKey, async (req, r
   catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "Asset resolution failed" }); }
 });
 artworkRouter.post("/ui-assets/generate", requireAdminKey, async (req, res) => {
-  try { return res.json(await createUiAssetCandidates(req.body ?? {})); }
-  catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : "UI asset generation failed" }); }
+  let resolveStarted!: (historyId: string) => void;
+  let rejectStarted!: (error: unknown) => void;
+  let hasStarted = false;
+  const started = new Promise<string>((resolve, reject) => {
+    resolveStarted = (historyId) => {
+      hasStarted = true;
+      resolve(historyId);
+    };
+    rejectStarted = reject;
+  });
+  const generation = createUiAssetCandidates(req.body ?? {}, undefined, {
+    onStarted: resolveStarted,
+  });
+  void generation.catch((error) => {
+    if (!hasStarted) rejectStarted(error);
+    logger.error(
+      { err: error, assetKey: req.body?.assetKey, familyId: req.body?.familyId },
+      "UI asset background generation failed",
+    );
+  });
+
+  try {
+    const historyId = await started;
+    return res.status(202).json({ accepted: true, historyId });
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : "UI asset generation failed" });
+  }
 });
 artworkRouter.post("/ui-assets/candidates/:candidateId/:action", requireAdminKey, async (req, res) => {
   const action = String(req.params.action);

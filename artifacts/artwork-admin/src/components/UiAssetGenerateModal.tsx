@@ -148,7 +148,9 @@ export function UiAssetGenerateModal({
         refineCandidateId,
         model: "gpt-image-1"
       });
-      toast.success("Generation completed successfully.");
+      toast.success("Generation started.", {
+        description: "You can follow its progress on the History tab.",
+      });
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed", {

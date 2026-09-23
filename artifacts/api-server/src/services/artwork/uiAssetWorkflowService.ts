@@ -112,7 +112,38 @@ export function validateUiAssetModel(value: unknown): "gpt-image-1" {
   if (value !== undefined && value !== "gpt-image-1") throw new Error("Only gpt-image-1 is supported");
   return "gpt-image-1";
 }
-export async function getUiAssetManifest() { return (await readManifest()).value; }
+export async function getUiAssetManifest() {
+  let current = await readManifest();
+  if (!current.value.history.some((entry) => entry.outcome === "GENERATING")) {
+    return current.value;
+  }
+
+  let lock;
+  try {
+    lock = await acquireReviewBatchGenerationLock(UI_ASSET_BATCH_ID);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("already has a generation in progress")) {
+      return current.value;
+    }
+    throw error;
+  }
+
+  try {
+    current = await readManifest();
+    const abandoned = current.value.history.filter((entry) => entry.outcome === "GENERATING");
+    if (abandoned.length === 0) return current.value;
+
+    for (const entry of abandoned) {
+      entry.outcome = "FAILED";
+      entry.error = "Generation stopped before completion. No active generation job remains; it is safe to retry.";
+    }
+    await lock.assertOwned();
+    await writeManifest(current.value, current.generation);
+    return current.value;
+  } finally {
+    await lock.release();
+  }
+}
 export async function validateUiAssetCandidate(candidateId: string, version: number, crop: string) {
   if (!["master", "hero", "card", "thumbnail"].includes(crop) || !Number.isInteger(version) || version < 1) {
     throw new Error("Invalid UI asset candidate request");
@@ -212,7 +243,7 @@ export async function createUiAssetCandidates(input: {
   confirmed?: boolean; overrideFamilyWarning?: boolean; refineCandidateId?: string;
   familyId?: FamilyId; mode?: "family-master"; model?: string;
   referenceCandidates?: { candidateId: string; version: number }[];
-}, provider: ImageProvider = defaultImageProvider) {
+}, provider: ImageProvider = defaultImageProvider, lifecycle?: { onStarted?: (historyId: string) => void }) {
   if (input.confirmed !== true) throw new Error("Generation requires explicit confirmation");
   const count = requireCount(input.candidateCount ?? 4);
   validateUiAssetModel(input.model);
@@ -260,6 +291,7 @@ export async function createUiAssetCandidates(input: {
     const prompt = resolveUiAssetPrompt(record, family, input.prompt);
     const history: UiAssetHistory = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), assetKey: record.asset_key, familyId, prompt, negativePrompt: record.negative_prompt || "", model: "gpt-image-1", referenceAssets: refs, referenceCandidateIds, referenceDescriptors: descriptors, candidateCount: count, resultCandidateIds: [], outcome: "GENERATING" };
     await lock.assertOwned(); manifest.history.push(history); manifestGeneration = await writeManifest(manifest, manifestGeneration);
+    lifecycle?.onStarted?.(history.id);
     const made: UiAssetCandidate[] = [];
     try {
       for (let index = 0; index < count; index++) {

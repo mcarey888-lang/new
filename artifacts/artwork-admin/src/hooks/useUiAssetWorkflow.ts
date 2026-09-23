@@ -73,6 +73,10 @@ export function useUiAssetManifest() {
     },
     retry: false,
     enabled: !!adminKey,
+    refetchInterval: (query) =>
+      query.state.data?.history.some((entry) => entry.outcome === "GENERATING")
+        ? 3_000
+        : false,
   });
 }
 
@@ -101,7 +105,7 @@ export function useGenerateUiAsset() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Generation failed");
-      return data;
+      return data as { accepted: true; historyId: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ui-asset-workflow"] });
