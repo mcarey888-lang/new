@@ -191,17 +191,20 @@ export async function acquireReviewBatchGenerationLock(
       lostError = error instanceof Error ? error : new Error(String(error));
     }
   };
-  const timer = setInterval(() => {
+  const queueRenewal = () => {
     if (!renewal) {
       renewal = renew().finally(() => { renewal = null; });
     }
+    return renewal;
+  };
+  const timer = setInterval(() => {
+    void queueRenewal();
   }, GENERATION_LOCK_RENEW_MS);
   timer.unref();
   return {
     async assertOwned() {
-      await renewal;
       if (lostError) throw new Error(`Review batch ${batchId} generation lease was lost`);
-      await renew();
+      await queueRenewal();
       if (lostError) throw new Error(`Review batch ${batchId} generation lease was lost`);
     },
     async release() {
