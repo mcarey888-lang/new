@@ -19,7 +19,7 @@ export function requireAdminKey(req: Request, res: Response, next: NextFunction)
       provided = undefined;
     }
   }
-  const expected = process.env.VIRTUAL_ENGINE_ADMIN_KEY ?? process.env.ADMIN_API_KEY;
+  const expected = process.env.ADMIN_API_KEY ?? process.env.VIRTUAL_ENGINE_ADMIN_KEY;
 
   if (!expected) {
     res.status(503).json({ error: "Admin API key not configured on server" });

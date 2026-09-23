@@ -32,7 +32,8 @@ export function UiAssetGenerateModal({
   isFamilyMaster?: boolean;
   refineCandidateId?: string;
 }) {
-  const { data: manifest } = useUiAssetManifest();
+  const manifestQuery = useUiAssetManifest();
+  const manifest = manifestQuery.data;
   const generateMut = useGenerateUiAsset();
 
   const [promptOverride, setPromptOverride] = useState("");
@@ -56,7 +57,33 @@ export function UiAssetGenerateModal({
     }
   }, [record?.asset_key, isFamilyMaster, refineCandidateId]);
 
-  if (!manifest) return null;
+  if (!manifest) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Candidate</DialogTitle>
+            <DialogDescription>
+              {manifestQuery.isPending
+                ? "Loading the generation workflow…"
+                : "The generation workflow could not be loaded. Enter the current admin key at the top of the page, then try again."}
+            </DialogDescription>
+          </DialogHeader>
+          {!manifestQuery.isPending && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p>The saved admin key was rejected or the workflow API is unavailable.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const targetFamilyId = familyId || (record ? familyFor(record) : null);
   const family = targetFamilyId ? manifest.families.find(f => f.familyId === targetFamilyId) : null;

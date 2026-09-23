@@ -5,8 +5,10 @@ import { UiAssetFamilies } from "@/components/UiAssetFamilies";
 import { UiAssetCandidates } from "@/components/UiAssetCandidates";
 import { UiAssetHistoryView } from "@/components/UiAssetHistoryView";
 import { Input } from "@/components/ui/input";
-import { LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, LockKeyhole } from "lucide-react";
 import { AdminKeyContext } from "@/contexts/AdminKeyContext";
+import { useUiAssetManifest } from "@/hooks/useUiAssetWorkflow";
 
 type TabValue = "catalogue" | "families" | "candidates" | "history";
 
@@ -36,9 +38,20 @@ export default function UiAssetsPage() {
             </p>
           </div>
           <form className="relative w-full sm:w-64" onSubmit={(e) => e.preventDefault()}>
+            <input
+              className="sr-only"
+              type="text"
+              name="username"
+              autoComplete="username"
+              value="SummitReady Artwork Admin"
+              readOnly
+              tabIndex={-1}
+              aria-hidden="true"
+            />
             <LockKeyhole className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="password"
+              name="admin-key"
               autoComplete="current-password"
               aria-label="Admin API key"
               placeholder="Admin key for workflow actions"
@@ -50,6 +63,10 @@ export default function UiAssetsPage() {
         </div>
 
         <AdminKeyContext.Provider value={adminKey}>
+          <AdminKeyStatus
+            hasKey={Boolean(adminKey.trim())}
+            onClear={() => persistAdminKey("")}
+          />
           <div className="w-full">
             <div className="flex border-b border-border overflow-x-auto no-scrollbar">
               {(["catalogue", "families", "candidates", "history"] as TabValue[]).map((tab) => (
@@ -76,6 +93,38 @@ export default function UiAssetsPage() {
           </div>
         </AdminKeyContext.Provider>
       </main>
+    </div>
+  );
+}
+
+function AdminKeyStatus({
+  hasKey,
+  onClear,
+}: {
+  hasKey: boolean;
+  onClear: () => void;
+}) {
+  const manifest = useUiAssetManifest();
+
+  if (!hasKey || manifest.isPending || manifest.data) return null;
+
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+      role="alert"
+    >
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <div>
+          <p className="font-semibold text-foreground">Admin key rejected</p>
+          <p className="text-muted-foreground">
+            The saved key is no longer valid. Clear it and enter the current workspace admin key.
+          </p>
+        </div>
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={onClear}>
+        Clear and re-enter
+      </Button>
     </div>
   );
 }
