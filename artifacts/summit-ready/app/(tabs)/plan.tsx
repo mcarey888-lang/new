@@ -1647,7 +1647,9 @@ export default function PlanScreen() {
                 Week {viewedWeekNum}
                 {viewedWeek?.isCurrentWeek ? " · Current" : ""}
               </Text>
-              <Text style={dashStyles.calPhaseLabel}>{viewedWeek?.phase ?? ""} Phase</Text>
+              <Text style={dashStyles.calPhaseLabel}>
+                {viewedWeek?.phase ? `${viewedWeek.phase.toUpperCase()} PHASE` : ""}
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => {
@@ -2550,12 +2552,14 @@ const dashStyles = StyleSheet.create({
 
   // ── Week Calendar Strip ───────────────────────────────────────────────────
   calCard: {
-    backgroundColor: T.card, borderRadius: 18,
-    borderWidth: 1, borderColor: T.border,
-    padding: 14, marginBottom: 12,
+    /* Restrained surface rather than a bright card — the approved plan screen
+       lets the schedule carry the hierarchy, not a stack of panels. */
+    backgroundColor: "rgba(255,255,255,0.035)", borderRadius: 18,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    padding: 16, marginBottom: 14,
   },
   calHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14,
+    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16,
   },
   calNavBtn: {
     width: 30, height: 30, borderRadius: 9,
@@ -2563,10 +2567,13 @@ const dashStyles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   calWeekLabel: {
-    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+    /* Large and confident — the week IS the heading of this screen. */
+    fontSize: 20, lineHeight: 25, fontFamily: "Inter_700Bold",
+    color: T.white, letterSpacing: -0.3,
   },
   calPhaseLabel: {
-    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1,
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.6, color: T.textMuted, marginTop: 3,
   },
   calDays: {
     flexDirection: "row", justifyContent: "space-between",

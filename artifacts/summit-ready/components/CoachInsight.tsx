@@ -241,7 +241,10 @@ const styles = StyleSheet.create({
   projection: { gap: 7 },
   projectionCopy: { ...TYPE.caption, color: T.basecampTextMuted },
   projectionRow: { flexDirection: "row", alignItems: "center", gap: SP.md },
-  projectionEnd: { alignItems: "center", minWidth: 52 },
+  /* 54, not 52: the fixture guard forbids a bare 52 in production source,
+     and a layout constant that happens to collide with the readiness
+     example is not worth weakening that check for. */
+  projectionEnd: { alignItems: "center", minWidth: 54 },
   projectionCurrent: { ...TYPE.metric, fontSize: 22, color: T.basecampText },
   projectionProjected: { ...TYPE.metric, fontSize: 22, color: T.blue },
   projectionCap: { ...TYPE.eyebrow, fontSize: 8.5, color: T.basecampTextDim, marginTop: 3 },

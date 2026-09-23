@@ -52,8 +52,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
 import {
-  ACTIVITY_DETAILS_COPY, formatPace, offlineNotice, paceMinPerKm, statusLabel,
+  ACTIVITY_DETAILS_COPY, formatPace, offlineNotice, paceMinPerKm, statusLabel, trackContext,
 } from "@/utils/trackPresentation";
+import { STATUS_COPY, readinessStatus } from "@/utils/readinessPresentation";
 import { T } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
 import type { PlanSession, SavedExpedition } from "@/context/AppContext";
@@ -1472,6 +1473,15 @@ export default function HikeTrackingScreen() {
             </View>
             <Text style={s.summaryEyebrow}>ACTIVITY COMPLETE</Text>
             <Text style={s.summaryTitle} numberOfLines={2}>{completionPresentation.title}</Text>
+
+            {/* The headline figure is the one the day actually earned. */}
+            <View style={s.rewardBlock}>
+              <Text style={s.rewardValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {fmtM(elevGainM)}
+              </Text>
+              <Text style={s.rewardLabel}>ELEVATION GAINED</Text>
+            </View>
+
             <Text style={s.sectionHeading}>YOUR RECORDED ACTIVITY</Text>
 
             <View style={s.summaryGrid}>
@@ -1537,6 +1547,22 @@ export default function HikeTrackingScreen() {
                 </Text>
               </View>
             )}
+
+            {/* Readiness. The completion presentation supplies no readiness
+                result, because Readiness 2.0 re-evaluates from the saved
+                activity rather than at the moment of finishing. So this row
+                states PENDING truthfully — it never shows an increase. */}
+            <View style={s.consequenceRow} testID="completion-readiness">
+              <Activity size={17} color={T.textMuted} />
+              <View style={s.consequenceCopy}>
+                <Text style={s.consequenceTitle}>
+                  Readiness · {STATUS_COPY[readinessStatus("available", 0, { processing: true })].label}
+                </Text>
+                <Text style={s.consequenceSub}>
+                  Your readiness updates once this activity has been processed.
+                </Text>
+              </View>
+            </View>
 
             {completionPresentation.training.status === "linked" && (
               <View style={s.consequenceRow} testID="completion-training">
@@ -1891,22 +1917,54 @@ export default function HikeTrackingScreen() {
           )}
         </TouchableOpacity>
 
-        {/* ── Idle state: GPS hint + start button ── */}
+        {/* ── Track Ready: what you are about to record, then the state of
+               the device, then Start. GPS and network are reported as
+               information only — neither ever disables the button. ── */}
         {isIdle && (
           <View style={s.sheetBody}>
-            {!gpsReady ? (
-              <View style={s.gpsNote}>
-                <WifiOff size={13} color={T.textMuted} />
-                <Text style={s.gpsNoteText}>GPS is warming up — you can start now</Text>
-              </View>
-            ) : (
-              <View style={s.gpsNote}>
-                <Wifi size={13} color={T.green} />
-                <Text style={[s.gpsNoteText, { color: "rgba(62,207,117,0.8)" }]}>
-                  GPS ready — tracking is available offline
+            {(() => {
+              /* Context comes from the launch params the screen already
+                 receives — the hill the session named, and the reference
+                 route where one was chosen. No new param was introduced. */
+              const ctx = trackContext({
+                hillName: hillMeta.hillName,
+                routeName: params.referenceRouteName ?? null,
+                sessionLabel: null,
+              });
+              if (!ctx) return null;
+              return (
+                <View style={s.readyContext}>
+                  <Text style={s.readyContextEyebrow}>RECORDING</Text>
+                  <Text style={s.readyContextTitle} numberOfLines={2}>{ctx.title}</Text>
+                  {ctx.subtitle ? (
+                    <Text style={s.readyContextSub} numberOfLines={1}>{ctx.subtitle}</Text>
+                  ) : null}
+                </View>
+              );
+            })()}
+
+            {/* Device state, reported side by side. */}
+            <View style={s.readyStateRow}>
+              <View style={s.readyStateItem}>
+                {gpsReady ? <Wifi size={13} color={T.green} /> : <WifiOff size={13} color={T.textMuted} />}
+                <Text style={[s.readyStateText, gpsReady && { color: "rgba(62,207,117,0.85)" }]} numberOfLines={1}>
+                  {gpsReady ? "GPS ready" : "Finding GPS"}
                 </Text>
               </View>
-            )}
+              <View style={s.readyStateDivider} />
+              <View style={s.readyStateItem}>
+                {isOffline ? <WifiOff size={13} color={T.orange} /> : <Wifi size={13} color={T.green} />}
+                <Text style={[s.readyStateText, isOffline && { color: "rgba(255,144,48,0.9)" }]} numberOfLines={1}>
+                  {isOffline ? "Offline" : "Online"}
+                </Text>
+              </View>
+            </View>
+
+            {/* The reassurance that matters most on this screen. */}
+            <Text style={s.readyAssurance}>
+              {offlineNotice(isOffline, "idle")
+                ?? "Recording starts immediately and saves to this device — no signal needed."}
+            </Text>
             <TouchableOpacity
               style={s.startBtn}
               onPress={startTracking}
@@ -2198,6 +2256,37 @@ const s = StyleSheet.create({
   nameInputError: { borderColor: T.red + "80" },
   nameErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
   nameHintText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 2 },
+  // Track Ready composition.
+  readyContext: { marginBottom: 14, gap: 3 },
+  readyContextEyebrow: {
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.6, color: T.textMuted,
+  },
+  readyContextTitle: { fontSize: 22, lineHeight: 27, fontFamily: "Inter_700Bold", color: T.text, letterSpacing: -0.3 },
+  readyContextSub: { fontSize: 13, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
+  readyStateRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)", borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 12, marginBottom: 10,
+  },
+  readyStateItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, minWidth: 0 },
+  readyStateDivider: { width: 1, alignSelf: "stretch", backgroundColor: "rgba(255,255,255,0.08)", marginHorizontal: 10 },
+  readyStateText: { fontSize: 12.5, fontFamily: "Inter_600SemiBold", color: T.textMuted, flexShrink: 1 },
+  readyAssurance: {
+    fontSize: 11.5, lineHeight: 16, fontFamily: "Inter_400Regular",
+    color: T.textDim, marginBottom: 14,
+  },
+  // Activity Complete — the reward moment's headline figure.
+  rewardBlock: { alignItems: "center", marginTop: 14, marginBottom: 4 },
+  rewardValue: {
+    fontSize: 46, lineHeight: 52, fontFamily: "Inter_700Bold",
+    color: T.green, letterSpacing: -1,
+  },
+  rewardLabel: {
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.8, color: T.textMuted, marginTop: 2,
+  },
   // Activity Details — approved wording block above the Save Details CTA.
   detailsIntro: { marginTop: 22, marginBottom: 12, gap: 4 },
   detailsTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.text },

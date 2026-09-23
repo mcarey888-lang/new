@@ -130,6 +130,9 @@ export function ReadinessV2Hero() {
                 strokeWidth={10}
                 statusLabel={STATUS_COPY[status].label}
                 tone={statusColor}
+                /* the compact hero has no room for an anchored callout;
+                   Full Readiness shows the projected figure instead */
+                showProjectedCallout={false}
               />
             ) : (
               <FourSegmentRing size={110} hideScore score={0} ringColor={statusColor} />
