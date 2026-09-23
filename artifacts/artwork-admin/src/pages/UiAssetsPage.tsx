@@ -5,6 +5,7 @@ import { UiAssetFamilies } from "@/components/UiAssetFamilies";
 import { UiAssetCandidates } from "@/components/UiAssetCandidates";
 import { UiAssetHistoryView } from "@/components/UiAssetHistoryView";
 import { UiAssetConcepts } from "@/components/UiAssetConcepts";
+import { UiAssetBulkPanel } from "@/components/UiAssetBulkPanel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, LockKeyhole } from "lucide-react";
@@ -97,7 +98,12 @@ export default function UiAssetsPage() {
             </div>
 
             <div className="mt-6">
-              {activeTab === "catalogue" && <UiAssetSystemCatalogue />}
+              {activeTab === "catalogue" && (
+                <div className="space-y-6">
+                  <UiAssetBulkPanel onNavigate={selectTab} />
+                  <UiAssetSystemCatalogue />
+                </div>
+              )}
               {activeTab === "concepts" && <UiAssetConcepts />}
               {activeTab === "families" && <UiAssetFamilies />}
               {activeTab === "candidates" && <UiAssetCandidates />}

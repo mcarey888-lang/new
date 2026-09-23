@@ -70,6 +70,7 @@ import {
   UI_ASSET_BATCH_ID,
 } from "../services/artwork/uiAssetWorkflowService.js";
 import { logger } from "../lib/logger.js";
+import { getUiAssetBulkJob, startUiAssetBulkJob } from "../services/artwork/uiAssetBulkService.js";
 
 export const artworkRouter = Router();
 
@@ -79,6 +80,17 @@ const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
 // protected by the same admin key as the existing artwork review pipeline.
 artworkRouter.get("/ui-assets/workflow", requireAdminKey, async (_req, res) => {
   return res.json(await getUiAssetManifest());
+});
+artworkRouter.get("/ui-assets/bulk", requireAdminKey, async (_req, res) => {
+  return res.json({ job: await getUiAssetBulkJob() });
+});
+artworkRouter.post("/ui-assets/bulk", requireAdminKey, async (req, res) => {
+  try {
+    const job = await startUiAssetBulkJob(req.body?.confirmed === true, req.body?.overrideFamilyWarning === true);
+    return res.status(202).json({ job });
+  } catch (error) {
+    return res.status(409).json({ error: error instanceof Error ? error.message : "Bulk generation could not start" });
+  }
 });
 artworkRouter.get("/ui-assets/:assetKey/resolve", requireAdminKey, async (req, res) => {
   try { return res.json(await resolveUiAsset(param(req.params.assetKey))); }

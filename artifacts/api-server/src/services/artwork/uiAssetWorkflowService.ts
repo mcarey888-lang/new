@@ -77,6 +77,17 @@ async function catalogue(): Promise<AssetRecord[]> {
   const raw = JSON.parse(await fs.readFile(file, "utf8")) as { records: AssetRecord[] };
   return raw.records;
 }
+export async function listUiAssetBulkTargets(): Promise<string[]> {
+  const categories = ["RANK_ARTWORK", "ACHIEVEMENT_ARTWORK", "EDITORIAL_IMAGE"];
+  const records = (await catalogue()).filter((record) => categories.includes(record.category));
+  const counts = categories.map((category) => records.filter((record) => record.category === category).length);
+  if (counts.join(",") !== "7,6,21" ||
+      records.some((record) => !record.generation_required || !record.generation_prompt) ||
+      new Set(records.map((record) => record.asset_key)).size !== 34) {
+    throw new Error("The bulk artwork catalogue must contain 7 Ranks, 6 Achievements and 21 eligible Editorial images");
+  }
+  return records.map((record) => record.asset_key);
+}
 function initialManifest(): UiAssetManifest {
   return { version: 1, updatedAt: new Date(0).toISOString(), families: FAMILY_IDS.map((familyId) => ({
     familyId, displayName: FAMILY_NAMES[familyId], familyArtDirection: FAMILY_DIRECTION[familyId],
