@@ -1,12 +1,10 @@
 import {
-  Activity, ArrowLeft, Calendar, Check, CheckCircle, ChevronRight, Flag,
-  Globe, MapPin, Minus, Mountain, Plus, TrendingUp, Zap,
+  Activity, Calendar, Check, CheckCircle, ChevronRight, Flag,
+  Globe, Minus, Mountain, Plus, TrendingUp, Zap,
 } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
-  ImageBackground,
   type ImageSourcePropType,
   Platform,
   ScrollView,
@@ -23,6 +21,11 @@ import { HillPickerModal } from "@/components/HillPickerModal";
 import { ExercisePickerModal, type GymExercise } from "@/components/ExercisePickerModal";
 import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
+import { BASECAMP, HIT } from "@/constants/tokens";
+import {
+  SRButton, SREyebrow, SRFactDivider, SRHeroFrame, SRPanel, SRScreenHeader,
+  SREmptyState, SRSectionHeader, SRStatusPill, SRSubPanel,
+} from "@/components/ui";
 import { sessionPurpose } from "@/utils/sessionPurpose";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
@@ -31,6 +34,44 @@ import { useSubscription } from "@/lib/revenuecat";
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
+
+/* One figure from the plan, with its label. Presentation only. */
+function Stat({ value, label, tone }: { value: string; label: string; tone?: string }) {
+  return (
+    <View style={s.statCell}>
+      <Text style={[s.statVal, tone ? { color: tone } : null]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {value}
+      </Text>
+      <Text style={s.statLbl} numberOfLines={2}>{label}</Text>
+    </View>
+  );
+}
+
+/* A setup row: what is chosen, and the control that changes it. */
+function SetupRow({
+  icon, title, detail, action, onPress, muted = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  action: string;
+  onPress: () => void;
+  muted?: boolean;
+}) {
+  return (
+    <SRSubPanel onPress={onPress} accessibilityLabel={`${title}. ${action}.`}>
+      <View style={s.setupRow}>
+        {icon}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[s.setupTitle, muted && { color: BASECAMP.textMuted }]} numberOfLines={1}>{title}</Text>
+          <Text style={s.setupDetail} numberOfLines={2}>{detail}</Text>
+        </View>
+        <Text style={s.setupAction} numberOfLines={1}>{action}</Text>
+        <ChevronRight size={13} color={BASECAMP.textDim} />
+      </View>
+    </SRSubPanel>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -68,7 +109,7 @@ function RepLog({
   return (
     <View style={trk.box}>
       <View style={trk.metaRow}>
-        <Flag size={12} color={T.orange} />
+        <Flag size={12} color={BASECAMP.accent} />
         <Text style={trk.metaText}>Target: <Text style={trk.metaVal}>{targetReps} reps</Text></Text>
         {elevPerRep > 0 && <Text style={trk.metaDim}>= {targetReps * elevPerRep}m gain</Text>}
       </View>
@@ -80,7 +121,7 @@ function RepLog({
           disabled={display <= 0 || isDone}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Minus size={14} color={display <= 0 || isDone ? T.textDim : T.white} />
+          <Minus size={14} color={display <= 0 || isDone ? BASECAMP.textFaint : BASECAMP.text} />
         </TouchableOpacity>
         <Text style={[trk.val, hit && trk.valGreen, logged !== undefined && !hit && trk.valWhite]}>
           {logged !== undefined ? display : "–"}
@@ -91,14 +132,14 @@ function RepLog({
           disabled={isDone}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Plus size={14} color={isDone ? T.textDim : T.white} />
+          <Plus size={14} color={isDone ? BASECAMP.textFaint : BASECAMP.text} />
         </TouchableOpacity>
         {loggedElev !== null && (
-          <Text style={[trk.logElev, hit && { color: T.green }]}>= {loggedElev}m</Text>
+          <Text style={[trk.logElev, hit && { color: BASECAMP.accent }]}>= {loggedElev}m</Text>
         )}
         {hit && (
           <View style={trk.hitBadge}>
-            <Check size={10} color={T.green} />
+            <Check size={10} color={BASECAMP.accent} />
             <Text style={trk.hitText}>Target hit!</Text>
           </View>
         )}
@@ -120,7 +161,7 @@ function MeterLog({
   return (
     <View style={trk.box}>
       <View style={trk.metaRow}>
-        <Flag size={12} color={T.orange} />
+        <Flag size={12} color={BASECAMP.accent} />
         <Text style={trk.metaText}>Target: <Text style={trk.metaVal}>{target} {unit}</Text></Text>
       </View>
       <View style={trk.logRow}>
@@ -131,7 +172,7 @@ function MeterLog({
           disabled={display <= 0 || isDone}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Minus size={14} color={display <= 0 || isDone ? T.textDim : T.white} />
+          <Minus size={14} color={display <= 0 || isDone ? BASECAMP.textFaint : BASECAMP.text} />
         </TouchableOpacity>
         <Text style={[trk.val, hit && trk.valGreen, logged !== undefined && !hit && trk.valWhite]}>
           {logged !== undefined ? `${display}${unit}` : "–"}
@@ -142,11 +183,11 @@ function MeterLog({
           disabled={isDone}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Plus size={14} color={isDone ? T.textDim : T.white} />
+          <Plus size={14} color={isDone ? BASECAMP.textFaint : BASECAMP.text} />
         </TouchableOpacity>
         {hit && (
           <View style={trk.hitBadge}>
-            <Check size={10} color={T.green} />
+            <Check size={10} color={BASECAMP.accent} />
             <Text style={trk.hitText}>Target!</Text>
           </View>
         )}
@@ -156,38 +197,43 @@ function MeterLog({
 }
 
 const trk = StyleSheet.create({
+  /* The loggers keep their existing behaviour exactly; only their surface,
+     type and accent move into the approved language. */
   box: {
-    backgroundColor: T.surface,
+    backgroundColor: BASECAMP.panelSub,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: BASECAMP.panelSubBorder,
     padding: 14,
     gap: 10,
-    marginTop: 4,
   },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  metaText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
-  metaVal: { fontFamily: "Inter_600SemiBold", color: T.orange },
-  metaDim: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  metaText: { fontSize: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
+  metaVal: { fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
+  metaDim: { fontSize: 11, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   logRow: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  logLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  logLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   btn: {
-    width: 32, height: 32, borderRadius: 10,
-    backgroundColor: T.card, borderWidth: 1, borderColor: T.border,
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     alignItems: "center", justifyContent: "center",
   },
   btnDim: { opacity: 0.35 },
-  val: { fontSize: 18, fontFamily: "Inter_700Bold", color: T.textMuted, width: 72, textAlign: "center" },
-  valWhite: { color: T.white },
-  valGreen: { color: T.green },
-  logElev: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.orange },
+  val: {
+    fontSize: 19, fontFamily: "Inter_700Bold", color: BASECAMP.textDim,
+    width: 72, textAlign: "center",
+  },
+  valWhite: { color: BASECAMP.text },
+  valGreen: { color: BASECAMP.accent },
+  logElev: { fontSize: 12, fontFamily: "Inter_500Medium", color: BASECAMP.textMuted },
   hitBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 9, paddingVertical: 4,
-    borderRadius: 20, backgroundColor: T.greenDim,
-    borderWidth: 1, borderColor: T.green + "40",
+    borderRadius: 20, backgroundColor: "rgba(36,239,164,0.13)",
+    borderWidth: 1, borderColor: "rgba(36,239,164,0.45)",
   },
-  hitText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
+  hitText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: BASECAMP.accent },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -410,86 +456,79 @@ export default function SessionDetailScreen() {
 
   if (!session || !week) {
     return (
-      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: T.textMuted, fontSize: 15, fontFamily: "Inter_400Regular" }}>
-          Session not found.
-        </Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: T.green, fontFamily: "Inter_600SemiBold" }}>← Back</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
+        <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
+          <SRScreenHeader title="Training session" onBack={() => router.back()} />
+        </View>
+        <View style={{ paddingHorizontal: BASECAMP.gutter, paddingTop: 30 }}>
+          <SREmptyState
+            testID="session-not-found"
+            title="This session is no longer in your plan"
+            body="It may have been rescheduled or the plan rebuilt. Open your plan to find the current one."
+            action="Open training plan"
+            onAction={() => router.replace("/(tabs)/plan")}
+          />
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.bg }}>
+    <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero ──────────────────────────────────────────────────────── */}
-        <View style={s.heroWrap}>
-          {heroImageSource ? (
-            <ImageBackground
-              source={heroImageSource}
-              style={s.heroImg}
-              resizeMode="cover"
-              onError={() => setImageError(true)}
-            >
-              <LinearGradient
-                colors={["transparent", "transparent", "rgba(6,13,27,0.55)", T.bg]}
-                locations={[0, 0.45, 0.72, 1]}
-                style={StyleSheet.absoluteFill}
-              />
-              {/* Back button */}
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={[s.backBtn, { top: Platform.OS === "web" ? 20 : insets.top + 8 }]}
-                activeOpacity={0.8}
-              >
-                <ArrowLeft size={20} color={T.white} />
-              </TouchableOpacity>
-            </ImageBackground>
-          ) : (
-            <LinearGradient colors={["transparent", T.bg + "B3"]} style={s.heroImg}>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={[s.backBtn, { top: Platform.OS === "web" ? 20 : insets.top + 8 }]}
-                activeOpacity={0.8}
-              >
-                <ArrowLeft size={20} color={T.white} />
-              </TouchableOpacity>
-            </LinearGradient>
-          )}
-        </View>
-
-        {/* ── Header metadata ───────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(400)} style={s.content}>
-
-          {/* Phase + week chips */}
-          <View style={s.chipRow}>
-            <View style={[s.chip, { backgroundColor: pc + "20", borderColor: pc + "50" }]}>
-              <Text style={[s.chipText, { color: pc }]}>{week.phase} Phase</Text>
-            </View>
-            <View style={[s.chip, { backgroundColor: T.surface, borderColor: T.border }]}>
-              <Text style={[s.chipText, { color: T.textMuted }]}>Week {weekNum}</Text>
-            </View>
-            <View style={[s.chip, { backgroundColor: tc + "18", borderColor: tc + "40" }]}>
-              {typeIcon(session.type)}
-              <Text style={[s.chipText, { color: tc }]}>{typeLabel(session.type)}</Text>
-            </View>
-            {isDone && (
-              <View style={[s.chip, { backgroundColor: T.greenDim, borderColor: T.green + "50" }]}>
-                <CheckCircle size={11} color={T.green} />
-                <Text style={[s.chipText, { color: T.green }]}>Done</Text>
-              </View>
-            )}
+        {/* ── Hero: the prescription, over its own artwork ────────────────
+            `heroImageSource` is unchanged: the local exercise asset for a gym
+            session, otherwise the existing mountain-image service for the
+            assigned hill. Nothing new is invented, and a failure falls through
+            to the designed gradient rather than a broken image. */}
+        <SRHeroFrame
+          source={heroImageSource}
+          onImageError={() => setImageError(true)}
+          minHeight={286}
+          dim={0.96}
+        >
+          <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
+            <SRScreenHeader
+              title="Training session"
+              subtitle={`Week ${weekNum} · ${week.phase}`}
+              onBack={() => router.back()}
+            />
           </View>
 
-          {/* Session title */}
-          <Text style={s.title}>{session.label}</Text>
+          <View style={s.heroBody}>
+            <View style={s.pillRow}>
+              <SRStatusPill label={typeLabel(session.type)} tone={BASECAMP.accent} />
+              {isDone ? <SRStatusPill label="Done" tone={BASECAMP.accent} /> : null}
+              {isSubmitted ? <SRStatusPill label="Submitted" tone={BASECAMP.accent} /> : null}
+            </View>
 
-          {/* Why this session matters for the user's actual mountain.
+            <Text style={s.title} numberOfLines={3}>{session.label}</Text>
+
+            <View style={s.heroFacts}>
+              <Text style={s.heroFact} numberOfLines={1}>{session.duration}</Text>
+              {session.targetElevation > 0 && (
+                <>
+                  <SRFactDivider />
+                  <Text style={s.heroFact} numberOfLines={1}>
+                    {session.targetElevation.toLocaleString()} m gain
+                  </Text>
+                </>
+              )}
+              {sessionDow !== null && (
+                <>
+                  <SRFactDivider />
+                  <Text style={s.heroFact} numberOfLines={1}>{DAY_FULL[sessionDow]}</Text>
+                </>
+              )}
+            </View>
+          </View>
+        </SRHeroFrame>
+
+        <Animated.View entering={FadeInDown.duration(400)}>
+          {/* ── Why this session ─────────────────────────────────────────
               Built from the plan's own session and the real summit goal —
               nothing here is generated or estimated. */}
           {(() => {
@@ -500,241 +539,210 @@ export default function SessionDetailScreen() {
               mountainName: summitGoal?.mountainName ?? null,
             });
             return (
-              <View style={s.purposeBlock}>
-                <Text style={s.purposeEyebrow}>WHY THIS SESSION</Text>
-                <Text style={s.purposeBuilds}>{purpose.builds}</Text>
-                {purpose.relationship ? (
-                  <Text style={s.purposeRelationship}>{purpose.relationship}</Text>
-                ) : null}
+              <View style={s.section}>
+                <SRSectionHeader title="Why this session" />
+                <SRPanel radius={16} style={{ marginTop: 10 }}>
+                  <View style={s.purposeBody}>
+                    <Text style={s.purposeBuilds}>{purpose.builds}</Text>
+                    {purpose.relationship ? (
+                      <Text style={s.purposeRelationship}>{purpose.relationship}</Text>
+                    ) : null}
+                  </View>
+                </SRPanel>
               </View>
             );
           })()}
 
-          {/* Stats row */}
-          <View style={s.statsRow}>
-            <View style={s.statCell}>
-              <Text style={s.statVal}>{session.duration}</Text>
-              <Text style={s.statLbl}>Duration</Text>
-            </View>
-            {session.targetElevation > 0 && (
-              <View style={[s.statCell, s.statMid]}>
-                <Text style={[s.statVal, { color: T.orange }]}>↑{session.targetElevation}m</Text>
-                <Text style={s.statLbl}>Elevation</Text>
+          {/* ── The prescription ─────────────────────────────────────────
+              Every figure is the plan's own; a target the plan did not set is
+              omitted rather than shown as zero. */}
+          <View style={s.section}>
+            <SRSectionHeader title="The prescription" />
+            <SRPanel radius={16} style={{ marginTop: 10 }}>
+              <View style={s.statsGrid}>
+                <Stat value={session.duration} label="Duration" />
+                {session.targetElevation > 0 && (
+                  <Stat
+                    value={`${session.targetElevation.toLocaleString()} m`}
+                    label="Elevation"
+                    tone={BASECAMP.accent}
+                  />
+                )}
+                {session.type !== "cardio" && elevPerRep > 0 && (
+                  <Stat value={String(targetReps)} label={`Reps × ${elevPerRep} m`} />
+                )}
+                {inferredGymExercise === "treadmill" && session.targetDistanceKm ? (
+                  <Stat
+                    value={`${session.targetDistanceKm} km`}
+                    label={`At ${session.inclinePct ?? 10}% grade`}
+                  />
+                ) : null}
+                {inferredGymExercise === "stepper" && session.targetFloors ? (
+                  <Stat value={`${session.targetFloors}`} label="Floors" />
+                ) : null}
+                {isStairRepeat && session.targetFlights ? (
+                  <Stat value={`${session.targetFlights}`} label="Flights" />
+                ) : null}
               </View>
-            )}
-            {session.type !== "cardio" && elevPerRep > 0 && (
-              <View style={s.statCell}>
-                <Text style={s.statVal}>{targetReps}</Text>
-                <Text style={s.statLbl}>Reps × {elevPerRep}m</Text>
-              </View>
-            )}
-            {inferredGymExercise === "treadmill" && session.targetDistanceKm && (
-              <View style={s.statCell}>
-                <Text style={[s.statVal, { color: T.blue }]}>{session.targetDistanceKm}km</Text>
-                <Text style={s.statLbl}>@ {session.inclinePct ?? 10}% grade</Text>
-              </View>
-            )}
-            {inferredGymExercise === "stepper" && session.targetFloors && (
-              <View style={s.statCell}>
-                <Text style={[s.statVal, { color: T.blue }]}>{session.targetFloors} fl</Text>
-                <Text style={s.statLbl}>Floors</Text>
-              </View>
-            )}
-            {isStairRepeat && session.targetFlights && (
-              <View style={s.statCell}>
-                <Text style={[s.statVal, { color: T.blue }]}>{session.targetFlights}</Text>
-                <Text style={s.statLbl}>Flights</Text>
-              </View>
-            )}
+            </SRPanel>
           </View>
 
-          {/* Assigned hill + hill picker trigger */}
-          {(session.type === "hill" || session.type === "bigDay") && (
-            assignedHill ? (
-              <View style={s.hillRow}>
-                <Text style={s.hillEmoji}>{assignedHill.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.hillName}>{assignedHill.name}</Text>
-                  <Text style={s.hillSub}>
-                    {assignedHill.distance}km away · {assignedHill.surface} · {assignedHill.grade} grade
-                  </Text>
-                </View>
-                <TouchableOpacity
+          {/* ── Where and when ───────────────────────────────────────────
+              The hill assignment, the exercise choice and the scheduled day.
+              All three actions are the existing ones. */}
+          <View style={s.section}>
+            <SRSectionHeader title="Where and when" />
+            <View style={{ marginTop: 10, gap: 8 }}>
+              {(session.type === "hill" || session.type === "bigDay") && (
+                <SetupRow
+                  icon={<Mountain size={16} color={assignedHill ? BASECAMP.accent : BASECAMP.textDim} />}
+                  title={assignedHill?.name ?? "No hill assigned"}
+                  detail={assignedHill
+                    ? `${assignedHill.distance} km away · ${assignedHill.surface} · ${assignedHill.grade} grade`
+                    : "Choose a training hill for this session"}
+                  action={assignedHill ? "Change" : "Assign"}
+                  muted={!assignedHill}
                   onPress={() => setHillPickerOpen(true)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>Change</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[s.hillRow, { paddingHorizontal: 14 }]}
-                onPress={() => setHillPickerOpen(true)}
-                activeOpacity={0.8}
-              >
-                <Mountain size={15} color={T.textMuted} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.hillName, { color: T.textMuted }]}>No hill assigned</Text>
-                  <Text style={s.hillSub}>Tap to assign a training hill</Text>
-                </View>
-                <ChevronRight size={14} color={T.textMuted} />
-              </TouchableOpacity>
-            )
-          )}
+                />
+              )}
 
-          {/* Exercise type row (cardio sessions) + swap button */}
-          {session.type === "cardio" && !isStairRepeat && (
-            <View style={s.hillRow}>
-              <Text style={s.hillEmoji}>
-                {inferredGymExercise === "treadmill"       ? "🏃"
-                  : inferredGymExercise === "stepper"         ? "🪜"
-                  : inferredGymExercise === "box-steps"       ? "📦"
-                  : inferredGymExercise === "weighted-stairs" ? "🎒"
-                  : inferredGymExercise === "elliptical"      ? "🔄"
-                  : "🌿"}
-              </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={s.hillName}>
-                  {inferredGymExercise === "treadmill"       ? "Incline Treadmill"
-                    : inferredGymExercise === "stepper"         ? "Stepper Machine"
-                    : inferredGymExercise === "box-steps"       ? "Box Step-Ups"
-                    : inferredGymExercise === "weighted-stairs" ? "Weighted Stairs"
-                    : inferredGymExercise === "elliptical"      ? "Elliptical (High Resistance)"
-                    : "Outdoor Walk / Run"}
-                </Text>
-                <Text style={s.hillSub}>
-                  {inferredGymExercise === "treadmill"
-                    ? `${session.targetDistanceKm ?? "?"}km @ ${session.inclinePct ?? 12}% incline`
-                    : inferredGymExercise === "stepper"
-                    ? `${session.targetFloors ?? "?"} floors`
-                    : `${session.targetElevation}m elevation gain`}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setExercisePickerOpen(true)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>Change</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+              {session.type === "cardio" && !isStairRepeat && (
+                <SetupRow
+                  icon={<Activity size={16} color={BASECAMP.accent} />}
+                  title={
+                    inferredGymExercise === "treadmill" ? "Incline treadmill"
+                      : inferredGymExercise === "stepper" ? "Stepper machine"
+                      : inferredGymExercise === "box-steps" ? "Box step-ups"
+                      : inferredGymExercise === "weighted-stairs" ? "Weighted stairs"
+                      : inferredGymExercise === "elliptical" ? "Elliptical, high resistance"
+                      : "Outdoor walk or run"
+                  }
+                  detail={
+                    inferredGymExercise === "treadmill"
+                      ? `${session.targetDistanceKm ?? "—"} km at ${session.inclinePct ?? 12}% incline`
+                      : inferredGymExercise === "stepper"
+                      ? `${session.targetFloors ?? "—"} floors`
+                      : session.targetElevation > 0
+                      ? `${session.targetElevation.toLocaleString()} m elevation gain`
+                      : "No elevation target set"
+                  }
+                  action="Change"
+                  onPress={() => setExercisePickerOpen(true)}
+                />
+              )}
 
-          {/* Day scheduling row */}
-          <View style={s.hillRow}>
-            <Calendar size={18} color={sessionDow !== null ? T.blue : T.textDim} style={{ marginHorizontal: 2 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[s.hillName, sessionDow === null && { color: T.textMuted }]}>
-                {sessionDow !== null ? DAY_FULL[sessionDow] : "Unscheduled"}
-              </Text>
-              <Text style={s.hillSub}>
-                {sessionDow !== null ? "Tap to move to a different day" : "Tap to plan which day you'll do this"}
-              </Text>
+              <SetupRow
+                icon={<Calendar size={16} color={sessionDow !== null ? BASECAMP.accent : BASECAMP.textDim} />}
+                title={sessionDow !== null ? DAY_FULL[sessionDow] : "Unscheduled"}
+                detail={sessionDow !== null
+                  ? "Move this session to a different day"
+                  : "Plan which day you will do this"}
+                action={sessionDow !== null ? "Change" : "Schedule"}
+                muted={sessionDow === null}
+                onPress={() => setDayPickerOpen(true)}
+              />
             </View>
-            <TouchableOpacity
-              onPress={() => setDayPickerOpen(true)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.blue }}>
-                {sessionDow !== null ? "Change" : "Schedule"}
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Description / coaching */}
+          {/* ── Coaching notes ───────────────────────────────────────── */}
           {session.description ? (
-            <View style={s.descCard}>
-              <Text style={s.descLabel}>COACHING NOTES</Text>
-              <Text style={s.descText}>{session.description}</Text>
+            <View style={s.section}>
+              <SRSectionHeader title="Coaching notes" />
+              <SRPanel radius={16} style={{ marginTop: 10 }}>
+                <Text style={s.descText}>{session.description}</Text>
+              </SRPanel>
             </View>
           ) : null}
 
-          {/* ── DIVIDER: Complete this session ────────────────────────── */}
+          {/* ── Complete this session ────────────────────────────────────
+              Every route out of this screen is unchanged: GPS tracking carries
+              the same params, manual completion still calls togglePlanSession,
+              the loggers still write through setSessionReps, and the week is
+              still submitted by submitWeekSessions. */}
           {!isSubmitted && (
-            <View style={s.completeSection}>
-              <Text style={s.completeSectionLabel}>COMPLETE THIS SESSION</Text>
+            <View style={s.section}>
+              <SRSectionHeader title="Complete this session" />
 
-              {/* CTA 1: Track with GPS */}
               {(session.type === "hill" || session.type === "bigDay") && (
-                <TouchableOpacity
-                  style={[s.ctaBtn, s.ctaBtnGps]}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/hike-tracking",
-                      params: {
-                        hillSessionKey: sessionKey,
-                        hillName: assignedHill?.name ?? session.label,
-                        targetReps: String(targetReps),
-                        estimatedGainPerRep: String(elevPerRep),
-                        estimatedTotalGain: String(estimatedTotalGain),
-                      },
-                    })
-                  }
-                >
-                  <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.ctaBtnInner}>
-                    <Globe size={17} color="#fff" />
-                    <View>
-                      <Text style={s.ctaBtnTitle}>Track with GPS</Text>
-                      <Text style={s.ctaBtnSub}>Records elevation + maps your route</Text>
+                <>
+                  <SRPanel
+                    radius={16}
+                    style={s.gpsPanel}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/hike-tracking",
+                        params: {
+                          hillSessionKey: sessionKey,
+                          hillName: assignedHill?.name ?? session.label,
+                          targetReps: String(targetReps),
+                          estimatedGainPerRep: String(elevPerRep),
+                          estimatedTotalGain: String(estimatedTotalGain),
+                        },
+                      })
+                    }
+                    accessibilityLabel="Track this session with GPS"
+                    accessibilityHint="Records elevation and maps your route"
+                  >
+                    <View style={s.ctaRow}>
+                      <View style={s.ctaIcon}>
+                        <Globe size={18} color={BASECAMP.accentInk} />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={s.ctaTitle}>Track with GPS</Text>
+                        <Text style={s.ctaSub}>Records elevation and maps your route</Text>
+                      </View>
+                      <ChevronRight size={16} color={BASECAMP.accent} />
                     </View>
-                    <ChevronRight size={16} color="#fff" style={{ marginLeft: "auto" }} />
-                  </LinearGradient>
-                </TouchableOpacity>
+                  </SRPanel>
+
+                  <View style={s.accuracyNote}>
+                    <Zap size={11} color={BASECAMP.textFaint} />
+                    <Text style={s.accuracyNoteText}>
+                      GPS tracking records verified elevation and improves hill accuracy for
+                      everyone. Manual completion counts equally toward your readiness score.
+                    </Text>
+                  </View>
+                </>
               )}
 
-              {/* Accuracy note */}
-              {(session.type === "hill" || session.type === "bigDay") && (
-                <View style={s.accuracyNote}>
-                  <Zap size={11} color={T.textDim} />
-                  <Text style={s.accuracyNoteText}>
-                    GPS tracking records verified elevation and improves hill accuracy for everyone. 
-                    Manual completion counts equally toward your readiness score.
-                  </Text>
-                </View>
-              )}
-
-              {/* CTA 2: Complete without GPS */}
               {!isDone ? (
-                <TouchableOpacity
-                  style={[s.ctaBtn, s.ctaBtnManual]}
-                  activeOpacity={0.85}
+                <SRSubPanel
+                  style={s.manualRow}
                   onPress={async () => {
                     await togglePlanSession(weekNum, sessionIdx);
                     setShowManual(true);
                   }}
+                  accessibilityLabel="Complete without GPS"
                 >
-                  <View style={s.ctaBtnInner}>
-                    <CheckCircle size={17} color={T.textMuted} />
-                    <View>
-                      <Text style={[s.ctaBtnTitle, { color: T.text }]}>Complete without GPS</Text>
-                      <Text style={s.ctaBtnSub}>Mark done and log your effort</Text>
+                  <View style={s.ctaRow}>
+                    <CheckCircle size={17} color={BASECAMP.textMuted} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.ctaTitleQuiet}>Complete without GPS</Text>
+                      <Text style={s.ctaSub}>Mark done and log your effort</Text>
                     </View>
-                    <ChevronRight size={16} color={T.textMuted} style={{ marginLeft: "auto" }} />
+                    <ChevronRight size={16} color={BASECAMP.textDim} />
                   </View>
-                </TouchableOpacity>
+                </SRSubPanel>
               ) : (
-                <TouchableOpacity
-                  style={[s.ctaBtn, s.ctaBtnDone]}
-                  activeOpacity={0.85}
+                <SRSubPanel
+                  style={[s.manualRow, s.manualDone]}
                   onPress={() => togglePlanSession(weekNum, sessionIdx)}
+                  accessibilityLabel="Marked complete. Tap to undo."
                 >
-                  <View style={s.ctaBtnInner}>
-                    <CheckCircle size={17} color={T.green} />
-                    <Text style={[s.ctaBtnTitle, { color: T.green }]}>Marked complete</Text>
-                    <Text style={[s.ctaBtnSub, { color: T.textDim, marginLeft: "auto" }]}>Tap to undo</Text>
+                  <View style={s.ctaRow}>
+                    <CheckCircle size={17} color={BASECAMP.accent} />
+                    <Text style={[s.ctaTitleQuiet, { color: BASECAMP.accent, flex: 1 }]}>
+                      Marked complete
+                    </Text>
+                    <Text style={s.undoText}>Tap to undo</Text>
                   </View>
-                </TouchableOpacity>
+                </SRSubPanel>
               )}
 
-              {/* Manual tracker widgets (shown once the user marks done) */}
               {(isDone || showManual) && (
                 <View style={s.trackerWrap}>
-                  <Text style={s.trackerLabel}>LOG YOUR NUMBERS</Text>
+                  <SREyebrow>LOG YOUR NUMBERS</SREyebrow>
 
-                  {/* Hill / bigDay: rep logging */}
                   {(session.type === "hill" || session.type === "bigDay") && elevPerRep > 0 && (
                     <RepLog
                       sessionKey={sessionKey}
@@ -745,80 +753,41 @@ export default function SessionDetailScreen() {
                       onSet={setSessionReps}
                     />
                   )}
-
-                  {/* Treadmill */}
                   {inferredGymExercise === "treadmill" && session.targetDistanceKm && (
-                    <MeterLog
-                      sessionKey={sessionKey}
-                      target={session.targetDistanceKm}
-                      unit="km"
-                      step={0.5}
-                      sessionReps={sessionReps}
-                      isDone={false}
-                      onSet={setSessionReps}
-                    />
+                    <MeterLog sessionKey={sessionKey} target={session.targetDistanceKm} unit="km"
+                      step={0.5} sessionReps={sessionReps} isDone={false} onSet={setSessionReps} />
                   )}
-
-                  {/* Stepper */}
                   {inferredGymExercise === "stepper" && session.targetFloors && (
-                    <MeterLog
-                      sessionKey={sessionKey}
-                      target={session.targetFloors}
-                      unit=" fl"
-                      step={5}
-                      sessionReps={sessionReps}
-                      isDone={false}
-                      onSet={setSessionReps}
-                    />
+                    <MeterLog sessionKey={sessionKey} target={session.targetFloors} unit=" fl"
+                      step={5} sessionReps={sessionReps} isDone={false} onSet={setSessionReps} />
                   )}
-
-                  {/* Stair repeats */}
                   {isStairRepeat && session.targetFlights && (
-                    <MeterLog
-                      sessionKey={sessionKey}
-                      target={session.targetFlights}
-                      unit=" flights"
-                      step={1}
-                      sessionReps={sessionReps}
-                      isDone={false}
-                      onSet={setSessionReps}
-                    />
+                    <MeterLog sessionKey={sessionKey} target={session.targetFlights} unit=" flights"
+                      step={1} sessionReps={sessionReps} isDone={false} onSet={setSessionReps} />
                   )}
-
-                  {/* Outdoor / elevation logger */}
                   {isOutdoorCardio && session.targetElevation > 0 && (
-                    <MeterLog
-                      sessionKey={sessionKey}
-                      target={session.targetElevation}
-                      unit="m"
+                    <MeterLog sessionKey={sessionKey} target={session.targetElevation} unit="m"
                       step={session.targetElevation >= 500 ? 100 : session.targetElevation >= 200 ? 50 : 25}
-                      sessionReps={sessionReps}
-                      isDone={false}
-                      onSet={setSessionReps}
-                    />
+                      sessionReps={sessionReps} isDone={false} onSet={setSessionReps} />
                   )}
                 </View>
               )}
 
-              {/* Submit button */}
               {unsubmittedCount > 0 && (
-                <TouchableOpacity
+                <SRButton
+                  label={saving
+                    ? "Saving…"
+                    : `Submit ${unsubmittedCount} session${unsubmittedCount > 1 ? "s" : ""}`}
                   onPress={handleSubmitWeek}
-                  activeOpacity={0.85}
-                  style={s.submitBtn}
                   disabled={saving}
-                >
-                  <LinearGradient colors={["#3ECF75", "#2AB860"]} style={s.submitBtnInner}>
-                    <CheckCircle size={16} color="#fff" />
-                    <Text style={s.submitText}>
-                      {saving ? "Saving…" : `Submit ${unsubmittedCount} session${unsubmittedCount > 1 ? "s" : ""} → update progress`}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                  style={{ marginTop: 12 }}
+                  accessibilityHint="Updates your readiness with this week's completed sessions"
+                  icon={<CheckCircle size={16} color={BASECAMP.accentInk} />}
+                />
               )}
               {submittedCount > 0 && unsubmittedCount === 0 && (
                 <View style={s.submittedBanner}>
-                  <CheckCircle size={14} color={T.green} />
+                  <CheckCircle size={14} color={BASECAMP.accent} />
                   <Text style={s.submittedText}>
                     {submittedCount} session{submittedCount > 1 ? "s" : ""} submitted · readiness updated
                   </Text>
@@ -828,9 +797,11 @@ export default function SessionDetailScreen() {
           )}
 
           {isSubmitted && (
-            <View style={[s.submittedBanner, { marginTop: 20 }]}>
-              <CheckCircle size={14} color={T.green} />
-              <Text style={s.submittedText}>Session submitted · readiness updated</Text>
+            <View style={s.section}>
+              <View style={s.submittedBanner}>
+                <CheckCircle size={14} color={BASECAMP.accent} />
+                <Text style={s.submittedText}>Session submitted · readiness updated</Text>
+              </View>
             </View>
           )}
         </Animated.View>
@@ -878,123 +849,93 @@ export default function SessionDetailScreen() {
 }
 
 const s = StyleSheet.create({
-  heroWrap: { width: "100%", height: 240 },
-  heroImg: { width: "100%", height: "100%", justifyContent: "flex-end" },
-  backBtn: {
-    position: "absolute",
-    left: 16,
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "rgba(6,13,27,0.6)",
-    alignItems: "center", justifyContent: "center",
-  },
-  content: { paddingHorizontal: 20, paddingTop: 8, gap: 16 },
+  /* ── The approved Training Session composition ──────────────────────
+     One rhythm shared with Training Basecamp and Full Readiness: the
+     17pt gutter, the tracked-out section label, the gradient panel. */
+  section: { marginTop: 20, paddingHorizontal: BASECAMP.gutter },
 
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 4 },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 20, borderWidth: 1,
-  },
-  chipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-
+  heroBody: { paddingHorizontal: BASECAMP.gutter, marginTop: 22, paddingBottom: 22 },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   title: {
-    /* Matches the confident heading scale now used on Training Plan and
-       Training Basecamp, so the three screens read as one system. */
-    fontSize: 26, lineHeight: 31, fontFamily: "Inter_700Bold",
-    color: T.text, letterSpacing: -0.5, marginTop: 14,
+    marginTop: 10,
+    fontSize: 30, lineHeight: 34, fontFamily: "Inter_700Bold",
+    color: BASECAMP.text, letterSpacing: -0.8,
   },
-  // "Why this session" — the mountain-preparation relationship.
-  purposeBlock: {
-    marginTop: 12, marginBottom: 4, paddingVertical: 12, paddingHorizontal: 14,
-    backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)", borderRadius: 14, gap: 5,
-  },
-  purposeEyebrow: {
-    fontSize: 10, lineHeight: 13, fontFamily: "Inter_700Bold",
-    letterSpacing: 1.6, color: T.textMuted,
-  },
-  purposeBuilds: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_600SemiBold", color: T.text },
-  purposeRelationship: { fontSize: 12.5, lineHeight: 18, fontFamily: "Inter_400Regular", color: T.textMuted },
-
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: T.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: T.border,
-    overflow: "hidden",
-  },
-  statCell: {
-    flex: 1, paddingVertical: 14, alignItems: "center", gap: 3,
-  },
-  statMid: {
-    borderLeftWidth: 1, borderRightWidth: 1, borderColor: T.border,
-  },
-  statVal: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
-  statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4 },
-
-  hillRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border,
-    padding: 12,
-  },
-  hillEmoji: { fontSize: 22 },
-  hillName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  hillSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-
-  descCard: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 16, gap: 8,
-  },
-  descLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
-    letterSpacing: 1.2, textTransform: "uppercase",
-  },
-  descText: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 21 },
-
-  completeSection: { gap: 10, paddingTop: 8 },
-  completeSectionLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
-    letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 2,
+  heroFacts: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 9, flexWrap: "wrap" },
+  heroFact: {
+    fontSize: 12.5, lineHeight: 17, fontFamily: "Inter_500Medium", color: BASECAMP.textStrong,
   },
 
-  ctaBtn: { borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: T.border },
-  ctaBtnGps: { borderColor: T.green + "60" },
-  ctaBtnManual: { borderColor: T.border },
-  ctaBtnDone: { borderColor: T.green + "50", backgroundColor: T.greenDim },
-  ctaBtnInner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingVertical: 16, paddingHorizontal: 18,
+  purposeBody: { padding: 14, gap: 6 },
+  purposeBuilds: {
+    fontSize: 14, lineHeight: 20, fontFamily: "Inter_600SemiBold", color: BASECAMP.text,
   },
-  ctaBtnTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  ctaBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  purposeRelationship: {
+    fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
+  },
 
-  accuracyNote: {
-    flexDirection: "row", gap: 7, alignItems: "flex-start",
-    paddingHorizontal: 4,
+  statsGrid: {
+    flexDirection: "row", flexWrap: "wrap", padding: 14, rowGap: 14,
   },
+  statCell: { flexGrow: 1, flexBasis: "33%", minWidth: 92, paddingRight: 8 },
+  statVal: {
+    fontSize: 19, lineHeight: 23, fontFamily: "Inter_700Bold",
+    color: BASECAMP.text, letterSpacing: -0.4,
+  },
+  statLbl: {
+    marginTop: 3, fontSize: 10, lineHeight: 13,
+    fontFamily: "Inter_500Medium", color: BASECAMP.textDim,
+  },
+
+  setupRow: {
+    flexDirection: "row", alignItems: "center", gap: 11,
+    padding: 12, minHeight: HIT.minTarget,
+  },
+  setupTitle: { fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
+  setupDetail: {
+    marginTop: 2, fontSize: 11, lineHeight: 15,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
+  },
+  setupAction: { fontSize: 11.5, lineHeight: 15, fontFamily: "Inter_600SemiBold", color: BASECAMP.accent },
+
+  descText: {
+    padding: 14, fontSize: 13, lineHeight: 20,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textStrong,
+  },
+
+  gpsPanel: { marginTop: 10, borderColor: "rgba(36,239,164,0.30)" },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, minHeight: HIT.minTarget },
+  ctaIcon: {
+    width: 36, height: 36, borderRadius: 12,
+    alignItems: "center", justifyContent: "center", backgroundColor: BASECAMP.accent,
+  },
+  ctaTitle: { fontSize: 14.5, lineHeight: 19, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  ctaTitleQuiet: { fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
+  ctaSub: {
+    marginTop: 2, fontSize: 11, lineHeight: 15,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
+  },
+  undoText: { fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
+
+  accuracyNote: { flexDirection: "row", alignItems: "flex-start", gap: 7, marginTop: 9, paddingHorizontal: 2 },
   accuracyNoteText: {
-    flex: 1, fontSize: 11, fontFamily: "Inter_400Regular",
-    color: T.textDim, lineHeight: 16,
+    flex: 1, fontSize: 10.5, lineHeight: 15,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
   },
 
-  trackerWrap: { gap: 10 },
-  trackerLabel: {
-    fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim,
-    letterSpacing: 1.2, textTransform: "uppercase",
-  },
+  manualRow: { marginTop: 10 },
+  manualDone: { borderColor: "rgba(36,239,164,0.35)", backgroundColor: "rgba(36,239,164,0.08)" },
 
-  submitBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
-  submitBtnInner: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 15,
-  },
-  submitText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  trackerWrap: { marginTop: 16, gap: 10 },
 
   submittedBanner: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    padding: 14, borderRadius: 14,
-    backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "40",
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12,
+    paddingVertical: 11, paddingHorizontal: 13, borderRadius: 12,
+    backgroundColor: "rgba(36,239,164,0.09)",
+    borderWidth: 1, borderColor: "rgba(36,239,164,0.28)",
   },
-  submittedText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
+  submittedText: {
+    flex: 1, fontSize: 12, lineHeight: 16,
+    fontFamily: "Inter_600SemiBold", color: BASECAMP.accent,
+  },
 });

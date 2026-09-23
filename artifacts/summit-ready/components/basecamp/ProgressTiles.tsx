@@ -22,7 +22,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { BarChart3, ChevronRight, Mountain, RefreshCw } from "lucide-react-native";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
-import { BasecampPanel } from "@/components/basecamp/primitives";
+import { SRPanel } from "@/components/ui";
 import { useElevationBank } from "@/hooks/useElevationBank";
 import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
 import type { WeekProgress } from "@/utils/basecampPresentation";
@@ -136,7 +136,7 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
   })();
 
   return (
-    <BasecampPanel
+    <SRPanel
       radius={16}
       style={styles.tile}
       onPress={onPress}
@@ -152,7 +152,7 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
         </View>
         <View style={styles.tileBody}>{body}</View>
       </View>
-    </BasecampPanel>
+    </SRPanel>
   );
 }
 
@@ -161,7 +161,7 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
 function WeekTile({ week, onPress }: { week: WeekProgress; onPress: () => void }) {
   const bar = barGeometry(week.bars.length);
   return (
-    <BasecampPanel
+    <SRPanel
       radius={16}
       style={styles.tile}
       onPress={onPress}
@@ -216,7 +216,7 @@ function WeekTile({ week, onPress }: { week: WeekProgress; onPress: () => void }
           </View>
         </View>
       </View>
-    </BasecampPanel>
+    </SRPanel>
   );
 }
 

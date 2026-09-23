@@ -15,7 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { LucideIcon } from "lucide-react-native";
 import { ChevronRight } from "lucide-react-native";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
-import { BasecampSectionHeader } from "@/components/basecamp/primitives";
+import { SRSectionHeader } from "@/components/ui";
 
 export interface QuickAction {
   id: string;
@@ -71,7 +71,7 @@ export function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
       entering={reduced ? undefined : FadeInDown.delay(MOTION.stagger * 5).duration(MOTION.enter)}
       style={styles.gridWrap}
     >
-      <BasecampSectionHeader title="Quick actions" />
+      <SRSectionHeader title="Quick actions" />
       <View style={styles.grid}>
         {actions.map(({ id, label, Icon, onPress }) => (
           <TouchableOpacity
