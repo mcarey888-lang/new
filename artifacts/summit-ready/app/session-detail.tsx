@@ -400,6 +400,10 @@ export default function SessionDetailScreen() {
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
   // Local asset overrides take priority; fall back to the API for hill/stair sessions
+  /* The exercise assets are generated artwork and carry their own large
+     lettering. The hero must ink them out before the functional band — see
+     SRHeroFrame's `artwork` prop — so the frame is told which it is holding. */
+  const heroIsGeneratedArtwork = !!inferredGymExercise;
   const heroImageSource: ImageSourcePropType | null = !imageError
     ? inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
@@ -489,6 +493,7 @@ export default function SessionDetailScreen() {
           onImageError={() => setImageError(true)}
           minHeight={286}
           dim={0.96}
+          artwork={heroIsGeneratedArtwork ? "generated" : "photo"}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
