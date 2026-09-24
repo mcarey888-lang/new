@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(8,13,15,0.5)",
   },
   missionVisual: {},
-  missionBody: { flex: 1, minWidth: 0, padding: 11 },
+  missionBody: { flex: 1, minWidth: 0, padding: 9 },
   missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   missionHeading: { flex: 1, minWidth: 0 },
   missionEyebrow: {
@@ -295,12 +295,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8, color: BASECAMP.textMuted,
   },
   missionTitle: {
-    fontSize: 17, lineHeight: 20, fontFamily: "Inter_700Bold",
+    fontSize: 16, lineHeight: 19, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -0.5, marginTop: 4,
   },
   startButton: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 4,
-    height: 32, paddingLeft: 9, paddingRight: 6, borderRadius: 5.5,
+    minHeight: 29, paddingLeft: 9, paddingRight: 6, borderRadius: 5.5,
     backgroundColor: BASECAMP.accent,
   },
   startText: {
@@ -323,11 +323,11 @@ const styles = StyleSheet.create({
     color: BASECAMP.textDim, marginTop: 5,
   },
 
-  railSection: { marginTop: 13 },
-  rail: { marginTop: 7 },
+  railSection: { marginTop: 10 },
+  rail: { marginTop: 5 },
   railContent: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingBottom: 2 },
   card: { width: 128 },
-  cardVisual: { height: 60 },
+  cardVisual: { height: 50 },
   cardChev: {
     position: "absolute", top: 7, right: 7,
     width: 21, height: 21, borderRadius: 11,
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
-  cardBody: { padding: 9, paddingTop: 7 },
+  cardBody: { padding: 7, paddingTop: 6 },
   cardWeek: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   cardTitle: {
     fontSize: 13, lineHeight: 16, fontFamily: "Inter_700Bold",

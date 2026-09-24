@@ -29,8 +29,8 @@ import {
 import type { ReadinessNextAction } from "@/utils/readinessActions";
 import type { ReadinessResult } from "@/utils/readinessV2";
 
-const GAUGE_SIZE = 96;
-const GAUGE_STROKE = 8;
+const GAUGE_SIZE = 80;
+const GAUGE_STROKE = 7;
 
 export interface BasecampReadinessProps {
   result: ReadinessResult | null | undefined;
@@ -137,14 +137,14 @@ const styles = StyleSheet.create({
   /* pulled up so the panel breaks the hero's lower edge, as the approved
      composition does — the screen reads as one object, not two stacked ones */
   wrap: { marginTop: -16, paddingHorizontal: BASECAMP.gutter },
-  inner: { padding: 12 },
+  inner: { padding: 10 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 5 },
   headerLabel: {
     fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_600SemiBold",
     letterSpacing: 2, color: BASECAMP.textMuted,
   },
-  body: { flexDirection: "row", alignItems: "center", gap: 13, marginTop: 7 },
+  body: { flexDirection: "row", alignItems: "center", gap: 11, marginTop: 5 },
   meta: { flex: 1, minWidth: 0, paddingTop: 2 },
   actionTitle: {
     fontSize: 14, lineHeight: 18, fontFamily: "Inter_700Bold",
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   projectedValue: { color: BASECAMP.accent },
   cta: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 5,
-    height: 30, paddingHorizontal: 9, borderRadius: 5,
+    minHeight: 28, paddingHorizontal: 9, borderRadius: 5,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },

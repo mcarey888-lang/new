@@ -2,7 +2,7 @@
  * BasecampHero — the approved Training Basecamp header.
  *
  * Composition comes from `summitready-training-basecamp-mockup.html`:
- * an edge-to-edge mountain photograph, a restrained brand lockup and the
+ * an edge-to-edge mountain photograph and the
  * screen's two real actions, then the objective stated in large type with
  * verified mountain facts and a glass target-date pill.
  *
@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, Lock, Mountain, Pencil } from "lucide-react-native";
+import { Calendar, Lock, Pencil } from "lucide-react-native";
 import { BASECAMP, HIT } from "@/constants/tokens";
 import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 import {
@@ -126,10 +126,10 @@ export function BasecampHero({
     canonicalFacts?.country,
   ].filter((fact): fact is string => Boolean(fact));
 
-  /* The header leaves its centre clear for the one shared shell switch.
-     Below 400pt the wordmark reduces to its mark to preserve space for it. */
+  /* The header leaves its centre clear for the shared shell switch.
+     The compact width has no left-hand mark, avoiding a collision. */
   const { width } = useWindowDimensions();
-  const showWordmark = width >= 400;
+  const showWordmark = width >= 430;
 
   const content = (
     <View style={[styles.overlay, { paddingTop: topInset }]}>
@@ -152,20 +152,12 @@ export function BasecampHero({
       />
 
       <View style={styles.topRow}>
-        <View
-          style={styles.lockup}
-          accessible
-          accessibilityRole="header"
-          accessibilityLabel="SummitReady"
-        >
-          <Mountain size={20} color={BASECAMP.text} strokeWidth={1.6} />
-          {showWordmark && (
-            <View style={{ marginLeft: 8, flexShrink: 1, minWidth: 0 }}>
-              <Text style={styles.wordmark} numberOfLines={1}>SUMMITREADY</Text>
-              <Text style={styles.tagline} numberOfLines={1}>TRAIN MORE · GO FURTHER.</Text>
-            </View>
-          )}
-        </View>
+        {showWordmark ? (
+          <View accessible accessibilityRole="header" accessibilityLabel="SummitReady">
+            <Text style={styles.wordmark} numberOfLines={1}>SUMMITREADY</Text>
+            <Text style={styles.tagline} numberOfLines={1}>TRAIN MORE · GO FURTHER.</Text>
+          </View>
+        ) : <View />}
 
         <View style={styles.actions}>
           <TouchableOpacity
@@ -225,7 +217,7 @@ export function BasecampHero({
 
         {date && (
           <View style={styles.datePill}>
-            <Calendar size={18} color={BASECAMP.textMuted} />
+            <Calendar size={16} color={BASECAMP.textMuted} />
             <View>
               <Text style={styles.dateLabel}>Target date</Text>
               <Text style={styles.dateValue}>{date.label}</Text>
@@ -273,11 +265,11 @@ const styles = StyleSheet.create({
   image: { width: "100%" },
   imageInner: { resizeMode: "cover" },
   overlay: {
-    minHeight: 248,
+    minHeight: 216,
     paddingHorizontal: BASECAMP.gutter,
     /* The readiness panel overlaps the foot of the hero, so the photograph
        has to keep running behind it rather than stopping at the date pill. */
-    paddingBottom: 29,
+    paddingBottom: 22,
     justifyContent: "space-between",
   },
   topRow: {
@@ -286,7 +278,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  lockup: { flexDirection: "row", alignItems: "center", flexShrink: 1, minWidth: 0 },
   wordmark: {
     fontSize: 11, lineHeight: 14, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: 2,
@@ -303,7 +294,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
 
-  objective: { marginTop: 25 },
+  objective: { marginTop: 16 },
   kicker: {
     fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular",
     letterSpacing: 3.6, color: BASECAMP.textStrong,
@@ -311,13 +302,13 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 6 },
   mountainName: {
     flexShrink: 1,
-    fontSize: 38, lineHeight: 42, fontFamily: "Inter_700Bold",
+    fontSize: 33, lineHeight: 37, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -1,
   },
-  namePencil: { marginTop: 10 },
+  namePencil: { marginTop: 8 },
 
   factLine: {
-    marginTop: 7, flexDirection: "row", flexWrap: "wrap",
+    marginTop: 5, flexDirection: "row", flexWrap: "wrap",
     alignItems: "center", columnGap: 9, rowGap: 2,
   },
   factText: {
@@ -327,12 +318,12 @@ const styles = StyleSheet.create({
   factSeparator: { fontSize: 13.5, lineHeight: 18, color: "rgba(255,255,255,0.22)" },
 
   datePill: {
-    marginTop: 10,
+    marginTop: 8,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
-    gap: 13,
-    paddingLeft: 12, paddingRight: 15, paddingVertical: 7,
+    gap: 11,
+    paddingLeft: 11, paddingRight: 13, paddingVertical: 6,
     borderRadius: 14,
     backgroundColor: BASECAMP.glass,
     borderWidth: 1, borderColor: BASECAMP.glassBorder,

@@ -175,7 +175,7 @@ export function SRReadinessGauge({
             {/* No figure and no READY word: "PRO READY" would read as a
                 status the user has achieved. The lock is the whole message. */}
             <Lock size={Math.round(size * 0.19)} color={arcTone} />
-            <Text style={[styles.lockedLabel, { color: arcTone }]} numberOfLines={1}>{lockedLabel}</Text>
+            <Text style={[styles.lockedLabel, { color: arcTone, fontSize: Math.min(12, size * 0.125), lineHeight: Math.min(15, size * 0.15) }]} numberOfLines={1}>{lockedLabel}</Text>
           </>
         ) : (
           <>
@@ -190,8 +190,8 @@ export function SRReadinessGauge({
         >
           {value === null ? "—" : `${Math.round(value)}%`}
         </Text>
-        <Text style={styles.readyWord}>READY</Text>
-        {statusLabel ? <Text style={[styles.status, { color: statusTone }]} numberOfLines={1}>{statusLabel}</Text> : null}
+        <Text style={[styles.readyWord, { fontSize: Math.min(11, size * 0.11), lineHeight: Math.min(14, size * 0.14) }]}>READY</Text>
+        {statusLabel ? <Text style={[styles.status, { color: statusTone, fontSize: Math.min(9.5, size * 0.1), lineHeight: Math.min(12, size * 0.13) }]} numberOfLines={1}>{statusLabel}</Text> : null}
         </>
         )}
       </View>

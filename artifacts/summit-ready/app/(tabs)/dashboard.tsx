@@ -71,8 +71,8 @@ function AlpineGuide({ tone: _tone, flush }: { tone?: "positive" | "warning" | "
     <ExpoImage
       source={MASCOT}
       style={[
-        { width: 72, height: 72 },
-        flush && { marginLeft: -16, marginTop: -16, marginBottom: -16 },
+        { width: 58, height: 58 },
+        flush && { marginLeft: -12, marginTop: -12, marginBottom: -12 },
       ]}
       contentFit="contain"
     />
@@ -684,7 +684,7 @@ export default function DashboardScreen() {
               action="View plan"
               onAction={() => router.push("/(tabs)/plan")}
             />
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginTop: 7 }}>
               {mission ? (
                 <MissionCard
                   session={mission}
@@ -879,7 +879,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   /* A single Coach surface houses its interpretation and ask field. */
   coachBand: {
-    marginTop: 13,
+    marginTop: 10,
     marginHorizontal: BASECAMP.gutter,
     borderRadius: 9,
     overflow: "hidden",
@@ -1064,7 +1064,7 @@ const styles = StyleSheet.create({
      stack of equally-weighted cards. */
   section: {
     paddingHorizontal: BASECAMP.gutter,
-    marginTop: 22,
+    marginTop: 15,
   },
   insightPanel: { borderColor: "rgba(227,166,74,0.28)" },
   insightRow: { flexDirection: "row", alignItems: "flex-start", gap: 11, padding: 14 },

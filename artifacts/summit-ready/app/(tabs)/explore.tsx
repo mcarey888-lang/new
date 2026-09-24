@@ -217,7 +217,7 @@ export default function ExploreScreen() {
   }, []);
 
   const { width } = useWindowDimensions();
-  const compactBrand = width < 400;
+  const compactBrand = width < 430;
 
   const searching = query.trim().length > 0 || filter !== "all";
 
@@ -280,8 +280,7 @@ export default function ExploreScreen() {
       >
         {/* ── App bar ──────────────────────────────────────────────────── */}
         <View style={[styles.gutter, styles.appBar]}>
-          <View style={styles.brand} accessible accessibilityLabel="SummitReady">
-            <MountainIcon size={20} color={BASECAMP.text} strokeWidth={2.2} />
+          <View style={styles.brand} accessible={!compactBrand} accessibilityLabel={compactBrand ? undefined : "SummitReady"}>
             {compactBrand ? null : (
               <View style={styles.brandText}>
                 <Text style={styles.brandName} numberOfLines={1}>SUMMITREADY</Text>
