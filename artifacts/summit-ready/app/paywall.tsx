@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react-native";
 import { MapPin, TrendingUp, Navigation, Activity, Cpu, ShoppingBag, X, Zap, Gift, AlertCircle, CheckCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -70,8 +71,9 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
 export default function PaywallScreen() {
   useScreenView("paywall");
   const insets = useSafeAreaInsets();
+  const { isLoaded: authLoaded, userId } = useAuth();
   const { offerings, purchase, restore, isPurchasing, isRestoring, offeringsLoading, offeringsError, refetchOfferings } = useSubscription();
-  const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string; mode?: string }>();
+  const params = useLocalSearchParams<{ score?: string; mountain?: string; fromQuestionnaire?: string; mode?: string; plan?: string }>();
 
   const fromQuestionnaire = params.fromQuestionnaire === "true";
   const quizScore = params.score ? parseInt(params.score, 10) : null;
@@ -86,12 +88,27 @@ export default function PaywallScreen() {
   const currentOffering = offerings?.current;
   const monthlyPkg = currentOffering?.monthly ?? currentOffering?.availablePackages?.[0] ?? null;
   const annualPkg = currentOffering?.annual ?? currentOffering?.availablePackages?.[1] ?? null;
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("monthly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">(
+    params.plan === "annual" ? "annual" : "monthly",
+  );
 
   const activePkg = selectedPlan === "annual" && annualPkg ? annualPkg : monthlyPkg;
 
   function handleSubscribe() {
     if (!activePkg) return;
+    if (!userId) {
+      router.push({
+        pathname: "/(auth)/sign-in",
+        params: {
+          returnTo: "paywall",
+          plan: selectedPlan,
+          ...(params.score && { score: params.score }),
+          ...(params.mountain && { mountain: params.mountain }),
+          ...(fromQuestionnaire && { fromQuestionnaire: "true" }),
+        },
+      });
+      return;
+    }
     setSelectedPkg(activePkg);
     setConfirmVisible(true);
     setError(null);
@@ -115,6 +132,10 @@ export default function PaywallScreen() {
 
   async function handleRestore() {
     setError(null);
+    if (!userId) {
+      setError("Sign in to the account used for your purchase, then restore it here.");
+      return;
+    }
     try {
       const info = await restore();
       const hasEntitlement = info?.entitlements?.active?.["premium"] !== undefined;
@@ -264,6 +285,16 @@ export default function PaywallScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {!offeringsLoading && !offeringsError && !monthlyPkg && !annualPkg && (
+            <View style={styles.offeringsErrorBox}>
+              <Text style={styles.offeringsErrorNote}>
+                Subscription plans aren't available right now. Please try again.
+              </Text>
+              <TouchableOpacity onPress={() => refetchOfferings()} style={styles.retryBtn} activeOpacity={0.7}>
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
 
         {error && (
@@ -283,7 +314,7 @@ export default function PaywallScreen() {
         <Animated.View entering={FadeInUp.delay(300).duration(600)} style={styles.ctaSection}>
           <TouchableOpacity
             onPress={handleSubscribe}
-            disabled={isPurchasing || offeringsLoading || !activePkg}
+            disabled={isPurchasing || offeringsLoading || !activePkg || !authLoaded}
             activeOpacity={0.85}
             style={[styles.ctaBtn, (isPurchasing || offeringsLoading || !activePkg) && { opacity: offeringsLoading ? 0.8 : 0.6 }]}
           >
@@ -296,7 +327,9 @@ export default function PaywallScreen() {
                   ? "Processing…"
                   : offeringsLoading
                     ? "Loading plans…"
-                    : fromQuestionnaire
+                    : !userId
+                      ? "Sign in to start your plan"
+                      : fromQuestionnaire
                       ? "Start My Training Plan"
                       : "Start 7-Day Free Trial"}
               </Text>

@@ -104,13 +104,10 @@ function useSubscriptionContext() {
     let active = true;
     setSdkReady(false);
     setSdkError(null);
-    if (!userId) {
-      return () => {
-        active = false;
-      };
-    }
     const timer = setTimeout(() => {
-      void getPurchasesForUser(userId)
+      // Offerings are public store metadata. Load them for guests too, but
+      // never purchase, restore or grant an entitlement without a Clerk owner.
+      void (userId ? getPurchasesForUser(userId) : getConfiguredPurchases())
         .then(() => {
           if (active) setSdkReady(true);
         })
@@ -170,11 +167,13 @@ function useSubscriptionContext() {
   const offeringsQuery = useQuery({
     queryKey: offeringsKey,
     queryFn: async () => {
-      const Purchases = await getPurchasesForUser(userId);
+      const Purchases = userId
+        ? await getPurchasesForUser(userId)
+        : await getConfiguredPurchases();
       const offerings = await Purchases.getOfferings();
       return offerings;
     },
-    enabled: sdkReady && !!userId,
+    enabled: sdkReady && authLoaded,
     staleTime: 300 * 1000,
   });
 

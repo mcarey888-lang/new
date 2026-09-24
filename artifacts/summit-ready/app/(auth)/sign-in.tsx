@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { T } from "@/constants/theme";
 import { withTimeout } from "@/utils/withTimeout";
+import { usePaywallAuthReturn } from "@/utils/paywallAuthReturn";
 import { logLogin, useScreenView } from "@/lib/analytics";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -42,6 +43,7 @@ function getClerkErrorMessage(error: ClerkErrorLike | null | undefined, fallback
 
 export default function SignInScreen() {
   useScreenView("sign_in");
+  const { authParams, finishAuthentication } = usePaywallAuthReturn();
   const insets = useSafeAreaInsets();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signIn } = useSignIn() as any;
@@ -102,7 +104,7 @@ export default function SignInScreen() {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logLogin("email");
-          router.replace("/" as any);
+          finishAuthentication();
         } else {
           setError(getClerkErrorMessage(finalizeErr, "Could not finish signing in."));
         }
@@ -162,7 +164,7 @@ export default function SignInScreen() {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logLogin("email_mfa");
-          router.replace("/" as any);
+          finishAuthentication();
         } else {
           setError(getClerkErrorMessage(finalizeErr, "Could not finish signing in."));
         }
@@ -199,7 +201,7 @@ export default function SignInScreen() {
       if (sessionId && ssoSetActive) {
         await withTimeout(ssoSetActive({ session: sessionId }), 20000);
         void logLogin("google");
-        router.replace("/" as any);
+        finishAuthentication();
       } else {
         setError("Google sign-in didn't complete — please try again.");
       }
@@ -242,7 +244,7 @@ export default function SignInScreen() {
         const { error: finalizeErr } = await withTimeout(signIn.finalize(), 20000) as any;
         if (!finalizeErr) {
           void logLogin("apple");
-          router.replace("/" as any);
+          finishAuthentication();
         } else {
           setError(getClerkErrorMessage(finalizeErr, "Apple sign-in didn't complete — please try again."));
         }
@@ -261,7 +263,7 @@ export default function SignInScreen() {
           const { error: finalizeErr } = await withTimeout(signUp.finalize(), 20000) as any;
           if (!finalizeErr) {
             void logLogin("apple");
-            router.replace("/" as any);
+            finishAuthentication();
           } else {
             setError(getClerkErrorMessage(finalizeErr, "Apple sign-in didn't complete — please try again."));
           }
@@ -445,7 +447,7 @@ export default function SignInScreen() {
 
           <View style={s.footer}>
             <Text style={s.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up" as never)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.push({ pathname: "/(auth)/sign-up", params: authParams })} activeOpacity={0.7}>
               <Text style={s.footerLink}>Create one</Text>
             </TouchableOpacity>
           </View>
