@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     right: 16,
     width: 44,
     height: 44,
-    borderRadius: 8,
+    borderRadius: 4,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   button: {
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 24,
     minWidth: 200,
     shadowColor: "#000",
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 4,
     borderWidth: 1,
     minWidth: 200,
   },
@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: "100%",
     height: "90%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   modalHeader: {
     flexDirection: "row",
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     width: "100%",
-    borderRadius: 8,
+    borderRadius: 4,
     overflow: "hidden",
     padding: 16,
   },

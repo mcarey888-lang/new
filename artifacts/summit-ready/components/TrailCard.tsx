@@ -129,7 +129,7 @@ export function TrailCard({ trail, isSaved, isCompleted, isGoodForWeek, onPress,
 
 const s = StyleSheet.create({
   card: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 16 / 2, borderWidth: 1, borderColor: T.border,
     overflow: "hidden",
   },
   cardCompact: { padding: 12, gap: 8 },

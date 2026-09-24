@@ -153,7 +153,7 @@ const s = StyleSheet.create({
     pointerEvents: "box-none",
   } as any,
   plainBg: {
-    borderRadius: 22,
+    borderRadius: 11,
     overflow: "hidden",
     backgroundColor: "rgba(12,20,36,0.88)",
     borderWidth: 1,
@@ -176,7 +176,7 @@ const s = StyleSheet.create({
   segment: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },

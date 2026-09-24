@@ -332,7 +332,7 @@ export function VirtualExpeditionView({ summitGoal, patchGoal, insets }: Virtual
           </Text>
           <TouchableOpacity
             onPress={() => void fetchExpedition(true)}
-            style={{ paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: T.blue }}
+            style={{ paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12 / 2, backgroundColor: T.blue }}
           >
             <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" }}>Try again</Text>
           </TouchableOpacity>
@@ -657,7 +657,7 @@ const s = StyleSheet.create({
     letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 8,
   },
   card: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 16 / 2,
     borderWidth: 1, borderColor: T.border,
     padding: 16, overflow: "hidden",
   },
@@ -682,7 +682,7 @@ const s = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.surface, borderRadius: 12,
+    backgroundColor: T.surface, borderRadius: 12 / 2,
     paddingVertical: 12, paddingHorizontal: 6,
     marginBottom: 12,
   },
@@ -695,7 +695,7 @@ const s = StyleSheet.create({
   routeReference: {
     marginTop: 2,
     padding: 11,
-    borderRadius: 10,
+    borderRadius: 10 / 2,
     backgroundColor: T.surface,
     borderWidth: 1,
     borderColor: T.border,
@@ -722,7 +722,7 @@ const s = StyleSheet.create({
 
   // Hill card
   hillCard: {
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 14 / 2,
     borderWidth: 1, borderColor: T.border,
     padding: 14, gap: 10, overflow: "hidden",
   },
@@ -749,7 +749,7 @@ const s = StyleSheet.create({
   },
   hillStats: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.surface, borderRadius: 10,
+    backgroundColor: T.surface, borderRadius: 10 / 2,
     paddingVertical: 10, paddingHorizontal: 6,
   },
   hillStatDivider: { width: 1, height: 26, backgroundColor: T.border },
@@ -794,7 +794,7 @@ const s = StyleSheet.create({
   },
   altNote: {
     flexDirection: "row", gap: 6, alignItems: "flex-start",
-    backgroundColor: T.orange + "10", borderRadius: 8,
+    backgroundColor: T.orange + "10", borderRadius: 8 / 2,
     padding: 9, marginTop: 4,
     borderWidth: 1, borderColor: T.orange + "25",
   },
@@ -806,7 +806,7 @@ const s = StyleSheet.create({
   // Refresh
   refreshBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 13, borderRadius: 14,
+    paddingVertical: 13, borderRadius: 14 / 2,
     backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
   },
   refreshText: {
@@ -818,7 +818,7 @@ const s = StyleSheet.create({
   },
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.orange + "12", borderRadius: 10, padding: 12,
+    backgroundColor: T.orange + "12", borderRadius: 10 / 2, padding: 12,
     borderWidth: 1, borderColor: T.orange + "30",
   },
   errorBannerText: {

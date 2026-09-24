@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   bandWrap: { paddingHorizontal: BASECAMP.gutter, marginTop: 13 },
   band: {
     minHeight: 94,
-    borderRadius: 16,
+    borderRadius: 8,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: BASECAMP.panelBorder,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   bandRule: { width: 46, height: 1, backgroundColor: BASECAMP.textDim, marginTop: 7 },
   bandCta: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 5,
-    height: 38, paddingLeft: 15, paddingRight: 11, borderRadius: 19,
+    height: 38, paddingLeft: 15, paddingRight: 11, borderRadius: 9.5,
     backgroundColor: "rgba(0,0,0,0.5)",
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 76,
-    borderRadius: 14,
+    borderRadius: 7,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1,
     borderColor: BASECAMP.panelSubBorder,

@@ -159,7 +159,7 @@ export default function HikeDetail() {
 
         {/* ── The numbers ──────────────────────────────────────────── */}
         <View style={s.section}>
-          <SRPanel radius={16}>
+          <SRPanel radius={8}>
             <View style={s.statsGrid}>
               <Stat icon={<Route size={13} color={BASECAMP.accent} />} value={distanceStr} label="Distance" />
               <Stat icon={<TrendingUp size={13} color={BASECAMP.accent} />} value={ascentStr} label="Elevation gain" />
@@ -203,7 +203,7 @@ export default function HikeDetail() {
         {hike.notes ? (
           <View style={s.section}>
             <SRSectionHeader title="Notes" />
-            <SRPanel radius={16} style={{ marginTop: 10 }}>
+            <SRPanel radius={8} style={{ marginTop: 10 }}>
               <Text style={s.notesText}>{hike.notes}</Text>
             </SRPanel>
           </View>
@@ -254,7 +254,7 @@ const s = StyleSheet.create({
   statLbl: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_500Medium", color: BASECAMP.textDim },
 
   mapWrap: {
-    marginTop: 10, height: 280, borderRadius: 16, overflow: "hidden",
+    marginTop: 10, height: 280, borderRadius: 8, overflow: "hidden",
     borderWidth: 1, borderColor: BASECAMP.panelBorder, backgroundColor: "#070E10",
   },
   map: { flex: 1, backgroundColor: "#070E10" },

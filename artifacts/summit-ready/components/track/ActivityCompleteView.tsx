@@ -87,7 +87,7 @@ export function ActivityCompleteView({
               </View>
             </View>
     
-            <SRPanel radius={18} style={{ marginTop: 16 }}>
+            <SRPanel radius={18 / 2} style={{ marginTop: 16 }}>
               {/* The moment: what was climbed, on its own lit band, before any
                   of the record. The figure is the recorded ascent — nothing
                   here is rounded up or projected. */}
@@ -132,7 +132,7 @@ export function ActivityCompleteView({
                 actually confirmed. Nothing is anticipated. */}
             <View style={s.consequenceSection}>
               <SRSectionHeader title="What this changed" />
-              <SRPanel radius={16} style={{ marginTop: 10 }}>
+              <SRPanel radius={16 / 2} style={{ marginTop: 10 }}>
                 {completionPresentation.elevationBank.status !== "not_eligible" && (
                   <View style={s.consequenceRow} testID="completion-elevation-bank">
                     <TrendingUp size={17} color={BASECAMP.accent} />

@@ -124,5 +124,5 @@ const styles = StyleSheet.create({
   trioSub: { fontSize: 9, lineHeight: 11, fontFamily: "Inter_400Regular", color: BASECAMP.textFaint },
 });
 
-export const EXPEDITION_RADIUS = RADIUS.xl;
+export const EXPEDITION_RADIUS = RADIUS.xl / 2;
 export const EXPEDITION_TYPE = TYPE;

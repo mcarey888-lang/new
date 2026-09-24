@@ -338,7 +338,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 18, paddingBottom: 12,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 11,
+    width: 36, height: 36, borderRadius: 5.5,
     backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
@@ -358,7 +358,7 @@ const s = StyleSheet.create({
 
   selectedSection: { marginBottom: 20, gap: 8 },
   selectedCard: {
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1.5, borderColor: T.green + "50",
     padding: 12, gap: 10,
   },
@@ -371,7 +371,7 @@ const s = StyleSheet.create({
   monthLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, flexShrink: 0 },
   monthChipsRow: { flexDirection: "row", gap: 6 },
   monthChip: {
-    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 10,
     borderWidth: 1.5, borderColor: T.border, backgroundColor: T.surface,
   },
   monthChipActive: { borderColor: T.green + "80", backgroundColor: T.green + "18" },
@@ -380,7 +380,7 @@ const s = StyleSheet.create({
 
   // Search
   searchCard: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1,
+    backgroundColor: T.card, borderRadius: 9, borderWidth: 1,
     borderColor: T.border, overflow: "hidden", marginBottom: 8,
     paddingHorizontal: 14, paddingVertical: 14, gap: 10,
   },
@@ -391,7 +391,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10,
   },
   searchBtn: {
-    width: 42, height: 42, borderRadius: 12,
+    width: 42, height: 42, borderRadius: 6,
     backgroundColor: T.green, alignItems: "center", justifyContent: "center",
   },
   searchErrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -399,7 +399,7 @@ const s = StyleSheet.create({
 
   // Result card
   resultCard: {
-    borderRadius: 14, borderWidth: 1, borderColor: T.green + "40",
+    borderRadius: 7, borderWidth: 1, borderColor: T.green + "40",
     overflow: "hidden", padding: 12, gap: 10,
   },
   resultTop: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -412,7 +412,7 @@ const s = StyleSheet.create({
   resultStatLbl: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   addResultBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    paddingVertical: 10, borderRadius: 12,
+    paddingVertical: 10, borderRadius: 6,
     borderWidth: 1, borderColor: T.green + "50", backgroundColor: T.greenDim,
   },
   addResultBtnDone: { backgroundColor: T.green + "10", borderColor: T.green + "30" },
@@ -426,7 +426,7 @@ const s = StyleSheet.create({
   customBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.textMuted },
 
   customForm: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.border, padding: 14, gap: 4,
   },
   customFormHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
@@ -438,7 +438,7 @@ const s = StyleSheet.create({
     fontSize: 15, fontFamily: "Inter_400Regular", color: T.white,
   },
   customAddBtn: {
-    backgroundColor: T.green + "20", borderRadius: 10,
+    backgroundColor: T.green + "20", borderRadius: 5,
     borderWidth: 1, borderColor: T.green + "50",
     paddingVertical: 11, alignItems: "center", marginTop: 8,
   },
@@ -448,7 +448,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 18, paddingTop: 10,
     borderTopWidth: 1, borderTopColor: T.border,
   },
-  saveBarBtn: { borderRadius: 16, overflow: "hidden" },
-  saveBarGrad: { paddingVertical: 15, alignItems: "center", borderRadius: 16 },
+  saveBarBtn: { borderRadius: 8, overflow: "hidden" },
+  saveBarGrad: { paddingVertical: 15, alignItems: "center", borderRadius: 8 },
   saveBarBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });

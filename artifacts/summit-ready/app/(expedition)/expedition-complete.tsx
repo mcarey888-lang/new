@@ -251,7 +251,7 @@ const s = StyleSheet.create({
 
   // Hero image
   heroWrap: {
-    width: "100%", height: 220, borderRadius: 24,
+    width: "100%", height: 220, borderRadius: 12,
     overflow: "hidden", marginBottom: -44,
   },
   heroImage: { width: "100%", height: "100%" },
@@ -285,7 +285,7 @@ const s = StyleSheet.create({
   statsCard: {
     flexDirection: "row", width: "100%",
     backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 20, borderWidth: 1, borderColor: "rgba(62,207,117,0.15)",
+    borderRadius: 10, borderWidth: 1, borderColor: "rgba(62,207,117,0.15)",
     paddingVertical: 22, marginBottom: 20, overflow: "hidden",
   },
   statDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.07)" },
@@ -304,7 +304,7 @@ const s = StyleSheet.create({
   routesList: {
     width: "100%", marginBottom: 28,
     backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    borderRadius: 9, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
     padding: 18, gap: 12,
   },
   routesTitle: {
@@ -325,9 +325,9 @@ const s = StyleSheet.create({
 
   // CTAs
   ctaArea: { width: "100%", gap: 12 },
-  primaryBtn: { width: "100%", borderRadius: 16, overflow: "hidden" },
+  primaryBtn: { width: "100%", borderRadius: 8, overflow: "hidden" },
   primaryBtnGrad: {
-    paddingVertical: 17, alignItems: "center", justifyContent: "center", borderRadius: 16,
+    paddingVertical: 17, alignItems: "center", justifyContent: "center", borderRadius: 8,
   },
   primaryBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   secondaryBtn: { paddingVertical: 14, alignItems: "center" },

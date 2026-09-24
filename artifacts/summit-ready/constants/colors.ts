@@ -49,7 +49,7 @@ const colors = {
     surface: "#141E30",
     surfaceElevated: "#1A2840",
   },
-  radius: 16,
+  radius: 8,
 };
 
 export default colors;

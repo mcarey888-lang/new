@@ -1373,13 +1373,13 @@ const statStyles = StyleSheet.create({
 const hillStyles = StyleSheet.create({
   findBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: T.green, borderRadius: 12,
+    backgroundColor: T.green, borderRadius: 6,
     paddingHorizontal: 14, paddingVertical: 12, height: 46,
   },
   findBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.orangeDim, borderRadius: 10,
+    backgroundColor: T.orangeDim, borderRadius: 5,
     paddingVertical: 10, paddingHorizontal: 12,
     borderWidth: 1, borderColor: T.orange + "30",
   },
@@ -1389,7 +1389,7 @@ const hillStyles = StyleSheet.create({
     color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5,
   },
   hillCard: {
-    backgroundColor: T.surface, borderRadius: 14,
+    backgroundColor: T.surface, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     padding: 14, gap: 10, overflow: "hidden",
   },
@@ -1415,7 +1415,7 @@ const hillStyles = StyleSheet.create({
   },
   specificSearchCard: {
     backgroundColor: T.purpleDim,
-    borderRadius: 12, borderWidth: 1, borderColor: T.purple + "30",
+    borderRadius: 6, borderWidth: 1, borderColor: T.purple + "30",
     padding: 12, gap: 10,
   },
   specificSearchHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -1429,7 +1429,7 @@ const hillStyles = StyleSheet.create({
     height: 42,
   },
   specificSearchBtn: {
-    width: 42, height: 42, borderRadius: 10,
+    width: 42, height: 42, borderRadius: 5,
     backgroundColor: T.purple, alignItems: "center", justifyContent: "center",
   },
   specificSearchErr: {
@@ -1456,14 +1456,14 @@ const secStyles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
   iconBox: { width: 30, height: 30, borderRadius: 9, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
   label: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
-  body: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.cardBorder, padding: 16, gap: 12 },
+  body: { backgroundColor: T.card, borderRadius: 9, borderWidth: 1, borderColor: T.cardBorder, padding: 16, gap: 12 },
 });
 
 const calStyles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center" },
-  sheet: { backgroundColor: T.card, borderRadius: 22, borderWidth: 1, borderColor: T.cardBorder, padding: 20, width: 320 },
+  sheet: { backgroundColor: T.card, borderRadius: 11, borderWidth: 1, borderColor: T.cardBorder, padding: 20, width: 320 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  navBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  navBtn: { width: 36, height: 36, borderRadius: 5, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   monthLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
   weekRow: { flexDirection: "row", marginBottom: 8 },
   weekDay: { flex: 1, textAlign: "center", fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textMuted },
@@ -1482,7 +1482,7 @@ const calStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, gap: 8 },
   header: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 20 },
-  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 38, height: 38, borderRadius: 6, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.white },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   sectionDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19, marginTop: -4, marginBottom: 4 },
@@ -1495,7 +1495,7 @@ const styles = StyleSheet.create({
   },
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.red, marginTop: 2 },
   locSuggestionsCard: {
-    backgroundColor: T.card, borderRadius: 12,
+    backgroundColor: T.card, borderRadius: 6,
     borderWidth: 1, borderColor: T.border,
     overflow: "hidden", marginTop: 2,
   },
@@ -1508,12 +1508,12 @@ const styles = StyleSheet.create({
 
   mountainInputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   lookupSpinner: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
-  lookupBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "30", alignItems: "center", justifyContent: "center" },
-  lookupCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border, padding: 12, marginTop: 4 },
+  lookupBtn: { width: 42, height: 42, borderRadius: 6, backgroundColor: T.greenDim, borderWidth: 1, borderColor: T.green + "30", alignItems: "center", justifyContent: "center" },
+  lookupCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderRadius: 6, borderWidth: 1, borderColor: T.border, padding: 12, marginTop: 4 },
   lookupLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
   lookupError: { borderColor: T.orange + "40" },
   lookupErrorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange, flex: 1 },
-  mountainInfo: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 10 },
+  mountainInfo: { backgroundColor: T.surface, borderRadius: 7, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 10 },
   mountainInfoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   mountainInfoName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
   mountainInfoLocation: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
@@ -1527,12 +1527,12 @@ const styles = StyleSheet.create({
     backgroundColor: T.blue + "10",
     borderWidth: 1,
     borderColor: T.blue + "30",
-    borderRadius: 12,
+    borderRadius: 6,
     padding: 12,
   },
   verifiedRouteNoticeTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white, marginBottom: 3 },
   verifiedRouteNoticeText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
-  routeCard: { backgroundColor: T.surface, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 8, overflow: "hidden", gap: 8 },
+  routeCard: { backgroundColor: T.surface, borderRadius: 7, borderWidth: 1, borderColor: T.border, padding: 14, marginBottom: 8, overflow: "hidden", gap: 8 },
   routeCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   routeEmoji: { fontSize: 20 },
   routeName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
@@ -1543,10 +1543,10 @@ const styles = StyleSheet.create({
   routeDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
   routeStats: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
 
-  datePicker: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  datePicker: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 13 },
   datePickerText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: T.white },
 
-  timeCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+  timeCard: { borderRadius: 7, borderWidth: 1, padding: 14, gap: 8 },
   timeCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   timeCardTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", lineHeight: 18 },
   timeCardDetail: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
@@ -1556,26 +1556,26 @@ const styles = StyleSheet.create({
   timeMetaLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
   timeMetaDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)" },
 
-  autofillBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: T.green + "30" },
+  autofillBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: T.greenDim, borderRadius: 5, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: T.green + "30" },
   autofillText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green },
 
   changeBanner: {
     flexDirection: "row", alignItems: "flex-start", gap: 10,
-    backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1,
+    backgroundColor: T.greenDim, borderRadius: 6, borderWidth: 1,
     borderColor: T.green + "40", paddingHorizontal: 14, paddingVertical: 12,
     marginBottom: 4,
   },
   changeBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.green, lineHeight: 18 },
 
   diffRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  diffBtn: { flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4, paddingHorizontal: 4 },
+  diffBtn: { flex: 1, minWidth: 70, borderRadius: 6, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, alignItems: "center", paddingVertical: 10, gap: 4, paddingHorizontal: 4 },
   diffEmoji: { fontSize: 18 },
   diffLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   diffDesc: { fontSize: 9, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 12 },
 
   quizRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   quizChip: {
-    flex: 1, minWidth: 70, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    flex: 1, minWidth: 70, borderRadius: 6, borderWidth: 1, borderColor: T.border,
     backgroundColor: T.surface, alignItems: "center", justifyContent: "center",
     paddingVertical: 11, paddingHorizontal: 8, overflow: "hidden",
   },
@@ -1584,7 +1584,7 @@ const styles = StyleSheet.create({
   fitnessResult: { gap: 6, marginTop: 4 },
   fitnessResultPill: {
     flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start",
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
   },
   fitnessResultText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.text },
   fitnessResultHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, paddingLeft: 4 },
@@ -1595,14 +1595,14 @@ const styles = StyleSheet.create({
   expQ: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: -4 },
   expRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   expChip: {
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
     borderWidth: 1.5, borderColor: T.border, backgroundColor: T.surface,
   },
   expChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
 
   equipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   equipCard: {
-    width: "48%" as any, backgroundColor: T.surface, borderRadius: 14, borderWidth: 1,
+    width: "48%" as any, backgroundColor: T.surface, borderRadius: 7, borderWidth: 1,
     borderColor: T.border, padding: 14, gap: 6, overflow: "hidden",
   },
   equipCardActive: { borderColor: T.green + "60" },
@@ -1614,7 +1614,7 @@ const styles = StyleSheet.create({
 
   chipRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   chip: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, borderWidth: 1,
     borderColor: T.border, backgroundColor: T.surface, alignItems: "center",
   },
   chipActive: { borderColor: T.blue + "60", backgroundColor: T.blueDim },
@@ -1628,7 +1628,7 @@ const styles = StyleSheet.create({
   scheduleInfoText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   planDurCard: {
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.blue + "35",
+    backgroundColor: T.card, borderRadius: 7, borderWidth: 1, borderColor: T.blue + "35",
     padding: 14, gap: 10, marginTop: 8,
   },
   planDurHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
@@ -1636,7 +1636,7 @@ const styles = StyleSheet.create({
   planDurSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
   planDurRow: { flexDirection: "row", gap: 10 },
   planDurOpt: {
-    flex: 1, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1.5,
+    flex: 1, backgroundColor: T.surface, borderRadius: 6, borderWidth: 1.5,
     borderColor: T.border, padding: 12, gap: 3, alignItems: "center", position: "relative" as const,
   },
   planDurOptActive: { borderColor: T.green + "70", backgroundColor: T.greenDim },
@@ -1651,14 +1651,14 @@ const styles = StyleSheet.create({
   },
 
   summaryCard: {
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.green + "25",
+    backgroundColor: T.card, borderRadius: 7, borderWidth: 1, borderColor: T.green + "25",
     padding: 14, gap: 8, overflow: "hidden", marginTop: 4,
   },
   summaryTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
   summaryRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   summaryText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 18 },
 
-  submitBtn: { borderRadius: 16, overflow: "hidden", marginTop: 8 },
+  submitBtn: { borderRadius: 8, overflow: "hidden", marginTop: 8 },
   submitGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 },
   submitText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });

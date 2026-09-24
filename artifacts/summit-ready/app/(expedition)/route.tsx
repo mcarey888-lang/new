@@ -255,7 +255,7 @@ export default function RouteScreen() {
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/(expedition)/mountains" as any)}
-            style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: T.blue }}
+            style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 7, backgroundColor: T.blue }}
           >
             <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Browse Mountains</Text>
           </TouchableOpacity>
@@ -430,10 +430,10 @@ const s = StyleSheet.create({
   tabRow: {
     flexDirection: "row", marginHorizontal: 14, marginTop: -8, marginBottom: 14,
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12, padding: 3,
+    borderRadius: 6, padding: 3,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 5, alignItems: "center" },
   tabActive: { backgroundColor: T.blue },
   tabText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
   tabTextActive: { color: "#fff" },
@@ -441,14 +441,14 @@ const s = StyleSheet.create({
   statsCard: {
     flexDirection: "row", alignItems: "center",
     marginHorizontal: 14, marginBottom: 12, padding: 14,
-    borderRadius: 16, backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 8, backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
   statDiv: { width: 1, height: 30, backgroundColor: "rgba(255,255,255,0.07)" },
 
   conceptCard: {
     marginHorizontal: 14, marginBottom: 8, padding: 14,
-    borderRadius: 16, overflow: "hidden",
+    borderRadius: 8, overflow: "hidden",
     borderWidth: 1, borderColor: T.blue + "20",
   },
   conceptTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.blue, marginBottom: 4 },
@@ -456,7 +456,7 @@ const s = StyleSheet.create({
 
   sectionsCard: {
     marginHorizontal: 14, marginBottom: 12, padding: 14,
-    borderRadius: 16, backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 8, backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
 
@@ -476,7 +476,7 @@ const s = StyleSheet.create({
   rowWhy:  { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim, marginTop: 3, fontStyle: "italic", lineHeight: 15 },
   warningRow: {
     flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 7,
-    padding: 8, borderRadius: 9, backgroundColor: T.orange + "14",
+    padding: 8, borderRadius: 4.5, backgroundColor: T.orange + "14",
     borderWidth: 1, borderColor: T.orange + "35",
   },
   warningText: {
@@ -486,7 +486,7 @@ const s = StyleSheet.create({
 
   footerStats: {
     marginHorizontal: 14, marginBottom: 8, padding: 12,
-    borderRadius: 14, backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 7, backgroundColor: "rgba(255,255,255,0.03)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
     flexDirection: "row", justifyContent: "space-around",
   },

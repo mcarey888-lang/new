@@ -352,7 +352,7 @@ export function VirtualMountainCard({
 const s = StyleSheet.create({
   card: {
     backgroundColor: "#0A1525",
-    borderRadius: 18,
+    borderRadius: 9,
     borderWidth: 1,
     overflow: "hidden",
     marginBottom: 14,

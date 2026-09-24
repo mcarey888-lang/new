@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     backgroundColor: T.card,
-    borderRadius: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: T.border,
     padding: 28,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardBorderGlow: {
-    borderRadius: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
   },
   unlockedLabel: {

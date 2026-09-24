@@ -103,11 +103,11 @@ export default function TrailsCompletedScreen() {
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 16 },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 38, height: 38, borderRadius: 6, backgroundColor: T.surface, alignItems: "center", justifyContent: "center" },
   eyebrow: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim, letterSpacing: 1.2 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.text },
   statsCard: {
-    flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
+    flexDirection: "row", backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.border, padding: 16, justifyContent: "space-around",
   },
   statItem: { alignItems: "center", gap: 4 },
@@ -117,7 +117,7 @@ const s = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text },
   emptyBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 20 },
-  browseBtn: { marginTop: 8, backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40", paddingHorizontal: 20, paddingVertical: 11 },
+  browseBtn: { marginTop: 8, backgroundColor: T.greenDim, borderRadius: 6, borderWidth: 1, borderColor: T.green + "40", paddingHorizontal: 20, paddingVertical: 11 },
   browseBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   list: { gap: 10 },
   count: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },

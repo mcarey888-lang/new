@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f7f5ef" }, page: { flex: 1, padding: 28, justifyContent: "center" },
   kicker: { color: DEMO_GREEN, fontSize: 12, fontWeight: "700", letterSpacing: 2, marginBottom: 18 },
   title: { color: DEMO_DARK, fontSize: 34, lineHeight: 40, fontWeight: "700", marginBottom: 16 },
-  body: { color: "#53645b", fontSize: 17, lineHeight: 25, marginBottom: 28 }, button: { backgroundColor: DEMO_GREEN, borderRadius: 12, padding: 17, alignItems: "center", marginTop: 28 },
-  buttonText: { color: "white", fontWeight: "700", fontSize: 16 }, choice: { backgroundColor: "white", borderRadius: 14, padding: 20, marginTop: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderWidth: 1, borderColor: "#e3e6df" },
+  body: { color: "#53645b", fontSize: 17, lineHeight: 25, marginBottom: 28 }, button: { backgroundColor: DEMO_GREEN, borderRadius: 12 / 2, padding: 17, alignItems: "center", marginTop: 28 },
+  buttonText: { color: "white", fontWeight: "700", fontSize: 16 }, choice: { backgroundColor: "white", borderRadius: 14 / 2, padding: 20, marginTop: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderWidth: 1, borderColor: "#e3e6df" },
   choiceText: { color: DEMO_DARK, fontSize: 16, fontWeight: "600", flex: 1 }, arrow: { color: DEMO_GREEN, fontSize: 27 }, back: { color: DEMO_GREEN, marginBottom: 20, fontSize: 15 },
 });

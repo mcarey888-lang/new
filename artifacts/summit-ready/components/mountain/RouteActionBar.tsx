@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   context: { ...TYPE.caption, fontSize: 9.5, color: BASECAMP.textDim },
   row: { marginTop: 7, flexDirection: "row", gap: 9 },
   action: {
-    flex: 1, minWidth: 0, minHeight: 50, borderRadius: 14,
+    flex: 1, minWidth: 0, minHeight: 50, borderRadius: 7,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     paddingHorizontal: SP.sm, borderWidth: 1,
   },

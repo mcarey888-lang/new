@@ -26,7 +26,7 @@ import { BASECAMP, HIT, RADIUS, SP, TYPE } from "@/constants/tokens";
    border. The caller's style lands on the OUTERMOST element so a pressable
    panel can still take part in its parent's layout. */
 export function SRPanel({
-  children, style, radius = 18, padded = 0, onPress, accessibilityLabel, accessibilityHint, testID,
+  children, style, radius = 18 / 2, padded = 0, onPress, accessibilityLabel, accessibilityHint, testID,
 }: {
   children?: React.ReactNode;
   style?: ViewStyle | ViewStyle[] | (ViewStyle | false | null | undefined)[];
@@ -73,7 +73,7 @@ export function SRPanel({
 
 /* ── SRSubPanel ────────────────────────────────────────────────────────── */
 export function SRSubPanel({
-  children, style, radius = 14, onPress, accessibilityLabel, testID,
+  children, style, radius = 14 / 2, onPress, accessibilityLabel, testID,
 }: {
   children?: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
@@ -663,13 +663,13 @@ const styles = StyleSheet.create({
 
   segmented: {
     flexDirection: "row", alignItems: "center", gap: 3, padding: 2,
-    borderRadius: RADIUS.pill,
+    borderRadius: 7.5,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     alignSelf: "flex-start",
   },
   segment: {
-    paddingHorizontal: 11, height: 26, borderRadius: RADIUS.pill,
+    paddingHorizontal: 11, height: 26, borderRadius: 6.5,
     alignItems: "center", justifyContent: "center",
   },
   segmentOn: { backgroundColor: "rgba(255,255,255,0.92)" },
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   sheet: {
     maxHeight: "86%",
     backgroundColor: "#0B1214",
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    borderTopLeftRadius: 22 / 2, borderTopRightRadius: 22 / 2,
     borderTopWidth: 1, borderColor: BASECAMP.panelBorder,
     paddingHorizontal: BASECAMP.gutter, paddingTop: 12,
   },
@@ -737,7 +737,7 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 9, lineHeight: 12, fontFamily: "Inter_700Bold", letterSpacing: 1 },
 
   button: {
-    minHeight: HIT.minTarget, borderRadius: RADIUS.md, borderWidth: 1,
+    minHeight: HIT.minTarget, borderRadius: RADIUS.md / 2, borderWidth: 1,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: SP.sm, paddingHorizontal: SP.lg,
   },

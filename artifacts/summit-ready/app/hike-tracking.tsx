@@ -2223,7 +2223,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    borderRadius: 12,
+    borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: T.surface,
@@ -2264,7 +2264,7 @@ const s = StyleSheet.create({
   // GPS pill
   gpsPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: BASECAMP.navGlass, borderRadius: 999,
+    backgroundColor: BASECAMP.navGlass, borderRadius: 13,
     paddingHorizontal: 10, minHeight: 26,
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
@@ -2277,7 +2277,7 @@ const s = StyleSheet.create({
   nameOverlay: {
     position: "absolute", left: BASECAMP.gutter, right: BASECAMP.gutter, zIndex: 2,
     backgroundColor: BASECAMP.navGlass,
-    borderRadius: 18, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+    borderRadius: 9, borderWidth: 1, borderColor: BASECAMP.glassBorder,
     padding: 16, gap: 8,
   },
   nameLabel: { ...TYPE.eyebrow, fontSize: 10, color: BASECAMP.textDim },
@@ -2300,7 +2300,7 @@ const s = StyleSheet.create({
   readyStateRow: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: BASECAMP.panelSub, borderWidth: 1,
-    borderColor: BASECAMP.panelSubBorder, borderRadius: 12,
+    borderColor: BASECAMP.panelSubBorder, borderRadius: 6,
     paddingVertical: 10, paddingHorizontal: 12, marginBottom: 10,
   },
   readyStateItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, minWidth: 0 },
@@ -2317,7 +2317,7 @@ const s = StyleSheet.create({
   sheet: {
     position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2,
     backgroundColor: BASECAMP.navGlass,
-    borderTopLeftRadius: 26, borderTopRightRadius: 26,
+    borderTopLeftRadius: 13, borderTopRightRadius: 13,
     borderTopWidth: 1, borderColor: BASECAMP.navBorder,
   },
   sheetHandleArea: { alignItems: "center", paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 },
@@ -2334,7 +2334,7 @@ const s = StyleSheet.create({
   // Status pill (inside sheet header row)
   statusPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: BASECAMP.panelSub, borderRadius: 999,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 13,
     paddingHorizontal: 10, minHeight: 26,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -2349,7 +2349,7 @@ const s = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     backgroundColor: BASECAMP.panelSub,
-    borderRadius: 16, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    borderRadius: 8, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     paddingVertical: 12,
   },
   statCell: { flex: 1, alignItems: "center", gap: 4 },
@@ -2383,7 +2383,7 @@ const s = StyleSheet.create({
   controls: { flexDirection: "row", gap: 10 },
   controlBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
+    gap: 8, paddingVertical: 14, borderRadius: 8, borderWidth: 1,
   },
   controlBtnPause:  { backgroundColor: BASECAMP.panelSub, borderColor: BASECAMP.panelSubBorder },
   controlBtnResume: { backgroundColor: BASECAMP.accentDim, borderColor: BASECAMP.accentLine },
@@ -2391,7 +2391,7 @@ const s = StyleSheet.create({
   controlBtnText: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.textStrong },
 
   // Start button
-  startBtn: { borderRadius: 16, overflow: "hidden" },
+  startBtn: { borderRadius: 8, overflow: "hidden" },
   startBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, paddingVertical: 16,
@@ -2401,7 +2401,7 @@ const s = StyleSheet.create({
   // GPS note
   gpsNote: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 6,
     paddingVertical: 8, paddingHorizontal: 14,
   },
   gpsNoteText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
@@ -2422,7 +2422,7 @@ const s = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 28,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 6,
     backgroundColor: T.greenDim,
     borderWidth: 1,
     borderColor: T.green + "50",
@@ -2433,7 +2433,7 @@ const s = StyleSheet.create({
   confirmSheet: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: "#0F1E30",
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.1)",
     paddingHorizontal: 24, paddingTop: 12,
     gap: 12,
@@ -2446,12 +2446,12 @@ const s = StyleSheet.create({
   confirmTitle: { ...TYPE.title, fontSize: 18, lineHeight: 23, color: BASECAMP.text, textAlign: "center" },
   confirmSub:   { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted, textAlign: "center" },
   confirmPrimary: {
-    backgroundColor: BASECAMP.accent, borderRadius: 14,
+    backgroundColor: BASECAMP.accent, borderRadius: 7,
     minHeight: 50, alignItems: "center", justifyContent: "center",
   },
   confirmPrimaryText: { fontSize: 16, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk },
   confirmDestructive: {
-    backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 14, borderWidth: 1,
+    backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 7, borderWidth: 1,
     borderColor: "rgba(239,68,68,0.3)", minHeight: 50,
     alignItems: "center", justifyContent: "center",
   },
@@ -2467,7 +2467,7 @@ const s = StyleSheet.create({
   orText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   nearbyBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: BASECAMP.panelSub, borderRadius: 12,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 6,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     paddingHorizontal: 12, minHeight: 44, marginTop: 4,
   },
@@ -2486,7 +2486,7 @@ const s = StyleSheet.create({
   pickerSheet: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: "#0B1724",
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.09)",
     paddingHorizontal: 20, paddingTop: 12,
   },
@@ -2505,7 +2505,7 @@ const s = StyleSheet.create({
   pickerRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 12, marginBottom: 6,
+    borderRadius: 6, marginBottom: 6,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
   },
@@ -2538,7 +2538,7 @@ const s = StyleSheet.create({
   promptCard: {
     width: "90%", maxWidth: 400,
     backgroundColor: "#0B1724",
-    borderRadius: 24, padding: 28,
+    borderRadius: 12, padding: 28,
     borderWidth: 1, borderColor: "rgba(62,207,117,0.20)",
     overflow: "hidden", alignItems: "center",
   },
@@ -2551,10 +2551,10 @@ const s = StyleSheet.create({
     fontSize: 15, fontFamily: "Inter_500Medium", color: T.textMuted,
     textAlign: "center", marginBottom: 24, lineHeight: 21,
   },
-  promptYes: { alignSelf: "stretch", borderRadius: 14, overflow: "hidden", marginBottom: 12 },
+  promptYes: { alignSelf: "stretch", borderRadius: 7, overflow: "hidden", marginBottom: 12 },
   promptYesGrad: {
     paddingVertical: 16, alignItems: "center", justifyContent: "center",
-    borderRadius: 14,
+    borderRadius: 7,
   },
   promptYesText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   promptNo: { paddingVertical: 12, alignSelf: "stretch", alignItems: "center" },

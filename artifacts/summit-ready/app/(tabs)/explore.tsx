@@ -160,7 +160,7 @@ function ResultRow({ trail }: { trail: Trail }) {
   const [failed, setFailed] = useState(false);
   return (
     <SRPanel
-      radius={15}
+      radius={7.5}
       onPress={() => openMountain(trail)}
       accessibilityLabel={`${trail.name}, ${trail.location}. ${trail.elevationGain} metres of ascent. ${trail.difficulty}.`}
       style={styles.result}
@@ -431,7 +431,7 @@ export default function ExploreScreen() {
               <SRSectionHeader title="Explore by Map" />
               <Text style={styles.mapSub}>Browse mountains and routes on an interactive map.</Text>
               <SRPanel
-                radius={15}
+                radius={7.5}
                 onPress={() => router.push("/hills-finder" as any)}
                 accessibilityLabel="Find hills near you"
                 style={styles.mapCard}
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   segmentedControlWrap: { marginTop: 18 },
   segmentedControl: {
     flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
-    padding: 2.5, borderRadius: 999,
+    padding: 2.5, borderRadius: 15,
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
   segBtn: {
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   },
   segActiveBg: {
     position: "absolute", top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 12.5,
   },
   segText: {
     fontSize: 11, lineHeight: 13, fontFamily: "Inter_500Medium", color: BASECAMP.textDim
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
 
   chipRow: { paddingHorizontal: 21, gap: 8, paddingTop: 20 },
   chip: {
-    width: 62, height: 72, borderRadius: 13,
+    width: 62, height: 72, borderRadius: 6.5,
     alignItems: "center", paddingTop: 10, paddingHorizontal: 3,
     backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.085)",
   },
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   railSmall: { paddingHorizontal: 21, gap: 14, paddingTop: 8 },
 
   featured: {
-    width: 254, height: 340, borderRadius: 18, overflow: "hidden",
+    width: 254, height: 340, borderRadius: 9, overflow: "hidden",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
   },
   favBtn: {
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
 
   popular: { width: 114 },
   popularImage: {
-    width: 114, height: 142, borderRadius: 14, overflow: "hidden",
+    width: 114, height: 142, borderRadius: 7, overflow: "hidden",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
     marginBottom: 8
   },
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
   result: {},
   resultRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 10 },
   resultImage: {
-    width: 68, height: 62, borderRadius: 11, overflow: "hidden",
+    width: 68, height: 62, borderRadius: 5.5, overflow: "hidden",
     backgroundColor: "#12202A", flexShrink: 0,
   },
   resultBody: { flex: 1, minWidth: 0 },
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   mapPins: { ...StyleSheet.absoluteFillObject, flexDirection: "row", alignItems: "center", paddingLeft: 12 },
   mapPill: {
     position: "absolute", right: 11, alignSelf: "center",
-    minHeight: 32, borderRadius: 999, paddingHorizontal: 12,
+    minHeight: 32, borderRadius: 16, paddingHorizontal: 12,
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: "rgba(0,0,0,0.7)", borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },

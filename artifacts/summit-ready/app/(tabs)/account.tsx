@@ -1269,7 +1269,7 @@ const styles = StyleSheet.create({
 
   logBtn: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.green + "30",
     paddingHorizontal: 16, paddingVertical: 15, overflow: "hidden",
   },
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
   },
 
   profileCard: {
-    backgroundColor: T.card, borderRadius: 20,
+    backgroundColor: T.card, borderRadius: 10,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 16, gap: 12, overflow: "hidden",
   },
@@ -1301,7 +1301,7 @@ const styles = StyleSheet.create({
   },
   guestDot: { width: 6, height: 6, borderRadius: 3 },
   guestBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  signInBtn: { borderRadius: 14, overflow: "hidden" },
+  signInBtn: { borderRadius: 7, overflow: "hidden" },
   signInBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 13,
@@ -1309,12 +1309,12 @@ const styles = StyleSheet.create({
   signInBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
   signedInNote: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,
-    backgroundColor: T.greenDim, borderRadius: 12, padding: 10,
+    backgroundColor: T.greenDim, borderRadius: 6, padding: 10,
   },
   signedInNoteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.green, lineHeight: 17 },
 
   subCard: {
-    backgroundColor: T.card, borderRadius: 20,
+    backgroundColor: T.card, borderRadius: 10,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 16, gap: 12, overflow: "hidden",
   },
@@ -1327,7 +1327,7 @@ const styles = StyleSheet.create({
   subFeatures: { gap: 6, paddingTop: 4 },
   subFeatureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   subFeatureText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
-  upgradeBtn: { borderRadius: 14, overflow: "hidden" },
+  upgradeBtn: { borderRadius: 7, overflow: "hidden" },
   upgradeBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 13,
@@ -1337,7 +1337,7 @@ const styles = StyleSheet.create({
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   statBox: {
     flex: 1, minWidth: "45%",
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, gap: 4, overflow: "hidden",
   },
@@ -1345,7 +1345,7 @@ const styles = StyleSheet.create({
   statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   viewSessionsBtn: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.green + "14", borderRadius: 14,
+    backgroundColor: T.green + "14", borderRadius: 7,
     borderWidth: 1, borderColor: T.green + "45",
     paddingHorizontal: 14, paddingVertical: 13,
     marginTop: 10,
@@ -1359,7 +1359,7 @@ const styles = StyleSheet.create({
 
   goalPill: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.green + "30",
     paddingVertical: 10, paddingHorizontal: 14, marginTop: 2,
   },
@@ -1367,7 +1367,7 @@ const styles = StyleSheet.create({
   goalPillSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
   changeSummitBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: T.greenDim, borderRadius: 8,
+    backgroundColor: T.greenDim, borderRadius: 4,
     borderWidth: 1, borderColor: T.green + "40",
     paddingHorizontal: 9, paddingVertical: 5,
   },
@@ -1381,11 +1381,11 @@ const styles = StyleSheet.create({
   modePill: {
     flexDirection: "row",
     backgroundColor: T.surface,
-    borderRadius: 18, borderWidth: 1, borderColor: T.border,
+    borderRadius: 9, borderWidth: 1, borderColor: T.border,
     padding: 3,
   },
   modeSeg: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 15,
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 7.5,
   },
   modeSegActive: { backgroundColor: T.green },
   modeSegText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted },
@@ -1394,7 +1394,7 @@ const styles = StyleSheet.create({
   actionList: { gap: 8 },
   actionRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.cardBorder,
     paddingVertical: 14, paddingHorizontal: 16,
   },
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
   actionSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   restoreMsg: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    borderRadius: 12, padding: 12, borderWidth: 1,
+    borderRadius: 6, padding: 12, borderWidth: 1,
   },
   restoreMsgText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
 
@@ -1410,7 +1410,7 @@ const styles = StyleSheet.create({
   achieveRow: { flexDirection: "row", gap: 10 },
   achieveCard: {
     flex: 1,
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 12, gap: 6, overflow: "hidden",
   },
@@ -1429,7 +1429,7 @@ const styles = StyleSheet.create({
   achieveTierText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" },
 
   historyCard: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, gap: 12, overflow: "hidden",
   },
@@ -1444,7 +1444,7 @@ const styles = StyleSheet.create({
   historyDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
   historyStatsRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+    backgroundColor: T.surface, borderRadius: 5, padding: 10,
   },
   historyStatItem: { flex: 1, alignItems: "center", gap: 2 },
   historyStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
@@ -1452,7 +1452,7 @@ const styles = StyleSheet.create({
   historyStatDivider: { width: 1, height: 28, backgroundColor: T.border },
   lifetimeBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.greenDim, borderRadius: 12, padding: 10,
+    backgroundColor: T.greenDim, borderRadius: 6, padding: 10,
     borderWidth: 1, borderColor: T.green + "25",
   },
   lifetimeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
   readyGrid: { gap: 8 },
   readyChip: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.cardBorder,
     paddingVertical: 11, paddingHorizontal: 14,
   },
@@ -1473,7 +1473,7 @@ const styles = StyleSheet.create({
 
   challengeSummaryRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.green + "30",
     padding: 14, overflow: "hidden",
   },
@@ -1483,7 +1483,7 @@ const styles = StyleSheet.create({
   challengeSummaryDivider: { width: 1, height: 32, backgroundColor: T.border },
 
   activeChallengeCard: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, gap: 8, overflow: "hidden",
   },
@@ -1502,7 +1502,7 @@ const styles = StyleSheet.create({
   activeProgressPct: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   challengeCard: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, gap: 10, overflow: "hidden",
   },
@@ -1517,7 +1517,7 @@ const styles = StyleSheet.create({
   challengeDiffText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
   challengeStatsRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+    backgroundColor: T.surface, borderRadius: 5, padding: 10,
   },
   challengeStatItem: { flex: 1, alignItems: "center", gap: 2 },
   challengeStatVal: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.text },
@@ -1546,7 +1546,7 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
   modalSheet: {
     backgroundColor: T.card,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderWidth: 1, borderColor: T.border,
     padding: 20, gap: 12,
   },
@@ -1576,17 +1576,17 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange },
   modalNote: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,
-    backgroundColor: T.surface, borderRadius: 10, padding: 10,
+    backgroundColor: T.surface, borderRadius: 5, padding: 10,
   },
   modalNoteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
   modalBtnRow: { flexDirection: "row", gap: 10 },
   cancelBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14,
+    flex: 1, paddingVertical: 13, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
   cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  confirmBtn: { flex: 2, borderRadius: 14, overflow: "hidden" },
+  confirmBtn: { flex: 2, borderRadius: 7, overflow: "hidden" },
   confirmBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 13,
@@ -1594,7 +1594,7 @@ const styles = StyleSheet.create({
   confirmText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
   syncErrorBanner: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: T.orange + "15", borderRadius: 10, padding: 10, marginBottom: 8,
+    backgroundColor: T.orange + "15", borderRadius: 5, padding: 10, marginBottom: 8,
   },
   syncErrorText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.orange },
   emptyState: { alignItems: "center", gap: 8, paddingVertical: 24, paddingHorizontal: 12 },

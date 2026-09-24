@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "transparent",
     borderWidth: 0,
-    borderRadius: RADIUS.xl, padding: SP.md, gap: SP.sm,
+    borderRadius: RADIUS.xl / 2, padding: SP.md, gap: SP.sm,
   },
   header: { flexDirection: "row", alignItems: "center", gap: SP.sm },
   headerText: { flex: 1, minWidth: 0 },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   tipText: { ...TYPE.small, color: T.basecampTextMuted, flex: 1, lineHeight: 17 },
   priority: {
     backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)", borderRadius: RADIUS.md, padding: SP.md,
+    borderColor: "rgba(255,255,255,0.08)", borderRadius: RADIUS.md / 2, padding: SP.md,
   },
   priorityLabel: { ...TYPE.eyebrow, color: T.basecampTextDim },
   priorityTitle: { ...TYPE.bodyBold, color: T.basecampText, marginTop: 5, fontSize: 15 },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   projectionCap: { ...TYPE.eyebrow, fontSize: 8.5, color: T.basecampTextDim, marginTop: 3 },
   action: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    minHeight: HIT.minTarget, borderRadius: RADIUS.md,
+    minHeight: HIT.minTarget, borderRadius: RADIUS.md / 2,
     backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: T.basecampBorder,
   },
   actionText: { ...TYPE.smallBold, color: BASECAMP.accent },

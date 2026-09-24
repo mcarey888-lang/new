@@ -292,7 +292,7 @@ const s = StyleSheet.create({
   inputWithToggle: { paddingRight: 46 },
   eyeBtn: { position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center", paddingHorizontal: 4 },
   error: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.red, textAlign: "center" },
-  primaryBtn: { borderRadius: 16, overflow: "hidden", marginTop: 4 },
+  primaryBtn: { borderRadius: 8, overflow: "hidden", marginTop: 4 },
   btnGrad: { height: 52, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   link: { alignItems: "center", paddingVertical: 8 },

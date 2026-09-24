@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
 
   notice: {
     flexDirection: "row", gap: 10, padding: 12,
-    borderRadius: 13, borderWidth: 1,
+    borderRadius: 6.5, borderWidth: 1,
     borderColor: EXPLORE.unverifiedLine, backgroundColor: EXPLORE.unverifiedDim,
   },
   noticeIcon: { marginTop: 1 },

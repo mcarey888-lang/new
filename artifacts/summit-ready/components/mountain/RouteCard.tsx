@@ -28,7 +28,7 @@ export function RouteCard({
 }: { route: PresentedRoute; selected: boolean; onPress: () => void }) {
   return (
     <SRPanel
-      radius={15}
+      radius={RADIUS.lg / 2}
       onPress={onPress}
       accessibilityLabel={`${route.name}${selected ? ", selected" : ""}`}
       accessibilityHint={selected ? "Collapses this route" : "Shows this route's detail below"}
@@ -82,5 +82,5 @@ const styles = StyleSheet.create({
   aliases: { marginTop: 4, fontSize: 10, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
 });
 
-export const ROUTE_CARD_RADIUS = RADIUS.lg;
+export const ROUTE_CARD_RADIUS = RADIUS.lg / 2;
 export const ROUTE_CARD_GAP = SP.sm + 1;

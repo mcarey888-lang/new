@@ -199,14 +199,14 @@ const h = StyleSheet.create({
   },
   badgeText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.blue },
   retryBtn: {
-    backgroundColor: T.greenDim, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: T.greenDim, borderRadius: 6, paddingHorizontal: 20, paddingVertical: 10,
     borderWidth: 1, borderColor: T.green + "40",
   },
 });
 
 const r = StyleSheet.create({
   card: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 8, borderWidth: 1, borderColor: T.border,
     padding: 14, gap: 10, overflow: "hidden",
   },
   top: { flexDirection: "row", alignItems: "center", gap: 10 },

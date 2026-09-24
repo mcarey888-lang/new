@@ -12,16 +12,13 @@
  * durations, target ascent and week numbers are the plan's own. Nothing is
  * generated here.
  *
- * The prototype gives every session its own photograph, and so does this: the
- * subject is the hill the plan ASSIGNED to that session, or the objective the
- * whole plan is for when no hill is assigned yet. Both come from the existing
- * mountain-image service. Nothing is stock, nothing is another mountain, and
- * when neither subject is known the designed gradient is drawn instead — the
- * icon block is the fallback, not the default.
+ * Mountain sessions use their assigned hill or objective photography. The
+ * current Incline Treadmill mission uses its exercise-library artwork; the
+ * remaining exercise cards retain their existing imagery pending review.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Image, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+  Image, type ImageSourcePropType, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from "react-native";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,9 +48,10 @@ function visualFor(type: string | null) {
  * over photography.
  */
 function SessionVisual({
-  uri, type, iconSize, scrim, children, style,
+  uri, source, type, iconSize, scrim, children, style,
 }: {
   uri: string | null;
+  source?: ImageSourcePropType;
   type: string | null;
   iconSize: number;
   scrim: "right" | "bottom";
@@ -62,7 +60,9 @@ function SessionVisual({
 }) {
   const { Icon, tint } = visualFor(type);
   const [failed, setFailed] = useState(false);
-  const showPhoto = !!uri && !failed;
+  useEffect(() => setFailed(false), [uri, source]);
+  const photoSource = source ?? (uri ? { uri } : null);
+  const showPhoto = !!photoSource && !failed;
 
   return (
     <View style={[styles.visual, style]} accessible={false}>
@@ -74,7 +74,7 @@ function SessionVisual({
       />
       {showPhoto ? (
         <Image
-          source={{ uri }}
+          source={photoSource!}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           onError={() => setFailed(true)}
@@ -106,7 +106,7 @@ export interface MissionCardProps {
   session: QueuedSession;
   /** The plan's phase for this week, when it has one. */
   phase?: string | null;
-  /** The assigned hill, or the objective — never a stock photograph. */
+  /** The assigned hill or objective, except the previewed exercise artwork. */
   imageUri?: string | null;
   onStart: () => void;
   onOpen: () => void;
@@ -114,6 +114,7 @@ export interface MissionCardProps {
 
 export function MissionCard({ session, phase, imageUri, onStart, onOpen }: MissionCardProps) {
   const facts = sessionFacts(session);
+  const isPreviewExercise = session.title.trim().toLowerCase() === "incline treadmill";
   /* The visual block is the first thing to give way: on a narrow screen the
      title and the action need the room more than the illustration does. */
   const { width } = useWindowDimensions();
@@ -128,7 +129,8 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
     >
       <View style={styles.missionRow}>
         <SessionVisual
-          uri={imageUri ?? null}
+          uri={isPreviewExercise ? null : imageUri ?? null}
+          source={isPreviewExercise ? require("@/assets/images/exercise-treadmill-right-half.png") : undefined}
           type={session.type}
           iconSize={26}
           scrim="right"
@@ -242,7 +244,7 @@ function SessionCard({
 
   return (
     <SRPanel
-      radius={15}
+      radius={7.5}
       style={styles.card}
       onPress={onPress}
       accessibilityLabel={`${session.weekLabel}: ${session.title}`}
@@ -296,7 +298,7 @@ const styles = StyleSheet.create({
   },
   startButton: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 4,
-    height: 38, paddingLeft: 13, paddingRight: 9, borderRadius: 11,
+    height: 38, paddingLeft: 13, paddingRight: 9, borderRadius: 5.5,
     backgroundColor: BASECAMP.accent,
   },
   startText: {

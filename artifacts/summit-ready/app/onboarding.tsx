@@ -141,7 +141,7 @@ export default function OnboardingScreen() {
         {step.id === "paths" ? (
           <Section entering={enter(80)} style={styles.stack}>
             {ONBOARDING_PATHS.map(path => (
-              <SRPanel key={path.id} radius={18} style={styles.pathCard}>
+              <SRPanel key={path.id} radius={9} style={styles.pathCard}>
                 <View style={styles.pathBody}>
                   <View style={styles.pathIcon}>
                     {path.id === "training"
@@ -161,7 +161,7 @@ export default function OnboardingScreen() {
 
         {step.id === "bank" ? (
           <Section entering={enter(80)} style={styles.stack}>
-            <SRPanel radius={20} style={styles.bankPanel}>
+            <SRPanel radius={10} style={styles.bankPanel}>
               <View style={styles.bankBody}>
                 <View style={styles.bankHead}>
                   <View style={styles.bankMark}>
@@ -205,7 +205,7 @@ export default function OnboardingScreen() {
               />
             </View>
             {COACH_POINTS.map(point => (
-              <SRSubPanel key={point.key} radius={14} style={styles.coachCard}>
+              <SRSubPanel key={point.key} radius={7} style={styles.coachCard}>
                 <View style={styles.coachRow}>
                   <Sparkles size={15} color={BASECAMP.accent} />
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -261,7 +261,7 @@ export default function OnboardingScreen() {
               </View>
             ))}
             {destination ? (
-              <SRSubPanel radius={13} style={styles.destination}>
+              <SRSubPanel radius={6.5} style={styles.destination}>
                 <View style={styles.destinationRow}>
                   <Target size={14} color={BASECAMP.accent} />
                   <Text style={styles.destinationText}>
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
 
   intentCard: {
-    minHeight: 68, borderRadius: 16, padding: 13,
+    minHeight: 68, borderRadius: 8, padding: 13,
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -437,12 +437,12 @@ const styles = StyleSheet.create({
   },
   footerRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   backBtn: {
-    width: 52, minHeight: 52, borderRadius: 16, flexShrink: 0,
+    width: 52, minHeight: 52, borderRadius: 8, flexShrink: 0,
     alignItems: "center", justifyContent: "center",
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   nextBtn: {
-    flex: 1, minHeight: 52, borderRadius: 16,
+    flex: 1, minHeight: 52, borderRadius: 8,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     paddingHorizontal: SP.md, backgroundColor: BASECAMP.accent,
   },

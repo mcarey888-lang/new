@@ -2127,7 +2127,7 @@ export default function ExpeditionMountainsScreen() {
             <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: 16 }}>
               <SRSectionHeader title="YOUR EXPEDITION" />
               <SRPanel
-                radius={17}
+                radius={8.5}
                 onPress={() => router.push("/(expedition)/base-camp" as any)}
                 accessibilityLabel={`Continue ${activeExpedition.challengeName ?? "your expedition"}`}
                 accessibilityHint="Opens Expedition Basecamp"
@@ -2168,7 +2168,7 @@ export default function ExpeditionMountainsScreen() {
                   <View style={{ marginTop: 10, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                     <View style={{ height: "100%", borderRadius: 3, backgroundColor: EXPLORE.accent, width: `${pct}%` as any }} />
                   </View>
-                  <View style={{ marginTop: 12, width: "100%", height: 42, borderRadius: 12, backgroundColor: EXPLORE.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}>
+                  <View style={{ marginTop: 12, width: "100%", height: 42, borderRadius: 6, backgroundColor: EXPLORE.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}>
                     <Play size={13} color="#fff" fill="#fff" />
                     <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }}>Continue Expedition</Text>
                   </View>
@@ -2264,7 +2264,7 @@ export default function ExpeditionMountainsScreen() {
                         uri: (ch.approved && artworkUrl(ch.thumbnailImage ?? ch.cardImage))
                           || `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=160&height=160`,
                       }}
-                      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10 }}
+                      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 6 }}
                       contentFit="cover"
                     />
                     {ch.featured && (
@@ -2614,18 +2614,18 @@ const s = StyleSheet.create({
   continueScoreValue: { fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold" },
   continueScoreLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: BASECAMP.textDim, letterSpacing: 0.6 },
   continueCta: {
-    marginTop: 12, minHeight: 42, borderRadius: 12,
+    marginTop: 12, minHeight: 42, borderRadius: 6,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
     backgroundColor: EXPLORE.accent,
   },
   continueCtaText: { ...TYPE.bodyBold, fontSize: 13, color: EXPLORE.accentInk },
 
-  choiceCard: { ...SURFACE.panel, flex: 1, minHeight: 132, borderRadius: 14, padding: 13, gap: 7 },
+  choiceCard: { ...SURFACE.panel, flex: 1, minHeight: 132, borderRadius: 7, padding: 13, gap: 7 },
   choiceTitle: { ...TYPE.title, fontSize: 13, lineHeight: 17, color: BASECAMP.text },
   choiceCopy: { ...TYPE.small, flex: 1, fontSize: 11, lineHeight: 16, color: BASECAMP.textMuted },
   choiceActive: { ...TYPE.smallBold, fontSize: 10, color: EXPLORE.accent },
   manualHeadline: { ...TYPE.metricLg, color: EXPLORE.accent },
-  manualRouteRow: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 10, borderRadius: 10 },
+  manualRouteRow: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 10, borderRadius: 5 },
   manualRouteChosen: { borderColor: EXPLORE.accent + "66", backgroundColor: EXPLORE.accent + "11" },
   manualRouteName: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.text },
   manualAdd: { ...TYPE.smallBold, fontSize: 11, color: EXPLORE.accent },
@@ -2643,7 +2643,7 @@ const s = StyleSheet.create({
   // Legend bar
   legendBar: {
     ...SURFACE.panelSub,
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 16,
     flexDirection: "row",
     gap: 16,
@@ -2658,7 +2658,7 @@ const s = StyleSheet.create({
 
   // Active goal banner
   activeGoalBanner: {
-    backgroundColor: "transparent", borderRadius: 16,
+    backgroundColor: "transparent", borderRadius: 8,
     borderWidth: 1, borderColor: T.blue + "40",
     padding: 16, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden",
   },
@@ -2681,7 +2681,7 @@ const s = StyleSheet.create({
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1,
     borderColor: EXPLORE.accent + "40",
-    borderRadius: 12,
+    borderRadius: 6,
     marginTop: 6,
     overflow: "hidden",
   },
@@ -2704,14 +2704,14 @@ const s = StyleSheet.create({
   },
   searchBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: EXPLORE.accent, borderRadius: 12,
+    backgroundColor: EXPLORE.accent, borderRadius: 6,
     paddingVertical: 12, marginTop: 12,
   },
   searchBtnText: { ...TYPE.title, fontSize: 14, color: "#fff" },
 
   // Bundle card
   bundleCard: {
-    backgroundColor: "#0F1D30", borderRadius: 14,
+    backgroundColor: "#0F1D30", borderRadius: 7,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
     padding: 14, marginBottom: 10, overflow: "hidden",
   },
@@ -2727,14 +2727,14 @@ const s = StyleSheet.create({
   // Cards
   card: {
     ...SURFACE.panelSub,
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 16, overflow: "hidden",
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, borderWidth: 1 },
   badgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
   statsRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "#142236", borderRadius: 10,
+    backgroundColor: "#142236", borderRadius: 5,
     paddingVertical: 10, paddingHorizontal: 6, marginTop: 10,
   },
   statDiv: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.07)" },
@@ -2747,7 +2747,7 @@ const s = StyleSheet.create({
 
   // Signature browse cards (horizontal scroll on Mountains browse)
   sigBrowseCard: {
-    width: 190, height: 178, backgroundColor: "#120D20", borderRadius: 14,
+    width: 190, height: 178, backgroundColor: "#120D20", borderRadius: 7,
     borderWidth: 1, borderColor: "rgba(139,92,246,0.22)",
     overflow: "hidden",
   },
@@ -2762,7 +2762,7 @@ const s = StyleSheet.create({
 
   // Signature challenge card
   sigCard: {
-    backgroundColor: "transparent", borderRadius: 16,
+    backgroundColor: "transparent", borderRadius: 8,
     borderWidth: 1, borderColor: "rgba(139,92,246,0.25)",
     padding: 16, gap: 0, overflow: "hidden",
   },
@@ -2778,7 +2778,7 @@ const s = StyleSheet.create({
   sigRoute: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.purple, marginBottom: 6 },
   sigSummary: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19, marginBottom: 12 },
   sigStage: {
-    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 6,
     padding: 12, marginBottom: 8, marginTop: 4,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
   },
@@ -2793,7 +2793,7 @@ const s = StyleSheet.create({
   sigStageMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
   sigStatPill: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textDim, backgroundColor: "rgba(255,255,255,0.04)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   sigLimitations: {
-    backgroundColor: T.orange + "0F", borderRadius: 12, padding: 12, marginTop: 12,
+    backgroundColor: T.orange + "0F", borderRadius: 6, padding: 12, marginTop: 12,
     borderWidth: 1, borderColor: T.orange + "20",
   },
   sigLimitationText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 17, marginTop: 2 },
@@ -2801,13 +2801,13 @@ const s = StyleSheet.create({
   // Hills
   hillCard: {
     ...SURFACE.panel,
-    borderRadius: 16, padding: 16, gap: 10, overflow: "hidden",
+    borderRadius: 8, padding: 16, gap: 10, overflow: "hidden",
   },
   hillDay: { ...TYPE.smallBold, fontSize: 11, color: EXPLORE.accent },
   hillEmoji: { width: 42, height: 42, borderRadius: RADIUS.pill, backgroundColor: EXPLORE.accentDim, alignItems: "center", justifyContent: "center" },
   hillName: { ...TYPE.title, fontSize: 14, lineHeight: 18, color: BASECAMP.text },
   hillMeta: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted, marginTop: 1 },
-  hillStats: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", borderRadius: 9, paddingVertical: 8, paddingHorizontal: 6 },
+  hillStats: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", borderRadius: 4.5, paddingVertical: 8, paddingHorizontal: 6 },
   hillStatDiv: { width: 1, height: 20, backgroundColor: "rgba(255,255,255,0.07)" },
   routeType: { ...TYPE.small, fontSize: 11, color: BASECAMP.textDim },
 
@@ -2820,7 +2820,7 @@ const s = StyleSheet.create({
   dimBarTrack: { height: 4, backgroundColor: BASECAMP.panelSub, borderRadius: 3, overflow: "hidden" },
   dimBarFill: { height: 4, borderRadius: 3 },
   improveCard: {
-    ...SURFACE.panel, borderRadius: 16,
+    ...SURFACE.panel, borderRadius: 8,
     borderColor: EXPLORE.accent + "55", padding: 15, gap: 10,
   },
   improveTitle: { ...TYPE.title, fontSize: 17, color: BASECAMP.text },
@@ -2829,22 +2829,22 @@ const s = StyleSheet.create({
   improveMetricLabel: { ...TYPE.smallBold, fontSize: 11, color: BASECAMP.textDim },
   improveMetricValue: { ...TYPE.title, fontSize: 16, color: BASECAMP.text, marginTop: 4 },
   improveRemaining: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted, marginTop: 2 },
-  improveCandidate: { ...SURFACE.panelSub, borderRadius: 12, padding: 12, gap: 4 },
+  improveCandidate: { ...SURFACE.panelSub, borderRadius: 6, padding: 12, gap: 4 },
   improveCandidateLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
   improveCandidateName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
   improveCandidateMeta: { ...TYPE.small, fontSize: 12, color: BASECAMP.textMuted, lineHeight: 18 },
-  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: EXPLORE.accent, borderRadius: 12, paddingVertical: 12 },
+  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: EXPLORE.accent, borderRadius: 6, paddingVertical: 12 },
   improvePrimaryText: { ...TYPE.title, fontSize: 14, color: "#fff" },
   improveSecondary: { alignItems: "center", paddingVertical: 10 },
   improveSecondaryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.blue },
-  alternativeRow: { ...SURFACE.panelSub, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 12, padding: 12, marginTop: -4 },
+  alternativeRow: { ...SURFACE.panelSub, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 6, padding: 12, marginTop: -4 },
   alternativeName: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.text, flex: 1 },
   alternativeMeta: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted },
 
   // CTA
   setGoalBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: EXPLORE.accent, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 7, paddingVertical: 14,
   },
   setGoalBtnText: { ...TYPE.title, fontSize: 15, color: "#fff" },
 
@@ -2860,12 +2860,12 @@ const s = StyleSheet.create({
   progPct: { ...TYPE.small, fontSize: 11, color: BASECAMP.textDim },
   logHikeBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    backgroundColor: EXPLORE.accent, borderRadius: 12, paddingVertical: 11, marginTop: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 6, paddingVertical: 11, marginTop: 14,
   },
   logHikeBtnText: { ...TYPE.smallBold, fontSize: 13, color: "#fff" },
   changeGoalBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    paddingVertical: 12, borderRadius: 12,
+    paddingVertical: 12, borderRadius: 6,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
   changeGoalText: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.textMuted },
@@ -2873,27 +2873,27 @@ const s = StyleSheet.create({
   // Customise panel
   customisePill: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: T.blueDim, borderRadius: 8,
+    backgroundColor: T.blueDim, borderRadius: 4,
     paddingHorizontal: 8, paddingVertical: 4,
     borderWidth: 1, borderColor: T.blue + "40",
   },
   customisePillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
   customisePanel: {
-    backgroundColor: "#0A1628", borderRadius: 14,
+    backgroundColor: "#0A1628", borderRadius: 7,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
     padding: 14, marginTop: 6, gap: 0,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     ...SURFACE.panelSub,
-    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 10,
+    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 5,
   },
   chipActive: { backgroundColor: EXPLORE.accent + "22", borderColor: EXPLORE.accent + "50" },
   chipText: { ...TYPE.smallBold, fontSize: 12, color: BASECAMP.textMuted },
   chipTextActive: { color: EXPLORE.accent },
   regenerateBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.blue, borderRadius: 12, paddingVertical: 11, marginTop: 14,
+    backgroundColor: T.blue, borderRadius: 6, paddingVertical: 11, marginTop: 14,
   },
   regenerateBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
 
@@ -2904,7 +2904,7 @@ const s = StyleSheet.create({
   // Error
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.orange + "12", borderRadius: 10, padding: 12,
+    backgroundColor: T.orange + "12", borderRadius: 5, padding: 12,
     borderWidth: 1, borderColor: T.orange + "30",
   },
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
@@ -2912,7 +2912,7 @@ const s = StyleSheet.create({
   // Modal
   modalSheet: {
     backgroundColor: BASECAMP.ink,
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    borderTopLeftRadius: 11, borderTopRightRadius: 11,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     padding: 24, paddingBottom: 40, overflow: "hidden",
   },
@@ -2929,7 +2929,7 @@ const s = StyleSheet.create({
   // Upsell
   upsellSheet: {
     backgroundColor: "#0F1D30",
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     padding: 24, paddingBottom: 44, overflow: "hidden",
   },
@@ -2939,7 +2939,7 @@ const s = StyleSheet.create({
   upsellBullets: { gap: 8, marginBottom: 20 },
   upsellBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: EXPLORE.accent, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 7, paddingVertical: 14,
   },
   upsellBtnText: { ...TYPE.title, fontSize: 15, color: "#fff" },
 
@@ -2947,7 +2947,7 @@ const s = StyleSheet.create({
   regionPill: {
     ...SURFACE.panelSub,
     flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.pill,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.sm / 2,
   },
   regionPillActive: {
     backgroundColor: EXPLORE.accent,
@@ -2971,7 +2971,7 @@ const s = StyleSheet.create({
   // Create Custom Route card
   createRouteCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#0D1B2E", borderRadius: 16,
+    backgroundColor: "#0D1B2E", borderRadius: 8,
     borderWidth: 1, borderColor: "rgba(29,78,148,0.4)",
     padding: 14, overflow: "hidden",
   },
@@ -2990,7 +2990,7 @@ const s = StyleSheet.create({
 
   // Browse by Region cards
   browseRegionCard: {
-    width: 160, height: 130, borderRadius: 14,
+    width: 160, height: 130, borderRadius: 7,
     overflow: "hidden", backgroundColor: BASECAMP.ink,
   },
 
@@ -2998,10 +2998,10 @@ const s = StyleSheet.create({
   popularCard: {
     ...SURFACE.panel,
     flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 17, padding: 10, overflow: "hidden",
+    borderRadius: 8.5, padding: 10, overflow: "hidden",
   },
   popularThumb: {
-    width: 68, height: 68, borderRadius: RADIUS.md,
+    width: 68, height: 68, borderRadius: RADIUS.md / 2,
     backgroundColor: BASECAMP.ink, overflow: "hidden",
   },
   popularTitle: {

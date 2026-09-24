@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 5, ...TYPE.hero, fontSize: 29, lineHeight: 33, color: BASECAMP.text },
   subtitle: { marginTop: 8, marginBottom: 20, ...TYPE.small, fontSize: 13, lineHeight: 19, color: BASECAMP.textMuted },
   note: {
-    marginTop: SP.lg, flexDirection: "row", gap: 10, padding: 14, borderRadius: 14,
+    marginTop: SP.lg, flexDirection: "row", gap: 10, padding: 14, borderRadius: 7,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   noteText: { flex: 1, ...TYPE.caption, fontSize: 12, lineHeight: 18, color: BASECAMP.textMuted },

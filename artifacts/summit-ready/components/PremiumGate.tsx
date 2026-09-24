@@ -98,7 +98,7 @@ export function LockedFeatureRow({ icon, label }: LockedFeatureRowProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16, borderWidth: 1, borderColor: T.purple + "30",
+    borderRadius: 16 / 2, borderWidth: 1, borderColor: T.purple + "30",
     padding: 20, gap: 8, alignItems: "center",
     overflow: "hidden",
   },
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   descText: {
     fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center",
   },
-  upgradeBtn: { borderRadius: 12, overflow: "hidden", marginTop: 4 },
+  upgradeBtn: { borderRadius: 12 / 2, overflow: "hidden", marginTop: 4 },
   upgradeBtnGrad: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 18, paddingVertical: 10,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   freeBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.purple },
   lockedRow: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 12,
+    backgroundColor: T.surface, borderRadius: 12 / 2,
     borderWidth: 1, borderColor: T.border,
     paddingVertical: 12, paddingHorizontal: 14,
     opacity: 0.65,

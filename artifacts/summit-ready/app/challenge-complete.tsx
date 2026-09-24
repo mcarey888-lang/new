@@ -334,14 +334,14 @@ const s = StyleSheet.create({
   bigTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center", lineHeight: 30 },
   dateText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 
-  statsCard: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 18, gap: 14, overflow: "hidden" },
+  statsCard: { backgroundColor: T.card, borderRadius: 10, borderWidth: 1, borderColor: T.border, padding: 18, gap: 14, overflow: "hidden" },
   statsGrid: { flexDirection: "row", alignItems: "center" },
   statItem: { flex: 1, alignItems: "center", gap: 4 },
   statVal: { fontSize: 22, fontFamily: "Inter_700Bold" },
   statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   statDivider: { width: 1, height: 40, backgroundColor: T.border },
 
-  card: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
+  card: { backgroundColor: T.card, borderRadius: 9, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
 
@@ -354,7 +354,7 @@ const s = StyleSheet.create({
   milestoneLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text },
   milestoneEmoji: { fontSize: 18 },
 
-  shareCard: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, padding: 18, gap: 14, overflow: "hidden" },
+  shareCard: { backgroundColor: T.card, borderRadius: 10, borderWidth: 1, padding: 18, gap: 14, overflow: "hidden" },
   shareTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   shareContent: { gap: 5 },
   shareHeadline: { fontSize: 18, fontFamily: "Inter_700Bold" },
@@ -363,12 +363,12 @@ const s = StyleSheet.create({
   shareBrand: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
   shareBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.text, borderRadius: 12, paddingVertical: 12,
+    backgroundColor: T.text, borderRadius: 6, paddingVertical: 12,
   },
   shareBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 
   ctaArea: { gap: 10 },
-  primaryBtn: { borderRadius: 14, overflow: "hidden" },
+  primaryBtn: { borderRadius: 7, overflow: "hidden" },
   primaryBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
   primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
   secondaryBtn: { alignItems: "center", paddingVertical: 10 },

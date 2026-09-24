@@ -1253,7 +1253,7 @@ export default function BaseCampScreen() {
                 : undefined}
             />
           ) : (
-            <SRPanel radius={18} style={{ marginHorizontal: BASECAMP.gutter }}>
+            <SRPanel radius={9} style={{ marginHorizontal: BASECAMP.gutter }}>
               <View style={{ padding: 20, alignItems: "center", gap: 10 }}>
                 <ActivityIndicator size="small" color={EXPLORE.accent} />
                 <Text style={{ ...TYPE.caption, color: BASECAMP.textDim }}>
@@ -1431,7 +1431,7 @@ const s = StyleSheet.create({
   // Expedition cards (horizontal)
   expCard: {
     width: 155, backgroundColor: "#0F1628",
-    borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     overflow: "hidden",
   },
   expCardImg: { height: 116, overflow: "hidden" },
@@ -1448,7 +1448,7 @@ const s = StyleSheet.create({
   popularText: { fontSize: 8, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
   bookmarkBtn: {
     position: "absolute", top: 8, right: 8,
-    width: 26, height: 26, borderRadius: 8,
+    width: 26, height: 26, borderRadius: 4,
     backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center", justifyContent: "center",
   },
@@ -1466,7 +1466,7 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)",
   },
-  lbRowYou: { backgroundColor: "rgba(62,207,117,0.05)", borderRadius: 8, paddingHorizontal: 4, marginHorizontal: -4 },
+  lbRowYou: { backgroundColor: "rgba(62,207,117,0.05)", borderRadius: 4, paddingHorizontal: 4, marginHorizontal: -4 },
   lbRank:   { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textMuted, width: 14, textAlign: "center" },
   lbAvatar: {
     width: 26, height: 26, borderRadius: 13,
@@ -1476,11 +1476,11 @@ const s = StyleSheet.create({
   lbElev: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.textMuted },
 
   // Community
-  communityImg: { height: 130, borderRadius: 10, overflow: "hidden" },
+  communityImg: { height: 130, borderRadius: 5, overflow: "hidden" },
 
   // Regions
   regionCard: {
-    width: 115, height: 110, borderRadius: 13, overflow: "hidden",
+    width: 115, height: 110, borderRadius: 6.5, overflow: "hidden",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
 
@@ -1490,7 +1490,7 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 14,
     backgroundColor: "#080F20",
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
@@ -1549,7 +1549,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 6,
     alignSelf: "flex-start",
     borderWidth: 1, borderColor: "rgba(62,207,117,0.35)",
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 12.5, paddingHorizontal: 12, paddingVertical: 6,
     backgroundColor: "rgba(62,207,117,0.10)",
   },
   activeBadgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
@@ -1560,7 +1560,7 @@ const s = StyleSheet.create({
   activeSub:   { marginTop: 4, ...TYPE.small, fontSize: 12.5, color: BASECAMP.textMuted },
 
   refreshBtn: {
-    width: 32, height: 32, borderRadius: 10,
+    width: 32, height: 32, borderRadius: 5,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center", justifyContent: "center",
@@ -1572,12 +1572,12 @@ const s = StyleSheet.create({
     marginTop: 8,
   },
   quickStartBtn: {
-    marginTop: 14, borderRadius: 14, overflow: "hidden",
+    marginTop: 14, borderRadius: 7, overflow: "hidden",
     alignSelf: "stretch",
   },
   quickStartGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 14,
+    gap: 8, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 7,
   },
   quickStartText: {
     fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff",
@@ -1608,7 +1608,7 @@ const s = StyleSheet.create({
 
   // Next up
   nextHillThumb: {
-    width: 52, height: 52, borderRadius: 10, overflow: "hidden",
+    width: 52, height: 52, borderRadius: 5, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.06)",
   },
   nextHillName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 16 },
@@ -1625,7 +1625,7 @@ const s = StyleSheet.create({
 
   // Journal
   journalThumb: {
-    flex: 1, aspectRatio: 1, borderRadius: 8, overflow: "hidden",
+    flex: 1, aspectRatio: 1, borderRadius: 4, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.05)",
   },
   journalAdd: {
@@ -1637,7 +1637,7 @@ const s = StyleSheet.create({
   },
   journalModal: {
     maxHeight: "82%", minHeight: "52%", padding: 18,
-    backgroundColor: T.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: T.surface, borderTopLeftRadius: 12, borderTopRightRadius: 12,
   },
   journalModalHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18,
@@ -1650,7 +1650,7 @@ const s = StyleSheet.create({
   },
   journalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 18 },
   journalGridPhoto: {
-    width: "48.5%", aspectRatio: 1, borderRadius: 12, overflow: "hidden",
+    width: "48.5%", aspectRatio: 1, borderRadius: 6, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.05)",
   },
   journalDelete: {
@@ -1664,7 +1664,7 @@ const s = StyleSheet.create({
     fontFamily: "Inter_400Regular", color: T.textMuted,
   },
   journalAddButton: {
-    height: 48, borderRadius: 14, flexDirection: "row", alignItems: "center",
+    height: 48, borderRadius: 7, flexDirection: "row", alignItems: "center",
     justifyContent: "center", gap: 7, backgroundColor: T.blue,
   },
   journalAddButtonText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#071428" },
@@ -1680,7 +1680,7 @@ const s = StyleSheet.create({
   card: {
     backgroundColor: "rgba(255,255,255,0.02)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-    borderRadius: 20, padding: 16, overflow: "hidden",
+    borderRadius: 10, padding: 16, overflow: "hidden",
   },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim },
@@ -1690,7 +1690,7 @@ const s = StyleSheet.create({
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     marginHorizontal: 14, marginTop: 10,
-    backgroundColor: T.orange + "12", borderRadius: 10, padding: 12,
+    backgroundColor: T.orange + "12", borderRadius: 5, padding: 12,
     borderWidth: 1, borderColor: T.orange + "30",
   },
   errorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, flex: 1 },
@@ -1703,7 +1703,7 @@ const s = StyleSheet.create({
   pickerSheet: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: "#0F1E2E",
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.10)",
     paddingHorizontal: 20, paddingTop: 12,
     maxHeight: "80%",
@@ -1747,7 +1747,7 @@ const s = StyleSheet.create({
   },
   pickerStartBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: T.blue, borderRadius: 10,
+    backgroundColor: T.blue, borderRadius: 5,
     paddingHorizontal: 12, paddingVertical: 7,
   },
   pickerStartText: {

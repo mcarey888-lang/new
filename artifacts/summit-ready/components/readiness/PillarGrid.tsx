@@ -177,7 +177,7 @@ function PillarSheetBody({
 
       <Text style={styles.sheetLabel}>WHAT WILL MOVE THIS</Text>
       {pillar.isFocus && nextActionLabel ? (
-        <SRPanel radius={14} style={{ marginTop: 8 }}>
+        <SRPanel radius={14 / 2} style={{ marginTop: 8 }}>
           <View style={styles.improveRow}>
             <Zap size={15} color={BASECAMP.accent} />
             <View style={{ flex: 1, minWidth: 0 }}>

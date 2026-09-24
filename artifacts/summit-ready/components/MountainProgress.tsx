@@ -503,7 +503,7 @@ export default function MountainProgress({
 const styles = StyleSheet.create({
   container: {
     overflow:        "hidden",
-    borderRadius:    16,
+    borderRadius:     8,
     backgroundColor: "#050A14",
   },
   bubble: {

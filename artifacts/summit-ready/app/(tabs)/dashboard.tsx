@@ -1016,7 +1016,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 8,
     backgroundColor: T.blue + "0C",
-    borderRadius: 10,
+    borderRadius: 5,
     padding: 10,
     borderWidth: 1,
     borderColor: T.blue + "20",
@@ -1123,7 +1123,7 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: BASECAMP.accentDim,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "rgba(36,239,164,0.28)",
   },
@@ -1141,8 +1141,8 @@ const styles = StyleSheet.create({
   },
   baselineSheet: {
     backgroundColor: T.basecampBg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
     borderWidth: 1,
     borderColor: T.basecampBorder,
     padding: 28,
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
   },
   baselineBtn: {
     backgroundColor: T.green,
-    borderRadius: 14,
+    borderRadius: 7,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 6,
@@ -1188,7 +1188,7 @@ const styles = StyleSheet.create({
 
 const homeStyles = StyleSheet.create({
   goalHero: {
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "rgba(74,159,245,0.25)",
     padding: 18,
@@ -1230,7 +1230,7 @@ const homeStyles = StyleSheet.create({
   quickCard: {
     flex: 1,
     backgroundColor: T.surface,
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: T.border,
     alignItems: "center",
@@ -1247,7 +1247,7 @@ const homeStyles = StyleSheet.create({
   },
   lockedCard: {
     backgroundColor: T.surface,
-    borderRadius: 18,
+    borderRadius: 9,
     borderWidth: 1,
     borderColor: T.border,
     padding: 18,
@@ -1315,7 +1315,7 @@ const homeStyles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: T.blue + "30",
-    borderRadius: 12,
+    borderRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
     alignSelf: "flex-start",

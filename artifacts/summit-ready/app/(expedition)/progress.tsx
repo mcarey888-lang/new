@@ -202,7 +202,7 @@ export default function ExpeditionProgressScreen() {
         {/* ── Insight row ─────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)}>
           <SRPanel
-            radius={18}
+            radius={9}
             onPress={() => router.push("/(expedition)/base-camp" as any)}
             accessibilityLabel={`${insight.title}. ${insight.body}`}
             accessibilityHint="Opens Expedition Basecamp"

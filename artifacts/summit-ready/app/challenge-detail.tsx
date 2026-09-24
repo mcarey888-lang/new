@@ -538,7 +538,7 @@ const lm = StyleSheet.create({
   // History list
   histRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 6, borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 14, paddingVertical: 12, marginHorizontal: 0, marginBottom: 8,
   },
   checkbox: {
@@ -554,13 +554,13 @@ const lm = StyleSheet.create({
   // Actions
   actions: { flexDirection: "row", gap: 10, paddingTop: 12 },
   cancelBtn: {
-    flex: 1, backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    flex: 1, backgroundColor: T.surface, borderRadius: 6, borderWidth: 1, borderColor: T.border,
     paddingVertical: 14, alignItems: "center",
   },
   cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   submitBtn: {
     flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    borderRadius: 12, paddingVertical: 14,
+    borderRadius: 6, paddingVertical: 14,
   },
   submitText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 });
@@ -1007,7 +1007,7 @@ const s = StyleSheet.create({
   logBar: { position: "absolute", left: 20, right: 20 },
   logBarInner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9,
-    paddingVertical: 17, borderRadius: 16,
+    paddingVertical: 17, borderRadius: 8,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 8,
   },
   logBarText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
@@ -1024,13 +1024,13 @@ const s = StyleSheet.create({
   toGoText: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
 
   chartCard: {
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 7, borderWidth: 1, borderColor: T.border,
     paddingTop: 14, paddingBottom: 6, paddingHorizontal: 0, overflow: "hidden",
   },
 
   statTilesRow: {
     flexDirection: "row", backgroundColor: T.card,
-    borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    borderRadius: 8, borderWidth: 1, borderColor: T.border,
     paddingVertical: 16,
   },
   statTile: { flex: 1, alignItems: "center", gap: 6 },
@@ -1041,17 +1041,17 @@ const s = StyleSheet.create({
   recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   recentTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
   recentViewAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  recentList: { backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14 },
+  recentList: { backgroundColor: T.card, borderRadius: 7, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14 },
   recentDivider: { height: 1, backgroundColor: T.border },
   syncInfo: { marginTop: 12, paddingHorizontal: 4 },
   syncInfoText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 15 },
 
-  milestoneBanner: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.card, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: T.border },
+  milestoneBanner: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: T.card, borderRadius: 5, padding: 12, borderWidth: 1, borderColor: T.border },
   milestoneBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
 
   // ── Hero / non-active ─────────────────────────────────────────────────────
-  hero: { backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border, padding: 18, gap: 10, overflow: "hidden" },
+  hero: { backgroundColor: T.card, borderRadius: 10, borderWidth: 1, borderColor: T.border, padding: 18, gap: 10, overflow: "hidden" },
   heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   heroEmoji: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   heroBadges: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingTop: 4 },
@@ -1063,7 +1063,7 @@ const s = StyleSheet.create({
   heroMetaText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textDim },
   heroMetaDot: { fontSize: 12, color: T.textDim },
 
-  card: { backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
+  card: { backgroundColor: T.card, borderRadius: 9, borderWidth: 1, borderColor: T.border, padding: 16, gap: 12 },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
 
   milestoneRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -1073,14 +1073,14 @@ const s = StyleSheet.create({
   milestonePct: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.textDim, minWidth: 32, textAlign: "right" },
 
   ctaArea: { gap: 10 },
-  ctaBtn: { borderRadius: 14, overflow: "hidden" },
+  ctaBtn: { borderRadius: 7, overflow: "hidden" },
   ctaBtnLocked: { opacity: 0.8 },
   ctaBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
   ctaBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.bg },
 
   notStartedBanner: {
     flexDirection: "row", alignItems: "flex-start", gap: 10,
-    backgroundColor: "rgba(255,144,48,0.10)", borderRadius: 14,
+    backgroundColor: "rgba(255,144,48,0.10)", borderRadius: 7,
     borderWidth: 1, borderColor: "rgba(255,144,48,0.25)", padding: 14,
   },
   notStartedText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 19 },

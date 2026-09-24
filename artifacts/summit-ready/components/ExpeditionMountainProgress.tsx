@@ -340,7 +340,7 @@ const s = StyleSheet.create({
   // ── Card ──
   card: {
     marginHorizontal: 14,
-    borderRadius:     18,
+    borderRadius:      9,
     backgroundColor:  "#080F20",
     borderWidth:      1,
     borderColor:      "rgba(255,255,255,0.08)",
@@ -392,7 +392,7 @@ const s = StyleSheet.create({
   stageCard: {
     width:            160,
     backgroundColor:  "#0D1729",
-    borderRadius:     14,
+    borderRadius:      7,
     borderWidth:       1,
     borderColor:      "rgba(255,255,255,0.08)",
     padding:          14,
@@ -498,7 +498,7 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginTop:        14,
     backgroundColor:  "#080F20",
-    borderRadius:     16,
+    borderRadius:      8,
     borderWidth:       1,
     borderColor:      "rgba(255,255,255,0.08)",
     overflow:         "hidden",
@@ -542,7 +542,7 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginTop:        14,
     backgroundColor:  "#080F20",
-    borderRadius:     16,
+    borderRadius:      8,
     borderWidth:       1,
     borderColor:      "rgba(255,255,255,0.09)",
     padding:          16,

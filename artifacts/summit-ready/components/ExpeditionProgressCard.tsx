@@ -441,7 +441,7 @@ export function ExpeditionProgressCard({
 const ch = StyleSheet.create({
   card: {
     marginHorizontal: CARD_MX,
-    borderRadius: 20, overflow: "hidden",
+    borderRadius: 10, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
@@ -455,7 +455,7 @@ const ch = StyleSheet.create({
 
   summaryCard: {
     marginHorizontal: CARD_MX, marginTop: 0,
-    borderRadius: 20, overflow: "hidden",
+    borderRadius: 10, overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     padding: 16,
@@ -468,7 +468,7 @@ const ch = StyleSheet.create({
 
 const sc = StyleSheet.create({
   card: {
-    width: 130, padding: 12, borderRadius: 16, gap: 5,
+    width: 130, padding: 12, borderRadius: 8, gap: 5,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },

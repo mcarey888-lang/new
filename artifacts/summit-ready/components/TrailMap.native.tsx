@@ -150,14 +150,14 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor, onInter
 const s = StyleSheet.create({
   container: {
     height: 240,
-    borderRadius: 16,
+    borderRadius: 16 / 2,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: T.border,
   },
   placeholder: {
     height: 240,
-    borderRadius: 16,
+    borderRadius: 16 / 2,
     borderWidth: 1,
     borderColor: T.border,
     backgroundColor: T.card,

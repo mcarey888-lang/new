@@ -207,7 +207,7 @@ export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
           )}
 
           {error && (
-            <View style={{ margin: 16, padding: 14, backgroundColor: T.orange + "15", borderRadius: 12, flexDirection: "row", gap: 8 }}>
+            <View style={{ margin: 16, padding: 14, backgroundColor: T.orange + "15", borderRadius: 6, flexDirection: "row", gap: 8 }}>
               <AlertTriangle size={14} color={T.orange} />
               <Text style={{ fontSize: 13, color: T.textMuted, fontFamily: "Inter_400Regular" }}>{error}</Text>
             </View>
@@ -432,7 +432,7 @@ const s = StyleSheet.create({
     marginHorizontal: 16, marginTop: 16, marginBottom: 10,
   },
   statCell: {
-    backgroundColor: "#142236", borderRadius: 10,
+    backgroundColor: "#142236", borderRadius: 5,
     paddingHorizontal: 12, paddingVertical: 8, alignItems: "center",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
@@ -443,7 +443,7 @@ const s = StyleSheet.create({
   card: {
     marginHorizontal: 16, marginBottom: 10,
     backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16, borderWidth: 1,
+    borderRadius: 8, borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
     padding: 14,
   },
@@ -486,7 +486,7 @@ const s = StyleSheet.create({
   },
   ctaBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "#9B7FD4", borderRadius: 14, paddingVertical: 15,
+    backgroundColor: "#9B7FD4", borderRadius: 7, paddingVertical: 15,
   },
   ctaBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });

@@ -199,7 +199,7 @@ export default function ReadinessDetailScreen() {
           entering={reduced ? undefined : FadeInDown.delay(MOTION.stagger).duration(MOTION.enter)}
           style={styles.targetWrap}
         >
-          <SRPanel radius={16} onPress={() => router.push("/setup?mode=change")} accessibilityLabel="Change your goal">
+          <SRPanel radius={8} onPress={() => router.push("/setup?mode=change")} accessibilityLabel="Change your goal">
             <View style={styles.targetRow}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.targetLabel}>Target mountain</Text>
@@ -241,7 +241,7 @@ export default function ReadinessDetailScreen() {
             onAction={() => router.push("/(tabs)/plan")}
           />
           {nextAction ? (
-            <SRPanel radius={18} style={{ marginTop: 10 }}>
+            <SRPanel radius={9} style={{ marginTop: 10 }}>
               <View style={styles.actionBody}>
                 <SRStatusPill
                   label={PILLAR_LABELS[nextAction.focusDimension] ?? "Focus"}
@@ -293,7 +293,7 @@ export default function ReadinessDetailScreen() {
               </View>
             </SRPanel>
           ) : (
-            <SRPanel radius={18} style={{ marginTop: 10 }}>
+            <SRPanel radius={9} style={{ marginTop: 10 }}>
               <View style={{ padding: 14 }}>
                 <SREmptyState
                   compact
@@ -344,7 +344,7 @@ export default function ReadinessDetailScreen() {
           <Text style={styles.evidenceIntro}>
             The activities Readiness used to calculate your score.
           </Text>
-          <SRPanel radius={16} style={{ marginTop: 10 }}>
+          <SRPanel radius={8} style={{ marginTop: 10 }}>
             {evidence.length === 0 ? (
               <View style={{ padding: 14 }}>
                 <SREmptyState
@@ -407,7 +407,7 @@ export default function ReadinessDetailScreen() {
         {/* ── Into the plan ────────────────────────────────────────── */}
         <View style={styles.section}>
           <SRPanel
-            radius={16}
+            radius={8}
             onPress={() => router.push("/(tabs)/plan")}
             accessibilityLabel="View your training plan"
           >
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   },
   projPill: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    paddingLeft: 11, paddingRight: 13, paddingVertical: 7, borderRadius: 999,
+    paddingLeft: 11, paddingRight: 13, paddingVertical: 7, borderRadius: 15,
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
   projPillValue: { fontSize: 13, lineHeight: 16, fontFamily: "Inter_700Bold", color: BASECAMP.text },
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   targetFactText: { fontSize: 11, lineHeight: 14, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
   targetChange: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 4,
-    height: 32, paddingLeft: 12, paddingRight: 9, borderRadius: 999,
+    height: 32, paddingLeft: 12, paddingRight: 9, borderRadius: 16,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   targetChangeText: { fontSize: 11, lineHeight: 14, fontFamily: "Inter_600SemiBold", color: BASECAMP.textStrong },

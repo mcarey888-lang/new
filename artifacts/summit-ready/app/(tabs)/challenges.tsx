@@ -115,7 +115,7 @@ function ChallengeCard({ c, onPress }: { c: ChallengeTemplate; onPress: () => vo
 
 const cc = StyleSheet.create({
   card: {
-    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "transparent", borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
     padding: 16, gap: 12, overflow: "hidden",
   },
   top: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
@@ -346,7 +346,7 @@ const s = StyleSheet.create({
   trophyWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
 
   statsStrip: {
-    flexDirection: "row", backgroundColor: "transparent", borderRadius: 16,
+    flexDirection: "row", backgroundColor: "transparent", borderRadius: 8,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.05)", padding: 16, justifyContent: "space-around",
   },
   statItem: { alignItems: "center", gap: 4 },
@@ -356,7 +356,7 @@ const s = StyleSheet.create({
 
   infoBox: {
     flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 16,
-    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.04)",
   },
   infoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
 
@@ -369,7 +369,7 @@ const s = StyleSheet.create({
   gridItem: {},
 
   featured: {
-    backgroundColor: "transparent", borderRadius: 20, borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: "transparent", borderRadius: 10, borderWidth: 1, borderColor: T.green + "40",
     padding: 24, gap: 12, overflow: "hidden",
   },
   featuredTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -383,12 +383,12 @@ const s = StyleSheet.create({
   featuredMetaDot: { fontSize: 13, color: T.textDim },
   startBtn: {
     flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start",
-    backgroundColor: T.green, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, marginTop: 4,
+    backgroundColor: T.green, borderRadius: 6, paddingHorizontal: 18, paddingVertical: 12, marginTop: 4,
   },
   startBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.bg },
 
   comingSoon: {
-    backgroundColor: "transparent", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "transparent", borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
     padding: 20, gap: 10, overflow: "hidden",
   },
   comingSoonTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },

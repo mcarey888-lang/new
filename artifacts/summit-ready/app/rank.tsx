@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   line: { width: 1, flex: 1, minHeight: 70, backgroundColor: BASECAMP.hairline },
   rankCard: {
-    flex: 1, marginBottom: 18, padding: 14, borderRadius: 16,
+    flex: 1, marginBottom: 18, padding: 14, borderRadius: 8,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
   rankHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
@@ -114,12 +114,12 @@ const styles = StyleSheet.create({
   requirementSummary: { marginTop: 10, fontSize: 11, lineHeight: 17, fontFamily: "Inter_500Medium", color: T.textDim },
   statusPill: {
     flexDirection: "row", gap: 5, alignItems: "center",
-    paddingHorizontal: 9, minHeight: 24, borderRadius: 999,
+    paddingHorizontal: 9, minHeight: 24, borderRadius: 12,
     backgroundColor: BASECAMP.accentDim, borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
   statusText: { fontSize: 10, fontFamily: "Inter_700Bold", color: BASECAMP.accent, letterSpacing: 0.6 },
   notice: {
-    marginTop: 4, padding: 15, borderRadius: 16,
+    marginTop: 4, padding: 15, borderRadius: 8,
     backgroundColor: BASECAMP.accentDim, borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
   noticeTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },

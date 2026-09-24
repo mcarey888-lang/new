@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   trustBanner: {
     backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 12,
+    borderRadius: 12 / 2,
     borderWidth: 1,
     borderColor: T.border,
     padding: 12,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   routeCard: {
     backgroundColor: T.card,
-    borderRadius: 16,
+    borderRadius: 16 / 2,
     borderWidth: 1,
     borderColor: T.border,
     padding: 16,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   whyBox: {
     backgroundColor: "rgba(0,0,0,0.15)",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 8 / 2,
     marginBottom: 14,
     borderLeftWidth: 2,
     borderLeftColor: T.blue + "50",
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     backgroundColor: T.surface,
-    borderRadius: 10,
+    borderRadius: 10 / 2,
     borderWidth: 1,
     borderColor: T.border,
   },

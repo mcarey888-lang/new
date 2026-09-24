@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   features: { gap: 10 },
   featureRow: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 8,
     borderWidth: 1, borderColor: T.border, paddingVertical: 14, paddingHorizontal: 16,
   },
   featureIconWrap: {
@@ -257,14 +257,14 @@ const styles = StyleSheet.create({
   featureText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.text, lineHeight: 20 },
   cta: { alignItems: "center", gap: 12 },
   ctaBtn: {
-    width: "100%", borderRadius: 18, overflow: "hidden",
+    width: "100%", borderRadius: 9, overflow: "hidden",
     shadowColor: BASECAMP.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 10,
   },
   ctaBtnGrad: { height: 58, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
   ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk, marginLeft: 10, flexShrink: 0 },
   signInLink: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   signInBtn: {
-    width: "100%", height: 50, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    width: "100%", height: 50, borderRadius: 9, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
     backgroundColor: "rgba(255,255,255,0.05)", alignItems: "center", justifyContent: "center",
   },
   signInBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: T.text },

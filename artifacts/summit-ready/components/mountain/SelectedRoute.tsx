@@ -45,7 +45,7 @@ export function SelectedRoute({
   const longDescription = !!description && description.length > 180;
 
   return (
-    <SRPanel radius={16} style={styles.panel} testID="selected-route">
+    <SRPanel radius={8} style={styles.panel} testID="selected-route">
       <View style={styles.head}>
         <View style={styles.headText}>
           <SREyebrow tone={EXPLORE.accent}>SELECTED ROUTE</SREyebrow>
@@ -140,7 +140,7 @@ export function SelectedRoute({
 function HeadlineTile({ fact }: { fact: PresentedFact }) {
   const Icon = HEADLINE_ICON[fact.key];
   return (
-    <SRSubPanel radius={12} style={styles.metric}>
+    <SRSubPanel radius={RADIUS.md / 2} style={styles.metric}>
       {Icon ? <Icon size={14} color={EXPLORE.accent} /> : null}
       <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {fact.value}
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
 
   footer: { padding: 13, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" },
   download: {
-    minHeight: 48, borderRadius: 13, flexDirection: "row",
+    minHeight: 48, borderRadius: 6.5, flexDirection: "row",
     alignItems: "center", justifyContent: "center", gap: 9,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -197,4 +197,4 @@ const styles = StyleSheet.create({
   absent: { fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
 });
 
-export const SELECTED_ROUTE_RADIUS = RADIUS.xl;
+export const SELECTED_ROUTE_RADIUS = RADIUS.xl / 2;

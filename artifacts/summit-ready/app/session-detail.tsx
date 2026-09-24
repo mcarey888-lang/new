@@ -203,7 +203,7 @@ const trk = StyleSheet.create({
      type and accent move into the approved language. */
   box: {
     backgroundColor: BASECAMP.panelSub,
-    borderRadius: 14,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: BASECAMP.panelSubBorder,
     padding: 14,
@@ -216,7 +216,7 @@ const trk = StyleSheet.create({
   logRow: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
   logLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   btn: {
-    width: 36, height: 36, borderRadius: 11,
+    width: 36, height: 36, borderRadius: 5.5,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     alignItems: "center", justifyContent: "center",
@@ -413,16 +413,19 @@ export default function SessionDetailScreen() {
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : null;
 
-  /* The hero is place photography or nothing. A gym session still belongs to
-     a summit, so it falls back to the objective the session is banked toward
-     — the same subject rule the rest of the app uses — rather than to any
-     invented imagery. */
+  /* Preview the requested stepper artwork for Incline Treadmill. Other
+     sessions keep their existing place-photography hero. */
   const heroPhotoSubject = inferredGymExercise
     ? sessionImageSubject({ mountainName: summitGoal?.mountainName ?? null })
     : heroSubject;
-  const heroImageSource: ImageSourcePropType | null = !imageError && heroPhotoSubject
-    ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
-    : null;
+  const previewExerciseHero = session?.label?.trim().toLowerCase() === "incline treadmill";
+  const heroImageSource: ImageSourcePropType | null = imageError
+    ? null
+    : previewExerciseHero
+      ? require("@/assets/images/exercise-stepper.png")
+      : heroPhotoSubject
+        ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
+        : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
 
@@ -491,16 +494,14 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero: the prescription, over place photography ──────────────
-            The existing mountain-image service, for the assigned hill or for
-            the summit the session is banked toward. Generated exercise
-            artwork never reaches this frame. A failure falls through to the
-            designed gradient rather than to a broken image. */}
+        {/* ── Hero: the prescription over the selected exercise artwork or
+            place photography. A failure falls back to the designed gradient. */}
         <SRHeroFrame
           source={heroImageSource}
           onImageError={() => setImageError(true)}
           minHeight={286}
           dim={0.96}
+          artwork={previewExerciseHero ? "generated" : "photo"}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
@@ -557,7 +558,7 @@ export default function SessionDetailScreen() {
             return (
               <View style={s.section}>
                 <SRSectionHeader title="Why this session" />
-                <SRPanel radius={16} style={{ marginTop: 10 }}>
+                <SRPanel radius={8} style={{ marginTop: 10 }}>
                   <View style={s.purposeBody}>
                     <Text style={s.purposeBuilds}>{purpose.builds}</Text>
                     {purpose.relationship ? (
@@ -574,7 +575,7 @@ export default function SessionDetailScreen() {
               omitted rather than shown as zero. */}
           <View style={s.section}>
             <SRSectionHeader title="The prescription" />
-            <SRPanel radius={16} style={{ marginTop: 10 }}>
+            <SRPanel radius={8} style={{ marginTop: 10 }}>
               <View style={s.statsGrid}>
                 <Stat value={session.duration} label="Duration" />
                 {session.targetElevation > 0 && (
@@ -607,7 +608,7 @@ export default function SessionDetailScreen() {
           {session.description ? (
             <View style={s.section}>
               <SRSectionHeader title="Coaching notes" />
-              <SRPanel radius={16} style={{ marginTop: 10 }}>
+              <SRPanel radius={8} style={{ marginTop: 10 }}>
                 <Text style={s.descText}>{session.description}</Text>
               </SRPanel>
             </View>
@@ -940,7 +941,7 @@ const s = StyleSheet.create({
   /* Not an SRPanel: SRPanel always paints its own dark gradient over the
      surface, which would swallow a filled action. */
   exercisePlate: {
-    borderRadius: 14,
+    borderRadius: 7,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: BASECAMP.hairline,
@@ -950,7 +951,7 @@ const s = StyleSheet.create({
 
   gpsPanel: {
     marginTop: 10,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: BASECAMP.accent,
     overflow: "hidden",
   },
@@ -985,7 +986,7 @@ const s = StyleSheet.create({
 
   submittedBanner: {
     flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12,
-    paddingVertical: 11, paddingHorizontal: 13, borderRadius: 12,
+    paddingVertical: 11, paddingHorizontal: 13, borderRadius: 6,
     backgroundColor: "rgba(36,239,164,0.09)",
     borderWidth: 1, borderColor: "rgba(36,239,164,0.28)",
   },

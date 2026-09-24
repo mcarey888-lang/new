@@ -407,7 +407,7 @@ const s = StyleSheet.create({
   sectionTitle: { ...TYPE.title, color: BASECAMP.text, fontSize: 21, marginBottom: 13 },
   stateCard: {
     flexDirection: "row", alignItems: "center", gap: 12, minHeight: 100,
-    paddingHorizontal: 14, paddingVertical: 15, borderRadius: RADIUS.lg,
+    paddingHorizontal: 14, paddingVertical: 15, borderRadius: RADIUS.lg / 2,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1,
   },
   activeCard: { borderColor: BASECAMP.accentLine, backgroundColor: BASECAMP.accentDim },
@@ -433,7 +433,7 @@ const s = StyleSheet.create({
   actionGroup: { gap: 7 },
   actionButton: {
     minHeight: 58, paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: RADIUS.md, flexDirection: "row", alignItems: "center", gap: 11,
+    borderRadius: RADIUS.md / 2, flexDirection: "row", alignItems: "center", gap: 11,
     overflow: "hidden",
   },
   expeditionButton: { backgroundColor: EXPLORE.accent },

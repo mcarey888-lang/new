@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: T.border,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   cards: { gap: 14 },
   card: {
-    borderRadius: 20,
+    borderRadius: 10,
     overflow: "hidden",
     borderWidth: 1,
   },

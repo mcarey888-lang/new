@@ -96,7 +96,7 @@ function LoggedHikeRow({
 
 const lh = StyleSheet.create({
   row: {
-    backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 7, borderWidth: 1, borderColor: T.border,
     padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 12,
   },
   iconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -108,7 +108,7 @@ const lh = StyleSheet.create({
   delBtn: { padding: 4, flexShrink: 0 },
   addBtn: {
     flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
-    backgroundColor: T.green + "18", borderRadius: 9,
+    backgroundColor: T.green + "18", borderRadius: 4.5,
     borderWidth: 1, borderColor: T.green + "40",
     paddingHorizontal: 9, paddingVertical: 5,
   },
@@ -166,7 +166,7 @@ function CategoryCard({ emoji = "⛰️", title, subtitle, color, onPress, badge
 
 const cc = StyleSheet.create({
   card: {
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 8, borderWidth: 1, borderColor: T.border,
     padding: 14, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden",
     minHeight: 72,
   },
@@ -360,12 +360,12 @@ const p = StyleSheet.create({
   title: { fontSize: 26, fontFamily: "Inter_700Bold", color: T.text },
   logFab: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: T.greenDim, borderRadius: 12, borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: T.greenDim, borderRadius: 6, borderWidth: 1, borderColor: T.green + "40",
     paddingHorizontal: 14, paddingVertical: 9,
   },
   logFabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
   statsStrip: {
-    flexDirection: "row", backgroundColor: T.card, borderRadius: 16,
+    flexDirection: "row", backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.border, padding: 14, justifyContent: "space-around",
   },
   statItem: { alignItems: "center", gap: 3 },
@@ -375,7 +375,7 @@ const p = StyleSheet.create({
   grid: { gap: 10 },
   createCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 8, borderWidth: 1, borderColor: T.border,
     padding: 14, overflow: "hidden",
   },
   createIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -385,7 +385,7 @@ const p = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.text },
   addBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: T.greenDim, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: T.greenDim, borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6,
     borderWidth: 1, borderColor: T.green + "30",
   },
   addBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },

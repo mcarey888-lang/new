@@ -35,7 +35,7 @@ export function CurrentStageCard({
   const gain = metres(gainM);
 
   return (
-    <SRPanel radius={18} style={styles.panel}>
+    <SRPanel radius={9} style={styles.panel}>
       <View style={styles.body}>
         <View style={styles.row}>
           <View style={styles.thumb}>
@@ -115,14 +115,14 @@ const styles = StyleSheet.create({
   factText: { ...TYPE.caption, fontSize: 11.5, color: BASECAMP.textMuted, flexShrink: 1 },
 
   primary: {
-    marginTop: 12, minHeight: 46, borderRadius: 13,
+    marginTop: 12, minHeight: 46, borderRadius: 6.5,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9,
     backgroundColor: EXPLORE.accent, paddingHorizontal: SP.md,
   },
   primaryText: { ...TYPE.bodyBold, fontSize: 14, color: EXPLORE.accentInk, flexShrink: 1 },
   disabled: { opacity: 0.5 },
   secondary: {
-    marginTop: 8, minHeight: 44, borderRadius: 13,
+    marginTop: 8, minHeight: 44, borderRadius: 6.5,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },

@@ -219,7 +219,7 @@ const st = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
   sheet: {
     backgroundColor: T.card,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderWidth: 1, borderColor: T.border,
     padding: 20, paddingBottom: 36,
   },
@@ -230,7 +230,7 @@ const st = StyleSheet.create({
   emptyHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", lineHeight: 18 },
   emptyBtn: {
     marginTop: 4, paddingHorizontal: 20, paddingVertical: 10,
-    borderRadius: 10, backgroundColor: T.greenDim,
+    borderRadius: 5, backgroundColor: T.greenDim,
     borderWidth: 1, borderColor: T.green + "50",
   },
   emptyBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green },
@@ -246,7 +246,7 @@ const st = StyleSheet.create({
   hillElev: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.orange },
   hillReps: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   cancelBtn: {
-    marginTop: 16, paddingVertical: 14, borderRadius: 14,
+    marginTop: 16, paddingVertical: 14, borderRadius: 7,
     borderWidth: 1, borderColor: T.border, alignItems: "center",
   },
   cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.textMuted },
@@ -267,13 +267,13 @@ const st = StyleSheet.create({
   },
   onlineSearchBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.blue + "12", borderRadius: 12,
+    backgroundColor: T.blue + "12", borderRadius: 6,
     borderWidth: 1, borderColor: T.blue + "30",
     paddingHorizontal: 14, paddingVertical: 12, marginVertical: 6,
   },
   onlineSearchText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.blue },
   searchResultCard: {
-    backgroundColor: T.blue + "0C", borderRadius: 14,
+    backgroundColor: T.blue + "0C", borderRadius: 7,
     borderWidth: 1, borderColor: T.blue + "30",
     marginBottom: 8, overflow: "hidden", paddingHorizontal: 8,
   },

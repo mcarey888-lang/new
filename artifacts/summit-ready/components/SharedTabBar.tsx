@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   iconSlot: {
     width: 36,
     height: 30,
-    borderRadius: 11,
+    borderRadius: 5.5,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 3,

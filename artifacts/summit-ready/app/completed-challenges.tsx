@@ -160,7 +160,7 @@ const s = StyleSheet.create({
   iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 
   emptyCard: {
-    backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 10, borderWidth: 1, borderColor: T.border,
     padding: 28, gap: 10, alignItems: "center", overflow: "hidden",
   },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.text, textAlign: "center" },
@@ -169,13 +169,13 @@ const s = StyleSheet.create({
     textAlign: "center", lineHeight: 19,
   },
   emptyBtn: {
-    marginTop: 6, backgroundColor: T.blue, borderRadius: 12,
+    marginTop: 6, backgroundColor: T.blue, borderRadius: 6,
     paddingHorizontal: 20, paddingVertical: 12,
   },
   emptyBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 
   card: {
-    backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 10, borderWidth: 1, borderColor: T.border,
     padding: 18, gap: 10, overflow: "hidden",
   },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -190,7 +190,7 @@ const s = StyleSheet.create({
   cardTagline: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
 
   statsRow: {
-    flexDirection: "row", backgroundColor: T.surface, borderRadius: 12,
+    flexDirection: "row", backgroundColor: T.surface, borderRadius: 6,
     borderWidth: 1, borderColor: T.border, padding: 12,
     justifyContent: "space-around", alignItems: "center",
   },

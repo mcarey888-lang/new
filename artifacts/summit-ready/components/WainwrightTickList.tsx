@@ -188,7 +188,7 @@ export function WainwrightTickList({ challengeId, color, isActive }: Props) {
 
 const wt = StyleSheet.create({
   container: {
-    backgroundColor: T.card, borderRadius: 18,
+    backgroundColor: T.card, borderRadius: 9,
     borderWidth: 1, borderColor: T.border,
     overflow: "hidden",
   },

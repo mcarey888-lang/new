@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     alignItems:        "center",
     gap:               10,
     backgroundColor:   "rgba(0,0,0,0.72)",
-    borderRadius:      16,
+    borderRadius:       8,
     paddingHorizontal: 20,
     paddingVertical:   14,
     borderWidth:        1,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   devRestoreBtn: {
     backgroundColor:   "rgba(255,255,255,0.12)",
-    borderRadius:       10,
+    borderRadius:        5,
     paddingHorizontal:  16,
     paddingVertical:     9,
     borderWidth:         1,

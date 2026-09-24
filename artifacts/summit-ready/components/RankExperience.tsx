@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: 14,
     marginBottom: 12,
-    borderRadius: 20,
+    borderRadius: 20 / 2,
     backgroundColor: "rgba(255,255,255,0.03)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   requirementsBox: {
     backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 12,
+    borderRadius: 12 / 2,
     paddingHorizontal: 12,
     marginBottom: 16,
   },
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 10 / 2,
     backgroundColor: T.orange + "12",
     borderWidth: 1,
     borderColor: T.orange + "30",

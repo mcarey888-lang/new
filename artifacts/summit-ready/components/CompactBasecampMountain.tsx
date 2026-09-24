@@ -106,7 +106,7 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: BASECAMP.gutter,
-    borderRadius: 18,
+    borderRadius: 9,
     backgroundColor: BASECAMP.ink,
     borderWidth: 1,
     borderColor: BASECAMP.panelBorder,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     borderColor: EXPLORE.accentLine,
     paddingHorizontal: 10,
     minHeight: 30,
-    borderRadius: 999,
+    borderRadius: 8,
     gap: 3,
     flexShrink: 0,
   },

@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   projectedValue: { color: BASECAMP.accent },
   cta: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 5,
-    height: 34, paddingHorizontal: 11, borderRadius: 10,
+    height: 34, paddingHorizontal: 11, borderRadius: 5,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },

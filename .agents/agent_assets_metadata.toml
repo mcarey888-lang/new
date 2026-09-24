@@ -452,3 +452,17 @@ mtime_ms = 1790190778936
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/54caac4d-3f2e-4ea8-bdcc-42b2529a5a2b/0fb1970d-7abd-4b0c-a7f9-fc10bbccc78f"
 storage_version_token = "1790191161310235"
 content_type = "image/png"
+
+[[outputs]]
+id = "Ov6p0V7p5NwupAhKBD3c9"
+uri = "file://artifacts/summit-ready/assets/images/exercise-treadmill-right-half.png"
+type = "image"
+title = "Incline Treadmill — cropped artwork"
+description = "The right 50% of the exercise image now used in the mission card."
+logical_id = "85bb07a3-1da8-4d5f-a8ae-83051493627a"
+content_hash = "sha256:a73faab24d98edc892ba48ae730527aef60884f065495e5d5bc267ce7063941e"
+size = 979511
+mtime_ms = 1790274710064
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/85bb07a3-1da8-4d5f-a8ae-83051493627a/4f09b892-b271-4c3b-85e8-e25b35496f5d"
+storage_version_token = "1790274929664245"
+content_type = "image/png"

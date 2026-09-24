@@ -201,14 +201,14 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, gap: 20 },
   header: { flexDirection: "row", alignItems: "center", gap: 14 },
   backBtn: {
-    width: 38, height: 38, borderRadius: 12,
+    width: 38, height: 38, borderRadius: 6,
     backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center", justifyContent: "center",
   },
   title: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   statusCard: {
-    backgroundColor: T.card, borderRadius: 18,
+    backgroundColor: T.card, borderRadius: 9,
     borderWidth: 1, borderColor: T.border,
     padding: 16, gap: 6, overflow: "hidden",
   },
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   compareCol: {
     flex: 1, backgroundColor: T.card,
-    borderRadius: 16, borderWidth: 1, borderColor: T.border,
+    borderRadius: 8, borderWidth: 1, borderColor: T.border,
     padding: 12, gap: 8,
   },
   compareColPro: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   comparePlanNamePro: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.green },
   compareRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
   compareText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  upgradeBtn: { borderRadius: 16, overflow: "hidden" },
+  upgradeBtn: { borderRadius: 8, overflow: "hidden" },
   upgradeBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 15,
@@ -245,19 +245,19 @@ const styles = StyleSheet.create({
   upgradeBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   actionRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     paddingVertical: 14, paddingHorizontal: 16,
   },
   actionText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: T.white },
   restoreMsg: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    borderRadius: 12, padding: 12, borderWidth: 1,
+    borderRadius: 6, padding: 12, borderWidth: 1,
   },
   restoreMsgText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
   noteCard: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,
-    backgroundColor: T.surface, borderRadius: 12,
+    backgroundColor: T.surface, borderRadius: 6,
     padding: 12, borderWidth: 1, borderColor: T.border,
   },
   noteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, lineHeight: 17 },

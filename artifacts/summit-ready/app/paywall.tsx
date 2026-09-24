@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   closeBtn: {
-    width: HIT.minTarget, height: HIT.minTarget, borderRadius: 14,
+    width: HIT.minTarget, height: HIT.minTarget, borderRadius: 7,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     alignItems: "center", justifyContent: "center",
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   featuresSection: {
-    backgroundColor: BASECAMP.panelSub, borderRadius: 20,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 10,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     padding: 16, gap: 14,
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   planSection: { gap: 12 },
   trialBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    backgroundColor: BASECAMP.accentDim, borderRadius: 12,
+    backgroundColor: BASECAMP.accentDim, borderRadius: 6,
     minHeight: 42, paddingHorizontal: 14,
     borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   planRow: { flexDirection: "row", gap: 10 },
   planCard: {
     flex: 1, backgroundColor: BASECAMP.panelSub,
-    borderRadius: 16, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    borderRadius: 8, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     padding: 14, gap: 4, alignItems: "center", minHeight: HIT.minTarget + 40,
     overflow: "hidden", position: "relative",
   },
@@ -481,18 +481,18 @@ const styles = StyleSheet.create({
   planPer: { fontSize: 11, lineHeight: 14, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.orangeDim, borderRadius: 12,
+    backgroundColor: T.orangeDim, borderRadius: 6,
     padding: 12, borderWidth: 1, borderColor: T.orange + "30",
   },
   errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange },
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: BASECAMP.accentDim, borderRadius: 12,
+    backgroundColor: BASECAMP.accentDim, borderRadius: 6,
     padding: 12, borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
   successText: { flex: 1, ...TYPE.small, fontSize: 13, color: BASECAMP.accent },
   ctaSection: { alignItems: "center", gap: 10 },
-  ctaBtn: { width: "100%", borderRadius: 16, overflow: "hidden" },
+  ctaBtn: { width: "100%", borderRadius: 8, overflow: "hidden" },
   ctaGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, minHeight: 54,
@@ -501,14 +501,14 @@ const styles = StyleSheet.create({
   cancelNote: { fontSize: 12, lineHeight: 16, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   offeringsErrorBox: {
     flexDirection: "column", alignItems: "center", gap: 6,
-    backgroundColor: T.orangeDim, borderRadius: 14,
+    backgroundColor: T.orangeDim, borderRadius: 7,
     padding: 14, borderWidth: 1, borderColor: T.orange + "30",
     width: "100%",
   },
   offeringsErrorNote: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange, textAlign: "center", lineHeight: 18 },
   retryBtn: {
     paddingHorizontal: 20, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1, borderColor: T.orange + "50",
+    borderRadius: 5, borderWidth: 1, borderColor: T.orange + "50",
     backgroundColor: T.orange + "15",
   },
   retryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange },
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
 
   scoreCard: {
     flexDirection: "row", alignItems: "center", gap: 16,
-    borderRadius: 20, borderWidth: 1.5,
+    borderRadius: 10, borderWidth: 1.5,
     padding: 18, overflow: "hidden",
   },
   scoreLeft: { alignItems: "flex-start", gap: 6 },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   scoreOutOf: { fontSize: 16, fontFamily: "Inter_400Regular", color: T.textMuted },
   statusPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_700Bold" },
@@ -547,7 +547,7 @@ const confirmStyles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", paddingHorizontal: 32,
   },
   sheet: {
-    backgroundColor: T.card, borderRadius: 20,
+    backgroundColor: T.card, borderRadius: 10,
     borderWidth: 1, borderColor: T.border,
     padding: 24, gap: 12, width: "100%",
   },
@@ -565,12 +565,12 @@ const confirmStyles = StyleSheet.create({
   },
   btnRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   cancelBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14,
+    flex: 1, paddingVertical: 13, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
   cancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  confirmBtn: { flex: 2, borderRadius: 14, overflow: "hidden" },
+  confirmBtn: { flex: 2, borderRadius: 7, overflow: "hidden" },
   confirmGrad: {
     paddingVertical: 13, alignItems: "center", justifyContent: "center",
   },

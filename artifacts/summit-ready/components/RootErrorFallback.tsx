@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 20,
     borderColor: "#334155",
-    borderRadius: 12,
+    borderRadius: 12 / 2,
     borderWidth: 1,
     backgroundColor: "#111827",
   },
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 50,
     marginTop: 16,
-    borderRadius: 14,
+    borderRadius: 14 / 2,
     backgroundColor: "#2AB860",
   },
   buttonText: {

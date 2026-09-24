@@ -179,7 +179,7 @@ function HillActionCard({
 const hacStyles = StyleSheet.create({
   container: {
     marginTop: 8,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
     backgroundColor: "rgba(255,255,255,0.03)",
@@ -210,7 +210,7 @@ const hacStyles = StyleSheet.create({
   btnRow: { flexDirection: "row", gap: 8 },
   btn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 5, paddingVertical: 9, borderRadius: 10, borderWidth: 1,
+    gap: 5, paddingVertical: 9, borderRadius: 5, borderWidth: 1,
   },
   btnTrack: { backgroundColor: T.blueDim, borderColor: T.blue + "40" },
   btnComplete: { backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.12)" },
@@ -590,7 +590,7 @@ const rsStyles = StyleSheet.create({
   },
   logLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
   btn: {
-    width: 26, height: 26, borderRadius: 8,
+    width: 26, height: 26, borderRadius: 4,
     backgroundColor: T.surface,
     borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
@@ -1069,7 +1069,7 @@ const celebStyles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: T.green + "55",
     backgroundColor: T.card,
@@ -1138,7 +1138,7 @@ const celebStyles = StyleSheet.create({
   },
   nextWeekBtn: {
     flex: 1.5,
-    borderRadius: 14,
+    borderRadius: 7,
     overflow: "hidden",
   },
   nextWeekInner: {
@@ -1158,7 +1158,7 @@ const celebStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 13,
-    borderRadius: 14,
+    borderRadius: 7,
     backgroundColor: T.surface,
     borderWidth: 1,
     borderColor: T.border,
@@ -1389,7 +1389,7 @@ export default function PlanScreen() {
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
         <TouchableOpacity
           onPress={() => router.push("/setup")}
-          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: T.green }}
+          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 7, backgroundColor: T.green }}
         >
           <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Set up my summit</Text>
         </TouchableOpacity>
@@ -1406,7 +1406,7 @@ export default function PlanScreen() {
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: T.white }}>No plan yet</Text>
         <TouchableOpacity
           onPress={() => router.push("/setup")}
-          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, backgroundColor: T.green }}
+          style={{ paddingHorizontal: 24, paddingVertical: 13, borderRadius: 7, backgroundColor: T.green }}
         >
           <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Set up my summit</Text>
         </TouchableOpacity>
@@ -1848,7 +1848,7 @@ export default function PlanScreen() {
                 same params, the hill picker and the editor open unchanged. */}
             <View style={dash.section} {...missionPanResponder.panHandlers}>
               {selectedSession && viewedWeek && selectedSessionIdx !== undefined ? (
-                <SRPanel radius={18}>
+                <SRPanel radius={9}>
                   {/* The session's own photograph, bleeding in from the right
                       as the approved panel has it. Only ever a place, and only
                       when one is known — see `missionBleedUri`. */}
@@ -1984,7 +1984,7 @@ export default function PlanScreen() {
               ) : (
                 /* A rest day is a line, not a page. Recovery stays clearly
                    stated without taking the room a session needs. */
-                <SRPanel radius={18} testID="plan-rest-day">
+                <SRPanel radius={9} testID="plan-rest-day">
                   <View style={dash.restRow}>
                     <View style={dash.restMark}>
                       <Moon size={15} color={BASECAMP.textMuted} />
@@ -2109,7 +2109,7 @@ export default function PlanScreen() {
             {/* ── Into the hills ───────────────────────────────────── */}
             <View style={dash.section}>
               <SRPanel
-                radius={16}
+                radius={8}
                 onPress={() => router.push("/(tabs)/hills")}
                 accessibilityLabel="Find hills that match your plan"
               >
@@ -2134,7 +2134,7 @@ export default function PlanScreen() {
             <SRSectionHeader title={`${totalWeeks} weeks · ${weeksLeft} remaining`} />
 
             {planAdjustNote ? (
-              <SRPanel radius={16} style={{ marginTop: 10 }}>
+              <SRPanel radius={8} style={{ marginTop: 10 }}>
                 <View style={dash.adjustRow}>
                   <Cpu size={15} color={BASECAMP.accent} />
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -2197,7 +2197,7 @@ export default function PlanScreen() {
                   return (
                     <SRPanel
                       key={week.weekNumber}
-                      radius={18}
+                      radius={9}
                       onPress={() => router.push("/paywall")}
                       accessibilityLabel={`Unlock the remaining ${trainingPlan.length - 1} weeks of your plan`}
                     >
@@ -2392,7 +2392,7 @@ const editStyles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: T.card,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 12, borderTopRightRadius: 12,
     borderWidth: 1, borderColor: T.border,
     padding: 20, paddingBottom: 36, gap: 10,
   },
@@ -2421,7 +2421,7 @@ const editStyles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4,
   },
   effortPip: {
-    width: 30, height: 30, borderRadius: 8, borderWidth: 1.5,
+    width: 30, height: 30, borderRadius: 4, borderWidth: 1.5,
   },
   effortLabel: {
     fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.orange, marginLeft: 4,
@@ -2430,7 +2430,7 @@ const editStyles = StyleSheet.create({
     flexDirection: "row", gap: 10, marginTop: 8,
   },
   cancelBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14,
+    flex: 1, paddingVertical: 13, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
@@ -2438,7 +2438,7 @@ const editStyles = StyleSheet.create({
     fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.textMuted,
   },
   saveBtn: {
-    flex: 2, borderRadius: 14, overflow: "hidden",
+    flex: 2, borderRadius: 7, overflow: "hidden",
   },
   saveBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -2453,7 +2453,7 @@ const editStyles = StyleSheet.create({
   swapOption: {
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingVertical: 12, paddingHorizontal: 14,
-    backgroundColor: T.surface, borderRadius: 14,
+    backgroundColor: T.surface, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
   },
   swapIcon: {
@@ -2468,7 +2468,7 @@ const editStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   weekCard: {
     backgroundColor: BASECAMP.panelSub,
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: BASECAMP.panelBorder,
     marginBottom: 8,
@@ -2561,7 +2561,7 @@ const styles = StyleSheet.create({
   },
   submitWeekBtn: {
     marginTop: 12,
-    borderRadius: 12,
+    borderRadius: 6,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: BASECAMP.accentLine,
@@ -2637,7 +2637,7 @@ const dash = StyleSheet.create({
   weekHeadBar: { width: 84, flexShrink: 0 },
   weekRail: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 11 },
   weekCard: {
-    width: 116, borderRadius: 15, overflow: "hidden",
+    width: 116, borderRadius: 7.5, overflow: "hidden",
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -2691,7 +2691,7 @@ const dash = StyleSheet.create({
   dayCell: {
     flex: 1, minWidth: 0, alignItems: "center",
     paddingVertical: 8, paddingHorizontal: 1, gap: 3,
-    borderRadius: 12,
+    borderRadius: 6,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -2818,7 +2818,7 @@ const dash = StyleSheet.create({
   lockCta: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
     marginTop: 6, alignSelf: "stretch", minHeight: HIT.minTarget,
-    borderRadius: 12, backgroundColor: BASECAMP.accent,
+    borderRadius: 6, backgroundColor: BASECAMP.accent,
   },
   lockCtaText: {
     fontSize: 12, lineHeight: 16, fontFamily: "Inter_700Bold",

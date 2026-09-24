@@ -137,7 +137,7 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
 
   return (
     <SRPanel
-      radius={16}
+      radius={8}
       style={styles.tile}
       onPress={onPress}
       accessibilityLabel="Elevation Bank"
@@ -162,7 +162,7 @@ function WeekTile({ week, onPress }: { week: WeekProgress; onPress: () => void }
   const bar = barGeometry(week.bars.length);
   return (
     <SRPanel
-      radius={16}
+      radius={8}
       style={styles.tile}
       onPress={onPress}
       accessibilityLabel={`This week: ${week.completed} of ${week.total} sessions complete`}

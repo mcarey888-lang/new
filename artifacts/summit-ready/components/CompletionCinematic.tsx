@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "rgba(61,211,127,0.28)",
     backgroundColor: "rgba(5,18,14,0.62)",
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     width:           "100%",
     height:          54,
-    borderRadius:    14,
+    borderRadius:     7,
     backgroundColor: T.green,
     alignItems:      "center",
     justifyContent:  "center",
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   continueBtn: {
     width:           "100%",
     height:          54,
-    borderRadius:    14,
+    borderRadius:     7,
     backgroundColor: "rgba(255,255,255,0.1)",
     alignItems:      "center",
     justifyContent:  "center",

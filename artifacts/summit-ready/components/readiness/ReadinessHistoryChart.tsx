@@ -40,7 +40,7 @@ export function ReadinessHistoryChart({
   const labelEvery = plotted && plotted.points.length > 5 ? 2 : 1;
 
   return (
-    <SRPanel radius={16} style={styles.panel}>
+    <SRPanel radius={16 / 2} style={styles.panel}>
       <View style={styles.inner}>
         <View style={styles.head}>
           <SRSectionHeader

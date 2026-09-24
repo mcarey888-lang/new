@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     height: HIT.minTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
+    borderRadius: 22 / 2,
     backgroundColor: BASECAMP.glass,
     borderWidth: 1,
     borderColor: BASECAMP.glassBorder,

@@ -635,7 +635,7 @@ export function HillPlannerSection({ targetValue, metric, color, currentProgress
 
 const s = StyleSheet.create({
   container: {
-    backgroundColor: T.card, borderRadius: 18, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.card, borderRadius: 9, borderWidth: 1, borderColor: T.border,
     padding: 16, gap: 14, overflow: "hidden",
   },
   header: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
@@ -643,12 +643,12 @@ const s = StyleSheet.create({
   title: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.text },
   subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17 },
 
-  hikeCount: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: T.surface, borderRadius: 10, padding: 10 },
+  hikeCount: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: T.surface, borderRadius: 5, padding: 10 },
   hikeCountText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   selectedList: { gap: 8 },
   selectedCard: {
-    backgroundColor: T.surface, borderRadius: 13, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.surface, borderRadius: 6.5, borderWidth: 1, borderColor: T.border,
     padding: 12, gap: 10, overflow: "hidden",
   },
   selectedTop: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
@@ -661,7 +661,7 @@ const s = StyleSheet.create({
   repRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   repControls: { flexDirection: "row", alignItems: "center", gap: 6 },
   repBtn: {
-    width: 30, height: 30, backgroundColor: T.card, borderRadius: 8,
+    width: 30, height: 30, backgroundColor: T.card, borderRadius: 4,
     alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: T.border,
   },
@@ -690,7 +690,7 @@ const s = StyleSheet.create({
   },
   searchInput: { flex: 1, minWidth: 0, fontSize: 13, fontFamily: "Inter_400Regular", color: T.text, paddingVertical: 10 },
   searchBtn: {
-    width: 44, height: 44, borderRadius: 11,
+    width: 44, height: 44, borderRadius: 5.5,
     alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
 
@@ -699,7 +699,7 @@ const s = StyleSheet.create({
 
   resultCard: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.surface, borderRadius: 6, borderWidth: 1, borderColor: T.border,
     padding: 12,
   },
   resultEmoji: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -707,7 +707,7 @@ const s = StyleSheet.create({
   resultMeta: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
   resultMetaText: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   resultMetaDot: { fontSize: 11, color: T.textDim },
-  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 8, flexShrink: 0 },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 4.5, paddingHorizontal: 11, paddingVertical: 8, flexShrink: 0 },
   addBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.bg },
 
   hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center", paddingVertical: 4 },
@@ -718,20 +718,20 @@ const s = StyleSheet.create({
 
   inlineReps: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 },
   inlineRepBtn: {
-    width: 26, height: 26, borderRadius: 7, backgroundColor: T.card,
+    width: 26, height: 26, borderRadius: 3.5, backgroundColor: T.card,
     borderWidth: 1, borderColor: T.border, alignItems: "center", justifyContent: "center",
   },
   inlineRepVal: { fontSize: 15, fontFamily: "Inter_700Bold", minWidth: 20, textAlign: "center" },
 
   logBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    borderRadius: 13, paddingVertical: 14,
+    borderRadius: 6.5, paddingVertical: 14,
   },
   logBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.bg },
 
   successRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.green + "18", borderRadius: 10, borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: T.green + "18", borderRadius: 5, borderWidth: 1, borderColor: T.green + "40",
     padding: 12,
   },
   successText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green, flex: 1 },
@@ -753,7 +753,7 @@ const s = StyleSheet.create({
   myHillsScroll: { gap: 8, paddingBottom: 2 },
   myHillChip: {
     flexDirection: "row", alignItems: "center", gap: 9,
-    backgroundColor: T.surface, borderRadius: 12, borderWidth: 1, borderColor: T.border,
+    backgroundColor: T.surface, borderRadius: 6, borderWidth: 1, borderColor: T.border,
     padding: 10, width: 190,
   },
   myHillChipEmoji: {
@@ -763,7 +763,7 @@ const s = StyleSheet.create({
   myHillChipName: { fontSize: 12, fontFamily: "Inter_700Bold", color: T.text },
   myHillChipMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
   myHillAddBtn: {
-    width: 28, height: 28, borderRadius: 8,
+    width: 28, height: 28, borderRadius: 4,
     alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
 });

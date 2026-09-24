@@ -694,7 +694,7 @@ const adStyles = StyleSheet.create({
   dayBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 18, paddingVertical: 13,
-    borderRadius: 14, borderWidth: 1.5, borderColor: T.border,
+    borderRadius: 7, borderWidth: 1.5, borderColor: T.border,
     backgroundColor: T.card,
   },
   dayBtnActive: { borderColor: T.green + "70", backgroundColor: T.greenDim },
@@ -970,7 +970,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 18, paddingBottom: 12,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 11,
+    width: 36, height: 36, borderRadius: 5.5,
     backgroundColor: T.surface, borderWidth: 1, borderColor: T.border,
     alignItems: "center", justifyContent: "center",
   },
@@ -1000,7 +1000,7 @@ const s = StyleSheet.create({
   optionList: { gap: 10 },
   optionCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, overflow: "hidden",
   },
@@ -1026,7 +1026,7 @@ const s = StyleSheet.create({
   chip: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 22, borderWidth: 1.5, borderColor: T.border,
+    borderRadius: 11, borderWidth: 1.5, borderColor: T.border,
     backgroundColor: T.surface,
   },
   chipEmoji: { fontSize: 14 },
@@ -1045,7 +1045,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
   },
   suggestionsCard: {
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1.5, borderColor: T.green + "40",
     overflow: "hidden", marginTop: -8,
   },
@@ -1065,12 +1065,12 @@ const s = StyleSheet.create({
 
   stepperRow: {
     flexDirection: "row", alignItems: "center", gap: 20,
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 16, alignSelf: "flex-start",
   },
   stepperBtn: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 40, height: 40, borderRadius: 6,
     backgroundColor: T.surface, alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: T.border,
   },
@@ -1090,7 +1090,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: T.border,
     backgroundColor: T.bg + "F0",
   },
-  nextBtn: { borderRadius: 18, overflow: "hidden" },
+  nextBtn: { borderRadius: 9, overflow: "hidden" },
   nextBtnGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, paddingVertical: 17,
@@ -1104,8 +1104,8 @@ const s = StyleSheet.create({
   },
   baselineSheet: {
     backgroundColor: T.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
     borderWidth: 1,
     borderColor: T.border,
     padding: 28,
@@ -1137,7 +1137,7 @@ const s = StyleSheet.create({
   },
   baselineBtn: {
     backgroundColor: T.green,
-    borderRadius: 14,
+    borderRadius: 7,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 6,
@@ -1153,7 +1153,7 @@ const s = StyleSheet.create({
     textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8,
   },
   catchSelectedBox: {
-    backgroundColor: T.card, borderRadius: 16,
+    backgroundColor: T.card, borderRadius: 8,
     borderWidth: 1.5, borderColor: T.green + "40",
     padding: 12, gap: 8, marginBottom: 4,
   },
@@ -1162,14 +1162,14 @@ const s = StyleSheet.create({
   catchSelectedName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.green },
   catchMonthRow: { flexDirection: "row", gap: 6, paddingBottom: 2 },
   catchChip: {
-    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 10,
     borderWidth: 1.5, borderColor: T.border, backgroundColor: T.surface,
   },
   catchChipActive: { borderColor: T.green + "80", backgroundColor: T.green + "18" },
   catchChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
   catchPeakCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.border,
     padding: 12, marginBottom: 6,
   },
@@ -1188,7 +1188,7 @@ const s = StyleSheet.create({
   },
   catchCustomBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: T.green },
   catchCustomForm: {
-    backgroundColor: T.card, borderRadius: 14,
+    backgroundColor: T.card, borderRadius: 7,
     borderWidth: 1, borderColor: T.border, padding: 12,
   },
   catchCustomNameWrap: {
@@ -1211,7 +1211,7 @@ const s = StyleSheet.create({
   // ── Search-first hill lookup ──────────────────────────────────────────────
   catchSearchRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: T.surface, borderRadius: 14,
+    backgroundColor: T.surface, borderRadius: 7,
     borderWidth: 1, borderColor: T.blue + "40",
     height: 50, marginBottom: 10, gap: 8,
   },
@@ -1221,7 +1221,7 @@ const s = StyleSheet.create({
   },
   catchResultCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: T.greenDim, borderRadius: 14,
+    backgroundColor: T.greenDim, borderRadius: 7,
     borderWidth: 1.5, borderColor: T.green + "50",
     padding: 14, marginBottom: 8,
   },
@@ -1233,7 +1233,7 @@ const s = StyleSheet.create({
   catchResultAddBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, backgroundColor: T.green + "20",
+    borderRadius: 5, backgroundColor: T.green + "20",
     borderWidth: 1, borderColor: T.green + "40",
   },
   catchResultAddText: {

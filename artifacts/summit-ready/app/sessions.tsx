@@ -363,7 +363,7 @@ const s = StyleSheet.create({
 
   strip: {
     flexDirection: "row",
-    backgroundColor: T.card, borderRadius: 18,
+    backgroundColor: T.card, borderRadius: 9,
     borderWidth: 1, borderColor: T.cardBorder,
     paddingVertical: 16, marginBottom: 14,
   },
@@ -378,7 +378,7 @@ const s = StyleSheet.create({
   tab: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1,
+    borderRadius: 5, borderWidth: 1,
     backgroundColor: T.surface, borderColor: T.border,
   },
   tabActive: {
@@ -397,7 +397,7 @@ const s = StyleSheet.create({
   tabBadgeTextActive: { color: T.green },
 
   card: {
-    backgroundColor: T.card, borderRadius: 18,
+    backgroundColor: T.card, borderRadius: 9,
     borderWidth: 1, borderColor: T.cardBorder,
     padding: 14, marginBottom: 10, overflow: "hidden", gap: 10,
   },
@@ -423,7 +423,7 @@ const s = StyleSheet.create({
   completedPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
   markCompletePill: {
     flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
-    backgroundColor: T.surface, borderRadius: 9,
+    backgroundColor: T.surface, borderRadius: 4.5,
     borderWidth: 1, borderColor: T.border,
     paddingHorizontal: 9, paddingVertical: 5, marginBottom: 2,
   },
@@ -433,7 +433,7 @@ const s = StyleSheet.create({
   addToPlanBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     alignSelf: "flex-start",
-    backgroundColor: T.green + "18", borderRadius: 10,
+    backgroundColor: T.green + "18", borderRadius: 5,
     borderWidth: 1, borderColor: T.green + "40",
     paddingHorizontal: 10, paddingVertical: 6,
   },

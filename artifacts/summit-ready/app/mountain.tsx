@@ -323,7 +323,7 @@ export default function MountainDetailScreen() {
         {/* ── Not in the verified catalogue ─────────────────────────────── */}
         {mountain.fallback ? (
           <View style={styles.gutter}>
-            <SRPanel radius={16} style={styles.fallbackPanel}>
+            <SRPanel radius={8} style={styles.fallbackPanel}>
               <View style={styles.fallbackRow}>
                 <Info size={16} color={EXPLORE.unverified} />
                 <View style={styles.fallbackText}>
@@ -340,7 +340,7 @@ export default function MountainDetailScreen() {
           entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(360)}
           style={styles.gutter}
         >
-          <SRPanel radius={16} style={styles.overviewPanel}>
+          <SRPanel radius={8} style={styles.overviewPanel}>
             <View style={styles.overviewRow}>
               {mountain.overview.map(f => (
                 <View key={f.key} style={styles.overviewItem}>
@@ -394,7 +394,7 @@ export default function MountainDetailScreen() {
                   />
                   {route.key === selectedKey ? (
                     recordPending ? (
-                      <SRPanel radius={16} style={styles.pending}>
+                      <SRPanel radius={8} style={styles.pending}>
                         <ActivityIndicator color={EXPLORE.accent} />
                         <Text style={styles.pendingText}>Reading route detail…</Text>
                       </SRPanel>
@@ -405,7 +405,7 @@ export default function MountainDetailScreen() {
                         mountainSummitElevation={mountain.summitElevation}
                       />
                     ) : (
-                      <SRPanel radius={16} style={styles.pending}>
+                      <SRPanel radius={8} style={styles.pending}>
                         <Text style={styles.pendingText}>
                           {recordFailure
                             ? `Canonical route detail is unavailable (${recordFailure}). No route geometry is being used.`
@@ -430,7 +430,7 @@ export default function MountainDetailScreen() {
         >
           <View style={styles.gutter}>
             <SRSectionHeader title="Practical information" />
-            <SRPanel radius={16} style={styles.practicalPanel}>
+            <SRPanel radius={8} style={styles.practicalPanel}>
               <FactList facts={mountain.practical} />
             </SRPanel>
             <Footnote>{PRACTICAL_FOOTNOTE}</Footnote>

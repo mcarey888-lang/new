@@ -259,13 +259,13 @@ const styles = StyleSheet.create({
   },
   devBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "rgba(255,165,0,0.9)", letterSpacing: 1 },
 
-  mountainCard: { width: "100%", borderRadius: 16 },
+  mountainCard: { width: "100%", borderRadius: 8 },
 
   statsRow: {
     flexDirection: "row", gap: 8,
   },
   statPill: {
-    flex: 1, alignItems: "center", padding: 10, borderRadius: 12,
+    flex: 1, alignItems: "center", padding: 10, borderRadius: 6,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     gap: 2,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   statSub:   { fontSize: 9,  fontFamily: "Inter_400Regular", color: T.textDim, textAlign: "center" },
 
   sliderCard: {
-    padding: 16, borderRadius: 14,
+    padding: 16, borderRadius: 7,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   tickLabel: { fontSize: 8, fontFamily: "Inter_700Bold", color: T.textDim },
 
   stagesCard: {
-    padding: 14, borderRadius: 14,
+    padding: 14, borderRadius: 7,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
 
   summitBanner: {
     flexDirection: "row", alignItems: "center", gap: 10, padding: 14,
-    borderRadius: 12, backgroundColor: "rgba(255,215,0,0.12)",
+    borderRadius: 6, backgroundColor: "rgba(255,215,0,0.12)",
     borderWidth: 1, borderColor: "rgba(255,215,0,0.30)",
   },
   summitEmoji: { fontSize: 22 },
