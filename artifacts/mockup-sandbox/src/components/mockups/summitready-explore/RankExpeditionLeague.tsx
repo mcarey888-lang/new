@@ -51,11 +51,8 @@ export function RankExpeditionLeague() {
         <section
           style={{
             position: "relative",
-            minHeight: 294,
             padding: "10px 20px 20px",
-            backgroundImage: `linear-gradient(180deg, rgba(5,18,24,.25) 0%, rgba(7,21,27,.48) 36%, #07151b 100%), url(${img("hero.jpg")})`,
-            backgroundPosition: "center 36%",
-            backgroundSize: "cover",
+            background: "linear-gradient(180deg, #12262c 0%, #07151b 100%)",
           }}
         >
           <div className="sr-status" style={{ padding: 0, height: 24 }}><span>9:41</span><span className="status-icons">▮▮▮ ◔ <b>100</b></span></div>
@@ -73,6 +70,23 @@ export function RankExpeditionLeague() {
             <h1 style={{ fontFamily: "'Space Grotesk'", fontSize: 31, lineHeight: ".98", letterSpacing: "-1.3px", margin: "7px 0 8px", fontWeight: 700 }}>Find your place<br />above the clouds.</h1>
             <p style={{ color: "#d2dcda", fontSize: 11, margin: 0, maxWidth: 250, lineHeight: 1.45 }}>Every climb counts. This season, you are setting the pace.</p>
           </div>
+          <div style={{ display: "flex", height: 160, marginTop: 16, overflow: "hidden", borderRadius: 10, border: "1px solid #3b5752", background: "#10282b" }}>
+            <div aria-label="Season ascent scale from zero to twelve thousand metres" style={{ flex: "0 0 82px", padding: "10px 8px 9px 9px", background: "#10282b", position: "relative", zIndex: 1 }}>
+              <div style={{ color: "#8fc5ae", fontSize: 8, fontWeight: 700, letterSpacing: ".7px", whiteSpace: "nowrap" }}>ASCENT · M</div>
+              <div style={{ height: 124, marginTop: 5, display: "flex", flexDirection: "column", justifyContent: "space-between", borderRight: "1px solid #4d8173", paddingRight: 7 }}>
+                {["12,000", "9,000", "6,000", "3,000", "0"].map((mark) => (
+                  <span key={mark} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 3, color: "#b4d3c9", fontSize: 9, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                    {mark}<span aria-hidden="true" style={{ width: 6, height: 1, background: "#80ad9b" }} />
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+              <img src={img("mont-blanc.jpg")} alt="Snow-covered mountain peaks at dawn" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, #0b242955, transparent 40%), linear-gradient(0deg, #07151b99, transparent 48%)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: 10, right: 11, padding: "5px 7px", borderRadius: 4, background: "#071b20ce", color: "#e7f4ee", fontSize: 9, fontWeight: 700, letterSpacing: ".3px" }}>YOU · 9,640 M</div>
+            </div>
+          </div>
           {infoOpen && <div style={{ position: "absolute", right: 20, top: 80, zIndex: 3, width: 224, border: "1px solid #49645e", background: "#0c2528f5", borderRadius: 10, padding: "12px 13px", boxShadow: "0 12px 24px #0006" }}>
             <strong style={{ fontSize: 11 }}>How the league works</strong>
             <p style={{ color: "#b9cbc7", fontSize: 10, lineHeight: 1.45, margin: "6px 0 0" }}>Your score blends completed sessions, elevation, and consistency. Rankings refresh every Monday.</p>
@@ -80,7 +94,7 @@ export function RankExpeditionLeague() {
         </section>
 
         <section style={{ padding: "0 18px" }}>
-          <div style={{ marginTop: -26, position: "relative", zIndex: 1, border: "1px solid #29453f", background: "linear-gradient(135deg,#12332e,#0b2429)", borderRadius: 12, padding: "14px 15px 13px", boxShadow: "0 10px 22px #0003" }}>
+          <div style={{ marginTop: 0, position: "relative", zIndex: 1, border: "1px solid #29453f", background: "linear-gradient(135deg,#12332e,#0b2429)", borderRadius: 12, padding: "14px 15px 13px", boxShadow: "0 10px 22px #0003" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <p style={{ margin: 0, color: "#9dbeb3", letterSpacing: "1.4px", fontSize: 9, fontWeight: 700 }}>YOUR CURRENT RANK</p>
