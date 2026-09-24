@@ -115,9 +115,6 @@ export interface MissionCardProps {
 export function MissionCard({ session, phase, imageUri, onStart, onOpen }: MissionCardProps) {
   const facts = sessionFacts(session);
   const artwork = exerciseCardArtwork({ ...session, label: session.title });
-  /* The mission artwork is a small cue, not a competing visual block. */
-  const visualWidth = 30;
-
   return (
     <SRPanel
       onPress={onOpen}
@@ -132,7 +129,7 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
           type={session.type}
           iconSize={20}
           scrim="none"
-          style={[styles.missionVisual, { width: visualWidth, height: visualWidth }]}
+          style={styles.missionVisual}
         />
 
         <View style={styles.missionBody}>
@@ -277,7 +274,7 @@ function SessionCard({
 }
 
 const styles = StyleSheet.create({
-  missionRow: { flexDirection: "row", alignItems: "center" },
+  missionRow: { flexDirection: "row", alignItems: "stretch" },
   visual: {
     alignItems: "center",
     justifyContent: "center",
@@ -289,8 +286,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  missionVisual: { marginLeft: 8, borderRadius: 7 },
-  missionBody: { flex: 1, minWidth: 0, padding: 9 },
+  missionVisual: { width: 30, alignSelf: "stretch" },
+  missionBody: { flex: 1, minWidth: 0, paddingTop: 9, paddingBottom: 9, paddingLeft: 17, paddingRight: 9 },
   missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   missionHeading: { flex: 1, minWidth: 0 },
   missionEyebrow: {

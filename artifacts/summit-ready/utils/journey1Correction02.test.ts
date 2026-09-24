@@ -99,6 +99,17 @@ describe("Full plan presentation", () => {
   });
 });
 
+describe("Training Basecamp mission artwork", () => {
+  const mission = read("components/basecamp/MissionSection.tsx");
+
+  it("runs flush down the card's left edge while the text keeps its inset", () => {
+    expect(mission).toContain('missionRow: { flexDirection: "row", alignItems: "stretch" }');
+    expect(mission).toContain('missionVisual: { width: 30, alignSelf: "stretch" }');
+    expect(mission).not.toContain("visualWidth");
+    expect(mission).toContain("paddingLeft: 17");
+  });
+});
+
 /* ──────────────────────────────────────────────────────────────────────────
    B. Training session
    ────────────────────────────────────────────────────────────────────── */
