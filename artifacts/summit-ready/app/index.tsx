@@ -10,6 +10,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { T } from "@/constants/theme";
+import { BASECAMP, TYPE } from "@/constants/tokens";
 import { DevToolsModal } from "@/components/DevToolsModal";
 import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
 import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
@@ -151,18 +152,23 @@ export default function LandingScreen() {
 
         {/* CTA — sits directly below logo so it's always above the fold */}
         <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.cta}>
+          {/* Get started opens the six-screen onboarding, which explains the
+              product before asking for an account. Sign in still goes
+              straight to the existing auth flow. */}
           <TouchableOpacity
             style={styles.ctaBtn}
-            onPress={() => router.push("/(auth)/sign-up" as any)}
+            onPress={() => router.push("/onboarding" as any)}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Get started"
           >
             <LinearGradient
-              colors={["#3ECF75", "#2AB860"]}
+              colors={[BASECAMP.accent, "#15C486"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.ctaBtnGrad}
             >
-              <Compass size={19} color="#fff" />
+              <Compass size={19} color={BASECAMP.accentInk} />
               <Text style={styles.ctaBtnText}>Get started — it's free</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -225,10 +231,10 @@ const styles = StyleSheet.create({
   cta: { alignItems: "center", gap: 12 },
   ctaBtn: {
     width: "100%", borderRadius: 18, overflow: "hidden",
-    shadowColor: T.green, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 10,
+    shadowColor: BASECAMP.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 10,
   },
   ctaBtnGrad: { height: 58, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
-  ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", marginLeft: 10, flexShrink: 0 },
+  ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk, marginLeft: 10, flexShrink: 0 },
   signInLink: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted },
   signInBtn: {
     width: "100%", height: 50, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
