@@ -3,7 +3,7 @@ import {
   Globe, Minus, Mountain, Plus, TrendingUp, Zap,
 } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Image,
   type ImageSourcePropType,
@@ -275,6 +275,7 @@ export default function SessionDetailScreen() {
   const [showManual, setShowManual] = useState(isDone && !isSubmitted);
   const [saving, setSaving] = useState(false);
   const [imageError, setImageError] = useState(false);
+  useEffect(() => setImageError(false), [session?.id, session?.label, session?.gymExercise]);
   const [hillPickerOpen, setHillPickerOpen] = useState(false);
   const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -401,9 +402,8 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  /* The exercise assets are generated artwork carrying their own large
-     lettering, so they are never used as bleed imagery. They stay CONTAINED:
-     a framed illustration inside the exercise row, below. */
+  /* The selected exercise also appears as a contained illustration below;
+     the hero uses the generated-artwork scrim to ink out its baked lettering. */
   const exerciseArtwork: ImageSourcePropType | null =
       inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
@@ -413,16 +413,20 @@ export default function SessionDetailScreen() {
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : null;
 
-  /* Preview the requested stepper artwork for Incline Treadmill. Other
-     sessions keep their existing place-photography hero. */
+  /* Keep the approved Stepper hero for Incline Treadmill. Other cardio
+     exercises use their selected library image; hill sessions keep place photos. */
   const heroPhotoSubject = inferredGymExercise
     ? sessionImageSubject({ mountainName: summitGoal?.mountainName ?? null })
     : heroSubject;
   const previewExerciseHero = session?.label?.trim().toLowerCase() === "incline treadmill";
+  const selectedHeroArtwork: ImageSourcePropType | null =
+    session?.type === "cardio" && !isStairRepeat
+      ? previewExerciseHero ? require("@/assets/images/exercise-stepper.png") : exerciseArtwork
+      : null;
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
-    : previewExerciseHero
-      ? require("@/assets/images/exercise-stepper.png")
+    : selectedHeroArtwork
+      ? selectedHeroArtwork
       : heroPhotoSubject
         ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
         : null;
@@ -501,7 +505,7 @@ export default function SessionDetailScreen() {
           onImageError={() => setImageError(true)}
           minHeight={286}
           dim={0.96}
-          artwork={previewExerciseHero ? "generated" : "photo"}
+          artwork={selectedHeroArtwork ? "generated" : "photo"}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */

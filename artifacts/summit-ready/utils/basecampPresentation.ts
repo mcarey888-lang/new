@@ -26,6 +26,7 @@ export interface BasecampSessionLike {
   description?: string | null;
   targetElevation?: number | null;
   duration?: string | null;
+  gymExercise?: "treadmill" | "stepper" | "outdoor" | "box-steps" | "weighted-stairs" | "elliptical";
 }
 
 /** The subset of `TrainingWeek` this adapter reads. */
@@ -134,6 +135,7 @@ export interface QueuedSession {
   elevationM: number | null;
   /** The plan's own duration string. */
   duration: string | null;
+  gymExercise?: BasecampSessionLike["gymExercise"];
 }
 
 function toQueued(week: BasecampWeekLike, session: BasecampSessionLike, index: number): QueuedSession {
@@ -149,6 +151,7 @@ function toQueued(week: BasecampWeekLike, session: BasecampSessionLike, index: n
     elevationM:
       typeof elev === "number" && Number.isFinite(elev) && elev > 0 ? Math.round(elev) : null,
     duration: session.duration?.trim() || null,
+    ...(session.gymExercise ? { gymExercise: session.gymExercise } : {}),
   };
 }
 

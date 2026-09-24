@@ -12,9 +12,8 @@
  * durations, target ascent and week numbers are the plan's own. Nothing is
  * generated here.
  *
- * Mountain sessions use their assigned hill or objective photography. The
- * current Incline Treadmill mission uses its exercise-library artwork; the
- * remaining exercise cards retain their existing imagery pending review.
+ * Mountain sessions use their assigned hill or objective photography. Exercise
+ * sessions use the right-half crop of their selected exercise-library artwork.
  */
 import React, { useEffect, useState } from "react";
 import {
@@ -26,6 +25,7 @@ import { Activity, ChevronRight, Clock, Mountain, TrendingUp } from "lucide-reac
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
 import { SRPanel, SRSectionHeader, SRFactDivider } from "@/components/ui";
 import { sessionFacts, type QueuedSession } from "@/utils/basecampPresentation";
+import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
 
 /** Visual identity per plan session type. Icons only — no invented copy. */
 const TYPE_VISUAL: Record<string, { Icon: typeof Activity; tint: readonly [string, string] }> = {
@@ -106,7 +106,7 @@ export interface MissionCardProps {
   session: QueuedSession;
   /** The plan's phase for this week, when it has one. */
   phase?: string | null;
-  /** The assigned hill or objective, except the previewed exercise artwork. */
+  /** The assigned hill or objective, used for non-exercise sessions. */
   imageUri?: string | null;
   onStart: () => void;
   onOpen: () => void;
@@ -114,7 +114,7 @@ export interface MissionCardProps {
 
 export function MissionCard({ session, phase, imageUri, onStart, onOpen }: MissionCardProps) {
   const facts = sessionFacts(session);
-  const isPreviewExercise = session.title.trim().toLowerCase() === "incline treadmill";
+  const artwork = exerciseCardArtwork({ ...session, label: session.title });
   /* The visual block is the first thing to give way: on a narrow screen the
      title and the action need the room more than the illustration does. */
   const { width } = useWindowDimensions();
@@ -129,8 +129,8 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
     >
       <View style={styles.missionRow}>
         <SessionVisual
-          uri={isPreviewExercise ? null : imageUri ?? null}
-          source={isPreviewExercise ? require("@/assets/images/exercise-treadmill-right-half.png") : undefined}
+          uri={artwork ? null : imageUri ?? null}
+          source={artwork ?? undefined}
           type={session.type}
           iconSize={26}
           scrim="right"
@@ -241,6 +241,7 @@ function SessionCard({
   session, imageUri, onPress,
 }: { session: QueuedSession; imageUri: string | null; onPress: () => void }) {
   const elevation = session.elevationM !== null ? `${session.elevationM.toLocaleString()} m gain` : null;
+  const artwork = exerciseCardArtwork({ ...session, label: session.title });
 
   return (
     <SRPanel
@@ -251,7 +252,8 @@ function SessionCard({
       accessibilityHint="Opens the session detail"
     >
       <SessionVisual
-        uri={imageUri}
+        uri={artwork ? null : imageUri}
+        source={artwork ?? undefined}
         type={session.type}
         iconSize={20}
         scrim="bottom"

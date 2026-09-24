@@ -133,26 +133,20 @@ describe("WEEK n OF m is explained rather than left to look wrong", () => {
   });
 });
 
-describe("generated artwork never bleeds behind functional content", () => {
-  it("the session panel refuses the exercise assets", () => {
+describe("exercise imagery keeps the artwork's lettering away from controls", () => {
+  it("the session panel uses the cropped artwork for exercises and place photography for hills", () => {
     const plan = code(read("app/(tabs)/plan.tsx"));
-    expect(plan).toMatch(/const missionBleedUri = _missionGymEx\s*\?\s*null/);
-    /* The bleed is built from the place helpers, not from a require(). */
+    expect(plan).toContain("exerciseCardArtwork(selectedSession)");
     const bleed = plan.slice(plan.indexOf("const missionBleedUri"), plan.indexOf("const weekSessions"));
-    expect(bleed).not.toMatch(/require\(/);
+    expect(bleed).toContain("missionBleedSource = missionArtwork");
     expect(bleed).toMatch(/sessionImageSubject/);
   });
 
-  /* Pass 01 made the Training Session hero DECLARE generated artwork so the
-     frame could ink it out. Live QA showed the lettering still read through
-     the top band, so Pass 02 went further: the exercise assets never reach a
-     bleeding surface at all. This asserts the stronger rule. */
-  it("the Training Session hero refuses the exercise assets outright", () => {
+  it("the Training Session hero masks exercise artwork before the content band", () => {
     const session = code(read("app/session-detail.tsx"));
     const hero = session.slice(session.indexOf("<SRHeroFrame"), session.indexOf("</SRHeroFrame>"));
-    expect(hero).not.toMatch(/generated/);
-    expect(hero).not.toMatch(/exerciseArtwork/);
-    /* and the illustration still exists — contained, not deleted */
+    expect(hero).toContain('artwork={selectedHeroArtwork ? "generated" : "photo"}');
+    expect(session).toContain("exercise-stepper.png");
     expect(session).toMatch(/exercisePlate/);
     expect(session).toMatch(/const exerciseArtwork/);
   });

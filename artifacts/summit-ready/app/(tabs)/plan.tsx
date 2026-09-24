@@ -41,6 +41,7 @@ import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
 import { planPhaseSpans, planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
 import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
+import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -1518,29 +1519,10 @@ export default function PlanScreen() {
             ? { ...viewedWeek.hills[0], emoji: "⛰️", surface: "Mixed", grade: "Moderate" }
             : undefined))
     : undefined;
-  const _missionCardioText = selectedSession
-    ? `${selectedSession.label} ${selectedSession.description ?? ""}`.toLowerCase()
-    : "";
-  const _missionGymEx = selectedSession?.gymExercise
-    ?? (_missionCardioText.includes("treadmill") ? "treadmill"
-      : _missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster") ? "stepper"
-      : _missionCardioText.includes("elliptical") ? "elliptical"
-      : (_missionCardioText.includes("stair") && !_missionCardioText.includes("stairmaster"))
-        || _missionCardioText.includes("flights")
-        || _missionCardioText.includes("uphill")
-        || _missionCardioText.includes("brisk walk") ? "outdoor"
-      : selectedSession?.type === "cardio" ? "outdoor"
-      : undefined);
-  /* `missionImageSource` used to be assembled here and never rendered — dead
-     since the panel carried no photograph. The panel now has one, and it is
-     built by `missionBleedUri` below, which refuses generated artwork. */
-
-  /* The session panel's bleed photograph is a PLACE — the assigned hill, or
-     the objective. The exercise assets are generated artwork carrying their
-     own large lettering ("INCLINE TREADMILL"), designed to fill a hero, not to
-     sit behind a title; bled into a panel their type shows through the
-     description. A gym session therefore gets no bleed at all. */
-  const missionBleedUri = _missionGymEx
+  /* The cropped right half of exercise artwork has no large baked-in title.
+     Non-exercise sessions continue to show their assigned hill or objective. */
+  const missionArtwork = exerciseCardArtwork(selectedSession);
+  const missionBleedUri = missionArtwork
     ? null
     : mountainImageUri(
         sessionImageSubject({
@@ -1549,6 +1531,7 @@ export default function PlanScreen() {
         }),
         { width: 260, height: 280 },
       );
+  const missionBleedSource = missionArtwork ?? (missionBleedUri ? { uri: missionBleedUri } : null);
 
   // Upcoming this week: rest of the week's sessions (not the selected one)
   const upcomingSessions = viewedWeek
@@ -1849,13 +1832,12 @@ export default function PlanScreen() {
             <View style={dash.section} {...missionPanResponder.panHandlers}>
               {selectedSession && viewedWeek && selectedSessionIdx !== undefined ? (
                 <SRPanel radius={9}>
-                  {/* The session's own photograph, bleeding in from the right
-                      as the approved panel has it. Only ever a place, and only
-                      when one is known — see `missionBleedUri`. */}
-                  {missionBleedUri && (
+                  {/* The session's cropped exercise artwork or assigned place,
+                      bleeding in from the right of the panel. */}
+                  {missionBleedSource && (
                   <View style={dash.missionPhoto} pointerEvents="none">
                     <Image
-                      source={{ uri: missionBleedUri }}
+                      source={missionBleedSource}
                       style={StyleSheet.absoluteFill}
                       resizeMode="cover"
                       accessible={false}
@@ -1878,7 +1860,7 @@ export default function PlanScreen() {
                   )}
 
                   <View style={dash.missionBody}>
-                    <View style={[dash.missionTop, missionBleedUri && dash.missionTopInset]}>
+                    <View style={[dash.missionTop, !!missionBleedSource && dash.missionTopInset]}>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <View style={dash.missionPills}>
                           <SRStatusPill
@@ -2033,7 +2015,8 @@ export default function PlanScreen() {
                     const isDone = !!completedPlanSessions[key];
                     const isSelected = dow !== null && dow === selectedDow;
                     const hillName = assignedHills?.[key]?.name ?? null;
-                    const photo = mountainImageUri(
+                    const artwork = exerciseCardArtwork(session);
+                    const photo = artwork ? null : mountainImageUri(
                       sessionImageSubject({
                         assignedHillName: hillName,
                         mountainName: summitGoal.mountainName,
@@ -2060,9 +2043,9 @@ export default function PlanScreen() {
                         }
                       >
                         <View style={dash.weekCardVisual}>
-                          {photo ? (
+                          {artwork || photo ? (
                             <Image
-                              source={{ uri: photo }}
+                              source={artwork ?? { uri: photo! }}
                               style={StyleSheet.absoluteFill}
                               resizeMode="cover"
                               accessible={false}

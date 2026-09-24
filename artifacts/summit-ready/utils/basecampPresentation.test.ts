@@ -103,6 +103,13 @@ describe("pendingSessions", () => {
     expect(out[3]).toMatchObject({ weekNumber: 2, sessionIndex: 1, weekLabel: "Week 2 · Session 2" });
   });
 
+  it("carries a selected exercise into both Basecamp card types", () => {
+    const [s] = pendingSessions([week(1, [
+      { id: "exercise", type: "cardio", label: "Box Step-Ups", gymExercise: "box-steps" },
+    ])], {});
+    expect(s).toMatchObject({ title: "Box Step-Ups", gymExercise: "box-steps" });
+  });
+
   it("can start from the current week", () => {
     const out = pendingSessions(plan, {}, 2);
     expect(out.every(s => s.weekNumber === 2)).toBe(true);

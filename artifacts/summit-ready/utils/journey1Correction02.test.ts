@@ -129,13 +129,13 @@ describe("Training session", () => {
     }
   });
 
-  /* THE ARTWORK RULE. Generated exercise artwork carries its own lettering,
-     so it is never bleed imagery — it stays contained. */
-  it("never puts generated exercise artwork behind the hero", () => {
+  /* The approved exercise artwork now reaches the hero, but its own lettering
+     is inked out before the functional content band. */
+  it("uses the selected exercise artwork with the generated-artwork scrim", () => {
     const hero = session.slice(at("<SRHeroFrame"), at("</SRHeroFrame>"));
     expect(hero).toContain("heroImageSource");
-    expect(hero).not.toContain('artwork="generated"');
-    expect(hero).not.toContain("exerciseArtwork");
+    expect(hero).toContain('artwork={selectedHeroArtwork ? "generated" : "photo"}');
+    expect(session).toContain("selectedHeroArtwork");
   });
 
   it("keeps the exercise illustration contained, with nothing laid over it", () => {
@@ -146,7 +146,7 @@ describe("Training session", () => {
     expect(plate).not.toContain("<Text");
   });
 
-  it("falls the hero back to place photography, not to invented imagery", () => {
+  it("keeps place photography for non-exercise sessions", () => {
     expect(session).toContain("sessionImageSubject({ mountainName:");
     expect(session).toContain("mountain-image?name=");
   });
