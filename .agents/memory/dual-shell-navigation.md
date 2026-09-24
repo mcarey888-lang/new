@@ -28,7 +28,11 @@ Training and Expedition must persist separate goal snapshots. The public `summit
 **How to apply:** New navigation must call `setShellMode`, and legacy Virtual routes must redirect one-way into Expedition-owned screens rather than being re-exported by those screens.
 
 ## ModeTogglePill placement
-`ModeTogglePill` is an absolutely-positioned overlay rendered as a sibling of `<Tabs>` inside BOTH `(tabs)/_layout.tsx` AND `(expedition)/_layout.tsx`. It sits at `top = safeAreaInsets.top + 4` — within the OS status-bar zone that screens already leave empty (screens pad by `insets.top + PILL_OFFSET` where `PILL_OFFSET = 52`). Uses `BlurView` on iOS, plain dark background on Android/web.
+Use one compact, Basecamp-style mode switch in a consistent top-centre position across both tab shells. The shell owns the switch; individual pages must not render extra embedded copies. Reserve clear space in centred page titles or header rows instead of moving the switch page by page.
+
+**Why:** Training Basecamp, Explore, and You showed the same choice at noticeably different heights. Duplicating the control per screen made visual consistency and collision avoidance drift apart.
+
+**How to apply:** New top-level pages should keep their content clear of the shared overlay; switching behavior belongs only to the shared control. Keep the bottom tab bar as separate section navigation.
 
 ## Legacy Virtual routes
 The hidden Training `virtual` and `v-*` routes are compatibility redirects only. Expedition screens must use Expedition-owned components; never re-export a legacy redirect route or it can create a self-redirect loop.

@@ -103,7 +103,7 @@ describe("Training Basecamp composition", () => {
       "UpNextRail",
       "ProgressTiles",
       "CoachInsight",
-      "QuickActionsGrid",
+      "QuickActionsDrawer",
     ]) {
       expect(src).toMatch(new RegExp(`<${component}\\b`));
     }
@@ -135,7 +135,7 @@ describe("Training Basecamp composition", () => {
     expect(src).toMatch(/buildCoachInsight/);
     expect(src).toMatch(/entitled:\s*isSubscribed/);
     /* the ask box is only reachable for an entitled user */
-    expect(src).toMatch(/\{isSubscribed && \(\s*<View style=\{styles\.askBox\}>/);
+    expect(src).toMatch(/askControl=\{isSubscribed \? \(\s*<View style=\{styles\.askBox\}>/);
   });
 
   it("passes the Coach engine-supplied facts rather than letting it author them", () => {

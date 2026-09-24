@@ -34,8 +34,9 @@ describe("Explore", () => {
     expect(body).toMatch(/BASECAMP|EXPLORE/);
   });
 
-  it("keeps the shared mode toggle rather than a screen-local copy", () => {
-    expect(body).toMatch(/ModeTogglePill/);
+  it("uses the shell's shared mode toggle rather than a screen-local copy", () => {
+    expect(body).not.toMatch(/<ModeTogglePill/);
+    expect(code(read("app/(tabs)/_layout.tsx"))).toMatch(/<ModeTogglePill \/>/);
   });
 
   it("invents no popularity, rating or engagement figure", () => {

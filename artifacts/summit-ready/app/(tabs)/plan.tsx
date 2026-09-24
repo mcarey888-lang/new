@@ -37,7 +37,6 @@ import {
   SRButton, SREmptyState, SREyebrow, SRFactDivider, SRHeroFrame, SRPanel, SRProgress,
   SRScreenHeader, SRSectionHeader, SRStatusPill, SRSubPanel, SRUnderlineTabs,
 } from "@/components/ui";
-import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
 import { planPhaseSpans, planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
 import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
@@ -1614,12 +1613,8 @@ export default function PlanScreen() {
           style={{ justifyContent: "space-between" }}
         >
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
-            {/* The mode toggle has a row of its own, above the title. The
-                floating toggle used to land on top of this header because
-                both are centred at the top of the window; Training Plan now
-                owns its toggle, so the two can no longer collide. */}
+            {/* Reserve the shared switch's row so it never covers this title. */}
             <View style={dash.modeRow}>
-              <ModeTogglePill embedded />
             </View>
             <SRScreenHeader
               scrim
@@ -2598,7 +2593,7 @@ const dash = StyleSheet.create({
     color: BASECAMP.text, letterSpacing: -0.4,
   },
 
-  modeRow: { alignItems: "center", paddingBottom: 10 },
+  modeRow: { height: 48 },
   planStartNote: {
     marginTop: 12, marginHorizontal: BASECAMP.gutter,
     fontSize: 11.5, lineHeight: 16,

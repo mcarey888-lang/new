@@ -32,23 +32,23 @@ describe("Training Plan belongs to the Basecamp journey", () => {
   });
 });
 
-describe("the mode toggle cannot overlap a screen title", () => {
-  it("a screen that owns a toggle opts out of the floating one", () => {
+describe("the mode toggle has one shared position", () => {
+  it("both tab shells render the same shared toggle", () => {
     const layout = code(read("app/(tabs)/_layout.tsx"));
-    expect(layout).toMatch(/SCREENS_WITH_OWN_MODE_TOGGLE/);
-    expect(layout).toMatch(/"dashboard"/);
-    expect(layout).toMatch(/"plan"/);
-    expect(layout).toMatch(/SCREENS_WITH_OWN_MODE_TOGGLE\.includes\(currentRoute\) \? null : <ModeTogglePill \/>/);
+    expect(layout).toMatch(/<ModeTogglePill \/>/);
+    expect(code(read("app/(expedition)/_layout.tsx"))).toMatch(/<ModeTogglePill \/>/);
+    expect(code(read("components/ModeTogglePill.tsx"))).toMatch(/const top = Platform\.OS === "web" \? 20 : insets\.top \+ 12/);
   });
 
-  it("both opted-out screens really do render one", () => {
-    expect(code(read("app/(tabs)/plan.tsx"))).toMatch(/<ModeTogglePill embedded \/>/);
-    expect(code(read("components/basecamp/BasecampHero.tsx"))).toMatch(/<ModeTogglePill embedded \/>/);
+  it("screen headers do not create another toggle", () => {
+    for (const screen of ["app/(tabs)/plan.tsx", "app/(tabs)/explore.tsx", "components/basecamp/BasecampHero.tsx"]) {
+      expect(code(read(screen))).not.toMatch(/<ModeTogglePill/);
+    }
   });
 
-  it("Training Plan puts it on its own row, above the header", () => {
+  it("Training Plan reserves space below the shared toggle", () => {
     const body = read("app/(tabs)/plan.tsx");
-    const toggle = body.indexOf("<ModeTogglePill embedded />");
+    const toggle = body.indexOf("style={dash.modeRow}");
     const header = body.indexOf('title="Training plan"');
     expect(toggle).toBeGreaterThan(-1);
     expect(toggle).toBeLessThan(header);
@@ -152,15 +152,15 @@ describe("exercise imagery keeps the artwork's lettering away from controls", ()
   });
 });
 
-describe("Basecamp reads as a composition, not a stack of cards", () => {
+describe("Basecamp keeps its Coach in the intended composition", () => {
   const dash = code(read("app/(tabs)/dashboard.tsx"));
 
-  it("the Coach is an integrated band, not another panel", () => {
+  it("the Coach remains a contained card with its own input", () => {
     expect(dash).toMatch(/styles\.coachBand/);
     const styles = read("app/(tabs)/dashboard.tsx");
     const band = styles.slice(styles.indexOf("  coachBand: {"), styles.indexOf("  coachInner:"));
-    expect(band).toMatch(/borderTopWidth: 1/);
-    expect(band).not.toMatch(/borderRadius/);
+    expect(band).toMatch(/borderRadius: 9/);
+    expect(dash).toMatch(/styles\.askBox/);
   });
 
   it("keeps the Coach in the required hierarchy position", () => {
@@ -169,7 +169,7 @@ describe("Basecamp reads as a composition, not a stack of cards", () => {
     const coach = dash.indexOf("styles.coachBand");
     const bank = dash.indexOf("<ProgressTiles");
     expect(mission).toBeLessThan(coach);
-    expect(coach).toBeLessThan(bank);
+    expect(bank).toBeLessThan(coach);
   });
 
   it("keeps the AI Coach gate and its engine-supplied facts", () => {

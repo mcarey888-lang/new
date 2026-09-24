@@ -1,11 +1,8 @@
 /**
  * ModeTogglePill — persistent Training / Expeditions shell switcher.
  *
- * Rendered as an absolutely-positioned overlay inside each shell's _layout.tsx
- * so it appears in both the Training and Expedition tabs at all times.
- *
- * The pill sits within the OS status-bar / safe-area zone that screens already
- * leave empty, so it does not overlap any content on either iOS or web.
+ * One compact Basecamp-style switch is rendered by each tab shell's layout.
+ * It has the same top offset and switching behavior on every main screen.
  */
 
 import { router } from "expo-router";
@@ -25,13 +22,13 @@ import { useApp } from "@/context/AppContext";
 const TRAINING_COLOR    = T.green;
 const EXPEDITION_COLOR  = T.blue;
 
-export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
+export function ModeTogglePill() {
   const insets  = useSafeAreaInsets();
   const { shellMode, setShellMode, activeExpeditionId } = useApp();
   const switchingRef = useRef(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
-  const top = insets.top + (Platform.OS === "web" ? 8 : 4);
+  const top = Platform.OS === "web" ? 20 : insets.top + 12;
 
   async function switchTo(mode: "training" | "expedition") {
     if (mode === shellMode || switchingRef.current) return;
@@ -67,7 +64,7 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
   }
 
   const pill = (
-    <View style={[s.pill, embedded && s.pillEmbedded]}>
+    <View style={s.pill}>
       {/* Training segment */}
       <TouchableOpacity
         onPress={() => { void switchTo("training"); }}
@@ -75,7 +72,6 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
         activeOpacity={0.75}
         style={[
           s.segment,
-          embedded && s.segmentEmbedded,
           shellMode === "training" && { backgroundColor: TRAINING_COLOR },
         ]}
         accessibilityRole="tab"
@@ -84,7 +80,6 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
       >
         <Text style={[
           s.label,
-          embedded && s.labelEmbedded,
           shellMode === "training"
             ? s.labelActive
             : { color: "rgba(255,255,255,0.45)" },
@@ -103,7 +98,6 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
         activeOpacity={0.75}
         style={[
           s.segment,
-          embedded && s.segmentEmbedded,
           shellMode === "expedition" && { backgroundColor: EXPEDITION_COLOR },
         ]}
         accessibilityRole="tab"
@@ -112,7 +106,6 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
       >
         <Text style={[
           s.label,
-          embedded && s.labelEmbedded,
           shellMode === "expedition"
             ? s.labelActive
             : { color: "rgba(255,255,255,0.45)" },
@@ -122,14 +115,6 @@ export function ModeTogglePill({ embedded = false }: { embedded?: boolean }) {
       </TouchableOpacity>
     </View>
   );
-
-  if (embedded) {
-    return (
-      <View style={[s.plainBg, s.plainBgEmbedded]}>
-        {pill}
-      </View>
-    );
-  }
 
   return (
     <View
@@ -155,34 +140,23 @@ const s = StyleSheet.create({
   plainBg: {
     borderRadius: 11,
     overflow: "hidden",
-    backgroundColor: "rgba(12,20,36,0.88)",
+    backgroundColor: "rgba(12,20,36,0.76)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-  },
-  plainBgEmbedded: {
-    backgroundColor: "rgba(12,20,36,0.76)",
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    gap: 0,
-  },
-  pillEmbedded: {
     paddingHorizontal: 3,
     paddingVertical: 3,
+    gap: 0,
   },
   segment: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-  },
-  segmentEmbedded: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
   },
   divider: {
     width: 1,
@@ -190,12 +164,9 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.10)",
   },
   label: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.2,
-  },
-  labelEmbedded: {
-    fontSize: 10,
   },
   labelActive: {
     color: "#fff",

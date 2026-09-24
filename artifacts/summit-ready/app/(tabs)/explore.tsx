@@ -20,7 +20,6 @@ import {
 } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
-import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
@@ -240,7 +239,7 @@ export default function ExploreScreen() {
   );
   const popular = useMemo(() => CURATED_HILLS.slice(0, 8), []);
 
-  const topPad = Platform.OS === "web" ? 67 : Math.max(insets.top, 18);
+  const topPad = Platform.OS === "web" ? 20 : insets.top + 12;
   const Section = reducedMotion ? View : Animated.View;
 
   return (
@@ -291,7 +290,6 @@ export default function ExploreScreen() {
             )}
           </View>
           <View style={styles.appBarActions}>
-            <ModeTogglePill embedded />
             <Pressable
               onPress={() => router.push("/hills-finder" as any)}
               accessibilityRole="button"

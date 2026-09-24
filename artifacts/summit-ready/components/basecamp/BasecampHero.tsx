@@ -24,7 +24,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Calendar, Lock, Mountain, Pencil } from "lucide-react-native";
 import { BASECAMP, HIT } from "@/constants/tokens";
-import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 import {
   targetDateDisplay,
@@ -127,10 +126,8 @@ export function BasecampHero({
     canonicalFacts?.country,
   ].filter((fact): fact is string => Boolean(fact));
 
-  /* The header carries the lockup, the mode toggle and two actions. Below
-     roughly 400pt those cannot all state themselves in full, and the mode
-     toggle is the one the user acts on — so the wordmark reduces to its mark
-     rather than being pushed under the pill. */
+  /* The header leaves its centre clear for the one shared shell switch.
+     Below 400pt the wordmark reduces to its mark to preserve space for it. */
   const { width } = useWindowDimensions();
   const showWordmark = width >= 400;
 
@@ -169,8 +166,6 @@ export function BasecampHero({
             </View>
           )}
         </View>
-
-        <ModeTogglePill embedded />
 
         <View style={styles.actions}>
           <TouchableOpacity
