@@ -283,3 +283,97 @@ export function sessionFacts(session: Pick<QueuedSession, "elevationM" | "durati
   if (session.duration) facts.push(session.duration);
   return facts;
 }
+
+
+/* ── The training week, in dates ─────────────────────────────────────────── */
+
+/**
+ * "5 – 11 Nov" for a plan week, from the week's own start and end dates.
+ *
+ * WHY THIS MATTERS: a plan can legitimately sit well before its target date.
+ * The plan engine starts an eight-week block eight weeks before the summit
+ * when there is more time than the block needs, so "WEEK 1 OF 8" beside "109
+ * days to target" is correct — it just looks like a contradiction until the
+ * screen says WHEN week 1 actually is. Nothing here changes the engine; it
+ * reads the dates the engine already produced.
+ */
+export function weekDateRange(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+): string | null {
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+  if (!start || Number.isNaN(start.getTime())) return null;
+  if (!end || Number.isNaN(end.getTime())) return null;
+
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const startLabel = start.toLocaleDateString("en-GB",
+    sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" });
+  const endLabel = end.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return `${startLabel} – ${endLabel}`;
+}
+
+/**
+ * How long until a plan week begins, when it has not begun yet.
+ *
+ * Returns null once the week has started, so the screen says nothing rather
+ * than counting down to a date that has passed.
+ */
+export function weeksUntilPlanStart(
+  firstWeekStart: string | null | undefined,
+  now: Date = new Date(),
+): number | null {
+  if (!firstWeekStart) return null;
+  const start = new Date(firstWeekStart);
+  if (Number.isNaN(start.getTime())) return null;
+  const days = Math.ceil((start.getTime() - now.getTime()) / DAY_MS);
+  if (days <= 0) return null;
+  return Math.max(1, Math.round(days / 7));
+}
+
+export interface PlanWeekDay {
+  /** JavaScript day of week, 0 = Sunday — the key the plan maps sessions by. */
+  dow: number;
+  /** Calendar date number, or null when the week carries no usable date. */
+  date: number | null;
+  /** True for today, so the strip can mark it without guessing. */
+  isToday: boolean;
+}
+
+/**
+ * The seven days of a plan week, in the week's OWN order.
+ *
+ * A plan week does not necessarily begin on a Monday: the engine starts a
+ * block a whole number of weeks before the target date, which can land on any
+ * weekday. Laying the strip out Monday-to-Sunday therefore showed dates in the
+ * wrong order — 28, 29, 30, 24, 25, 26, 27 for a week beginning on a Thursday.
+ * These are the week's real consecutive days.
+ *
+ * With no usable start date it falls back to Monday-first with no numbers,
+ * which is what the strip showed before dates existed.
+ */
+export function planWeekDays(
+  weekStart: string | null | undefined,
+  now: Date = new Date(),
+): PlanWeekDay[] {
+  const todayDow = now.getDay();
+  const todayDate = now.getDate();
+  const start = weekStart ? new Date(weekStart) : null;
+
+  if (!start || Number.isNaN(start.getTime())) {
+    return [1, 2, 3, 4, 5, 6, 0].map(dow => ({
+      dow, date: null, isToday: dow === todayDow,
+    }));
+  }
+
+  return Array.from({ length: 7 }, (_, offset) => {
+    const cell = new Date(start.getTime() + offset * DAY_MS);
+    return {
+      dow: cell.getDay(),
+      date: cell.getDate(),
+      isToday: cell.getDate() === todayDate
+        && cell.getMonth() === now.getMonth()
+        && cell.getFullYear() === now.getFullYear(),
+    };
+  });
+}

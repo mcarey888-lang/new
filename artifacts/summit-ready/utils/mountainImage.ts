@@ -12,8 +12,27 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   : "/api";
 
 /** Null for a blank name, so a caller renders the designed gradient instead. */
-export function mountainImageUri(mountainName: string | null | undefined): string | null {
+export function mountainImageUri(
+  mountainName: string | null | undefined,
+  size?: { width: number; height: number },
+): string | null {
   const name = mountainName?.trim();
   if (!name) return null;
-  return `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}`;
+  const dimensions = size ? `&width=${size.width}&height=${size.height}` : "";
+  return `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}${dimensions}`;
+}
+
+/**
+ * The photographic subject for a training session.
+ *
+ * A session is a real place when the plan has assigned a hill to it; otherwise
+ * the objective the whole plan is for is the honest subject. It is never a
+ * stock image and never another mountain — if neither is known this returns
+ * null and the caller draws the designed gradient instead.
+ */
+export function sessionImageSubject(input: {
+  assignedHillName?: string | null;
+  mountainName?: string | null;
+}): string | null {
+  return input.assignedHillName?.trim() || input.mountainName?.trim() || null;
 }

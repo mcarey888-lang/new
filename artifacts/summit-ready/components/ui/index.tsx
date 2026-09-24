@@ -152,7 +152,7 @@ export function SRFactDivider() {
    Back, a centred tracked-out title with an optional subtitle, and one
    optional action. Used by every pushed screen so they share one header. */
 export function SRScreenHeader({
-  title, subtitle, onBack, right, style, transparent = true, backTestID,
+  title, subtitle, onBack, right, style, transparent = true, backTestID, scrim = false,
 }: {
   title: string;
   subtitle?: string | null;
@@ -162,9 +162,26 @@ export function SRScreenHeader({
   transparent?: boolean;
   /** Keeps an existing test hook working when a screen adopts this header. */
   backTestID?: string;
+  /**
+   * Darkens the band behind the header when it sits over a photograph.
+   *
+   * A hero scrim is tuned for the title block near its foot, so at the very
+   * top — where this header goes — the photograph can still be bright enough
+   * to swallow a centred title. This darkens only the header's own band, so
+   * the rest of the picture keeps its light.
+   */
+  scrim?: boolean;
 }) {
   return (
     <View style={[styles.screenHeader, !transparent && { backgroundColor: BASECAMP.ink }, style]}>
+      {scrim && (
+        <LinearGradient
+          colors={["rgba(5,9,11,0.80)", "rgba(5,9,11,0.46)", "rgba(5,9,11,0)"]}
+          locations={[0, 0.58, 1]}
+          style={styles.headerScrim}
+          pointerEvents="none"
+        />
+      )}
       {onBack ? (
         <TouchableOpacity
           onPress={onBack}
@@ -625,6 +642,10 @@ const styles = StyleSheet.create({
   },
   factDivider: { width: 1, height: 11, backgroundColor: BASECAMP.textFaint },
 
+  headerScrim: {
+    position: "absolute", left: -BASECAMP.gutter, right: -BASECAMP.gutter,
+    top: -60, bottom: -14,
+  },
   screenHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: BASECAMP.gutter, minHeight: HIT.minTarget,

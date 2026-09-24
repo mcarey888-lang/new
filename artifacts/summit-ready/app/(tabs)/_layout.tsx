@@ -5,6 +5,17 @@ import { useApp } from "@/context/AppContext";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { SharedTabBar } from "@/components/SharedTabBar";
 
+/**
+ * Screens that carry the mode toggle inside their own header.
+ *
+ * The floating toggle is centred at the top of the window, and so is a screen
+ * title — so on any screen with a centred title the two land on each other.
+ * Training Plan did exactly that. Rather than nudge one of them, a screen that
+ * owns its own toggle opts out of the floating one: there is still exactly one
+ * toggle, always, and it can no longer collide with anything.
+ */
+const SCREENS_WITH_OWN_MODE_TOGGLE = ["dashboard", "explore", "plan"];
+
 export default function TabLayout() {
   const {
     scoreStagnation,
@@ -60,7 +71,7 @@ export default function TabLayout() {
         <Tabs.Screen name="v-hills" options={{ href: null }} />
         <Tabs.Screen name="v-progress" options={{ href: null }} />
       </Tabs>
-      {currentRoute !== "dashboard" && currentRoute !== "explore" && <ModeTogglePill />}
+      {SCREENS_WITH_OWN_MODE_TOGGLE.includes(currentRoute) ? null : <ModeTogglePill />}
     </>
   );
 }
