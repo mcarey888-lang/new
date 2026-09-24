@@ -29,7 +29,6 @@ import {
 } from "@/components/ui";
 import { sessionPurpose } from "@/utils/sessionPurpose";
 import { sessionImageSubject } from "@/utils/mountainImage";
-import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -403,7 +402,8 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  /* The selected exercise also appears as a contained illustration below. */
+  /* The library artwork is the exercise hero, rather than a second image
+     lower down the page. */
   const exerciseArtwork: ImageSourcePropType | null =
       inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
@@ -423,20 +423,11 @@ export default function SessionDetailScreen() {
     session?.type === "cardio" && !isStairRepeat
       ? previewExerciseHero ? require("@/assets/images/exercise-stepper.png") : exerciseArtwork
       : null;
-  // Use the lettering-free crop across the hero; preserve the approved
-  // Stepper/Incline Treadmill pairing.
-  const heroArtwork = selectedHeroArtwork
-    ? previewExerciseHero
-      ? require("@/assets/images/exercise-stepper-right-half.png")
-      : exerciseCardArtwork(session) ?? selectedHeroArtwork
-    : null;
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
-    : heroArtwork
-      ? heroArtwork
-      : heroPhotoSubject
-        ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
-        : null;
+    : heroPhotoSubject
+      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
+      : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
 
@@ -505,13 +496,14 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero: exercise artwork or place photography behind the session
-            heading. A failure falls back to the designed gradient. */}
+        {/* ── Hero: exercise artwork is displayed intact above the title, so
+            its built-in lettering never competes with session controls. Hill
+            photography retains the background treatment. */}
         <SRHeroFrame
-          source={heroImageSource}
+          source={selectedHeroArtwork ? null : heroImageSource}
           onImageError={() => setImageError(true)}
-          minHeight={selectedHeroArtwork ? 218 : 212}
-          dim={selectedHeroArtwork ? 0.72 : 0.96}
+          minHeight={selectedHeroArtwork ? 0 : 212}
+          dim={0.96}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
@@ -524,6 +516,16 @@ export default function SessionDetailScreen() {
               onBack={() => router.back()}
             />
           </View>
+
+          {selectedHeroArtwork && !imageError && (
+            <Image
+              source={selectedHeroArtwork}
+              style={s.exerciseHeroImage}
+              resizeMode="contain"
+              onError={() => setImageError(true)}
+              accessible={false}
+            />
+          )}
 
           <View style={s.heroBody}>
             <View style={s.heroText}>
@@ -614,24 +616,7 @@ export default function SessionDetailScreen() {
                 ) : null}
               </View>
             </SRPanel>
-          </View>
-
-          {/* ── Coaching notes ───────────────────────────────────────── */}
-          {session.description ? (
-            <View style={s.section}>
-              <SRSectionHeader title="Coaching notes" />
-              <SRPanel radius={8} style={{ marginTop: 10 }}>
-                <Text style={s.descText}>{session.description}</Text>
-              </SRPanel>
-            </View>
-          ) : null}
-
-          {/* ── Where and when ───────────────────────────────────────────
-              The hill assignment, the exercise choice and the scheduled day.
-              All three actions are the existing ones. */}
-          <View style={s.section}>
-            <SRSectionHeader title="Where and when" />
-            <View style={{ marginTop: 10, gap: 8 }}>
+            <View style={s.setupList}>
               {(session.type === "hill" || session.type === "bigDay") && (
                 <SetupRow
                   icon={<Mountain size={16} color={assignedHill ? BASECAMP.accent : BASECAMP.textDim} />}
@@ -644,21 +629,6 @@ export default function SessionDetailScreen() {
                   onPress={() => setHillPickerOpen(true)}
                 />
               )}
-
-              {/* The exercise illustration, CONTAINED: a framed, letterboxed
-                  plate that nothing functional is laid over. Its lettering is
-                  part of the artwork, so the artwork keeps its own edges. */}
-              {session.type === "cardio" && !isStairRepeat && exerciseArtwork && (
-                <View style={s.exercisePlate}>
-                  <Image
-                    source={exerciseArtwork}
-                    style={s.exercisePlateImage}
-                    resizeMode="contain"
-                    accessible={false}
-                  />
-                </View>
-              )}
-
               {session.type === "cardio" && !isStairRepeat && (
                 <SetupRow
                   icon={<Activity size={16} color={BASECAMP.accent} />}
@@ -683,7 +653,6 @@ export default function SessionDetailScreen() {
                   onPress={() => setExercisePickerOpen(true)}
                 />
               )}
-
               <SetupRow
                 icon={<Calendar size={16} color={sessionDow !== null ? BASECAMP.accent : BASECAMP.textDim} />}
                 title={sessionDow !== null ? DAY_FULL[sessionDow] : "Unscheduled"}
@@ -696,6 +665,16 @@ export default function SessionDetailScreen() {
               />
             </View>
           </View>
+
+          {/* ── Coaching notes ───────────────────────────────────────── */}
+          {session.description ? (
+            <View style={s.section}>
+              <SRSectionHeader title="Coaching notes" />
+              <SRPanel radius={8} style={{ marginTop: 10 }}>
+                <Text style={s.descText}>{session.description}</Text>
+              </SRPanel>
+            </View>
+          ) : null}
 
           {/* ── Complete this session ────────────────────────────────────
               Every route out of this screen is unchanged: GPS tracking carries
@@ -905,6 +884,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: BASECAMP.gutter, marginTop: 12, paddingBottom: 16,
   },
+  exerciseHeroImage: { width: "100%", height: 224 },
   heroText: { flex: 1, minWidth: 0 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   title: {
@@ -942,6 +922,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 11,
     padding: 12, minHeight: HIT.minTarget,
   },
+  setupList: { marginTop: 8, gap: 8 },
   setupTitle: { fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
   setupDetail: {
     marginTop: 2, fontSize: 11, lineHeight: 15,
@@ -953,17 +934,6 @@ const s = StyleSheet.create({
     padding: 14, fontSize: 13, lineHeight: 20,
     fontFamily: "Inter_400Regular", color: BASECAMP.textStrong,
   },
-
-  /* Not an SRPanel: SRPanel always paints its own dark gradient over the
-     surface, which would swallow a filled action. */
-  exercisePlate: {
-    borderRadius: 7,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: BASECAMP.hairline,
-    backgroundColor: "#0B1216",
-  },
-  exercisePlateImage: { width: "100%", aspectRatio: 16 / 9 },
 
   gpsPanel: {
     marginTop: 10,

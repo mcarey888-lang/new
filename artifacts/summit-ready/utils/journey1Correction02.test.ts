@@ -109,8 +109,10 @@ describe("Training session", () => {
   it("reads type → why → target → instructions", () => {
     expect(at('title="Why this session"')).toBeLessThan(at('title="The prescription"'));
     expect(at('title="The prescription"')).toBeLessThan(at('title="Coaching notes"'));
-    expect(at('title="Coaching notes"')).toBeLessThan(at('title="Where and when"'));
-    expect(at('title="Where and when"')).toBeLessThan(at('title="Complete this session"'));
+    expect(at('title="Coaching notes"')).toBeLessThan(at('title="Complete this session"'));
+    expect(session).not.toContain('title="Where and when"');
+    expect(at("onPress={() => setExercisePickerOpen(true)}")).toBeLessThan(at('title="Coaching notes"'));
+    expect(at("onPress={() => setDayPickerOpen(true)}")).toBeLessThan(at('title="Coaching notes"'));
   });
 
   it("makes starting the one filled control on the screen", () => {
@@ -129,23 +131,16 @@ describe("Training session", () => {
     }
   });
 
-  /* A lettering-free crop fills the compact hero; the session heading remains
-     over it rather than having a separate thumbnail beside the heading. */
-  it("keeps exercise artwork as a compact hero image", () => {
+  /* Use the exact full library artwork formerly shown lower down the screen,
+     without painting the functional title over its baked-in lettering. */
+  it("shows the full exercise illustration once, in the hero", () => {
     const hero = session.slice(at("<SRHeroFrame"), at("</SRHeroFrame>"));
-    expect(hero).toContain("source={heroImageSource}");
-    expect(hero).toContain("minHeight={selectedHeroArtwork ? 218 : 212}");
-    expect(hero).not.toContain("heroThumbnail");
-    expect(session).toContain('require("@/assets/images/exercise-stepper-right-half.png")');
-    expect(session).toContain(": exerciseCardArtwork(session) ?? selectedHeroArtwork");
-  });
-
-  it("keeps the exercise illustration contained, with nothing laid over it", () => {
-    expect(session).toContain("exercisePlate");
-    const plate = session.slice(at("<View style={s.exercisePlate}>"), at("</View>\n              )}"));
-    expect(plate).toContain("exerciseArtwork");
-    expect(plate).toContain('resizeMode="contain"');
-    expect(plate).not.toContain("<Text");
+    expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
+    expect(hero).toContain("source={selectedHeroArtwork}");
+    expect(hero).toContain('resizeMode="contain"');
+    expect(hero.indexOf("source={selectedHeroArtwork}")).toBeLessThan(hero.indexOf("style={s.heroBody}"));
+    expect(session).toContain('require("@/assets/images/exercise-stepper.png")');
+    expect(session).not.toContain("exercisePlate");
   });
 
   it("keeps place photography for non-exercise sessions", () => {

@@ -9,8 +9,8 @@ Incline Treadmill uses the right-half crop of its own treadmill library image on
 
 **How to apply:** Keep that one session-detail exception when refining exercise imagery. Other exercise cards use their respective library artwork, and their detail views should follow the selected exercise. Ask before replacing the approved exception with a treadmill image.
 
-Exercise artwork on session detail should be a lettering-free crop spanning a compact hero, not a tiny thumbnail beside the title and not an oversized poster. The mission card image should be a very small visual cue rather than an edge-to-edge block.
+Exercise artwork on session detail should use the full exercise-library image as the hero, not a tiny thumbnail beside the title or a lettering-free crop behind it. The mission card image should be a very small visual cue rather than an edge-to-edge block.
 
-**Why:** The full-bleed exercise art under a strong scrim made the session hero unusually tall and mostly black. The user then explicitly rejected the small session-detail thumbnail and asked for a hero image, while saying the mission-card thumbnail was still too large. Layout sizing, crop, and scrim, not regenerated source assets, were the problem.
+**Why:** The full-bleed art under a strong scrim looked mostly black, while the lettering-free crop hid the actual artwork. The user identified the intact exercise image previously shown lower in “Where and when” as the exact one wanted in the hero, and asked to remove that section. The source artwork itself does not need resizing.
 
-**How to apply:** Keep mountain photos as backgrounds where appropriate. Let generated exercise art fill a short hero behind the title using the lettering-free crop and a lighter scrim; keep mission-card imagery subordinate to its text. Preserve the selected exercise identity and the approved treadmill/stepper exception.
+**How to apply:** Keep mountain photos as backgrounds where appropriate. Show the full exercise art inside the hero without laying session controls over its built-in lettering; keep mission-card imagery subordinate to its text. Preserve the selected exercise identity and the approved treadmill/stepper exception. If reorganizing this screen, keep hill, exercise and day controls accessible even though the “Where and when” section is gone.

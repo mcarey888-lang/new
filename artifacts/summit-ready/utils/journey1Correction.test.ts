@@ -142,13 +142,14 @@ describe("exercise imagery keeps the artwork's lettering away from controls", ()
     expect(bleed).toMatch(/sessionImageSubject/);
   });
 
-  it("the Training Session hero uses a lettering-free crop instead of an inked-out poster", () => {
+  it("the Training Session hero shows the selected library artwork above its controls", () => {
     const session = code(read("app/session-detail.tsx"));
     const hero = session.slice(session.indexOf("<SRHeroFrame"), session.indexOf("</SRHeroFrame>"));
-    expect(hero).toContain("source={heroImageSource}");
-    expect(hero).toContain("dim={selectedHeroArtwork ? 0.72 : 0.96}");
-    expect(session).toContain("exercise-stepper-right-half.png");
-    expect(session).toMatch(/exercisePlate/);
+    expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
+    expect(hero).toContain("source={selectedHeroArtwork}");
+    expect(hero).toContain('resizeMode="contain"');
+    expect(session).toContain("exercise-stepper.png");
+    expect(session).not.toMatch(/exercisePlate/);
     expect(session).toMatch(/const exerciseArtwork/);
   });
 });
