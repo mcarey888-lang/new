@@ -115,10 +115,10 @@ export interface MissionCardProps {
 export function MissionCard({ session, phase, imageUri, onStart, onOpen }: MissionCardProps) {
   const facts = sessionFacts(session);
   const artwork = exerciseCardArtwork({ ...session, label: session.title });
-  /* The visual block is the first thing to give way: on a narrow screen the
-     title and the action need the room more than the illustration does. */
+  /* Keep the photograph as a compact thumbnail, not a full-height image strip.
+     On narrow screens the title and action get priority over the artwork. */
   const { width } = useWindowDimensions();
-  const visualWidth = width < 360 ? 94 : width < 400 ? 108 : 122;
+  const visualWidth = width < 360 ? 68 : width < 400 ? 76 : 84;
 
   return (
     <SRPanel
@@ -134,7 +134,7 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
           type={session.type}
           iconSize={26}
           scrim="right"
-          style={[styles.missionVisual, { width: visualWidth }]}
+          style={[styles.missionVisual, { width: visualWidth, height: visualWidth }]}
         />
 
         <View style={styles.missionBody}>
@@ -279,14 +279,14 @@ function SessionCard({
 }
 
 const styles = StyleSheet.create({
-  missionRow: { flexDirection: "row", alignItems: "stretch" },
+  missionRow: { flexDirection: "row", alignItems: "center" },
   visual: {
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "rgba(8,13,15,0.5)",
   },
-  missionVisual: {},
+  missionVisual: { marginLeft: 8, borderRadius: 7 },
   missionBody: { flex: 1, minWidth: 0, padding: 9 },
   missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   missionHeading: { flex: 1, minWidth: 0 },
