@@ -17,6 +17,7 @@
  */
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   Activity, Check, CheckCircle, Mountain, TrendingUp, Trophy, WifiOff,
@@ -87,6 +88,14 @@ export function ActivityCompleteView({
             </View>
     
             <SRPanel radius={18} style={{ marginTop: 16 }}>
+              {/* The moment: what was climbed, on its own lit band, before any
+                  of the record. The figure is the recorded ascent — nothing
+                  here is rounded up or projected. */}
+              <LinearGradient
+                colors={["rgba(36,239,164,0.13)", "rgba(36,239,164,0.02)", "transparent"]}
+                style={s.rewardGlow}
+                pointerEvents="none"
+              />
               <View style={s.rewardBlock}>
                 <Text
                   style={s.rewardValue}
@@ -97,6 +106,7 @@ export function ActivityCompleteView({
                   {fmtM(elevGainM)}
                 </Text>
                 <Text style={s.rewardLabel}>ELEVATION GAINED</Text>
+                <View style={s.rewardRule} />
               </View>
     
               <View style={s.recordGrid}>
@@ -314,7 +324,12 @@ const s = StyleSheet.create({
     marginTop: 3, fontSize: 12.5, lineHeight: 17,
     fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
   },
-  rewardBlock: { alignItems: "center", paddingTop: 20, paddingHorizontal: 14 },
+  rewardGlow: { position: "absolute", left: 0, right: 0, top: 0, height: 150 },
+  rewardBlock: { alignItems: "center", paddingTop: 24, paddingHorizontal: 14 },
+  rewardRule: {
+    marginTop: 18, width: 34, height: 2, borderRadius: 1,
+    backgroundColor: "rgba(36,239,164,0.45)",
+  },
   rewardValue: {
     fontSize: 46, lineHeight: 52, fontFamily: "Inter_700Bold",
     color: BASECAMP.accent, letterSpacing: -1.6,

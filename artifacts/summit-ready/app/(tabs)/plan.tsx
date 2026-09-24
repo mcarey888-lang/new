@@ -39,7 +39,7 @@ import {
 } from "@/components/ui";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
-import { planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
+import { planPhaseSpans, planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
 import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -692,18 +692,18 @@ function WeekCard({
           allDone && { borderColor: T.green + "50", borderWidth: 1.5 },
         ]}
       >
-        {week.isCurrentWeek && !allDone && (
-          <View style={[styles.currentBanner, { backgroundColor: pc }]}>
-            <Text style={styles.currentBannerText}>● CURRENT WEEK</Text>
-          </View>
-        )}
-        {allDone && (
-          <View style={[styles.currentBanner, { backgroundColor: T.green }]}>
-            <Text style={styles.currentBannerText}>✓ WEEK COMPLETE</Text>
-          </View>
-        )}
+        {/* The phase reads down the left edge of every week, so the block's
+            shape is legible while scrolling without a banner on each card. */}
+        <View style={[styles.phaseRail, { backgroundColor: pc }]} />
 
-        <LinearGradient colors={[pc + "08", "transparent"]} style={StyleSheet.absoluteFill} />
+        {(week.isCurrentWeek || allDone) && (
+          <View style={styles.weekStatusRow}>
+            <View style={[styles.weekStatusDot, { backgroundColor: allDone ? T.green : pc }]} />
+            <Text style={[styles.weekStatusText, { color: allDone ? T.green : pc }]}>
+              {allDone ? "WEEK COMPLETE" : "THIS WEEK"}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.cardHeader}>
           <View style={styles.cardLeft}>
@@ -744,7 +744,7 @@ function WeekCard({
         </View>
 
         <View style={styles.cardMeta}>
-          <View style={[styles.elevChip, { backgroundColor: T.orangeDim }]}>
+          <View style={styles.elevChip}>
             <TrendingUp size={12} color={T.orange} />
             <Text style={[styles.elevText, { color: T.orange }]}>{week.targetElevation}m</Text>
           </View>
@@ -762,7 +762,7 @@ function WeekCard({
 
         {isExpanded && (
           <View style={styles.expanded}>
-            <View style={[styles.divider, { backgroundColor: pc + "30" }]} />
+            <View style={styles.divider} />
 
             <Text style={styles.sectionHead}>SESSIONS</Text>
             {week.sessions.map((s, i) => {
@@ -800,17 +800,33 @@ function WeekCard({
                                            <Flag size={14} color={tc} />}
                   </View>
 
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.sessionLabel, isDone && styles.sessionLabelDone, { flex: 1 }]} numberOfLines={1}>{s.label}</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={styles.sessionDur}>{s.duration}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    {/* The session names itself on its own line; the facts and
+                        the edit affordances sit underneath it. Squeezing all
+                        three onto one line is what truncated every label. */}
+                    <Text
+                      style={[styles.sessionLabel, isDone && styles.sessionLabelDone]}
+                      numberOfLines={2}
+                    >
+                      {s.label}
+                    </Text>
+                    <View style={styles.sessionMetaRow}>
+                      <View style={styles.sessionFacts}>
+                        <Text style={[styles.sessionElev, { color: sessionDow !== null ? T.blue : T.textDim }]}>
+                          {sessionDow !== null ? DAY_SHORT[sessionDow] : "Unscheduled"}
+                        </Text>
+                        <Text style={styles.sessionDur} numberOfLines={1}>{s.duration}</Text>
+                        {s.targetElevation > 0 && (
+                          <Text style={[styles.sessionElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
+                        )}
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <TouchableOpacity
                           onPress={() => onEditSession(week.weekNumber, i)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           activeOpacity={0.7}
                         >
-                          <Pencil size={12} color={T.textDim} />
+                          <Pencil size={13} color={T.textDim} />
                         </TouchableOpacity>
                         {s.type === "cardio" && (
                           <TouchableOpacity
@@ -818,7 +834,7 @@ function WeekCard({
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             activeOpacity={0.7}
                           >
-                            <RefreshCw size={12} color={T.textDim} />
+                            <RefreshCw size={13} color={T.textDim} />
                           </TouchableOpacity>
                         )}
                         {(s.type === "hill" || s.type === "bigDay") && (
@@ -827,7 +843,7 @@ function WeekCard({
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             activeOpacity={0.7}
                           >
-                            <Mountain size={12} color={T.textDim} />
+                            <Mountain size={13} color={T.textDim} />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
@@ -835,17 +851,9 @@ function WeekCard({
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           activeOpacity={0.7}
                         >
-                          <Calendar size={12} color={sessionDow !== null ? T.blue : T.textDim} />
+                          <Calendar size={13} color={sessionDow !== null ? T.blue : T.textDim} />
                         </TouchableOpacity>
                       </View>
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      {s.targetElevation > 0 && (
-                        <Text style={[styles.sessionElev, { color: T.orange }]}>↑{s.targetElevation}m</Text>
-                      )}
-                      <Text style={[styles.sessionElev, { color: sessionDow !== null ? T.blue : T.textDim }]}>
-                        {sessionDow !== null ? DAY_SHORT[sessionDow] : "Unscheduled"}
-                      </Text>
                     </View>
                   </View>
 
@@ -876,12 +884,12 @@ function WeekCard({
                     style={styles.submitWeekBtn}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.submitWeekGrad}>
-                      <CheckCircle size={15} color="#fff" />
+                    <View style={styles.submitWeekGrad}>
+                      <CheckCircle size={14} color={BASECAMP.accent} />
                       <Text style={styles.submitWeekText}>
-                        Submit {unsubmitted} completed session{unsubmitted > 1 ? "s" : ""} → update progress
+                        Submit {unsubmitted} completed session{unsubmitted > 1 ? "s" : ""}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   </TouchableOpacity>
                 );
               }
@@ -1408,7 +1416,7 @@ export default function PlanScreen() {
 
   const totalWeeks = trainingPlan.length;
   const weeksLeft = trainingPlan.filter(w => new Date(w.endDate) >= new Date()).length;
-  const phases = [...new Set(trainingPlan.map(w => w.phase))];
+  const phaseSpans = planPhaseSpans(trainingPlan, currentWeek?.weekNumber ?? null);
   const weeksCompleted = trainingPlan.filter(w => new Date(w.endDate) < new Date()).length;
   const progressPct = totalWeeks > 0 ? Math.min(100, (weeksCompleted / totalWeeks) * 100) : 0;
   const pc = PHASE_COLOR[currentWeek?.phase ?? "Base"] ?? T.green;
@@ -2137,14 +2145,48 @@ export default function PlanScreen() {
               </SRPanel>
             ) : null}
 
-            {phases.length > 0 && (
-              <View style={dash.phaseBar}>
-                {phases.map(phase => (
-                  <View key={phase} style={dash.legendItem}>
-                    <View style={[dash.legendDot, { backgroundColor: PHASE_COLOR[phase] }]} />
-                    <Text style={dash.legendText}>{phase}</Text>
-                  </View>
-                ))}
+            {/* The progression, before any one week of it. Segment widths are
+                the real week counts the engine produced, and the phase the
+                plan is currently in is the one that is lit. */}
+            {phaseSpans.length > 0 && (
+              <View style={dash.phaseArc}>
+                <View style={dash.phaseArcTrack}>
+                  {phaseSpans.map((span, i) => (
+                    <View
+                      key={`${span.phase}-${span.firstWeek}`}
+                      style={[
+                        dash.phaseArcSeg,
+                        {
+                          flex: span.weeks,
+                          backgroundColor: PHASE_COLOR[span.phase] ?? BASECAMP.accent,
+                          opacity: span.isCurrent ? 1 : 0.32,
+                          marginLeft: i === 0 ? 0 : 2,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+                <View style={dash.phaseArcLabels}>
+                  {phaseSpans.map((span, i) => (
+                    <View
+                      key={`${span.phase}-${span.firstWeek}-label`}
+                      style={[dash.phaseArcLabel, { flex: span.weeks, marginLeft: i === 0 ? 0 : 2 }]}
+                    >
+                      <Text
+                        style={[
+                          dash.phaseArcName,
+                          span.isCurrent && { color: PHASE_COLOR[span.phase] ?? BASECAMP.accent },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {span.phase}
+                      </Text>
+                      <Text style={dash.phaseArcWeeks} numberOfLines={1}>
+                        {span.weeks === 1 ? `wk ${span.firstWeek}` : `${span.weeks} wks`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
 
@@ -2425,42 +2467,43 @@ const editStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   weekCard: {
-    backgroundColor: T.card,
-    borderRadius: 20,
+    backgroundColor: BASECAMP.panelSub,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: T.cardBorder,
-    marginBottom: 10,
+    borderColor: BASECAMP.panelBorder,
+    marginBottom: 8,
     overflow: "hidden",
-    padding: 16,
+    paddingVertical: 14,
+    paddingLeft: 17,
+    paddingRight: 14,
   },
-  currentBanner: {
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 14,
-    paddingVertical: 5,
-    alignItems: "center",
-  },
-  currentBannerText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.5 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  cardLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  weekNumBadge: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  weekNumText: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  phaseName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: T.white },
-  weekDates: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  /* 3px of phase colour down the left edge. Twelve weeks read as Base →
+     Build → Peak → Taper without twelve coloured cards. */
+  phaseRail: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3 },
+  weekStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  weekStatusDot: { width: 5, height: 5, borderRadius: 3 },
+  weekStatusText: { fontSize: 9.5, fontFamily: "Inter_700Bold", letterSpacing: 1.4 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
+  cardLeft: { flexDirection: "row", alignItems: "center", gap: 11, flex: 1, minWidth: 0 },
+  weekNumBadge: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  weekNumText: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  phaseName: { fontSize: 14.5, fontFamily: "Inter_600SemiBold", color: T.white },
+  weekDates: { fontSize: 11.5, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
   cardRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   weekBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
   weekBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
-  cardMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardMeta: { flexDirection: "row", alignItems: "center", gap: 9 },
   elevChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: "transparent",
+    flexShrink: 0,
   },
-  elevText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  purposeSnippet: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
+  elevText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  purposeSnippet: { flex: 1, fontSize: 11.5, fontFamily: "Inter_400Regular", color: BASECAMP.textDim, lineHeight: 17 },
   adjustNoteBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -2474,26 +2517,20 @@ const styles = StyleSheet.create({
   },
   adjustNoteText: { fontSize: 11, fontFamily: "Inter_500Medium", color: T.blue },
   expanded: {},
-  divider: { height: 1, marginVertical: 12 },
+  divider: { height: 1, marginVertical: 12, backgroundColor: BASECAMP.hairline },
   sectionHead: { fontSize: 10, fontFamily: "Inter_700Bold", color: T.textDim, letterSpacing: 1.5, marginBottom: 10, textTransform: "uppercase" },
   sessionRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 8,
-    backgroundColor: T.surface,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: T.border,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: BASECAMP.hairline,
     alignItems: "flex-start",
   },
-  sessionRowDone: {
-    backgroundColor: T.greenDim,
-    borderColor: T.green + "30",
-  },
+  sessionRowDone: { opacity: 0.62 },
   checkbox: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: T.textMuted,
@@ -2507,38 +2544,46 @@ const styles = StyleSheet.create({
     backgroundColor: T.green,
     borderColor: T.green,
   },
-  sessionIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  sessionIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   sessionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.white },
   sessionLabelDone: { textDecorationLine: "line-through", color: T.textMuted },
-  sessionDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
-  sessionElev: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 3 },
+  /* At 320 pt these facts must not each become a column: they shrink as a
+     row and wrap as a row, they never break inside a value. */
+  sessionDur: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, flexShrink: 0 },
+  sessionElev: { fontSize: 11, fontFamily: "Inter_600SemiBold", flexShrink: 0 },
+  sessionMetaRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    gap: 8, marginTop: 4,
+  },
+  sessionFacts: {
+    flexDirection: "row", alignItems: "center", flexWrap: "wrap",
+    columnGap: 9, rowGap: 2, flex: 1, minWidth: 0,
+  },
   submitWeekBtn: {
-    marginTop: 14,
-    borderRadius: 14,
+    marginTop: 12,
+    borderRadius: 12,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: BASECAMP.accentLine,
+    backgroundColor: "rgba(36,239,164,0.07)",
   },
   submitWeekGrad: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    gap: 7,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
   },
-  submitWeekText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  submitWeekText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: BASECAMP.accent },
   submittedBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginTop: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: T.greenDim,
-    borderWidth: 1,
-    borderColor: T.green + "30",
+    marginTop: 12,
+    paddingVertical: 9,
   },
-  submittedBannerText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.green },
+  submittedBannerText: { fontSize: 11.5, fontFamily: "Inter_500Medium", color: BASECAMP.textDim },
 });
 
 
@@ -2733,10 +2778,19 @@ const dash = StyleSheet.create({
     fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
   },
 
-  phaseBar: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 7, height: 7, borderRadius: 4 },
-  legendText: { fontSize: 10.5, lineHeight: 14, fontFamily: "Inter_500Medium", color: BASECAMP.textDim },
+  phaseArc: { marginTop: 14 },
+  phaseArcTrack: { flexDirection: "row", height: 5, borderRadius: 3, overflow: "hidden" },
+  phaseArcSeg: { height: 5, borderRadius: 3 },
+  phaseArcLabels: { flexDirection: "row", marginTop: 7 },
+  phaseArcLabel: { minWidth: 0 },
+  phaseArcName: {
+    fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_600SemiBold",
+    color: BASECAMP.textDim, letterSpacing: 0.2,
+  },
+  phaseArcWeeks: {
+    fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_400Regular",
+    color: BASECAMP.textMuted, marginTop: 1,
+  },
 
   lockCard: { padding: 18, alignItems: "center", gap: 9 },
   lockIcon: {

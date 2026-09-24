@@ -382,3 +382,54 @@ export function planWeekDays(
     };
   });
 }
+
+/* ── Full plan: the shape of the block, not a list of twelve boxes ─────────
+ *
+ * The plan is a progression — Base, then Build, then Peak, then Taper — and
+ * the Full plan view has to say that before it says anything about any one
+ * week. These spans drive the progression rail above the week list.
+ *
+ * Consecutive weeks sharing a phase merge into one span. A phase that comes
+ * back later stays a separate span, so the rail always reads in the plan's
+ * own order rather than in the order of a de-duplicated label set.
+ */
+export interface PlanPhaseSpan {
+  phase: string;
+  weeks: number;
+  firstWeek: number;
+  lastWeek: number;
+  /** True for the span holding the week the plan currently sits in. */
+  isCurrent: boolean;
+}
+
+export function planPhaseSpans(
+  weeks: { weekNumber: number; phase: string }[] | null | undefined,
+  currentWeekNumber: number | null = null,
+): PlanPhaseSpan[] {
+  if (!weeks?.length) return [];
+  const spans: PlanPhaseSpan[] = [];
+  for (const week of weeks) {
+    const open = spans[spans.length - 1];
+    if (open && open.phase === week.phase) {
+      open.weeks += 1;
+      open.lastWeek = week.weekNumber;
+    } else {
+      spans.push({
+        phase: week.phase,
+        weeks: 1,
+        firstWeek: week.weekNumber,
+        lastWeek: week.weekNumber,
+        isCurrent: false,
+      });
+    }
+  }
+  if (currentWeekNumber !== null) {
+    for (const span of spans) {
+      if (currentWeekNumber >= span.firstWeek && currentWeekNumber <= span.lastWeek) {
+        span.isCurrent = true;
+        break;
+      }
+    }
+  }
+  return spans;
+}

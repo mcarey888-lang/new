@@ -5,6 +5,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
+  Image,
   type ImageSourcePropType,
   Platform,
   ScrollView,
@@ -27,6 +28,7 @@ import {
   SREmptyState, SRSectionHeader, SRStatusPill, SRSubPanel,
 } from "@/components/ui";
 import { sessionPurpose } from "@/utils/sessionPurpose";
+import { sessionImageSubject } from "@/utils/mountainImage";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -399,21 +401,27 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  // Local asset overrides take priority; fall back to the API for hill/stair sessions
-  /* The exercise assets are generated artwork and carry their own large
-     lettering. The hero must ink them out before the functional band — see
-     SRHeroFrame's `artwork` prop — so the frame is told which it is holding. */
-  const heroIsGeneratedArtwork = !!inferredGymExercise;
-  const heroImageSource: ImageSourcePropType | null = !imageError
-    ? inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
+  /* The exercise assets are generated artwork carrying their own large
+     lettering, so they are never used as bleed imagery. They stay CONTAINED:
+     a framed illustration inside the exercise row, below. */
+  const exerciseArtwork: ImageSourcePropType | null =
+      inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
     : inferredGymExercise === "box-steps"       ? require("@/assets/images/exercise-box-steps.png")
     : inferredGymExercise === "weighted-stairs" ? require("@/assets/images/exercise-weighted-stairs.png")
     : inferredGymExercise === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
-    : heroSubject
-      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
-      : null
+    : null;
+
+  /* The hero is place photography or nothing. A gym session still belongs to
+     a summit, so it falls back to the objective the session is banked toward
+     — the same subject rule the rest of the app uses — rather than to any
+     invented imagery. */
+  const heroPhotoSubject = inferredGymExercise
+    ? sessionImageSubject({ mountainName: summitGoal?.mountainName ?? null })
+    : heroSubject;
+  const heroImageSource: ImageSourcePropType | null = !imageError && heroPhotoSubject
+    ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
     : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");
@@ -483,17 +491,16 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero: the prescription, over its own artwork ────────────────
-            `heroImageSource` is unchanged: the local exercise asset for a gym
-            session, otherwise the existing mountain-image service for the
-            assigned hill. Nothing new is invented, and a failure falls through
-            to the designed gradient rather than a broken image. */}
+        {/* ── Hero: the prescription, over place photography ──────────────
+            The existing mountain-image service, for the assigned hill or for
+            the summit the session is banked toward. Generated exercise
+            artwork never reaches this frame. A failure falls through to the
+            designed gradient rather than to a broken image. */}
         <SRHeroFrame
           source={heroImageSource}
           onImageError={() => setImageError(true)}
           minHeight={286}
           dim={0.96}
-          artwork={heroIsGeneratedArtwork ? "generated" : "photo"}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
@@ -596,6 +603,16 @@ export default function SessionDetailScreen() {
             </SRPanel>
           </View>
 
+          {/* ── Coaching notes ───────────────────────────────────────── */}
+          {session.description ? (
+            <View style={s.section}>
+              <SRSectionHeader title="Coaching notes" />
+              <SRPanel radius={16} style={{ marginTop: 10 }}>
+                <Text style={s.descText}>{session.description}</Text>
+              </SRPanel>
+            </View>
+          ) : null}
+
           {/* ── Where and when ───────────────────────────────────────────
               The hill assignment, the exercise choice and the scheduled day.
               All three actions are the existing ones. */}
@@ -613,6 +630,20 @@ export default function SessionDetailScreen() {
                   muted={!assignedHill}
                   onPress={() => setHillPickerOpen(true)}
                 />
+              )}
+
+              {/* The exercise illustration, CONTAINED: a framed, letterboxed
+                  plate that nothing functional is laid over. Its lettering is
+                  part of the artwork, so the artwork keeps its own edges. */}
+              {session.type === "cardio" && !isStairRepeat && exerciseArtwork && (
+                <View style={s.exercisePlate}>
+                  <Image
+                    source={exerciseArtwork}
+                    style={s.exercisePlateImage}
+                    resizeMode="cover"
+                    accessible={false}
+                  />
+                </View>
               )}
 
               {session.type === "cardio" && !isStairRepeat && (
@@ -653,16 +684,6 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* ── Coaching notes ───────────────────────────────────────── */}
-          {session.description ? (
-            <View style={s.section}>
-              <SRSectionHeader title="Coaching notes" />
-              <SRPanel radius={16} style={{ marginTop: 10 }}>
-                <Text style={s.descText}>{session.description}</Text>
-              </SRPanel>
-            </View>
-          ) : null}
-
           {/* ── Complete this session ────────────────────────────────────
               Every route out of this screen is unchanged: GPS tracking carries
               the same params, manual completion still calls togglePlanSession,
@@ -674,8 +695,11 @@ export default function SessionDetailScreen() {
 
               {(session.type === "hill" || session.type === "bigDay") && (
                 <>
-                  <SRPanel
-                    radius={16}
+                  {/* Starting is the point of this screen, so it is the one
+                      filled control on it. The route, the params and the
+                      accessibility labels are unchanged. */}
+                  <TouchableOpacity
+                    activeOpacity={0.9}
                     style={s.gpsPanel}
                     onPress={() =>
                       router.push({
@@ -689,20 +713,21 @@ export default function SessionDetailScreen() {
                         },
                       })
                     }
+                    accessibilityRole="button"
                     accessibilityLabel="Track this session with GPS"
                     accessibilityHint="Records elevation and maps your route"
                   >
                     <View style={s.ctaRow}>
-                      <View style={s.ctaIcon}>
-                        <Globe size={18} color={BASECAMP.accentInk} />
+                      <View style={[s.ctaIcon, s.ctaIconOnAccent]}>
+                        <Globe size={19} color={BASECAMP.accentInk} />
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={s.ctaTitle}>Track with GPS</Text>
-                        <Text style={s.ctaSub}>Records elevation and maps your route</Text>
+                        <Text style={s.ctaTitle}>Start session</Text>
+                        <Text style={s.ctaSubOn}>Track with GPS — records elevation and maps your route</Text>
                       </View>
-                      <ChevronRight size={16} color={BASECAMP.accent} />
+                      <ChevronRight size={18} color={BASECAMP.accentInk} />
                     </View>
-                  </SRPanel>
+                  </TouchableOpacity>
 
                   <View style={s.accuracyNote}>
                     <Zap size={11} color={BASECAMP.textFaint} />
@@ -912,13 +937,34 @@ const s = StyleSheet.create({
     fontFamily: "Inter_400Regular", color: BASECAMP.textStrong,
   },
 
-  gpsPanel: { marginTop: 10, borderColor: "rgba(36,239,164,0.30)" },
+  /* Not an SRPanel: SRPanel always paints its own dark gradient over the
+     surface, which would swallow a filled action. */
+  exercisePlate: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: BASECAMP.hairline,
+    backgroundColor: "#0B1216",
+  },
+  exercisePlateImage: { width: "100%", aspectRatio: 16 / 9 },
+
+  gpsPanel: {
+    marginTop: 10,
+    borderRadius: 16,
+    backgroundColor: BASECAMP.accent,
+    overflow: "hidden",
+  },
   ctaRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, minHeight: HIT.minTarget },
   ctaIcon: {
     width: 36, height: 36, borderRadius: 12,
     alignItems: "center", justifyContent: "center", backgroundColor: BASECAMP.accent,
   },
-  ctaTitle: { fontSize: 14.5, lineHeight: 19, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  ctaIconOnAccent: { backgroundColor: "rgba(5,9,11,0.12)" },
+  ctaTitle: { fontSize: 16, lineHeight: 21, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk },
+  ctaSubOn: {
+    fontSize: 12, lineHeight: 16, fontFamily: "Inter_400Regular",
+    color: "rgba(5,9,11,0.66)", marginTop: 2,
+  },
   ctaTitleQuiet: { fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_600SemiBold", color: BASECAMP.text },
   ctaSub: {
     marginTop: 2, fontSize: 11, lineHeight: 15,
