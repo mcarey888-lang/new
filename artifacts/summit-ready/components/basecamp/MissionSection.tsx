@@ -54,7 +54,7 @@ function SessionVisual({
   source?: ImageSourcePropType;
   type: string | null;
   iconSize: number;
-  scrim: "right" | "bottom";
+  scrim: "right" | "bottom" | "none";
   children?: React.ReactNode;
   style?: object;
 }) {
@@ -83,7 +83,7 @@ function SessionVisual({
       ) : (
         <Icon size={iconSize} color={BASECAMP.accent} strokeWidth={1.6} />
       )}
-      {showPhoto && (
+      {showPhoto && scrim !== "none" && (
         <LinearGradient
           colors={scrim === "right"
             ? ["rgba(5,9,11,0)", "rgba(12,20,20,0.92)"]
@@ -118,7 +118,7 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
   /* Keep the photograph as a compact thumbnail, not a full-height image strip.
      On narrow screens the title and action get priority over the artwork. */
   const { width } = useWindowDimensions();
-  const visualWidth = width < 360 ? 68 : width < 400 ? 76 : 84;
+  const visualWidth = width < 360 ? 46 : width < 400 ? 52 : 58;
 
   return (
     <SRPanel
@@ -132,8 +132,8 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
           uri={artwork ? null : imageUri ?? null}
           source={artwork ?? undefined}
           type={session.type}
-          iconSize={26}
-          scrim="right"
+          iconSize={20}
+          scrim="none"
           style={[styles.missionVisual, { width: visualWidth, height: visualWidth }]}
         />
 

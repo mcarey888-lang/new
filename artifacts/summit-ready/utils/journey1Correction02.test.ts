@@ -129,13 +129,14 @@ describe("Training session", () => {
     }
   });
 
-  /* The approved exercise artwork now reaches the hero, but its own lettering
-     is inked out before the functional content band. */
-  it("uses the selected exercise artwork with the generated-artwork scrim", () => {
+  /* Exercise art is a bounded, lettering-free thumbnail; hill photography can
+     still fill the hero. No full-size exercise poster sits behind the text. */
+  it("keeps exercise artwork in a small hero thumbnail", () => {
     const hero = session.slice(at("<SRHeroFrame"), at("</SRHeroFrame>"));
-    expect(hero).toContain("heroImageSource");
-    expect(hero).toContain('artwork={selectedHeroArtwork ? "generated" : "photo"}');
-    expect(session).toContain("selectedHeroArtwork");
+    expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
+    expect(hero).toContain("source={heroThumbnailArtwork}");
+    expect(session).toContain('require("@/assets/images/exercise-stepper-right-half.png")');
+    expect(session).toContain("heroThumbnail: { width: 72, height: 72");
   });
 
   it("keeps the exercise illustration contained, with nothing laid over it", () => {

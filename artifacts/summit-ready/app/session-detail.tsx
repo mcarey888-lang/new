@@ -29,6 +29,7 @@ import {
 } from "@/components/ui";
 import { sessionPurpose } from "@/utils/sessionPurpose";
 import { sessionImageSubject } from "@/utils/mountainImage";
+import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -423,6 +424,13 @@ export default function SessionDetailScreen() {
     session?.type === "cardio" && !isStairRepeat
       ? previewExerciseHero ? require("@/assets/images/exercise-stepper.png") : exerciseArtwork
       : null;
+  // Use the lettering-free crop for a small hero thumbnail; preserve the
+  // approved Stepper/Incline Treadmill pairing.
+  const heroThumbnailArtwork = selectedHeroArtwork
+    ? previewExerciseHero
+      ? require("@/assets/images/exercise-stepper-right-half.png")
+      : exerciseCardArtwork(session)
+    : null;
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
     : selectedHeroArtwork
@@ -501,11 +509,10 @@ export default function SessionDetailScreen() {
         {/* ── Hero: the prescription over the selected exercise artwork or
             place photography. A failure falls back to the designed gradient. */}
         <SRHeroFrame
-          source={heroImageSource}
+          source={selectedHeroArtwork ? null : heroImageSource}
           onImageError={() => setImageError(true)}
-          minHeight={286}
+          minHeight={selectedHeroArtwork ? 190 : 212}
           dim={0.96}
-          artwork={selectedHeroArtwork ? "generated" : "photo"}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
@@ -520,31 +527,42 @@ export default function SessionDetailScreen() {
           </View>
 
           <View style={s.heroBody}>
-            <View style={s.pillRow}>
-              <SRStatusPill label={typeLabel(session.type)} tone={BASECAMP.accent} />
-              {isDone ? <SRStatusPill label="Done" tone={BASECAMP.accent} /> : null}
-              {isSubmitted ? <SRStatusPill label="Submitted" tone={BASECAMP.accent} /> : null}
-            </View>
+            <View style={s.heroText}>
+              <View style={s.pillRow}>
+                <SRStatusPill label={typeLabel(session.type)} tone={BASECAMP.accent} />
+                {isDone ? <SRStatusPill label="Done" tone={BASECAMP.accent} /> : null}
+                {isSubmitted ? <SRStatusPill label="Submitted" tone={BASECAMP.accent} /> : null}
+              </View>
 
-            <Text style={s.title} numberOfLines={3}>{session.label}</Text>
+              <Text style={s.title} numberOfLines={3}>{session.label}</Text>
 
-            <View style={s.heroFacts}>
-              <Text style={s.heroFact} numberOfLines={1}>{session.duration}</Text>
-              {session.targetElevation > 0 && (
-                <>
-                  <SRFactDivider />
-                  <Text style={s.heroFact} numberOfLines={1}>
-                    {session.targetElevation.toLocaleString()} m gain
-                  </Text>
-                </>
-              )}
-              {sessionDow !== null && (
-                <>
-                  <SRFactDivider />
-                  <Text style={s.heroFact} numberOfLines={1}>{DAY_FULL[sessionDow]}</Text>
-                </>
-              )}
+              <View style={s.heroFacts}>
+                <Text style={s.heroFact} numberOfLines={1}>{session.duration}</Text>
+                {session.targetElevation > 0 && (
+                  <>
+                    <SRFactDivider />
+                    <Text style={s.heroFact} numberOfLines={1}>
+                      {session.targetElevation.toLocaleString()} m gain
+                    </Text>
+                  </>
+                )}
+                {sessionDow !== null && (
+                  <>
+                    <SRFactDivider />
+                    <Text style={s.heroFact} numberOfLines={1}>{DAY_FULL[sessionDow]}</Text>
+                  </>
+                )}
+              </View>
             </View>
+            {heroThumbnailArtwork && !imageError && (
+              <Image
+                source={heroThumbnailArtwork}
+                style={s.heroThumbnail}
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+                accessible={false}
+              />
+            )}
           </View>
         </SRHeroFrame>
 
@@ -893,7 +911,12 @@ const s = StyleSheet.create({
      17pt gutter, the tracked-out section label, the gradient panel. */
   section: { marginTop: 20, paddingHorizontal: BASECAMP.gutter },
 
-  heroBody: { paddingHorizontal: BASECAMP.gutter, marginTop: 22, paddingBottom: 22 },
+  heroBody: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: BASECAMP.gutter, marginTop: 12, paddingBottom: 16,
+  },
+  heroText: { flex: 1, minWidth: 0 },
+  heroThumbnail: { width: 72, height: 72, borderRadius: 8 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   title: {
     marginTop: 10,
