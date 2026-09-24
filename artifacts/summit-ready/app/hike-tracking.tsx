@@ -1931,6 +1931,17 @@ export default function HikeTrackingScreen() {
                   {ctx.subtitle ? (
                     <Text style={s.readyContextSub} numberOfLines={1}>{ctx.subtitle}</Text>
                   ) : null}
+                  {canonicalRouteContext?.startLabel ? (
+                    <Text style={s.readyContextSub} numberOfLines={1}>
+                      {`Route start · ${canonicalRouteContext.startLabel}`}
+                    </Text>
+                  ) : null}
+                  {typeof canonicalRouteContext?.startElevationM === "number" &&
+                    Number.isFinite(canonicalRouteContext.startElevationM) ? (
+                    <Text style={s.readyContextSub} numberOfLines={1}>
+                      {`Route start elevation · ${fmtM(canonicalRouteContext.startElevationM)}`}
+                    </Text>
+                  ) : null}
                 </View>
               );
             })()}

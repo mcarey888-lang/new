@@ -91,6 +91,16 @@ describe("Mountain Detail", () => {
     expect(route).not.toMatch(/JSON\.stringify\(geometry/);
   });
 
+  it("copies optional start information only from the exact canonical record", () => {
+    const route = body.slice(body.indexOf("async function startRoute"));
+    expect(route).toMatch(/record\.route\.version\.routeId !== handoff\.routeId/);
+    expect(route).toMatch(/record\.route\.version\.identityKey !== handoff\.routeIdentityKey/);
+    expect(route).toMatch(/record\.mountain\.id !== handoff\.mountainId/);
+    expect(route).toMatch(/record\.definition\?\.startLabel/);
+    expect(route).toMatch(/record\.facts\?\.startElevationM/);
+    expect(route).not.toMatch(/presented\.route\.startName/);
+  });
+
   it("does not offer a capability this build lacks", () => {
     expect(body).not.toMatch(/View in 3D|view3d|View3D/i);
   });

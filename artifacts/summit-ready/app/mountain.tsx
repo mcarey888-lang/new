@@ -190,6 +190,12 @@ export default function MountainDetailScreen() {
       ? exploreRoute.geometry.value
       : null;
     if (!handoff || !geometry) return;
+    if (!record ||
+        record.route.version.routeId !== handoff.routeId ||
+        record.route.version.identityKey !== handoff.routeIdentityKey ||
+        record.route.version.version !== handoff.routeVersion ||
+        record.route.version.mountainId !== handoff.mountainId ||
+        record.mountain.id !== handoff.mountainId) return;
     if (!userId) {
       Alert.alert("Sign in required", "Sign in before starting a canonical route handoff.");
       return;
@@ -205,6 +211,15 @@ export default function MountainDetailScreen() {
         routeVersion: handoff.routeVersion,
         routeName: handoff.routeName,
         mountainName: handoff.mountainName,
+        ...(typeof record.definition?.startLabel === "string" &&
+            record.definition.startLabel.trim().length > 0 &&
+            record.definition.startLabel.trim().length <= 200
+          ? { startLabel: record.definition.startLabel.trim() }
+          : {}),
+        ...(typeof record.facts?.startElevationM === "number" &&
+            Number.isFinite(record.facts.startElevationM) && record.facts.startElevationM >= 0
+          ? { startElevationM: record.facts.startElevationM }
+          : {}),
         geometry,
         savedAt: Date.now(),
       });

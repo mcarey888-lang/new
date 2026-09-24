@@ -122,6 +122,8 @@ export type RouteDefinition = {
   definitionVersion: string;
   definitionKey: string;
   description?: string;
+  /** Optional start-point label from this exact canonical route definition. */
+  startLabel?: string;
   direction?: "out_and_back" | "loop" | "point_to_point" | "unknown";
   evidence: EvidenceReference[];
   status: RouteEngineStatus;

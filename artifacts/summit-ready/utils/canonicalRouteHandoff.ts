@@ -13,6 +13,8 @@ export interface CanonicalRouteHandoff {
   routeVersion: string;
   routeName: string;
   mountainName: string;
+  startLabel?: string;
+  startElevationM?: number;
   geometry: RouteGeometry;
   savedAt: number;
 }
@@ -54,10 +56,24 @@ export function isCanonicalRouteHandoffFresh(savedAt: unknown, now = Date.now())
     savedAt <= now && now - savedAt <= HANDOFF_MAX_AGE_MS;
 }
 
+export function isCanonicalRouteStartMetadataValid(value: {
+  startLabel?: unknown;
+  startElevationM?: unknown;
+}): boolean {
+  const labelValid = value.startLabel === undefined ||
+    (typeof value.startLabel === "string" && value.startLabel.trim().length > 0 &&
+      value.startLabel.trim().length <= 200);
+  const elevationValid = value.startElevationM === undefined ||
+    (typeof value.startElevationM === "number" && Number.isFinite(value.startElevationM) &&
+      value.startElevationM >= 0);
+  return labelValid && elevationValid;
+}
+
 function validHandoff(handoff: CanonicalRouteHandoff, now = Date.now()): boolean {
   return !!handoff.ownerUserId && !!handoff.handoffId &&
     isCanonicalRouteHandoffFresh(handoff.savedAt, now) &&
     canonicalRouteHandoffMatches(handoff, handoff) &&
+    isCanonicalRouteStartMetadataValid(handoff) &&
     isReusableCanonicalGeometry(handoff.geometry);
 }
 

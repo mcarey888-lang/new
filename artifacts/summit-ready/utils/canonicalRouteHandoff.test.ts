@@ -6,6 +6,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 
 import {
   isCanonicalRouteHandoffFresh,
+  isCanonicalRouteStartMetadataValid,
   isReusableCanonicalGeometry,
 } from "./canonicalRouteHandoff";
 
@@ -47,5 +48,16 @@ describe("canonical route handoff local validation", () => {
     expect(isCanonicalRouteHandoffFresh(now - 25 * 60 * 60 * 1000, now)).toBe(false);
     expect(isCanonicalRouteHandoffFresh(now + 1, now)).toBe(false);
     expect(isCanonicalRouteHandoffFresh("yesterday", now)).toBe(false);
+  });
+
+  it("preserves absent route-start metadata and accepts exact-record values when present", () => {
+    expect(isCanonicalRouteStartMetadataValid({})).toBe(true);
+    expect(isCanonicalRouteStartMetadataValid({
+      startLabel: "Lower trailhead",
+      startElevationM: 245.5,
+    })).toBe(true);
+    expect(isCanonicalRouteStartMetadataValid({ startLabel: "  " })).toBe(false);
+    expect(isCanonicalRouteStartMetadataValid({ startElevationM: Number.NaN })).toBe(false);
+    expect(isCanonicalRouteStartMetadataValid({ startElevationM: -1 })).toBe(false);
   });
 });

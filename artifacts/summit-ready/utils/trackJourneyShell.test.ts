@@ -114,6 +114,13 @@ describe("the offline-first architecture is intact", () => {
     expect(TRACK_CODE.match(/trackPoints\.current\.length > 0\) replayTrackOnMap\(\)/g) ?? []).toHaveLength(2);
   });
 
+  it("shows optional route start metadata as route facts, not current GPS altitude", () => {
+    expect(TRACK_CODE).toMatch(/Route start · \$\{canonicalRouteContext\.startLabel\}/);
+    expect(TRACK_CODE).toMatch(/Route start elevation · \$\{fmtM\(canonicalRouteContext\.startElevationM\)\}/);
+    expect(TRACK_CODE).toMatch(/typeof canonicalRouteContext\?\.startElevationM === "number"/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteContext\?\.startLabel/);
+  });
+
   it("isolates canonical intent from community tracked-route fetches and picker", () => {
     expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?fetch\(`\$\{API_BASE\}\/tracked-routes\/\$\{routeId\}`\)/);
     expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?tracked-routes\/nearby/);
