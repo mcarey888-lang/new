@@ -616,14 +616,14 @@ export default function DashboardScreen() {
   /* A session's photograph is the hill the plan assigned to it; failing that,
      the objective the whole plan is for. Both come from the existing
      mountain-image service — nothing stock, and never another mountain. */
-  const sessionImage = useCallback((session: { key: string } | null) => {
+  const sessionImage = (session: { key: string } | null) => {
     if (!session) return null;
     const subject = sessionImageSubject({
       assignedHillName: assignedHills?.[session.key]?.name ?? null,
       mountainName: summitGoal?.mountainName ?? null,
     });
     return mountainImageUri(subject, { width: 320, height: 300 });
-  }, [assignedHills, summitGoal?.mountainName]);
+  };
 
   const nextSession = mission
     ? currentWeek?.sessions?.[mission.sessionIndex] ?? null

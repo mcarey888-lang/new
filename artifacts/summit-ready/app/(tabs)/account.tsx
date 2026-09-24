@@ -1,4 +1,4 @@
-import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera } from "lucide-react-native";
+import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera, ChevronLeft } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,7 +28,7 @@ import { logoutRevenueCat, useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
-  SREmptyState, SREyebrow, SRSectionHeader, SRUnderlineTabs,
+  SREmptyState, SREyebrow, SRSectionHeader,
 } from "@/components/ui";
 import { useScreenView } from "@/lib/analytics";
 import { ACHIEVEMENTS, TIER_COLOR, TIER_LABEL } from "@/utils/achievements";
@@ -62,6 +62,11 @@ import { RankExperience } from "@/components/RankExperience";
 import { evaluateRank } from "@/utils/rankEvaluator";
 import type { RankSignal } from "@/utils/rankDomain";
 import { readDevRankEvidence } from "@/utils/devProfiles";
+import { englishPlaceName } from "@/utils/placeNames";
+import {
+  PrimaryProfilePresentation,
+  type PrimaryProfileTab,
+} from "@/components/profile/PrimaryProfilePresentation";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -108,19 +113,12 @@ function computeChallengeBadges(ac: { activities: { elevationGain: number }[]; }
   return b;
 }
 
-type ProfileTab = "profile" | "achievements" | "activity" | "photos" | "stats";
-
-/** Five things, deliberately not merged. */
-const PROFILE_TABS: { value: ProfileTab; label: string }[] = [
-  { value: "profile", label: "Profile" },
-  { value: "achievements", label: "Achievements" },
-  { value: "activity", label: "Activity" },
-  { value: "photos", label: "Photos" },
-  { value: "stats", label: "Stats" },
-];
-
 export default function AccountScreen() {
-  useScreenView("account");
+  return <PrimaryProfileScreen />;
+}
+
+export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: string }) {
+  useScreenView(screenName);
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
@@ -135,7 +133,8 @@ export default function AccountScreen() {
   const queryClient = useQueryClient();
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
-  const [tab, setTab] = useState<ProfileTab>("profile");
+  const [tab, setTab] = useState<PrimaryProfileTab>("profile");
+  const [showSettings, setShowSettings] = useState(false);
 
 
   const achievementsY = useRef<number>(0);
@@ -254,6 +253,12 @@ export default function AccountScreen() {
   const completedCount = Object.values(completedPlanSessions ?? {}).filter(Boolean).length;
   const totalPlanSessions = trainingPlan.reduce((a, w) => a + w.sessions.length, 0);
   const currentWeek = trainingPlan.find(w => w.isCurrentWeek);
+  const myRoutes = summitGoal?.virtualHills?.slice(0, 3) ?? [];
+  const nextPlanSession = currentWeek
+    ? currentWeek.sessions.find(
+        (_, index) => !completedPlanSessions?.[`${currentWeek.weekNumber}-${index}`],
+      ) ?? null
+    : null;
 
   async function handleSignOut() {
     if (Platform.OS === "web") {
@@ -365,73 +370,54 @@ export default function AccountScreen() {
     }
   }
 
-  const topPad = Platform.OS === "web" ? 56 : insets.top + 16;
+  // Leave the persistent shell toggle clear above the editorial cover.
+  const topInset = Platform.OS === "web" ? 67 : insets.top + 48;
   const botPad = Platform.OS === "web" ? 100 : insets.bottom + 100;
 
   return (
     <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.scroll, { paddingTop: topPad, paddingBottom: botPad }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Mountain identity ────────────────────────────────────────────
-            Rank is WHO YOU ARE — it is stated first and largest. Lifetime
-            elevation is what earned it. Both come from the engines; nothing
-            here is a placeholder or a projection. */}
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.identity}>
-          <View style={styles.identityRow}>
-            <View style={styles.identityAvatar}>
-              {isSignedIn
-                ? <Text style={styles.avatarInitial}>{avatarInitial}</Text>
-                : <User size={24} color={BASECAMP.textMuted} />}
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              {/* The rank the engine awarded, or the fact that none is earned yet.
-                  Never a placeholder rank. */}
-              <SREyebrow tone={BASECAMP.accent}>
-                {(rankResult.currentRank ?? "Unranked").toUpperCase()}
-              </SREyebrow>
-              <Text style={styles.identityName} numberOfLines={2}>{displayName}</Text>
-              {displayEmail && displayEmail !== displayName ? (
-                <Text style={styles.identityMeta} numberOfLines={1}>{displayEmail}</Text>
-              ) : null}
-            </View>
-          </View>
-          <View style={styles.identityStats}>
-            <View style={styles.identityStat}>
-              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {`${Math.round(lifetimeElevation).toLocaleString()} m`}
-              </Text>
-              <Text style={styles.identityStatLabel}>Lifetime ascent</Text>
-            </View>
-            <View style={styles.identityStat}>
-              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {String(lifetimeSessions)}
-              </Text>
-              <Text style={styles.identityStatLabel}>Activities</Text>
-            </View>
-            <View style={styles.identityStat}>
-              <Text style={styles.identityStatValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {`${unlockedAchievements.length}/${ACHIEVEMENTS.length}`}
-              </Text>
-              <Text style={styles.identityStatLabel}>Achievements</Text>
+        {!showSettings ? (
+          <PrimaryProfilePresentation
+            displayName={displayName}
+            displayEmail={displayEmail}
+            avatarInitial={avatarInitial}
+            avatarImageUrl={user?.imageUrl}
+            isSignedIn={!!isSignedIn}
+            rankName={rankResult.currentRank ?? "Unranked"}
+            metrics={[
+              { value: `${Math.round(lifetimeElevation).toLocaleString()} m`, label: "Lifetime ascent" },
+              { value: String(lifetimeSessions), label: "Activities" },
+              { value: `${unlockedAchievements.length}/${ACHIEVEMENTS.length}`, label: "Achievements" },
+            ]}
+            selectedTab={tab}
+            onTabChange={setTab}
+            onOpenSettings={() => setShowSettings(true)}
+            topInset={topInset}
+          />
+        ) : (
+          <View style={[styles.settingsHeader, { paddingTop: topInset + 8 }]}>
+            <TouchableOpacity
+              onPress={() => setShowSettings(false)}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel="Back to profile"
+              style={styles.settingsBack}
+            >
+              <ChevronLeft size={19} color={BASECAMP.text} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <SREyebrow tone={BASECAMP.accent}>SUMMITREADY</SREyebrow>
+              <Text style={styles.settingsTitle}>Account & settings</Text>
             </View>
           </View>
-        </Animated.View>
+        )}
 
-        {/* ── Tabs ─────────────────────────────────────────────────────────
-            Rank is identity, achievements are what you have done, challenges
-            are what you are attempting, activity is the record and stats are
-            the totals. They are different things and stay separate. */}
-        <SRUnderlineTabs
-          options={PROFILE_TABS}
-          value={tab}
-          onChange={setTab}
-          style={styles.tabs}
-        />
-
-        {tab === "profile" && (<>
+        {tab === "profile" && !showSettings && (<>
         {/* ── Elevation Bank ───────────────────────────────────────────────
             The headline of the profile, not a widget further down it: it is
             the running total of everything the user has actually climbed. */}
@@ -467,36 +453,56 @@ export default function AccountScreen() {
           </View>
         </Animated.View>
 
-        {/* Profile card */}
-        <Animated.View entering={FadeInDown.delay(40).duration(400)}>
-          <View style={[styles.profileCard, { borderColor: T.green + "40" }]}>
-            <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
-            {/* The name and avatar are the identity hero's job now; this card
-                carries the ACCOUNT state — who you are signed in as and what
-                that guarantees — without repeating them. */}
-            <View style={styles.avatarRow}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.sectionLabel}>ACCOUNT</Text>
-                {userId && (
-                  <Text style={[styles.userId, { marginTop: 3 }]}>ID: {maskId(userId)}</Text>
-                )}
-              </View>
-              <View style={[styles.guestBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
-                <View style={[styles.guestDot, { backgroundColor: T.green }]} />
-                <Text style={[styles.guestBadgeText, { color: T.green }]}>
-                  {isSignedIn ? "Signed in" : "Guest"}
-                </Text>
-              </View>
+        {shellMode === "expedition" && myRoutes.length > 0 && (
+          <View style={styles.routesSection}>
+            <View style={styles.routesHeader}>
+              <Text style={styles.sectionLabel}>MY ROUTES</Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(expedition)/route" as any)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="View all my routes"
+              >
+                <Text style={styles.routesSeeAll}>View all</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.signedInNote}>
-              <Shield size={12} color={T.green} />
-              <Text style={styles.signedInNoteText}>
-                Your account is secured. Sign in on any device to restore your purchases.
-              </Text>
-            </View>
+            {myRoutes.map((hill, index) => (
+              <TouchableOpacity
+                key={`${hill.name}-${index}`}
+                style={styles.routeRow}
+                onPress={() => router.push("/(expedition)/route" as any)}
+                activeOpacity={0.78}
+                accessibilityRole="button"
+                accessibilityLabel={`Open route for ${englishPlaceName(hill.name)}`}
+              >
+                <Mountain size={15} color={EXPLORE.accent} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.routeName} numberOfLines={1}>{englishPlaceName(hill.name)}</Text>
+                  <Text style={styles.routeMeta}>{hill.elevation}m gain · {hill.distance}km</Text>
+                </View>
+                <ChevronRight size={15} color={BASECAMP.textDim} />
+              </TouchableOpacity>
+            ))}
           </View>
-        </Animated.View>
+        )}
 
+        {shellMode !== "expedition" && nextPlanSession && (
+          <TouchableOpacity
+            style={styles.nextUp}
+            onPress={() => router.push("/(tabs)/plan")}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Next up: ${nextPlanSession.label}. Open training plan`}
+          >
+            <View style={styles.nextUpMarker} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.nextUpKicker}>NEXT UP · WEEK {currentWeek?.weekNumber}</Text>
+              <Text style={styles.nextUpTitle} numberOfLines={1}>{nextPlanSession.label}</Text>
+              <Text style={styles.nextUpMeta} numberOfLines={1}>{nextPlanSession.description}</Text>
+            </View>
+            <ChevronRight size={16} color={BASECAMP.accent} />
+          </TouchableOpacity>
+        )}
 
         {/* Log Session button */}
         <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.section}>
@@ -513,7 +519,28 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "profile" && (<>
+        {showSettings && (<>
+        <Animated.View entering={FadeInDown.delay(30).duration(400)} style={styles.profileCard}>
+          <View style={styles.avatarRow}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.sectionLabel}>ACCOUNT</Text>
+              <Text style={styles.displayName} numberOfLines={1}>{displayName}</Text>
+              {userId && <Text style={[styles.userId, { marginTop: 3 }]}>ID: {maskId(userId)}</Text>}
+            </View>
+            <View style={[styles.guestBadge, { backgroundColor: T.greenDim, borderColor: T.green + "40" }]}>
+              <View style={[styles.guestDot, { backgroundColor: T.green }]} />
+              <Text style={[styles.guestBadgeText, { color: T.green }]}>{isSignedIn ? "Signed in" : "Guest"}</Text>
+            </View>
+          </View>
+          <View style={styles.signedInNote}>
+            <Shield size={12} color={T.green} />
+            <Text style={styles.signedInNoteText}>
+              Your account is secured. Sign in on any device to restore your purchases.
+            </Text>
+          </View>
+        </Animated.View>
+        </>)}
+        {showSettings && (<>
         {/* Subscription card */}
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
@@ -579,7 +606,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "stats" && (<>
+        {tab === "stats" && !showSettings && (<>
         {/* Progress summary */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
@@ -642,7 +669,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "activity" && (<>
+        {tab === "activity" && !showSettings && (<>
         {/* Training History */}
         {completedGoals.length === 0 && (
           <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
@@ -715,7 +742,7 @@ export default function AccountScreen() {
         )}
 
         </>)}
-        {tab === "activity" && (<>
+        {tab === "activity" && !showSettings && (<>
         {/* Hills you're ready for */}
         {readyForPeaks.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -752,7 +779,7 @@ export default function AccountScreen() {
         )}
 
         </>)}
-        {tab === "profile" && (<>
+        {tab === "profile" && !showSettings && (<>
         {/* ── Rank Experience ────────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(128).duration(400)}>
           <RankExperience
@@ -768,7 +795,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "achievements" && (<>
+        {tab === "achievements" && !showSettings && (<>
         {/* Verified progress */}
         {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
           <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
@@ -792,7 +819,7 @@ export default function AccountScreen() {
         )}
 
         </>)}
-        {tab === "achievements" && (<>
+        {tab === "achievements" && !showSettings && (<>
         {/* Achievements */}
         <Animated.View
           entering={FadeInDown.delay(130).duration(400)}
@@ -849,7 +876,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "achievements" && (<>
+        {tab === "achievements" && !showSettings && (<>
         {/* Active Challenges */}
         {inProgressChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -897,7 +924,7 @@ export default function AccountScreen() {
         )}
 
         </>)}
-        {tab === "achievements" && (<>
+        {tab === "achievements" && !showSettings && (<>
         {/* Completed Challenges */}
         {completedChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(129).duration(400)} style={styles.section}>
@@ -985,7 +1012,7 @@ export default function AccountScreen() {
         )}
 
         </>)}
-        {tab === "profile" && (<>
+        {showSettings && (<>
         {/* Setup / Goal actions */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>TRAINING SETUP</Text>
@@ -1073,7 +1100,7 @@ export default function AccountScreen() {
         </Animated.View>
 
         </>)}
-        {tab === "photos" && (
+        {tab === "photos" && !showSettings && (
           <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
             <SRSectionHeader title="Your photos" />
             {journalPhotos.length > 0 ? (
@@ -1105,6 +1132,7 @@ export default function AccountScreen() {
         )}
 
         {/* App info */}
+        {showSettings && <>
         <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.appInfo}>
           <Text style={styles.appInfoText}>SummitReady · v1.0</Text>
           <View style={styles.legalLinks}>
@@ -1117,6 +1145,7 @@ export default function AccountScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+        </>}
       </ScrollView>
 
     </LinearGradient>
@@ -1124,6 +1153,89 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
+  settingsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SP.md,
+    paddingHorizontal: 2,
+    paddingBottom: SP.lg,
+  },
+  settingsBack: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: BASECAMP.glass,
+    borderWidth: 1,
+    borderColor: BASECAMP.glassBorder,
+  },
+  settingsTitle: {
+    ...TYPE.title,
+    color: BASECAMP.text,
+  },
+  nextUp: {
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SP.md,
+    paddingHorizontal: SP.md,
+    paddingVertical: SP.md,
+    marginBottom: SP.md,
+    backgroundColor: BASECAMP.panelSub,
+    borderLeftWidth: 2,
+    borderLeftColor: BASECAMP.accent,
+  },
+  nextUpMarker: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: BASECAMP.accent,
+  },
+  nextUpKicker: {
+    ...TYPE.eyebrow,
+    color: BASECAMP.textDim,
+    fontSize: 9,
+    letterSpacing: 1.2,
+  },
+  nextUpTitle: {
+    marginTop: 2,
+    ...TYPE.bodyBold,
+    color: BASECAMP.text,
+  },
+  nextUpMeta: {
+    ...TYPE.caption,
+    color: BASECAMP.textDim,
+  },
+  routesSection: {
+    marginBottom: SP.md,
+  },
+  routesHeader: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  routesSeeAll: {
+    ...TYPE.smallBold,
+    color: EXPLORE.accent,
+  },
+  routeRow: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SP.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: BASECAMP.hairline,
+  },
+  routeName: {
+    ...TYPE.bodyBold,
+    color: BASECAMP.textStrong,
+  },
+  routeMeta: {
+    ...TYPE.caption,
+    color: BASECAMP.textDim,
+  },
   identity: { marginBottom: SP.md },
   identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   identityAvatar: {

@@ -1,8 +1,57 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resolveTrainingBasecampArtwork } from './artworkResolver';
+import { resolveApprovedTabHeroArtwork, resolveTrainingBasecampArtwork } from './artworkResolver';
 
 const originalDev = global.__DEV__;
 const originalFetch = global.fetch;
+
+describe('resolveApprovedTabHeroArtwork', () => {
+  beforeEach(() => { global.fetch = vi.fn(); });
+  afterEach(() => {
+    global.__DEV__ = originalDev;
+    global.fetch = originalFetch;
+  });
+
+  it('never requests the development-only endpoint in production', async () => {
+    global.__DEV__ = false;
+    expect(await resolveApprovedTabHeroArtwork('profile')).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts only the exact approved Explore placement', async () => {
+    global.__DEV__ = true;
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        assetId: 'SR-EXPLORE-001',
+        version: 1,
+        placement: 'hero',
+        derivativePath: '/api/artwork/batches/batch-01/SR-EXPLORE-001/v1/hero',
+        url: '/api/artwork/approved/SR-EXPLORE-001/hero',
+      }),
+    });
+    expect((await resolveApprovedTabHeroArtwork('explore'))?.uri)
+      .toBe('/api/artwork/approved/SR-EXPLORE-001/hero');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/artwork/resolve/SR-EXPLORE-001/hero',
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('rejects another batch, version or approval URL', async () => {
+    global.__DEV__ = true;
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        assetId: 'SR-YOU-001',
+        version: 1,
+        placement: 'hero',
+        derivativePath: '/api/artwork/batches/batch-02/SR-YOU-001/v1/hero',
+        url: '/api/artwork/approved/SR-YOU-001/hero',
+      }),
+    });
+    expect(await resolveApprovedTabHeroArtwork('profile')).toBeNull();
+  });
+});
 
 describe('resolveTrainingBasecampArtwork', () => {
   const pilotContext = {

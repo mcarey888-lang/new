@@ -16,13 +16,17 @@ const code = (src: string) =>
 
 const ACCOUNT = read("app/(tabs)/account.tsx");
 const ACCOUNT_CODE = code(ACCOUNT);
+const PROFILE_PRESENTATION = code(read("components/profile/PrimaryProfilePresentation.tsx"));
+const EXPEDITION_PROFILE = code(read("app/(expedition)/profile.tsx"));
 
 describe("Profile is a mountain résumé", () => {
   it("exposes the five sections as tabs", () => {
-    expect(ACCOUNT_CODE).toMatch(/SRUnderlineTabs/);
+    expect(ACCOUNT_CODE).toMatch(/PrimaryProfilePresentation/);
+    expect(PROFILE_PRESENTATION).toMatch(/SRUnderlineTabs/);
     for (const label of ["Profile", "Achievements", "Activity", "Photos", "Stats"]) {
-      expect(ACCOUNT_CODE).toMatch(new RegExp(`label: "${label}"`));
+      expect(PROFILE_PRESENTATION).toMatch(new RegExp(`label: "${label}"`));
     }
+    expect(EXPEDITION_PROFILE).toMatch(/PrimaryProfileScreen/);
   });
 
   it("leads with rank and lifetime ascent, from the engines", () => {

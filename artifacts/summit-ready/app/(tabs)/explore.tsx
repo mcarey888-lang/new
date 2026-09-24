@@ -4,24 +4,8 @@
  * Rebuilt to the approved Explore prototype: a photographic hero the page
  * scrolls out of, a search field, terrain filters, a Featured rail, a Popular
  * rail and the map entry.
- *
- * ── WHERE EVERY CARD LEADS ────────────────────────────────────────────────
- * Every mountain here opens the SAME decision surface — `app/mountain.tsx` —
- * addressed by name plus region, which that screen resolves against the
- * canonical catalogue. It is the Mountain Detail screen that decides whether
- * a mountain is verified, what routes it has and what may be done with them.
- * Explore makes no claim about verification, because it cannot know one.
- *
- * ── WHAT THE LISTS ARE ────────────────────────────────────────────────────
- * `CURATED_HILLS` is SummitReady's existing curated catalogue of real UK
- * hills. It is production data, not prototype filler, and it carries no
- * canonical identity — which is exactly why a card carries a name and a
- * region rather than an identity it does not have.
- *
- * Nothing here is ranked by engagement, because SummitReady records none.
- * "Popular" is the curated catalogue's own ordering, not a fabricated count.
  */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
   useWindowDimensions, View,
@@ -32,13 +16,14 @@ import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronRight, Compass, Map as MapIcon, MapPin, Mountain as MountainIcon,
-  Route as RouteIcon, Search, TrendingUp, X,
+  Route as RouteIcon, Search, TrendingUp, X, Activity
 } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
-import { SREmptyState, SREyebrow, SRPanel, SRSectionHeader } from "@/components/ui";
+import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
+import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -53,22 +38,14 @@ const DIFF_TONE: Record<string, string> = {
 type FilterId = "all" | "mountains" | "hills" | "loops" | "moderate" | "hard";
 
 const FILTERS: { id: FilterId; label: string; icon: React.ElementType; match: (t: Trail) => boolean }[] = [
-  { id: "all", label: "All", icon: MountainIcon, match: () => true },
+  { id: "all", label: "All peaks", icon: Compass, match: () => true },
   { id: "mountains", label: "Mountains", icon: MountainIcon, match: t => t.terrain === "mountain" },
   { id: "hills", label: "Hills", icon: TrendingUp, match: t => t.terrain === "hill" },
   { id: "loops", label: "Loops", icon: RouteIcon, match: t => t.routeType === "loop" },
-  { id: "moderate", label: "Moderate", icon: Compass, match: t => t.difficulty === "Moderate" },
-  { id: "hard", label: "Hard", icon: Compass, match: t => t.difficulty === "Hard" },
+  { id: "moderate", label: "Moderate", icon: Activity, match: t => t.difficulty === "Moderate" },
+  { id: "hard", label: "Hard", icon: Activity, match: t => t.difficulty === "Hard" },
 ];
 
-/**
- * The mountain a route belongs to.
- *
- * Curated entries name a route ("Snowdon via the Pyg Track"), and the
- * Mountain Detail screen resolves a MOUNTAIN. This strips the route clause so
- * the lookup is asked about the mountain — it is a display-string tidy-up for
- * a query, never an identity, and the lookup still decides what it matches.
- */
 function mountainSubject(name: string): string {
   return name
     .replace(/\s+via\s+.+$/i, "")
@@ -94,20 +71,20 @@ function imageUri(trail: Trail, width: number, height: number) {
     + `&location=${encodeURIComponent(trail.location)}&width=${width}&height=${height}`;
 }
 
-/** The designed gradient a card falls back to. Never a broken-image box. */
-function Fallback({ compact = false }: { compact?: boolean }) {
+function Fallback() {
   return (
     <LinearGradient
       colors={["#1B2C2A", "#0F1A1D", BASECAMP.ink]}
       style={[StyleSheet.absoluteFill, styles.fallback]}
     >
-      <MountainIcon size={compact ? 18 : 24} color={BASECAMP.textDim} strokeWidth={1.5} />
+      <MountainIcon size={24} color={BASECAMP.textDim} strokeWidth={1.5} />
     </LinearGradient>
   );
 }
 
 function FeaturedCard({ trail }: { trail: Trail }) {
   const [failed, setFailed] = useState(false);
+
   return (
     <Pressable
       onPress={() => openMountain(trail)}
@@ -117,28 +94,34 @@ function FeaturedCard({ trail }: { trail: Trail }) {
     >
       {failed
         ? <Fallback />
-        : <Image source={{ uri: imageUri(trail, 800, 460) }} style={StyleSheet.absoluteFill}
+        : <Image source={{ uri: imageUri(trail, 800, 1070) }} style={StyleSheet.absoluteFill}
                  onError={() => setFailed(true)} accessible={false} />}
       <LinearGradient
-        colors={["rgba(5,9,11,0.05)", "rgba(5,9,11,0.62)", "rgba(5,9,11,0.94)"]}
-        locations={[0.32, 0.66, 1]}
+        colors={["rgba(5,9,11,0)", "rgba(5,9,11,0)", "rgba(5,9,11,0.88)", "#05090B"]}
+        locations={[0, 0.4, 0.85, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
       <View style={styles.featuredBody}>
-        <Text style={styles.featuredName} numberOfLines={2}>{trail.name}</Text>
-        <Text style={styles.featuredMeta} numberOfLines={1}>
-          {`${trail.elevationGain.toLocaleString()} m ascent · ${trail.location}`}
-        </Text>
-        <View style={styles.featuredTags}>
-          <Tag icon={<TrendingUp size={11} color={DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim} />}
-               label={trail.difficulty} />
-          <Tag icon={<RouteIcon size={11} color={BASECAMP.textDim} />}
-               label={`${trail.distance} km`} />
+        <View style={styles.featuredType}>
+          <View style={styles.featuredTypeIcon}>
+            <RouteIcon size={10} color={BASECAMP.textStrong} />
+          </View>
+          <Text style={styles.featuredTypeText}>{trail.terrain}</Text>
         </View>
-      </View>
-      <View style={styles.featuredGo}>
-        <ChevronRight size={14} color={EXPLORE.accent} />
+        <Text style={styles.featuredName} numberOfLines={2}>{trail.name}</Text>
+        <Text style={styles.featuredMeta} numberOfLines={1}>{trail.location}</Text>
+
+        <View style={styles.featuredTags}>
+          <View style={styles.tagPill}>
+            <TrendingUp size={10} color={DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim} />
+            <Text style={styles.tagPillText}>{trail.difficulty}</Text>
+          </View>
+          <View style={styles.tagPill}>
+            <Activity size={10} color={BASECAMP.textDim} />
+            <Text style={styles.tagPillText}>{trail.elevationGain}m</Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -146,6 +129,7 @@ function FeaturedCard({ trail }: { trail: Trail }) {
 
 function PopularCard({ trail }: { trail: Trail }) {
   const [failed, setFailed] = useState(false);
+
   return (
     <Pressable
       onPress={() => openMountain(trail)}
@@ -155,22 +139,19 @@ function PopularCard({ trail }: { trail: Trail }) {
     >
       <View style={styles.popularImage}>
         {failed
-          ? <Fallback compact />
-          : <Image source={{ uri: imageUri(trail, 360, 320) }} style={StyleSheet.absoluteFill}
+          ? <Fallback />
+          : <Image source={{ uri: imageUri(trail, 360, 440) }} style={StyleSheet.absoluteFill}
                    onError={() => setFailed(true)} accessible={false} />}
-        <LinearGradient
-          colors={["rgba(5,9,11,0)", "rgba(5,9,11,0.5)"]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+
       </View>
       <Text style={styles.popularName} numberOfLines={2}>{trail.name}</Text>
-      <Text style={styles.popularMeta} numberOfLines={1}>
-        {`${trail.elevationGain.toLocaleString()} m`}
-      </Text>
-      <Text style={[styles.popularDiff, { color: DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim }]} numberOfLines={1}>
-        {trail.difficulty}
-      </Text>
+      <Text style={styles.popularMeta} numberOfLines={1}>{trail.location}</Text>
+      <View style={styles.popularStats}>
+        <TrendingUp size={10} color={DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim} />
+        <Text style={[styles.popularDiff, { color: DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim }]} numberOfLines={1}>
+          {trail.difficulty}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -187,7 +168,7 @@ function ResultRow({ trail }: { trail: Trail }) {
       <View style={styles.resultRow}>
         <View style={styles.resultImage}>
           {failed
-            ? <Fallback compact />
+            ? <Fallback />
             : <Image source={{ uri: imageUri(trail, 220, 200) }} style={StyleSheet.absoluteFill}
                      onError={() => setFailed(true)} accessible={false} />}
         </View>
@@ -195,26 +176,23 @@ function ResultRow({ trail }: { trail: Trail }) {
           <Text style={styles.resultName} numberOfLines={2}>{trail.name}</Text>
           <Text style={styles.resultPlace} numberOfLines={1}>{trail.location}</Text>
           <View style={styles.resultStats}>
-            <Tag icon={<TrendingUp size={11} color={BASECAMP.textDim} />}
-                 label={`${trail.elevationGain.toLocaleString()} m`} />
-            <Tag icon={<RouteIcon size={11} color={BASECAMP.textDim} />}
-                 label={`${trail.distance} km`} />
-            <Tag icon={<Compass size={11} color={DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim} />}
-                 label={trail.difficulty} />
+            <View style={styles.resultTag}>
+              <TrendingUp size={11} color={BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{trail.elevationGain.toLocaleString()} m</Text>
+            </View>
+            <View style={styles.resultTag}>
+              <RouteIcon size={11} color={BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{trail.distance} km</Text>
+            </View>
+            <View style={styles.resultTag}>
+              <Compass size={11} color={DIFF_TONE[trail.difficulty] ?? BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{trail.difficulty}</Text>
+            </View>
           </View>
         </View>
         <ChevronRight size={15} color={BASECAMP.textFaint} />
       </View>
     </SRPanel>
-  );
-}
-
-function Tag({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <View style={styles.tag}>
-      {icon}
-      <Text style={styles.tagText} numberOfLines={1}>{label}</Text>
-    </View>
   );
 }
 
@@ -226,9 +204,19 @@ export default function ExploreScreen() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
   const [heroFailed, setHeroFailed] = useState(false);
-  /* The wordmark, the mode toggle and the finder button do not all fit on a
-     narrow phone. Below 400pt the lockup reduces to its mark rather than
-     wrapping "SUMMITREADY" across two lines — the same rule Basecamp uses. */
+  const [heroUri, setHeroUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    resolveApprovedTabHeroArtwork("explore").then(res => {
+      if (mounted && res?.uri) {
+        setHeroFailed(false);
+        setHeroUri(res.uri);
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
   const { width } = useWindowDimensions();
   const compactBrand = width < 400;
 
@@ -246,33 +234,41 @@ export default function ExploreScreen() {
       ));
   }, [query, filter]);
 
-  /* The curated catalogue's own ordering. Not an engagement ranking — there
-     is no such data in SummitReady and none is invented here. */
   const featured = useMemo(
-    () => CURATED_HILLS.filter(t => t.terrain === "mountain").slice(0, 3),
+    () => CURATED_HILLS.filter(t => t.terrain === "mountain").slice(0, 5),
     [],
   );
-  const popular = useMemo(() => CURATED_HILLS.slice(0, 6), []);
+  const popular = useMemo(() => CURATED_HILLS.slice(0, 8), []);
 
-  const topPad = Platform.OS === "web" ? 18 : insets.top + 8;
+  const topPad = Platform.OS === "web" ? 67 : Math.max(insets.top, 18);
   const Section = reducedMotion ? View : Animated.View;
 
   return (
     <View style={styles.screen}>
-      {/* The hero photograph stays anchored while the page scrolls out of it. */}
       <View style={styles.heroBg} pointerEvents="none">
         {!heroFailed ? (
           <Image
-            source={require("../../assets/images/hero-base-camp.png")}
+            source={heroUri ? { uri: heroUri } : require("../../assets/images/hero-base-camp.png")}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
-            onError={() => setHeroFailed(true)}
+            onError={() => {
+              if (heroUri) setHeroUri(null);
+              else setHeroFailed(true);
+            }}
             accessible={false}
           />
-        ) : null}
+        ) : <Fallback />}
+
         <LinearGradient
-          colors={["rgba(5,9,11,0.55)", "rgba(5,9,11,0.22)", "rgba(5,9,11,0.72)", BASECAMP.ink]}
-          locations={[0, 0.24, 0.72, 1]}
+          colors={["rgba(5,9,11,0.74)", "rgba(5,9,11,0.26)", "rgba(5,9,11,0.48)", "rgba(5,9,11,0.92)", BASECAMP.ink]}
+          locations={[0, 0.2, 0.52, 0.84, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={["rgba(5,9,11,0.92)", "rgba(5,9,11,0.52)", "rgba(5,9,11,0)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          locations={[0, 0.4, 0.76]}
           style={StyleSheet.absoluteFill}
         />
       </View>
@@ -308,22 +304,21 @@ export default function ExploreScreen() {
           </View>
         </View>
 
-        {/* ── Hero copy and search ─────────────────────────────────────── */}
-        <View style={[styles.gutter, styles.heroCopy]}>
-          <SREyebrow>EXPLORE</SREyebrow>
-          <Text style={styles.heroTitle}>{"Discover\nYour Next Peak"}</Text>
-          <Text style={styles.heroSub}>Real mountains. Real routes. Real progress.</Text>
-
+        {/* ── Discovery ─────────────────────────────────────────────────── */}
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroKicker}>EXPLORE</Text>
+          <Text style={styles.heroTitle}>Discover your next peak</Text>
+          <Text style={styles.heroSub}>Find a mountain and a route worth the journey.</Text>
           <View style={styles.search}>
-            <Search size={14} color={BASECAMP.textDim} />
+            <Search size={13} color={BASECAMP.textDim} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search mountains, regions or places"
-              placeholderTextColor={BASECAMP.textFaint}
+              placeholder="Search peaks, regions..."
+              placeholderTextColor={BASECAMP.textDim}
               value={query}
               onChangeText={setQuery}
               returnKeyType="search"
-              accessibilityLabel="Search mountains, regions or places"
+              accessibilityLabel="Search peaks, regions"
             />
             {query.length > 0 ? (
               <Pressable
@@ -355,11 +350,11 @@ export default function ExploreScreen() {
                 onPress={() => setFilter(f.id)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`${f.label}, ${count} in the catalogue`}
+                accessibilityLabel={f.label}
                 style={[styles.chip, on && styles.chipOn]}
               >
-                <Icon size={22} color={on ? EXPLORE.verified : BASECAMP.textStrong} />
-                <Text style={[styles.chipLabel, on && { color: EXPLORE.verified }]} numberOfLines={2}>
+                <Icon size={24} color={on ? EXPLORE.accent : "rgba(255,255,255,0.85)"} />
+                <Text style={[styles.chipLabel, on && styles.chipLabelOn]}>
                   {f.label}
                 </Text>
                 <Text style={styles.chipCount}>{count}</Text>
@@ -406,7 +401,7 @@ export default function ExploreScreen() {
                   onAction={() => router.push("/trail-list" as any)}
                 />
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.railLarge}>
                 {featured.map(trail => <FeaturedCard key={trail.id} trail={trail} />)}
               </ScrollView>
             </Section>
@@ -418,12 +413,12 @@ export default function ExploreScreen() {
             >
               <View style={styles.gutter}>
                 <SRSectionHeader
-                  title="From the catalogue"
+                  title="Popular mountains"
                   action="View all"
                   onAction={() => router.push("/trail-list" as any)}
                 />
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.railSmall}>
                 {popular.map(trail => <PopularCard key={trail.id} trail={trail} />)}
               </ScrollView>
             </Section>
@@ -433,8 +428,8 @@ export default function ExploreScreen() {
               entering={reducedMotion ? undefined : FadeInDown.delay(160).duration(360)}
               style={[styles.gutter, styles.mapSection]}
             >
-              <SRSectionHeader title="Hills near you" />
-              <Text style={styles.mapSub}>Find real hills and routes around your training base.</Text>
+              <SRSectionHeader title="Explore by Map" />
+              <Text style={styles.mapSub}>Browse mountains and routes on an interactive map.</Text>
               <SRPanel
                 radius={15}
                 onPress={() => router.push("/hills-finder" as any)}
@@ -442,7 +437,7 @@ export default function ExploreScreen() {
                 style={styles.mapCard}
               >
                 <LinearGradient
-                  colors={["#12303F", "#0D2029", BASECAMP.ink]}
+                  colors={["#123240", "#0E2632", BASECAMP.ink]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
@@ -454,7 +449,7 @@ export default function ExploreScreen() {
                 </View>
                 <View style={styles.mapPill}>
                   <MapIcon size={13} color={BASECAMP.text} />
-                  <Text style={styles.mapPillText}>Open finder</Text>
+                  <Text style={styles.mapPillText}>Open Map</Text>
                   <ChevronRight size={12} color={BASECAMP.textDim} />
                 </View>
               </SRPanel>
@@ -468,8 +463,8 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BASECAMP.ink },
-  gutter: { paddingHorizontal: BASECAMP.gutter },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 300 },
+  gutter: { paddingHorizontal: 21 },
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 285 },
 
   appBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SP.sm },
   brand: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, minWidth: 0 },
@@ -482,53 +477,101 @@ const styles = StyleSheet.create({
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
 
-  heroCopy: { marginTop: 46 },
-  heroTitle: { marginTop: 7, ...TYPE.hero, fontSize: 28, lineHeight: 30, color: BASECAMP.text },
-  heroSub: { marginTop: 7, ...TYPE.small, fontSize: 12.5, color: BASECAMP.textMuted },
-  search: {
-    marginTop: 10, minHeight: 40, borderRadius: 999,
-    flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 14,
+  heroCopy: { marginTop: 34, paddingHorizontal: BASECAMP.gutter },
+  heroKicker: { ...TYPE.eyebrow, color: BASECAMP.accent, marginBottom: 6 },
+  heroTitle: { ...TYPE.hero, color: BASECAMP.text, maxWidth: 300 },
+  heroSub: { ...TYPE.body, color: BASECAMP.textMuted, marginTop: 9, maxWidth: 280 },
+
+  segmentedControlWrap: { marginTop: 18 },
+  segmentedControl: {
+    flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
+    padding: 2.5, borderRadius: 999,
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
-  searchInput: { flex: 1, minWidth: 0, ...TYPE.small, color: BASECAMP.text, paddingVertical: SP.sm },
+  segBtn: {
+    position: "relative", paddingHorizontal: 14, paddingVertical: 6,
+    justifyContent: "center", alignItems: "center"
+  },
+  segActiveBg: {
+    position: "absolute", top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 999,
+  },
+  segText: {
+    fontSize: 11, lineHeight: 13, fontFamily: "Inter_500Medium", color: BASECAMP.textDim
+  },
+  segTextActive: {
+    fontFamily: "Inter_600SemiBold", color: BASECAMP.text
+  },
 
-  chipRow: { paddingHorizontal: BASECAMP.gutter, gap: 6, paddingTop: 14 },
+  search: {
+    marginTop: 15, height: 34, borderRadius: 999,
+    flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14,
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+  },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.text },
+
+  chipRow: { paddingHorizontal: 21, gap: 8, paddingTop: 20 },
   chip: {
-    width: 64, minHeight: 74, borderRadius: 13, alignItems: "center",
-    paddingTop: 10, paddingHorizontal: 3, paddingBottom: 6,
+    width: 62, height: 72, borderRadius: 13,
+    alignItems: "center", paddingTop: 10, paddingHorizontal: 3,
     backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.085)",
   },
-  chipOn: { backgroundColor: BASECAMP.accentDim, borderColor: BASECAMP.accentLine },
-  chipLabel: { marginTop: 4, fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_600SemiBold", color: BASECAMP.textStrong, textAlign: "center" },
-  chipCount: { marginTop: 1, fontSize: 10, lineHeight: 11, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
+  chipOn: {
+    backgroundColor: "rgba(36,239,164,0.08)", borderColor: "rgba(36,239,164,0.65)"
+  },
+  chipLabel: { marginTop: 4, fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.88)", textAlign: "center" },
+  chipLabelOn: { color: EXPLORE.accent },
+  chipCount: { marginTop: 1, fontSize: 10, lineHeight: 11, color: "rgba(255,255,255,0.42)", textAlign: "center" },
 
-  railSection: { marginTop: 16 },
-  rail: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 8 },
+  railSection: { marginTop: 24 },
+  railLarge: { paddingHorizontal: 21, gap: 14, paddingTop: 8 },
+  railSmall: { paddingHorizontal: 21, gap: 14, paddingTop: 8 },
 
   featured: {
-    width: 272, height: 164, borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: BASECAMP.panelBorder, backgroundColor: "#12202A",
+    width: 254, height: 340, borderRadius: 18, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
   },
-  featuredBody: { position: "absolute", left: 14, right: 14, bottom: 13 },
-  featuredName: { fontSize: 20, lineHeight: 22, fontFamily: "Inter_700Bold", letterSpacing: -0.4, color: BASECAMP.text },
-  featuredMeta: { marginTop: 3, ...TYPE.caption, fontSize: 11.5, color: BASECAMP.textMuted },
-  featuredTags: { marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  featuredGo: {
-    position: "absolute", right: 13, top: 13,
-    width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center",
-    backgroundColor: EXPLORE.accentDim, borderWidth: 1, borderColor: EXPLORE.accentLine,
+  favBtn: {
+    position: "absolute", top: 12, right: 12,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+    alignItems: "center", justifyContent: "center"
   },
+  featuredBody: { position: "absolute", left: 16, right: 16, bottom: 16 },
+  featuredType: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+  featuredTypeIcon: {
+    width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center",
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder
+  },
+  featuredTypeText: { fontSize: 10, lineHeight: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", textTransform: "uppercase", letterSpacing: 0.2 },
+  featuredName: { fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.2, color: BASECAMP.text },
+  featuredMeta: { marginTop: 4, fontSize: 12, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
+  featuredTags: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tagPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 7, paddingVertical: 4.5, borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)"
+  },
+  tagPillText: { fontSize: 10, lineHeight: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)" },
 
-  popular: { width: 100 },
+  popular: { width: 114 },
   popularImage: {
-    width: 100, height: 84, borderRadius: 13, overflow: "hidden",
-    borderWidth: 1, borderColor: BASECAMP.panelBorder, backgroundColor: "#12202A",
+    width: 114, height: 142, borderRadius: 14, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
+    marginBottom: 8
   },
-  popularName: { marginTop: 5, fontSize: 11, lineHeight: 13, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  favBtnSmall: {
+    position: "absolute", top: 8, right: 8,
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+    alignItems: "center", justifyContent: "center"
+  },
+  popularName: { marginTop: 2, fontSize: 11, lineHeight: 13, fontFamily: "Inter_700Bold", color: BASECAMP.text, letterSpacing: -0.1 },
   popularMeta: { marginTop: 3, fontSize: 10.5, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
-  popularDiff: { marginTop: 1, fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_600SemiBold" },
+  popularStats: { marginTop: 1, flexDirection: "row", alignItems: "center", gap: 4 },
+  popularDiff: { fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_500Medium" },
 
-  resultsSection: { marginTop: 18 },
+  resultsSection: { marginTop: 24 },
   resultList: { marginTop: 10, gap: 9 },
   result: {},
   resultRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 10 },
@@ -540,13 +583,12 @@ const styles = StyleSheet.create({
   resultName: { ...TYPE.bodyBold, fontSize: 13.5, lineHeight: 17, color: BASECAMP.text },
   resultPlace: { marginTop: 2, ...TYPE.caption, fontSize: 10.5, color: BASECAMP.textDim },
   resultStats: { marginTop: 5, flexDirection: "row", flexWrap: "wrap", columnGap: 10, rowGap: 2 },
-
-  tag: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1, minWidth: 0 },
-  tagText: { ...TYPE.caption, fontSize: 10.5, color: BASECAMP.textMuted, flexShrink: 1 },
+  resultTag: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1, minWidth: 0 },
+  resultTagText: { ...TYPE.caption, fontSize: 10.5, color: BASECAMP.textMuted, flexShrink: 1 },
 
   mapSection: { marginTop: 18 },
   mapSub: { marginTop: 2, ...TYPE.caption, fontSize: 11.5, color: BASECAMP.textDim },
-  mapCard: { marginTop: 8, height: 78, justifyContent: "center" },
+  mapCard: { marginTop: 8, height: 76, justifyContent: "center" },
   mapPins: { ...StyleSheet.absoluteFillObject, flexDirection: "row", alignItems: "center", paddingLeft: 12 },
   mapPill: {
     position: "absolute", right: 11, alignSelf: "center",

@@ -38,7 +38,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { T } from "@/constants/theme";
-import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
+import { BASECAMP, EXPLORE, SP, TYPE, SURFACE, RADIUS } from "@/constants/tokens";
 import { SREyebrow, SRPanel, SRSectionHeader, SRStatusPill } from "@/components/ui";
 import { ProgressRing } from "@/components/ProgressRing";
 import { useScreenView } from "@/lib/analytics";
@@ -1880,11 +1880,11 @@ export default function ExpeditionMountainsScreen() {
     const sc = scoreColor(score);
 
     return (
-      <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 14 }}>
           {/* Back */}
           <TouchableOpacity onPress={() => setView("browse")} style={s.backRow} activeOpacity={0.7}>
-            <ArrowLeft size={16} color={T.textMuted} />
+            <ArrowLeft size={16} color={BASECAMP.textMuted} />
             <Text style={s.backText}>Browse mountains</Text>
           </TouchableOpacity>
 
@@ -2029,7 +2029,7 @@ export default function ExpeditionMountainsScreen() {
             </View>
           </KeyboardAvoidingView>
         </Modal>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -2054,9 +2054,18 @@ export default function ExpeditionMountainsScreen() {
   const filteredFeatured = featuredList.filter(ch => challengeMatchesRegion(ch.regions, selectedRegion));
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: BASECAMP.ink }}>
       {routeChooser}
       {mountainChooser}
+      <ExpoImage
+        source={require("../assets/images/hero-base-camp.png")}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 260, opacity: 0.8 }}
+        contentFit="cover"
+      />
+      <LinearGradient
+        colors={[BASECAMP.ink + "00", BASECAMP.ink + "80", BASECAMP.ink]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 260 }}
+      />
       <ScrollView ref={browseScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad }}>
 
         {/* ── Library hero ──────────────────────────────────────────────────
@@ -2103,59 +2112,71 @@ export default function ExpeditionMountainsScreen() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+
+      </ScrollView>
 
         {/* ── Your expedition ──────────────────────────────────────────────
             The one already under way gets its own surface at the top: this
             screen's job for that expedition is to hand you back to Basecamp,
             not to sell it to you again. */}
-        {isExpeditionActive && activeExpedition?.targetMountain && (
-          <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: 16 }}>
-            <SRSectionHeader title="Your expedition" />
-            <SRPanel
-              radius={17}
-              onPress={() => router.push("/(expedition)/base-camp" as any)}
-              accessibilityLabel={`Continue ${activeExpedition.challengeName ?? "your expedition"}`}
-              accessibilityHint="Opens Expedition Basecamp"
-              style={{ marginTop: 9 }}
-            >
-              <View style={s.continueBody}>
-                <View style={s.continueTop}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={s.continueName} numberOfLines={2}>
+        {isExpeditionActive && activeExpedition?.targetMountain && (() => {
+          const gained = activeExpedition.virtualHikeProgress.elevationGained;
+          const goal = activeExpedition.targetMountain.totalElevationGain || 1;
+          const pct = Math.min(100, Math.round((gained / goal) * 100));
+          return (
+            <Animated.View entering={FadeInDown.duration(350)} style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: 16 }}>
+              <SRSectionHeader title="YOUR EXPEDITION" />
+              <SRPanel
+                radius={17}
+                onPress={() => router.push("/(expedition)/base-camp" as any)}
+                accessibilityLabel={`Continue ${activeExpedition.challengeName ?? "your expedition"}`}
+                accessibilityHint="Opens Expedition Basecamp"
+                style={{ marginTop: 9, overflow: "hidden" }}
+              >
+                <View style={{ height: 108, position: "relative" }}>
+                  <ExpoImage
+                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(activeExpedition.targetMountain.name)}&width=800&height=300` }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                  />
+                  <LinearGradient colors={["#0a111900", "#0a111999", "#0a1119"]} style={StyleSheet.absoluteFill} />
+                  <View style={{ position: "absolute", left: 13, right: 13, bottom: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: EXPLORE.accent + "26", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: EXPLORE.accent + "4D" }}>
+                      <Play size={10} color={EXPLORE.accent} fill={EXPLORE.accent} />
+                      <Text style={{ fontSize: 9.5, fontFamily: "Inter_700Bold", color: EXPLORE.accent, letterSpacing: 0.5, textTransform: "uppercase" }}>In progress</Text>
+                    </View>
+                    <Text style={{ marginTop: 6, ...TYPE.title, fontSize: 18, lineHeight: 21, color: "#fff" }} numberOfLines={1}>
                       {activeExpedition.challengeName ?? activeExpedition.targetMountain.name}
                     </Text>
-                    {activeExpedition.location ? (
-                      <Text style={s.continueSub} numberOfLines={1}>{activeExpedition.location}</Text>
-                    ) : null}
-                    {activeExpedition.virtualHikeProgress.hikesLogged > 0 ? (
-                      <View style={s.continueLogged}>
-                        <CheckCircle size={11} color={EXPLORE.verified} />
-                        <Text style={s.continueLoggedText}>
-                          {`${activeExpedition.virtualHikeProgress.hikesLogged} ${activeExpedition.virtualHikeProgress.hikesLogged === 1 ? "hike" : "hikes"} logged`}
-                        </Text>
-                      </View>
-                    ) : null}
                   </View>
-                  {activeExpedition.simulationScore != null ? (
-                    <View style={s.continueScore}>
-                      <Text style={[s.continueScoreValue, { color: scoreColor(activeExpedition.simulationScore) }]}>
-                        {activeExpedition.simulationScore}
+                </View>
+                <View style={{ paddingHorizontal: 13, paddingTop: 11, paddingBottom: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ fontSize: 11, color: BASECAMP.textMuted }} numberOfLines={1}>
+                        {activeExpedition.virtualHikeProgress.hikesLogged} hike{activeExpedition.virtualHikeProgress.hikesLogged !== 1 && "s"} complete
                       </Text>
-                      <Text style={s.continueScoreLabel}>MATCH</Text>
+                      <Text style={{ marginTop: 2, fontSize: 13, fontFamily: "Inter_700Bold", color: BASECAMP.text }} numberOfLines={1}>
+                        Training in {activeExpedition.location}
+                      </Text>
                     </View>
-                  ) : (
-                    <ChevronRight size={18} color={EXPLORE.accent} />
-                  )}
+                    <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
+                      <Text style={{ fontSize: 19, fontFamily: "Inter_800ExtraBold", color: EXPLORE.accent }}>{pct}%</Text>
+                      <Text style={{ marginTop: 3, fontSize: 9.5, color: BASECAMP.textDim, fontFamily: "Inter_500Medium" }}>{gained.toLocaleString()} / {goal.toLocaleString()} m</Text>
+                    </View>
+                  </View>
+                  <View style={{ marginTop: 10, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                    <View style={{ height: "100%", borderRadius: 3, backgroundColor: EXPLORE.accent, width: `${pct}%` as any }} />
+                  </View>
+                  <View style={{ marginTop: 12, width: "100%", height: 42, borderRadius: 12, backgroundColor: EXPLORE.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}>
+                    <Play size={13} color="#fff" fill="#fff" />
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" }}>Continue Expedition</Text>
+                  </View>
                 </View>
-                <View style={s.continueCta}>
-                  <Play size={13} color={EXPLORE.accentInk} fill={EXPLORE.accentInk} />
-                  <Text style={s.continueCtaText}>Continue expedition</Text>
-                </View>
-              </View>
-            </SRPanel>
-          </Animated.View>
-        )}
+              </SRPanel>
+            </Animated.View>
+          );
+        })()}
 
         {/* ── Error banner ─────────────────────────────────────────────────── */}
         {fetchError && (
@@ -2164,122 +2185,6 @@ export default function ExpeditionMountainsScreen() {
             <Text style={s.errorText}>{fetchError}</Text>
           </View>
         )}
-
-        {/* ── Create Custom Route ──────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
-          <TouchableOpacity
-            style={s.createRouteCard}
-            activeOpacity={0.85}
-            onPress={() => setCustomSearchOpen(v => !v)}
-          >
-            <LinearGradient colors={["rgba(29,78,148,0.35)", "rgba(29,78,148,0.08)"]} style={StyleSheet.absoluteFill} />
-            <View style={s.createRouteIconWrap}>
-              <Plus size={18} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.createRouteTitle}>Create Custom Route</Text>
-              <Text style={s.createRouteSub}>Choose your summits, set your goals{"\n"}and build your own expedition.</Text>
-            </View>
-            <ChevronRight size={16} color={T.blue} />
-          </TouchableOpacity>
-
-          {/* Expandable custom search */}
-          {customSearchOpen && (
-            <View style={[s.searchCard, { marginTop: 10 }]}>
-              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <View style={s.searchRow}>
-                <Mountain size={14} color={T.blue} />
-                <TextInput
-                  style={[s.searchInput, { flex: 1 }]}
-                  value={searchMountain}
-                  onChangeText={updateSearchMountain}
-                  onFocus={() => setShowMountainSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowMountainSuggestions(false), 180)}
-                  placeholder="Goal mountain (e.g. Mont Blanc)"
-                  placeholderTextColor={T.textDim}
-                  returnKeyType="next"
-                  autoCorrect={false}
-                />
-              </View>
-              {showMountainSuggestions && matchingMountains.length > 0 && (
-                <View style={s.mountainSuggestions}>
-                  {matchingMountains.map((name, index) => (
-                    <TouchableOpacity
-                      key={name}
-                      activeOpacity={0.72}
-                      onPress={() => selectSearchMountain(name)}
-                      style={[
-                        s.mountainSuggestionRow,
-                        index < matchingMountains.length - 1 && s.mountainSuggestionBorder,
-                      ]}
-                    >
-                      <Mountain size={13} color={T.blue} />
-                      <Text style={s.mountainSuggestionText}>{name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              <View style={[s.searchRow, { marginTop: 10 }]}>
-                <MapPin size={14} color={T.green} />
-                <TextInput
-                  style={[s.searchInput, { flex: 1 }]}
-                  value={searchRegion}
-                  onChangeText={setSearchRegion}
-                  placeholder="Your hiking region (e.g. Lake District)"
-                  placeholderTextColor={T.textDim}
-                  returnKeyType="search"
-                  onSubmitEditing={handleSearch}
-                />
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
-                <View style={s.chipRow}>
-                  {[15, 30, 50, 80].map(r => (
-                    <TouchableOpacity
-                      key={r}
-                      onPress={() => setSearchRadius(r)}
-                      style={[s.chip, searchRadius === r && s.chipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
-                <View style={s.chipRow}>
-                  {[1, 2, 3].map(day => (
-                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
-                      style={[s.chip, customDays === day && s.chipActive]}>
-                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-                  <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
-                    <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
-                    <Text style={s.choiceCopy}>Use the unchanged deterministic planner and trusted route data.</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
-                    <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
-                    <Text style={s.choiceCopy}>Build your route list and watch DNA update as you choose.</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
-                <>
-                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
-                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
-                </TouchableOpacity>
-                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
-                </>
-              )}
-            </View>
-          )}
-        </Animated.View>
 
         {/* ── Browse by Region ────────────────────────────────────────────── */}
         {selectedRegion === "All Regions" && (
@@ -2438,6 +2343,127 @@ export default function ExpeditionMountainsScreen() {
           </Animated.View>
         )}
 
+        {/* ── Create Custom Route ──────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
+          <TouchableOpacity
+            style={s.createRouteCard}
+            activeOpacity={0.85}
+            onPress={() => setCustomSearchOpen(v => !v)}
+          >
+            <ExpoImage
+              source={require("../assets/images/hero-base-camp.png")}
+              style={[StyleSheet.absoluteFill, { opacity: 0.26 }]}
+              contentFit="cover"
+            />
+            <LinearGradient colors={["rgba(22,125,247,0.25)", "rgba(5,9,11,0.82)", "rgba(5,9,11,0.95)"]} style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 1, y: 1}} />
+            <View style={s.createRouteIconWrap}>
+              <Plus size={21} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.createRouteTitle}>Create Custom Expedition</Text>
+              <Text style={s.createRouteSub}>Pick any verified mountain and route, then build your own stage plan from the hill catalogue.</Text>
+            </View>
+            <ChevronRight size={16} color={EXPLORE.accent} />
+          </TouchableOpacity>
+
+          {/* Expandable custom search */}
+          {customSearchOpen && (
+            <View style={[s.searchCard, { marginTop: 10 }]}>
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={s.searchRow}>
+                <Mountain size={14} color={T.blue} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchMountain}
+                  onChangeText={updateSearchMountain}
+                  onFocus={() => setShowMountainSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowMountainSuggestions(false), 180)}
+                  placeholder="Goal mountain (e.g. Mont Blanc)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="next"
+                  autoCorrect={false}
+                />
+              </View>
+              {showMountainSuggestions && matchingMountains.length > 0 && (
+                <View style={s.mountainSuggestions}>
+                  {matchingMountains.map((name, index) => (
+                    <TouchableOpacity
+                      key={name}
+                      activeOpacity={0.72}
+                      onPress={() => selectSearchMountain(name)}
+                      style={[
+                        s.mountainSuggestionRow,
+                        index < matchingMountains.length - 1 && s.mountainSuggestionBorder,
+                      ]}
+                    >
+                      <Mountain size={13} color={T.blue} />
+                      <Text style={s.mountainSuggestionText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              <View style={[s.searchRow, { marginTop: 10 }]}>
+                <MapPin size={14} color={T.green} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchRegion}
+                  onChangeText={setSearchRegion}
+                  placeholder="Your hiking region (e.g. Lake District)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearch}
+                />
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
+                <View style={s.chipRow}>
+                  {[15, 30, 50, 80].map(r => (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setSearchRadius(r)}
+                      style={[s.chip, searchRadius === r && s.chipActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
+                <View style={s.chipRow}>
+                  {[1, 2, 3].map(day => (
+                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
+                      style={[s.chip, customDays === day && s.chipActive]}>
+                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
+                    <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
+                    <Text style={s.choiceCopy}>Use the unchanged deterministic planner and trusted route data.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
+                    <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
+                    <Text style={s.choiceCopy}>Build your route list and watch DNA update as you choose.</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
+                <>
+                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
+                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
+                </TouchableOpacity>
+                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
+                </>
+              )}
+            </View>
+          )}
+        </Animated.View>
+
         {/* ── Legend bar ───────────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
           <View style={s.legendBar}>
@@ -2545,7 +2571,7 @@ export default function ExpeditionMountainsScreen() {
           }).then(() => router.replace("/(expedition)/base-camp" as any));
         }}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -2574,8 +2600,8 @@ function HillStat({ value, label }: { value: string; label: string }) {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  libraryTitle: { marginTop: 6, ...TYPE.hero, fontSize: 27, lineHeight: 30, color: BASECAMP.text },
-  librarySub: { marginTop: 6, ...TYPE.small, fontSize: 12.5, lineHeight: 17, color: BASECAMP.textMuted },
+  libraryTitle: { marginTop: 6, ...TYPE.hero, fontSize: 29, lineHeight: 33, letterSpacing: -0.6, color: BASECAMP.text },
+  librarySub: { marginTop: 6, ...TYPE.small, fontSize: 12.5, lineHeight: 17, color: BASECAMP.textMuted, maxWidth: 300 },
   libraryChips: { marginTop: 11, flexDirection: "row", flexWrap: "wrap", gap: 6 },
 
   continueBody: { padding: 13 },
@@ -2594,42 +2620,40 @@ const s = StyleSheet.create({
   },
   continueCtaText: { ...TYPE.bodyBold, fontSize: 13, color: EXPLORE.accentInk },
 
-  choiceCard: { flex: 1, minHeight: 132, borderWidth: 1, borderRadius: 14, backgroundColor: "rgba(20,34,54,0.9)", padding: 13, gap: 7 },
-  choiceTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white, lineHeight: 17 },
-  choiceCopy: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 16 },
-  choiceActive: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.green },
-  manualHeadline: { fontSize: 30, fontFamily: "Inter_700Bold", color: T.green },
-  manualRouteRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
-  manualRouteChosen: { borderColor: T.green + "99", backgroundColor: T.greenDim },
-  manualRouteName: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.white },
-  manualAdd: { fontSize: 11, fontFamily: "Inter_700Bold", color: T.blue },
+  choiceCard: { ...SURFACE.panel, flex: 1, minHeight: 132, borderRadius: 14, padding: 13, gap: 7 },
+  choiceTitle: { ...TYPE.title, fontSize: 13, lineHeight: 17, color: BASECAMP.text },
+  choiceCopy: { ...TYPE.small, flex: 1, fontSize: 11, lineHeight: 16, color: BASECAMP.textMuted },
+  choiceActive: { ...TYPE.smallBold, fontSize: 10, color: EXPLORE.accent },
+  manualHeadline: { ...TYPE.metricLg, color: EXPLORE.accent },
+  manualRouteRow: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 10, borderRadius: 10 },
+  manualRouteChosen: { borderColor: EXPLORE.accent + "66", backgroundColor: EXPLORE.accent + "11" },
+  manualRouteName: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.text },
+  manualAdd: { ...TYPE.smallBold, fontSize: 11, color: EXPLORE.accent },
   // Header
-  heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
-  heroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 17, marginTop: 3 },
+  heroTitle: { ...TYPE.title, color: BASECAMP.text, marginTop: 4 },
+  heroSub: { ...TYPE.small, fontSize: 12, lineHeight: 17, color: BASECAMP.textMuted, marginTop: 3 },
 
   // Page header buttons
   headerIconBtn: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+    ...SURFACE.glass,
+    width: 34, height: 34, borderRadius: RADIUS.pill,
     alignItems: "center", justifyContent: "center",
   },
 
   // Legend bar
   legendBar: {
-    backgroundColor: "rgba(255,255,255,0.02)",
+    ...SURFACE.panelSub,
     borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
     padding: 16,
     flexDirection: "row",
     gap: 16,
     alignItems: "flex-start",
   },
   legendTitle: {
-    fontSize: 10, fontFamily: "Inter_600SemiBold", color: T.textDim,
+    ...TYPE.eyebrow, color: BASECAMP.textDim,
   },
   legendItem: {
-    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted,
+    ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted,
   },
 
   // Active goal banner
@@ -2643,21 +2667,20 @@ const s = StyleSheet.create({
   activeGoalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
 
   // Section labels
-  sectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim },
-  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textDim, marginBottom: 10 },
+  sectionTitle: { ...TYPE.eyebrow, color: BASECAMP.textDim },
+  sectionLabel: { ...TYPE.eyebrow, color: BASECAMP.textDim, marginBottom: 10 },
 
   // Search card
   searchCard: {
-    backgroundColor: "#0F1D30", borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    ...SURFACE.panelSub,
     padding: 14, overflow: "hidden",
   },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)", paddingBottom: 10 },
-  searchInput: { fontSize: 14, fontFamily: "Inter_400Regular", color: T.white },
+  searchInput: { ...TYPE.body, color: BASECAMP.text },
   mountainSuggestions: {
-    backgroundColor: "#14263D",
+    backgroundColor: BASECAMP.panelSub,
     borderWidth: 1,
-    borderColor: T.blue + "40",
+    borderColor: EXPLORE.accent + "40",
     borderRadius: 12,
     marginTop: 6,
     overflow: "hidden",
@@ -2681,10 +2704,10 @@ const s = StyleSheet.create({
   },
   searchBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.blue, borderRadius: 12,
+    backgroundColor: EXPLORE.accent, borderRadius: 12,
     paddingVertical: 12, marginTop: 12,
   },
-  searchBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  searchBtnText: { ...TYPE.title, fontSize: 14, color: "#fff" },
 
   // Bundle card
   bundleCard: {
@@ -2703,8 +2726,8 @@ const s = StyleSheet.create({
 
   // Cards
   card: {
-    backgroundColor: "#0F1D30", borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    ...SURFACE.panelSub,
+    borderRadius: 16,
     padding: 16, overflow: "hidden",
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, borderWidth: 1 },
@@ -2719,8 +2742,8 @@ const s = StyleSheet.create({
 
   // Mountain header
   mountainIconWrap: { width: 40, height: 40, borderRadius: 11, backgroundColor: T.blueDim, alignItems: "center", justifyContent: "center" },
-  mountainTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
-  mountainSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  mountainTitle: { ...TYPE.title, fontSize: 17, color: BASECAMP.text },
+  mountainSub: { ...TYPE.small, fontSize: 12, color: BASECAMP.textMuted },
 
   // Signature browse cards (horizontal scroll on Mountains browse)
   sigBrowseCard: {
@@ -2777,76 +2800,75 @@ const s = StyleSheet.create({
 
   // Hills
   hillCard: {
-    backgroundColor: "transparent", borderRadius: 16,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-    padding: 16, gap: 10, overflow: "hidden",
+    ...SURFACE.panel,
+    borderRadius: 16, padding: 16, gap: 10, overflow: "hidden",
   },
-  hillDay: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
-  hillEmoji: { width: 42, height: 42, borderRadius: 21, backgroundColor: T.greenDim, alignItems: "center", justifyContent: "center" },
-  hillName: { fontSize: 14, fontFamily: "Inter_700Bold", color: T.white },
-  hillMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
-  hillStats: { flexDirection: "row", alignItems: "center", backgroundColor: "#142236", borderRadius: 9, paddingVertical: 8, paddingHorizontal: 6 },
+  hillDay: { ...TYPE.smallBold, fontSize: 11, color: EXPLORE.accent },
+  hillEmoji: { width: 42, height: 42, borderRadius: RADIUS.pill, backgroundColor: EXPLORE.accentDim, alignItems: "center", justifyContent: "center" },
+  hillName: { ...TYPE.title, fontSize: 14, lineHeight: 18, color: BASECAMP.text },
+  hillMeta: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted, marginTop: 1 },
+  hillStats: { ...SURFACE.panelSub, flexDirection: "row", alignItems: "center", borderRadius: 9, paddingVertical: 8, paddingHorizontal: 6 },
   hillStatDiv: { width: 1, height: 20, backgroundColor: "rgba(255,255,255,0.07)" },
-  routeType: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  routeType: { ...TYPE.small, fontSize: 11, color: BASECAMP.textDim },
 
   // Score
-  scoreCaption: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: 2 },
+  scoreCaption: { ...TYPE.small, fontSize: 12, lineHeight: 17, marginTop: 2, color: BASECAMP.textMuted },
   dimRow: { paddingVertical: 8 },
   dimRowBorder: { borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
-  dimLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.text },
-  dimPct: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  dimBarTrack: { height: 4, backgroundColor: "#142236", borderRadius: 3, overflow: "hidden" },
+  dimLabel: { ...TYPE.smallBold, fontSize: 12, color: BASECAMP.text },
+  dimPct: { ...TYPE.smallBold, fontSize: 12 },
+  dimBarTrack: { height: 4, backgroundColor: BASECAMP.panelSub, borderRadius: 3, overflow: "hidden" },
   dimBarFill: { height: 4, borderRadius: 3 },
   improveCard: {
-    backgroundColor: "#10243A", borderRadius: 16, borderWidth: 1,
-    borderColor: T.green + "55", padding: 15, gap: 10,
+    ...SURFACE.panel, borderRadius: 16,
+    borderColor: EXPLORE.accent + "55", padding: 15, gap: 10,
   },
-  improveTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white },
-  improveIntro: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted },
+  improveTitle: { ...TYPE.title, fontSize: 17, color: BASECAMP.text },
+  improveIntro: { ...TYPE.small, fontSize: 12, color: BASECAMP.textMuted },
   improveMetrics: { flexDirection: "row", gap: 10 },
-  improveMetricLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.textDim },
-  improveMetricValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
-  improveRemaining: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
-  improveCandidate: { backgroundColor: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 12, gap: 4 },
+  improveMetricLabel: { ...TYPE.smallBold, fontSize: 11, color: BASECAMP.textDim },
+  improveMetricValue: { ...TYPE.title, fontSize: 16, color: BASECAMP.text, marginTop: 4 },
+  improveRemaining: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted, marginTop: 2 },
+  improveCandidate: { ...SURFACE.panelSub, borderRadius: 12, padding: 12, gap: 4 },
   improveCandidateLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.green },
   improveCandidateName: { fontSize: 16, fontFamily: "Inter_700Bold", color: T.white },
-  improveCandidateMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: T.green, borderRadius: 12, paddingVertical: 12 },
-  improvePrimaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  improveCandidateMeta: { ...TYPE.small, fontSize: 12, color: BASECAMP.textMuted, lineHeight: 18 },
+  improvePrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: EXPLORE.accent, borderRadius: 12, paddingVertical: 12 },
+  improvePrimaryText: { ...TYPE.title, fontSize: 14, color: "#fff" },
   improveSecondary: { alignItems: "center", paddingVertical: 10 },
   improveSecondaryText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.blue },
-  alternativeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 12, marginTop: -4 },
-  alternativeName: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.white, flex: 1 },
-  alternativeMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted },
+  alternativeRow: { ...SURFACE.panelSub, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 12, padding: 12, marginTop: -4 },
+  alternativeName: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.text, flex: 1 },
+  alternativeMeta: { ...TYPE.small, fontSize: 11, color: BASECAMP.textMuted },
 
   // CTA
   setGoalBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.green, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 14, paddingVertical: 14,
   },
-  setGoalBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  setGoalBtnText: { ...TYPE.title, fontSize: 15, color: "#fff" },
 
   // Progress view
-  progressGoalLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue },
-  progressGoalName: { fontSize: 24, fontFamily: "Inter_700Bold", color: T.white, marginTop: 4 },
-  progressGoalSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 1 },
+  progressGoalLabel: { ...TYPE.eyebrow, color: EXPLORE.accent },
+  progressGoalName: { ...TYPE.hero, fontSize: 24, lineHeight: 28, color: BASECAMP.text, marginTop: 4 },
+  progressGoalSub: { ...TYPE.small, fontSize: 12, color: BASECAMP.textMuted, marginTop: 1 },
   progRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  progBarLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.text },
-  progBarValue: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  barTrack: { height: 7, backgroundColor: "#142236", borderRadius: 4, overflow: "hidden" },
+  progBarLabel: { ...TYPE.smallBold, fontSize: 12, color: BASECAMP.text },
+  progBarValue: { ...TYPE.small, fontSize: 12 },
+  barTrack: { height: 7, backgroundColor: BASECAMP.panelSub, borderRadius: 4, overflow: "hidden" },
   barFill: { height: 7, borderRadius: 4 },
-  progPct: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  progPct: { ...TYPE.small, fontSize: 11, color: BASECAMP.textDim },
   logHikeBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    backgroundColor: T.blue, borderRadius: 12, paddingVertical: 11, marginTop: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 12, paddingVertical: 11, marginTop: 14,
   },
-  logHikeBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  logHikeBtnText: { ...TYPE.smallBold, fontSize: 13, color: "#fff" },
   changeGoalBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
     paddingVertical: 12, borderRadius: 12,
-    backgroundColor: "#142236", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
-  changeGoalText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
+  changeGoalText: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.textMuted },
 
   // Customise panel
   customisePill: {
@@ -2863,13 +2885,12 @@ const s = StyleSheet.create({
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
+    ...SURFACE.panelSub,
     paddingHorizontal: 13, paddingVertical: 7, borderRadius: 10,
-    backgroundColor: "#142236",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
-  chipActive: { backgroundColor: T.blue + "22", borderColor: T.blue + "50" },
-  chipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted },
-  chipTextActive: { color: T.blue, fontFamily: "Inter_700Bold" },
+  chipActive: { backgroundColor: EXPLORE.accent + "22", borderColor: EXPLORE.accent + "50" },
+  chipText: { ...TYPE.smallBold, fontSize: 12, color: BASECAMP.textMuted },
+  chipTextActive: { color: EXPLORE.accent },
   regenerateBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: T.blue, borderRadius: 12, paddingVertical: 11, marginTop: 14,
@@ -2878,7 +2899,7 @@ const s = StyleSheet.create({
 
   // Navigation
   backRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  backText: { fontSize: 13, fontFamily: "Inter_500Medium", color: T.textMuted },
+  backText: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.textMuted },
 
   // Error
   errorBanner: {
@@ -2890,16 +2911,16 @@ const s = StyleSheet.create({
 
   // Modal
   modalSheet: {
-    backgroundColor: "#0F1D30",
+    backgroundColor: BASECAMP.ink,
     borderTopLeftRadius: 22, borderTopRightRadius: 22,
     borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     padding: 24, paddingBottom: 40, overflow: "hidden",
   },
-  modalTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: T.white, marginBottom: 4 },
-  modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, lineHeight: 18 },
-  inputLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: T.textMuted, marginBottom: 6 },
+  modalTitle: { ...TYPE.title, fontSize: 17, color: BASECAMP.text, marginBottom: 4 },
+  modalSub: { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted, lineHeight: 18 },
+  inputLabel: { ...TYPE.smallBold, fontSize: 12, color: BASECAMP.textMuted, marginBottom: 6 },
   input: {
-    backgroundColor: "#142236", borderRadius: 10,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 10,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
     color: T.white, fontFamily: "Inter_400Regular", fontSize: 15,
     paddingHorizontal: 13, paddingVertical: 11,
@@ -2913,39 +2934,38 @@ const s = StyleSheet.create({
     padding: 24, paddingBottom: 44, overflow: "hidden",
   },
   upsellIconWrap: { width: 60, height: 60, borderRadius: 18, backgroundColor: T.orangeDim, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 14 },
-  upsellTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: T.white, textAlign: "center", marginBottom: 8 },
-  upsellSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: T.textMuted, textAlign: "center", lineHeight: 19, marginBottom: 16 },
+  upsellTitle: { ...TYPE.title, fontSize: 20, color: BASECAMP.text, textAlign: "center", marginBottom: 8 },
+  upsellSub: { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted, textAlign: "center", lineHeight: 19, marginBottom: 16 },
   upsellBullets: { gap: 8, marginBottom: 20 },
   upsellBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: T.orange, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: EXPLORE.accent, borderRadius: 14, paddingVertical: 14,
   },
-  upsellBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  upsellBtnText: { ...TYPE.title, fontSize: 15, color: "#fff" },
 
   // Region filter pills
   regionPill: {
+    ...SURFACE.panelSub,
     flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.pill,
   },
   regionPillActive: {
-    backgroundColor: T.blue,
-    borderColor: T.blue,
+    backgroundColor: EXPLORE.accent,
+    borderColor: EXPLORE.accent,
   },
   regionPillText: {
-    fontSize: 12, fontFamily: "Inter_500Medium", color: T.textMuted,
+    ...TYPE.smallBold, fontSize: 11.5, color: BASECAMP.textMuted,
   },
   regionPillTextActive: {
-    color: "#fff", fontFamily: "Inter_700Bold",
+    color: BASECAMP.text,
   },
 
   // Section headings (larger than sectionTitle)
   sectionHeading: {
-    fontSize: 17, fontFamily: "Inter_700Bold", color: T.white,
+    ...TYPE.title, fontSize: 15, letterSpacing: -0.1, color: BASECAMP.text,
   },
   viewAllText: {
-    fontSize: 13, fontFamily: "Inter_500Medium", color: T.blue,
+    ...TYPE.smallBold, fontSize: 13, color: EXPLORE.accent,
   },
 
   // Create Custom Route card
@@ -2971,28 +2991,27 @@ const s = StyleSheet.create({
   // Browse by Region cards
   browseRegionCard: {
     width: 160, height: 130, borderRadius: 14,
-    overflow: "hidden", backgroundColor: "#0F1D30",
+    overflow: "hidden", backgroundColor: BASECAMP.ink,
   },
 
   // Popular Expedition list cards
   popularCard: {
+    ...SURFACE.panel,
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#0D1B2E", borderRadius: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-    padding: 10, overflow: "hidden",
+    borderRadius: 17, padding: 10, overflow: "hidden",
   },
   popularThumb: {
-    width: 68, height: 68, borderRadius: 10,
-    backgroundColor: "#142236", overflow: "hidden",
+    width: 68, height: 68, borderRadius: RADIUS.md,
+    backgroundColor: BASECAMP.ink, overflow: "hidden",
   },
   popularTitle: {
-    fontSize: 14, fontFamily: "Inter_700Bold", color: T.white,
+    ...TYPE.title, fontSize: 16, lineHeight: 20, color: BASECAMP.text,
   },
   popularSub: {
-    fontSize: 11, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2,
+    ...TYPE.small, fontSize: 12, lineHeight: 16, color: BASECAMP.textMuted, marginTop: 2,
   },
   popularMeta: {
-    fontSize: 10, fontFamily: "Inter_400Regular", color: T.textDim,
+    ...TYPE.smallBold, fontSize: 11, color: BASECAMP.textMuted,
   },
   featuredBadge: {
     position: "absolute", bottom: 4, left: 4,

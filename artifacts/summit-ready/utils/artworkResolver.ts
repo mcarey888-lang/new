@@ -26,6 +26,48 @@ export const TRAINING_BASECAMP_ARTWORK = {
   derivativePath: "/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v1/hero",
 } as const;
 
+/**
+ * These are approved Batch 01 *placements*, not the reference-only images in
+ * the HTML mockups. The approved-image API is currently development-only.
+ * Keep that boundary here: a production build uses its screen's own fallback.
+ */
+const TAB_HERO_ARTWORK = {
+  explore: { assetId: "SR-EXPLORE-001", version: 1 },
+  profile: { assetId: "SR-YOU-001", version: 1 },
+} as const;
+
+export async function resolveApprovedTabHeroArtwork(
+  tab: keyof typeof TAB_HERO_ARTWORK,
+): Promise<ResolvedTrainingBasecampArtwork | null> {
+  if (!__DEV__) return null;
+  const expected = TAB_HERO_ARTWORK[tab];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch(`${API_BASE}/artwork/resolve/${expected.assetId}/hero`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const data = await response.json() as ArtworkResolution;
+    const approvedPath = `/api/artwork/approved/${expected.assetId}/hero`;
+    if (
+      data?.assetId !== expected.assetId ||
+      data.version !== expected.version ||
+      data.placement !== "hero" ||
+      data.derivativePath !== `/api/artwork/batches/batch-01/${expected.assetId}/v${expected.version}/hero` ||
+      data.url !== approvedPath
+    ) return null;
+    const origin = process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "";
+    return { ...data, uri: `${origin}${approvedPath}` };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function resolveTrainingBasecampArtwork(
   context: TrainingBasecampArtworkContext,
 ): Promise<ResolvedTrainingBasecampArtwork | null> {
