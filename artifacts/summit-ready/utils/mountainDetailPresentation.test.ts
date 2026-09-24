@@ -217,14 +217,28 @@ function exploreRoute(overrides: Partial<ExploreRoute> = {}): ExploreRoute {
     routeId: `sde:route:${KEY_A}@3`, mountainId: MOUNTAIN_ID,
   };
   const ok = <T,>(value: T) => ({ availability: "available" as const, value, reasons: [] });
+  const provenance = {
+    provider: "Summit Data Engine",
+    provenanceVersion: "1",
+    rightsClassification: "reusable_geometry" as const,
+    qaFlags: [],
+  };
   return {
     route: version,
     mountain: MOUNTAIN_ID,
     definition: ok({} as any),
     facts: ok({ distanceM: 8600, ascentM: 560, typicalDurationS: 14_400 } as any),
-    geometry: ok({} as any),
+    geometry: ok({
+      geometryVersion: "1",
+      coordinateReferenceSystem: "EPSG:4326",
+      coordinates: [[-3.9, 53.1], [-3.8, 53.2]],
+      direction: "forward",
+      derivationMethod: "sde",
+      sourceMembers: [{ ...provenance, evidenceType: "source" }],
+      topologyStatus: "complete",
+    } as const),
     trust: VERIFIED_TRUST,
-    attribution: null,
+    attribution: provenance,
     trackAvailability: "can_track",
     ...overrides,
   } as ExploreRoute;

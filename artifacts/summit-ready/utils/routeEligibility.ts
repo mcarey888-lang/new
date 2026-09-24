@@ -23,7 +23,15 @@
  * cannot start navigation on an unverified line.
  */
 import { CAPABILITIES } from "../constants/capabilities";
-import type { ExploreRoute, RouteDataReason, RouteVersion, SdeMountainId } from "./routeIntelligence";
+import {
+  makeRouteVersion,
+  parseSdeMountainId,
+  parseSdeRouteId,
+  type ExploreRoute,
+  type RouteDataReason,
+  type RouteVersion,
+  type SdeMountainId,
+} from "./routeIntelligence";
 
 /** What the product says about a route's standing. */
 export type RouteVerificationState =
@@ -80,7 +88,9 @@ export function routeEligibility(route: ExploreRoute | null | undefined): RouteE
   const trustVerified =
     route.trust?.engineStatus === "verified" &&
     route.trust?.productLifecycle === "summitready_verified";
-  const navigable = route.trackAvailability === "can_track" && trustVerified;
+  const navigable = route.trackAvailability === "can_track" &&
+    authoritativeGeometryReady(route) &&
+    trustVerified;
 
   return {
     state: navigable ? "verified" : "candidate",
@@ -92,6 +102,28 @@ export function routeEligibility(route: ExploreRoute | null | undefined): RouteE
     canDownloadOffline: navigable && CAPABILITIES.routeOfflineDownload,
     reasons,
   };
+}
+
+/** A route line is authoritative only with explicit proof and reusable SDE geometry. */
+function authoritativeGeometryReady(route: ExploreRoute): boolean {
+  const geometryResult = route.geometry;
+  const geometry = geometryResult.availability === "available" ? geometryResult.value : null;
+  const coordinates: unknown = geometry?.coordinates;
+  const sourceMembers: unknown = geometry?.sourceMembers;
+  if (!geometry || geometry.coordinateReferenceSystem !== "EPSG:4326" ||
+      geometry.topologyStatus !== "complete" || !geometry.geometryVersion ||
+      !Array.isArray(coordinates) || coordinates.length < 2 ||
+      !Array.isArray(sourceMembers) || sourceMembers.length === 0 ||
+      route.attribution?.rightsClassification !== "reusable_geometry") return false;
+  if (!coordinates.every(coordinate =>
+    Array.isArray(coordinate) && coordinate.length >= 2 &&
+    typeof coordinate[0] === "number" && Number.isFinite(coordinate[0]) &&
+    coordinate[0] >= -180 && coordinate[0] <= 180 &&
+    typeof coordinate[1] === "number" && Number.isFinite(coordinate[1]) &&
+    coordinate[1] >= -90 && coordinate[1] <= 90)) return false;
+  return sourceMembers.every(source =>
+    source && typeof source === "object" &&
+    (source as { rightsClassification?: unknown }).rightsClassification === "reusable_geometry");
 }
 
 function collectReasons(route: ExploreRoute): RouteDataReason[] {
@@ -129,7 +161,15 @@ export function canonicalSelection(
 ): CanonicalRouteSelection | null {
   if (!route?.route || !route.mountain) return null;
   const version: RouteVersion = route.route;
-  if (!version.identityKey || !version.version || !version.routeId) return null;
+  const mountainId = parseSdeMountainId(route.mountain);
+  const parsedRoute = parseSdeRouteId(version.routeId);
+  const expectedVersion = makeRouteVersion(route.mountain, version.identityKey, version.version);
+  if (!mountainId || !parsedRoute || !expectedVersion ||
+      version.mountainId !== mountainId ||
+      parsedRoute.identityKey !== version.identityKey ||
+      parsedRoute.version !== version.version ||
+      version.routeId !== expectedVersion.routeId ||
+      parsedRoute.routeId !== version.routeId) return null;
   return {
     mountainId: route.mountain,
     routeId: version.routeId,
@@ -144,7 +184,7 @@ export function canonicalSelection(
 
 export interface StartRouteHandoff {
   mountainId: SdeMountainId;
-  routeId: string;
+  routeId: RouteVersion["routeId"];
   routeIdentityKey: string;
   routeVersion: string;
   routeName: string;
@@ -166,7 +206,7 @@ export function startRouteHandoff(
   if (!eligibility.isNavigable) return null;
   const selection = canonicalSelection(route, names);
   if (!selection) return null;
-  return { ...selection };
+  return { ...selection, routeId: selection.routeId as RouteVersion["routeId"] };
 }
 
 export interface OfflineDownloadRequest {

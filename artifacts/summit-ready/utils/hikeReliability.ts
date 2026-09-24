@@ -30,9 +30,40 @@ export interface HikeCheckpoint {
   pauseStartMs: number;
   trackingMode: string | null;
   expeditionId: string | null;
+  canonicalRouteHandoffId?: string;
+  canonicalRouteId?: string;
+  canonicalRouteIdentityKey?: string;
+  canonicalRouteVersion?: string;
+  canonicalMountainId?: string;
   syncState?: "local_only" | "queued" | "synced";
   hillMeta: Record<string, unknown>;
   savedAt: number;
+}
+
+export interface CanonicalRouteHandoffIdentity {
+  ownerUserId: string;
+  handoffId: string;
+  mountainId: string;
+  routeId: string;
+  routeIdentityKey: string;
+  routeVersion: string;
+}
+
+export function canonicalRouteHandoffMatches(
+  stored: CanonicalRouteHandoffIdentity,
+  requested: CanonicalRouteHandoffIdentity,
+): boolean {
+  const hasCoherentVersionedIdentity = (identity: CanonicalRouteHandoffIdentity) =>
+    identity.mountainId.startsWith("sde:mountain:") &&
+    identity.routeId === `sde:route:${identity.routeIdentityKey}@${identity.routeVersion}` &&
+    Boolean(identity.routeIdentityKey && identity.routeVersion);
+  if (!hasCoherentVersionedIdentity(stored) || !hasCoherentVersionedIdentity(requested)) return false;
+  return stored.ownerUserId === requested.ownerUserId &&
+    stored.handoffId === requested.handoffId &&
+    stored.mountainId === requested.mountainId &&
+    stored.routeId === requested.routeId &&
+    stored.routeIdentityKey === requested.routeIdentityKey &&
+    stored.routeVersion === requested.routeVersion;
 }
 
 export function isPersistableHikeStatus(

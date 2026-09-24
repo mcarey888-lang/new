@@ -112,6 +112,13 @@ export function trackContext(meta: {
   return { title, subtitle };
 }
 
+/** Converts canonical GeoJSON longitude/latitude into the map's latitude/longitude tuples. */
+export function canonicalRouteMapPoints(
+  coordinates: ReadonlyArray<readonly [longitude: number, latitude: number]>,
+): Array<[latitude: number, longitude: number]> {
+  return coordinates.map(([longitude, latitude]) => [latitude, longitude]);
+}
+
 /**
  * Activity identity across the whole journey.
  *

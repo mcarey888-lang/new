@@ -354,6 +354,11 @@ export interface ExploreHike {
   trackPoints?: Array<{ lat: number; lon: number }>;
   activityId?: string;
   expeditionId?: string;
+  /** Canonical SDE route identity is independent of local activity and community IDs. */
+  canonicalRouteId?: string;
+  canonicalRouteVersion?: string;
+  canonicalRouteIdentityKey?: string;
+  canonicalMountainId?: string;
   syncState?: "local_only" | "queued" | "synced";
 }
 

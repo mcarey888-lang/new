@@ -51,7 +51,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
 import {
-  formatPace, offlineNotice, paceMinPerKm, statusLabel, trackContext,
+  canonicalRouteMapPoints, formatPace, offlineNotice, paceMinPerKm, statusLabel, trackContext,
 } from "@/utils/trackPresentation";
 import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
@@ -89,6 +89,12 @@ import { useStage8 } from "@/context/Stage8Context";
 import { findElevationBankCreditForActivity } from "@/utils/elevationBankMatching";
 import { selectExpeditionPresentation } from "@/utils/expeditionProgress";
 import { applyExpeditionStageContribution } from "@/utils/expeditionContribution";
+import {
+  clearCanonicalRouteHandoff,
+  isCanonicalRouteHandoffFresh,
+  readCanonicalRouteHandoff,
+  type CanonicalRouteHandoff,
+} from "@/utils/canonicalRouteHandoff";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -284,7 +290,26 @@ export default function HikeTrackingScreen() {
     summitIdentityKey?: string;
     objectiveType?: string;
     stageSnapshot?: string;
+    routeHandoffId?: string;
+    canonicalRouteId?: string;
+    canonicalRouteIdentityKey?: string;
+    canonicalRouteVersion?: string;
+    canonicalMountainId?: string;
+    canonicalRouteName?: string;
   }>();
+  const canonicalRouteParamsIntent = Boolean(
+    params.routeHandoffId || params.canonicalRouteId || params.canonicalRouteIdentityKey ||
+    params.canonicalRouteVersion || params.canonicalMountainId || params.canonicalRouteName,
+  );
+  const [restoredCanonicalRouteIntent, setRestoredCanonicalRouteIntent] = useState(false);
+  const [restoreCheckpointPending, setRestoreCheckpointPending] = useState(params.restore === "1");
+  const [canonicalRouteContext, setCanonicalRouteContext] =
+    useState<CanonicalRouteHandoff | null>(null);
+  const canonicalRouteIntent = canonicalRouteParamsIntent ||
+    restoredCanonicalRouteIntent || !!canonicalRouteContext;
+  const [canonicalRouteContextInvalid, setCanonicalRouteContextInvalid] = useState(false);
+  const [canonicalRouteContextPending, setCanonicalRouteContextPending] =
+    useState(canonicalRouteIntent);
   const [expeditionTracking, setExpeditionTracking] = useState({
     trackingMode: params.trackingMode ?? null,
     expeditionId: params.expeditionId ?? null,
@@ -322,7 +347,8 @@ export default function HikeTrackingScreen() {
      never set, so its message could not appear; the field below now states
      plainly that the name is optional instead. */
   const [routeName, setRouteName]       = useState(
-    params.hillName?.trim() || params.referenceRouteName?.trim() || localActivityTitle(),
+    params.canonicalRouteName?.trim() || params.hillName?.trim()
+      || params.referenceRouteName?.trim() || localActivityTitle(),
   );
   const [nameLocked, setNameLocked]     = useState(false);
   const [nameError, setNameError]       = useState(false);
@@ -346,11 +372,80 @@ export default function HikeTrackingScreen() {
   const [completionExpedition, setCompletionExpedition] = useState<SavedExpedition | null>(null);
   const [completionSaveStarted, setCompletionSaveStarted] = useState(false);
 
+  useEffect(() => {
+    if (status !== "idle" || !canonicalRouteContext) return;
+    const expiresIn = canonicalRouteContext.savedAt + 24 * 60 * 60 * 1000 - Date.now();
+    if (expiresIn <= 0) {
+      setCanonicalRouteContext(null);
+      setCanonicalRouteContextInvalid(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCanonicalRouteContext(null);
+      setCanonicalRouteContextInvalid(true);
+    }, expiresIn);
+    return () => clearTimeout(timer);
+  }, [status, canonicalRouteContext]);
+
   // ── Nearby route picker ───────────────────────────────────────────────────
   const [nearbyRoutes, setNearbyRoutes]         = useState<NearbyRoute[]>([]);
   const [nearbyLoading, setNearbyLoading]       = useState(false);
   const [nearbyPickerOpen, setNearbyPickerOpen] = useState(false);
   const [selectedCanonical, setSelectedCanonical] = useState<{ id: string; name: string } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // Canonical route geometry is read from owner-scoped local storage. The URL
+  // contains only a short handoff reference and exact identity fields.
+  useEffect(() => {
+    if (!canonicalRouteParamsIntent) {
+      if (!restoredCanonicalRouteIntent) {
+        setCanonicalRouteContext(null);
+        setCanonicalRouteContextInvalid(false);
+        setCanonicalRouteContextPending(false);
+      }
+      return;
+    }
+    if (!userId || !params.routeHandoffId || !params.canonicalRouteId || !params.canonicalRouteIdentityKey ||
+        !params.canonicalRouteVersion || !params.canonicalMountainId) {
+      setCanonicalRouteContext(null);
+      setCanonicalRouteContextInvalid(true);
+      setCanonicalRouteContextPending(false);
+      return;
+    }
+    let cancelled = false;
+    setCanonicalRouteContextPending(true);
+    setCanonicalRouteContextInvalid(false);
+    void readCanonicalRouteHandoff({
+      ownerUserId: userId,
+      handoffId: params.routeHandoffId,
+      routeId: params.canonicalRouteId as `sde:route:${string}@${string}`,
+      routeIdentityKey: params.canonicalRouteIdentityKey,
+      routeVersion: params.canonicalRouteVersion,
+      mountainId: params.canonicalMountainId as `sde:mountain:${string}`,
+    }).then(context => {
+      if (!cancelled) {
+        setCanonicalRouteContext(context);
+        setCanonicalRouteContextInvalid(!context);
+        setCanonicalRouteContextPending(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setCanonicalRouteContext(null);
+        setCanonicalRouteContextInvalid(true);
+        setCanonicalRouteContextPending(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [
+    canonicalRouteParamsIntent,
+    restoredCanonicalRouteIntent,
+    userId,
+    params.routeHandoffId,
+    params.canonicalRouteId,
+    params.canonicalRouteIdentityKey,
+    params.canonicalRouteVersion,
+    params.canonicalMountainId,
+  ]);
 
   const trackPoints    = useRef<TrackPoint[]>([]);
   const lastAltRef     = useRef<number | null>(null);
@@ -527,6 +622,7 @@ export default function HikeTrackingScreen() {
   // ── Web-only: mount the hike-map iframe ──────────────────────────────────
   useEffect(() => {
     if (Platform.OS !== "web") return;
+    if (restoreCheckpointPending) return;
     const container = webMapContainerRef.current as unknown as HTMLElement;
     if (!container) return;
     const iframe = document.createElement("iframe");
@@ -534,9 +630,11 @@ export default function HikeTrackingScreen() {
     iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
     iframe.allow = "geolocation";
     iframe.onload = () => {
+      setMapReady(true);
       sendReferenceRouteToMap();
       const pos = initialPosRef.current;
       if (pos) sendLocateToMap(pos.lat, pos.lon);
+      if (trackPoints.current.length > 0) replayTrackOnMap();
     };
     iframeRef.current = iframe;
     container.appendChild(iframe);
@@ -544,7 +642,7 @@ export default function HikeTrackingScreen() {
       try { container.removeChild(iframe); } catch { /* already gone */ }
       iframeRef.current = null;
     };
-  }, []);
+  }, [restoreCheckpointPending]);
 
   // ── Pulsing dot while tracking ───────────────────────────────────────────
   const pulse = useSharedValue(1);
@@ -631,6 +729,7 @@ export default function HikeTrackingScreen() {
 
   // ── Send a community reference route to the map as a ghost overlay ────────
   const sendRouteOverlay = useCallback(async (routeId: string) => {
+    if (canonicalRouteIntent) return;
     try {
       const res = await fetch(`${API_BASE}/tracked-routes/${routeId}`);
       if (!res.ok) return;
@@ -645,17 +744,40 @@ export default function HikeTrackingScreen() {
         webViewRef.current?.postMessage(msg);
       }
     } catch { /* best-effort */ }
-  }, []);
+  }, [canonicalRouteIntent]);
 
   const referenceRouteSentRef = useRef(false);
   const sendReferenceRouteToMap = useCallback(async () => {
+    if (canonicalRouteIntent) return;
     const rid = params.referenceRouteId;
     if (!rid || referenceRouteSentRef.current) return;
     referenceRouteSentRef.current = true;
     await sendRouteOverlay(rid);
-  }, [params.referenceRouteId, sendRouteOverlay]);
+  }, [canonicalRouteIntent, params.referenceRouteId, sendRouteOverlay]);
+
+  const canonicalRouteOverlaySentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!mapReady || !canonicalRouteIntent || !canonicalRouteContext) return;
+    const handoffId = canonicalRouteContext.handoffId;
+    if (canonicalRouteOverlaySentRef.current === handoffId) return;
+    const points = canonicalRouteMapPoints(canonicalRouteContext.geometry.coordinates);
+    if (points.length < 2) return;
+    const msg = JSON.stringify({ type: "referenceRoute", points });
+    try {
+      if (Platform.OS === "web") {
+        const target = iframeRef.current?.contentWindow;
+        if (!target) return;
+        target.postMessage(msg, "*");
+      } else {
+        if (!webViewRef.current) return;
+        webViewRef.current.postMessage(msg);
+      }
+      canonicalRouteOverlaySentRef.current = handoffId;
+    } catch { /* map may not accept messages until its ready event */ }
+  }, [mapReady, canonicalRouteIntent, canonicalRouteContext]);
 
   const fetchNearbyRoutes = useCallback(async () => {
+    if (canonicalRouteIntent) return;
     const pos = initialPosRef.current;
     if (!pos) return;
     setNearbyLoading(true);
@@ -668,7 +790,7 @@ export default function HikeTrackingScreen() {
       }
     } catch { /* ignore */ }
     setNearbyLoading(false);
-  }, []);
+  }, [canonicalRouteIntent]);
 
   // ── Sync background-collected GPS points into foreground state ────────────
   const syncBgPoints = useCallback(async (force = false) => {
@@ -777,6 +899,11 @@ export default function HikeTrackingScreen() {
         pauseStartMs: pauseStartMsRef.current,
         trackingMode: hillMeta.trackingMode,
         expeditionId: hillMeta.expeditionId,
+        canonicalRouteHandoffId: canonicalRouteContext?.handoffId ?? params.routeHandoffId,
+        canonicalRouteId: canonicalRouteContext?.routeId ?? params.canonicalRouteId,
+        canonicalRouteIdentityKey: canonicalRouteContext?.routeIdentityKey ?? params.canonicalRouteIdentityKey,
+        canonicalRouteVersion: canonicalRouteContext?.routeVersion ?? params.canonicalRouteVersion,
+        canonicalMountainId: canonicalRouteContext?.mountainId ?? params.canonicalMountainId,
         syncState: isOffline ? "queued" : "local_only",
         userId: userId ?? undefined,
         hillMeta: {
@@ -805,7 +932,9 @@ export default function HikeTrackingScreen() {
   }, [routeName, hillMeta.sessionKey, hillMeta.hillName, hillMeta.targetReps,
       hillMeta.estimatedGainPerRep, hillMeta.estimatedTotalGain, hillMeta.trackingMode,
       hillMeta.expeditionId, hillMeta.routeIdentityKey, hillMeta.summitIdentityKey,
-      hillMeta.objectiveType, userId, isOffline]);
+      hillMeta.objectiveType, userId, isOffline, canonicalRouteContext,
+      params.routeHandoffId, params.canonicalRouteId, params.canonicalRouteIdentityKey,
+      params.canonicalRouteVersion, params.canonicalMountainId]);
 
   useEffect(() => {
     if (status !== "tracking" && status !== "paused") return;
@@ -819,7 +948,10 @@ export default function HikeTrackingScreen() {
   // (b) user navigated away while tracking and returned to this screen.
   // Reads persisted metadata + background GPS points and resumes seamlessly.
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      if (params.restore !== "1") setRestoreCheckpointPending(false);
+      return;
+    }
     const ownerUserId = userId;
     if (restoreAttempted.current) return;
     restoreAttempted.current = true;
@@ -865,6 +997,29 @@ export default function HikeTrackingScreen() {
         // Restore route name (may differ from hillName for custom-named routes)
         if (session.routeName) setRouteName(session.routeName);
         if (session.routeId) routeIdRef.current = session.routeId;
+        if (session.canonicalRouteHandoffId && session.canonicalRouteId &&
+            session.canonicalRouteIdentityKey && session.canonicalRouteVersion &&
+            session.canonicalMountainId) {
+          setRestoredCanonicalRouteIntent(true);
+          setCanonicalRouteContextPending(true);
+          setCanonicalRouteContextInvalid(false);
+          const context = await readCanonicalRouteHandoff({
+            ownerUserId,
+            handoffId: session.canonicalRouteHandoffId,
+            routeId: session.canonicalRouteId as `sde:route:${string}@${string}`,
+            routeIdentityKey: session.canonicalRouteIdentityKey,
+            routeVersion: session.canonicalRouteVersion,
+            mountainId: session.canonicalMountainId as `sde:mountain:${string}`,
+          });
+          if (context) {
+            setCanonicalRouteContext(context);
+            setCanonicalRouteContextInvalid(false);
+          } else {
+            setCanonicalRouteContext(null);
+            setCanonicalRouteContextInvalid(true);
+          }
+          setCanonicalRouteContextPending(false);
+        }
         const savedHillMeta = session.hillMeta ?? {};
         const numberOrNull = (value: unknown): number | null =>
           typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -969,6 +1124,7 @@ export default function HikeTrackingScreen() {
           } catch { /* foreground watch unavailable */ }
         }
       } catch { /* ignore — fall back to normal idle state */ }
+      finally { setRestoreCheckpointPending(false); }
     }
 
     doRestore();
@@ -987,6 +1143,15 @@ export default function HikeTrackingScreen() {
 
   const startTrackingImpl = useCallback(async () => {
     if (statusRef.current !== "idle") return;
+    if (canonicalRouteIntent &&
+        (canonicalRouteContextPending || canonicalRouteContextInvalid || !canonicalRouteContext ||
+         !isCanonicalRouteHandoffFresh(canonicalRouteContext.savedAt))) {
+      if (canonicalRouteContext && !isCanonicalRouteHandoffFresh(canonicalRouteContext.savedAt)) {
+        setCanonicalRouteContext(null);
+        setCanonicalRouteContextInvalid(true);
+      }
+      return;
+    }
     const effectiveName = routeName.trim() || localActivityTitle();
     if (effectiveName !== routeName) setRouteName(effectiveName);
     setNameLocked(true);
@@ -1099,7 +1264,16 @@ export default function HikeTrackingScreen() {
       );
       locationSubRef.current = fgSub;
     } catch { /* foreground watch unavailable */ }
-  }, [routeName, sendPointToMap, saveActiveSession]);
+  }, [
+    routeName,
+    sendPointToMap,
+    saveActiveSession,
+    canonicalRouteIntent,
+    canonicalRouteContextPending,
+    canonicalRouteContextInvalid,
+    canonicalRouteContext,
+    canonicalRouteContext?.savedAt,
+  ]);
   const startTracking = useCallback(
     () => serialize(startTrackingImpl),
     [serialize, startTrackingImpl],
@@ -1261,6 +1435,10 @@ export default function HikeTrackingScreen() {
         trackPoints: trackPoints.current,
         activityId: routeId,
         expeditionId: hillMeta.expeditionId ?? undefined,
+        canonicalRouteId: canonicalRouteContext?.routeId,
+        canonicalRouteVersion: canonicalRouteContext?.routeVersion,
+        canonicalRouteIdentityKey: canonicalRouteContext?.routeIdentityKey,
+        canonicalMountainId: canonicalRouteContext?.mountainId,
         syncState: isOffline ? "queued" : "local_only",
       });
       setCompletionSaveStarted(true);
@@ -1294,7 +1472,8 @@ export default function HikeTrackingScreen() {
         });
       }
 
-      // 3 ── Submit to backend: contribute to canonical route or create a new one
+      // 3 ── Sync the user's *recorded GPS trace* as before. A canonical
+      // planned route is never copied into community data or used as its ID.
       const routeSyncId = `community-route:${routeId}:${selectedCanonical?.id ?? "new"}`;
       const routeUrl = selectedCanonical
         ? `${API_BASE}/tracked-routes/${selectedCanonical.id}/contribute`
@@ -1385,6 +1564,7 @@ export default function HikeTrackingScreen() {
             },
           });
         }
+        if (canonicalRouteContext) await clearCanonicalRouteHandoff(canonicalRouteContext);
         await clearActiveHike(userId ?? undefined);
         router.replace("/(tabs)/hikes" as any);
       } else if (hillMeta.trackingMode === "expedition-route" && trackedExpedition) {
@@ -1392,6 +1572,7 @@ export default function HikeTrackingScreen() {
         setShowExpeditionPrompt(true);
       } else {
         // In training mode navigate straight to hike history as before.
+        if (canonicalRouteContext) await clearCanonicalRouteHandoff(canonicalRouteContext);
         await clearActiveHike(userId ?? undefined);
         router.replace("/(tabs)/hikes" as any);
       }
@@ -1400,7 +1581,7 @@ export default function HikeTrackingScreen() {
       setSaving(false);
     }
   }, [addToPlan, routeName, distanceKm, elevGainM, elevLossM, elapsedSecs, trainingPlan,
-       addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline]);
+       addSession, logExploreHike, activeExpeditionId, trackedExpedition, hillMeta, expeditions, patchExpedition, getToken, userId, selectedCanonical, isOffline, canonicalRouteContext]);
 
   const stage8Credit = elevationBankQuery.data?.status === "available"
     ? findElevationBankCreditForActivity(elevationBankQuery.data.recentCredits, routeIdRef.current)
@@ -1525,6 +1706,7 @@ export default function HikeTrackingScreen() {
                       virtualHikeProgress: contribution.virtualHikeProgress,
                     });
                     if (userId) await clearPendingHikeSelection(userId);
+                    if (canonicalRouteContext) await clearCanonicalRouteHandoff(canonicalRouteContext);
                     await clearActiveHike(userId ?? undefined);
                     const isFinished = contribution.completedRoutes.length > 0 &&
                       (selectExpeditionPresentation({
@@ -1565,7 +1747,10 @@ export default function HikeTrackingScreen() {
   const isTracking = status === "tracking";
   const isPaused   = status === "paused";
   const isIdle     = status === "idle";
-  const canStart   = true;
+  const canonicalContextFresh = !!canonicalRouteContext &&
+    isCanonicalRouteHandoffFresh(canonicalRouteContext.savedAt);
+  const canStart = !canonicalRouteIntent ||
+    (!canonicalRouteContextPending && !canonicalRouteContextInvalid && canonicalContextFresh);
 
   return (
     <View style={s.root}>
@@ -1573,20 +1758,26 @@ export default function HikeTrackingScreen() {
       {/* ── Full-screen map (always rendered behind everything) ── */}
       <View style={StyleSheet.absoluteFill}>
         {Platform.OS !== "web" ? (
-          <WebView
-            ref={webViewRef}
-            source={{ uri: `${API_BASE}/hike-map` }}
-            style={{ flex: 1 }}
-            scrollEnabled={false}
-            javaScriptEnabled
-            domStorageEnabled
-            originWhitelist={["*"]}
-            onLoad={() => {
-              sendReferenceRouteToMap();
-              const pos = initialPosRef.current;
-              if (pos) sendLocateToMap(pos.lat, pos.lon);
-            }}
-          />
+          restoreCheckpointPending ? (
+            <View style={{ flex: 1, backgroundColor: "#08111f" }} />
+          ) : (
+            <WebView
+              ref={webViewRef}
+              source={{ uri: `${API_BASE}/hike-map` }}
+              style={{ flex: 1 }}
+              scrollEnabled={false}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={["*"]}
+              onLoad={() => {
+                setMapReady(true);
+                sendReferenceRouteToMap();
+                const pos = initialPosRef.current;
+                if (pos) sendLocateToMap(pos.lat, pos.lon);
+                if (trackPoints.current.length > 0) replayTrackOnMap();
+              }}
+            />
+          )
         ) : (
           <View ref={webMapContainerRef} style={{ flex: 1 }} />
         )}
@@ -1659,24 +1850,28 @@ export default function HikeTrackingScreen() {
             <Text style={s.nameHintText}>Optional — you can start without it and rename later.</Text>
           )}
 
-          {/* ── Nearby route picker ── */}
-          <View style={s.orRow}>
-            <View style={s.orLine} /><Text style={s.orText}>or</Text><View style={s.orLine} />
-          </View>
-          <TouchableOpacity
-            style={[s.nearbyBtn, selectedCanonical && s.nearbyBtnSelected]}
-            onPress={fetchNearbyRoutes}
-            activeOpacity={0.8}
-          >
-            <MapPin size={14} color={selectedCanonical ? BASECAMP.accent : BASECAMP.textMuted} />
-            <Text style={[s.nearbyBtnText, selectedCanonical && { color: BASECAMP.accent }]}>
-              {selectedCanonical ? `Following: ${selectedCanonical.name}` : "Pick a nearby route"}
-            </Text>
-            {selectedCanonical
-              ? <CheckCircle size={14} color={BASECAMP.accent} />
-              : <ChevronRight size={14} color={BASECAMP.textDim} />
-            }
-          </TouchableOpacity>
+          {!canonicalRouteIntent ? (
+            <>
+              {/* ── Nearby community route picker ── */}
+              <View style={s.orRow}>
+                <View style={s.orLine} /><Text style={s.orText}>or</Text><View style={s.orLine} />
+              </View>
+              <TouchableOpacity
+                style={[s.nearbyBtn, selectedCanonical && s.nearbyBtnSelected]}
+                onPress={fetchNearbyRoutes}
+                activeOpacity={0.8}
+              >
+                <MapPin size={14} color={selectedCanonical ? BASECAMP.accent : BASECAMP.textMuted} />
+                <Text style={[s.nearbyBtnText, selectedCanonical && { color: BASECAMP.accent }]}>
+                  {selectedCanonical ? `Following: ${selectedCanonical.name}` : "Pick a nearby route"}
+                </Text>
+                {selectedCanonical
+                  ? <CheckCircle size={14} color={BASECAMP.accent} />
+                  : <ChevronRight size={14} color={BASECAMP.textDim} />
+                }
+              </TouchableOpacity>
+            </>
+          ) : null}
         </Animated.View>
       )}
 
@@ -1719,12 +1914,13 @@ export default function HikeTrackingScreen() {
         {isIdle && (
           <View style={s.sheetBody}>
             {(() => {
-              /* Context comes from the launch params the screen already
-                 receives — the hill the session named, and the reference
-                 route where one was chosen. No new param was introduced. */
+              /* Keep the mountain and exact selected canonical route distinct
+                 from the optional community-route overlay. */
               const ctx = trackContext({
-                hillName: hillMeta.hillName,
-                routeName: params.referenceRouteName ?? null,
+                hillName: canonicalRouteContext?.mountainName ?? hillMeta.hillName,
+                routeName: canonicalRouteContext?.routeName
+                  ?? params.canonicalRouteName
+                  ?? params.referenceRouteName ?? null,
                 sessionLabel: null,
               });
               if (!ctx) return null;
@@ -1738,6 +1934,21 @@ export default function HikeTrackingScreen() {
                 </View>
               );
             })()}
+            {canonicalRouteIntent && (
+              canonicalRouteContextPending || canonicalRouteContextInvalid || !canonicalContextFresh
+            ) ? (
+              <Text style={[s.readyAssurance, { color: T.orange }]}>
+                {canonicalRouteContextPending
+                  ? "Preparing the canonical route handoff on this device. Start is unavailable until it is ready."
+                  : "Canonical route context is unavailable or expired. Return to Mountain Detail and select the verified route again. This will not start an unassociated hike."}
+              </Text>
+            ) : null}
+            {canonicalRouteIntent && !canonicalRouteContextPending &&
+              (canonicalRouteContextInvalid || !canonicalContextFresh) ? (
+              <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
+                <Text style={[s.readyAssurance, { color: T.green }]}>Return to Mountain Detail</Text>
+              </TouchableOpacity>
+            ) : null}
 
             {/* Device state, reported side by side. */}
             <View style={s.readyStateRow}>
@@ -1901,7 +2112,7 @@ export default function HikeTrackingScreen() {
 
       {/* ── Nearby routes picker modal ── */}
       <Modal
-        visible={nearbyPickerOpen}
+        visible={nearbyPickerOpen && !canonicalRouteIntent}
         animationType="slide"
         transparent
         onRequestClose={() => setNearbyPickerOpen(false)}

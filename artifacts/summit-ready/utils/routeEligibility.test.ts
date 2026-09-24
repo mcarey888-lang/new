@@ -23,14 +23,29 @@ const VERIFIED_TRUST: MountainVerification = {
 
 function route(overrides: Partial<ExploreRoute> = {}): ExploreRoute {
   const ok = <T,>(value: T) => ({ availability: "available" as const, value, reasons: [] });
+  const provenance = {
+    provider: "Summit Data Engine",
+    attribution: "Source attribution",
+    provenanceVersion: "1",
+    rightsClassification: "reusable_geometry" as const,
+    qaFlags: [],
+  };
   return {
     route: VERSION,
     mountain: MOUNTAIN,
     definition: ok({} as any),
     facts: ok({} as any),
-    geometry: ok({} as any),
+    geometry: ok({
+      geometryVersion: "1",
+      coordinateReferenceSystem: "EPSG:4326" as const,
+      coordinates: [[-3.9, 53.1], [-3.8, 53.2]],
+      direction: "forward" as const,
+      derivationMethod: "sde",
+      sourceMembers: [{ ...provenance, evidenceType: "source" as const }],
+      topologyStatus: "complete" as const,
+    }),
     trust: VERIFIED_TRUST,
-    attribution: null,
+    attribution: provenance,
     trackAvailability: "can_track",
     ...overrides,
   } as ExploreRoute;
@@ -52,6 +67,24 @@ describe("routeEligibility", () => {
     /* still inspectable and still plannable */
     expect(e.canInspect).toBe(true);
     expect(e.canAddToPlan).toBe(true);
+  });
+
+  it("accepts the API's published geometry DTO and enforces reusable rights, EPSG:4326 and valid points", () => {
+    expect(routeEligibility(route()).isNavigable).toBe(true);
+    expect(routeEligibility(route({
+      attribution: { ...route().attribution!, rightsClassification: "unclear" },
+    })).isNavigable).toBe(false);
+    const validGeometry = (route().geometry as any).value;
+    expect(routeEligibility(route({
+      geometry: { availability: "available", value: {
+        ...validGeometry, coordinateReferenceSystem: "EPSG:3857",
+      }, reasons: [] },
+    })).isNavigable).toBe(false);
+    expect(routeEligibility(route({
+      geometry: { availability: "available", value: {
+        ...validGeometry, coordinates: [[200, 53], [201, 54]],
+      }, reasons: [] },
+    })).isNavigable).toBe(false);
   });
 
   it("refuses navigation when the mountain is not SummitReady-verified", () => {
@@ -124,6 +157,15 @@ describe("canonicalSelection", () => {
   it("is null when the version is missing — a route without a version is not identified", () => {
     const noVersion = route({ route: { ...VERSION, version: "" } });
     expect(canonicalSelection(noVersion, {})).toBeNull();
+  });
+
+  it("rejects route IDs that do not encode the exact identity, version and mountain", () => {
+    expect(canonicalSelection(route({
+      route: { ...VERSION, routeId: "sde:route:other@4" as RouteVersion["routeId"] },
+    }), {})).toBeNull();
+    expect(canonicalSelection(route({
+      route: { ...VERSION, mountainId: "sde:mountain:other" as RouteVersion["mountainId"] },
+    }), {})).toBeNull();
   });
 
   it("falls back to the identity key rather than inventing a name", () => {

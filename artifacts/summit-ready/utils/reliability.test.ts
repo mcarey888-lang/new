@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   acknowledgeBatchKeys,
   checkpointElapsedSecs,
+  canonicalRouteHandoffMatches,
   flattenBatches,
   isPersistableHikeStatus,
   shouldRestoreCheckpoint,
@@ -236,6 +237,29 @@ it("restores only current or explicitly requested hike checkpoints", () => {
   expect(shouldRestoreCheckpoint(checkpoint, {
     now: 10_000 + 25 * 60 * 60 * 1000,
     restoreRequested: true,
+  })).toBe(false);
+});
+
+it("keeps the local activity UUID separate from owner-scoped versioned route identity", () => {
+  const stored = {
+    ownerUserId: "user-a",
+    handoffId: "handoff-1",
+    mountainId: "sde:mountain:tryfan",
+    routeId: "sde:route:north-ridge@4",
+    routeIdentityKey: "north-ridge",
+    routeVersion: "4",
+  };
+  const activityUuid = "e589389a-97ae-4a55-83ce-ed96f6f70d81";
+  expect(activityUuid).not.toBe(stored.routeId);
+  expect(canonicalRouteHandoffMatches(stored, { ...stored })).toBe(true);
+  expect(canonicalRouteHandoffMatches(stored, { ...stored, ownerUserId: "user-b" })).toBe(false);
+  expect(canonicalRouteHandoffMatches(stored, { ...stored, routeId: "sde:route:north-ridge@5" })).toBe(false);
+  expect(canonicalRouteHandoffMatches(stored, { ...stored, mountainId: "sde:mountain:other" })).toBe(false);
+  expect(canonicalRouteHandoffMatches(stored, { ...stored, routeIdentityKey: "other" })).toBe(false);
+  expect(canonicalRouteHandoffMatches(stored, {
+    ...stored,
+    routeId: "sde:route:other@4",
+    routeIdentityKey: "north-ridge",
   })).toBe(false);
 });
 

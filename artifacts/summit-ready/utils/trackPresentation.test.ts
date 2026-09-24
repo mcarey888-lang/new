@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVITY_DETAILS_COPY, applyDetails, assertSameActivity, availableControls,
-  canStartRecording, formatKm, formatMetres, formatPace, gpsLabel, offlineNotice,
+  canStartRecording, canonicalRouteMapPoints, formatKm, formatMetres, formatPace, gpsLabel, offlineNotice,
   paceMinPerKm, statusLabel, trackContext,
 } from "./trackPresentation";
 
@@ -90,6 +90,18 @@ describe("track context", () => {
   it("returns nothing for a standalone recording", () => {
     expect(trackContext({})).toBeNull();
     expect(trackContext({ hillName: "  " })).toBeNull();
+  });
+});
+
+describe("canonical route map overlay coordinate conversion", () => {
+  it("converts authoritative GeoJSON [longitude, latitude] to map [latitude, longitude]", () => {
+    expect(canonicalRouteMapPoints([
+      [-3.9, 53.1],
+      [-3.8, 53.2],
+    ])).toEqual([
+      [53.1, -3.9],
+      [53.2, -3.8],
+    ]);
   });
 });
 

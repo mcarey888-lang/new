@@ -26,11 +26,12 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView,
+  ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { AlertCircle, Info, MapPin, Mountain as MountainIcon, Route as RouteIcon } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
@@ -47,6 +48,7 @@ import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
 import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence";
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
 import { startRouteHandoff } from "@/utils/routeEligibility";
+import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
 import {
   ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
   ROUTE_SORTS, presentMountain, presentMountainDna, presentRoutes, presentSelectedRoute,
@@ -68,6 +70,7 @@ export default function MountainDetailScreen() {
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion() ?? false;
   const { shellMode } = useApp();
+  const { getToken, userId } = useAuth();
 
   const { name, region, country } = useLocalSearchParams<{
     name?: string; region?: string; country?: string;
@@ -80,6 +83,7 @@ export default function MountainDetailScreen() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [record, setRecord] = useState<CanonicalRouteRecord | null>(null);
   const [recordPending, setRecordPending] = useState(false);
+  const [recordFailure, setRecordFailure] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!name) { setState("error"); return; }
@@ -119,18 +123,25 @@ export default function MountainDetailScreen() {
      identity and facts; navigability needs geometry, which lives here. */
   useEffect(() => {
     const identity = selected?.selection;
-    if (!identity) { setRecord(null); setRecordPending(false); return; }
+    if (!identity) {
+      setRecord(null);
+      setRecordFailure("missing_identity");
+      setRecordPending(false);
+      return;
+    }
     let cancelled = false;
     setRecord(null);
+    setRecordFailure(null);
     setRecordPending(true);
-    void fetchCanonicalRouteRecord(identity.routeId, identity.mountainId)
+    void fetchCanonicalRouteRecord(identity.routeId, identity.mountainId, getToken)
       .then(result => {
         if (cancelled) return;
         setRecord(result.record);
+        setRecordFailure(result.record ? null : result.reasons.join(", ") || result.status);
         setRecordPending(false);
       });
     return () => { cancelled = true; };
-  }, [selected?.selection?.routeId, selected?.selection?.mountainId]);
+  }, [getToken, selected?.selection?.routeId, selected?.selection?.mountainId]);
 
   /* The engine's own verdict for the selected route. */
   const exploreRoute: ExploreRoute | null = useMemo(() => {
@@ -169,21 +180,48 @@ export default function MountainDetailScreen() {
    * The guard runs here, not in the button's visibility. A null handoff means
    * this route may not be navigated, whatever the screen was showing.
    */
-  function startRoute() {
+  async function startRoute() {
     if (!presented) return;
     const handoff = startRouteHandoff(exploreRoute, {
       routeName: presented.route.name,
       mountainName: mountain?.name,
     });
-    if (!handoff) return;
+    const geometry = exploreRoute?.geometry.availability === "available"
+      ? exploreRoute.geometry.value
+      : null;
+    if (!handoff || !geometry) return;
+    if (!userId) {
+      Alert.alert("Sign in required", "Sign in before starting a canonical route handoff.");
+      return;
+    }
+    const handoffId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      await saveCanonicalRouteHandoff({
+        ownerUserId: userId,
+        handoffId,
+        mountainId: handoff.mountainId,
+        routeId: handoff.routeId,
+        routeIdentityKey: handoff.routeIdentityKey,
+        routeVersion: handoff.routeVersion,
+        routeName: handoff.routeName,
+        mountainName: handoff.mountainName,
+        geometry,
+        savedAt: Date.now(),
+      });
+    } catch {
+      Alert.alert("Route handoff unavailable", "The verified route could not be saved on this device, so tracking was not started.");
+      return;
+    }
     router.push({
       pathname: "/hike-tracking" as any,
       params: {
         trackingMode: "freehike",
-        referenceRouteId: handoff.routeId,
-        referenceRouteName: handoff.routeName,
-        routeIdentityKey: handoff.routeId,
-        summitIdentityKey: handoff.mountainId,
+        routeHandoffId: handoffId,
+        canonicalRouteId: handoff.routeId,
+        canonicalRouteIdentityKey: handoff.routeIdentityKey,
+        canonicalRouteVersion: handoff.routeVersion,
+        canonicalMountainId: handoff.mountainId,
+        canonicalRouteName: handoff.routeName,
         hillName: handoff.mountainName,
       },
     });
@@ -339,18 +377,26 @@ export default function MountainDetailScreen() {
                     selected={route.key === selectedKey}
                     onPress={() => choose(route)}
                   />
-                  {route.key === selectedKey && presented ? (
+                  {route.key === selectedKey ? (
                     recordPending ? (
                       <SRPanel radius={16} style={styles.pending}>
                         <ActivityIndicator color={EXPLORE.accent} />
                         <Text style={styles.pendingText}>Reading route detail…</Text>
                       </SRPanel>
-                    ) : (
+                    ) : presented ? (
                       <SelectedRoute
                         selected={presented}
                         dna={dna}
                         mountainSummitElevation={mountain.summitElevation}
                       />
+                    ) : (
+                      <SRPanel radius={16} style={styles.pending}>
+                        <Text style={styles.pendingText}>
+                          {recordFailure
+                            ? `Canonical route detail is unavailable (${recordFailure}). No route geometry is being used.`
+                            : "This route has no available canonical record. Route geometry is not available."}
+                        </Text>
+                      </SRPanel>
                     )
                   ) : null}
                 </View>

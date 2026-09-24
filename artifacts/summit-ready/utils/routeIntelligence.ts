@@ -349,7 +349,27 @@ function availabilityForRecord(record: CanonicalRouteRecord): RouteReadResult<Ro
     record.definition.identity.status !== "verified"
   )) reasons.push("needs_review");
   if (!record.geometry) reasons.push("missing_geometry");
-  if (record.geometry && record.geometry.topologyStatus !== "complete") reasons.push("missing_geometry");
+  if (record.geometry) {
+    const coordinates: unknown = record.geometry.coordinates;
+    if (record.geometry.topologyStatus !== "complete" ||
+        record.geometry.coordinateReferenceSystem !== "EPSG:4326" ||
+        !Array.isArray(coordinates) || coordinates.length < 2 ||
+        !coordinates.every(coordinate =>
+          Array.isArray(coordinate) && coordinate.length >= 2 &&
+          typeof coordinate[0] === "number" && Number.isFinite(coordinate[0]) &&
+          coordinate[0] >= -180 && coordinate[0] <= 180 &&
+          typeof coordinate[1] === "number" && Number.isFinite(coordinate[1]) &&
+          coordinate[1] >= -90 && coordinate[1] <= 90)) {
+      reasons.push("missing_geometry");
+    }
+    const sources: unknown = record.geometry.sourceMembers;
+    if (!Array.isArray(sources) || sources.length === 0 ||
+        !sources.every(source =>
+          source && typeof source === "object" &&
+          (source as { rightsClassification?: unknown }).rightsClassification === "reusable_geometry")) {
+      reasons.push("rights_unclear");
+    }
+  }
   if (!record.elevationProfile) reasons.push("missing_elevation_profile");
   reasons.push(...factsReasons(record.facts));
 

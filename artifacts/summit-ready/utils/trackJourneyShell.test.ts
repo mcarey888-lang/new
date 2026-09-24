@@ -39,7 +39,8 @@ describe("START never waits", () => {
   });
 
   it("does not gate the Start button on GPS, network or a route name", () => {
-    expect(TRACK_CODE).toMatch(/const canStart\s*=\s*true;/);
+    expect(TRACK_CODE).toMatch(/const canStart = !canonicalRouteIntent \|\|/);
+    expect(TRACK_CODE).toMatch(/!canonicalRouteContextPending && !canonicalRouteContextInvalid && canonicalContextFresh/);
     /* The name falls back to a local title rather than blocking. */
     expect(TRACK_CODE).toMatch(/routeName\.trim\(\) \|\| localActivityTitle\(\)/);
   });
@@ -87,6 +88,57 @@ describe("the offline-first architecture is intact", () => {
   it("still restores a hike the OS killed", () => {
     expect(TRACK_CODE).toMatch(/params\.restore === "1"/);
     expect(TRACK_CODE).toMatch(/readBackgroundActiveHike|readActiveHike/);
+  });
+
+  it("restores canonical route context by the owner's exact stored identity", () => {
+    expect(TRACK_CODE).toMatch(/readCanonicalRouteHandoff\(\{/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteHandoffId/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteId: canonicalRouteContext\?\.routeId/);
+    expect(TRACK_CODE).toMatch(/canonicalMountainId: canonicalRouteContext\?\.mountainId/);
+  });
+
+  it("blocks only a canonical-intent Start until local identity and geometry validate", () => {
+    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent &&/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteContextInvalid \|\| !canonicalRouteContext/);
+    expect(TRACK_CODE).toMatch(/Canonical route context is unavailable or expired/);
+    expect(TRACK_CODE).toMatch(/Return to Mountain Detail/);
+  });
+
+  it("draws canonical geometry only after map and local handoff are both ready", () => {
+    expect(TRACK_CODE).toMatch(/if \(!mapReady \|\| !canonicalRouteIntent \|\| !canonicalRouteContext\) return;/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteMapPoints\(canonicalRouteContext\.geometry\.coordinates\)/);
+    expect(TRACK_CODE).toMatch(/JSON\.stringify\(\{ type: "referenceRoute", points \}\)/);
+    expect(TRACK_CODE).toMatch(/target\.postMessage\(msg, "\*"\)/);
+    expect(TRACK_CODE).toMatch(/webViewRef\.current\.postMessage\(msg\)/);
+    expect(TRACK_CODE.match(/setMapReady\(true\)/g) ?? []).toHaveLength(2);
+    expect(TRACK_CODE.match(/trackPoints\.current\.length > 0\) replayTrackOnMap\(\)/g) ?? []).toHaveLength(2);
+  });
+
+  it("isolates canonical intent from community tracked-route fetches and picker", () => {
+    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?fetch\(`\$\{API_BASE\}\/tracked-routes\/\$\{routeId\}`\)/);
+    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?tracked-routes\/nearby/);
+    expect(TRACK_CODE).toMatch(/\{!canonicalRouteIntent \? \([\s\S]*?Pick a nearby route/);
+    expect(TRACK_CODE).toMatch(/visible=\{nearbyPickerOpen && !canonicalRouteIntent\}/);
+    expect(TRACK_CODE).toMatch(/if \(canonicalRouteIntent\) return;[\s\S]*?const rid = params\.referenceRouteId/);
+    const communitySync = TRACK_CODE.slice(
+      TRACK_CODE.indexOf("const routeSyncId"),
+      TRACK_CODE.indexOf("const hillSyncId"),
+    );
+    expect(communitySync).toMatch(/trackPoints: trackPoints\.current/);
+    expect(communitySync).toMatch(/enqueueSyncPending\(userId/);
+    expect(communitySync).not.toMatch(/canonicalRouteContext\?\.geometry/);
+  });
+
+  it("resolves restored canonical identity before mounting the map", () => {
+    expect(TRACK_CODE).toMatch(/if \(restoreCheckpointPending\) return;/);
+    expect(TRACK_CODE).toMatch(/restoreCheckpointPending \? \([\s\S]*?<WebView/);
+    expect(TRACK_CODE).toMatch(/setRestoredCanonicalRouteIntent\(true\)/);
+  });
+
+  it("keeps the canonical SDE route separate from the local activity UUID", () => {
+    expect(TRACK_CODE).toMatch(/activityId: routeId,/);
+    expect(TRACK_CODE).toMatch(/canonicalRouteId: canonicalRouteContext\?\.routeId/);
+    expect(TRACK_CODE).not.toMatch(/activityId:\s*canonicalRouteContext\?\.routeId/);
   });
 });
 

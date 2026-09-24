@@ -71,10 +71,13 @@ const record = (overrides: Partial<CanonicalRouteRecord> = {}): CanonicalRouteRe
   geometry: {
     geometryVersion: "1",
     coordinateReferenceSystem: "EPSG:4326",
-    coordinates: [[-3.99, 53.12]],
+    coordinates: [[-3.99, 53.12], [-3.98, 53.13]],
     direction: "forward",
     derivationMethod: "sde-osm",
-    sourceMembers: [],
+    sourceMembers: [{
+      ...provenance,
+      evidenceType: "source",
+    }],
     topologyStatus: "complete",
   },
   elevationProfile: {
@@ -185,4 +188,26 @@ describe("route intelligence read boundary", () => {
     const facts: RouteFacts | undefined = record().facts;
     expect(facts?.distanceM).toBe(8000);
   });
+
+  it("uses the API-published complete reusable geometry DTO without requiring an unpublished flag", () => {
+    const apiRecord = record();
+    expect(apiRecord).not.toHaveProperty("geometryValidationPassed");
+    const result = lookup();
+    expect(result.availability).toBe("available");
+    expect(mapExploreRoute(result).trackAvailability).toBe("can_track");
+  });
+
+  it("rejects non-WGS84 or malformed geometry instead of treating it as a usable route", () => {
+    const badCrs = lookup({
+      geometry: { ...record().geometry!, coordinateReferenceSystem: "EPSG:3857" as "EPSG:4326" },
+    });
+    expect(badCrs.availability).toBe("degraded");
+    expect(badCrs.reasons).toContain("missing_geometry");
+    const malformed = lookup({
+      geometry: { ...record().geometry!, coordinates: [[181, 53], [-3.9, 53.1]] },
+    });
+    expect(malformed.availability).toBe("degraded");
+    expect(malformed.reasons).toContain("missing_geometry");
+  });
+
 });

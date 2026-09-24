@@ -70,13 +70,25 @@ describe("Mountain Detail", () => {
 
   it("guards Start Route at the action, not by hiding a button", () => {
     expect(body).toMatch(/startRouteHandoff\(/);
-    expect(body).toMatch(/if \(!handoff\) return;/);
+    expect(body).toMatch(/if \(!handoff \|\| !geometry\) return;/);
+    expect(body).toMatch(/if \(!userId\)/);
+    expect(body).toMatch(/saveCanonicalRouteHandoff/);
   });
 
   it("hands Track the canonical identity, never a display name", () => {
-    expect(body).toMatch(/referenceRouteId: handoff\.routeId/);
-    expect(body).toMatch(/routeIdentityKey: handoff\.routeId/);
-    expect(body).toMatch(/summitIdentityKey: handoff\.mountainId/);
+    expect(body).toMatch(/canonicalRouteId: handoff\.routeId/);
+    expect(body).toMatch(/canonicalRouteIdentityKey: handoff\.routeIdentityKey/);
+    expect(body).toMatch(/canonicalRouteVersion: handoff\.routeVersion/);
+    expect(body).toMatch(/canonicalMountainId: handoff\.mountainId/);
+    expect(body).not.toMatch(/referenceRouteId: handoff\.routeId/);
+  });
+
+  it("stores geometry locally and never serializes route coordinates into navigation params", () => {
+    const route = body.slice(body.indexOf("async function startRoute"));
+    expect(route).toMatch(/geometry,/);
+    expect(route).toMatch(/saveCanonicalRouteHandoff/);
+    expect(route).not.toMatch(/coordinates:/);
+    expect(route).not.toMatch(/JSON\.stringify\(geometry/);
   });
 
   it("does not offer a capability this build lacks", () => {

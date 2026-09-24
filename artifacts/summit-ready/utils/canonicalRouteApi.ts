@@ -13,10 +13,14 @@ export type CanonicalRouteApiResult = {
 export async function fetchCanonicalRouteRecord(
   routeId: string,
   mountainId: string,
+  getToken?: () => Promise<string | null>,
 ): Promise<CanonicalRouteApiResult> {
   const params = new URLSearchParams({ routeId, mountainId });
   try {
-    const response = await fetch(`${API_BASE}/canonical-routes?${params.toString()}`);
+    const token = getToken ? await getToken() : null;
+    const response = await fetch(`${API_BASE}/canonical-routes?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const body = await response.json().catch(() => null) as Partial<CanonicalRouteApiResult> | null;
     if (!response.ok || !body) {
       return {
@@ -37,12 +41,13 @@ export async function fetchCanonicalRouteRecord(
 
 export async function hydrateCanonicalRouteRecords(
   references: readonly { routeId?: string | null; mountainId?: string | null }[],
+  getToken?: () => Promise<string | null>,
 ): Promise<CanonicalRouteRecord[]> {
   const records = await Promise.all(
     references
       .filter((reference): reference is { routeId: string; mountainId: string } =>
         Boolean(reference.routeId && reference.mountainId))
-      .map(reference => fetchCanonicalRouteRecord(reference.routeId, reference.mountainId)),
+      .map(reference => fetchCanonicalRouteRecord(reference.routeId, reference.mountainId, getToken)),
   );
   return records
     .map(result => result.record)
