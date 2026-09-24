@@ -118,7 +118,7 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
   /* The visual block is the first thing to give way: on a narrow screen the
      title and the action need the room more than the illustration does. */
   const { width } = useWindowDimensions();
-  const visualWidth = width < 360 ? 68 : width < 400 ? 82 : 92;
+  const visualWidth = width < 360 ? 94 : width < 400 ? 108 : 122;
 
   return (
     <SRPanel
@@ -171,7 +171,7 @@ export function MissionCard({ session, phase, imageUri, onStart, onOpen }: Missi
           )}
 
           {session.description && (
-            <Text style={styles.missionDesc} numberOfLines={2}>{session.description}</Text>
+            <Text style={styles.missionDesc} numberOfLines={1}>{session.description}</Text>
           )}
         </View>
       </View>
@@ -287,33 +287,33 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(8,13,15,0.5)",
   },
   missionVisual: {},
-  missionBody: { flex: 1, minWidth: 0, padding: 13 },
-  missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  missionBody: { flex: 1, minWidth: 0, padding: 11 },
+  missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   missionHeading: { flex: 1, minWidth: 0 },
   missionEyebrow: {
     fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_600SemiBold",
     letterSpacing: 1.8, color: BASECAMP.textMuted,
   },
   missionTitle: {
-    fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold",
+    fontSize: 17, lineHeight: 20, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -0.5, marginTop: 4,
   },
   startButton: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 4,
-    height: 38, paddingLeft: 13, paddingRight: 9, borderRadius: 5.5,
+    height: 32, paddingLeft: 9, paddingRight: 6, borderRadius: 5.5,
     backgroundColor: BASECAMP.accent,
   },
   startText: {
-    fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_700Bold",
+    fontSize: 9, lineHeight: 12, fontFamily: "Inter_700Bold",
     letterSpacing: 0.6, color: BASECAMP.accentInk,
   },
-  factRow: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 8, flexWrap: "wrap" },
+  factRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6, flexWrap: "wrap" },
   factText: {
-    fontSize: 12.5, lineHeight: 16, fontFamily: "Inter_500Medium", color: BASECAMP.textStrong,
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_500Medium", color: BASECAMP.textStrong,
   },
   missionDesc: {
     fontSize: 11.5, lineHeight: 16, fontFamily: "Inter_400Regular",
-    color: BASECAMP.textDim, marginTop: 8,
+    color: BASECAMP.textDim, marginTop: 5,
   },
 
   clearWrap: { padding: 16 },
@@ -323,11 +323,11 @@ const styles = StyleSheet.create({
     color: BASECAMP.textDim, marginTop: 5,
   },
 
-  railSection: { marginTop: 20 },
-  rail: { marginTop: 10 },
+  railSection: { marginTop: 13 },
+  rail: { marginTop: 7 },
   railContent: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingBottom: 2 },
-  card: { width: 136 },
-  cardVisual: { height: 76 },
+  card: { width: 128 },
+  cardVisual: { height: 60 },
   cardChev: {
     position: "absolute", top: 7, right: 7,
     width: 21, height: 21, borderRadius: 11,
@@ -335,10 +335,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
-  cardBody: { padding: 11, paddingTop: 9 },
+  cardBody: { padding: 9, paddingTop: 7 },
   cardWeek: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   cardTitle: {
-    fontSize: 14.5, lineHeight: 18, fontFamily: "Inter_700Bold",
+    fontSize: 13, lineHeight: 16, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -0.3, marginTop: 4,
   },
   cardDetail: { fontSize: 11, lineHeight: 14, fontFamily: "Inter_500Medium", color: BASECAMP.textStrong, marginTop: 3 },

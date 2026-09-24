@@ -35,7 +35,7 @@ import {
   MissionCard, MissionComplete, UpNextRail,
 } from "@/components/basecamp/MissionSection";
 import { ProgressTiles } from "@/components/basecamp/ProgressTiles";
-import { EditorialBand, QuickActionsGrid } from "@/components/basecamp/QuickActions";
+import { EditorialBand, QuickActionsDrawer } from "@/components/basecamp/QuickActions";
 import { SRPanel, SRSectionHeader } from "@/components/ui";
 import { missionQueue, weekProgress } from "@/utils/basecampPresentation";
 import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
@@ -43,6 +43,7 @@ import { CoachInsight } from "@/components/CoachInsight";
 import { buildCoachInsight } from "@/utils/coachInsightPresentation";
 import { buildCoachFacts } from "@/utils/coachFactsAdapter";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
+import { useCanonicalBasecampFacts } from "@/hooks/useCanonicalBasecampFacts";
 
 // Animated WebP supports transparency on all platforms via expo-image.
 // GIF on Android fills transparent pixels with black, so we never use it.
@@ -253,6 +254,7 @@ export default function DashboardScreen() {
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
   const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions, assignedHills } = useApp();
+  const canonicalFacts = useCanonicalBasecampFacts(summitGoal?.mountainName ?? "");
   const { isSubscribed } = useSubscription();
   /* Readiness 2.0 is read here only so the Coach card can DISPLAY authoritative
      figures. The Coach still produces none of them. */
@@ -622,7 +624,7 @@ export default function DashboardScreen() {
       assignedHillName: assignedHills?.[session.key]?.name ?? null,
       mountainName: summitGoal?.mountainName ?? null,
     });
-    return mountainImageUri(subject, { width: 320, height: 300 });
+    return mountainImageUri(subject, { width: 320, height: 160 });
   };
 
   const nextSession = mission
@@ -647,7 +649,7 @@ export default function DashboardScreen() {
         ref={scrollRef}
         contentContainerStyle={{
           paddingTop: 0,
-          paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120,
+          paddingBottom: Platform.OS === "web" ? 130 : insets.bottom + 130,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -656,7 +658,7 @@ export default function DashboardScreen() {
         <BasecampHero
           mountainName={summitGoal.mountainName}
           summitDate={summitGoal.summitDate}
-          goal={summitGoal}
+          canonicalFacts={canonicalFacts}
           topInset={Platform.OS === "web" ? 20 : insets.top + 12}
           isSubscribed={isSubscribed}
           onEditObjective={() => router.push("/setup")}
@@ -706,9 +708,17 @@ export default function DashboardScreen() {
           onOpenPlan={() => router.push("/(tabs)/plan")}
         />
 
+        {/* Bank remains the service's credited ascent. The parent will add the
+            all-logged total separately; this screen must not infer that sum. */}
+        <ProgressTiles
+          week={week}
+          onOpenBank={() => router.push("/(tabs)/account")}
+          onOpenPlan={() => router.push("/(tabs)/plan")}
+        />
+
         {/* ── AI Coach ──────────────────────────────────────────────────
-            SummitReady's existing Coach, inside the composition rather than
-            on a card of its own. The fetch, the retry, the ask box and the
+            SummitReady's existing Coach in one compact surface. Fetch, retry,
+            question and
             SUBSCRIPTION GATE are exactly as they were: `buildCoachInsight`
             returns the locked state for an unentitled user, so no assessment
             text reaches them. The Coach still authors no figure — the
@@ -718,10 +728,8 @@ export default function DashboardScreen() {
           style={styles.coachBand}
           onLayout={(e) => { coachY.current = e.nativeEvent.layout.y; }}
         >
-          {/* An integrated band, not another rounded card: a hairline rule
-              above, the page's own background behind. CoachInsight carries its
-              own tracked-out AI COACH header and the mascot, so the section
-              does not repeat them. */}
+          {/* The question belongs inside the same mountain-titled Coach card,
+              directly below its title rather than floating on the page. */}
           <View style={styles.coachInner}>
             <CoachInsight
               state={buildCoachInsight({
@@ -739,38 +747,37 @@ export default function DashboardScreen() {
               })}
               mascot={<AlpineGuide />}
               variant="compact"
+              askControl={isSubscribed ? (
+                <View style={styles.askBox}>
+                  <TextInput
+                    ref={askInputRef}
+                    style={styles.askInput}
+                    placeholder="Ask your coach..."
+                    placeholderTextColor={BASECAMP.textDim}
+                    value={askText}
+                    onChangeText={setAskText}
+                    onSubmitEditing={handleAsk}
+                    returnKeyType="send"
+                    accessibilityLabel="Ask your coach a question"
+                  />
+                  <TouchableOpacity
+                    style={styles.askBtn}
+                    onPress={handleAsk}
+                    disabled={!askText.trim() || askLoading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send question to your coach"
+                  >
+                    {askLoading
+                      ? <ActivityIndicator size="small" color={BASECAMP.accentInk} />
+                      : <Send size={16} color={BASECAMP.accentInk} />}
+                  </TouchableOpacity>
+                </View>
+              ) : undefined}
               onRetry={fetchCoach}
               onRefresh={isSubscribed ? fetchCoach : undefined}
               onOpen={isSubscribed ? () => askInputRef.current?.focus() : undefined}
               onUnlock={() => router.push("/paywall")}
             />
-
-            {isSubscribed && (
-              <View style={styles.askBox}>
-                <TextInput
-                  ref={askInputRef}
-                  style={styles.askInput}
-                  placeholder="Ask your coach..."
-                  placeholderTextColor={BASECAMP.textDim}
-                  value={askText}
-                  onChangeText={setAskText}
-                  onSubmitEditing={handleAsk}
-                  returnKeyType="send"
-                  accessibilityLabel="Ask your coach a question"
-                />
-                <TouchableOpacity
-                  style={styles.askBtn}
-                  onPress={handleAsk}
-                  disabled={!askText.trim() || askLoading}
-                  accessibilityRole="button"
-                  accessibilityLabel="Send question to your coach"
-                >
-                  {askLoading
-                    ? <ActivityIndicator size="small" color={BASECAMP.accentInk} />
-                    : <Send size={16} color={BASECAMP.accentInk} />}
-                </TouchableOpacity>
-              </View>
-            )}
 
             {isSubscribed && askAnswer && (
               <Animated.View
@@ -790,13 +797,6 @@ export default function DashboardScreen() {
             )}
           </View>
         </View>
-
-        {/* ── Progression ───────────────────────────────────────────── */}
-        <ProgressTiles
-          week={week}
-          onOpenBank={() => router.push("/elevation-history")}
-          onOpenPlan={() => router.push("/(tabs)/plan")}
-        />
 
         {/* ── Training insight ──────────────────────────────────────────
             The existing time assessment, in the composition's own voice.
@@ -838,9 +838,13 @@ export default function DashboardScreen() {
         )}
 
         {/* ── Close ─────────────────────────────────────────────────── */}
-        <EditorialBand onPress={() => router.push("/(tabs)/explore")} />
-        <QuickActionsGrid actions={quickActions} />
+        <EditorialBand
+          onPress={() => router.push("/(tabs)/explore")}
+          imageUri={mountainImageUri(summitGoal.mountainName, { width: 780, height: 190 })}
+        />
       </ScrollView>
+
+      <QuickActionsDrawer actions={quickActions} />
 
       {newlyUnlocked.length > 0 && (
         <AchievementToast newlyUnlocked={newlyUnlocked} onDismiss={clearNewlyUnlocked} />
@@ -873,15 +877,17 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  /* The Coach reads as part of the page rather than a widget sitting on it:
-     a hairline above, no border, no rounded shell. */
+  /* A single Coach surface houses its interpretation and ask field. */
   coachBand: {
-    marginTop: 22,
-    paddingTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: BASECAMP.hairline,
+    marginTop: 13,
+    marginHorizontal: BASECAMP.gutter,
+    borderRadius: 9,
+    overflow: "hidden",
+    backgroundColor: BASECAMP.panelGradient[0],
+    borderWidth: 1,
+    borderColor: BASECAMP.panelBorder,
   },
-  coachInner: { paddingHorizontal: BASECAMP.gutter },
+  coachInner: { paddingHorizontal: 4 },
 
   alpineCard: {
     paddingVertical: 12,
@@ -1090,9 +1096,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 12,
-    marginHorizontal: 12,
-    marginBottom: 12,
+    marginTop: 1,
+    marginHorizontal: 0,
+    marginBottom: 0,
   },
   askInput: {
     flex: 1,

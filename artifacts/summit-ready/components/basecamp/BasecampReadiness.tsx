@@ -29,8 +29,8 @@ import {
 import type { ReadinessNextAction } from "@/utils/readinessActions";
 import type { ReadinessResult } from "@/utils/readinessV2";
 
-const GAUGE_SIZE = 104;
-const GAUGE_STROKE = 9;
+const GAUGE_SIZE = 96;
+const GAUGE_STROKE = 8;
 
 export interface BasecampReadinessProps {
   result: ReadinessResult | null | undefined;
@@ -137,38 +137,38 @@ const styles = StyleSheet.create({
   /* pulled up so the panel breaks the hero's lower edge, as the approved
      composition does — the screen reads as one object, not two stacked ones */
   wrap: { marginTop: -16, paddingHorizontal: BASECAMP.gutter },
-  inner: { padding: 15 },
+  inner: { padding: 12 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 5 },
   headerLabel: {
     fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_600SemiBold",
     letterSpacing: 2, color: BASECAMP.textMuted,
   },
-  body: { flexDirection: "row", alignItems: "flex-start", gap: 14, marginTop: 11 },
+  body: { flexDirection: "row", alignItems: "center", gap: 13, marginTop: 7 },
   meta: { flex: 1, minWidth: 0, paddingTop: 2 },
   actionTitle: {
-    fontSize: 16, lineHeight: 20, fontFamily: "Inter_700Bold",
+    fontSize: 14, lineHeight: 18, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -0.2,
   },
   actionDetail: {
-    fontSize: 12, lineHeight: 16, fontFamily: "Inter_400Regular",
-    color: BASECAMP.textDim, marginTop: 5,
+    fontSize: 11, lineHeight: 14, fontFamily: "Inter_400Regular",
+    color: BASECAMP.textDim, marginTop: 3,
   },
   /* The prototype was drawn at 430pt, where the projection and the CTA sit on
      one line. Below that they wrap instead of crushing each other — the
      approved arrangement where there is room for it, never a clipped one. */
   footerRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    flexWrap: "wrap", columnGap: 8, rowGap: 8, marginTop: 12,
+    flexWrap: "wrap", columnGap: 6, rowGap: 4, marginTop: 6,
   },
   projected: {
     flexShrink: 0,
-    fontSize: 14, lineHeight: 17, fontFamily: "Inter_600SemiBold", color: BASECAMP.text,
+    fontSize: 12, lineHeight: 15, fontFamily: "Inter_600SemiBold", color: BASECAMP.text,
   },
   projectedValue: { color: BASECAMP.accent },
   cta: {
     flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 5,
-    height: 34, paddingHorizontal: 11, borderRadius: 5,
+    height: 30, paddingHorizontal: 9, borderRadius: 5,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
   },
@@ -178,6 +178,6 @@ const styles = StyleSheet.create({
   },
   projectionLine: {
     fontSize: 10.5, lineHeight: 14, fontFamily: "Inter_400Regular",
-    color: BASECAMP.textDim, marginTop: 6,
+    color: BASECAMP.textDim, marginTop: 2,
   },
 });

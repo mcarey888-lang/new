@@ -4,27 +4,21 @@
  * Composition from the prototype — two equal panels side by side, each with a
  * tracked-out label, one large figure and a small visual of its own.
  *
- * ELEVATION BANK reads the Elevation Bank service through `useElevationBank()`.
- * The prototype shows "banked of required" with a percentage bar; production
- * has no "required" figure, and this task does not invent one, so the tile
- * shows what the bank actually reports: credited lifetime ascent, the current
- * period, and the Everest equivalent the service itself supplies. Loading,
- * unavailable, empty and signed-out each render inside the same tile at the
- * same size — a state the bank cannot serve must not turn into a large
- * utility card in the middle of the composition.
+ * ELEVATION BANK shows completed ascent from the hydrated local activity
+ * history. This is distinct from qualified ascent credited by the server
+ * ledger; neither figure is silently substituted for the other.
  *
- * TRAINING PROGRESS reads the Training Plan's current week through
+  * TRAINING PROGRESS reads the Training Plan's current week through
  * `weekProgress()`. Bar heights come from each session's own prescribed
  * ascent. Neither tile calculates anything.
  */
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
-import { BarChart3, ChevronRight, Mountain, RefreshCw } from "lucide-react-native";
+import { BarChart3, ChevronRight, Mountain } from "lucide-react-native";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
 import { SRPanel } from "@/components/ui";
-import { useElevationBank } from "@/hooks/useElevationBank";
-import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
+import { useAllLoggedAscent } from "@/hooks/useAllLoggedAscent";
 import type { WeekProgress } from "@/utils/basecampPresentation";
 
 const BAR_MAX_H = 34;
@@ -63,55 +57,25 @@ export function ProgressTiles({
 /* ── Elevation Bank ────────────────────────────────────────────────────── */
 
 function ElevationBankTile({ onPress }: { onPress: () => void }) {
-  const { presentation, isSignedIn, refetch } = useElevationBank();
+  const total = useAllLoggedAscent();
 
   const body = (() => {
-    if (presentation.kind === "loading") {
+    if (total.status === "loading") {
       return (
         <View style={styles.quietState} testID="basecamp-bank-loading">
           <ActivityIndicator size="small" color={BASECAMP.accent} />
-          <Text style={styles.quietText}>Reading your ledger…</Text>
+          <Text style={styles.quietText}>Reading your activity…</Text>
         </View>
       );
     }
-    if (!isSignedIn) {
-      return (
-        <View style={styles.quietState} testID="basecamp-bank-signed-out">
-          <Text style={styles.quietText}>Sign in to see your credited ascent.</Text>
-        </View>
-      );
-    }
-    if (presentation.kind === "unavailable") {
+    if (total.status === "unavailable") {
       return (
         <View style={styles.quietState} testID="basecamp-bank-unavailable">
           <Text style={styles.dashValue}>—</Text>
-          <Text style={styles.quietText}>Being prepared. Your history is unchanged.</Text>
-          <TouchableOpacity
-            onPress={refetch}
-            hitSlop={HIT.slop}
-            style={styles.retry}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading your Elevation Bank"
-            testID="basecamp-bank-retry"
-          >
-            <RefreshCw size={11} color={BASECAMP.accent} />
-            <Text style={styles.retryText}>Try again</Text>
-          </TouchableOpacity>
+          <Text style={styles.quietText}>Some activity ascent is unavailable.</Text>
         </View>
       );
     }
-    if (presentation.kind === "empty") {
-      return (
-        <View style={styles.quietState} testID="basecamp-bank-empty">
-          <Text style={styles.dashValue}>0 m</Text>
-          <Text style={styles.quietText}>
-            Recorded GPS ascent is credited here once its evidence qualifies.
-          </Text>
-        </View>
-      );
-    }
-
-    const data = presentation.data;
     return (
       <View testID="basecamp-bank-values">
         <Text
@@ -120,17 +84,9 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
           adjustsFontSizeToFit
           minimumFontScale={0.6}
         >
-          {formatElevationBankMetres(data.lifetimeAscentM)}
+          {Math.round(total.ascentM).toLocaleString()} m
         </Text>
-        <Text style={styles.tileCaption} numberOfLines={1}>credited ascent</Text>
-        <View style={styles.bankFooter}>
-          <Text style={styles.bankFact} numberOfLines={1}>
-            +{formatElevationBankMetres(data.periodAscentM)} this month
-          </Text>
-          <Text style={styles.bankFact} numberOfLines={1}>
-            {data.everestEquivalent.toFixed(1)} Everests
-          </Text>
-        </View>
+        <Text style={styles.tileCaption} numberOfLines={2}>completed ascent logged on this device</Text>
       </View>
     );
   })();
@@ -141,7 +97,7 @@ function ElevationBankTile({ onPress }: { onPress: () => void }) {
       style={styles.tile}
       onPress={onPress}
       accessibilityLabel="Elevation Bank"
-      accessibilityHint="Opens your elevation history"
+      accessibilityHint="Opens You"
       testID="basecamp-bank-tile"
     >
       <View style={styles.tileInner}>
@@ -172,7 +128,7 @@ function WeekTile({ week, onPress }: { week: WeekProgress; onPress: () => void }
       <View style={styles.tileInner}>
         <View style={styles.tileHead}>
           <BarChart3 size={15} color={BASECAMP.accent} />
-          <Text style={styles.tileLabel} numberOfLines={1}>THIS WEEK</Text>
+           <Text style={styles.tileLabel} numberOfLines={1}>TRAINING PROGRESS</Text>
           <ChevronRight size={13} color={BASECAMP.textDim} />
         </View>
 
@@ -188,7 +144,7 @@ function WeekTile({ week, onPress }: { week: WeekProgress; onPress: () => void }
                 {week.completed}
                 <Text style={styles.weekTotal}> / {week.total}</Text>
               </Text>
-              <Text style={styles.tileCaption} numberOfLines={2}>sessions done</Text>
+               <Text style={styles.tileCaption} numberOfLines={2}>sessions this week</Text>
             </View>
 
             <View
@@ -226,17 +182,17 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     gap: 9,
     paddingHorizontal: BASECAMP.gutter,
-    marginTop: 13,
+    marginTop: 12,
   },
   tile: { flex: 1, minWidth: 0 },
-  tileInner: { padding: 13, flex: 1 },
+  tileInner: { padding: 11, flex: 1 },
   tileHead: { flexDirection: "row", alignItems: "center", gap: 6 },
   tileLabel: {
     flex: 1, minWidth: 0,
     fontSize: 8.5, lineHeight: 11, fontFamily: "Inter_600SemiBold",
     letterSpacing: 1.3, color: BASECAMP.textMuted,
   },
-  tileBody: { marginTop: 11, flex: 1, justifyContent: "flex-end" },
+  tileBody: { marginTop: 7, flex: 1, justifyContent: "flex-end" },
   tileValue: {
     fontSize: 22, lineHeight: 26, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -0.8,
@@ -246,7 +202,7 @@ const styles = StyleSheet.create({
     color: BASECAMP.textDim, marginTop: 3,
   },
 
-  bankFooter: { marginTop: 9, gap: 2 },
+  bankFooter: { marginTop: 5, gap: 2 },
   bankFact: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_500Medium", color: BASECAMP.textMuted },
 
   quietState: { gap: 5 },

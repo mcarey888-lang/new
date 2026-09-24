@@ -56,3 +56,4 @@
 - [Artwork admin request budgets](artwork-admin-request-budgets.md) — protected image fan-out must not starve admin control requests; distinguish throttling from rejected keys.
 - [Artwork concept references](artwork-concept-references.md) — canvas directions are reviewable references, never workflow candidates; published admin needs its own snapshots.
 - [Exercise artwork pairing](exercise-artwork-pairing.md) — user approved the unusual Incline Treadmill card/Stepper hero pairing; preserve it when updating exercise imagery.
+- [All-logged ascent scope](all-logged-ascent-scope.md) — completed-activity ascent differs from qualified credits; label local scope until cross-device sync reconciles all activity.

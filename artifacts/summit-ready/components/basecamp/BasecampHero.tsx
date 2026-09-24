@@ -3,14 +3,14 @@
  *
  * Composition comes from `summitready-training-basecamp-mockup.html`:
  * an edge-to-edge mountain photograph, a restrained brand lockup and the
- * screen's two real actions, then the objective stated in large type with its
- * own metrics and a glass target-date pill.
+ * screen's two real actions, then the objective stated in large type with
+ * verified mountain facts and a glass target-date pill.
  *
- * DATA is entirely production's. The mountain name, date and figures are the
- * user's summit goal; the photograph comes from the existing artwork resolver
+ * The mountain name and date are the user's summit goal; the location and
+ * elevation row is populated only by a verified catalogue lookup.
+ * The photograph comes from the existing artwork resolver
  * with the existing fallback chain (approved artwork → mountain-image →
- * gradient), unchanged. No figure is fabricated: a metric the goal does not
- * carry is omitted rather than shown as zero.
+ * gradient). No figure is fabricated: an unverified fact is omitted.
  *
  * The hero sizes itself from its content with a floor, so a long mountain name
  * or a large altitude pushes it taller instead of being clipped at a fixed
@@ -27,10 +27,10 @@ import { BASECAMP, HIT } from "@/constants/tokens";
 import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 import {
-  objectiveMetrics, targetDateDisplay,
-  type ObjectiveMetricsInput,
+  targetDateDisplay,
 } from "@/utils/basecampPresentation";
 import { mountainImageUri } from "@/utils/mountainImage";
+import type { CanonicalBasecampFacts } from "@/hooks/useCanonicalBasecampFacts";
 
 type HeroSource =
   | { kind: "resolving" }
@@ -41,7 +41,7 @@ type HeroSource =
 export interface BasecampHeroProps {
   mountainName: string;
   summitDate: string;
-  goal: ObjectiveMetricsInput;
+  canonicalFacts: CanonicalBasecampFacts | null;
   topInset: number;
   isSubscribed: boolean;
   onEditObjective: () => void;
@@ -50,10 +50,11 @@ export interface BasecampHeroProps {
 }
 
 export function BasecampHero({
-  mountainName, summitDate, goal, topInset,
+  mountainName, summitDate, canonicalFacts, topInset,
   isSubscribed, onEditObjective, onChangeMountain, onPressSubscription,
 }: BasecampHeroProps) {
-  const mountainFallbackUri = mountainImageUri(mountainName) ?? "";
+  // Match the displayed hero, not the source asset's full resolution.
+  const mountainFallbackUri = mountainImageUri(mountainName, { width: 852, height: 520 }) ?? "";
   const [heroSource, setHeroSource] = useState<HeroSource>({ kind: "resolving" });
 
   /* The existing resolver, fallback chain and dev logging, unchanged. */
@@ -120,7 +121,11 @@ export function BasecampHero({
   };
 
   const date = targetDateDisplay(summitDate);
-  const metrics = objectiveMetrics(goal);
+  const facts = [
+    canonicalFacts?.elevationM != null ? `${Math.round(canonicalFacts.elevationM).toLocaleString()} m` : null,
+    canonicalFacts?.region,
+    canonicalFacts?.country,
+  ].filter((fact): fact is string => Boolean(fact));
 
   /* The header carries the lockup, the mode toggle and two actions. Below
      roughly 400pt those cannot all state themselves in full, and the mode
@@ -208,17 +213,15 @@ export function BasecampHero({
           </TouchableOpacity>
         </View>
 
-        {/* One inline fact line, as the approved hero has it. The previous
-            three-column metric block with stacked labels read as a stat
-            widget bolted under the title; the objective needs a caption, not
-            a dashboard. A figure the goal does not carry is simply absent. */}
-        {metrics.length > 0 && (
+        {/* Only verified database facts; never show goal estimates or another
+            mountain's stale location while the lookup is in flight. */}
+        {facts.length > 0 && (
           <View style={styles.factLine}>
-            {metrics.map((m, i) => (
-              <React.Fragment key={m.key}>
+            {facts.map((fact, i) => (
+              <React.Fragment key={`${i}:${fact}`}>
                 {i > 0 && <Text style={styles.factSeparator}>|</Text>}
                 <Text style={styles.factText} numberOfLines={1}>
-                  {`${m.value} ${m.label.toLowerCase()}`}
+                  {fact}
                 </Text>
               </React.Fragment>
             ))}
@@ -275,11 +278,11 @@ const styles = StyleSheet.create({
   image: { width: "100%" },
   imageInner: { resizeMode: "cover" },
   overlay: {
-    minHeight: 300,
+    minHeight: 248,
     paddingHorizontal: BASECAMP.gutter,
     /* The readiness panel overlaps the foot of the hero, so the photograph
        has to keep running behind it rather than stopping at the date pill. */
-    paddingBottom: 40,
+    paddingBottom: 29,
     justifyContent: "space-between",
   },
   topRow: {
@@ -305,15 +308,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
 
-  objective: { marginTop: 28 },
+  objective: { marginTop: 25 },
   kicker: {
-    fontSize: 10, lineHeight: 13, fontFamily: "Inter_600SemiBold",
-    letterSpacing: 3, color: BASECAMP.textMuted,
+    fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular",
+    letterSpacing: 3.6, color: BASECAMP.textStrong,
   },
   nameRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 6 },
   mountainName: {
     flexShrink: 1,
-    fontSize: 36, lineHeight: 39, fontFamily: "Inter_700Bold",
+    fontSize: 38, lineHeight: 42, fontFamily: "Inter_700Bold",
     color: BASECAMP.text, letterSpacing: -1,
   },
   namePencil: { marginTop: 10 },
@@ -329,12 +332,12 @@ const styles = StyleSheet.create({
   factSeparator: { fontSize: 13.5, lineHeight: 18, color: "rgba(255,255,255,0.22)" },
 
   datePill: {
-    marginTop: 15,
+    marginTop: 10,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: 13,
-    paddingLeft: 14, paddingRight: 18, paddingVertical: 10,
+    paddingLeft: 12, paddingRight: 15, paddingVertical: 7,
     borderRadius: 14,
     backgroundColor: BASECAMP.glass,
     borderWidth: 1, borderColor: BASECAMP.glassBorder,

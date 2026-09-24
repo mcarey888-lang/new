@@ -4,16 +4,15 @@
  * Both come from the approved prototype. Every action routes to a screen that
  * already exists — this introduces no new destination and no new behaviour.
  *
- * The prototype's band carries a photograph. Production has no such asset and
- * this task does not create artwork, so the band is rendered as the same shape
- * in the screen's own gradient. It states a brand line, not data.
+ * The band uses a size-bounded image of the current mountain when available,
+ * with a gradient fallback. It states a brand line, not data.
  */
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ImageBackground, PanResponder, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import type { LucideIcon } from "lucide-react-native";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react-native";
 import { BASECAMP, HIT, MOTION } from "@/constants/tokens";
 import { SRSectionHeader } from "@/components/ui";
 
@@ -24,7 +23,7 @@ export interface QuickAction {
   onPress: () => void;
 }
 
-export function EditorialBand({ onPress }: { onPress: () => void }) {
+export function EditorialBand({ onPress, imageUri }: { onPress: () => void; imageUri?: string | null }) {
   const reduced = useReducedMotion();
   return (
     <Animated.View
@@ -32,8 +31,15 @@ export function EditorialBand({ onPress }: { onPress: () => void }) {
       style={styles.bandWrap}
     >
       <View style={styles.band}>
+        {imageUri ? (
+          <ImageBackground
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : null}
         <LinearGradient
-          colors={["rgba(20,36,32,0.95)", "rgba(9,16,18,0.92)", "rgba(6,11,13,0.96)"]}
+          colors={["rgba(8,20,20,0.84)", "rgba(9,16,18,0.34)", "rgba(6,11,13,0.32)"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -63,15 +69,15 @@ export function EditorialBand({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
+export function QuickActionsGrid({ actions, inDrawer = false }: { actions: QuickAction[]; inDrawer?: boolean }) {
   const reduced = useReducedMotion();
   if (actions.length === 0) return null;
   return (
     <Animated.View
       entering={reduced ? undefined : FadeInDown.delay(MOTION.stagger * 5).duration(MOTION.enter)}
-      style={styles.gridWrap}
+      style={[styles.gridWrap, inDrawer && styles.drawerGridWrap]}
     >
-      <SRSectionHeader title="Quick actions" />
+      {!inDrawer && <SRSectionHeader title="Quick actions" />}
       <View style={styles.grid}>
         {actions.map(({ id, label, Icon, onPress }) => (
           <TouchableOpacity
@@ -91,7 +97,56 @@ export function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
   );
 }
 
+/** A small anchored handle always remains above the tabs. Drag or tap it to
+ * reveal the screen's existing destinations; no navigation is duplicated. */
+export function QuickActionsDrawer({ actions }: { actions: QuickAction[] }) {
+  const [open, setOpen] = React.useState(false);
+  const responder = React.useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 10,
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dy < -25) setOpen(true);
+      else if (gesture.dy > 25) setOpen(false);
+    },
+  }), []);
+  return (
+    <View style={styles.drawer} testID="basecamp-quick-actions-drawer" {...responder.panHandlers}>
+      <View>
+        <TouchableOpacity
+          style={styles.drawerHandle}
+          onPress={() => setOpen(value => !value)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={open ? "Close quick actions" : "Open quick actions"}
+          testID="basecamp-quick-actions-toggle"
+        >
+          <View style={styles.drawerGrip} />
+          <Text style={styles.drawerTitle}>QUICK ACTIONS</Text>
+          {open ? <ChevronDown size={15} color={BASECAMP.textMuted} /> : <ChevronUp size={15} color={BASECAMP.textMuted} />}
+        </TouchableOpacity>
+      </View>
+      {open && <QuickActionsGrid actions={actions} inDrawer />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  drawer: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: BASECAMP.ink,
+    borderTopWidth: 1, borderTopColor: BASECAMP.panelBorder,
+    borderTopLeftRadius: 14, borderTopRightRadius: 14,
+    overflow: "hidden",
+  },
+  drawerHandle: {
+    minHeight: 43, flexDirection: "row", alignItems: "center",
+    paddingHorizontal: BASECAMP.gutter, gap: 10,
+  },
+  drawerGrip: { width: 24, height: 3, borderRadius: 2, backgroundColor: BASECAMP.textDim },
+  drawerTitle: {
+    flex: 1, fontSize: 9, lineHeight: 12,
+    fontFamily: "Inter_600SemiBold", letterSpacing: 2, color: BASECAMP.textMuted,
+  },
+  drawerGridWrap: { marginTop: 0, paddingBottom: 13 },
   bandWrap: { paddingHorizontal: BASECAMP.gutter, marginTop: 13 },
   band: {
     minHeight: 94,

@@ -34,6 +34,8 @@ export interface CoachInsightProps {
   state: CoachInsightState;
   /** The existing mascot, passed in so this component never owns the asset. */
   mascot?: React.ReactNode;
+  /** Basecamp's existing question composer, nested beneath the mountain title. */
+  askControl?: React.ReactNode;
   /** How many next-actions to show. Basecamp uses the compact treatment. */
   variant?: "compact" | "full";
   onRetry?: () => void;
@@ -47,7 +49,7 @@ export interface CoachInsightProps {
 }
 
 export function CoachInsight({
-  state, mascot, variant = "compact", onRetry, onRefresh, onOpen, onUnlock, style, onAppear,
+  state, mascot, askControl, variant = "compact", onRetry, onRefresh, onOpen, onUnlock, style, onAppear,
 }: CoachInsightProps) {
   const reduced = useReducedMotion();
   useEffect(() => { if (state.kind === "ready") onAppear?.(); }, [state.kind, onAppear]);
@@ -112,6 +114,7 @@ export function CoachInsight({
           </TouchableOpacity>
         ) : null}
       </View>
+      {askControl}
 
       {state.kind === "error" ? (
         <TouchableOpacity
