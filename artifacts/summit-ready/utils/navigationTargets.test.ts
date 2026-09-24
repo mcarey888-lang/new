@@ -21,7 +21,8 @@ describe("approved five-tab navigation", () => {
   it("keeps Explore shared and Expeditions first-class", () => {
     expect(primaryTabTarget("explore", "training", null)).toBe("/(tabs)/explore");
     expect(primaryTabTarget("explore", "expedition", "expedition-1")).toBe("/(tabs)/explore");
-    expect(primaryTabTarget("expeditions", "training", null)).toBe("/(expedition)/mountains");
+    expect(primaryTabTarget("expeditions", "training", null)).toBe("/(tabs)/expeditions");
+    expect(primaryTabTarget("expeditions", "expedition", "expedition-1")).toBe("/(expedition)/mountains");
   });
 
   it("derives active tabs from the full route group", () => {
@@ -29,6 +30,7 @@ describe("approved five-tab navigation", () => {
     expect(activePrimaryTabForSegments(["(expedition)", "progress"])).toBe("expeditions");
     expect(activePrimaryTabForSegments(["(expedition)", "track"])).toBe("track");
     expect(activePrimaryTabForSegments(["(tabs)", "account"])).toBe("you");
+    expect(activePrimaryTabForSegments(["(tabs)", "expeditions"])).toBe("expeditions");
     expect(activePrimaryTabForSegments(["(tabs)", "challenges"])).toBeNull();
   });
 });

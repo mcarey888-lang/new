@@ -16,6 +16,7 @@ export function activePrimaryTabForSegments(segments: readonly string[]): Primar
        told the user they had left the training journey when they had not.
        Containing links to explore routes does not make a screen Explore. */
     if (["dashboard", "plan", "v-home"].includes(route)) return "home";
+    if (route === "expeditions") return "expeditions";
     if (["explore", "hills", "v-mountain", "v-hills"].includes(route)) return "explore";
     if (["trails", "v-progress"].includes(route)) return "track";
     if (route === "account") return "you";
@@ -37,7 +38,7 @@ export function primaryTabTarget(
     case "track":
       return shellMode === "training" ? "/(tabs)/trails" : "/(expedition)/track";
     case "expeditions":
-      return "/(expedition)/mountains";
+      return shellMode === "training" ? "/(tabs)/expeditions" : "/(expedition)/mountains";
     case "you":
       return shellMode === "training" ? "/(tabs)/account" : "/(expedition)/profile";
   }

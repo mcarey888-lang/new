@@ -40,6 +40,13 @@ Never navigate from Expedition directly into a `(tabs)` route. The Training layo
 
 **How to apply:** Keep shell-owned tab links within their current route group. For shared screens, reuse the implementation behind a shell-local hidden route and link to that route.
 
+## Expedition discovery from Training
+Opening the Expeditions tab while Training is selected is discovery, not a mode switch. Starting an expedition is an explicit commitment and may open its own Basecamp, but the Training goal and plan remain intact. Real eligible hikes completed as expedition stages can contribute to Training readiness; selection and simulated elevation cannot.
+
+**Why:** The user wants expeditions to be usable as part of mountain training and to compare potential readiness impact before choosing one, without losing Training context merely by browsing.
+
+**How to apply:** Keep browsing in the current shell and only change shell mode on an explicit start or mode switch. Readiness previews are conditional scenarios from credible outdoor-route facts; never treat virtual ascent or an uncompleted route as earned evidence.
+
 `clearPlan` is Training-only and deliberately preserves Expedition state. Any user-facing “Reset all data” action must use the dedicated full reset path so both shell goals, the expedition library, active expedition, and shell selection are cleared together.
 
 **Why:** Reusing `clearPlan` made Reset all data appear to do nothing for Expedition users because Base Camp and its saved expedition survived.

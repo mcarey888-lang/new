@@ -18,6 +18,11 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { T } from "@/constants/theme";
+import type { ReadinessInput } from "@/utils/readinessV2";
+import {
+  projectExpeditionReadiness,
+  type ExpeditionReadinessRoute,
+} from "@/utils/expeditionReadinessProjection";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -50,6 +55,10 @@ interface SigStage {
   stageOrder: number;
   routeKey: string | null;
   routeName: string;
+  routeIdentityKey?: string | null;
+  routeDataStatus?: string | null;
+  dataSource?: string | null;
+  confidence?: string | null;
   region: string | null;
   distanceKm: number | null;
   ascentM: number | null;
@@ -88,9 +97,17 @@ interface Props {
   onClose: () => void;
   /** Called when the user taps "Start this Expedition". Receives the full challenge object. */
   onStart?: (challenge: SigChallenge) => void;
+  readinessInput?: ReadinessInput | null;
+  readinessEnabled?: boolean;
 }
 
-export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
+export function ChallengeDetailSheet({
+  challengeId,
+  onClose,
+  onStart,
+  readinessInput,
+  readinessEnabled = true,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [challenge, setChallenge] = useState<SigChallenge | null>(null);
   const [loading, setLoading]     = useState(false);
@@ -124,6 +141,10 @@ export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
     ? (challenge.approved && artworkUrl(challenge.heroImage)) ||
       `${API_BASE}/mountain-image?name=${encodeURIComponent(challenge.targetMountainName)}&width=800&height=500`
     : null;
+  const readinessProjection = projectExpeditionReadiness(
+    readinessEnabled ? readinessInput : null,
+    challenge?.stages ?? [],
+  );
 
   return (
     <Modal
@@ -274,6 +295,34 @@ export function ChallengeDetailSheet({ challengeId, onClose, onStart }: Props) {
                   )}
                 </View>
               )}
+
+              {/* ── Pre-start readiness impact ─────────────────────────────── */}
+              {readinessEnabled && <View style={s.card}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+                  <TrendingUp size={13} color={T.blue} />
+                  <Text style={s.cardLabel}>TRAINING READINESS · PREVIEW</Text>
+                </View>
+                {readinessProjection.available ? (
+                  <>
+                    <View style={s.readinessImpactRow}>
+                      <Text style={s.readinessImpactValue}>{readinessProjection.before}</Text>
+                      <Text style={s.readinessImpactArrow}>→</Text>
+                      <Text style={s.readinessImpactValue}>{readinessProjection.after}</Text>
+                      <Text style={s.readinessImpactDelta}>
+                        {readinessProjection.delta >= 0 ? "+" : ""}{readinessProjection.delta}
+                      </Text>
+                    </View>
+                    <Text style={s.readinessImpactText}>
+                      Scenario: complete and record {readinessProjection.routeCount} verified outdoor {readinessProjection.routeCount === 1 ? "route" : "routes"}.
+                    </Text>
+                    <Text style={s.readinessImpactNote}>{readinessProjection.explanation}</Text>
+                  </>
+                ) : (
+                  <Text style={s.readinessImpactText}>
+                    {readinessProjection.reason}
+                  </Text>
+                )}
+              </View>}
 
               {/* ── Stages ──────────────────────────────────────────────────── */}
               <View style={s.card}>
@@ -452,6 +501,12 @@ const s = StyleSheet.create({
     letterSpacing: 1.2, marginBottom: 10,
   },
   summaryText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#9BA5B0", lineHeight: 20 },
+  readinessImpactRow: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 7 },
+  readinessImpactValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
+  readinessImpactArrow: { fontSize: 17, fontFamily: "Inter_500Medium", color: "#6B7B8D" },
+  readinessImpactDelta: { fontSize: 13, fontFamily: "Inter_700Bold", color: T.green, marginLeft: 2 },
+  readinessImpactText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9BA5B0", lineHeight: 18 },
+  readinessImpactNote: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#6B7B8D", lineHeight: 15, marginTop: 6 },
 
   // Stage cards
   stageCard: {

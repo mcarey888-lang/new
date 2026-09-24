@@ -18,7 +18,8 @@ import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@clerk/expo";
 import {
   ActivityIndicator,
   Alert,
@@ -71,6 +72,8 @@ import {
   signatureStageToNearbyHill,
   signatureStageTotals,
 } from "@/utils/signatureExpedition";
+import { createReadinessInput } from "@/utils/readinessAdapter";
+import { projectExpeditionReadiness } from "@/utils/expeditionReadinessProjection";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -368,8 +371,27 @@ export default function ExpeditionMountainsScreen() {
     activeExpeditionId,
     patchExpedition,
     startExpedition,
+    summitGoal,
+    sessions,
+    exploreHikes,
+    trainingPlan,
+    shellMode,
   } = useApp();
   const { isSubscribed } = useSubscription();
+  const { userId } = useAuth();
+  const readinessInput = useMemo(
+    () => userId && summitGoal
+      ? createReadinessInput(
+        userId,
+        new Date().toISOString(),
+        summitGoal,
+        sessions,
+        exploreHikes,
+        trainingPlan,
+      )
+      : null,
+    [userId, summitGoal, sessions, exploreHikes, trainingPlan],
+  );
 
   // view state
   const [view, setView] = useState<ViewMode>("browse");
@@ -1236,6 +1258,21 @@ export default function ExpeditionMountainsScreen() {
     const tp = results.targetProfile;
     const hills = results.recommendedHills;
     const manual = results.manualBuilder;
+    const readinessProjection = projectExpeditionReadiness(
+      shellMode === "training" ? readinessInput : null,
+      hills.map(hill => ({
+        routeIdentityKey: hill.routeIdentityKey ?? hill.routeId,
+        routeDataStatus: hill.routeDataStatus,
+        dataSource: hill.dataSource,
+        confidence: hill.routeDataStatus === "verified" && hill.dataSource === "canonical_verified"
+          ? "verified"
+          : null,
+        // Use facts for one actual route completion, never the aggregate virtual
+        // elevation total or planned repeat count.
+        distanceKm: hill.routeDistance,
+        ascentM: hill.elevation,
+      })),
+    );
     if (results.resolutionOnly && setupResolved && !creationChoice) {
       return (
         <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
@@ -1846,6 +1883,28 @@ export default function ExpeditionMountainsScreen() {
               </Animated.View>
             );
           })()}
+
+          {shellMode === "training" && (
+            <View style={[s.card, { gap: 7 }]}>
+              <Text style={s.sectionTitle}>TRAINING READINESS · PREVIEW</Text>
+              {readinessProjection.available ? (
+                <>
+                  <Text style={s.manualHeadline}>
+                    {readinessProjection.before} → {readinessProjection.after}
+                    <Text style={{ color: T.green }}>
+                      {" "}{readinessProjection.delta >= 0 ? "+" : ""}{readinessProjection.delta}
+                    </Text>
+                  </Text>
+                  <Text style={s.improveCandidateMeta}>
+                    Scenario: complete and record {readinessProjection.routeCount} verified outdoor {readinessProjection.routeCount === 1 ? "route" : "routes"}.
+                  </Text>
+                  <Text style={s.improveCandidateMeta}>{readinessProjection.explanation}</Text>
+                </>
+              ) : (
+                <Text style={s.improveCandidateMeta}>{readinessProjection.reason}</Text>
+              )}
+            </View>
+          )}
 
           {/* CTA */}
           <Animated.View entering={FadeInDown.delay(180).duration(350)}>
@@ -2540,6 +2599,8 @@ export default function ExpeditionMountainsScreen() {
       <ChallengeDetailSheet
         challengeId={selectedFeaturedId}
         onClose={() => setSelectedFeaturedId(null)}
+        readinessInput={readinessInput}
+        readinessEnabled={shellMode === "training"}
         onStart={(challenge) => {
           setSelectedFeaturedId(null);
           // Commit directly to the challenge's pre-built stages —

@@ -63,6 +63,7 @@ export default function TabLayout() {
         <Tabs.Screen name="hills" />
         <Tabs.Screen name="account" />
         <Tabs.Screen name="explore" options={{ href: null }} />
+        <Tabs.Screen name="expeditions" options={{ href: null }} />
         <Tabs.Screen name="log" options={{ href: null }} />
         <Tabs.Screen name="hikes" options={{ href: null }} />
         <Tabs.Screen name="virtual" options={{ href: null }} />
