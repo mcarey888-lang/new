@@ -150,3 +150,44 @@ export const ACTIVITY_DETAILS_COPY = {
   /* Reassurance that the record already exists before this screen is used. */
   reassurance: "Saved to this device already — this just adds the detail.",
 } as const;
+
+/**
+ * Track Ready has four questions to answer before the thumb reaches Start:
+ * WHAT am I recording, WHERE, is the PHONE ready, and CAN I START.
+ *
+ * This answers the first two. Unlike `trackContext` it never returns null —
+ * a free hike with nothing chosen is still a legitimate thing to record, and
+ * saying so is better than leaving the question unanswered.
+ *
+ * It states only what the launch already knows. It never invents a place.
+ */
+export interface ReadyBrief {
+  what: string;
+  where: string;
+  /** True when no route or hill was chosen — the screen says so plainly. */
+  isOpenGround: boolean;
+}
+
+export function readyBrief(meta: {
+  sessionLabel?: string | null;
+  hillName?: string | null;
+  routeName?: string | null;
+  activityTitle?: string | null;
+}): ReadyBrief {
+  const session = meta.sessionLabel?.trim() || null;
+  const hill = meta.hillName?.trim() || null;
+  const route = meta.routeName?.trim() || null;
+  const title = meta.activityTitle?.trim() || null;
+
+  const what = session ?? hill ?? title ?? "Free hike";
+  /* WHERE reports the route, and the hill only when the headline is not
+     already the hill. With nothing chosen it says that plainly — it never
+     claims open ground when a hill is in fact known. */
+  const place = [route, hill !== what ? hill : null].filter(Boolean).join(" · ") || null;
+
+  return {
+    what,
+    where: place ?? "No route chosen — record any path",
+    isOpenGround: place === null,
+  };
+}

@@ -123,9 +123,18 @@ describe("generated artwork never bleeds behind functional content", () => {
     expect(bleed).toMatch(/sessionImageSubject/);
   });
 
-  it("Training Session still declares its artwork to the hero", () => {
-    expect(code(read("app/session-detail.tsx")))
-      .toMatch(/artwork=\{heroIsGeneratedArtwork \? "generated" : "photo"\}/);
+  /* Pass 01 made the Training Session hero DECLARE generated artwork so the
+     frame could ink it out. Live QA showed the lettering still read through
+     the top band, so Pass 02 went further: the exercise assets never reach a
+     bleeding surface at all. This asserts the stronger rule. */
+  it("the Training Session hero refuses the exercise assets outright", () => {
+    const session = code(read("app/session-detail.tsx"));
+    const hero = session.slice(session.indexOf("<SRHeroFrame"), session.indexOf("</SRHeroFrame>"));
+    expect(hero).not.toMatch(/generated/);
+    expect(hero).not.toMatch(/exerciseArtwork/);
+    /* and the illustration still exists — contained, not deleted */
+    expect(session).toMatch(/exercisePlate/);
+    expect(session).toMatch(/const exerciseArtwork/);
   });
 });
 

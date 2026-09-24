@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CheckCircle,
   ChevronRight,
+  Gauge,
   MapPin,
   Check,
   Pause,
@@ -51,7 +52,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGetElevationBank } from "@workspace/api-client-react";
 import {
-  formatPace, offlineNotice, paceMinPerKm, statusLabel, trackContext,
+  formatPace, offlineNotice, paceMinPerKm, readyBrief, statusLabel,
 } from "@/utils/trackPresentation";
 import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
@@ -326,6 +327,10 @@ export default function HikeTrackingScreen() {
   );
   const [nameLocked, setNameLocked]     = useState(false);
   const [nameError, setNameError]       = useState(false);
+  /* The placeholder title the screen minted for itself. It is a real, usable
+     name, but it is not something the user chose, so the ready brief does not
+     repeat it back as though it were. */
+  const defaultTitleRef                 = useRef(routeName);
 
   // ── Tracker state ────────────────────────────────────────────────────────
   const [status, setStatus]               = useState<TrackStatus>("idle");
@@ -1700,10 +1705,13 @@ export default function HikeTrackingScreen() {
               ]}>
                 {isTracking && <Activity size={11} color={T.green} />}
                 {isPaused   && <Pause size={11} color={T.orange} />}
-                <Text style={[s.statusText,
-                  isTracking && { color: T.green },
-                  isPaused   && { color: T.orange },
-                ]}>
+                <Text
+                  style={[s.statusText,
+                    isTracking && { color: T.green },
+                    isPaused   && { color: T.orange },
+                  ]}
+                  accessibilityLiveRegion="polite"
+                >
                   {isTracking ? "TRACKING" : "PAUSED"}
                 </Text>
               </View>
@@ -1719,22 +1727,29 @@ export default function HikeTrackingScreen() {
         {isIdle && (
           <View style={s.sheetBody}>
             {(() => {
-              /* Context comes from the launch params the screen already
-                 receives — the hill the session named, and the reference
-                 route where one was chosen. No new param was introduced. */
-              const ctx = trackContext({
+              /* WHAT and WHERE, from the launch params the screen already
+                 receives plus the route the user picked here. No new param
+                 was introduced, and nothing is invented: with nothing chosen
+                 the screen says so rather than leaving the question open. */
+              const brief = readyBrief({
                 hillName: hillMeta.hillName,
-                routeName: params.referenceRouteName ?? null,
+                routeName: selectedCanonical?.name ?? params.referenceRouteName ?? null,
+                activityTitle: routeName === defaultTitleRef.current ? null : routeName,
                 sessionLabel: null,
               });
-              if (!ctx) return null;
               return (
                 <View style={s.readyContext}>
                   <Text style={s.readyContextEyebrow}>RECORDING</Text>
-                  <Text style={s.readyContextTitle} numberOfLines={2}>{ctx.title}</Text>
-                  {ctx.subtitle ? (
-                    <Text style={s.readyContextSub} numberOfLines={1}>{ctx.subtitle}</Text>
-                  ) : null}
+                  <Text style={s.readyContextTitle} numberOfLines={2}>{brief.what}</Text>
+                  <View style={s.readyWhereRow}>
+                    <MapPin size={12} color={brief.isOpenGround ? T.textDim : BASECAMP.accent} />
+                    <Text
+                      style={[s.readyContextSub, brief.isOpenGround && { color: T.textDim }]}
+                      numberOfLines={1}
+                    >
+                      {brief.where}
+                    </Text>
+                  </View>
                 </View>
               );
             })()}
@@ -1785,23 +1800,24 @@ export default function HikeTrackingScreen() {
         {!isIdle && drawerOpen && (
           <Animated.View entering={FadeIn.duration(200)} style={s.sheetBody}>
 
-            {/* Recording state, including offline, stated plainly. */}
-            <View style={s.trackStatusRow}>
-              <View
-                style={[
-                  s.trackStatusPill,
-                  isPaused && { borderColor: `${T.orange}66`, backgroundColor: `${T.orange}1F` },
-                ]}
-              >
-                <Text
-                  style={[s.trackStatusText, isPaused && { color: T.orange }]}
-                  numberOfLines={1}
-                  accessibilityLiveRegion="polite"
+            {/* The sheet header pill above already names TRACKING or PAUSED
+                and stays visible when the drawer is closed. This row only
+                appears when it has something that pill cannot say. */}
+            {isOffline && (
+              <View style={s.trackStatusRow}>
+                <View
+                  style={[
+                    s.trackStatusPill,
+                    { borderColor: `${T.orange}66`, backgroundColor: `${T.orange}1F` },
+                  ]}
                 >
-                  {statusLabel(status, isOffline)}
-                </Text>
+                  <WifiOff size={11} color={T.orange} />
+                  <Text style={[s.trackStatusText, { color: T.orange }]} numberOfLines={1}>
+                    {statusLabel(status, isOffline)}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
             {offlineNotice(isOffline, status) ? (
               <Text style={s.trackOfflineNote}>{offlineNotice(isOffline, status)}</Text>
             ) : null}
@@ -1832,20 +1848,23 @@ export default function HikeTrackingScreen() {
               </View>
             </View>
 
-            {/* Pace, from recorded distance and elapsed time only. Shows an
-                em dash until there is enough movement to state one. */}
-            <View style={s.speedRow}>
-              <Activity size={12} color={T.textMuted} />
-              <Text style={s.speedText}>{formatPace(paceMinPerKm(distanceKm, elapsedSecs))}</Text>
-            </View>
-
-            {/* Speed */}
-            <View style={s.speedRow}>
-              <Activity size={12} color={T.textMuted} />
-              <Text style={s.speedText}>
-                {currentSpeedKmh > 0 ? `${currentSpeedKmh.toFixed(1)} km/h` : "— km/h"}
-              </Text>
-              <Text style={s.speedLabel}>current speed</Text>
+            {/* Pace and speed, from recorded distance and elapsed time only.
+                Each shows an em dash until there is enough movement to state
+                one — neither is ever estimated. On one line, because two
+                near-identical rows read as a repeat rather than as two facts. */}
+            <View style={s.paceRow}>
+              <View style={s.speedRow}>
+                <Activity size={12} color={T.textMuted} />
+                <Text style={s.speedText}>{formatPace(paceMinPerKm(distanceKm, elapsedSecs))}</Text>
+                <Text style={s.speedLabel}>avg pace</Text>
+              </View>
+              <View style={s.speedRow}>
+                <Gauge size={12} color={T.textMuted} />
+                <Text style={s.speedText}>
+                  {currentSpeedKmh > 0 ? `${currentSpeedKmh.toFixed(1)} km/h` : "— km/h"}
+                </Text>
+                <Text style={s.speedLabel}>now</Text>
+              </View>
             </View>
 
             {/* Pause / finish controls */}
@@ -2054,7 +2073,8 @@ const s = StyleSheet.create({
   readyContext: { marginBottom: 14, gap: 3 },
   readyContextEyebrow: { ...TYPE.eyebrow, color: BASECAMP.textDim },
   readyContextTitle: { ...TYPE.title, fontSize: 22, lineHeight: 27, color: BASECAMP.text },
-  readyContextSub: { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted },
+  readyContextSub: { ...TYPE.small, fontSize: 13, color: BASECAMP.textMuted, flex: 1, minWidth: 0 },
+  readyWhereRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 },
   readyStateRow: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: BASECAMP.panelSub, borderWidth: 1,
@@ -2116,6 +2136,7 @@ const s = StyleSheet.create({
   // Recording status + offline notice.
   trackStatusRow: { flexDirection: "row", marginBottom: 10 },
   trackStatusPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, borderWidth: 1,
     borderColor: `${T.green}66`, backgroundColor: `${T.green}1F`,
   },
@@ -2128,6 +2149,7 @@ const s = StyleSheet.create({
   statLabel: { ...TYPE.eyebrow, fontSize: 9, letterSpacing: 0.9, color: BASECAMP.textDim },
 
   // Speed bar
+  paceRow: { flexDirection: "row", alignItems: "center", gap: 18, flexWrap: "wrap" },
   speedRow: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 2,
