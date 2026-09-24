@@ -1,10 +1,11 @@
 import type { LucideIcon } from "lucide-react-native";
-import { Flag, Minus, Plus, Check, ChevronDown, ChevronUp, ChevronLeft, TrendingUp, Zap, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Activity, Square, Package, Anchor, Droplet, Wind, Mountain, Play, Settings } from "lucide-react-native";
+import { Flag, Minus, Plus, Check, ChevronDown, ChevronUp, ChevronLeft, TrendingUp, Zap, Pencil, CheckCircle, RefreshCw, ChevronRight, Calendar, Cpu, Lock, Activity, Square, Package, Anchor, Droplet, Wind, Mountain, Play, Settings, Moon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Dimensions,
+  Image,
   Modal,
   PanResponder,
   Platform,
@@ -31,12 +32,16 @@ import { NearbyHill, TrainingWeek, useApp } from "@/context/AppContext";
 import { DayPickerModal, type OccupiedDay } from "@/components/DayPickerModal";
 import { HillPickerModal } from "@/components/HillPickerModal";
 import { T, PHASE_COLOR } from "@/constants/theme";
-import { BASECAMP, HIT } from "@/constants/tokens";
+import { BASECAMP, HIT, TYPE } from "@/constants/tokens";
 import {
   SRButton, SREmptyState, SREyebrow, SRFactDivider, SRHeroFrame, SRPanel, SRProgress,
   SRScreenHeader, SRSectionHeader, SRStatusPill, SRSubPanel, SRUnderlineTabs,
 } from "@/components/ui";
+import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
+import { planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
+import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
+import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
 import { assignSessionsToDays, DAY_SHORT } from "@/utils/dayAssignment";
@@ -1176,7 +1181,6 @@ export default function PlanScreen() {
     setSessionEffort,
     updatePlanSession,
     addToNearbyHills,
-    readinessScore,
     sessions,
     exploreHikes,
     sessionDayOverrides,
@@ -1408,7 +1412,6 @@ export default function PlanScreen() {
   const weeksCompleted = trainingPlan.filter(w => new Date(w.endDate) < new Date()).length;
   const progressPct = totalWeeks > 0 ? Math.min(100, (weeksCompleted / totalWeeks) * 100) : 0;
   const pc = PHASE_COLOR[currentWeek?.phase ?? "Base"] ?? T.green;
-  const readinessColor = readinessScore >= 70 ? T.green : readinessScore >= 40 ? T.orange : "#EF4444";
   const totalElevTrained =
     sessions.reduce((sum, s) => sum + (s.elevationGain || 0), 0) +
     exploreHikes.reduce((sum, h) => sum + (h.elevationGain || 0), 0);
@@ -1439,8 +1442,21 @@ export default function PlanScreen() {
     : `${Math.round(totalElevTrained)} m`;
 
   // ── Mission Dashboard — viewed week & day-session mapping ──────────────────
-  const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const; // Mon → Sun
+  /* Readiness 2.0 — the figure Training Basecamp states. */
+  const readinessV2 = useReadinessV2();
+  const heroReadiness = readinessV2?.result?.overallScore ?? null;
+  const readinessColor = heroReadiness === null
+    ? T.textMuted
+    : heroReadiness >= 70 ? T.green : heroReadiness >= 40 ? T.orange : "#EF4444";
+
   const viewedWeek = trainingPlan.find(w => w.weekNumber === viewedWeekNum) ?? trainingPlan[0];
+
+  /* The viewed week's own dates, and — when the plan has not begun — how far
+     off it is. Both read the plan the engine generated; neither changes it. */
+  const viewedWeekRange = weekDateRange(viewedWeek?.startDate, viewedWeek?.endDate);
+  const viewedWeekDays = planWeekDays(viewedWeek?.startDate);
+  const displayOrder = viewedWeekDays.map(day => day.dow);
+  const weeksUntilStart = weeksUntilPlanStart(trainingPlan[0]?.startDate);
   const viewedAutoAssigned = viewedWeek
     ? assignSessionsToDays(viewedWeek.sessions.length, summitGoal.availableDays)
     : [];
@@ -1497,18 +1513,6 @@ export default function PlanScreen() {
   const _missionCardioText = selectedSession
     ? `${selectedSession.label} ${selectedSession.description ?? ""}`.toLowerCase()
     : "";
-  const missionImageSubject = selectedHill?.name
-    ?? (selectedSession?.type !== "cardio" ? selectedSession?.label : null)
-    ?? (selectedSession?.type === "cardio"
-      ? (selectedSession.gymExercise === "treadmill" || _missionCardioText.includes("treadmill")
-          ? "incline treadmill training gym workout"
-          : selectedSession.gymExercise === "stepper" || _missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster")
-          ? "stair stepper machine gym climbing"
-          : _missionCardioText.includes("stair") || _missionCardioText.includes("flights")
-          ? "outdoor stair climbing exercise training"
-          : "outdoor trail walking hiking fitness nature")
-      : null)
-    ?? summitGoal.mountainName;
   const _missionGymEx = selectedSession?.gymExercise
     ?? (_missionCardioText.includes("treadmill") ? "treadmill"
       : _missionCardioText.includes("stepper") || _missionCardioText.includes("stairmaster") ? "stepper"
@@ -1519,14 +1523,24 @@ export default function PlanScreen() {
         || _missionCardioText.includes("brisk walk") ? "outdoor"
       : selectedSession?.type === "cardio" ? "outdoor"
       : undefined);
-  const missionImageSource =
-      _missionGymEx === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
-    : _missionGymEx === "stepper"         ? require("@/assets/images/exercise-stepper.png")
-    : _missionGymEx === "box-steps"       ? require("@/assets/images/exercise-box-steps.png")
-    : _missionGymEx === "weighted-stairs" ? require("@/assets/images/exercise-weighted-stairs.png")
-    : _missionGymEx === "elliptical"      ? require("@/assets/images/exercise-elliptical.png")
-    : _missionGymEx === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
-    : { uri: `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(missionImageSubject)}&width=200&height=200${selectedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(selectedHill.routeIdentityKey)}` : ""}${selectedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(selectedHill.summitIdentityKey)}` : ""}${selectedHill?.lat != null ? `&lat=${selectedHill.lat}` : ""}${selectedHill?.lng != null ? `&lng=${selectedHill.lng}` : ""}` };
+  /* `missionImageSource` used to be assembled here and never rendered — dead
+     since the panel carried no photograph. The panel now has one, and it is
+     built by `missionBleedUri` below, which refuses generated artwork. */
+
+  /* The session panel's bleed photograph is a PLACE — the assigned hill, or
+     the objective. The exercise assets are generated artwork carrying their
+     own large lettering ("INCLINE TREADMILL"), designed to fill a hero, not to
+     sit behind a title; bled into a panel their type shows through the
+     description. A gym session therefore gets no bleed at all. */
+  const missionBleedUri = _missionGymEx
+    ? null
+    : mountainImageUri(
+        sessionImageSubject({
+          assignedHillName: selectedHill?.name ?? null,
+          mountainName: summitGoal.mountainName,
+        }),
+        { width: 260, height: 280 },
+      );
 
   // Upcoming this week: rest of the week's sessions (not the selected one)
   const upcomingSessions = viewedWeek
@@ -1547,19 +1561,43 @@ export default function PlanScreen() {
         })
     : [];
 
+  /* The whole week, not only what is left of it: the rail is a record of the
+     week as well as a queue, so a completed session stays visible with its
+     tick rather than disappearing. `upcomingSessions` (the selected day
+     excluded) is still what the swipe and reschedule logic reads. */
+  const weekSessions = viewedWeek
+    ? viewedWeek.sessions.map((session, sessionIdx) => {
+        const auto = viewedAutoAssigned.find(a => a.sessionIdx === sessionIdx);
+        const overrideKey = `${viewedWeek.weekNumber}-${sessionIdx}`;
+        const dow = sessionDayOverrides[overrideKey] !== undefined
+          ? sessionDayOverrides[overrideKey]
+          : (auto?.dayOfWeek ?? null);
+        return { session, sessionIdx, dow };
+      }).sort((a, b) => (a.dow ?? 99) - (b.dow ?? 99))
+    : [];
+  const weekDoneCount = weekSessions.filter(
+    ({ sessionIdx }) => !!completedPlanSessions[`${viewedWeek?.weekNumber}-${sessionIdx}`],
+  ).length;
+
   // Keep swipe callback fresh
   missionSwipeRef.current = (dir: 1 | -1) => {
-    const currentDowIdx = DISPLAY_ORDER.indexOf(selectedDow as typeof DISPLAY_ORDER[number]);
+    const currentDowIdx = displayOrder.indexOf(selectedDow);
     if (currentDowIdx === -1) return;
     const nextDowIdx = currentDowIdx + dir;
-    if (nextDowIdx >= 0 && nextDowIdx < DISPLAY_ORDER.length) {
-      setSelectedDow(DISPLAY_ORDER[nextDowIdx]);
-    } else if (nextDowIdx >= DISPLAY_ORDER.length) {
+    if (nextDowIdx >= 0 && nextDowIdx < displayOrder.length) {
+      setSelectedDow(displayOrder[nextDowIdx]);
+    } else if (nextDowIdx >= displayOrder.length) {
       const nextW = trainingPlan.find(w => w.weekNumber === viewedWeekNum + 1);
-      if (nextW) { setViewedWeekNum(viewedWeekNum + 1); setSelectedDow(DISPLAY_ORDER[0]); }
+      if (nextW) {
+        setViewedWeekNum(nextW.weekNumber);
+        setSelectedDow(planWeekDays(nextW.startDate)[0].dow);
+      }
     } else {
       const prevW = trainingPlan.find(w => w.weekNumber === viewedWeekNum - 1);
-      if (prevW) { setViewedWeekNum(viewedWeekNum - 1); setSelectedDow(DISPLAY_ORDER[DISPLAY_ORDER.length - 1]); }
+      if (prevW) {
+        setViewedWeekNum(prevW.weekNumber);
+        setSelectedDow(planWeekDays(prevW.startDate)[6].dow);
+      }
     }
   };
 
@@ -1585,7 +1623,15 @@ export default function PlanScreen() {
           style={{ justifyContent: "space-between" }}
         >
           <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
+            {/* The mode toggle has a row of its own, above the title. The
+                floating toggle used to land on top of this header because
+                both are centred at the top of the window; Training Plan now
+                owns its toggle, so the two can no longer collide. */}
+            <View style={dash.modeRow}>
+              <ModeTogglePill embedded />
+            </View>
             <SRScreenHeader
+              scrim
               title="Training plan"
               subtitle={currentWeek ? `${currentWeek.phase} phase · week ${currentWeek.weekNumber} of ${totalWeeks}` : null}
               onBack={() => router.push("/(tabs)/dashboard")}
@@ -1607,14 +1653,24 @@ export default function PlanScreen() {
             <Text style={dash.goalName} numberOfLines={2}>{summitGoal.mountainName}</Text>
 
             <View style={dash.heroMeta}>
+              {/* The SAME readiness Basecamp shows. This hero previously read
+                  the legacy context score while Basecamp read Readiness 2.0,
+                  so the two screens could state different figures for the same
+                  user. Neither engine changed; this reads the authoritative
+                  one. A score the engine cannot produce shows an em dash
+                  rather than a confident-looking zero. */}
               <View style={dash.heroReadiness}>
                 <Text style={dash.heroMetaLabel}>Readiness</Text>
-                <Text style={dash.heroMetaValue}>{readinessScore}%</Text>
+                <Text style={dash.heroMetaValue}>
+                  {heroReadiness === null ? "—" : `${heroReadiness}%`}
+                </Text>
                 <SRProgress
-                  value={readinessScore}
+                  value={heroReadiness ?? 0}
                   height={7}
                   style={{ marginTop: 6 }}
-                  accessibilityLabel="Readiness score"
+                  accessibilityLabel={heroReadiness === null
+                    ? "Readiness unavailable"
+                    : `Readiness ${heroReadiness} percent`}
                 />
               </View>
               <View style={dash.heroDivider} />
@@ -1664,10 +1720,16 @@ export default function PlanScreen() {
                 <Text style={dash.weekNavTitle} accessibilityRole="header" numberOfLines={1}>
                   WEEK {viewedWeekNum} OF {totalWeeks}
                 </Text>
+                {/* The week's real dates. Without them "week 1 of 8" beside a
+                    target 109 days away reads as a contradiction; with them it
+                    is obviously an eight-week block scheduled to finish on the
+                    target date. The dates are the plan engine's own. */}
                 <Text style={dash.weekNavSub} numberOfLines={1}>
-                  {viewedWeek?.isCurrentWeek ? "This week" : ""}
-                  {viewedWeek?.isCurrentWeek && viewedWeek?.phase ? " · " : ""}
-                  {viewedWeek?.phase ?? ""}
+                  {[
+                    viewedWeekRange,
+                    viewedWeek?.isCurrentWeek ? "This week" : null,
+                    viewedWeek?.phase ?? null,
+                  ].filter(Boolean).join(" · ")}
                 </Text>
               </View>
 
@@ -1687,17 +1749,32 @@ export default function PlanScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* ── When the plan begins ─────────────────────────────────
+                A plan can legitimately sit ahead of today: when there is more
+                time than the block needs, the engine schedules it to FINISH on
+                the target date rather than starting immediately. Without this
+                line "week 1 of 8" beside a target months away reads as a
+                fault. The engine is unchanged; this states what it decided. */}
+            {weeksUntilStart !== null && (
+              <Text style={dash.planStartNote}>
+                {`Your ${totalWeeks}-week plan is scheduled to finish on your target date, so it begins in about ${weeksUntilStart} ${weeksUntilStart === 1 ? "week" : "weeks"}. You can start it now from Plan settings.`}
+              </Text>
+            )}
+
             {/* ── The week, day by day ─────────────────────────────────
                 One cell per day. A day with no prescribed session is a rest
                 day and says so — it is not left blank. */}
             <View style={dash.strip}>
-              {DISPLAY_ORDER.map(dow => {
+              {viewedWeekDays.map(({ dow, date: cellDate, isToday: isTodayCell }) => {
                 const sIdx = viewedDowToSession[dow];
                 const session = sIdx !== undefined ? viewedWeek?.sessions[sIdx] : undefined;
                 const isDone = sIdx !== undefined
                   && !!completedPlanSessions[`${viewedWeek?.weekNumber}-${sIdx}`];
                 const isSelected = dow === selectedDow;
-                const isToday = viewedWeek?.isCurrentWeek && dow === new Date().getDay();
+                /* Today is a real calendar match against the week's own
+                   dates, not "the plan says this is the current week and the
+                   weekday matches" — a plan that has not begun has no today. */
+                const isToday = isTodayCell;
                 const label = session
                   ? (session.type === "hill" ? "Hill" : session.type === "bigDay" ? "Big day" : "Cardio")
                   : "Rest";
@@ -1714,6 +1791,11 @@ export default function PlanScreen() {
                     <Text style={[dash.dayName, isToday && { color: BASECAMP.accent }]} numberOfLines={1}>
                       {DAY_SHORT[dow]}
                     </Text>
+                    {cellDate !== null && (
+                      <Text style={[dash.dayDate, isToday && { color: BASECAMP.accent }]} numberOfLines={1}>
+                        {cellDate}
+                      </Text>
+                    )}
                     <View style={dash.dayGlyph}>
                       {session ? (
                         isDone ? <Check size={14} color={BASECAMP.accent} strokeWidth={3} />
@@ -1759,8 +1841,36 @@ export default function PlanScreen() {
             <View style={dash.section} {...missionPanResponder.panHandlers}>
               {selectedSession && viewedWeek && selectedSessionIdx !== undefined ? (
                 <SRPanel radius={18}>
+                  {/* The session's own photograph, bleeding in from the right
+                      as the approved panel has it. Only ever a place, and only
+                      when one is known — see `missionBleedUri`. */}
+                  {missionBleedUri && (
+                  <View style={dash.missionPhoto} pointerEvents="none">
+                    <Image
+                      source={{ uri: missionBleedUri }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                      accessible={false}
+                    />
+                    <LinearGradient
+                      colors={["rgba(11,18,19,0.98)", "rgba(11,18,19,0.32)", "rgba(11,18,19,0)"]}
+                      locations={[0, 0.46, 1]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    {/* Fully inked by the foot of the block, so the photograph
+                        resolves into the panel instead of ending on a line. */}
+                    <LinearGradient
+                      colors={["rgba(11,18,19,0)", "rgba(11,18,19,0.72)", "rgb(11,18,19)"]}
+                      locations={[0.38, 0.8, 1]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </View>
+                  )}
+
                   <View style={dash.missionBody}>
-                    <View style={dash.missionTop}>
+                    <View style={[dash.missionTop, missionBleedUri && dash.missionTopInset]}>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <View style={dash.missionPills}>
                           <SRStatusPill
@@ -1864,34 +1974,69 @@ export default function PlanScreen() {
                   </View>
                 </SRPanel>
               ) : (
-                <SRPanel radius={18}>
-                  <View style={{ padding: 16 }}>
-                    <SREmptyState
-                      compact
-                      testID="plan-rest-day"
-                      title="Rest day"
-                      body="Nothing prescribed for this day. Recovery is part of the plan — pick another day to look ahead."
-                    />
+                /* A rest day is a line, not a page. Recovery stays clearly
+                   stated without taking the room a session needs. */
+                <SRPanel radius={18} testID="plan-rest-day">
+                  <View style={dash.restRow}>
+                    <View style={dash.restMark}>
+                      <Moon size={15} color={BASECAMP.textMuted} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={dash.restTitle}>Rest day</Text>
+                      <Text style={dash.restBody} numberOfLines={2}>
+                        Recovery is part of the plan. Pick another day to look ahead.
+                      </Text>
+                    </View>
                   </View>
                 </SRPanel>
               )}
               <Text style={dash.swipeHint}>Swipe to change day</Text>
             </View>
 
-            {/* ── The rest of the week ─────────────────────────────── */}
-            {upcomingSessions.length > 0 && (
-              <View style={dash.section}>
-                <SRSectionHeader title="Rest of this week" />
-                <View style={{ marginTop: 10, gap: 8 }}>
-                  {upcomingSessions.map(({ session, sessionIdx, dow }) => {
+            {/* ── This week ─────────────────────────────────────────────
+                The approved composition: the week's sessions as a horizontal
+                rail of photographic cards with the week's progress stated
+                beside the heading — not a vertical stack of wide cards. The
+                photograph is the hill the plan assigned, or the objective. */}
+            {weekSessions.length > 0 && (
+              <View style={dash.weekSection}>
+                <View style={dash.weekHead}>
+                  <Text style={dash.weekHeadTitle} numberOfLines={1}>THIS WEEK</Text>
+                  <View style={dash.weekHeadProgress}>
+                    <Text style={dash.weekHeadCount} numberOfLines={1}>
+                      {`${weekDoneCount} OF ${weekSessions.length} SESSIONS`}
+                    </Text>
+                    <SRProgress
+                      value={weekSessions.length === 0 ? 0 : (weekDoneCount / weekSessions.length) * 100}
+                      height={7}
+                      style={dash.weekHeadBar}
+                      accessibilityLabel={`${weekDoneCount} of ${weekSessions.length} sessions complete`}
+                    />
+                  </View>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={dash.weekRail}
+                >
+                  {weekSessions.map(({ session, sessionIdx, dow }) => {
                     const key = `${viewedWeek?.weekNumber}-${sessionIdx}`;
                     const isDone = !!completedPlanSessions[key];
-                    /* A session the plan has not placed on a day yet says so
-                       rather than borrowing a day it does not have. */
-                    const dayLabel = dow === null ? "—" : DAY_SHORT[dow];
+                    const isSelected = dow !== null && dow === selectedDow;
+                    const hillName = assignedHills?.[key]?.name ?? null;
+                    const photo = mountainImageUri(
+                      sessionImageSubject({
+                        assignedHillName: hillName,
+                        mountainName: summitGoal.mountainName,
+                      }),
+                      { width: 260, height: 180 },
+                    );
                     return (
-                      <SRSubPanel
+                      <TouchableOpacity
                         key={key}
+                        activeOpacity={0.85}
+                        style={[dash.weekCard, isSelected && dash.weekCardOn]}
                         onPress={() => {
                           if (dow !== null) setSelectedDow(dow);
                           else if (viewedWeek) router.push({
@@ -1899,34 +2044,57 @@ export default function PlanScreen() {
                             params: { weekNum: String(viewedWeek.weekNumber), sessionIdx: String(sessionIdx) },
                           });
                         }}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
                         accessibilityLabel={
                           `${dow === null ? "Unscheduled" : DAY_SHORT[dow]}: ${session.label}`
                           + (isDone ? ", complete" : "")
                         }
                       >
-                        <View style={dash.upRow}>
-                          <Text style={dash.upDay} numberOfLines={1}>{dayLabel}</Text>
-                          <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text
-                              style={[dash.upName, isDone && { color: BASECAMP.textDim, textDecorationLine: "line-through" }]}
-                              numberOfLines={1}
-                            >
-                              {session.label}
-                            </Text>
-                            <Text style={dash.upSub} numberOfLines={1}>
-                              {session.targetElevation > 0
-                                ? `${session.targetElevation.toLocaleString()} m · ${session.duration}`
-                                : session.duration}
-                            </Text>
+                        <View style={dash.weekCardVisual}>
+                          {photo ? (
+                            <Image
+                              source={{ uri: photo }}
+                              style={StyleSheet.absoluteFill}
+                              resizeMode="cover"
+                              accessible={false}
+                            />
+                          ) : null}
+                          <LinearGradient
+                            colors={["rgba(5,9,11,0.05)", "rgba(10,17,19,0.88)"]}
+                            locations={[0.38, 1]}
+                            style={StyleSheet.absoluteFill}
+                            pointerEvents="none"
+                          />
+                          <View style={[dash.weekCardBadge, isDone && dash.weekCardBadgeDone]}>
+                            {isDone
+                              ? <Check size={12} color={BASECAMP.accentInk} strokeWidth={3} />
+                              : <ChevronRight size={11} color={BASECAMP.textStrong} />}
                           </View>
-                          {isDone
-                            ? <Check size={14} color={BASECAMP.accent} strokeWidth={3} />
-                            : <ChevronRight size={13} color={BASECAMP.textFaint} />}
                         </View>
-                      </SRSubPanel>
+                        <View style={dash.weekCardBody}>
+                          <Text style={dash.weekCardDay} numberOfLines={1}>
+                            {dow === null ? "UNSCHEDULED" : DAY_SHORT[dow]}
+                          </Text>
+                          <Text
+                            style={[dash.weekCardTitle, isDone && dash.weekCardTitleDone]}
+                            numberOfLines={2}
+                          >
+                            {session.label}
+                          </Text>
+                          {session.targetElevation > 0 && (
+                            <Text style={dash.weekCardFact} numberOfLines={1}>
+                              {`${session.targetElevation.toLocaleString()} m gain`}
+                            </Text>
+                          )}
+                          {session.duration && (
+                            <Text style={dash.weekCardMeta} numberOfLines={1}>{session.duration}</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             )}
 
@@ -2402,6 +2570,55 @@ const dash = StyleSheet.create({
     color: BASECAMP.text, letterSpacing: -0.4,
   },
 
+  modeRow: { alignItems: "center", paddingBottom: 10 },
+  planStartNote: {
+    marginTop: 12, marginHorizontal: BASECAMP.gutter,
+    fontSize: 11.5, lineHeight: 16,
+    fontFamily: "Inter_400Regular", color: BASECAMP.textDim,
+  },
+  weekSection: { marginTop: 20 },
+  weekHead: {
+    paddingHorizontal: BASECAMP.gutter,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12,
+  },
+  weekHeadTitle: {
+    ...TYPE.eyebrow, fontSize: 11.5, letterSpacing: 2, color: BASECAMP.textMuted,
+  },
+  weekHeadProgress: { flexDirection: "row", alignItems: "center", gap: 9, flexShrink: 1 },
+  weekHeadCount: {
+    fontSize: 10, lineHeight: 13, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8, color: BASECAMP.textDim,
+  },
+  weekHeadBar: { width: 84, flexShrink: 0 },
+  weekRail: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 11 },
+  weekCard: {
+    width: 116, borderRadius: 15, overflow: "hidden",
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  },
+  weekCardOn: { borderColor: BASECAMP.accentLine },
+  weekCardVisual: { height: 66, backgroundColor: "#12202A" },
+  weekCardBadge: {
+    position: "absolute", top: 6, right: 6,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.32)",
+  },
+  weekCardBadgeDone: { backgroundColor: BASECAMP.accent, borderColor: BASECAMP.accent },
+  weekCardBody: { padding: 10, paddingTop: 8 },
+  weekCardDay: {
+    fontSize: 9, lineHeight: 11, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8, color: BASECAMP.textDim,
+  },
+  weekCardTitle: {
+    marginTop: 3, fontSize: 13.5, lineHeight: 16,
+    fontFamily: "Inter_700Bold", letterSpacing: -0.25, color: BASECAMP.text,
+  },
+  weekCardTitleDone: { color: BASECAMP.textDim, textDecorationLine: "line-through" },
+  weekCardFact: { marginTop: 3, fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
+  weekCardMeta: { fontSize: 10.5, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
+
   weekNav: {
     marginTop: 16, paddingHorizontal: BASECAMP.gutter,
     flexDirection: "row", alignItems: "center", gap: 14,
@@ -2428,7 +2645,7 @@ const dash = StyleSheet.create({
   },
   dayCell: {
     flex: 1, minWidth: 0, alignItems: "center",
-    paddingVertical: 9, paddingHorizontal: 2, gap: 5,
+    paddingVertical: 8, paddingHorizontal: 1, gap: 3,
     borderRadius: 12,
     backgroundColor: BASECAMP.panelSub,
     borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
@@ -2438,13 +2655,33 @@ const dash = StyleSheet.create({
     fontSize: 8.5, lineHeight: 11, fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.8, color: BASECAMP.textMuted,
   },
+  dayDate: {
+    fontSize: 16, lineHeight: 19, fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3, color: BASECAMP.text,
+  },
   dayGlyph: { height: 18, alignItems: "center", justifyContent: "center" },
   restDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: BASECAMP.textFaint },
   dayType: {
-    fontSize: 7.5, lineHeight: 10, fontFamily: "Inter_500Medium", color: BASECAMP.textStrong,
+    fontSize: 7.5, lineHeight: 10, fontFamily: "Inter_500Medium",
+    color: BASECAMP.textMuted, textAlign: "center",
   },
   dayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "transparent" },
 
+  restRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  restMark: {
+    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  },
+  restTitle: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.text },
+  restBody: { marginTop: 2, ...TYPE.caption, fontSize: 11.5, lineHeight: 15, color: BASECAMP.textDim },
+
+  missionPhoto: {
+    position: "absolute", right: 0, top: 0,
+    width: 124, height: 132, overflow: "hidden",
+  },
+  missionTopInset: { paddingRight: 96 },
   missionBody: { padding: 15 },
   missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   missionPills: { flexDirection: "row", flexWrap: "wrap", gap: 6 },

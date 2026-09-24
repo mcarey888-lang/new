@@ -208,15 +208,18 @@ export function BasecampHero({
           </TouchableOpacity>
         </View>
 
+        {/* One inline fact line, as the approved hero has it. The previous
+            three-column metric block with stacked labels read as a stat
+            widget bolted under the title; the objective needs a caption, not
+            a dashboard. A figure the goal does not carry is simply absent. */}
         {metrics.length > 0 && (
-          <View style={styles.metricRow}>
+          <View style={styles.factLine}>
             {metrics.map((m, i) => (
               <React.Fragment key={m.key}>
-                {i > 0 && <View style={styles.metricDivider} />}
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricValue} numberOfLines={1}>{m.value}</Text>
-                  <Text style={styles.metricLabel} numberOfLines={1}>{m.label.toUpperCase()}</Text>
-                </View>
+                {i > 0 && <Text style={styles.factSeparator}>|</Text>}
+                <Text style={styles.factText} numberOfLines={1}>
+                  {`${m.value} ${m.label.toLowerCase()}`}
+                </Text>
               </React.Fragment>
             ))}
           </View>
@@ -272,9 +275,11 @@ const styles = StyleSheet.create({
   image: { width: "100%" },
   imageInner: { resizeMode: "cover" },
   overlay: {
-    minHeight: 292,
+    minHeight: 300,
     paddingHorizontal: BASECAMP.gutter,
-    paddingBottom: 26,
+    /* The readiness panel overlaps the foot of the hero, so the photograph
+       has to keep running behind it rather than stopping at the date pill. */
+    paddingBottom: 40,
     justifyContent: "space-between",
   },
   topRow: {
@@ -313,24 +318,18 @@ const styles = StyleSheet.create({
   },
   namePencil: { marginTop: 10 },
 
-  metricRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 13 },
-  metricItem: { flexShrink: 1, minWidth: 0 },
-  metricDivider: {
-    width: 1, height: 26, marginHorizontal: 13,
-    backgroundColor: BASECAMP.hairline, marginTop: 1,
+  factLine: {
+    marginTop: 7, flexDirection: "row", flexWrap: "wrap",
+    alignItems: "center", columnGap: 9, rowGap: 2,
   },
-  metricValue: {
-    fontSize: 15, lineHeight: 18, fontFamily: "Inter_600SemiBold",
+  factText: {
+    fontSize: 13.5, lineHeight: 18, fontFamily: "Inter_400Regular",
     color: BASECAMP.textStrong,
   },
-  metricLabel: {
-    fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_500Medium",
-    letterSpacing: 1.1, color: BASECAMP.textDim,
-    marginTop: 3,
-  },
+  factSeparator: { fontSize: 13.5, lineHeight: 18, color: "rgba(255,255,255,0.22)" },
 
   datePill: {
-    marginTop: 16,
+    marginTop: 15,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",

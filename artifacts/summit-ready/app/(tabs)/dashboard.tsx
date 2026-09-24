@@ -38,6 +38,7 @@ import { ProgressTiles } from "@/components/basecamp/ProgressTiles";
 import { EditorialBand, QuickActionsGrid } from "@/components/basecamp/QuickActions";
 import { SRPanel, SRSectionHeader } from "@/components/ui";
 import { missionQueue, weekProgress } from "@/utils/basecampPresentation";
+import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
 import { CoachInsight } from "@/components/CoachInsight";
 import { buildCoachInsight } from "@/utils/coachInsightPresentation";
 import { buildCoachFacts } from "@/utils/coachFactsAdapter";
@@ -251,7 +252,7 @@ export default function DashboardScreen() {
   const reducedMotion = useReducedMotion();
   useScreenView("dashboard");
   const insets = useSafeAreaInsets();
-  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions } = useApp();
+  const { summitGoal, trainingPlan, sessions, readinessScore, hasViewedPlan, markPlanViewed, alpineProfileLoading, unlockedAchievements, newlyUnlocked, clearNewlyUnlocked, completedGoals, exploreHikes, completedPlanSessions, assignedHills } = useApp();
   const { isSubscribed } = useSubscription();
   /* Readiness 2.0 is read here only so the Coach card can DISPLAY authoritative
      figures. The Coach still produces none of them. */
@@ -612,6 +613,18 @@ export default function DashboardScreen() {
 
   /* The Coach reads the same session — it is told what is next, it does not
      decide it. */
+  /* A session's photograph is the hill the plan assigned to it; failing that,
+     the objective the whole plan is for. Both come from the existing
+     mountain-image service — nothing stock, and never another mountain. */
+  const sessionImage = useCallback((session: { key: string } | null) => {
+    if (!session) return null;
+    const subject = sessionImageSubject({
+      assignedHillName: assignedHills?.[session.key]?.name ?? null,
+      mountainName: summitGoal?.mountainName ?? null,
+    });
+    return mountainImageUri(subject, { width: 320, height: 300 });
+  }, [assignedHills, summitGoal?.mountainName]);
+
   const nextSession = mission
     ? currentWeek?.sessions?.[mission.sessionIndex] ?? null
     : null;
@@ -673,6 +686,7 @@ export default function DashboardScreen() {
               {mission ? (
                 <MissionCard
                   session={mission}
+                  imageUri={sessionImage(mission)}
                   phase={currentWeek?.phase ?? null}
                   onStart={() => openSession(mission)}
                   onOpen={() => openSession(mission)}
@@ -687,55 +701,10 @@ export default function DashboardScreen() {
         {/* ── Up next ───────────────────────────────────────────────── */}
         <UpNextRail
           sessions={upNext}
+          imageUriFor={sessionImage}
           onOpenSession={openSession}
           onOpenPlan={() => router.push("/(tabs)/plan")}
         />
-
-        {/* ── Progression ───────────────────────────────────────────── */}
-        <ProgressTiles
-          week={week}
-          onOpenBank={() => router.push("/elevation-history")}
-          onOpenPlan={() => router.push("/(tabs)/plan")}
-        />
-
-        {/* ── Training insight ──────────────────────────────────────────
-            The existing time assessment, in the composition's own voice.
-            Its wording and thresholds are the engine's, unchanged. */}
-        {timeAssessment
-          && (timeAssessment.status === "insufficient"
-            || timeAssessment.status === "impossible"
-            || timeAssessment.status === "tight") && (
-          <Animated.View
-            entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}
-            style={styles.section}
-          >
-            <SRPanel style={styles.insightPanel}>
-              <View style={styles.insightRow}>
-                <View style={styles.insightIcon}>
-                  <Lightbulb size={15} color={T.orange} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.insightEyebrow}>TRAINING INSIGHT</Text>
-                  <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
-                  <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
-                </View>
-              </View>
-            </SRPanel>
-          </Animated.View>
-        )}
-
-        {/* ── Alpine requirements ───────────────────────────────────────
-            Alpine objectives only. Existing content and logic. */}
-        {summitGoal.difficulty === "Alpine" && (
-          <View style={styles.section}>
-            <AlpineCard
-              goal={summitGoal}
-              sessions={sessions}
-              trainingPlan={trainingPlan}
-              loading={alpineProfileLoading}
-            />
-          </View>
-        )}
 
         {/* ── AI Coach ──────────────────────────────────────────────────
             SummitReady's existing Coach, inside the composition rather than
@@ -746,12 +715,14 @@ export default function DashboardScreen() {
             mountain, readiness, projection and next session are all passed in
             as engine-supplied facts. */}
         <View
-          style={styles.section}
+          style={styles.coachBand}
           onLayout={(e) => { coachY.current = e.nativeEvent.layout.y; }}
         >
-          {/* CoachInsight carries its own tracked-out AI COACH header and the
-              mascot, so the section does not repeat it. */}
-          <SRPanel>
+          {/* An integrated band, not another rounded card: a hairline rule
+              above, the page's own background behind. CoachInsight carries its
+              own tracked-out AI COACH header and the mascot, so the section
+              does not repeat them. */}
+          <View style={styles.coachInner}>
             <CoachInsight
               state={buildCoachInsight({
                 hasGoal: Boolean(summitGoal),
@@ -817,8 +788,54 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               </Animated.View>
             )}
-          </SRPanel>
+          </View>
         </View>
+
+        {/* ── Progression ───────────────────────────────────────────── */}
+        <ProgressTiles
+          week={week}
+          onOpenBank={() => router.push("/elevation-history")}
+          onOpenPlan={() => router.push("/(tabs)/plan")}
+        />
+
+        {/* ── Training insight ──────────────────────────────────────────
+            The existing time assessment, in the composition's own voice.
+            Its wording and thresholds are the engine's, unchanged. */}
+        {timeAssessment
+          && (timeAssessment.status === "insufficient"
+            || timeAssessment.status === "impossible"
+            || timeAssessment.status === "tight") && (
+          <Animated.View
+            entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(500)}
+            style={styles.section}
+          >
+            <SRPanel style={styles.insightPanel}>
+              <View style={styles.insightRow}>
+                <View style={styles.insightIcon}>
+                  <Lightbulb size={15} color={T.orange} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.insightEyebrow}>TRAINING INSIGHT</Text>
+                  <Text style={styles.insightTitle}>{timeAssessment.message}</Text>
+                  <Text style={styles.insightDesc}>{timeAssessment.detail}</Text>
+                </View>
+              </View>
+            </SRPanel>
+          </Animated.View>
+        )}
+
+        {/* ── Alpine requirements ───────────────────────────────────────
+            Alpine objectives only. Existing content and logic. */}
+        {summitGoal.difficulty === "Alpine" && (
+          <View style={styles.section}>
+            <AlpineCard
+              goal={summitGoal}
+              sessions={sessions}
+              trainingPlan={trainingPlan}
+              loading={alpineProfileLoading}
+            />
+          </View>
+        )}
 
         {/* ── Close ─────────────────────────────────────────────────── */}
         <EditorialBand onPress={() => router.push("/(tabs)/explore")} />
@@ -856,6 +873,16 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  /* The Coach reads as part of the page rather than a widget sitting on it:
+     a hairline above, no border, no rounded shell. */
+  coachBand: {
+    marginTop: 22,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: BASECAMP.hairline,
+  },
+  coachInner: { paddingHorizontal: BASECAMP.gutter },
+
   alpineCard: {
     paddingVertical: 12,
     gap: 12,

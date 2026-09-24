@@ -11,8 +11,12 @@ export function activePrimaryTabForSegments(segments: readonly string[]): Primar
     if (["mountains", "route", "progress", "expedition-complete"].includes(route)) return "expeditions";
   }
   if (routeGroup === "(tabs)") {
-    if (["dashboard", "v-home"].includes(route)) return "home";
-    if (["explore", "hills", "plan", "v-mountain", "v-hills"].includes(route)) return "explore";
+    /* Training Plan is reached from Basecamp and belongs to that journey, so
+       Basecamp stays lit while you are in it. It was marked as Explore, which
+       told the user they had left the training journey when they had not.
+       Containing links to explore routes does not make a screen Explore. */
+    if (["dashboard", "plan", "v-home"].includes(route)) return "home";
+    if (["explore", "hills", "v-mountain", "v-hills"].includes(route)) return "explore";
     if (["trails", "v-progress"].includes(route)) return "track";
     if (route === "account") return "you";
   }
