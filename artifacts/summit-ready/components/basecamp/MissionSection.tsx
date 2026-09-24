@@ -17,7 +17,7 @@
  */
 import React, { useEffect, useState } from "react";
 import {
-  Image, type ImageSourcePropType, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+  Image, type ImageSourcePropType, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
@@ -75,7 +75,7 @@ function SessionVisual({
       {showPhoto ? (
         <Image
           source={photoSource!}
-          style={StyleSheet.absoluteFill}
+          style={styles.visualImage}
           resizeMode="cover"
           onError={() => setFailed(true)}
           accessible={false}
@@ -115,10 +115,8 @@ export interface MissionCardProps {
 export function MissionCard({ session, phase, imageUri, onStart, onOpen }: MissionCardProps) {
   const facts = sessionFacts(session);
   const artwork = exerciseCardArtwork({ ...session, label: session.title });
-  /* Keep the photograph as a compact thumbnail, not a full-height image strip.
-     On narrow screens the title and action get priority over the artwork. */
-  const { width } = useWindowDimensions();
-  const visualWidth = width < 360 ? 46 : width < 400 ? 52 : 58;
+  /* The mission artwork is a small cue, not a competing visual block. */
+  const visualWidth = 30;
 
   return (
     <SRPanel
@@ -285,6 +283,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "rgba(8,13,15,0.5)",
+  },
+  visualImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
   missionVisual: { marginLeft: 8, borderRadius: 7 },
   missionBody: { flex: 1, minWidth: 0, padding: 9 },

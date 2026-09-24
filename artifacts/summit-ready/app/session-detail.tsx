@@ -403,8 +403,7 @@ export default function SessionDetailScreen() {
       : isStairRepeat                             ? "outdoor stair climbing exercise training"
       : "outdoor trail walking hiking fitness nature"
     : (assignedHill?.name ?? session?.label ?? summitGoal?.mountainName ?? "");
-  /* The selected exercise also appears as a contained illustration below;
-     the hero uses the generated-artwork scrim to ink out its baked lettering. */
+  /* The selected exercise also appears as a contained illustration below. */
   const exerciseArtwork: ImageSourcePropType | null =
       inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")
     : inferredGymExercise === "stepper"         ? require("@/assets/images/exercise-stepper.png")
@@ -424,17 +423,17 @@ export default function SessionDetailScreen() {
     session?.type === "cardio" && !isStairRepeat
       ? previewExerciseHero ? require("@/assets/images/exercise-stepper.png") : exerciseArtwork
       : null;
-  // Use the lettering-free crop for a small hero thumbnail; preserve the
-  // approved Stepper/Incline Treadmill pairing.
-  const heroThumbnailArtwork = selectedHeroArtwork
+  // Use the lettering-free crop across the hero; preserve the approved
+  // Stepper/Incline Treadmill pairing.
+  const heroArtwork = selectedHeroArtwork
     ? previewExerciseHero
       ? require("@/assets/images/exercise-stepper-right-half.png")
-      : exerciseCardArtwork(session)
+      : exerciseCardArtwork(session) ?? selectedHeroArtwork
     : null;
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
-    : selectedHeroArtwork
-      ? selectedHeroArtwork
+    : heroArtwork
+      ? heroArtwork
       : heroPhotoSubject
         ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
         : null;
@@ -506,13 +505,13 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero: the prescription over the selected exercise artwork or
-            place photography. A failure falls back to the designed gradient. */}
+        {/* ── Hero: exercise artwork or place photography behind the session
+            heading. A failure falls back to the designed gradient. */}
         <SRHeroFrame
-          source={selectedHeroArtwork ? null : heroImageSource}
+          source={heroImageSource}
           onImageError={() => setImageError(true)}
-          minHeight={selectedHeroArtwork ? 190 : 212}
-          dim={0.96}
+          minHeight={selectedHeroArtwork ? 218 : 212}
+          dim={selectedHeroArtwork ? 0.72 : 0.96}
           /* the header sits at the top and the objective at the foot of the
              photograph, as every other hero does — otherwise a short session
              title leaves a dead band between them */
@@ -554,15 +553,6 @@ export default function SessionDetailScreen() {
                 )}
               </View>
             </View>
-            {heroThumbnailArtwork && !imageError && (
-              <Image
-                source={heroThumbnailArtwork}
-                style={s.heroThumbnail}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-                accessible={false}
-              />
-            )}
           </View>
         </SRHeroFrame>
 
@@ -916,7 +906,6 @@ const s = StyleSheet.create({
     paddingHorizontal: BASECAMP.gutter, marginTop: 12, paddingBottom: 16,
   },
   heroText: { flex: 1, minWidth: 0 },
-  heroThumbnail: { width: 72, height: 72, borderRadius: 8 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   title: {
     marginTop: 10,

@@ -299,7 +299,7 @@ export function SRHeroFrame({
       >
         <Image
           source={resolved}
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { width: "100%", height: "100%" }]}
           resizeMode="cover"
           onError={onImageError}
           accessible={false}

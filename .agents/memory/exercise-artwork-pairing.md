@@ -9,8 +9,8 @@ Incline Treadmill uses the right-half crop of its own treadmill library image on
 
 **How to apply:** Keep that one session-detail exception when refining exercise imagery. Other exercise cards use their respective library artwork, and their detail views should follow the selected exercise. Ask before replacing the approved exception with a treadmill image.
 
-Exercise artwork on session detail should be a bounded, lettering-free thumbnail, not a full-width hero background. The mission card image should likewise be a small thumbnail rather than an edge-to-edge visual block.
+Exercise artwork on session detail should be a lettering-free crop spanning a compact hero, not a tiny thumbnail beside the title and not an oversized poster. The mission card image should be a very small visual cue rather than an edge-to-edge block.
 
-**Why:** The full-bleed exercise art under a strong scrim made the session hero unusually tall and mostly black; a prior thumbnail reduction still looked oversized to the user on a real phone screenshot. Layout sizing and crop, not regenerated/resized source assets, were the problem.
+**Why:** The full-bleed exercise art under a strong scrim made the session hero unusually tall and mostly black. The user then explicitly rejected the small session-detail thumbnail and asked for a hero image, while saying the mission-card thumbnail was still too large. Layout sizing, crop, and scrim, not regenerated source assets, were the problem.
 
-**How to apply:** Keep mountain photos as backgrounds where appropriate, but give generated exercise art its own compact frame beside session details. Preserve the selected exercise identity and the approved treadmill/stepper exception.
+**How to apply:** Keep mountain photos as backgrounds where appropriate. Let generated exercise art fill a short hero behind the title using the lettering-free crop and a lighter scrim; keep mission-card imagery subordinate to its text. Preserve the selected exercise identity and the approved treadmill/stepper exception.

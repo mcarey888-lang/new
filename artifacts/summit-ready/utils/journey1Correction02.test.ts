@@ -129,14 +129,15 @@ describe("Training session", () => {
     }
   });
 
-  /* Exercise art is a bounded, lettering-free thumbnail; hill photography can
-     still fill the hero. No full-size exercise poster sits behind the text. */
-  it("keeps exercise artwork in a small hero thumbnail", () => {
+  /* A lettering-free crop fills the compact hero; the session heading remains
+     over it rather than having a separate thumbnail beside the heading. */
+  it("keeps exercise artwork as a compact hero image", () => {
     const hero = session.slice(at("<SRHeroFrame"), at("</SRHeroFrame>"));
-    expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
-    expect(hero).toContain("source={heroThumbnailArtwork}");
+    expect(hero).toContain("source={heroImageSource}");
+    expect(hero).toContain("minHeight={selectedHeroArtwork ? 218 : 212}");
+    expect(hero).not.toContain("heroThumbnail");
     expect(session).toContain('require("@/assets/images/exercise-stepper-right-half.png")');
-    expect(session).toContain("heroThumbnail: { width: 72, height: 72");
+    expect(session).toContain(": exerciseCardArtwork(session) ?? selectedHeroArtwork");
   });
 
   it("keeps the exercise illustration contained, with nothing laid over it", () => {
