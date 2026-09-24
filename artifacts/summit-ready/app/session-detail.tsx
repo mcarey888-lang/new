@@ -640,7 +640,7 @@ export default function SessionDetailScreen() {
                   <Image
                     source={exerciseArtwork}
                     style={s.exercisePlateImage}
-                    resizeMode="cover"
+                    resizeMode="contain"
                     accessible={false}
                   />
                 </View>

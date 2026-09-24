@@ -34,3 +34,14 @@ sheet. Map **dominance and layout** were verified; tile rendering was not.
 Images are 1x. Mountain imagery is served by the production image service in
 the app; in these renders a single repository asset stands in for every
 `mountain-image` request, so the same photograph repeats.
+
+## Follow-up engineering issues (outside Pass 02)
+
+- `getCurrentWeek(plan)` falls back to the first week when today's date matches
+  no plan week, even if none is flagged `isCurrentWeek`. Review how plans outside
+  their scheduled range should select or label a current week.
+- `targetDateDisplay(summitDate)` constructs a local-noon date by appending
+  `T12:00:00` to the input. A full ISO timestamp would produce an invalid date;
+  decide and enforce the accepted summit-date input format separately.
+
+Neither issue is changed by this visual integration.

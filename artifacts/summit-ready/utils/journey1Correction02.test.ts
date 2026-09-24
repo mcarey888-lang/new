@@ -142,6 +142,7 @@ describe("Training session", () => {
     expect(session).toContain("exercisePlate");
     const plate = session.slice(at("<View style={s.exercisePlate}>"), at("</View>\n              )}"));
     expect(plate).toContain("exerciseArtwork");
+    expect(plate).toContain('resizeMode="contain"');
     expect(plate).not.toContain("<Text");
   });
 
@@ -205,8 +206,12 @@ describe("Track screen", () => {
     expect(track).toContain("routeIdRef");
   });
 
-  it("never gates Start on GPS or on connectivity", () => {
-    expect(track).toContain("const canStart   = true;");
+  it("never gates Start on GPS or connectivity, but protects canonical handoffs", () => {
+    const startGuard = track.match(/const canStart = !canonicalRouteIntent \|\|([\s\S]*?canonicalContextFresh\);)/)?.[0];
+    expect(startGuard).toBeDefined();
+    expect(startGuard).not.toMatch(/\bgpsReady\b|\bisOffline\b/);
+    expect(startGuard).toContain("!canonicalRouteContextPending");
+    expect(startGuard).toContain("!canonicalRouteContextInvalid");
     expect(track).toContain("Connectivity is advisory only");
   });
 
