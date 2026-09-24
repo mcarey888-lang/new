@@ -14,19 +14,27 @@ import { BASECAMP, TYPE } from "@/constants/tokens";
 import { DevToolsModal } from "@/components/DevToolsModal";
 import { DEV_PROFILES, loadDevProfile } from "@/utils/devProfiles";
 import { discardActiveHike, readActiveHike } from "@/utils/activeHikeSession";
+import {
+  restorePendingAfterActiveHike,
+  restorePendingOnboardingIntent,
+  shouldResetLandingRedirectForUser,
+  shouldStartSignedInLandingRedirect,
+} from "@/utils/onboardingContinuation";
 
 const DEV_TAPS_REQUIRED = 5;
 const DEV_TAP_WINDOW_MS = 2000;
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoading, reloadApp, shellMode, activeExpeditionId } = useApp();
+  const { isLoading, reloadApp, shellMode, activeExpeditionId, setShellMode } = useApp();
   const { isSignedIn, isLoaded: authLoaded, userId } = useAuth();
 
   const [devModalVisible, setDevModalVisible] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const landingRedirectStarted = useRef(false);
+  const landingRedirectUserId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!__DEV__) return;
@@ -60,34 +68,53 @@ export default function LandingScreen() {
   }
 
   useEffect(() => {
-    if (!authLoaded || isLoading) return;
-    if (!isSignedIn) return;
+    if (authLoaded && isSignedIn !== true) {
+      landingRedirectStarted.current = false;
+      landingRedirectUserId.current = null;
+    } else if (shouldResetLandingRedirectForUser(
+      isSignedIn, userId, landingRedirectUserId.current,
+    )) {
+      landingRedirectStarted.current = false;
+    }
+    if (!shouldStartSignedInLandingRedirect(
+      authLoaded, isSignedIn, isLoading, landingRedirectStarted.current,
+    )) return;
+    landingRedirectStarted.current = true;
+    landingRedirectUserId.current = userId ?? null;
     // Check whether the user was mid-hike when the app was killed.
     // If so, route back to the tracking screen instead of the dashboard.
     (async () => {
       try {
-        if (userId) {
+        const destination = await restorePendingAfterActiveHike(async () => {
+          if (!userId) return false;
           const session = await readActiveHike<any>(userId);
-          if (session) {
-            const ageMs = Date.now() - (session.savedAt ?? 0);
-            if (ageMs < 24 * 60 * 60 * 1000) {
-              // Recent session — send the user back to the hike screen to restore it
-              router.replace({
-                pathname: "/hike-tracking",
-                params: {
-                  restore: "1",
-                  ...(session.hillMeta?.sessionKey    && { hillSessionKey:        session.hillMeta.sessionKey }),
-                  ...(session.hillMeta?.hillName      && { hillName:              session.hillMeta.hillName }),
-                  ...(session.hillMeta?.targetReps    != null && { targetReps:         String(session.hillMeta.targetReps) }),
-                  ...(session.hillMeta?.estimatedGainPerRep != null && { estimatedGainPerRep: String(session.hillMeta.estimatedGainPerRep) }),
-                  ...(session.hillMeta?.estimatedTotalGain  != null && { estimatedTotalGain:  String(session.hillMeta.estimatedTotalGain) }),
-                },
-              } as any);
-              return;
-            }
-            // Stale session (> 24 h old) — discard and go to dashboard
-            await discardActiveHike(session);
+          if (!session) return false;
+          const ageMs = Date.now() - (session.savedAt ?? 0);
+          if (ageMs < 24 * 60 * 60 * 1000) {
+            // Recover this authenticated owner's checkpoint before considering
+            // onboarding; the pending intent remains available for later.
+            router.replace({
+              pathname: "/hike-tracking",
+              params: {
+                restore: "1",
+                ...(session.hillMeta?.sessionKey    && { hillSessionKey:        session.hillMeta.sessionKey }),
+                ...(session.hillMeta?.hillName      && { hillName:              session.hillMeta.hillName }),
+                ...(session.hillMeta?.targetReps    != null && { targetReps:         String(session.hillMeta.targetReps) }),
+                ...(session.hillMeta?.estimatedGainPerRep != null && { estimatedGainPerRep: String(session.hillMeta.estimatedGainPerRep) }),
+                ...(session.hillMeta?.estimatedTotalGain  != null && { estimatedTotalGain:  String(session.hillMeta.estimatedTotalGain) }),
+              },
+            } as any);
+            return true;
           }
+          // Stale session (> 24 h old) — discard and continue normal routing.
+          await discardActiveHike(session);
+          return false;
+        }, () => restorePendingOnboardingIntent(AsyncStorage, {
+          setShellMode,
+          navigateToDestination: route => router.replace(route as any),
+        }));
+        if (destination === "active-hike" || destination.status === "restored") {
+          return;
         }
       } catch { /* ignore — fall through to dashboard */ }
       // Restore the shell the user was last in.
@@ -105,7 +132,7 @@ export default function LandingScreen() {
       }
       router.replace("/(tabs)/dashboard");
     })();
-  }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId, userId]);
+  }, [authLoaded, isSignedIn, isLoading, shellMode, activeExpeditionId, userId, setShellMode]);
 
   if (isLoading || demoLoading) {
     return (

@@ -25,7 +25,7 @@
  */
 import React, { useMemo, useState } from "react";
 import {
-  Image, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -44,9 +44,11 @@ import { useScreenView } from "@/lib/analytics";
 import {
   BANK_NOTE, BANK_POINTS, COACH_BOUNDARY, COACH_DISCLAIMER, COACH_POINTS,
   INTENT_FOOTNOTE, ONBOARDING_INTENTS, ONBOARDING_PATHS, ONBOARDING_STEPS,
-  PATHS_FOOTNOTE, READY_POINTS, destinationFor, routeForIntent, shellForIntent,
+  PATHS_FOOTNOTE, READY_POINTS, destinationFor,
   type OnboardingIntent, type OnboardingStepId,
 } from "@/utils/onboardingSteps";
+import { continueFromOnboarding } from "@/utils/onboardingContinuation";
+import { useAuth } from "@clerk/expo";
 
 const MASCOT = require("@/assets/mascot.webp");
 const HERO = require("@/assets/images/hero-base-camp.png");
@@ -59,6 +61,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion() ?? false;
   const { setShellMode } = useApp();
+  const { isSignedIn } = useAuth();
 
   const [index, setIndex] = useState(0);
   const [intent, setIntent] = useState<OnboardingIntent["id"] | null>(null);
@@ -74,16 +77,22 @@ export default function OnboardingScreen() {
     setIndex(i => Math.max(0, i - 1));
   }
 
-  async function finish() {
+  async function finish(action: "finish" | "skip" = "finish") {
     await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, "1").catch(() => {});
-    /* The intent decides where the app opens — nothing more. It sets no
-       entitlement and locks no mode. */
-    await setShellMode(shellForIntent(intent)).catch(() => {});
-    router.replace(routeForIntent(intent) as any);
+    try {
+      await continueFromOnboarding(action, isSignedIn === true, intent, {
+        storage: AsyncStorage,
+        setShellMode,
+        navigateToAuth: route => router.replace(route as any),
+        navigateToDestination: route => router.replace(route as any),
+      });
+    } catch {
+      Alert.alert("Unable to continue", "Please try again. Your selected starting point could not be saved.");
+    }
   }
 
   function next() {
-    if (last) { void finish(); return; }
+    if (last) { void finish("finish"); return; }
     setIndex(i => Math.min(total - 1, i + 1));
   }
 
@@ -316,7 +325,7 @@ export default function OnboardingScreen() {
           </Text>
         ) : last ? null : (
           <Pressable
-            onPress={() => void finish()}
+            onPress={() => void finish("skip")}
             hitSlop={HIT.slop}
             accessibilityRole="button"
             accessibilityLabel="Skip onboarding"
