@@ -19,6 +19,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "@/lib/revenuecat";
 import { T, STATUS_COLOR, STATUS_LABEL } from "@/constants/theme";
+import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { useScreenView } from "@/lib/analytics";
 
 const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
@@ -55,7 +56,7 @@ function ConfirmModal({ visible, packageName, priceString, onConfirm, onCancel }
               <Text style={confirmStyles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onConfirm} style={confirmStyles.confirmBtn} activeOpacity={0.85}>
-              <LinearGradient colors={["#3ECF75", "#2AB860"]} style={confirmStyles.confirmGrad}>
+              <LinearGradient colors={[BASECAMP.accent, "#15C486"]} style={confirmStyles.confirmGrad}>
                 <Text style={confirmStyles.confirmText}>Confirm</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -234,7 +235,7 @@ export default function PaywallScreen() {
                 style={[styles.planCard, selectedPlan === "monthly" && styles.planCardActive]}
               >
                 {selectedPlan === "monthly" && (
-                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={[BASECAMP.accentDim, "transparent"]} style={StyleSheet.absoluteFill} />
                 )}
                 <Text style={styles.planLabel}>Monthly</Text>
                 <Text style={[styles.planPrice, selectedPlan === "monthly" && { color: T.green }]}>
@@ -250,7 +251,7 @@ export default function PaywallScreen() {
                 style={[styles.planCard, selectedPlan === "annual" && styles.planCardActive]}
               >
                 {selectedPlan === "annual" && (
-                  <LinearGradient colors={[T.greenDim, "transparent"]} style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={[BASECAMP.accentDim, "transparent"]} style={StyleSheet.absoluteFill} />
                 )}
                 <View style={styles.bestValueBadge}>
                   <Text style={styles.bestValueText}>BEST VALUE</Text>
@@ -286,10 +287,10 @@ export default function PaywallScreen() {
             activeOpacity={0.85}
             style={[styles.ctaBtn, (isPurchasing || offeringsLoading || !activePkg) && { opacity: offeringsLoading ? 0.8 : 0.6 }]}
           >
-            <LinearGradient colors={["#3ECF75", "#2AB860"]} style={styles.ctaGrad}>
+            <LinearGradient colors={[BASECAMP.accent, "#15C486"]} style={styles.ctaGrad}>
               {isPurchasing || offeringsLoading
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Zap size={18} color="#fff" />}
+                ? <ActivityIndicator size="small" color={BASECAMP.accentInk} />
+                : <Zap size={18} color={BASECAMP.accentInk} />}
               <Text style={styles.ctaText}>
                 {isPurchasing
                   ? "Processing…"
@@ -375,76 +376,76 @@ export default function PaywallScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 24, gap: 24 },
+  scroll: { paddingHorizontal: BASECAMP.gutter, gap: SP.xxl },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   closeBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    width: HIT.minTarget, height: HIT.minTarget, borderRadius: 14,
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     alignItems: "center", justifyContent: "center",
   },
   logo: { width: 160, height: 64 },
   heroSection: { gap: 12, alignItems: "center" },
   proBadge: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: T.greenDim, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderWidth: 1, borderColor: T.green + "40",
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: BASECAMP.accentDim, borderRadius: 999,
+    paddingHorizontal: 12, minHeight: 28,
+    borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
   proBadgeText: {
-    fontSize: 11, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.8,
+    ...TYPE.eyebrow, fontSize: 11, color: BASECAMP.accent,
   },
   headline: {
-    fontSize: 26, fontFamily: "Inter_700Bold", color: T.white,
-    textAlign: "center", lineHeight: 34, letterSpacing: -0.3,
+    ...TYPE.hero, fontSize: 28, lineHeight: 33, color: BASECAMP.text,
+    textAlign: "center",
   },
   subheadline: {
-    fontSize: 15, fontFamily: "Inter_400Regular", color: T.textMuted,
-    textAlign: "center", lineHeight: 22,
+    ...TYPE.body, fontSize: 14, lineHeight: 21, color: BASECAMP.textMuted,
+    textAlign: "center",
   },
   featuresSection: {
-    backgroundColor: T.card, borderRadius: 20,
-    borderWidth: 1, borderColor: T.border,
+    backgroundColor: BASECAMP.panelSub, borderRadius: 20,
+    borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
     padding: 16, gap: 14,
   },
   featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   featureIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: T.greenDim,
+    width: 34, height: 34, borderRadius: 11,
+    backgroundColor: BASECAMP.accentDim,
     alignItems: "center", justifyContent: "center",
     flexShrink: 0,
   },
-  featureTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: T.white },
-  featureDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textMuted, marginTop: 2 },
+  featureTitle: { ...TYPE.bodyBold, fontSize: 14, color: BASECAMP.text },
+  featureDesc: { marginTop: 2, fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
   planSection: { gap: 12 },
   trialBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    backgroundColor: T.greenDim, borderRadius: 12,
-    paddingVertical: 10, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: T.green + "40",
+    backgroundColor: BASECAMP.accentDim, borderRadius: 12,
+    minHeight: 42, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
-  trialBannerText: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.green,
-  },
-  planHeading: { fontSize: 15, fontFamily: "Inter_700Bold", color: T.white },
+  trialBannerText: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.accent },
+  planHeading: { ...TYPE.heading, fontSize: 15, color: BASECAMP.text },
   planRow: { flexDirection: "row", gap: 10 },
   planCard: {
-    flex: 1, backgroundColor: T.card,
-    borderRadius: 16, borderWidth: 1, borderColor: T.border,
-    padding: 14, gap: 4, alignItems: "center",
+    flex: 1, backgroundColor: BASECAMP.panelSub,
+    borderRadius: 16, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+    padding: 14, gap: 4, alignItems: "center", minHeight: HIT.minTarget + 40,
     overflow: "hidden", position: "relative",
   },
-  planCardActive: { borderColor: T.green, borderWidth: 1.5 },
+  planCardActive: { borderColor: BASECAMP.accent, borderWidth: 1.5, backgroundColor: BASECAMP.accentDim },
   bestValueBadge: {
-    backgroundColor: T.green + "25", borderRadius: 6,
+    backgroundColor: BASECAMP.accentDim, borderRadius: 7,
+    borderWidth: 1, borderColor: BASECAMP.accentLine,
     paddingHorizontal: 7, paddingVertical: 2,
     marginBottom: 4,
   },
-  bestValueText: { fontSize: 9, fontFamily: "Inter_700Bold", color: T.green, letterSpacing: 0.5 },
-  planLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: T.textMuted },
-  planPrice: { fontSize: 22, fontFamily: "Inter_700Bold", color: T.white },
-  planPer: { fontSize: 11, fontFamily: "Inter_400Regular", color: T.textDim },
+  bestValueText: { fontSize: 9, fontFamily: "Inter_700Bold", color: BASECAMP.accent, letterSpacing: 0.6 },
+  planLabel: { ...TYPE.smallBold, fontSize: 13, color: BASECAMP.textMuted },
+  planPrice: { ...TYPE.metric, fontSize: 22, lineHeight: 26, color: BASECAMP.text },
+  planPer: { fontSize: 11, lineHeight: 14, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: T.orangeDim, borderRadius: 12,
@@ -453,18 +454,18 @@ const styles = StyleSheet.create({
   errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.orange },
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: T.greenDim, borderRadius: 12,
-    padding: 12, borderWidth: 1, borderColor: T.green + "30",
+    backgroundColor: BASECAMP.accentDim, borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: BASECAMP.accentLine,
   },
-  successText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: T.green },
+  successText: { flex: 1, ...TYPE.small, fontSize: 13, color: BASECAMP.accent },
   ctaSection: { alignItems: "center", gap: 10 },
-  ctaBtn: { width: "100%", borderRadius: 18, overflow: "hidden" },
+  ctaBtn: { width: "100%", borderRadius: 16, overflow: "hidden" },
   ctaGrad: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, paddingVertical: 17,
+    gap: 10, minHeight: 54,
   },
-  ctaText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
-  cancelNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: T.textDim },
+  ctaText: { fontSize: 17, lineHeight: 21, fontFamily: "Inter_700Bold", color: BASECAMP.accentInk },
+  cancelNote: { fontSize: 12, lineHeight: 16, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   offeringsErrorBox: {
     flexDirection: "column", alignItems: "center", gap: 6,
     backgroundColor: T.orangeDim, borderRadius: 14,
