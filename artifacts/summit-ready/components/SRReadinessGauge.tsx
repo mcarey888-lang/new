@@ -66,6 +66,8 @@ export function SRReadinessGauge({
   statusLabel, tone, showProjectedCallout = true, locked = false, lockedLabel = "PRO", style,
 }: SRReadinessGaugeProps) {
   const reduced = useReducedMotion();
+  // The Basecamp's small ring needs quieter typography than full-size gauges.
+  const compact = size <= 100;
   const radius = (size - strokeWidth) / 2;
   const cx = size / 2;
   const circ = circumference(radius);
@@ -175,14 +177,14 @@ export function SRReadinessGauge({
             {/* No figure and no READY word: "PRO READY" would read as a
                 status the user has achieved. The lock is the whole message. */}
             <Lock size={Math.round(size * 0.19)} color={arcTone} />
-            <Text style={[styles.lockedLabel, { color: arcTone, fontSize: Math.min(12, size * 0.125), lineHeight: Math.min(15, size * 0.15) }]} numberOfLines={1}>{lockedLabel}</Text>
+            <Text style={[styles.lockedLabel, { color: arcTone, fontSize: Math.min(12, size * (compact ? 0.105 : 0.125)), lineHeight: Math.min(15, size * (compact ? 0.13 : 0.15)) }]} numberOfLines={1}>{lockedLabel}</Text>
           </>
         ) : (
           <>
         <Text
           style={[
             TYPE.metricLg,
-            { fontSize: size * 0.3, lineHeight: size * 0.33, color: value === null ? T.textMuted : arcTone },
+            { fontSize: size * (compact ? 0.23 : 0.3), lineHeight: size * (compact ? 0.27 : 0.33), color: value === null ? T.textMuted : arcTone },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -190,8 +192,8 @@ export function SRReadinessGauge({
         >
           {value === null ? "—" : `${Math.round(value)}%`}
         </Text>
-        <Text style={[styles.readyWord, { fontSize: Math.min(11, size * 0.11), lineHeight: Math.min(14, size * 0.14) }]}>READY</Text>
-        {statusLabel ? <Text style={[styles.status, { color: statusTone, fontSize: Math.min(9.5, size * 0.1), lineHeight: Math.min(12, size * 0.13) }]} numberOfLines={1}>{statusLabel}</Text> : null}
+        <Text style={[styles.readyWord, { fontSize: Math.min(11, size * (compact ? 0.095 : 0.11)), lineHeight: Math.min(14, size * (compact ? 0.12 : 0.14)) }]}>READY</Text>
+        {statusLabel ? <Text style={[styles.status, { color: statusTone, fontSize: Math.min(9.5, size * (compact ? 0.09 : 0.1)), lineHeight: Math.min(12, size * (compact ? 0.115 : 0.13)) }]} numberOfLines={1}>{statusLabel}</Text> : null}
         </>
         )}
       </View>
