@@ -147,7 +147,7 @@ describe("exercise imagery keeps the artwork's lettering away from controls", ()
     const hero = session.slice(session.indexOf("<SRHeroFrame"), session.indexOf("</SRHeroFrame>"));
     expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
     expect(hero).toContain("source={selectedHeroArtwork}");
-    expect(hero).toContain('resizeMode="contain"');
+    expect(hero).toContain('resizeMode="cover"');
     expect(session).toContain("exercise-stepper.png");
     expect(session).not.toMatch(/exercisePlate/);
     expect(session).toMatch(/const exerciseArtwork/);

@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -259,6 +260,7 @@ export default function SessionDetailScreen() {
     sessionDayOverrides, setSessionDayOverride, clearSessionDayOverride,
   } = useApp();
   const { isSubscribed } = useSubscription();
+  const { width: viewportWidth } = useWindowDimensions();
 
   const week    = trainingPlan.find(w => w.weekNumber === weekNum);
   const session = week?.sessions[sessionIdx];
@@ -496,36 +498,33 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 80 : insets.bottom + 80 }}
       >
-        {/* ── Hero: exercise artwork is displayed intact above the title, so
-            its built-in lettering never competes with session controls. Hill
-            photography retains the background treatment. */}
+        {/* ── Exercise artwork starts at the very top, edge-to-edge; its
+            built-in lettering stays separate from the header and session
+            title. Hill photography retains the background treatment. */}
         <SRHeroFrame
           source={selectedHeroArtwork ? null : heroImageSource}
           onImageError={() => setImageError(true)}
           minHeight={selectedHeroArtwork ? 0 : 212}
           dim={0.96}
-          /* the header sits at the top and the objective at the foot of the
-             photograph, as every other hero does — otherwise a short session
-             title leaves a dead band between them */
           style={{ justifyContent: "space-between" }}
         >
-          <View style={{ paddingTop: Platform.OS === "web" ? 18 : insets.top + 8 }}>
+          {selectedHeroArtwork && !imageError && (
+            <Image
+              source={selectedHeroArtwork}
+              style={[s.exerciseHeroImage, { height: Math.min(viewportWidth * 2 / 3, 480) }]}
+              resizeMode="cover"
+              onError={() => setImageError(true)}
+              accessible={false}
+            />
+          )}
+
+          <View style={{ paddingTop: selectedHeroArtwork && !imageError ? 8 : Platform.OS === "web" ? 18 : insets.top + 8 }}>
             <SRScreenHeader
               title="Training session"
               subtitle={`Week ${weekNum} · ${week.phase}`}
               onBack={() => router.back()}
             />
           </View>
-
-          {selectedHeroArtwork && !imageError && (
-            <Image
-              source={selectedHeroArtwork}
-              style={s.exerciseHeroImage}
-              resizeMode="contain"
-              onError={() => setImageError(true)}
-              accessible={false}
-            />
-          )}
 
           <View style={s.heroBody}>
             <View style={s.heroText}>
@@ -884,7 +883,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: BASECAMP.gutter, marginTop: 12, paddingBottom: 16,
   },
-  exerciseHeroImage: { width: "100%", height: 224 },
+  exerciseHeroImage: { width: "100%" },
   heroText: { flex: 1, minWidth: 0 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   title: {

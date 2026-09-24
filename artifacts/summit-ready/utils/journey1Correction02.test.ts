@@ -131,14 +131,16 @@ describe("Training session", () => {
     }
   });
 
-  /* Use the exact full library artwork formerly shown lower down the screen,
-     without painting the functional title over its baked-in lettering. */
-  it("shows the full exercise illustration once, in the hero", () => {
+  /* The full library artwork is flush with the top and both side edges;
+     navigation and the functional title follow rather than overlaying it. */
+  it("shows the exercise illustration edge-to-edge at the top of the hero", () => {
     const hero = session.slice(at("<SRHeroFrame"), at("</SRHeroFrame>"));
     expect(hero).toContain("source={selectedHeroArtwork ? null : heroImageSource}");
     expect(hero).toContain("source={selectedHeroArtwork}");
-    expect(hero).toContain('resizeMode="contain"');
-    expect(hero.indexOf("source={selectedHeroArtwork}")).toBeLessThan(hero.indexOf("style={s.heroBody}"));
+    expect(hero).toContain('resizeMode="cover"');
+    expect(hero.indexOf("source={selectedHeroArtwork}")).toBeLessThan(hero.indexOf("<SRScreenHeader"));
+    expect(session).toContain('exerciseHeroImage: { width: "100%" }');
+    expect(hero).toContain("height: Math.min(viewportWidth * 2 / 3, 480)");
     expect(session).toContain('require("@/assets/images/exercise-stepper.png")');
     expect(session).not.toContain("exercisePlate");
   });
