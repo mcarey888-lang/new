@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  DNA_NO_TARGET, NOT_RECORDED, firstSentence, formatDistanceM, formatHours,
+  CATALOGUE_UNAVAILABLE_NOTICE, DNA_NO_TARGET, NOT_RECORDED, firstSentence, formatDistanceM, formatHours,
   formatKilometres, formatMetres, formatSeconds, presentMountain, presentMountainDna,
   presentRoutes, presentSelectedRoute, profileFrom, sortRoutes,
   type MountainLookupResponse,
@@ -358,5 +358,17 @@ describe("no fabricated values reach the screen", () => {
     expect(m.summitElevation.value).toBeNull();
     expect(m.summitElevation.state).toBe("missing");
     expect(NOT_RECORDED).toBe("Not recorded");
+  });
+
+  it("does not describe catalogue downtime as an absent mountain or verified routes", () => {
+    const lookup: MountainLookupResponse = {
+      mountainName: "Test Fell",
+      source: "cache",
+      catalogueStatus: "unavailable",
+      routes: [],
+    };
+    expect(presentMountain(lookup)).toMatchObject({ verified: false, fallback: true, id: null });
+    expect(CATALOGUE_UNAVAILABLE_NOTICE.title).toContain("temporarily unavailable");
+    expect(CATALOGUE_UNAVAILABLE_NOTICE.body).toContain("browse-only");
   });
 });

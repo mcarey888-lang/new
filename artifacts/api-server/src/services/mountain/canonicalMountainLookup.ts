@@ -345,6 +345,27 @@ async function defaultQuery(
   }
 }
 
+/** Unlike area discovery, a mountain detail lookup must distinguish an
+ * unavailable engine from a genuine verified-catalogue miss. */
+export class CanonicalCatalogueUnavailableError extends Error {
+  constructor() {
+    super("Trusted mountain catalogue is temporarily unavailable");
+    this.name = "CanonicalCatalogueUnavailableError";
+  }
+}
+
+export function lookupVerifiedCanonicalMountainStrict(
+  input: CanonicalLookupInput,
+): Promise<CanonicalLookupResult> {
+  return lookupVerifiedCanonicalMountain(input, async (text, params) => {
+    try {
+      return await executeEngineReadOnlyQuery<Record<string, unknown>>(text, params);
+    } catch {
+      throw new CanonicalCatalogueUnavailableError();
+    }
+  });
+}
+
 /**
  * Match the importer's NFKC → case-fold → Unicode alphanumeric normalization.
  *

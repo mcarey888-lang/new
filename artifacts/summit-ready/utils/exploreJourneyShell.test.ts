@@ -23,6 +23,12 @@ describe("Explore", () => {
     expect(body).not.toMatch(/trail-detail/);
   });
 
+  it("does not mistake a curated display region for an exact verified region", () => {
+    const open = body.slice(body.indexOf("function openMountain"), body.indexOf("function imageUri"));
+    expect(open).toContain("name: mountainSubject(trail.name)");
+    expect(open).not.toContain("trail.region");
+  });
+
   it("no longer carries the superseded presentation", () => {
     expect(body).not.toMatch(/FallbackImage|s\.featuredBadge|MOUNTAIN IMAGE UNAVAILABLE/);
     expect(body).not.toMatch(/Popular This Month/);

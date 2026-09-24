@@ -74,6 +74,8 @@ export interface MountainLookupResponse {
   country?: string;
   region?: string;
   source?: "canonical" | "cache" | "ai";
+  /** The engine could not be read; cache/AI routes are browse-only. */
+  catalogueStatus?: "unavailable";
   routeSource?: "canonical" | "unavailable";
   routes?: Array<TrustedRouteRow | LegacyRouteRow>;
   canonicalIdentity?: {
@@ -617,6 +619,13 @@ export const FALLBACK_NOTICE = {
   body:
     "This mountain has not been matched to SummitReady's verified catalogue, so its routes carry no canonical "
     + "identity. You can read what we hold, but planning and navigation stay closed until it is verified.",
+} as const;
+
+export const CATALOGUE_UNAVAILABLE_NOTICE = {
+  title: "Verified catalogue temporarily unavailable",
+  body:
+    "We can't check this mountain's verified identity right now. The routes below are browse-only "
+    + "suggestions; planning and navigation stay closed until the catalogue is available.",
 } as const;
 
 export const NO_ROUTES_NOTICE = {

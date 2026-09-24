@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestHandler } from "express";
 import {
+  CanonicalCatalogueUnavailableError,
   lookupVerifiedCanonicalSummitsInArea,
   lookupVerifiedCanonicalMountain,
   normalizeMountainLookupTerm,
@@ -655,6 +656,34 @@ describe("POST /api/mountain-lookup handler", () => {
       mountainName: "Cached mountain",
     });
     expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+
+  it("keeps browsing available but labels cached data when the engine is unavailable", async () => {
+    const deps = dependencies({ kind: "none" });
+    vi.mocked(deps.canonicalLookup).mockRejectedValue(new CanonicalCatalogueUnavailableError());
+    vi.mocked(deps.cacheLookup).mockResolvedValue({ mountainName: "Snowdon", routes: [legacyRoute] });
+
+    const result = await invoke(createMountainLookupHandler(deps), { name: "Snowdon" });
+
+    expect(result.status).toBe(200);
+    expect(result.payload).toMatchObject({
+      source: "cache",
+      catalogueStatus: "unavailable",
+      mountainName: "Snowdon",
+    });
+    expect(result.payload).not.toHaveProperty("canonicalIdentity");
+    expect(deps.aiLookup).not.toHaveBeenCalled();
+  });
+
+  it("keeps unexpected canonical errors explicit rather than disguising them as cache misses", async () => {
+    const deps = dependencies({ kind: "none" });
+    vi.mocked(deps.canonicalLookup).mockRejectedValue(new Error("unexpected mapping failure"));
+
+    const result = await invoke(createMountainLookupHandler(deps), { name: "Snowdon" });
+
+    expect(result.status).toBe(503);
+    expect(result.payload).toMatchObject({ code: "CANONICAL_LOOKUP_UNAVAILABLE" });
+    expect(deps.cacheLookup).not.toHaveBeenCalled();
   });
 
   it("never labels review-only Cho Oyu as canonical", async () => {

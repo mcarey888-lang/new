@@ -14,3 +14,9 @@ Canonical geometry must remain unavailable unless every geometry member has exac
 **Why:** A reusable fact source or a historical route validation cannot safely authorize geometry assembled from separate source bundles.
 
 **How to apply:** Never infer topology completion, member rights, or validation-version equivalence. Adding the missing publication/validation relationship is separate schema and production work requiring explicit approval.
+
+A failed canonical read is not evidence that a mountain is absent from the verified catalogue. Browsing cached suggestions may remain available, but the UI must distinguish catalogue downtime from a genuine no-match and keep identity-dependent actions closed.
+
+**Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”
+
+**How to apply:** On identity lookups, propagate read failures as an unavailable state; reserve no-match for completed reads with zero verified candidates. Never manufacture verified IDs from names or cached route facts.

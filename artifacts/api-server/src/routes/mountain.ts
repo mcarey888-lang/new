@@ -4,7 +4,8 @@ import { db, cachedMountains } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
-  lookupVerifiedCanonicalMountain,
+  CanonicalCatalogueUnavailableError,
+  lookupVerifiedCanonicalMountainStrict,
   type CanonicalLookupInput,
   type CanonicalLookupResult,
   type VerifiedCanonicalMountain,
@@ -179,7 +180,7 @@ function canonicalResponse(
 }
 
 const defaultDependencies: MountainLookupDependencies = {
-  canonicalLookup: lookupVerifiedCanonicalMountain,
+  canonicalLookup: lookupVerifiedCanonicalMountainStrict,
   cacheLookup: lookupCache,
   cacheStore: storeCache,
   aiLookup: lookupWithAi,
@@ -201,16 +202,22 @@ export function createMountainLookupHandler(
 
     const input = parsed.data;
 
-    let canonical: CanonicalLookupResult;
+    let canonical: CanonicalLookupResult = { kind: "none" };
+    let catalogueUnavailable = false;
     try {
       canonical = await dependencies.canonicalLookup(input);
     } catch (err) {
-      req.log.error({ err }, "Canonical mountain lookup failed");
-      res.status(503).json({
-        error: "Trusted mountain catalogue is temporarily unavailable",
-        code: "CANONICAL_LOOKUP_UNAVAILABLE",
-      });
-      return;
+      if (err instanceof CanonicalCatalogueUnavailableError) {
+        catalogueUnavailable = true;
+        req.log.warn("Trusted mountain catalogue is temporarily unavailable; returning browse-only data");
+      } else {
+        req.log.error({ err }, "Canonical mountain lookup failed");
+        res.status(503).json({
+          error: "Trusted mountain catalogue is temporarily unavailable",
+          code: "CANONICAL_LOOKUP_UNAVAILABLE",
+        });
+        return;
+      }
     }
 
     if (canonical.kind === "ambiguous") {
@@ -246,7 +253,10 @@ export function createMountainLookupHandler(
       const cached = await dependencies.cacheLookup(slug);
       if (cached) {
         req.log.info({ slug }, "Mountain cache hit");
-        res.json({ ...cached, source: "cache" });
+        res.json({
+          ...cached, source: "cache",
+          ...(catalogueUnavailable ? { catalogueStatus: "unavailable" } : {}),
+        });
         return;
       }
     } catch (err) {
@@ -262,7 +272,10 @@ export function createMountainLookupHandler(
         req.log.warn({ err }, "Mountain cache write failed");
       }
 
-      res.json({ ...result, source: "ai" });
+      res.json({
+        ...result, source: "ai",
+        ...(catalogueUnavailable ? { catalogueStatus: "unavailable" } : {}),
+      });
     } catch (err) {
       req.log.error({ err }, "Mountain lookup failed");
       const message = err instanceof Error ? err.message : "Unknown error";

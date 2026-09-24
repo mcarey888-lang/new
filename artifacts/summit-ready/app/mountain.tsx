@@ -50,7 +50,7 @@ import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadRe
 import { startRouteHandoff } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
 import {
-  ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
+  CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
   ROUTE_SORTS, presentMountain, presentMountainDna, presentRoutes, presentSelectedRoute,
   routePickerHint, sortRoutes,
   type MountainLookupResponse, type PresentedRoute, type RouteSort,
@@ -315,20 +315,27 @@ export default function MountainDetailScreen() {
               </View>
             ) : null}
             <View style={styles.heroBadges}>
-              <VerificationBadge state={mountain.verified ? "verified" : "unidentified"} />
+              {lookup?.catalogueStatus === "unavailable"
+                ? <Text style={styles.catalogueUnavailableBadge}>CATALOGUE UNAVAILABLE</Text>
+                : <VerificationBadge state={mountain.verified ? "verified" : "unidentified"} />}
             </View>
           </View>
         </SRHeroFrame>
 
-        {/* ── Not in the verified catalogue ─────────────────────────────── */}
+        {/* A missing catalogue connection is not evidence that this mountain
+            is absent from the catalogue. Keep untrusted routes browse-only. */}
         {mountain.fallback ? (
           <View style={styles.gutter}>
             <SRPanel radius={8} style={styles.fallbackPanel}>
               <View style={styles.fallbackRow}>
                 <Info size={16} color={EXPLORE.unverified} />
                 <View style={styles.fallbackText}>
-                  <Text style={styles.fallbackTitle}>{FALLBACK_NOTICE.title}</Text>
-                  <Text style={styles.fallbackBody}>{FALLBACK_NOTICE.body}</Text>
+                  <Text style={styles.fallbackTitle}>
+                    {lookup?.catalogueStatus === "unavailable" ? CATALOGUE_UNAVAILABLE_NOTICE.title : FALLBACK_NOTICE.title}
+                  </Text>
+                  <Text style={styles.fallbackBody}>
+                    {lookup?.catalogueStatus === "unavailable" ? CATALOGUE_UNAVAILABLE_NOTICE.body : FALLBACK_NOTICE.body}
+                  </Text>
                 </View>
               </View>
             </SRPanel>
@@ -473,6 +480,13 @@ const styles = StyleSheet.create({
   heroPlace: { marginTop: 4, flexDirection: "row", alignItems: "center", gap: 6 },
   heroPlaceText: { ...TYPE.small, fontSize: 12.5, color: BASECAMP.textMuted, flexShrink: 1 },
   heroBadges: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  catalogueUnavailableBadge: {
+    color: EXPLORE.unverified, backgroundColor: EXPLORE.unverifiedDim,
+    borderColor: EXPLORE.unverifiedLine, borderWidth: 1, borderRadius: 5,
+    paddingHorizontal: 8, paddingVertical: 4,
+    fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1,
+    overflow: "hidden",
+  },
 
   fallbackPanel: { marginTop: 14, padding: 12, borderColor: EXPLORE.unverifiedLine },
   fallbackRow: { flexDirection: "row", gap: 10 },
