@@ -11,6 +11,9 @@ type ExerciseSession = {
 /** Prefer the exercise a user selected; infer from older plan text only when absent. */
 export function exerciseForSession(session: ExerciseSession | null | undefined): GymExercise | null {
   if (!session || session.type !== "cardio") return null;
+  // Older sessions can retain a different gymExercise after their title was changed.
+  // Never put another machine's artwork on a clearly labelled treadmill session.
+  if ((session.label ?? "").toLowerCase().includes("incline treadmill")) return "treadmill";
   if (session.gymExercise) return session.gymExercise;
   const text = `${session.label ?? ""} ${session.description ?? ""}`.toLowerCase();
   if (text.includes("treadmill")) return "treadmill";

@@ -110,6 +110,17 @@ describe("Training Basecamp mission artwork", () => {
     expect(mission).not.toContain("visualWidth");
     expect(mission).toContain("paddingLeft: 10");
   });
+
+  it("matches the treadmill title on cards and the session detail hero", () => {
+    const artwork = read("utils/exerciseArtwork.ts");
+    const detail = read("app/session-detail.tsx");
+    expect(artwork).toContain('if ((session.label ?? "").toLowerCase().includes("incline treadmill")) return "treadmill"');
+    expect(artwork).toContain('treadmill: require("@/assets/images/exercise-treadmill-right-half.png")');
+    expect(detail).toContain('isInclineTreadmill');
+    expect(detail).toContain('inferredGymExercise === "treadmill"       ? require("@/assets/images/exercise-treadmill.png")');
+    expect(detail).toContain("? exerciseArtwork");
+    expect(detail).not.toContain("previewExerciseHero");
+  });
 });
 
 /* ──────────────────────────────────────────────────────────────────────────

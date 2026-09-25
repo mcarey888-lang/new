@@ -365,8 +365,11 @@ export default function SessionDetailScreen() {
 
   // Infer gym subtype — computed before hero so we can use it for the image
   const gymText = `${session?.label ?? ""} ${session?.description ?? ""}`.toLowerCase();
+  const isInclineTreadmill = session?.label?.toLowerCase().includes("incline treadmill") ?? false;
   const inferredGymExercise: GymExercise | null =
-    session?.gymExercise
+    isInclineTreadmill
+      ? "treadmill"
+      : session?.gymExercise
       ? session.gymExercise
       : gymText.includes("treadmill")
       ? "treadmill"
@@ -384,7 +387,7 @@ export default function SessionDetailScreen() {
       : null;
   // Only treat as a "stair repeat" session when no explicit exercise type is set,
   // and the text isn't just "stairmaster" (which maps to the stepper gymExercise).
-  const isStairRepeat = !session?.gymExercise && (
+  const isStairRepeat = !isInclineTreadmill && !session?.gymExercise && (
     gymText.includes("stair repeat") ||
     gymText.includes("flights") ||
     (gymText.includes("stair") && !gymText.includes("stairmaster"))
@@ -415,15 +418,13 @@ export default function SessionDetailScreen() {
     : inferredGymExercise === "outdoor"         ? require("@/assets/images/exercise-outdoor.png")
     : null;
 
-  /* Keep the approved Stepper hero for Incline Treadmill. Other cardio
-     exercises use their selected library image; hill sessions keep place photos. */
+  /* Use the selected exercise's library image; hill sessions keep place photos. */
   const heroPhotoSubject = inferredGymExercise
     ? sessionImageSubject({ mountainName: summitGoal?.mountainName ?? null })
     : heroSubject;
-  const previewExerciseHero = session?.label?.trim().toLowerCase() === "incline treadmill";
   const selectedHeroArtwork: ImageSourcePropType | null =
     session?.type === "cardio" && !isStairRepeat
-      ? previewExerciseHero ? require("@/assets/images/exercise-stepper.png") : exerciseArtwork
+      ? exerciseArtwork
       : null;
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
