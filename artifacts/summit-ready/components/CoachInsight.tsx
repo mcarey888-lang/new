@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   inlineRow: { flexDirection: "row", alignItems: "center", gap: SP.sm, minHeight: HIT.minTarget },
   body: { ...TYPE.body, color: T.basecampTextMuted, flexShrink: 1 },
-  summary: { ...TYPE.bodyBold, color: T.basecampText, lineHeight: 20 },
+  summary: { ...TYPE.body, color: T.basecampText, lineHeight: 20 },
   actions: { gap: 6 },
   tipRow: { flexDirection: "row", gap: SP.sm, alignItems: "flex-start" },
   tipDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
