@@ -22,7 +22,7 @@ import { useApp } from "@/context/AppContext";
 const TRAINING_COLOR    = T.green;
 const EXPEDITION_COLOR  = T.blue;
 
-export function ModeTogglePill() {
+export function ModeTogglePill({ inline = false }: { inline?: boolean }) {
   const insets  = useSafeAreaInsets();
   const { shellMode, setShellMode, activeExpeditionId } = useApp();
   const switchingRef = useRef(false);
@@ -118,8 +118,8 @@ export function ModeTogglePill() {
 
   return (
     <View
-      style={[s.wrapper, { top }]}
-      pointerEvents="box-none"
+      style={inline ? s.inline : [s.wrapper, { top }]}
+      pointerEvents={inline ? "auto" : "box-none"}
     >
       <View style={s.plainBg}>
         {pill}
@@ -129,6 +129,7 @@ export function ModeTogglePill() {
 }
 
 const s = StyleSheet.create({
+  inline: { alignItems: "center" },
   wrapper: {
     position: "absolute",
     left: 0,

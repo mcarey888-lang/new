@@ -19,6 +19,7 @@ export interface MountainDiscoveryItem {
 }
 
 interface SearchOrderKeys {
+  sortRank: number;
   sortName: string;
   sortCountry: string;
   sortRegion: string;
@@ -73,6 +74,7 @@ interface MountainIdentity {
 }
 
 interface MountainDiscoveryCursor {
+  sortRank: number;
   sortName: string;
   sortCountry: string;
   sortRegion: string;
@@ -97,6 +99,17 @@ export class MountainCatalogueUnavailableError extends Error {
   }
 }
 
+// Exact names come first, then names beginning with the query, then other
+// name matches, then matches found only in the region/country/area.
+// Include this rank in both streams' cursors so pagination never reorders or
+// loses a result when a higher-ranked name is far down the alphabet.
+const catalogueRankSql = `CASE
+  WHEN lower(trim(m.name)) = lower($10::text) THEN 0
+  WHEN m.name ILIKE $11 ESCAPE '\\' THEN 1
+  WHEN m.name ILIKE $1 ESCAPE '\\' THEN 2
+  ELSE 3
+END`;
+
 const catalogueSearchSql = `
 SELECT
   m.id::text AS "id",
@@ -108,6 +121,7 @@ SELECT
   ST_Y(m.geom)::float8 AS "latitude",
   ST_X(m.geom)::float8 AS "longitude",
   m.status AS "status",
+  ${catalogueRankSql} AS "sortRank",
   lower(m.name) COLLATE "C" AS "sortName",
   lower(COALESCE(m.country, '')) COLLATE "C" AS "sortCountry",
   lower(COALESCE(m.region, '')) COLLATE "C" AS "sortRegion",
@@ -122,8 +136,9 @@ WHERE m.geom IS NOT NULL
     OR COALESCE(m.area, '') ILIKE $1 ESCAPE '\\'
   )
   AND (
-    $3::text IS NULL
+    $3::int IS NULL
     OR (
+      ${catalogueRankSql},
       lower(m.name) COLLATE "C",
       lower(COALESCE(m.country, '')) COLLATE "C",
       lower(COALESCE(m.region, '')) COLLATE "C",
@@ -131,15 +146,16 @@ WHERE m.geom IS NOT NULL
       lower(COALESCE(m.area, '')) COLLATE "C",
       m.id::text COLLATE "C"
     ) > (
-      $3::text COLLATE "C",
+      $3::int,
       $4::text COLLATE "C",
       $5::text COLLATE "C",
-      $6::int,
-      $7::text COLLATE "C",
-      $8::text COLLATE "C"
+      $6::text COLLATE "C",
+      $7::int,
+      $8::text COLLATE "C",
+      $9::text COLLATE "C"
     )
   )
-ORDER BY "sortName", "sortCountry", "sortRegion", "sortSource", "sortArea", m.id::text COLLATE "C"
+ORDER BY "sortRank", "sortName", "sortCountry", "sortRegion", "sortSource", "sortArea", m.id::text COLLATE "C"
 LIMIT $2
 `;
 
@@ -152,12 +168,15 @@ async function searchCatalogue(query: string, limit: number, cursor?: MountainDi
     return await executeEngineReadOnlyQuery<CatalogueRow>(catalogueSearchSql, [
       `%${escapedLikeTerm(query)}%`,
       limit,
+      cursor?.sortRank ?? null,
       cursor?.sortName ?? null,
       cursor?.sortCountry ?? null,
       cursor?.sortRegion ?? null,
       cursor?.sortSource ?? null,
       cursor?.sortArea ?? null,
       cursor?.id ?? null,
+      query,
+      `${escapedLikeTerm(query)}%`,
     ]);
   } catch {
     throw new MountainCatalogueUnavailableError();
@@ -175,8 +194,15 @@ const fieldsPattern = (query: string) => {
 };
 
 async function searchSaved(query: string, limit: number, cursor?: MountainDiscoveryCursor): Promise<SavedSearchRow[]> {
+  const rank = sql<number>`CASE
+    WHEN lower(trim(${aiMountainDiscoveries.name})) = lower(${query}) THEN 0
+    WHEN ${aiMountainDiscoveries.name} ILIKE ${`${escapedLikeTerm(query)}%`} ESCAPE '\\' THEN 1
+    WHEN ${aiMountainDiscoveries.name} ILIKE ${`%${escapedLikeTerm(query)}%`} ESCAPE '\\' THEN 2
+    ELSE 3
+  END`;
   const afterCursor = cursor
     ? sql`(
+        ${rank},
         lower(${aiMountainDiscoveries.name}) COLLATE "C",
         lower(${aiMountainDiscoveries.country}) COLLATE "C",
         lower(${aiMountainDiscoveries.region}) COLLATE "C",
@@ -184,6 +210,7 @@ async function searchSaved(query: string, limit: number, cursor?: MountainDiscov
         lower(COALESCE(${aiMountainDiscoveries.area}, '')) COLLATE "C",
         ${aiMountainDiscoveries.id} COLLATE "C"
       ) > (
+        ${cursor.sortRank}::int,
         ${cursor.sortName}::text COLLATE "C",
         ${cursor.sortCountry}::text COLLATE "C",
         ${cursor.sortRegion}::text COLLATE "C",
@@ -203,6 +230,7 @@ async function searchSaved(query: string, limit: number, cursor?: MountainDiscov
       latitude: aiMountainDiscoveries.latitude,
       longitude: aiMountainDiscoveries.longitude,
       verificationStatus: aiMountainDiscoveries.verificationStatus,
+      sortRank: rank,
       sortName: sql<string>`lower(${aiMountainDiscoveries.name}) COLLATE "C"`,
       sortCountry: sql<string>`lower(${aiMountainDiscoveries.country}) COLLATE "C"`,
       sortRegion: sql<string>`lower(${aiMountainDiscoveries.region}) COLLATE "C"`,
@@ -212,6 +240,7 @@ async function searchSaved(query: string, limit: number, cursor?: MountainDiscov
     .from(aiMountainDiscoveries)
     .where(sql`${fieldsPattern(escapedLikeTerm(query))}${afterCursor ? sql` AND ${afterCursor}` : sql``}`)
     .orderBy(
+      rank,
       sql`lower(${aiMountainDiscoveries.name}) COLLATE "C"`,
       sql`lower(${aiMountainDiscoveries.country}) COLLATE "C"`,
       sql`lower(${aiMountainDiscoveries.region}) COLLATE "C"`,
@@ -394,6 +423,7 @@ type SearchRow = CatalogueRow | SavedSearchRow;
 
 function cursorFor(row: SearchRow): MountainDiscoveryCursor {
   return {
+    sortRank: row.sortRank,
     sortName: row.sortName,
     sortCountry: row.sortCountry,
     sortRegion: row.sortRegion,
@@ -414,7 +444,8 @@ function compareUnicodeScalars(left: string, right: string): number {
 }
 
 function compareSearchRows(left: SearchRow, right: SearchRow): number {
-  return compareUnicodeScalars(left.sortName, right.sortName)
+  return left.sortRank - right.sortRank
+    || compareUnicodeScalars(left.sortName, right.sortName)
     || compareUnicodeScalars(left.sortCountry, right.sortCountry)
     || compareUnicodeScalars(left.sortRegion, right.sortRegion)
     || left.sortSource - right.sortSource

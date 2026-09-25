@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
+import { ModeTogglePill } from "@/components/ModeTogglePill";
 import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
@@ -338,7 +339,7 @@ export default function ExploreScreen() {
     const controller = new AbortController();
     abortRef.current = controller;
     setDiscoveryLoading(true);
-    setCatalogueSearched(false);
+    setCatalogueSearched(append);
     setDiscoveryError(null);
     setCatalogueUnavailable(false);
     try {
@@ -355,6 +356,12 @@ export default function ExploreScreen() {
         setHasMore(false);
         return;
       }
+      if (response.status === 429) {
+        const seconds = Number(response.headers.get("Retry-After"));
+        throw new Error(Number.isFinite(seconds) && seconds > 0
+          ? `Search is temporarily busy. Wait about ${Math.ceil(seconds)} seconds, then retry.`
+          : "Search is temporarily busy. Please wait a moment, then retry.");
+      }
       if (!response.ok) throw new Error(`Search failed (${response.status}).`);
       const data = await response.json() as DiscoveryResponse;
       if (currentRequest !== requestId.current) return;
@@ -369,8 +376,10 @@ export default function ExploreScreen() {
     } catch (error) {
       if ((error as Error)?.name === "AbortError" || currentRequest !== requestId.current) return;
       setDiscoveryError(error instanceof Error ? error.message : "Search could not be completed.");
-      setDiscoveryItems([]);
-      setHasMore(false);
+      if (!append) {
+        setDiscoveryItems([]);
+        setHasMore(false);
+      }
     } finally {
       if (currentRequest === requestId.current) setDiscoveryLoading(false);
     }
@@ -536,9 +545,12 @@ export default function ExploreScreen() {
           style={StyleSheet.absoluteFill}
         />
       </View>
+      <View style={[styles.modeHeader, { paddingTop: topPad }]}>
+        <ModeTogglePill inline />
+      </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingTop: topPad, paddingBottom: 120 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -815,7 +827,8 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BASECAMP.ink },
   gutter: { paddingHorizontal: BASECAMP.gutter },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 262 },
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 320 },
+  modeHeader: { alignItems: "center", paddingBottom: 8, backgroundColor: BASECAMP.ink },
 
   appBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SP.sm },
   brand: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, minWidth: 0 },

@@ -28,6 +28,7 @@ function invoke(handler: any, input: { query?: unknown; body?: unknown }) {
 const catalogueRow = {
   id: "sde-123",
   name: "Mount Sample",
+  sortRank: 2,
   country: "Exampleland",
   region: "North",
   area: "Sample Range",
@@ -38,6 +39,37 @@ const catalogueRow = {
 };
 
 describe("mountain discovery", () => {
+  it("places an exact Mont Blanc match ahead of nearby peaks across paginated sources", async () => {
+    const sortFields = {
+      sortCountry: "france", sortRegion: "haute-savoie", sortArea: "mont blanc massif", sortSource: 0,
+    };
+    const catalogueRows = [
+      { ...catalogueRow, ...sortFields, id: "summit", name: "Mont Blanc", sortRank: 0, sortName: "mont blanc",
+        country: "France", region: "Haute-Savoie" },
+      { ...catalogueRow, ...sortFields, id: "tacul", name: "Mont Blanc du Tacul", sortRank: 1, sortName: "mont blanc du tacul",
+        country: "France", region: "Haute-Savoie" },
+      { ...catalogueRow, ...sortFields, id: "midi", name: "Aiguille du Midi", sortRank: 3, sortName: "aiguille du midi",
+        country: "France", region: "Haute-Savoie" },
+    ];
+    const savedRows = [{
+      ...catalogueRows[0], id: "ai:duplicate", sortSource: 1, verificationStatus: "ai_unverified",
+    }];
+    const pageAfter = <T extends { id: string }>(rows: T[], limit: number, cursor?: { id: string }) => {
+      const index = cursor ? rows.findIndex(row => row.id === cursor.id) + 1 : 0;
+      return rows.slice(index, index + limit);
+    };
+    const handlers = createMountainDiscoveryHandlers({
+      catalogueSearch: vi.fn(async (_query, limit, cursor) => pageAfter(catalogueRows, limit, cursor)),
+      savedSearch: vi.fn(async (_query, limit, cursor) => pageAfter(savedRows, limit, cursor)),
+    });
+    const first = await invoke(handlers.search, { query: { q: "Mont blanc", limit: "1" } });
+    const second = await invoke(handlers.search, { query: { q: "Mont blanc", limit: "1", offset: "1" } });
+    const third = await invoke(handlers.search, { query: { q: "Mont blanc", limit: "1", offset: "2" } });
+    expect(first.body).toMatchObject({ items: [{ id: "summit" }], hasMore: true });
+    expect(second.body).toMatchObject({ items: [{ id: "tacul" }], hasMore: true });
+    expect(third.body).toMatchObject({ items: [{ id: "midi" }], hasMore: false });
+  });
+
   it("returns catalogue matches without invoking AI and labels imported status", async () => {
     const generateCandidate = vi.fn();
     const handlers = createMountainDiscoveryHandlers({
@@ -140,6 +172,7 @@ describe("mountain discovery", () => {
         ...catalogueRow,
         id: `sde:${suffix}`,
         name: `Peak ${suffix}`,
+          sortRank: 1,
         sortName: `peak ${suffix}`,
         sortCountry: "exampleland",
         sortRegion: "north",
@@ -179,6 +212,7 @@ describe("mountain discovery", () => {
         ...catalogueRow,
         id: "sde-peak",
         name: "Peak",
+        sortRank: 0,
         sortName: "peak",
         sortCountry: "exampleland",
         sortRegion: "north",
@@ -189,6 +223,7 @@ describe("mountain discovery", () => {
         ...catalogueRow,
         id: "sde-peak-b",
         name: "Peak B",
+        sortRank: 1,
         sortName: "peak b",
         sortCountry: "exampleland",
         sortRegion: "north",
@@ -207,6 +242,7 @@ describe("mountain discovery", () => {
         latitude: 45,
         longitude: 7,
         verificationStatus: "ai_unverified",
+        sortRank: 0,
         sortName: "peak",
         sortCountry: "exampleland",
         sortRegion: "north",

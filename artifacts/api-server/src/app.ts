@@ -77,6 +77,21 @@ const artworkImageLimiter = rateLimit({
 });
 const artworkImagePath = /^\/artwork\/ui-assets\/candidates\/[^/]+\/v\d+\/(?:master|hero|card)$/;
 
+// Browse searches, thumbnail fan-out, and hero requests need independent
+// budgets. One failing image/hero loop must not make normal searches return 429.
+const catalogueSearchLimiter = rateLimit({
+  windowMs: 60_000, max: 90, standardHeaders: true, legacyHeaders: false,
+  message: { error: "Too many searches. Please wait a moment and try again." },
+});
+const mountainImageLimiter = rateLimit({
+  windowMs: 60_000, max: 600, standardHeaders: true, legacyHeaders: false,
+  message: { error: "Too many mountain image requests. Please try again shortly." },
+});
+const mountainHeroLimiter = rateLimit({
+  windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false,
+  message: { error: "Too many mountain hero requests. Please try again shortly." },
+});
+
 // Strict limit for AI/expensive endpoints (OpenAI cost protection).
 const aiLimiter = rateLimit({
   windowMs: 60_000,
@@ -89,6 +104,15 @@ const aiLimiter = rateLimit({
 app.use("/api", (req, res, next) => {
   if (req.method === "GET" && artworkImagePath.test(req.path)) {
     return artworkImageLimiter(req, res, next);
+  }
+  if (req.method === "GET" && req.path === "/mountain-image") {
+    return mountainImageLimiter(req, res, next);
+  }
+  if (req.method === "GET" && req.path === "/mountain-discovery") {
+    return catalogueSearchLimiter(req, res, next);
+  }
+  if (req.method === "POST" && /^\/artwork\/mountains\/[^/]+\/request-hero$/.test(req.path)) {
+    return mountainHeroLimiter(req, res, next);
   }
   return generalLimiter(req, res, next);
 });
