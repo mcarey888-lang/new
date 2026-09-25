@@ -480,3 +480,17 @@ mtime_ms = 1790351303241
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/2089c0fa-e051-446d-b9ad-d355bb0ae031/b03a850b-c4d7-4a46-bb85-55e79f99db65"
 storage_version_token = "1790351363296438"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "pZ-qbmjFR7ihS1zz2PURu"
+uri = "file://attached_assets/mountain-hero-review-30.jpg"
+type = "image"
+title = "30 mountain images — review sheet"
+description = "The 29 new review candidates plus the earlier Tryfan image made with your wording. Full-size masters are stored in the artwork review queue; none was auto-approved."
+logical_id = "3344b6ce-238a-4366-838f-a5a0d8b02e9b"
+content_hash = "sha256:475e5c194a11fdaede86d1c7d18493894f7fa43ec3c5fdafa2f3f4a393355181"
+size = 977993
+mtime_ms = 1790353869371
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/3344b6ce-238a-4366-838f-a5a0d8b02e9b/b67535b9-6cb5-46e1-a61b-7da74b32518d"
+storage_version_token = "1790353946482606"
+content_type = "image/jpeg"
