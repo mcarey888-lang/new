@@ -102,11 +102,13 @@ describe("Full plan presentation", () => {
 describe("Training Basecamp mission artwork", () => {
   const mission = read("components/basecamp/MissionSection.tsx");
 
-  it("runs flush down the card's left edge while the text keeps its inset", () => {
+  it("shows square, left-flush artwork on mission and upcoming session cards", () => {
     expect(mission).toContain('missionRow: { flexDirection: "row", alignItems: "stretch" }');
-    expect(mission).toContain('missionVisual: { width: 30, alignSelf: "stretch" }');
+    expect(mission).toContain('missionVisual: { width: 88, height: 88 }');
+    expect(mission).toContain('cardRow: { flexDirection: "row", alignItems: "stretch" }');
+    expect(mission).toContain('cardVisual: { width: 82, height: 82 }');
     expect(mission).not.toContain("visualWidth");
-    expect(mission).toContain("paddingLeft: 17");
+    expect(mission).toContain("paddingLeft: 10");
   });
 });
 

@@ -1,9 +1,9 @@
 /**
  * MissionSection — "This week's mission" and the "Up next" rail.
  *
- * Composition from the prototype: a wide mission panel with a visual block on
- * the left and the action on the right, then a horizontally scrolling rail of
- * the sessions queued behind it.
+ * Composition from the prototype: a wide mission panel with a square visual
+ * flush to the left and the action on the right, then a horizontally scrolling
+ * rail of the sessions queued behind it.
  *
  * DATA is the Training Plan's. The mission is the plan's first incomplete
  * session and the rail is what follows it, both read through
@@ -246,28 +246,30 @@ function SessionCard({
       accessibilityLabel={`${session.weekLabel}: ${session.title}`}
       accessibilityHint="Opens the session detail"
     >
-      <SessionVisual
-        uri={artwork ? null : imageUri}
-        source={artwork ?? undefined}
-        type={session.type}
-        iconSize={20}
-        scrim="bottom"
-        style={styles.cardVisual}
-      >
-        <View style={styles.cardChev}>
-          <ChevronRight size={11} color={BASECAMP.textStrong} />
-        </View>
-      </SessionVisual>
-      <View style={styles.cardBody}>
-        <Text style={styles.cardWeek} numberOfLines={1}>{session.weekLabel}</Text>
-        <Text style={styles.cardTitle} numberOfLines={2}>{session.title}</Text>
-        {elevation && <Text style={styles.cardDetail} numberOfLines={1}>{elevation}</Text>}
-        {session.duration && (
-          <View style={styles.cardMeta}>
-            <Clock size={12} color={BASECAMP.textDim} />
-            <Text style={styles.cardMetaText} numberOfLines={1}>{session.duration}</Text>
+      <View style={styles.cardRow}>
+        <SessionVisual
+          uri={artwork ? null : imageUri}
+          source={artwork ?? undefined}
+          type={session.type}
+          iconSize={20}
+          scrim="none"
+          style={styles.cardVisual}
+        >
+          <View style={styles.cardChev}>
+            <ChevronRight size={11} color={BASECAMP.textStrong} />
           </View>
-        )}
+        </SessionVisual>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardWeek} numberOfLines={1}>{session.weekLabel}</Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{session.title}</Text>
+          {elevation && <Text style={styles.cardDetail} numberOfLines={1}>{elevation}</Text>}
+          {session.duration && (
+            <View style={styles.cardMeta}>
+              <Clock size={12} color={BASECAMP.textDim} />
+              <Text style={styles.cardMetaText} numberOfLines={1}>{session.duration}</Text>
+            </View>
+          )}
+        </View>
       </View>
     </SRPanel>
   );
@@ -286,8 +288,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  missionVisual: { width: 30, alignSelf: "stretch" },
-  missionBody: { flex: 1, minWidth: 0, paddingTop: 9, paddingBottom: 9, paddingLeft: 17, paddingRight: 9 },
+  missionVisual: { width: 88, height: 88 },
+  missionBody: { flex: 1, minWidth: 0, paddingTop: 9, paddingBottom: 9, paddingLeft: 10, paddingRight: 9 },
   missionTop: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   missionHeading: { flex: 1, minWidth: 0 },
   missionEyebrow: {
@@ -326,8 +328,9 @@ const styles = StyleSheet.create({
   railSection: { marginTop: 10 },
   rail: { marginTop: 5 },
   railContent: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingBottom: 2 },
-  card: { width: 128 },
-  cardVisual: { height: 50 },
+  card: { width: 224 },
+  cardRow: { flexDirection: "row", alignItems: "stretch" },
+  cardVisual: { width: 82, height: 82 },
   cardChev: {
     position: "absolute", top: 7, right: 7,
     width: 21, height: 21, borderRadius: 11,
@@ -335,7 +338,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
     borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
-  cardBody: { padding: 7, paddingTop: 6 },
+  cardBody: { flex: 1, minWidth: 0, padding: 7, paddingTop: 6 },
   cardWeek: { fontSize: 10, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
   cardTitle: {
     fontSize: 13, lineHeight: 16, fontFamily: "Inter_700Bold",
