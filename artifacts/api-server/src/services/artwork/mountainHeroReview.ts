@@ -657,7 +657,9 @@ export async function approveMountainHero(id: string, candidate: MountainHeroCan
     storeApproval(approvedMountainKey(id)),
     storeApproval(approvedKey(mountain.name)),
   ]);
-  clearMountainImageMemoryCache(mountain.name, mountain.id);
+  // Approved imagery also serves explicitly named aliases and mountain route
+  // cards; their cache keys need not include the catalogue row's display name.
+  clearMountainImageMemoryCache();
   return { mountain, approved: true, candidate: selectedCandidate };
 }
 

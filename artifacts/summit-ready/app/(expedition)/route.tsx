@@ -25,6 +25,7 @@ import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
 import type { NearbyHill } from "@/context/AppContext";
 import { englishPlaceName } from "@/utils/placeNames";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -195,13 +196,16 @@ export default function RouteScreen() {
     return () => controller.abort();
   }, [activeExpedition?.challengeId, mountainName]);
 
+  const useApprovedMountainPhoto = hasApprovedMountainImage(mountainName);
   const heroUri = !mountainName
     ? null
-    : (challengeHeroUri && !artworkError)
+    : useApprovedMountainPhoto
+      ? fallbackError ? null : mountainImageUri(mountainName, { width: 800, height: 400 })
+      : (challengeHeroUri && !artworkError)
       ? challengeHeroUri
       : fallbackError
         ? null
-        : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=800&height=400`;
+        : mountainImageUri(mountainName, { width: 800, height: 400 });
 
   // Build section list — prefer AI expedition plan, fall back to virtual hills
   const routeSections = (() => {
@@ -278,7 +282,9 @@ export default function RouteScreen() {
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               onError={() => {
-                if (challengeHeroUri && !artworkError) {
+                if (useApprovedMountainPhoto) {
+                  setFallbackError(true);
+                } else if (challengeHeroUri && !artworkError) {
                   setArtworkError(true);
                 } else {
                   setFallbackError(true);

@@ -51,6 +51,7 @@ import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { CurrentStageCard } from "@/components/expedition/CurrentStageCard";
 import { StageRail } from "@/components/expedition/StageRail";
 import { JourneyHistory } from "@/components/JourneyHistory";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const CinematicPrototype = React.lazy(async () => {
   const module = await import("@/components/CinematicPrototype");
@@ -938,8 +939,11 @@ export default function BaseCampScreen() {
                   <View style={s.expCardImg}>
                     <ExpoImage
                       source={{
-                        uri: (ch.approved && artworkUrl(ch.cardImage ?? ch.heroImage))
-                          || `${API_BASE}/mountain-image?name=${encodeURIComponent(ch.targetMountainName)}&width=400&height=280`,
+                        uri: (hasApprovedMountainImage(ch.targetMountainName)
+                          ? mountainImageUri(ch.targetMountainName, { width: 400, height: 280 })
+                          : null)
+                          || (ch.approved && artworkUrl(ch.cardImage ?? ch.heroImage))
+                          || mountainImageUri(ch.targetMountainName, { width: 400, height: 280 })!,
                       }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
@@ -1062,13 +1066,18 @@ export default function BaseCampScreen() {
   // Use the real mountain name for the photo lookup; challengeName ("Matterhorn Ridge")
   // won't match — the API needs the actual peak ("Matterhorn").
   const heroMountain = target?.name ?? summitGoal.mountainName;
-  // Prefer approved AI artwork; silently fall back to Wikimedia photo on any
-  // artwork error, rather than going blank.
-  const heroUri = (challengeHeroUri && !artworkError)
-    ? challengeHeroUri
-    : fallbackError
-      ? null
-      : `${API_BASE}/mountain-image?name=${encodeURIComponent(heroMountain)}&width=800&height=600`;
+  const approvedMountainPhoto = hasApprovedMountainImage(heroMountain)
+    ? mountainImageUri(heroMountain, { width: 800, height: 600 })
+    : null;
+  // Curated mountain photos take priority for the named approved peaks. Other
+  // expeditions retain their existing artwork-first hero treatment.
+  const heroUri = approvedMountainPhoto
+    ? (fallbackError ? null : approvedMountainPhoto)
+    : (challengeHeroUri && !artworkError)
+      ? challengeHeroUri
+      : fallbackError
+        ? null
+        : mountainImageUri(heroMountain, { width: 800, height: 600 });
 
   // Use mountainName (the challenge/expedition name the user chose) — not the
   // AI-generated expeditionPlan.title which changes on every generation.
@@ -1129,17 +1138,14 @@ export default function BaseCampScreen() {
       >
 
         {/* ── Hero ──────────────────────────────────────────────────────────
-            The objective's own artwork, resolved by the existing artwork
-            service with the mountain photo as its fallback. SRHeroFrame is
-            told this is generated artwork so any lettering the source carries
-            is inked out before the content below it. */}
+            Curated mountain photos lead for the approved peaks; otherwise use
+            the objective's approved artwork with the mountain photo fallback. */}
         <SRHeroFrame
           uri={heroUri}
-          artwork={challengeHeroUri && !artworkError ? "generated" : "photo"}
+          artwork={!approvedMountainPhoto && challengeHeroUri && !artworkError ? "generated" : "photo"}
           onImageError={() => {
-            /* Artwork first, then the mountain photograph, then the designed
-               gradient. Nothing is substituted from another mountain. */
-            if (challengeHeroUri && !artworkError) setArtworkError(true);
+            /* Nothing is substituted from another mountain. */
+            if (!approvedMountainPhoto && challengeHeroUri && !artworkError) setArtworkError(true);
             else setFallbackError(true);
           }}
           minHeight={300}

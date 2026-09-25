@@ -23,6 +23,7 @@ import {
   projectExpeditionReadiness,
   type ExpeditionReadinessRoute,
 } from "@/utils/expeditionReadinessProjection";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -136,10 +137,13 @@ export function ChallengeDetailSheet({
     return days[(order - 1) % days.length] ?? `Day ${order}`;
   };
 
-  // Prefer approved AI artwork; fall back to Wikimedia mountain photo
+  // Use approved mountain photos for the curated set; preserve challenge art elsewhere.
   const heroUri = !imgError && challenge
-    ? (challenge.approved && artworkUrl(challenge.heroImage)) ||
-      `${API_BASE}/mountain-image?name=${encodeURIComponent(challenge.targetMountainName)}&width=800&height=500`
+    ? (hasApprovedMountainImage(challenge.targetMountainName)
+      ? mountainImageUri(challenge.targetMountainName, { width: 800, height: 500 })
+      : null)
+      || (challenge.approved && artworkUrl(challenge.heroImage))
+      || mountainImageUri(challenge.targetMountainName, { width: 800, height: 500 })
     : null;
   const readinessProjection = projectExpeditionReadiness(
     readinessEnabled ? readinessInput : null,

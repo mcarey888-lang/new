@@ -4,6 +4,8 @@ import { cachedMountains } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { downloadMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
 import { resolveCanonicalMountainIdentity, type CanonicalMountainIdentity } from "../services/mountain/canonicalMountainIdentity.js";
+import { getCanonicalMountainById } from "../services/mountain/canonicalMountainIdentity.js";
+import { approvedFeaturedMountainId } from "../services/mountain/approvedFeaturedMountainIdentity.js";
 import { isMountainHeroImageRejected } from "../services/artwork/mountainHeroReviewState.js";
 
 const router: IRouter = Router();
@@ -581,24 +583,29 @@ async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
   const canonicalName = cleanName(name) || cleanName(location ?? "") || name;
   const routeSubject = exactImageSubject(name);
   const routeSpecific = isRouteSpecificImageRequest(name, routeIdentityKey);
-  const canonicalMountain = !routeSpecific
-    ? await resolveCanonicalMountainIdentity(name, location, mountainId).catch(() => null)
-    : null;
+  const featuredId = approvedFeaturedMountainId(name, location);
+  const canonicalMountain = featuredId && (!mountainId || mountainId === featuredId)
+    ? await getCanonicalMountainById(featuredId).catch(() => null)
+    : !routeSpecific
+      ? await resolveCanonicalMountainIdentity(name, location, mountainId).catch(() => null)
+      : null;
   const cacheKey = mountainImageCacheKey({ name, location, mountainId: canonicalMountain?.id ?? mountainId, routeIdentityKey, summitIdentityKey });
   const cacheGeneration = imageCacheGenerations.get(cacheKey) ?? 0;
   const cached   = imageCache.get(cacheKey);
-  if (cached !== undefined) return cached;
+  // Featured mountains re-check approval on every request, including in API
+  // processes other than the one that handled the approval.
+  if (cached !== undefined && !cached.mutableHero && !featuredId) return cached;
   const inFlight = imageRequests.get(cacheKey);
-  if (inFlight) return inFlight;
+  if (inFlight && !featuredId) return inFlight;
 
   const request = (async () => {
     const { db } = await import("@workspace/db");
     const approved = canonicalMountain ? await approvedHeroUrl(canonicalMountain) : null;
     if (approved) {
       const result = { thumbUrl: approved, coord: input.coord ?? null, mutableHero: true };
-      if ((imageCacheGenerations.get(cacheKey) ?? 0) === cacheGeneration) imageCache.set(cacheKey, result);
       return result;
     }
+    if (cached && !cached.mutableHero) return cached;
 
     const persistentKey = `hero-image:${HERO_CACHE_VERSION}:${cacheKey}`;
     const [stored] = await db.select({ data: cachedMountains.data })

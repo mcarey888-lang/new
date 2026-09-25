@@ -20,3 +20,9 @@ Prompt-only mountain generation cannot browse the web merely because the prompt 
 **Why:** In a two-prompt mountain comparison, both outputs looked polished but differed substantially from an identified real photograph when no vetted reference image reached the image model.
 
 **How to apply:** Check actual reference availability before claiming geographic fidelity. For stronger likeness, supply verified exact-match image bytes to the generation call, and compare draft geometry with a real photograph before approving.
+
+When a user approves a named mountain's hero for use across the app, that mountain image takes precedence over older challenge artwork on cards and heroes representing that same named mountain. Do not apply this to generic banners, exercise illustrations, or routes involving several different mountains.
+
+**Why:** The user explicitly approved the named collection and asked for those images wherever those mountains appear; an approval restricted to the admin library would leave existing challenge art visible in the app.
+
+**How to apply:** Use an identity-checked canonical mountain match, including deliberate aliases and single-mountain route labels, before overriding challenge art. Do not use loose substring matches or silently treat an AI illustration as proof of geographic accuracy.

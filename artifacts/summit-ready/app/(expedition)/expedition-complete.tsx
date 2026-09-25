@@ -24,6 +24,7 @@ import { useApp } from "@/context/AppContext";
 import { ConfettiCelebration } from "@/components/ConfettiCelebration";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -103,6 +104,9 @@ export default function ExpeditionCompleteScreen() {
 
   const expeditionName   = expeditionSnapshot?.challengeName ?? "Your Expedition";
   const mountainName     = expeditionSnapshot?.targetMountainName ?? expeditionName;
+  const completionImageUri = hasApprovedMountainImage(mountainName)
+    ? mountainImageUri(mountainName, { width: 640, height: 360 })
+    : heroArtwork ?? mountainImageUri(mountainName, { width: 640, height: 360 });
   const routeCount       = new Set(expeditionSnapshot?.completedRoutes ?? []).size;
 
   // ── Mark complete once (idempotent) ──────────────────────────────────────────
@@ -152,10 +156,11 @@ export default function ExpeditionCompleteScreen() {
           { paddingTop: topInset + 20, paddingBottom: insets.bottom + 48 },
         ]}
       >
-        {/* Mountain hero image — prefer approved AI artwork, fall back to Wikimedia */}
+        {/* Mountain hero image — approved mountain photo for curated peaks,
+            otherwise retain approved challenge artwork and the photo fallback. */}
         <Animated.View entering={FadeIn.duration(700)} style={s.heroWrap}>
           <ExpoImage
-            source={{ uri: heroArtwork ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360` }}
+            source={{ uri: completionImageUri ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360` }}
             style={s.heroImage}
             contentFit="cover"
           />

@@ -8,9 +8,9 @@
  *
  * The mountain name and date are the user's summit goal; the location and
  * elevation row is populated only by a verified catalogue lookup.
- * The photograph comes from the existing artwork resolver
- * with the existing fallback chain (approved artwork → mountain-image →
- * gradient). No figure is fabricated: an unverified fact is omitted.
+ * Approved mountain heroes lead for the named collection; other objectives
+ * retain the existing artwork → mountain-image → gradient fallback chain.
+ * No figure is fabricated: an unverified fact is omitted.
  *
  * The hero sizes itself from its content with a floor, so a long mountain name
  * or a large altitude pushes it taller instead of being clipped at a fixed
@@ -28,7 +28,7 @@ import { resolveTrainingBasecampArtwork } from "@/utils/artworkResolver";
 import {
   targetDateDisplay,
 } from "@/utils/basecampPresentation";
-import { mountainImageUri } from "@/utils/mountainImage";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 import type { CanonicalBasecampFacts } from "@/hooks/useCanonicalBasecampFacts";
 
 type HeroSource =
@@ -76,6 +76,16 @@ export function BasecampHero({
     setHeroSource({ kind: "resolving" });
 
     async function loadArtwork() {
+      if (hasApprovedMountainImage(mountainName)) {
+        const next: HeroSource = {
+          kind: "mountain-image",
+          uri: mountainFallbackUri,
+          reason: "approved mountain hero",
+        };
+        logSource(next);
+        setHeroSource(next);
+        return;
+      }
       const devProfileId = await AsyncStorage.getItem("summitready_dev_profile_id");
       const approved = await resolveTrainingBasecampArtwork({ devProfileId, mountainName });
       if (!active) return;
