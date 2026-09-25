@@ -4,6 +4,8 @@ import {
   isApprovalRecordForRejectedImage,
   isGeneratedMountainCandidateOwnedBy,
   readyGeneratedReviewIds,
+  promoteMountainHeroCandidate,
+  validateMountainHeroPrompt,
   withoutRejectedMountainHeroCandidate,
   type MountainHeroCandidate,
   type MountainHeroGenerationRecord,
@@ -110,7 +112,7 @@ describe("rejected generated candidate visibility", () => {
 describe("generated artwork review filter", () => {
   const row = (id: string, status: string) => ({
     slug: `hero-generation:v1:${id}`,
-    data: JSON.stringify({ status, candidate }),
+    data: JSON.stringify({ status, ...(status === "ready" ? { candidate } : {}) }),
   });
 
   it("includes ready candidates without an approval", () => {
@@ -130,5 +132,28 @@ describe("generated artwork review filter", () => {
       row("rejected", "ready"),
       { slug: "hero-generation:v1:malformed", data: "not-json" },
     ], reviews)).toEqual([]);
+  });
+});
+
+describe("review-only regeneration", () => {
+  it("keeps earlier candidates available while promoting the new image", () => {
+    const next = { ...candidate, id: "job-456", imageUrl: `/api/artwork/mountains/${mountainId}/generated/job-456` };
+    const record = promoteMountainHeroCandidate({
+      status: "generating", updatedAt: "", jobId: "job-456",
+      candidate, prompt: "Photograph the actual ridges of Tryfan under striking light.",
+    }, next, "2026-09-25T00:00:00Z");
+    expect(record.candidate).toEqual(next);
+    expect(record.previousCandidates).toEqual([candidate]);
+    expect(record.prompt).toContain("Tryfan");
+    expect(readyGeneratedReviewIds([{
+      slug: `hero-generation:v1:${mountainId}`, data: JSON.stringify(record),
+    }], new Map())).toEqual([mountainId]);
+  });
+
+  it("rejects empty, non-text, and excessively long custom prompts", () => {
+    expect(() => validateMountainHeroPrompt(" ")).toThrow();
+    expect(() => validateMountainHeroPrompt({ text: "hello" })).toThrow();
+    expect(() => validateMountainHeroPrompt("x".repeat(4001))).toThrow();
+    expect(validateMountainHeroPrompt("  Realistic depiction of Tryfan.  ")).toBe("Realistic depiction of Tryfan.");
   });
 });

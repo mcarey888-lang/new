@@ -5,6 +5,25 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface MountainHeroPrompt {
+  prompt: string;
+  hasReference: boolean;
+}
+
+export interface MountainHeroGenerationInput {
+  confirmed: boolean;
+  /**
+   * @minLength 20
+   * @maxLength 4000
+   */
+  prompt?: string;
+}
+
+export interface MountainHeroGenerationStarted {
+  jobId: string;
+  status: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -32,14 +32,32 @@ export type Candidate = {
   license: string | null;
   artist: string | null;
   score: number;
+  prompt?: string;
 };
 
 export type MountainGeneration = {
   status: "idle" | "generating" | "ready" | "failed";
   jobId?: string;
   candidate?: Candidate;
+  previousCandidates?: Candidate[];
+  prompt?: string;
   error?: string;
 };
+
+export function useGetMountainPrompt(mountainId: string | null) {
+  return useQuery({
+    queryKey: ["mountain-prompt", mountainId],
+    queryFn: async () => {
+      if (!mountainId) throw new Error("No mountain id");
+      const res = await fetch(`/api/artwork/mountains/${mountainId}/prompt`, {
+        headers: adminHeaders(),
+      });
+      return readArtworkJson<{ prompt: string; hasReference: boolean }>(res);
+    },
+    enabled: !!mountainId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useGetMountainGeneration(mountainId: string | null) {
   return useQuery({
@@ -59,11 +77,11 @@ export function useGetMountainGeneration(mountainId: string | null) {
 export function useGenerateMountainArtwork() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ mountainId }: { mountainId: string }) => {
+    mutationFn: async ({ mountainId, prompt }: { mountainId: string; prompt?: string }) => {
       const res = await fetch(`/api/artwork/mountains/${mountainId}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...adminHeaders() },
-        body: JSON.stringify({ confirmed: true }),
+        body: JSON.stringify({ confirmed: true, ...(prompt !== undefined ? { prompt } : {}) }),
       });
       return readArtworkJson<{ jobId: string; status: "generating" }>(res);
     },

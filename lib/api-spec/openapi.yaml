@@ -40,6 +40,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ArtworkStatusList"
 
+  /artwork/mountains/{mountainId}/prompt:
+    get:
+      operationId: getMountainHeroPrompt
+      tags: [artwork]
+      summary: Get the editable default mountain hero prompt
+      parameters:
+        - name: mountainId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Default prompt and reference availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountainHeroPrompt"
+        "404":
+          description: Mountain not found
+
+  /artwork/mountains/{mountainId}/generate:
+    post:
+      operationId: generateMountainHero
+      tags: [artwork]
+      summary: Generate a review-only mountain hero with an optional edited prompt
+      parameters:
+        - name: mountainId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MountainHeroGenerationInput"
+      responses:
+        "202":
+          description: Generation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountainHeroGenerationStarted"
+        "400":
+          description: Invalid prompt or missing confirmation
+        "409":
+          description: Generation already in progress
+
   /artwork/prompt/{challengeId}:
     get:
       operationId: getArtworkPrompt
@@ -199,6 +249,35 @@ paths:
 
 components:
   schemas:
+    MountainHeroPrompt:
+      type: object
+      required: [prompt, hasReference]
+      properties:
+        prompt:
+          type: string
+        hasReference:
+          type: boolean
+
+    MountainHeroGenerationInput:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed:
+          type: boolean
+        prompt:
+          type: string
+          minLength: 20
+          maxLength: 4000
+
+    MountainHeroGenerationStarted:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+
     HealthStatus:
       type: object
       properties:

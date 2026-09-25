@@ -14,3 +14,9 @@ The public mountain review queue may expose that an unapproved generated candida
 **Why:** List reads are public; review-detail and generation-status reads are admin-guarded. Publishing a pending candidate URL in the list would bypass the manual review boundary.
 
 **How to apply:** Keep list filters to IDs/status metadata. Load the actual candidate only through protected review endpoints.
+
+Prompt-only mountain generation cannot browse the web merely because the prompt says "look online." Dramatic lighting instructions can still produce a generic, geographically wrong silhouette.
+
+**Why:** In a two-prompt mountain comparison, both outputs looked polished but differed substantially from an identified real photograph when no vetted reference image reached the image model.
+
+**How to apply:** Check actual reference availability before claiming geographic fidelity. For stronger likeness, supply verified exact-match image bytes to the generation call, and compare draft geometry with a real photograph before approving.

@@ -44,6 +44,37 @@ export const GetArtworkStatusResponse = zod.object({
 });
 
 /**
+ * @summary Get the editable default mountain hero prompt
+ */
+export const GetMountainHeroPromptParams = zod.object({
+  mountainId: zod.coerce.string(),
+});
+
+export const GetMountainHeroPromptResponse = zod.object({
+  prompt: zod.string(),
+  hasReference: zod.boolean(),
+});
+
+/**
+ * @summary Generate a review-only mountain hero with an optional edited prompt
+ */
+export const GenerateMountainHeroParams = zod.object({
+  mountainId: zod.coerce.string(),
+});
+
+export const generateMountainHeroBodyPromptMin = 20;
+export const generateMountainHeroBodyPromptMax = 4000;
+
+export const GenerateMountainHeroBody = zod.object({
+  confirmed: zod.boolean(),
+  prompt: zod
+    .string()
+    .min(generateMountainHeroBodyPromptMin)
+    .max(generateMountainHeroBodyPromptMax)
+    .optional(),
+});
+
+/**
  * @summary Get the auto-built prompt for a challenge without generating
  */
 export const GetArtworkPromptParams = zod.object({

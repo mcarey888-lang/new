@@ -466,3 +466,17 @@ mtime_ms = 1790274710064
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/85bb07a3-1da8-4d5f-a8ae-83051493627a/4f09b892-b271-4c3b-85e8-e25b35496f5d"
 storage_version_token = "1790274929664245"
 content_type = "image/png"
+
+[[outputs]]
+id = "vnYTEwa7TiHPKEPdHHCTw"
+uri = "file://attached_assets/tryfan-prompt-comparison.jpg"
+type = "image"
+title = "Tryfan — two prompt results"
+description = "Your wording on the left; mountain-specific wording on the right. Both are unapproved review candidates."
+logical_id = "2089c0fa-e051-446d-b9ad-d355bb0ae031"
+content_hash = "sha256:e2eac1735751b0867c6477cdcd892bf446bd72947cc51a893480c9d475721c11"
+size = 202493
+mtime_ms = 1790351303241
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/2089c0fa-e051-446d-b9ad-d355bb0ae031/b03a850b-c4d7-4a46-bb85-55e79f99db65"
+storage_version_token = "1790351363296438"
+content_type = "image/jpeg"

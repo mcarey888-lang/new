@@ -29,6 +29,7 @@ export interface MountainHeroCandidate {
   license: string | null;
   artist: string | null;
   score: number;
+  prompt?: string;
 }
 
 interface MountainRecord {
@@ -87,6 +88,8 @@ export interface MountainHeroGenerationRecord {
   startedAt?: string;
   updatedAt: string;
   candidate?: MountainHeroCandidate;
+  previousCandidates?: MountainHeroCandidate[];
+  prompt?: string;
   error?: string;
 }
 
@@ -118,9 +121,9 @@ export function readyGeneratedReviewIds(
     if (review?.status === "approved") return [];
     try {
       const generation = JSON.parse(row.data) as MountainHeroGenerationRecord;
-      const imageUrl = generation.candidate?.imageUrl;
-      return generation.status === "ready" && imageUrl &&
-        !review?.rejectedUrls?.includes(imageUrl) ? [id] : [];
+      const candidates = [generation.candidate, ...(generation.previousCandidates ?? [])];
+      return candidates.some(candidate => candidate?.imageUrl &&
+        !review?.rejectedUrls?.includes(candidate.imageUrl)) ? [id] : [];
     } catch {
       return [];
     }
@@ -388,7 +391,7 @@ async function readMountainHeroGeneration(id: string): Promise<MountainHeroGener
 export async function getMountainHeroGeneration(id: string): Promise<MountainHeroGenerationRecord> {
   if (!await getMountain(id)) throw new Error("Mountain not found");
   const generation = await readMountainHeroGeneration(id);
-  if (!generation.candidate) return generation;
+  if (!generation.candidate && !generation.previousCandidates?.length) return generation;
   const [review] = await db.select({ data: cachedMountains.data })
     .from(cachedMountains)
     .where(eq(cachedMountains.slug, reviewKey(id)))
@@ -408,13 +411,33 @@ export function withoutRejectedMountainHeroCandidate(
   generation: MountainHeroGenerationRecord,
   rejectedUrls: readonly string[],
 ): MountainHeroGenerationRecord {
-  if (!generation.candidate || !rejectedUrls.includes(generation.candidate.imageUrl)) return generation;
-  const { candidate: _rejected, ...visibleGeneration } = generation;
-  return visibleGeneration;
+  const previousCandidates = generation.previousCandidates?.filter(candidate => !rejectedUrls.includes(candidate.imageUrl));
+  return {
+    ...generation,
+    ...(generation.candidate && rejectedUrls.includes(generation.candidate.imageUrl) ? { candidate: undefined } : {}),
+    ...(previousCandidates ? { previousCandidates } : {}),
+  };
+}
+
+export function validateMountainHeroPrompt(prompt: unknown): string {
+  if (typeof prompt !== "string") throw new Error("Prompt must be text");
+  const trimmed = prompt.trim();
+  if (trimmed.length < 20 || trimmed.length > 4000) {
+    throw new Error("Prompt must be between 20 and 4000 characters");
+  }
+  return trimmed;
+}
+
+export async function getDefaultMountainHeroPrompt(id: string) {
+  const mountain = await getMountain(id);
+  if (!mountain) throw new Error("Mountain not found");
+  const reference = await resolveMountainHeroReference(mountain);
+  return { prompt: buildMountainHeroPrompt(mountain, Boolean(reference)), hasReference: Boolean(reference) };
 }
 
 /** Persist a generation claim atomically across all API processes. */
-export async function startMountainHeroGeneration(id: string): Promise<MountainHeroGenerationRecord> {
+export async function startMountainHeroGeneration(id: string, prompt?: string): Promise<MountainHeroGenerationRecord> {
+  const validatedPrompt = prompt === undefined ? undefined : validateMountainHeroPrompt(prompt);
   if (!await getMountain(id)) throw new Error("Mountain not found");
   const previous = await readMountainHeroGeneration(id);
   const jobId = randomUUID();
@@ -425,6 +448,8 @@ export async function startMountainHeroGeneration(id: string): Promise<MountainH
     startedAt,
     updatedAt: startedAt,
     ...(previous.candidate ? { candidate: previous.candidate } : {}),
+    ...(previous.previousCandidates ? { previousCandidates: previous.previousCandidates } : {}),
+    ...(validatedPrompt ? { prompt: validatedPrompt } : {}),
   };
   const claim = await pool.query(`
     INSERT INTO public.cached_mountains (slug, data, cached_at)
@@ -472,7 +497,9 @@ export async function runMountainHeroGeneration(
     const mountain = await getMountain(id);
     if (!mountain) throw new Error("Mountain not found");
     const reference = await resolveMountainHeroReference(mountain);
-    const prompt = buildMountainHeroPrompt(mountain, Boolean(reference));
+    const claimed = await readMountainHeroGeneration(id);
+    if (claimed.jobId !== jobId || claimed.status !== "generating") return;
+    const prompt = claimed.prompt ?? buildMountainHeroPrompt(mountain, Boolean(reference));
     const generated = await provider.generate(prompt, {
       size: "1536x1024",
       ...(reference ? { referenceImages: [reference] } : {}),
@@ -500,14 +527,9 @@ export async function runMountainHeroGeneration(
       license: null,
       artist: `Generated with ${generated.provider}`,
       score: 0,
+      prompt,
     };
-    await saveMountainHeroGeneration(id, jobId, (current) => ({
-      status: "ready",
-      jobId,
-      startedAt: current.startedAt,
-      updatedAt: generatedAt,
-      candidate,
-    }));
+    await saveMountainHeroGeneration(id, jobId, (current) => promoteMountainHeroCandidate(current, candidate, generatedAt));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     await saveMountainHeroGeneration(id, jobId, (current) => ({
@@ -520,6 +542,24 @@ export async function runMountainHeroGeneration(
   } finally {
     clearInterval(heartbeat);
   }
+}
+
+export function promoteMountainHeroCandidate(
+  current: MountainHeroGenerationRecord,
+  candidate: MountainHeroCandidate,
+  generatedAt: string,
+): MountainHeroGenerationRecord {
+  const previousCandidates = [
+    ...(current.candidate ? [current.candidate] : []),
+    ...(current.previousCandidates ?? []),
+  ].filter((item, index, all) => all.findIndex(other => other.imageUrl === item.imageUrl) === index).slice(0, 10);
+  return {
+    ...current,
+    status: "ready",
+    updatedAt: generatedAt,
+    candidate,
+    previousCandidates,
+  };
 }
 
 function getGeneratedMountainOwner(imageUrl: string): string | null {
@@ -579,7 +619,7 @@ export async function approveMountainHero(id: string, candidate: MountainHeroCan
   if (isGenerated) {
     const storedCandidate = candidate.imageUrl === generation.candidate?.imageUrl
       ? generation.candidate
-      : autoCandidate;
+      : generation.previousCandidates?.find(item => item.imageUrl === candidate.imageUrl) ?? autoCandidate;
     if (!isGeneratedMountainCandidateOwnedBy(candidate, id, storedCandidate)) {
       throw new Error("Generated candidate does not belong to this mountain");
     }

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, useGetMountainGeneration, useGenerateMountainArtwork, Candidate } from "../hooks/use-mountain-api";
+import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, useGetMountainGeneration, useGetMountainPrompt, useGenerateMountainArtwork, Candidate } from "../hooks/use-mountain-api";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 
 export default function MountainQueue() {
@@ -295,6 +295,7 @@ export default function MountainQueue() {
 
 function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: string, mountainName: string, onClose: () => void }) {
   const { data, isLoading, isError, error, refetch: refetchCandidates } = useGetCandidates(mountainId);
+  const { data: defaultPrompt, isLoading: isPromptLoading, isError: isPromptError, error: promptError, refetch: refetchPrompt } = useGetMountainPrompt(mountainId);
   const {
     data: generation, isError: isGenerationError, error: generationError,
     isLoading: isGenerationLoading, refetch: refetchGeneration,
@@ -304,10 +305,21 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
   const approveCandidate = useApproveCandidate();
   const rejectCandidate = useRejectCandidate();
   const [rejectedUrls, setRejectedUrls] = useState<Set<string>>(new Set());
-  const generatedCandidate = generation?.status === "ready" ? generation.candidate : undefined;
+  const [prompt, setPrompt] = useState("");
+  const [promptEdited, setPromptEdited] = useState(false);
+  useEffect(() => {
+    if (!promptEdited && (generation?.prompt || defaultPrompt?.prompt)) {
+      setPrompt(generation?.prompt || defaultPrompt?.prompt || "");
+    }
+  }, [generation?.prompt, defaultPrompt?.prompt, promptEdited]);
+  const generatedCandidate = generation?.candidate;
   const candidates = [
     ...(generatedCandidate && !rejectedUrls.has(generatedCandidate.imageUrl) ? [generatedCandidate] : []),
-    ...(data?.candidates ?? []).filter(candidate => candidate.id !== generatedCandidate?.id && !rejectedUrls.has(candidate.imageUrl)),
+    ...(generation?.previousCandidates ?? []).filter(candidate => !rejectedUrls.has(candidate.imageUrl)),
+    ...(data?.candidates ?? []).filter(candidate =>
+      candidate.id !== generatedCandidate?.id &&
+      !(generation?.previousCandidates ?? []).some(previous => previous.id === candidate.id) &&
+      !rejectedUrls.has(candidate.imageUrl)),
   ];
 
   useEffect(() => {
@@ -318,8 +330,13 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
   }, [generation?.jobId, generation?.status, mountainId, queryClient]);
 
   const handleGenerate = () => {
-    if (!window.confirm(`Generate a new realistic AI hero for ${mountainName}? It will stay in review and will not replace an approved image until you approve it.`)) return;
-    generateArtwork.mutate({ mountainId }, {
+    const editedPrompt = prompt.trim();
+    if (editedPrompt.length < 20 || editedPrompt.length > 4000) {
+      toast.error("Prompt must be between 20 and 4000 characters");
+      return;
+    }
+    if (!window.confirm(`Generate a new AI hero for ${mountainName} using the prompt shown below? This creates a new paid image. Earlier review candidates and the approved image will remain available; nothing is approved automatically.`)) return;
+    generateArtwork.mutate({ mountainId, prompt: editedPrompt }, {
       onSuccess: () => toast.success(`Generating artwork for ${mountainName}. This can take a few minutes.`),
       onError: (err) => toast.error(`Could not start generation: ${err.message}`),
     });
@@ -370,13 +387,15 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
               size="sm"
               onClick={handleGenerate}
               disabled={isGenerationLoading || isGenerationError || !generation ||
-                generation.status === "generating" || generateArtwork.isPending}
+                isPromptLoading || isPromptError || prompt.trim().length < 20 ||
+                prompt.trim().length > 4000 || generation.status === "generating" || generateArtwork.isPending}
               className="gap-2"
             >
               {generation?.status === "generating" || generateArtwork.isPending
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : <WandSparkles className="w-4 h-4" />}
-              {generation?.status === "generating" ? "Generating…" : "Generate AI artwork"}
+              {generation?.status === "generating" ? "Generating…" :
+                generation?.candidate ? "Regenerate artwork" : "Generate AI artwork"}
             </Button>
             <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close review">
               <X className="w-5 h-5" />
@@ -403,6 +422,38 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
               <p className="text-muted-foreground">Generate a mountain-specific hero or review source photos. Admin-generated images require approval; user-triggered heroes can appear automatically.</p>
             )}
           </div>
+          <section className="rounded-lg border border-border bg-background p-4 mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label htmlFor="mountain-hero-prompt" className="text-sm font-semibold">Image generation prompt</label>
+              <Button size="sm" variant="outline" disabled={!defaultPrompt || generation?.status === "generating"}
+                onClick={() => { setPrompt(defaultPrompt?.prompt ?? ""); setPromptEdited(true); }}>
+                Reset to default
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Describe the real summit silhouette, ridgelines, viewpoint, and distinctive terrain to improve the match.
+              {defaultPrompt && (defaultPrompt.hasReference
+                ? " An exact-match reference photo will be supplied to the model."
+                : " No exact-match reference photo was found, so specific details here are especially important.")}
+            </p>
+            {isPromptError && (
+              <div className="text-sm text-destructive mb-3">
+                Could not load default prompt: {promptError instanceof Error ? promptError.message : "Unknown error"}.
+                <Button size="sm" variant="link" onClick={() => void refetchPrompt()}>Retry</Button>
+              </div>
+            )}
+            <textarea
+              id="mountain-hero-prompt"
+              value={prompt}
+              onChange={event => { setPrompt(event.target.value); setPromptEdited(true); }}
+              disabled={isPromptLoading || generation?.status === "generating"}
+              rows={7}
+              maxLength={4000}
+              placeholder={isPromptLoading ? "Loading default prompt…" : "Describe the mountain accurately…"}
+              className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground mt-1 text-right">{prompt.length} / 4000 characters</p>
+          </section>
           {data?.mountain.approvedImageUrl && (
             <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20 mb-5">
               <h3 className="text-sm font-semibold text-green-500 mb-3 flex items-center gap-2">
@@ -439,7 +490,7 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
             <div className="space-y-8">
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-4">Review Queue ({candidates.length})</h3>
-                <div className="grid grid-cols-1 gap-6">
+                 <div className={`grid grid-cols-1 gap-6 ${generation?.previousCandidates?.length ? "xl:grid-cols-2" : ""}`}>
                   {candidates.map((candidate, idx) => (
                     <CandidateCard 
                       key={candidate.id || idx} 
@@ -538,6 +589,12 @@ function CandidateCard({
             <span className="font-semibold text-foreground/80 block mb-0.5">Author</span>
             {candidate.artist || "Unknown Artist"}
           </div>
+         {candidate.prompt && (
+           <details className="text-xs text-muted-foreground">
+             <summary className="cursor-pointer font-medium">Prompt used for this image</summary>
+             <p className="mt-2 whitespace-pre-wrap">{candidate.prompt}</p>
+           </details>
+         )}
           <div>
             <span className="font-semibold text-foreground/80 block mb-0.5">License</span>
             {candidate.license || "Unknown License"}

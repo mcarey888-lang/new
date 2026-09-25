@@ -37,10 +37,12 @@ import {
   approveMountainHero,
   findMountainHeroCandidates,
   getMountainHeroGeneration,
+  getDefaultMountainHeroPrompt,
   listMountainHeroReviews,
   rejectMountainHeroCandidate,
   runMountainHeroGeneration,
   startMountainHeroGeneration,
+  validateMountainHeroPrompt,
 } from "../services/artwork/mountainHeroReview.js";
 import { streamMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
 import { requireAdminKey } from "../middlewares/requireAdminKey.js";
@@ -342,20 +344,33 @@ artworkRouter.post("/mountains/:id/candidates", requireAdminKey, async (req, res
   }
 });
 
+artworkRouter.get("/mountains/:id/prompt", requireAdminKey, async (req, res) => {
+  try {
+    return res.json(await getDefaultMountainHeroPrompt(param(req.params.id)));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to build mountain hero prompt";
+    req.log.error({ err }, "Failed to build mountain hero prompt");
+    return res.status(message === "Mountain not found" ? 404 : 500).json({ error: message });
+  }
+});
+
 artworkRouter.post("/mountains/:id/generate", requireAdminKey, async (req, res) => {
   const mountainId = param(req.params.id);
   if (req.body?.confirmed !== true) {
     return res.status(400).json({ error: "Mountain artwork generation requires explicit confirmation" });
   }
   try {
-    const job = await startMountainHeroGeneration(mountainId);
+    const prompt = req.body?.prompt === undefined ? undefined : validateMountainHeroPrompt(req.body.prompt);
+    const job = await startMountainHeroGeneration(mountainId, prompt);
     void runMountainHeroGeneration(mountainId, job.jobId!).catch((error) => {
       logger.error({ err: error, mountainId, jobId: job.jobId }, "Mountain hero background generation failed");
     });
     return res.status(202).json({ jobId: job.jobId, status: "generating" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Mountain artwork generation could not start";
-    return res.status(message === "Mountain not found" ? 404 : 409).json({ error: message });
+    const status = message === "Mountain not found" ? 404 :
+      message.startsWith("Prompt must") ? 400 : 409;
+    return res.status(status).json({ error: message });
   }
 });
 
@@ -366,6 +381,8 @@ artworkRouter.get("/mountains/:id/generation", requireAdminKey, async (req, res)
       status: generation.status,
       ...(generation.jobId ? { jobId: generation.jobId } : {}),
       ...(generation.candidate ? { candidate: generation.candidate } : {}),
+      ...(generation.previousCandidates ? { previousCandidates: generation.previousCandidates } : {}),
+      ...(generation.prompt ? { prompt: generation.prompt } : {}),
       ...(generation.error ? { error: generation.error } : {}),
     });
   } catch (err) {

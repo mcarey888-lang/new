@@ -29,6 +29,9 @@ import type {
   GenerateArtworkInput,
   GetCanonicalHistoryParams,
   HealthStatus,
+  MountainHeroGenerationInput,
+  MountainHeroGenerationStarted,
+  MountainHeroPrompt,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -190,6 +193,192 @@ export function useGetArtworkStatus<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get the editable default mountain hero prompt
+ */
+export const getGetMountainHeroPromptUrl = (mountainId: string) => {
+  return `/api/artwork/mountains/${mountainId}/prompt`;
+};
+
+export const getMountainHeroPrompt = async (
+  mountainId: string,
+  options?: RequestInit,
+): Promise<MountainHeroPrompt> => {
+  return customFetch<MountainHeroPrompt>(
+    getGetMountainHeroPromptUrl(mountainId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetMountainHeroPromptQueryKey = (mountainId: string) => {
+  return [`/api/artwork/mountains/${mountainId}/prompt`] as const;
+};
+
+export const getGetMountainHeroPromptQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMountainHeroPrompt>>,
+  TError = ErrorType<void>,
+>(
+  mountainId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainHeroPrompt>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMountainHeroPromptQueryKey(mountainId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMountainHeroPrompt>>
+  > = ({ signal }) =>
+    getMountainHeroPrompt(mountainId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!mountainId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMountainHeroPrompt>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMountainHeroPromptQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMountainHeroPrompt>>
+>;
+export type GetMountainHeroPromptQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the editable default mountain hero prompt
+ */
+
+export function useGetMountainHeroPrompt<
+  TData = Awaited<ReturnType<typeof getMountainHeroPrompt>>,
+  TError = ErrorType<void>,
+>(
+  mountainId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMountainHeroPrompt>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMountainHeroPromptQueryOptions(
+    mountainId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate a review-only mountain hero with an optional edited prompt
+ */
+export const getGenerateMountainHeroUrl = (mountainId: string) => {
+  return `/api/artwork/mountains/${mountainId}/generate`;
+};
+
+export const generateMountainHero = async (
+  mountainId: string,
+  mountainHeroGenerationInput: MountainHeroGenerationInput,
+  options?: RequestInit,
+): Promise<MountainHeroGenerationStarted> => {
+  return customFetch<MountainHeroGenerationStarted>(
+    getGenerateMountainHeroUrl(mountainId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(mountainHeroGenerationInput),
+    },
+  );
+};
+
+export const getGenerateMountainHeroMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMountainHero>>,
+    TError,
+    { mountainId: string; data: BodyType<MountainHeroGenerationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateMountainHero>>,
+  TError,
+  { mountainId: string; data: BodyType<MountainHeroGenerationInput> },
+  TContext
+> => {
+  const mutationKey = ["generateMountainHero"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateMountainHero>>,
+    { mountainId: string; data: BodyType<MountainHeroGenerationInput> }
+  > = (props) => {
+    const { mountainId, data } = props ?? {};
+
+    return generateMountainHero(mountainId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateMountainHeroMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateMountainHero>>
+>;
+export type GenerateMountainHeroMutationBody =
+  BodyType<MountainHeroGenerationInput>;
+export type GenerateMountainHeroMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate a review-only mountain hero with an optional edited prompt
+ */
+export const useGenerateMountainHero = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMountainHero>>,
+    TError,
+    { mountainId: string; data: BodyType<MountainHeroGenerationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateMountainHero>>,
+  TError,
+  { mountainId: string; data: BodyType<MountainHeroGenerationInput> },
+  TContext
+> => {
+  return useMutation(getGenerateMountainHeroMutationOptions(options));
+};
 
 /**
  * @summary Get the auto-built prompt for a challenge without generating

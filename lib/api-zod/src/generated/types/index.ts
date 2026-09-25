@@ -32,3 +32,6 @@ export * from "./generateArtworkInput";
 export * from "./getCanonicalHistoryFilter";
 export * from "./getCanonicalHistoryParams";
 export * from "./healthStatus";
+export * from "./mountainHeroGenerationInput";
+export * from "./mountainHeroGenerationStarted";
+export * from "./mountainHeroPrompt";
