@@ -24,6 +24,7 @@ import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -100,13 +101,20 @@ function openDiscoveryMountain(item: DiscoveryItem) {
 
 function discoveryImageUri(item: DiscoveryItem, width: number, height: number) {
   const location = [item.region, item.country].filter(Boolean).join(", ");
-  return `${API_BASE}/mountain-image?name=${encodeURIComponent(item.name)}`
-    + `&location=${encodeURIComponent(location)}&width=${width}&height=${height}`;
+  return appendApprovedImageRevision(
+    `${API_BASE}/mountain-image?name=${encodeURIComponent(item.name)}`
+      + `&location=${encodeURIComponent(location)}&width=${width}&height=${height}`,
+    item.name,
+  );
 }
 
 function imageUri(trail: Trail, width: number, height: number) {
-  return `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainSubject(trail.name))}`
-    + `&location=${encodeURIComponent(trail.location)}&width=${width}&height=${height}`;
+  const subject = mountainSubject(trail.name);
+  return appendApprovedImageRevision(
+    `${API_BASE}/mountain-image?name=${encodeURIComponent(subject)}`
+      + `&location=${encodeURIComponent(trail.location)}&width=${width}&height=${height}`,
+    subject,
+  );
 }
 
 function Fallback() {

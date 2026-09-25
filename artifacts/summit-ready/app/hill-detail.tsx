@@ -23,6 +23,7 @@ import { useApp, type NearbyHill } from "@/context/AppContext";
 import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
 import { SRHeroFrame, SRScreenHeader } from "@/components/ui";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -116,7 +117,10 @@ export default function HillDetailScreen() {
   const hillLng = lng ? parseFloat(lng) : null;
 
   const heroImageUri = name && !imageError
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location ?? "")}&width=960&height=520${routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(routeIdentityKey)}` : ""}${summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(summitIdentityKey)}` : ""}${Number.isFinite(hillLat) ? `&lat=${hillLat}` : ""}${Number.isFinite(hillLng) ? `&lng=${hillLng}` : ""}`
+    ? appendApprovedImageRevision(
+        `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}&location=${encodeURIComponent(location ?? "")}&width=960&height=520${routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(routeIdentityKey)}` : ""}${summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(summitIdentityKey)}` : ""}${Number.isFinite(hillLat) ? `&lat=${hillLat}` : ""}${Number.isFinite(hillLng) ? `&lng=${hillLng}` : ""}`,
+        name,
+      )
     : null;
 
   useEffect(() => {

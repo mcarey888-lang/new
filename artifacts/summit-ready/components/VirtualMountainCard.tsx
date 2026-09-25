@@ -40,6 +40,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { T } from "@/constants/theme";
 import type { VirtualBundle, BundleCategory } from "@/data/virtualBundles";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 
 // ── Category config ────────────────────────────────────────────────────────────
 
@@ -227,7 +228,10 @@ export function VirtualMountainCard({
 
         {/* Remote mountain photo — fetched via /api/mountain-image (Wikipedia / Mapbox) */}
         <ExpoImage
-          source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(bundle.goalMountain)}&width=800&height=340` }}
+          source={{ uri: appendApprovedImageRevision(
+            `${API_BASE}/mountain-image?name=${encodeURIComponent(bundle.goalMountain)}&width=800&height=340`,
+            bundle.goalMountain,
+          ) }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={400}

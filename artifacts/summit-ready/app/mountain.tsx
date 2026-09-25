@@ -48,6 +48,7 @@ import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
 import {
   canonicalMountainImageUrl, fetchMountainHeroStatus, generatedMountainHeroUrl, MountainHeroRequestError,
 } from "@/utils/mountainHero";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence";
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
 import { startRouteHandoff } from "@/utils/routeEligibility";
@@ -238,9 +239,15 @@ export default function MountainDetailScreen() {
     ? generatedHeroUri
     : !heroFailed && mountain
       ? canonicalMountainId
-        ? canonicalMountainImageUrl(API_BASE, canonicalMountainId, mountain.name, mountain.place ?? "", heroRevision)
-        : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountain.name)}`
-          + `&location=${encodeURIComponent(mountain.place ?? "")}&width=960&height=620`
+        ? appendApprovedImageRevision(
+            canonicalMountainImageUrl(API_BASE, canonicalMountainId, mountain.name, mountain.place ?? "", heroRevision),
+            mountain.name,
+          )
+        : appendApprovedImageRevision(
+            `${API_BASE}/mountain-image?name=${encodeURIComponent(mountain.name)}`
+              + `&location=${encodeURIComponent(mountain.place ?? "")}&width=960&height=620`,
+            mountain.name,
+          )
       : null;
 
   function choose(route: PresentedRoute) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasApprovedMountainImage, mountainImageUri } from "./mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "./mountainImage";
 
 describe("approved mountain image subjects", () => {
   it("recognizes the approved mountain collection and documented name variants", () => {
@@ -57,6 +57,15 @@ describe("approved mountain image subjects", () => {
     const uri = mountainImageUri("Yr Wyddfa", { width: 400, height: 280 });
     expect(uri).toContain("/api/mountain-image?name=Yr%20Wyddfa");
     expect(uri).toContain("&width=400&height=280");
+    expect(uri).toContain("&approvedHeroRevision=");
     expect(mountainImageUri("  ")).toBeNull();
+  });
+
+  it("refreshes cached approved cards without changing route or location identity", () => {
+    const previous = "/api/mountain-image?name=Snowdon&location=Snowdonia%2C%20Wales&routeIdentityKey=pyg";
+    const refreshed = appendApprovedImageRevision(previous, "Snowdon");
+    expect(refreshed).toContain("location=Snowdonia%2C%20Wales&routeIdentityKey=pyg&approvedHeroRevision=");
+    expect(appendApprovedImageRevision(refreshed, "Snowdon")).toBe(refreshed);
+    expect(appendApprovedImageRevision(previous, "Matterhorn")).toBe(previous);
   });
 });

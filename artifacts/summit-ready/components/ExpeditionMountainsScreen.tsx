@@ -67,7 +67,7 @@ import {
   confirmSuggestionFlow,
   confirmExtraDayFlow,
 } from "@/utils/manualExpedition";
-import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 import { mountainSuggestions } from "@/constants/mountains";
 import {
   signatureStageToNearbyHill,
@@ -2195,7 +2195,10 @@ export default function ExpeditionMountainsScreen() {
               >
                 <View style={{ height: 108, position: "relative" }}>
                   <ExpoImage
-                    source={{ uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(activeExpedition.targetMountain.name)}&width=800&height=300` }}
+                    source={{ uri: appendApprovedImageRevision(
+                      `${API_BASE}/mountain-image?name=${encodeURIComponent(activeExpedition.targetMountain.name)}&width=800&height=300`,
+                      activeExpedition.targetMountain.name,
+                    ) }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                   />

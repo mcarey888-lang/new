@@ -10,6 +10,11 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+// The original, unversioned photo URL was cacheable for 30 days. Give the
+// approved collection a new stable URL so existing devices request its
+// replacement once; approved responses themselves are served with no-store.
+const APPROVED_HERO_REVISION = "approved-30-20260925";
+
 const APPROVED_MOUNTAIN_IMAGE_NAMES = new Set([
   "ben nevis",
   "snowdon",
@@ -76,6 +81,12 @@ export function hasApprovedMountainImage(mountainName: string | null | undefined
   });
 }
 
+/** Preserve identity/route/location params while escaping old cached photos. */
+export function appendApprovedImageRevision(uri: string, mountainName: string): string {
+  if (!hasApprovedMountainImage(mountainName) || uri.includes("approvedHeroRevision=")) return uri;
+  return `${uri}${uri.includes("?") ? "&" : "?"}approvedHeroRevision=${APPROVED_HERO_REVISION}`;
+}
+
 /** Null for a blank name, so a caller renders the designed gradient instead. */
 export function mountainImageUri(
   mountainName: string | null | undefined,
@@ -84,7 +95,7 @@ export function mountainImageUri(
   const name = mountainName?.trim();
   if (!name) return null;
   const dimensions = size ? `&width=${size.width}&height=${size.height}` : "";
-  return `${API_BASE}/mountain-image?name=${encodeURIComponent(name)}${dimensions}`;
+  return appendApprovedImageRevision(`${API_BASE}/mountain-image?name=${encodeURIComponent(name)}${dimensions}`, name);
 }
 
 /**

@@ -29,7 +29,7 @@ import {
   SREmptyState, SRSectionHeader, SRStatusPill, SRSubPanel,
 } from "@/components/ui";
 import { sessionPurpose } from "@/utils/sessionPurpose";
-import { sessionImageSubject } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, sessionImageSubject } from "@/utils/mountainImage";
 import { assignSessionsToDays, DAY_FULL } from "@/utils/dayAssignment";
 import { parseDurationMidpoint } from "@/utils/planGenerator";
 import { useSubscription } from "@/lib/revenuecat";
@@ -429,7 +429,7 @@ export default function SessionDetailScreen() {
   const heroImageSource: ImageSourcePropType | null = imageError
     ? null
     : heroPhotoSubject
-      ? { uri: `${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}` }
+      ? { uri: appendApprovedImageRevision(`${API_BASE}/mountain-image?name=${encodeURIComponent(heroPhotoSubject)}&width=800&height=400${assignedHill?.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(assignedHill.routeIdentityKey)}` : ""}${assignedHill?.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(assignedHill.summitIdentityKey)}` : ""}${assignedHill?.lat != null ? `&lat=${assignedHill.lat}` : ""}${assignedHill?.lng != null ? `&lng=${assignedHill.lng}` : ""}`, heroPhotoSubject) }
       : null;
 
   const midDur = parseDurationMidpoint(session?.duration ?? "45 min");

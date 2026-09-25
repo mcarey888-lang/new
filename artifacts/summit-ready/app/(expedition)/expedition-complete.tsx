@@ -24,7 +24,7 @@ import { useApp } from "@/context/AppContext";
 import { ConfettiCelebration } from "@/components/ConfettiCelebration";
 import { T } from "@/constants/theme";
 import { useScreenView } from "@/lib/analytics";
-import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -160,7 +160,10 @@ export default function ExpeditionCompleteScreen() {
             otherwise retain approved challenge artwork and the photo fallback. */}
         <Animated.View entering={FadeIn.duration(700)} style={s.heroWrap}>
           <ExpoImage
-            source={{ uri: completionImageUri ?? `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360` }}
+            source={{ uri: completionImageUri ?? appendApprovedImageRevision(
+              `${API_BASE}/mountain-image?name=${encodeURIComponent(mountainName)}&width=640&height=360`,
+              mountainName,
+            ) }}
             style={s.heroImage}
             contentFit="cover"
           />

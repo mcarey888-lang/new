@@ -30,6 +30,7 @@ import { useApp } from "@/context/AppContext";
 import { useSubscription } from "@/lib/revenuecat";
 import { HillPlannerSection, type PlannedHillEntry } from "@/components/HillPlannerSection";
 import { WainwrightTickList } from "@/components/WainwrightTickList";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -183,7 +184,10 @@ function ProgressChart({
 // ── Climb Row ──────────────────────────────────────────────────────────────────
 function ClimbRow({ activity, color }: { activity: ChallengeActivity; color: string }) {
   const [imgErr, setImgErr] = useState(false);
-  const imgUri = `${API_BASE}/mountain-image?name=${encodeURIComponent(activity.title)}`;
+  const imgUri = appendApprovedImageRevision(
+    `${API_BASE}/mountain-image?name=${encodeURIComponent(activity.title)}`,
+    activity.title,
+  );
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
   let dateLabel: string;

@@ -39,7 +39,7 @@ import {
 } from "@/components/ui";
 import { useScreenView } from "@/lib/analytics";
 import { planPhaseSpans, planWeekDays, weekDateRange, weeksUntilPlanStart } from "@/utils/basecampPresentation";
-import { mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, mountainImageUri, sessionImageSubject } from "@/utils/mountainImage";
 import { exerciseCardArtwork } from "@/utils/exerciseArtwork";
 import { useReadinessV2 } from "@/hooks/useReadinessV2";
 import { getCurrentWeek, parseDurationMidpoint } from "@/utils/planGenerator";
@@ -1438,7 +1438,10 @@ export default function PlanScreen() {
       })()
     : null;
   const heroImageUri = !heroImageError
-    ? `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}`
+    ? appendApprovedImageRevision(
+        `${PLAN_API_BASE}/mountain-image?name=${encodeURIComponent(summitGoal.mountainName)}`,
+        summitGoal.mountainName,
+      )
     : null;
 
   // ── Elevation Bank ─────────────────────────────────────────────────────────

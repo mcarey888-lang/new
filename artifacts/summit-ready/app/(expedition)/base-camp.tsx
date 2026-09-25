@@ -51,7 +51,7 @@ import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { CurrentStageCard } from "@/components/expedition/CurrentStageCard";
 import { StageRail } from "@/components/expedition/StageRail";
 import { JourneyHistory } from "@/components/JourneyHistory";
-import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 const CinematicPrototype = React.lazy(async () => {
   const module = await import("@/components/CinematicPrototype");
@@ -1215,7 +1215,10 @@ export default function BaseCampScreen() {
               name={englishPlaceName(nextHill.name)}
               routeName={nextHill.routeName ?? null}
               gainM={Number.isFinite(nextHill.elevation) ? nextHill.elevation : null}
-              imageUri={`${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=240&height=240${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}`}
+              imageUri={appendApprovedImageRevision(
+                `${API_BASE}/mountain-image?name=${encodeURIComponent(englishPlaceName(nextHill.name))}&width=240&height=240${nextHill.routeIdentityKey ? `&routeIdentityKey=${encodeURIComponent(nextHill.routeIdentityKey)}` : ""}${nextHill.summitIdentityKey ? `&summitIdentityKey=${encodeURIComponent(nextHill.summitIdentityKey)}` : ""}${nextHill.lat != null ? `&lat=${nextHill.lat}` : ""}${nextHill.lng != null ? `&lng=${nextHill.lng}` : ""}`,
+                englishPlaceName(nextHill.name),
+              )}
               complete={false}
               primaryLabel="Start next stage"
               onPrimary={() => {

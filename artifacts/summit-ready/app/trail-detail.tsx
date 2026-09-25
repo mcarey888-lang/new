@@ -40,6 +40,7 @@ import type { Trail, TrailBenefit } from "@/constants/trailData";
 import { buildFreeHikeLaunchContext } from "@/utils/trackingLaunchContext";
 import { LogHikeModal } from "@/components/LogHikeModal";
 import { openMapSearch } from "@/utils/openMaps";
+import { appendApprovedImageRevision } from "@/utils/mountainImage";
 
 const DIFF_COLOR: Record<string, string> = {
   Easy: T.green,
@@ -192,7 +193,10 @@ export default function TrailDetailScreen() {
 
   const heroImageUri = imageError
     ? null
-    : `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=800&height=400&routeIdentityKey=${encodeURIComponent(trail.id)}${trail.lat != null ? `&lat=${trail.lat}` : ""}${trail.lng != null ? `&lng=${trail.lng}` : ""}`;
+    : appendApprovedImageRevision(
+        `${API_BASE}/mountain-image?name=${encodeURIComponent(trail.name)}&width=800&height=400&routeIdentityKey=${encodeURIComponent(trail.id)}${trail.lat != null ? `&lat=${trail.lat}` : ""}${trail.lng != null ? `&lng=${trail.lng}` : ""}`,
+        trail.name,
+      );
 
   const mapImageUri = mapImageError
     ? null
