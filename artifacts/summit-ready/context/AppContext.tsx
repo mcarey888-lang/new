@@ -30,6 +30,17 @@ export interface AlpineRequirement {
   benchmarkValue?: number;
 }
 
+export type AlpineExperienceCategory = "technical" | "altitude";
+
+export interface AlpineExperience {
+  status: "planned" | "completed";
+  source: "prior-experience" | "course" | "guided-trip" | "other";
+  note: string;
+  date?: string;
+}
+
+export type AlpineExperienceRecords = Partial<Record<AlpineExperienceCategory, AlpineExperience>>;
+
 export interface AlpineProfile {
   altitudeBand: "high" | "very-high" | "extreme";
   technicalLevel: "walking" | "scrambling" | "basic-crampons" | "technical" | "advanced-technical";
@@ -139,6 +150,8 @@ export interface SummitGoal {
   fitnessBaseline?: number;
   planStartMode?: "optimal" | "full";
   alpineProfile?: AlpineProfile;
+  /** Self-reported skills and acclimatisation for this goal; planned entries are not completed. */
+  alpineExperience?: AlpineExperienceRecords;
   /** Undefined means existing users — treated as "expedition" everywhere. */
   mode?: "expedition" | "virtual";
   /** Virtual Expeditions only: the target mountain being simulated. */
@@ -210,6 +223,8 @@ export interface SavedExpedition {
   /** Optional data lineage; absent on legacy saved expeditions. */
   virtualExpeditionProvenance?: VirtualExpeditionProvenance;
   manualBuilderState?: ManualBuilderState;
+  /** Self-reported preparation belongs to this expedition, not whichever one is active next. */
+  alpineExperience?: AlpineExperienceRecords;
   /** Routes the user has explicitly confirmed completing. */
   completedRoutes: string[];
   expeditionStatus: "saved" | "active" | "complete";
@@ -1306,7 +1321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const expeditionFields = [
         "virtualHills", "expeditionPlan", "simulationScore",
         "simulationScoreBreakdown", "targetMountain", "virtualHikeProgress", "completedRoutes",
-        "virtualExpeditionProvenance", "manualBuilderState",
+        "virtualExpeditionProvenance", "manualBuilderState", "alpineExperience",
       ] as const;
       const expUpdates: Partial<SavedExpedition> = {};
       for (const field of expeditionFields) {
@@ -1335,6 +1350,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id,
       savedAt: now,
       startedAt: now,
+      alpineExperience: undefined,
       completedRoutes: [],
       expeditionStatus: "active",
       virtualHikeProgress: { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 },
@@ -1363,6 +1379,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       expeditionPlan:           data.expeditionPlan ?? null,
       virtualHikeProgress:      { elevationGained: 0, distanceCovered: 0, hikesLogged: 0 },
       completedRoutes:          [],
+      alpineExperience:          undefined,
       location:                 data.location,
       maxRadius:                data.maxRadius,
     };
@@ -1430,6 +1447,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           simulationScore: expeditionGoal.simulationScore ?? e.simulationScore,
           simulationScoreBreakdown: expeditionGoal.simulationScoreBreakdown ?? e.simulationScoreBreakdown,
           targetMountain: expeditionGoal.targetMountain ?? e.targetMountain,
+          alpineExperience: expeditionGoal.alpineExperience,
           location: expeditionGoal.location ?? e.location,
           maxRadius: expeditionGoal.maxRadius ?? e.maxRadius,
         };
@@ -1455,6 +1473,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         expeditionPlan:           target.expeditionPlan ?? null,
         virtualHikeProgress:      target.virtualHikeProgress,
         completedRoutes:          target.completedRoutes,
+        alpineExperience:         target.alpineExperience,
         location:                 target.location,
         maxRadius:                target.maxRadius,
         fitnessLevel:             target.fitnessLevel,

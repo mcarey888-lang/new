@@ -1,5 +1,5 @@
-import { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, CompletedGoal, ExploreHike } from "@/context/AppContext";
-import { mergeActivityKinds } from "@/utils/activityReliability";
+import type { SummitGoal, TrainingWeek, Session, NearbyHill, AlpineRequirement, AlpineExperienceRecords, CompletedGoal, ExploreHike } from "@/context/AppContext";
+import { mergeActivityKinds } from "./activityReliability";
 
 const DIFFICULTY_RANK: Record<string, number> = {
   Easy: 1, Moderate: 2, Hard: 3, Alpine: 4,
@@ -58,7 +58,12 @@ export function isRequirementMet(
   req: AlpineRequirement,
   sessions: Session[],
   weeksElapsed: number,
+  experience?: AlpineExperienceRecords,
 ): boolean {
+  // A workout benchmark cannot demonstrate technical competence or acclimatisation.
+  if (req.category === "technical" || req.category === "altitude") {
+    return experience?.[req.category]?.status === "completed";
+  }
   if (!req.benchmark || req.benchmarkValue === undefined) return false;
   const completed = sessions.filter(s => s.completed);
   switch (req.benchmark) {
@@ -70,8 +75,16 @@ export function isRequirementMet(
     }
     case "big_day_count":
       return completed.filter(s => s.type === "bigDay").length >= req.benchmarkValue;
-    case "weeks_training":
-      return weeksElapsed >= req.benchmarkValue;
+    case "weeks_training": {
+      if (weeksElapsed < req.benchmarkValue) return false;
+      const weeksWithTraining = new Set(
+        completed.filter(s => s.weekNumber > 0).map(s => s.weekNumber),
+      );
+      for (let week = weeksElapsed; week > weeksElapsed - req.benchmarkValue; week--) {
+        if (!weeksWithTraining.has(week)) return false;
+      }
+      return true;
+    }
     default:
       return false;
   }
@@ -219,7 +232,8 @@ export function calculateReadiness(
   let alpineReqScore = 0;
   if (goal.difficulty === "Alpine" && goal.alpineProfile?.requirements?.length) {
     const measurable = goal.alpineProfile.requirements.filter(
-      r => r.benchmark && r.benchmarkValue !== undefined,
+      r => r.category !== "technical" && r.category !== "altitude"
+        && r.benchmark && r.benchmarkValue !== undefined,
     );
     if (measurable.length > 0) {
       let metCount = 0;
@@ -228,7 +242,7 @@ export function calculateReadiness(
           case "sessions_count":  if (totalCompleted >= req.benchmarkValue!) metCount++; break;
           case "max_elevation_m": if (maxElev >= req.benchmarkValue!) metCount++; break;
           case "big_day_count":   if (bigDays.length >= req.benchmarkValue!) metCount++; break;
-          case "weeks_training":  if (weeksIncludingCurrent >= req.benchmarkValue!) metCount++; break;
+          case "weeks_training":  if (isRequirementMet(req, planCompleted, weeksElapsed)) metCount++; break;
         }
       }
       alpineReqScore = Math.round((metCount / measurable.length) * 10);

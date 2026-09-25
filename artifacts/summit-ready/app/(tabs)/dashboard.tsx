@@ -21,6 +21,7 @@ import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import type { AlpineExperience, AlpineExperienceCategory } from "@/context/AppContext";
 import { T } from "@/constants/theme";
 import { useSubscription } from "@/lib/revenuecat";
 import { logAiCoachUsed, logReadinessScoreViewed, useScreenView } from "@/lib/analytics";
@@ -31,6 +32,7 @@ import { assessTime } from "@/utils/timeValidator";
 import { BASECAMP } from "@/constants/tokens";
 import { BasecampHero } from "@/components/basecamp/BasecampHero";
 import { BasecampReadiness } from "@/components/basecamp/BasecampReadiness";
+import { AlpineExperienceEditor } from "@/components/basecamp/AlpineExperienceEditor";
 import {
   MissionCard, MissionComplete, UpNextRail,
 } from "@/components/basecamp/MissionSection";
@@ -120,7 +122,9 @@ function AlpineCard({
   loading: boolean;
 }) {
   const reducedMotion = useReducedMotion();
+  const { patchGoal } = useApp();
   const [expanded, setExpanded] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<AlpineExperienceCategory | null>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weeksElapsed = trainingPlan.filter(w => new Date(w.endDate) < today).length;
@@ -149,8 +153,15 @@ function AlpineCard({
   const requirements = Array.isArray(profile.requirements) ? profile.requirements : [];
   const keyRisks     = Array.isArray(profile.keyRisks) ? profile.keyRisks : [];
   const metCount = requirements.filter(req =>
-    isRequirementMet(req, sessions, weeksElapsed)
+    isRequirementMet(req, sessions, weeksElapsed, goal.alpineExperience)
   ).length;
+  const editingRequirement = requirements.find(req => req.category === editingCategory);
+  const saveExperience = async (category: AlpineExperienceCategory, record: AlpineExperience | null) => {
+    const next = { ...goal.alpineExperience };
+    if (record) next[category] = record;
+    else delete next[category];
+    await patchGoal({ alpineExperience: next });
+  };
 
   return (
     <Animated.View entering={reducedMotion ? undefined : FadeInDown.delay(270).duration(500)}>
@@ -168,7 +179,7 @@ function AlpineCard({
           </View>
           <View style={{ flex: 1 }} />
           <Text style={styles.alpineMetCount}>
-            {metCount}/{profile.requirements.length} met
+            {metCount}/{requirements.length} met
           </Text>
         </View>
 
@@ -218,8 +229,15 @@ function AlpineCard({
         {expanded && (
           <View style={styles.alpineExpandedContent}>
             <View style={styles.alpineDivider} />
+            <Text style={styles.alpineHelp}>
+              Training targets use logged activity. For technical skills and acclimatisation, record previous experience or training from a course or guided trip. Planned days do not count as met.
+            </Text>
             {requirements.map((req) => {
-              const met = isRequirementMet(req, sessions, weeksElapsed);
+              const manual = req.category === "technical" || req.category === "altitude";
+              const record = manual
+                ? goal.alpineExperience?.[req.category as AlpineExperienceCategory]
+                : undefined;
+              const met = isRequirementMet(req, sessions, weeksElapsed, goal.alpineExperience);
               const color = ALPINE_CATEGORY_COLOR[req.category] ?? T.green;
               const AlpineIcon = ALPINE_CATEGORY_ICON[req.category] ?? CheckCircle;
               return (
@@ -230,9 +248,29 @@ function AlpineCard({
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={styles.alpineReqLabel}>{req.label}</Text>
                     <Text style={styles.alpineReqDetail}>{req.detail}</Text>
+                    {manual && (
+                      <>
+                        {record && (
+                          <Text style={styles.alpineRecordSummary} numberOfLines={2}>
+                            {record.status === "planned" ? "Planned" : "Self-reported complete"} · {record.note}
+                          </Text>
+                        )}
+                        <TouchableOpacity
+                          style={styles.alpineRecordAction}
+                          onPress={() => setEditingCategory(req.category as AlpineExperienceCategory)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${record ? "Edit" : "Record"} ${req.label} experience`}
+                        >
+                          <Text style={styles.alpineRecordActionText}>
+                            {record ? "Edit experience" : "Record experience"}
+                          </Text>
+                          <ChevronRight size={12} color={T.blue} />
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
-                  <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : "rgba(255,255,255,0.05)" }]}>
-                    {met ? <Check size={12} color={T.green} /> : <Minus size={12} color={T.textMuted} />}
+                  <View style={[styles.alpineReqStatus, { backgroundColor: met ? T.green + "18" : record ? T.blue + "18" : "rgba(255,255,255,0.05)" }]}>
+                    {met ? <Check size={12} color={T.green} /> : record ? <Calendar size={12} color={T.blue} /> : <Minus size={12} color={T.textMuted} />}
                   </View>
                 </View>
               );
@@ -242,7 +280,19 @@ function AlpineCard({
               <Info size={12} color={T.blue} />
               <Text style={styles.alpineAcclimText}>{profile.acclimatizationNote}</Text>
             </View>
+            <Text style={styles.alpineDisclaimer}>Self-reported experience is not verified. These requirements are preparation guidance, not clearance to climb; consult a qualified guide for technical and altitude decisions.</Text>
           </View>
+        )}
+        {editingCategory && editingRequirement && (
+          <AlpineExperienceEditor
+            key={editingCategory}
+            category={editingCategory}
+            requirement={`${editingRequirement.label}. ${editingRequirement.detail}`}
+            existing={goal.alpineExperience?.[editingCategory]}
+            onSave={record => saveExperience(editingCategory, record)}
+            onRemove={() => saveExperience(editingCategory, null)}
+            onClose={() => setEditingCategory(null)}
+          />
         )}
       </View>
     </Animated.View>
@@ -976,6 +1026,25 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: T.basecampTextMuted,
     lineHeight: 16,
+  },
+  alpineHelp: {
+    fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted, marginBottom: 2,
+  },
+  alpineRecordSummary: {
+    fontSize: 11, lineHeight: 16, fontFamily: "Inter_500Medium",
+    color: T.blue, marginTop: 4,
+  },
+  alpineRecordAction: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    alignSelf: "flex-start", minHeight: 36, marginTop: 2,
+  },
+  alpineRecordActionText: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold", color: T.blue,
+  },
+  alpineDisclaimer: {
+    fontSize: 10, lineHeight: 15, fontFamily: "Inter_400Regular",
+    color: T.basecampTextMuted,
   },
   alpineReqStatus: {
     width: 24,
