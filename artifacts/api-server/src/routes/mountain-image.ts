@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
+import { pool } from "@workspace/db";
 import { cachedMountains } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { downloadMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
+import { resolveCanonicalMountainIdentity, type CanonicalMountainIdentity } from "../services/mountain/canonicalMountainIdentity.js";
+import { isMountainHeroImageRejected } from "../services/artwork/mountainHeroReviewState.js";
 
 const router: IRouter = Router();
 
@@ -26,25 +29,103 @@ interface Coord { lat: number; lng: number }
 interface ImageResult {
   thumbUrl: string | null;
   coord:    Coord | null;
+  mutableHero?: boolean;
 }
 
 const imageCache = new Map<string, ImageResult>();
 const imageRequests = new Map<string, Promise<ImageResult>>();
-const HERO_CACHE_VERSION = "v5";
+const imageCacheGenerations = new Map<string, number>();
+const HERO_CACHE_VERSION = "v6";
 const APPROVED_HERO_VERSION = "v1";
 
 function approvedHeroKey(name: string): string {
   return `hero-approved:${APPROVED_HERO_VERSION}:${canonicalImageSubject(name).toLowerCase()}`;
 }
 
-export function clearMountainImageMemoryCache(name?: string): void {
-  if (!name) {
+function approvedHeroIdKey(id: string): string {
+  return `hero-approved:${APPROVED_HERO_VERSION}:id:${id}`;
+}
+
+async function approvedHeroUrl(mountain: CanonicalMountainIdentity): Promise<string | null> {
+  const keys = [approvedHeroIdKey(mountain.id), approvedHeroKey(mountain.name)];
+  for (const key of keys) {
+    const result = await pool.query<{ data: string }>(
+      "SELECT data FROM public.cached_mountains WHERE slug = $1 LIMIT 1",
+      [key],
+    );
+    const row = result.rows[0];
+    if (!row?.data) continue;
+    try {
+      const approval = JSON.parse(row.data) as { mountainId?: string; imageUrl?: string };
+      const generatedOwner = typeof approval.imageUrl === "string"
+        ? parseMountainIllustrationPath(approval.imageUrl)
+        : null;
+      if (approval.mountainId === mountain.id && typeof approval.imageUrl === "string" &&
+          (!generatedOwner || generatedOwner.mountainId === mountain.id) &&
+          !await isRejectedHeroUrl(mountain.id, approval.imageUrl)) return approval.imageUrl;
+    } catch {
+      // Malformed persisted approval metadata is not trusted.
+    }
+  }
+  return null;
+}
+
+async function isRejectedHeroUrl(mountainId: string, imageUrl: string): Promise<boolean> {
+  const result = await pool.query<{ data: string }>(
+    "SELECT data FROM public.cached_mountains WHERE slug = $1 LIMIT 1",
+    [`hero-review:v1:${mountainId}`],
+  );
+  const row = result.rows[0];
+  if (!row?.data) return false;
+  return isMountainHeroImageRejected(row.data, imageUrl);
+}
+
+async function reusableAutoHeroUrl(mountain: CanonicalMountainIdentity): Promise<string | null> {
+  const slug = `hero-auto:v1:${mountain.id}`;
+  const autoResult = await pool.query<{ data: string }>(
+    "SELECT data FROM public.cached_mountains WHERE slug = $1 LIMIT 1",
+    [slug],
+  );
+  const auto = autoResult.rows[0];
+  if (!auto?.data) return null;
+  try {
+    const record = JSON.parse(auto.data) as { status?: string; candidate?: { imageUrl?: string } };
+    if (record.status !== "ready" || typeof record.candidate?.imageUrl !== "string") return null;
+    const generatedOwner = parseMountainIllustrationPath(record.candidate.imageUrl);
+    if (!generatedOwner || generatedOwner.mountainId !== mountain.id) return null;
+    const reviewResult = await pool.query<{ data: string }>(
+      "SELECT data FROM public.cached_mountains WHERE slug = $1 LIMIT 1",
+      [`hero-review:v1:${mountain.id}`],
+    );
+    const review = reviewResult.rows[0];
+    if (isMountainHeroImageRejected(review?.data, record.candidate.imageUrl)) return null;
+    return record.candidate.imageUrl;
+  } catch {
+    return null;
+  }
+}
+
+export function clearMountainImageMemoryCache(name?: string, mountainId?: string): void {
+  if (!name && !mountainId) {
     imageCache.clear();
+    for (const key of imageRequests.keys()) imageCacheGenerations.set(key, (imageCacheGenerations.get(key) ?? 0) + 1);
+    imageRequests.clear();
     return;
   }
-  const normalized = canonicalImageSubject(name).toLowerCase();
+  const matches = (key: string) => {
+    const normalized = name ? canonicalImageSubject(name).toLowerCase() : "";
+    return Boolean(
+      (mountainId && key.startsWith(`mountain:${mountainId.toLowerCase()}::`)) ||
+      (normalized && (key.startsWith(`${normalized}::`) || key.includes(`::${normalized}::`))),
+    );
+  };
   for (const key of imageCache.keys()) {
-    if (key.startsWith(`${normalized}::`)) imageCache.delete(key);
+    if (matches(key)) imageCache.delete(key);
+  }
+  for (const key of imageRequests.keys()) {
+    if (!matches(key)) continue;
+    imageCacheGenerations.set(key, (imageCacheGenerations.get(key) ?? 0) + 1);
+    imageRequests.delete(key);
   }
 }
 
@@ -181,6 +262,23 @@ async function getCuratedImage(name: string): Promise<string | null> {
   return null;
 }
 
+/** Return a curated Commons reference only for an exact canonical subject. */
+export async function getCuratedMountainReferenceImage(name: string): Promise<string | null> {
+  const cleaned = cleanName(name).toLowerCase();
+  const exactSubjects = [cleaned, cleaned.replace(/^mount\s+/i, ""), `mount ${cleaned}`];
+  const files = exactSubjects.map((subject) => CURATED_MOUNTAIN_FILES[subject]).find(Boolean);
+  if (!files) return null;
+  for (const filename of files) {
+    try {
+      const url = await lookupCommonsFile(filename);
+      if (url) return url;
+    } catch {
+      // Continue through the hand-curated exact-subject alternatives.
+    }
+  }
+  return null;
+}
+
 async function getCuratedRouteImage(name: string): Promise<string | null> {
   const subject = exactImageSubject(name).toLowerCase();
   const match = Object.entries(CURATED_ROUTE_FILES)
@@ -231,6 +329,7 @@ function normalizedIdentity(value?: string): string {
 export function mountainImageCacheKey(input: {
   name: string;
   location?: string;
+  mountainId?: string;
   routeIdentityKey?: string;
   summitIdentityKey?: string;
 }): string {
@@ -238,7 +337,8 @@ export function mountainImageCacheKey(input: {
   if (routeKey) return `route:${routeKey}`;
   const summitKey = normalizedIdentity(input.summitIdentityKey);
   if (summitKey) return `summit:${summitKey}`;
-  return `${exactImageSubject(input.name).toLowerCase()}::${cleanName(input.location ?? "").toLowerCase()}`;
+  const mountainKey = input.mountainId ? `mountain:${input.mountainId.toLowerCase()}::` : "";
+  return `${mountainKey}${exactImageSubject(input.name).toLowerCase()}::${cleanName(input.location ?? "").toLowerCase()}`;
 }
 
 // ── Image suitability filter ──────────────────────────────────────────────────
@@ -470,17 +570,22 @@ async function getWikipediaData(name: string, allowRelatedPages = true): Promise
 interface ImageLookupInput {
   name: string;
   location?: string;
+  mountainId?: string;
   routeIdentityKey?: string;
   summitIdentityKey?: string;
   coord?: Coord;
 }
 
 async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
-  const { name, location, routeIdentityKey, summitIdentityKey } = input;
+  const { name, location, mountainId, routeIdentityKey, summitIdentityKey } = input;
   const canonicalName = cleanName(name) || cleanName(location ?? "") || name;
   const routeSubject = exactImageSubject(name);
   const routeSpecific = isRouteSpecificImageRequest(name, routeIdentityKey);
-  const cacheKey = mountainImageCacheKey({ name, location, routeIdentityKey, summitIdentityKey });
+  const canonicalMountain = !routeSpecific
+    ? await resolveCanonicalMountainIdentity(name, location, mountainId).catch(() => null)
+    : null;
+  const cacheKey = mountainImageCacheKey({ name, location, mountainId: canonicalMountain?.id ?? mountainId, routeIdentityKey, summitIdentityKey });
+  const cacheGeneration = imageCacheGenerations.get(cacheKey) ?? 0;
   const cached   = imageCache.get(cacheKey);
   if (cached !== undefined) return cached;
   const inFlight = imageRequests.get(cacheKey);
@@ -488,21 +593,11 @@ async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
 
   const request = (async () => {
     const { db } = await import("@workspace/db");
-    if (!routeSpecific) {
-      const [approved] = await db.select({ data: cachedMountains.data })
-        .from(cachedMountains)
-        .where(eq(cachedMountains.slug, approvedHeroKey(canonicalName)))
-        .limit(1);
-      if (approved?.data) {
-        try {
-          const record = JSON.parse(approved.data) as { imageUrl?: string };
-          if (record.imageUrl) {
-            const result = { thumbUrl: record.imageUrl, coord: input.coord ?? null };
-            imageCache.set(cacheKey, result);
-            return result;
-          }
-        } catch { /* ignore invalid approval data */ }
-      }
+    const approved = canonicalMountain ? await approvedHeroUrl(canonicalMountain) : null;
+    if (approved) {
+      const result = { thumbUrl: approved, coord: input.coord ?? null, mutableHero: true };
+      if ((imageCacheGenerations.get(cacheKey) ?? 0) === cacheGeneration) imageCache.set(cacheKey, result);
+      return result;
     }
 
     const persistentKey = `hero-image:${HERO_CACHE_VERSION}:${cacheKey}`;
@@ -514,8 +609,13 @@ async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
       try {
         const parsed = JSON.parse(stored.data) as ImageResult;
         if (parsed.thumbUrl) {
-          imageCache.set(cacheKey, parsed);
-          return parsed;
+          const internalImage = parseMountainIllustrationPath(parsed.thumbUrl);
+          if (!internalImage ||
+              (canonicalMountain && await reusableAutoHeroUrl(canonicalMountain) === parsed.thumbUrl)) {
+            if ((imageCacheGenerations.get(cacheKey) ?? 0) === cacheGeneration) imageCache.set(cacheKey, parsed);
+            return parsed;
+          }
+          await db.delete(cachedMountains).where(eq(cachedMountains.slug, persistentKey));
         }
       } catch { /* regenerate invalid legacy cache data */ }
     }
@@ -541,8 +641,13 @@ async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
       if (!coord && wikiRes.status === "fulfilled") coord = wikiRes.value.coord;
     }
 
-    const result: ImageResult = { thumbUrl, coord };
-    imageCache.set(cacheKey, result);
+    let mutableHero = false;
+    if (!thumbUrl && canonicalMountain) {
+      thumbUrl = await reusableAutoHeroUrl(canonicalMountain).catch(() => null);
+      mutableHero = Boolean(thumbUrl);
+    }
+    const result: ImageResult = { thumbUrl, coord, ...(mutableHero ? { mutableHero: true } : {}) };
+    if ((imageCacheGenerations.get(cacheKey) ?? 0) === cacheGeneration) imageCache.set(cacheKey, result);
     if (thumbUrl) {
       await db.insert(cachedMountains).values({
         slug: persistentKey,
@@ -553,7 +658,12 @@ async function getImageData(input: ImageLookupInput): Promise<ImageResult> {
       });
     }
     return result;
-  })().finally(() => imageRequests.delete(cacheKey));
+  })().finally(() => {
+    if (imageRequests.get(cacheKey) === request) imageRequests.delete(cacheKey);
+    if (!imageRequests.has(cacheKey) && imageCacheGenerations.get(cacheKey) !== cacheGeneration) {
+      imageCacheGenerations.delete(cacheKey);
+    }
+  });
 
   imageRequests.set(cacheKey, request);
   return request;
@@ -641,6 +751,9 @@ router.get("/mountain-image", async (req, res) => {
   const summitIdentityKey = typeof req.query["summitIdentityKey"] === "string"
     ? req.query["summitIdentityKey"].trim() || undefined
     : undefined;
+  const mountainId = typeof req.query["mountainId"] === "string"
+    ? req.query["mountainId"].trim() || undefined
+    : undefined;
   const rawLat = typeof req.query["lat"] === "string" ? Number(req.query["lat"]) : NaN;
   const rawLng = typeof req.query["lng"] === "string" ? Number(req.query["lng"]) : NaN;
   const verifiedCoord = Number.isFinite(rawLat) && Number.isFinite(rawLng)
@@ -654,9 +767,10 @@ router.get("/mountain-image", async (req, res) => {
   if (!name) { res.status(400).end(); return; }
 
   try {
-    const { thumbUrl, coord } = await getImageData({
+    const { thumbUrl, coord, mutableHero } = await getImageData({
       name,
       location: rawLocation || undefined,
+      mountainId,
       routeIdentityKey,
       summitIdentityKey,
       coord: verifiedCoord,
@@ -671,7 +785,7 @@ router.get("/mountain-image", async (req, res) => {
         generatedIllustration.jobId,
       );
       res.set("Content-Type", stored.mimeType);
-      res.set("Cache-Control", "public, max-age=2592000");
+      res.set("Cache-Control", "no-store");
       res.set("Content-Length", String(stored.buffer.byteLength));
       res.send(stored.buffer);
       return;
@@ -690,7 +804,7 @@ router.get("/mountain-image", async (req, res) => {
         } else {
           const buffer = await imgRes.arrayBuffer();
           res.set("Content-Type",   contentType);
-          res.set("Cache-Control",  "public, max-age=2592000"); // 30 days
+          res.set("Cache-Control",  mutableHero ? "no-store" : "public, max-age=2592000");
           res.set("Content-Length", String(buffer.byteLength));
           res.send(Buffer.from(buffer));
           return;

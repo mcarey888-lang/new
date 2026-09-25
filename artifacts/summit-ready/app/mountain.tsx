@@ -45,6 +45,9 @@ import { RouteActionBar } from "@/components/mountain/RouteActionBar";
 import { useScreenView } from "@/lib/analytics";
 import { useApp } from "@/context/AppContext";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
+import {
+  canonicalMountainImageUrl, fetchMountainHeroStatus, generatedMountainHeroUrl, MountainHeroRequestError,
+} from "@/utils/mountainHero";
 import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence";
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
 import { startRouteHandoff } from "@/utils/routeEligibility";
@@ -80,6 +83,10 @@ export default function MountainDetailScreen() {
   const [lookup, setLookup] = useState<MountainLookupResponse | null>(null);
   const [state, setState] = useState<LoadState>("loading");
   const [heroFailed, setHeroFailed] = useState(false);
+  const [generatedHeroUri, setGeneratedHeroUri] = useState<string | null>(null);
+  const [generatedHeroFailed, setGeneratedHeroFailed] = useState(false);
+  const [heroRevision, setHeroRevision] = useState<string | null>(null);
+  const [heroGenerationStatus, setHeroGenerationStatus] = useState<"generating" | "ready" | "failed" | null>(null);
   const [sort, setSort] = useState<RouteSort>("Ascent");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [record, setRecord] = useState<CanonicalRouteRecord | null>(null);
@@ -112,6 +119,65 @@ export default function MountainDetailScreen() {
   useEffect(() => { void load(); }, [load]);
 
   const mountain = useMemo(() => lookup ? presentMountain(lookup) : null, [lookup]);
+  const canonicalMountainId = lookup?.source === "canonical"
+    ? lookup.canonicalIdentity?.id
+    : null;
+
+  // Only the detail screen starts generation, after catalogue identity is resolved.
+  // List thumbnails and general image reads never request paid artwork.
+  useEffect(() => {
+    if (!canonicalMountainId || !userId) return;
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
+    const startedAt = Date.now();
+    let statusFailures = 0;
+    setGeneratedHeroUri(null);
+    setGeneratedHeroFailed(false);
+    setHeroRevision(null);
+    setHeroGenerationStatus(null);
+
+    const check = async (request: boolean) => {
+      try {
+        const result = await fetchMountainHeroStatus(canonicalMountainId, API_BASE, getToken, request);
+        if (cancelled) return;
+        statusFailures = 0;
+        if (result.status === "ready") {
+          const url = generatedMountainHeroUrl(result.imageUrl, API_BASE, canonicalMountainId);
+          if (url) setGeneratedHeroUri(url);
+          setHeroFailed(false);
+          setHeroRevision(result.jobId ?? `approved-${Date.now()}`);
+          setHeroGenerationStatus("ready");
+        } else if (result.status === "generating") {
+          setHeroGenerationStatus("generating");
+          pollTimer = setTimeout(() => void check(false), 5000);
+        } else {
+          setHeroGenerationStatus(result.status === "failed" ? "failed" : null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          if (error instanceof MountainHeroRequestError && request &&
+              (error.status === 429 || error.status === 503) && error.retryAfterMs &&
+              Date.now() - startedAt + error.retryAfterMs < 3 * 60 * 1000) {
+            setHeroGenerationStatus("generating");
+            pollTimer = setTimeout(() => void check(true), Math.max(error.retryAfterMs, 5000));
+            return;
+          }
+          if (!request && !(error instanceof MountainHeroRequestError && error.status < 500) &&
+              ++statusFailures <= 3) {
+            pollTimer = setTimeout(() => void check(false), 5000);
+            return;
+          }
+          console.warn("Mountain hero generation unavailable", error);
+          setHeroGenerationStatus("failed");
+        }
+      }
+    };
+    void check(true);
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [canonicalMountainId, getToken, userId]);
   const routes = useMemo(
     () => (lookup && mountain ? presentRoutes(lookup, mountain) : []),
     [lookup, mountain],
@@ -168,10 +234,14 @@ export default function MountainDetailScreen() {
      panel renders its designed unavailable state rather than a made-up one. */
   const dna = useMemo(() => presentMountainDna(null), []);
 
-  const heroUri = !heroFailed && mountain
-    ? `${API_BASE}/mountain-image?name=${encodeURIComponent(mountain.name)}`
-      + `&location=${encodeURIComponent(mountain.place ?? "")}&width=960&height=620`
-    : null;
+  const heroUri = generatedHeroUri && !generatedHeroFailed
+    ? generatedHeroUri
+    : !heroFailed && mountain
+      ? canonicalMountainId
+        ? canonicalMountainImageUrl(API_BASE, canonicalMountainId, mountain.name, mountain.place ?? "", heroRevision)
+        : `${API_BASE}/mountain-image?name=${encodeURIComponent(mountain.name)}`
+          + `&location=${encodeURIComponent(mountain.place ?? "")}&width=960&height=620`
+      : null;
 
   function choose(route: PresentedRoute) {
     setSelectedKey(current => current === route.key ? null : route.key);
@@ -296,7 +366,10 @@ export default function MountainDetailScreen() {
         {/* ── Hero: the mountain, its height and where it is ───────────── */}
         <SRHeroFrame
           uri={heroUri}
-          onImageError={() => setHeroFailed(true)}
+          onImageError={() => {
+            if (generatedHeroUri && !generatedHeroFailed) setGeneratedHeroFailed(true);
+            else setHeroFailed(true);
+          }}
           minHeight={334}
           dim={0.95}
           style={{ justifyContent: "space-between" }}
@@ -321,6 +394,15 @@ export default function MountainDetailScreen() {
                 <Text style={styles.heroPlaceText} numberOfLines={2}>{mountain.place}</Text>
               </View>
             ) : null}
+            {heroGenerationStatus === "generating" && (
+              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>Creating a mountain-specific hero image…</Text>
+            )}
+            {generatedHeroUri && !generatedHeroFailed && (
+              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>AI-generated mountain depiction</Text>
+            )}
+            {heroGenerationStatus === "failed" && (
+              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>New hero unavailable — showing the existing image</Text>
+            )}
             <View style={styles.heroBadges}>
               {lookup?.catalogueStatus === "unavailable"
                 ? <Text style={styles.catalogueUnavailableBadge}>CATALOGUE UNAVAILABLE</Text>

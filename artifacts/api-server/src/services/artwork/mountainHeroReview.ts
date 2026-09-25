@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { db, pool, cachedMountains } from "@workspace/db";
+import { db, pool, cachedMountains, executeEngineReadOnlyQuery } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import {
@@ -10,6 +10,9 @@ import {
 import { defaultImageProvider, type ImageProvider } from "./imageProvider.js";
 import { uploadMountainHeroIllustration } from "./artworkStorage.js";
 import { logger } from "../../lib/logger.js";
+import { buildMountainHeroPrompt, resolveMountainHeroReference } from "./mountainAutoHeroService.js";
+import { getCanonicalMountainById } from "../mountain/canonicalMountainIdentity.js";
+import { CANONICAL_TRUST_SQL } from "../mountain/canonicalMountainLookup.js";
 
 const WIKI_HEADERS = { "User-Agent": "SummitReady/1.0 (mountain hero review)" };
 const REVIEW_VERSION = "v1";
@@ -47,6 +50,35 @@ interface ReviewRecord {
   updatedAt: string;
 }
 
+export function applyMountainHeroRejection(
+  current: ReviewRecord,
+  imageUrl: string,
+  updatedAt: string,
+): { record: ReviewRecord; unpublished: boolean } {
+  const currentApprovedUrl = current.imageUrl ?? current.selected?.imageUrl;
+  const unpublished = current.status === "approved" && currentApprovedUrl === imageUrl;
+  const record: ReviewRecord = {
+    ...current,
+    rejectedUrls: [...new Set([...(current.rejectedUrls ?? []), imageUrl])],
+    updatedAt,
+  };
+  if (unpublished) {
+    record.status = "pending";
+    delete record.imageUrl;
+    delete record.selected;
+  }
+  return { record, unpublished };
+}
+
+export function isApprovalRecordForRejectedImage(data: string, mountainId: string, imageUrl: string): boolean {
+  try {
+    const approval = JSON.parse(data) as { mountainId?: string; imageUrl?: string };
+    return approval.mountainId === mountainId && approval.imageUrl === imageUrl;
+  } catch {
+    return false;
+  }
+}
+
 export type MountainHeroGenerationStatus = "idle" | "generating" | "ready" | "failed";
 
 export interface MountainHeroGenerationRecord {
@@ -62,6 +94,7 @@ const reviewKey = (id: string) => `hero-review:${REVIEW_VERSION}:${id}`;
 const generationKey = (id: string) => `hero-generation:${REVIEW_VERSION}:${id}`;
 const approvedKey = (name: string) =>
   `hero-approved:${APPROVED_VERSION}:${canonicalImageSubject(name).toLowerCase()}`;
+const approvedMountainKey = (id: string) => `hero-approved:${APPROVED_VERSION}:id:${id}`;
 const GENERATION_STALE_AFTER_MS = 10 * 60 * 1000;
 
 function decodeMetadata(value?: string): string | null {
@@ -70,22 +103,7 @@ function decodeMetadata(value?: string): string | null {
 }
 
 async function getMountain(id: string): Promise<MountainRecord | null> {
-  const result = await pool.query<MountainRecord>(`
-    SELECT
-      id::text AS "id",
-      canonical_source_key AS "canonicalSourceKey",
-      name,
-      country,
-      region,
-      area,
-      elevation_m::float8 AS "elevationM",
-      prominence_m::float8 AS "prominenceM"
-    FROM public.mountains
-    WHERE id = $1::uuid
-      AND canonical_source_key IS NOT NULL
-    LIMIT 1
-  `, [id]);
-  return result.rows[0] ?? null;
+  return getCanonicalMountainById(id);
 }
 
 export async function listMountainHeroReviews(input: {
@@ -97,23 +115,33 @@ export async function listMountainHeroReviews(input: {
 }) {
   const offset = (input.page - 1) * input.pageSize;
   const search = input.search?.trim() ?? "";
-  const params: unknown[] = [search, input.status ?? "all", input.pageSize, offset];
-  const where = `
-    m.canonical_source_key IS NOT NULL
-    AND ($1 = '' OR m.name ILIKE '%' || $1 || '%' OR COALESCE(m.country, '') ILIKE '%' || $1 || '%' OR COALESCE(m.region, '') ILIKE '%' || $1 || '%')
-    AND (
-      $2 = 'all'
-      OR ($2 = 'approved' AND review.slug IS NOT NULL)
-      OR ($2 = 'review-required' AND review.slug IS NULL)
-    )
-  `;
+  const status = input.status ?? "all";
+  const reviewRows = await pool.query<{ slug: string; data: string }>(
+    "SELECT slug, data FROM public.cached_mountains WHERE slug LIKE $1",
+    [`hero-review:${REVIEW_VERSION}:%`],
+  );
+  const approvedIds = reviewRows.rows.flatMap((row) => {
+    try {
+      return (JSON.parse(row.data) as ReviewRecord).status === "approved"
+        ? [row.slug.slice(`hero-review:${REVIEW_VERSION}:`.length)]
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  const statusClause = status === "approved"
+    ? "AND m.id::text = ANY($2::text[])"
+    : status === "review-required"
+      ? "AND NOT (m.id::text = ANY($2::text[]))"
+      : "";
+  const queryParams: unknown[] = status === "all" ? [search] : [search, approvedIds];
   const orderBy = input.sort === "name"
     ? "m.name, m.country NULLS LAST, m.id"
     : input.sort === "elevation"
       ? "m.elevation_m DESC NULLS LAST, m.prominence_m DESC NULLS LAST, m.name, m.id"
       : "m.prominence_m DESC NULLS LAST, m.elevation_m DESC NULLS LAST, m.name, m.id";
   const [rowsResult, countResult] = await Promise.all([
-    pool.query<MountainRecord & { reviewData: string | null }>(`
+    executeEngineReadOnlyQuery<Record<string, unknown>>(`
       SELECT
         m.id::text AS "id",
         m.canonical_source_key AS "canonicalSourceKey",
@@ -122,31 +150,43 @@ export async function listMountainHeroReviews(input: {
         m.region,
         m.area,
         m.elevation_m::float8 AS "elevationM",
-        m.prominence_m::float8 AS "prominenceM",
-        review.data AS "reviewData"
+        m.prominence_m::float8 AS "prominenceM"
       FROM public.mountains m
-      LEFT JOIN public.cached_mountains review
-        ON review.slug = 'hero-review:${REVIEW_VERSION}:' || m.id::text
-      WHERE ${where}
-       ORDER BY ${orderBy}
-      LIMIT $3 OFFSET $4
-    `, params),
-    pool.query<{ total: string }>(`
+      WHERE ${CANONICAL_TRUST_SQL}
+        AND m.canonical_source_key IS NOT NULL
+        AND btrim(m.canonical_source_key) <> ''
+        AND ($1 = '' OR m.name ILIKE '%' || $1 || '%' OR COALESCE(m.country, '') ILIKE '%' || $1 || '%' OR COALESCE(m.region, '') ILIKE '%' || $1 || '%')
+        ${statusClause}
+      ORDER BY ${orderBy}
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `, [...queryParams, input.pageSize, offset]),
+    executeEngineReadOnlyQuery<Record<string, unknown>>(`
       SELECT COUNT(*)::text AS total
       FROM public.mountains m
-      LEFT JOIN public.cached_mountains review
-        ON review.slug = 'hero-review:${REVIEW_VERSION}:' || m.id::text
-      WHERE ${where}
-    `, params.slice(0, 2)),
+      WHERE ${CANONICAL_TRUST_SQL}
+        AND m.canonical_source_key IS NOT NULL
+        AND btrim(m.canonical_source_key) <> ''
+        AND ($1 = '' OR m.name ILIKE '%' || $1 || '%' OR COALESCE(m.country, '') ILIKE '%' || $1 || '%' OR COALESCE(m.region, '') ILIKE '%' || $1 || '%')
+        ${statusClause}
+    `, queryParams),
   ]);
+  const rows = rowsResult as unknown as (MountainRecord & { id: string })[];
+  const reviewByMountainId = new Map<string, ReviewRecord>();
+  if (rows.length) {
+    const reviewData = await pool.query<{ slug: string; data: string }>(
+      "SELECT slug, data FROM public.cached_mountains WHERE slug = ANY($1::text[])",
+      [rows.map((row) => `hero-review:${REVIEW_VERSION}:${row.id}`)],
+    );
+    for (const row of reviewData.rows) {
+      try {
+        reviewByMountainId.set(row.slug.slice(`hero-review:${REVIEW_VERSION}:`.length), JSON.parse(row.data) as ReviewRecord);
+      } catch { /* malformed review state is treated as pending */ }
+    }
+  }
 
   return {
-    mountains: rowsResult.rows.map(row => {
-      let review: ReviewRecord | null = null;
-      if (row.reviewData) {
-        try { review = JSON.parse(row.reviewData) as ReviewRecord; } catch { review = null; }
-      }
-      const { reviewData: _, ...mountain } = row;
+    mountains: rows.map(mountain => {
+      const review = reviewByMountainId.get(mountain.id) ?? null;
       return {
         ...mountain,
         status: review?.status ?? "pending",
@@ -154,7 +194,7 @@ export async function listMountainHeroReviews(input: {
         approvedSource: review?.selected ?? null,
       };
     }),
-    total: Number(countResult.rows[0]?.total ?? 0),
+    total: Number(countResult[0]?.total ?? 0),
     page: input.page,
     pageSize: input.pageSize,
   };
@@ -249,6 +289,21 @@ export async function findMountainHeroCandidates(id: string) {
     } catch { /* ignore */ }
   }
   const generation = await readMountainHeroGeneration(id);
+  const [autoHero] = await db.select({ data: cachedMountains.data })
+    .from(cachedMountains)
+    .where(eq(cachedMountains.slug, `hero-auto:v1:${id}`))
+    .limit(1);
+  let autoCandidate: MountainHeroCandidate | null = null;
+  if (autoHero?.data) {
+    try {
+      const record = JSON.parse(autoHero.data) as { status?: string; candidate?: MountainHeroCandidate };
+      if (record.status === "ready" && record.candidate) autoCandidate = record.candidate;
+    } catch { /* malformed auto state is not an admin candidate */ }
+  }
+  const aiCandidates = [generation.candidate, autoCandidate]
+    .filter((candidate): candidate is MountainHeroCandidate =>
+      Boolean(candidate && !rejected.has(candidate.imageUrl)),
+    );
   return {
     mountain: {
       ...mountain,
@@ -260,9 +315,9 @@ export async function findMountainHeroCandidates(id: string) {
       .filter(candidate => !rejected.has(candidate.imageUrl))
       .sort((a, b) => b.score - a.score)
       .slice(0, 12)
-      .concat(generation.candidate && !rejected.has(generation.candidate.imageUrl)
-        ? [generation.candidate]
-        : []),
+      .concat(aiCandidates.filter((candidate, index) =>
+        aiCandidates.findIndex((item) => item.id === candidate.id) === index,
+      )),
   };
 }
 
@@ -386,25 +441,27 @@ export async function runMountainHeroGeneration(
   try {
     const mountain = await getMountain(id);
     if (!mountain) throw new Error("Mountain not found");
-    const location = [mountain.area, mountain.region, mountain.country]
-      .filter((part): part is string => Boolean(part?.trim()))
-      .join(", ");
-    const prompt = [
-      `Create one distinctive AI-generated mountain landscape illustration inspired specifically by ${mountain.name}${location ? ` (${location})` : ""}.`,
-      "This must read clearly as original illustrated artwork, not an authentic photograph and not documentary evidence.",
-      "Use a refined hand-painted editorial travel-poster style with natural mountain forms, atmospheric depth, elegant color, and no text, labels, logos, borders, or watermark.",
-      "Create an artistic interpretation of this named mountain and its regional landscape, not a claim of photographic accuracy.",
-    ].join(" ");
-    const generated = await provider.generate(prompt, { size: "1536x1024" });
+    const reference = await resolveMountainHeroReference(mountain);
+    const prompt = buildMountainHeroPrompt(mountain, Boolean(reference));
+    const generated = await provider.generate(prompt, {
+      size: "1536x1024",
+      ...(reference ? { referenceImages: [reference] } : {}),
+    });
     if (!generated.buffer.length) throw new Error("Image provider returned an empty image");
-    const metadata = await sharp(generated.buffer).metadata();
-    const contentType = metadata.format === "png" ? "image/png" : metadata.format === "jpeg" ? "image/jpeg" : null;
-    if (!contentType) throw new Error("Image provider returned an unsupported image format");
-    const imageUrl = await uploadMountainHeroIllustration(id, jobId, generated.buffer, contentType);
+    const metadata = await sharp(generated.buffer, { limitInputPixels: 24_000_000 }).metadata();
+    if (!["png", "jpeg"].includes(metadata.format ?? "")) {
+      throw new Error("Image provider returned an unsupported image format");
+    }
+    const validatedImage = await sharp(generated.buffer, { limitInputPixels: 24_000_000 })
+      .rotate()
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toBuffer();
+    if (!validatedImage.length) throw new Error("Image provider returned an invalid image");
+    const imageUrl = await uploadMountainHeroIllustration(id, jobId, validatedImage, "image/jpeg");
     const generatedAt = new Date().toISOString();
     const candidate: MountainHeroCandidate = {
       id: jobId,
-      title: `${mountain.name} — AI-generated illustration (not a photograph)`,
+      title: `${mountain.name} — AI-generated depiction (not a documentary photograph)`,
       imageUrl,
       sourcePageUrl: imageUrl,
       source: "AI-generated illustration",
@@ -459,15 +516,44 @@ export function isGeneratedMountainCandidateOwnedBy(
 export async function approveMountainHero(id: string, candidate: MountainHeroCandidate) {
   const mountain = await getMountain(id);
   if (!mountain) throw new Error("Mountain not found");
+  const [existingReview] = await db.select({ data: cachedMountains.data })
+    .from(cachedMountains)
+    .where(eq(cachedMountains.slug, reviewKey(id)))
+    .limit(1);
+  if (existingReview?.data) {
+    try {
+      const review = JSON.parse(existingReview.data) as ReviewRecord;
+      if (review.rejectedUrls?.includes(candidate.imageUrl)) {
+        throw new Error("Rejected mountain hero candidates cannot be approved");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === "Rejected mountain hero candidates cannot be approved") throw error;
+    }
+  }
   const generation = await readMountainHeroGeneration(id);
+  const [autoHero] = await db.select({ data: cachedMountains.data })
+    .from(cachedMountains)
+    .where(eq(cachedMountains.slug, `hero-auto:v1:${id}`))
+    .limit(1);
+  let autoCandidate: MountainHeroCandidate | undefined;
+  if (autoHero?.data) {
+    try {
+      const auto = JSON.parse(autoHero.data) as { candidate?: MountainHeroCandidate };
+      autoCandidate = auto.candidate;
+    } catch { /* ignored; manual candidate ownership is still checked below */ }
+  }
   const isGenerated = candidate.source === "AI-generated illustration" ||
-    candidate.imageUrl === generation.candidate?.imageUrl;
+    candidate.imageUrl === generation.candidate?.imageUrl ||
+    candidate.imageUrl === autoCandidate?.imageUrl;
   let selectedCandidate = candidate;
   if (isGenerated) {
-    if (!isGeneratedMountainCandidateOwnedBy(candidate, id, generation.candidate)) {
+    const storedCandidate = candidate.imageUrl === generation.candidate?.imageUrl
+      ? generation.candidate
+      : autoCandidate;
+    if (!isGeneratedMountainCandidateOwnedBy(candidate, id, storedCandidate)) {
       throw new Error("Generated candidate does not belong to this mountain");
     }
-    selectedCandidate = generation.candidate!;
+    selectedCandidate = storedCandidate!;
   } else if (!candidate.imageUrl.startsWith("https://")) {
     throw new Error("Invalid image URL");
   } else if (getGeneratedMountainOwner(candidate.imageUrl)) {
@@ -479,54 +565,73 @@ export async function approveMountainHero(id: string, candidate: MountainHeroCan
     selected: selectedCandidate,
     updatedAt: new Date().toISOString(),
   };
+  const approvedRecord = JSON.stringify({
+    imageUrl: selectedCandidate.imageUrl,
+    mountainId: id,
+    source: selectedCandidate,
+    approvedAt: record.updatedAt,
+  });
+  const storeApproval = (slug: string) => db.insert(cachedMountains).values({
+    slug,
+    data: approvedRecord,
+  }).onConflictDoUpdate({
+    target: cachedMountains.slug,
+    set: { data: approvedRecord, cachedAt: new Date() },
+  });
   await Promise.all([
     db.insert(cachedMountains).values({ slug: reviewKey(id), data: JSON.stringify(record) })
       .onConflictDoUpdate({
         target: cachedMountains.slug,
         set: { data: JSON.stringify(record), cachedAt: new Date() },
       }),
-    db.insert(cachedMountains).values({
-      slug: approvedKey(mountain.name),
-      data: JSON.stringify({
-        imageUrl: selectedCandidate.imageUrl,
-        mountainId: id,
-        source: selectedCandidate,
-        approvedAt: record.updatedAt,
-      }),
-    }).onConflictDoUpdate({
-      target: cachedMountains.slug,
-      set: {
-        data: JSON.stringify({
-          imageUrl: selectedCandidate.imageUrl,
-          mountainId: id,
-          source: selectedCandidate,
-          approvedAt: record.updatedAt,
-        }),
-        cachedAt: new Date(),
-      },
-    }),
+    storeApproval(approvedMountainKey(id)),
+    storeApproval(approvedKey(mountain.name)),
   ]);
-  clearMountainImageMemoryCache(mountain.name);
+  clearMountainImageMemoryCache(mountain.name, mountain.id);
   return { mountain, approved: true, candidate: selectedCandidate };
 }
 
 export async function rejectMountainHeroCandidate(id: string, imageUrl: string) {
   const mountain = await getMountain(id);
   if (!mountain) throw new Error("Mountain not found");
-  const [existing] = await db.select({ data: cachedMountains.data })
-    .from(cachedMountains)
-    .where(eq(cachedMountains.slug, reviewKey(id)))
-    .limit(1);
-  let current: ReviewRecord = { status: "pending", rejectedUrls: [], updatedAt: new Date().toISOString() };
-  if (existing?.data) {
-    try { current = { ...current, ...JSON.parse(existing.data) as ReviewRecord }; } catch { /* ignore */ }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query<{ data: string }>(
+      "SELECT data FROM public.cached_mountains WHERE slug = $1 FOR UPDATE",
+      [reviewKey(id)],
+    );
+    let current: ReviewRecord = { status: "pending", rejectedUrls: [], updatedAt: new Date().toISOString() };
+    if (existing.rows[0]?.data) {
+      try { current = { ...current, ...JSON.parse(existing.rows[0].data) as ReviewRecord }; } catch { /* reset malformed review state */ }
+    }
+    const { record: rejectedReview, unpublished: unpublishingCurrent } =
+      applyMountainHeroRejection(current, imageUrl, new Date().toISOString());
+    await client.query(`
+      INSERT INTO public.cached_mountains (slug, data, cached_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (slug) DO UPDATE SET data = EXCLUDED.data, cached_at = NOW()
+    `, [reviewKey(id), JSON.stringify(rejectedReview)]);
+
+    if (unpublishingCurrent) {
+      for (const slug of [approvedMountainKey(id), approvedKey(mountain.name)]) {
+        const approval = await client.query<{ data: string }>(
+          "SELECT data FROM public.cached_mountains WHERE slug = $1 FOR UPDATE",
+          [slug],
+        );
+        if (!approval.rows[0]?.data) continue;
+        if (isApprovalRecordForRejectedImage(approval.rows[0].data, id, imageUrl)) {
+          await client.query("DELETE FROM public.cached_mountains WHERE slug = $1", [slug]);
+        }
+      }
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch { /* transaction may already be closed */ }
+    throw error;
+  } finally {
+    client.release();
   }
-  current.rejectedUrls = [...new Set([...(current.rejectedUrls ?? []), imageUrl])];
-  current.updatedAt = new Date().toISOString();
-  await db.insert(cachedMountains).values({ slug: reviewKey(id), data: JSON.stringify(current) })
-    .onConflictDoUpdate({
-      target: cachedMountains.slug,
-      set: { data: JSON.stringify(current), cachedAt: new Date() },
-    });
+  clearMountainImageMemoryCache(mountain.name, mountain.id);
   return { rejected: true };
 }

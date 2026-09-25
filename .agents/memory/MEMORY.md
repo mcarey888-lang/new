@@ -59,3 +59,5 @@
 - [Exercise artwork pairing](exercise-artwork-pairing.md) — Incline Treadmill cards and detail must show treadmill art; later user correction supersedes old Stepper exception.
 - [All-logged ascent scope](all-logged-ascent-scope.md) — completed-activity ascent differs from qualified credits; label local scope until cross-device sync reconciles all activity.
 - [Alpine preparation evidence](alpine-preparation-evidence.md) — prior skills may be self-reported; booked trip training is planned, never met until completed; links to courses/guides are future work.
+- [On-demand mountain heroes](on-demand-mountain-heroes.md) — first-open AI heroes are shared and auto-visible; manual generations stay review-only, and approved artwork takes precedence.
+- [Artwork admin API mismatch](artwork-admin-api-mismatch.md) — HTML from a JSON status endpoint means routing/version mismatch; never allow paid generation while status is unknown.

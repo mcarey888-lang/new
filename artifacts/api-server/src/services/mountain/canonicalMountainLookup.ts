@@ -133,7 +133,7 @@ interface AreaRouteRow extends RouteRow {
 // changing the importer-owned status to `verified`).  The source record is
 // the authority for this narrow exception; in particular, this must not make
 // an imported record from any other dataset canonical-trusted.
-const CANONICAL_TRUST_SQL = `(
+export const CANONICAL_TRUST_SQL = `(
   m.status = 'verified'
   OR EXISTS (
     SELECT 1

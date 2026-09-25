@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyMountainHeroRejection,
+  isApprovalRecordForRejectedImage,
   isGeneratedMountainCandidateOwnedBy,
   withoutRejectedMountainHeroCandidate,
   type MountainHeroCandidate,
   type MountainHeroGenerationRecord,
 } from "../services/artwork/mountainHeroReview.js";
+import { isMountainHeroImageRejected } from "../services/artwork/mountainHeroReviewState.js";
 
 const mountainId = "01b2c3d4-e5f6-4789-a012-3456789abcde";
 const candidate: MountainHeroCandidate = {
@@ -62,5 +65,43 @@ describe("rejected generated candidate visibility", () => {
       jobId: candidate.id,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
+  });
+
+  it("unpublishes a rejected current approval while retaining the rejection record", () => {
+    const result = applyMountainHeroRejection({
+      status: "approved",
+      imageUrl: candidate.imageUrl,
+      selected: candidate,
+      rejectedUrls: [],
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    }, candidate.imageUrl, "2026-01-02T00:00:00.000Z");
+
+    expect(result.unpublished).toBe(true);
+    expect(result.record).toEqual({
+      status: "pending",
+      rejectedUrls: [candidate.imageUrl],
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
+  });
+
+  it("removes only an ID-bound approval matching the rejected URL", () => {
+    const approval = JSON.stringify({ mountainId, imageUrl: candidate.imageUrl });
+    expect(isApprovalRecordForRejectedImage(approval, mountainId, candidate.imageUrl)).toBe(true);
+    expect(isApprovalRecordForRejectedImage(
+      JSON.stringify({ mountainId: "11b2c3d4-e5f6-4789-a012-3456789abcde", imageUrl: candidate.imageUrl }),
+      mountainId,
+      candidate.imageUrl,
+    )).toBe(false);
+    expect(isApprovalRecordForRejectedImage(
+      JSON.stringify({ mountainId, imageUrl: "different-image" }),
+      mountainId,
+      candidate.imageUrl,
+    )).toBe(false);
+  });
+
+  it("blocks a rejected generated URL from approval and auto-hero reuse paths", () => {
+    const reviewData = JSON.stringify({ rejectedUrls: [candidate.imageUrl] });
+    expect(isMountainHeroImageRejected(reviewData, candidate.imageUrl)).toBe(true);
+    expect(isMountainHeroImageRejected(reviewData, "/different/mountain/image.jpg")).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminKeyHeader } from "@/lib/adminKey";
+import { readArtworkJson } from "@/lib/artworkResponse";
 
 function adminHeaders(): Record<string, string> {
   const key = sessionStorage.getItem("summitready-admin-key");
@@ -40,11 +41,6 @@ export type MountainGeneration = {
   error?: string;
 };
 
-async function responseError(res: Response): Promise<Error> {
-  const body = await res.json().catch(() => null) as { error?: string } | null;
-  return new Error(body?.error || `Request failed (${res.status})`);
-}
-
 export function useGetMountainGeneration(mountainId: string | null) {
   return useQuery({
     queryKey: ["mountain-generation", mountainId],
@@ -53,8 +49,7 @@ export function useGetMountainGeneration(mountainId: string | null) {
       const res = await fetch(`/api/artwork/mountains/${mountainId}/generation`, {
         headers: adminHeaders(),
       });
-      if (!res.ok) throw await responseError(res);
-      return res.json() as Promise<MountainGeneration>;
+      return readArtworkJson<MountainGeneration>(res);
     },
     enabled: !!mountainId,
     refetchInterval: (query) => query.state.data?.status === "generating" ? 4000 : false,
@@ -70,8 +65,7 @@ export function useGenerateMountainArtwork() {
         headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ confirmed: true }),
       });
-      if (!res.ok) throw await responseError(res);
-      return res.json() as Promise<{ jobId: string; status: "generating" }>;
+      return readArtworkJson<{ jobId: string; status: "generating" }>(res);
     },
     onSuccess: (_, { mountainId }) => {
       queryClient.invalidateQueries({ queryKey: ["mountain-generation", mountainId] });
@@ -91,13 +85,12 @@ export function useGetMountains(params: { page: number; pageSize: number; search
         sort: params.sort,
       });
       const res = await fetch(`/api/artwork/mountains?${searchParams.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch mountains");
-      return res.json() as Promise<{
+      return readArtworkJson<{
         mountains: Mountain[];
         total: number;
         page: number;
         pageSize: number;
-      }>;
+      }>(res);
     },
   });
 }
@@ -111,11 +104,10 @@ export function useGetCandidates(mountainId: string | null) {
         method: "POST",
         headers: adminHeaders(),
       });
-      if (!res.ok) throw new Error("Failed to fetch candidates");
-      return res.json() as Promise<{
+      return readArtworkJson<{
         mountain: Mountain;
         candidates: Candidate[];
-      }>;
+      }>(res);
     },
     enabled: !!mountainId,
   });
@@ -130,8 +122,7 @@ export function useApproveCandidate() {
         headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ candidate }),
       });
-      if (!res.ok) throw new Error("Failed to approve candidate");
-      return res.json();
+      return readArtworkJson(res);
     },
     onSuccess: (_, { mountainId }) => {
       queryClient.invalidateQueries({ queryKey: ["mountains"] });
@@ -149,8 +140,7 @@ export function useRejectCandidate() {
         headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ imageUrl }),
       });
-      if (!res.ok) throw new Error("Failed to reject candidate");
-      return res.json();
+      return readArtworkJson(res);
     },
     onSuccess: (_, { mountainId }) => {
       // Invalidate candidates so the rejected one goes away

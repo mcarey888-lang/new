@@ -287,8 +287,11 @@ export default function MountainQueue() {
 }
 
 function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: string, mountainName: string, onClose: () => void }) {
-  const { data, isLoading, isError, error } = useGetCandidates(mountainId);
-  const { data: generation, isError: isGenerationError, error: generationError } = useGetMountainGeneration(mountainId);
+  const { data, isLoading, isError, error, refetch: refetchCandidates } = useGetCandidates(mountainId);
+  const {
+    data: generation, isError: isGenerationError, error: generationError,
+    isLoading: isGenerationLoading, refetch: refetchGeneration,
+  } = useGetMountainGeneration(mountainId);
   const generateArtwork = useGenerateMountainArtwork();
   const queryClient = useQueryClient();
   const approveCandidate = useApproveCandidate();
@@ -308,7 +311,7 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
   }, [generation?.jobId, generation?.status, mountainId, queryClient]);
 
   const handleGenerate = () => {
-    if (!window.confirm(`Generate a new AI illustration for ${mountainName}? It will stay in review and will not replace an approved image until you approve it.`)) return;
+    if (!window.confirm(`Generate a new realistic AI hero for ${mountainName}? It will stay in review and will not replace an approved image until you approve it.`)) return;
     generateArtwork.mutate({ mountainId }, {
       onSuccess: () => toast.success(`Generating artwork for ${mountainName}. This can take a few minutes.`),
       onError: (err) => toast.error(`Could not start generation: ${err.message}`),
@@ -359,7 +362,8 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
             <Button
               size="sm"
               onClick={handleGenerate}
-              disabled={generation?.status === "generating" || generateArtwork.isPending}
+              disabled={isGenerationLoading || isGenerationError || !generation ||
+                generation.status === "generating" || generateArtwork.isPending}
               className="gap-2"
             >
               {generation?.status === "generating" || generateArtwork.isPending
@@ -376,15 +380,20 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
         <div className="flex-1 overflow-y-auto p-6 flex flex-col bg-card">
           <div className="rounded-md border border-border bg-secondary/30 px-4 py-3 mb-5 text-sm">
             {generation?.status === "generating" ? (
-              <p className="flex items-center gap-2 text-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Creating an AI illustration. You can close this drawer; the result will be here for review when ready.</p>
+              <p className="flex items-center gap-2 text-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Creating a realistic AI mountain hero. You can close this drawer; the result will be here for review when ready.</p>
             ) : generation?.status === "ready" ? (
-              <p className="text-foreground">AI illustration ready for review. It will not appear in the app until you approve it.</p>
+              <p className="text-foreground">AI mountain hero ready for review. Admin-generated artwork will not appear in the app until you approve it.</p>
             ) : generation?.status === "failed" ? (
               <p className="text-destructive">Generation failed: {generation.error || "Unknown error"}. You can try again.</p>
             ) : isGenerationError ? (
-              <p className="text-destructive">Could not check generation status: {generationError instanceof Error ? generationError.message : "Unknown error"}</p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-destructive">Could not check generation status: {generationError instanceof Error ? generationError.message : "Unknown error"}</p>
+                <Button size="sm" variant="outline" onClick={() => void refetchGeneration()}>Retry status</Button>
+              </div>
+            ) : isGenerationLoading ? (
+              <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Checking generation status…</p>
             ) : (
-              <p className="text-muted-foreground">Generate a mountain-specific illustration or review available source photos. Nothing is published without approval.</p>
+              <p className="text-muted-foreground">Generate a mountain-specific hero or review source photos. Admin-generated images require approval; user-triggered heroes can appear automatically.</p>
             )}
           </div>
           {data?.mountain.approvedImageUrl && (
@@ -412,11 +421,12 @@ function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: st
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-destructive">
               <AlertCircle className="w-8 h-8" />
               <p>Failed to load source photos: {error instanceof Error ? error.message : "Unknown error"}</p>
+              <Button size="sm" variant="outline" onClick={() => void refetchCandidates()}>Retry photos</Button>
             </div>
           ) : candidates.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
               <ImagePlaceholder className="w-12 h-12 opacity-20" />
-              <p>No candidates found for this mountain.</p>
+              <p>No source photos found for this mountain. You can still generate an AI hero above.</p>
             </div>
           ) : (
             <div className="space-y-8">

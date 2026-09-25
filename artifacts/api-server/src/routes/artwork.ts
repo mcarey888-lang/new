@@ -75,10 +75,13 @@ import {
 } from "../services/artwork/uiAssetWorkflowService.js";
 import { logger } from "../lib/logger.js";
 import { getUiAssetBulkJob, startUiAssetBulkJob } from "../services/artwork/uiAssetBulkService.js";
+import { mountainAutoHeroRouter } from "./mountain-auto-hero.js";
 
 export const artworkRouter = Router();
 
 const VALID_CROPS: CropType[] = ["hero", "card", "thumbnail", "master"];
+
+artworkRouter.use("/mountains", mountainAutoHeroRouter);
 
 // UI asset family workflow. All mutations are private, draft/review-only and
 // protected by the same admin key as the existing artwork review pipeline.
