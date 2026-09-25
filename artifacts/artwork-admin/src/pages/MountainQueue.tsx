@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Search, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle, ListChecks } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, CheckCircle, X, Image as ImagePlaceholder, XCircle, ArrowUpRight, Loader2, AlertCircle, ListChecks, WandSparkles } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, Mountain, Candidate } from "../hooks/use-mountain-api";
+import { useGetMountains, useGetCandidates, useApproveCandidate, useRejectCandidate, useGetMountainGeneration, useGenerateMountainArtwork, Candidate } from "../hooks/use-mountain-api";
 import { ArtworkAdminHeader } from "@/components/ArtworkAdminHeader";
 
 export default function MountainQueue() {
@@ -13,11 +14,14 @@ export default function MountainQueue() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("prominence");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Map<string, string>>(new Map());
+  const [batchBusy, setBatchBusy] = useState(false);
+  const generateArtwork = useGenerateMountainArtwork();
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem("summitready-admin-key") ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [selectedMountainId, setSelectedMountainId] = useState<string | null>(null);
+  const [selectedMountainName, setSelectedMountainName] = useState("");
 
   // Debounce search
   useEffect(() => {
@@ -35,6 +39,38 @@ export default function MountainQueue() {
     status: statusFilter,
     sort,
   });
+
+  const generateSelected = async () => {
+    if (!adminKey) {
+      toast.error("Enter the admin key before generating artwork");
+      return;
+    }
+    if (selected.size > 4) {
+      toast.error("Generate up to four summits at a time. Deselect a few to continue.");
+      return;
+    }
+    const entries = [...selected];
+    if (!entries.length || !window.confirm(
+      `Generate one AI illustration for each of these ${entries.length} summits?\n\n${entries.map(([, name]) => name).join(", ")}\n\nNew images stay in review until you explicitly approve them.`
+    )) return;
+    setBatchBusy(true);
+    let started = 0;
+    for (const [mountainId, name] of entries) {
+      try {
+        await generateArtwork.mutateAsync({ mountainId });
+        started++;
+        setSelected(current => {
+          const next = new Map(current);
+          next.delete(mountainId);
+          return next;
+        });
+      } catch (err) {
+        toast.error(`${name}: ${err instanceof Error ? err.message : "generation could not start"}`);
+      }
+    }
+    setBatchBusy(false);
+    if (started) toast.success(`Started artwork generation for ${started} summit${started === 1 ? "" : "s"}. Open a summit to monitor and review it.`);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -61,8 +97,8 @@ export default function MountainQueue() {
       />
 
       <main className="flex-1 p-6 flex flex-col gap-6 max-w-screen-2xl mx-auto w-full">
-        <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-wrap items-center gap-4 bg-card p-4 rounded-lg border border-border">
+          <div className="relative flex-1 min-w-[190px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search mountains, regions..."
@@ -93,6 +129,10 @@ export default function MountainQueue() {
             <option value="name">Name A–Z</option>
           </select>
           <Badge variant="outline" className="gap-1"><ListChecks className="h-3.5 w-3.5" /> Curated queue: {selected.size}</Badge>
+          <Button size="sm" onClick={generateSelected} disabled={!selected.size || batchBusy || !adminKey} className="gap-2">
+            {batchBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <WandSparkles className="w-4 h-4" />}
+            {batchBusy ? "Starting…" : "Generate selected artwork"}
+          </Button>
           <div className="text-sm text-muted-foreground ml-auto">
             {data?.total ?? 0} mountains
           </div>
@@ -109,7 +149,7 @@ export default function MountainQueue() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="border border-border rounded-lg overflow-hidden bg-card shadow-sm">
+            <div className="border border-border rounded-lg overflow-x-auto bg-card shadow-sm">
               <table className="w-full text-sm text-left">
                 <thead className="bg-secondary/50 text-muted-foreground text-xs uppercase tracking-wider">
                   <tr>
@@ -132,14 +172,15 @@ export default function MountainQueue() {
                           return;
                         }
                         setSelectedMountainId(mountain.id);
+                        setSelectedMountainName(mountain.name);
                       }}
                     >
                       <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                         <Checkbox
                           checked={selected.has(mountain.id)}
                           onCheckedChange={(checked) => setSelected((current) => {
-                            const next = new Set(current);
-                            if (checked) next.add(mountain.id); else next.delete(mountain.id);
+                            const next = new Map(current);
+                            if (checked) next.set(mountain.id, mountain.name); else next.delete(mountain.id);
                             return next;
                           })}
                           aria-label={`Add ${mountain.name} to curated queue`}
@@ -234,22 +275,48 @@ export default function MountainQueue() {
 
       {/* Candidate Review Drawer */}
       {selectedMountainId && (
-        <CandidateDrawer 
-          mountainId={selectedMountainId} 
-          onClose={() => setSelectedMountainId(null)} 
+        <CandidateDrawer
+          key={selectedMountainId}
+          mountainId={selectedMountainId}
+          mountainName={selectedMountainName}
+          onClose={() => setSelectedMountainId(null)}
         />
       )}
     </div>
   );
 }
 
-function CandidateDrawer({ mountainId, onClose }: { mountainId: string, onClose: () => void }) {
+function CandidateDrawer({ mountainId, mountainName, onClose }: { mountainId: string, mountainName: string, onClose: () => void }) {
   const { data, isLoading, isError, error } = useGetCandidates(mountainId);
+  const { data: generation, isError: isGenerationError, error: generationError } = useGetMountainGeneration(mountainId);
+  const generateArtwork = useGenerateMountainArtwork();
+  const queryClient = useQueryClient();
   const approveCandidate = useApproveCandidate();
   const rejectCandidate = useRejectCandidate();
+  const [rejectedUrls, setRejectedUrls] = useState<Set<string>>(new Set());
+  const generatedCandidate = generation?.status === "ready" ? generation.candidate : undefined;
+  const candidates = [
+    ...(generatedCandidate && !rejectedUrls.has(generatedCandidate.imageUrl) ? [generatedCandidate] : []),
+    ...(data?.candidates ?? []).filter(candidate => candidate.id !== generatedCandidate?.id && !rejectedUrls.has(candidate.imageUrl)),
+  ];
+
+  useEffect(() => {
+    if (generation?.status === "ready") {
+      queryClient.invalidateQueries({ queryKey: ["mountain-candidates", mountainId] });
+      queryClient.invalidateQueries({ queryKey: ["mountains"] });
+    }
+  }, [generation?.jobId, generation?.status, mountainId, queryClient]);
+
+  const handleGenerate = () => {
+    if (!window.confirm(`Generate a new AI illustration for ${mountainName}? It will stay in review and will not replace an approved image until you approve it.`)) return;
+    generateArtwork.mutate({ mountainId }, {
+      onSuccess: () => toast.success(`Generating artwork for ${mountainName}. This can take a few minutes.`),
+      onError: (err) => toast.error(`Could not start generation: ${err.message}`),
+    });
+  };
 
   const handleApprove = (candidate: Candidate) => {
-    if (!window.confirm(`Approve “${candidate.title}” as the exact hero for ${data?.mountain.name ?? mountainId}?`)) return;
+    if (!window.confirm(`Approve “${candidate.title}” as the hero artwork for ${data?.mountain.name ?? mountainName}?`)) return;
     approveCandidate.mutate(
       { mountainId, candidate },
       {
@@ -260,11 +327,14 @@ function CandidateDrawer({ mountainId, onClose }: { mountainId: string, onClose:
   };
 
   const handleReject = (imageUrl: string) => {
-    if (!window.confirm(`Reject this exact candidate for ${data?.mountain.name ?? mountainId}? The source record will be retained.`)) return;
+    if (!window.confirm(`Reject this candidate for ${data?.mountain.name ?? mountainName}? The source record will be retained.`)) return;
     rejectCandidate.mutate(
       { mountainId, imageUrl },
       {
-        onSuccess: () => toast.success("Candidate rejected"),
+        onSuccess: () => {
+          setRejectedUrls(current => new Set(current).add(imageUrl));
+          toast.success("Candidate rejected");
+        },
         onError: (err) => toast.error(`Failed to reject: ${err.message}`),
       }
     );
@@ -280,59 +350,80 @@ function CandidateDrawer({ mountainId, onClose }: { mountainId: string, onClose:
         <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-background">
           <div className="flex flex-col gap-1">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              {isLoading ? "Loading..." : data?.mountain.name}
+              {isLoading ? mountainName : data?.mountain.name ?? mountainName}
               {data?.mountain.status === "approved" && <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] ml-2">APPROVED</Badge>}
             </h2>
             <div className="text-xs text-muted-foreground font-mono">{mountainId}</div>
           </div>
-          <Button size="icon" variant="ghost" onClick={onClose}>
-            <X className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleGenerate}
+              disabled={generation?.status === "generating" || generateArtwork.isPending}
+              className="gap-2"
+            >
+              {generation?.status === "generating" || generateArtwork.isPending
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <WandSparkles className="w-4 h-4" />}
+              {generation?.status === "generating" ? "Generating…" : "Generate AI artwork"}
+            </Button>
+            <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close review">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col bg-card">
-          {isLoading ? (
+          <div className="rounded-md border border-border bg-secondary/30 px-4 py-3 mb-5 text-sm">
+            {generation?.status === "generating" ? (
+              <p className="flex items-center gap-2 text-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Creating an AI illustration. You can close this drawer; the result will be here for review when ready.</p>
+            ) : generation?.status === "ready" ? (
+              <p className="text-foreground">AI illustration ready for review. It will not appear in the app until you approve it.</p>
+            ) : generation?.status === "failed" ? (
+              <p className="text-destructive">Generation failed: {generation.error || "Unknown error"}. You can try again.</p>
+            ) : isGenerationError ? (
+              <p className="text-destructive">Could not check generation status: {generationError instanceof Error ? generationError.message : "Unknown error"}</p>
+            ) : (
+              <p className="text-muted-foreground">Generate a mountain-specific illustration or review available source photos. Nothing is published without approval.</p>
+            )}
+          </div>
+          {data?.mountain.approvedImageUrl && (
+            <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20 mb-5">
+              <h3 className="text-sm font-semibold text-green-500 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" /> Currently Approved Hero
+              </h3>
+              <div className="flex gap-4">
+                <img src={data.mountain.approvedImageUrl} alt="Approved" className="w-48 h-32 object-cover rounded-md border border-border" />
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p><span className="font-medium text-foreground">Source:</span> {data.mountain.approvedSource?.source || "Unknown"}</p>
+                  {data.mountain.approvedSource?.license && (
+                    <p><span className="font-medium text-foreground">License:</span> {data.mountain.approvedSource.license}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {isLoading && candidates.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p>Fetching candidate photos...</p>
             </div>
-          ) : isError ? (
+          ) : isError && candidates.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-destructive">
               <AlertCircle className="w-8 h-8" />
-              <p>Failed to load candidates</p>
+              <p>Failed to load source photos: {error instanceof Error ? error.message : "Unknown error"}</p>
             </div>
-          ) : !data || data.candidates.length === 0 ? (
+          ) : candidates.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
               <ImagePlaceholder className="w-12 h-12 opacity-20" />
               <p>No candidates found for this mountain.</p>
             </div>
           ) : (
             <div className="space-y-8">
-              {data.mountain.approvedImageUrl && (
-                <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
-                  <h3 className="text-sm font-semibold text-green-500 mb-3 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" /> Currently Approved Hero
-                  </h3>
-                  <div className="flex gap-4">
-                    <img 
-                      src={data.mountain.approvedImageUrl} 
-                      alt="Approved" 
-                      className="w-48 h-32 object-cover rounded-md border border-border"
-                    />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><span className="font-medium text-foreground">Source:</span> {data.mountain.approvedSource?.source || "Unknown"}</p>
-                      {data.mountain.approvedSource?.license && (
-                        <p><span className="font-medium text-foreground">License:</span> {data.mountain.approvedSource.license}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-4">Review Queue ({data.candidates.length})</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-4">Review Queue ({candidates.length})</h3>
                 <div className="grid grid-cols-1 gap-6">
-                  {data.candidates.map((candidate, idx) => (
+                  {candidates.map((candidate, idx) => (
                     <CandidateCard 
                       key={candidate.id || idx} 
                       candidate={candidate} 

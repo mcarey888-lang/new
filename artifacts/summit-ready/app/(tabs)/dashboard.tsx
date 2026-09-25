@@ -97,6 +97,12 @@ const ALPINE_CATEGORY_COLOR: Record<string, string> = {
   strength: T.purple,
   recovery: "#A78BFA",
 };
+const ALPINE_EXPERIENCE_SOURCE_LABEL: Record<AlpineExperience["source"], string> = {
+  "prior-experience": "Prior experience",
+  course: "Course / instructor",
+  "guided-trip": "Guided trip",
+  other: "Other",
+};
 const ALPINE_BAND_LABEL: Record<string, string> = {
   "high": "High Altitude",
   "very-high": "Very High Altitude",
@@ -252,7 +258,8 @@ function AlpineCard({
                       <>
                         {record && (
                           <Text style={styles.alpineRecordSummary} numberOfLines={2}>
-                            {record.status === "planned" ? "Planned" : "Self-reported complete"} · {record.note}
+                            {record.status === "planned" ? "Planned" : "Self-reported complete"} · {ALPINE_EXPERIENCE_SOURCE_LABEL[record.source]}
+                            {record.note ? ` · ${record.note}` : ""}
                           </Text>
                         )}
                         <TouchableOpacity

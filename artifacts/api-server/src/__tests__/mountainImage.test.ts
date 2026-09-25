@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalImageSubject,
   exactImageSubject,
+  isAllowedExternalMountainImageUrl,
   isRouteSpecificImageRequest,
   mountainImageCacheKey,
+  parseMountainIllustrationPath,
   scenicCandidateScore,
 } from "../routes/mountain-image.js";
 
@@ -67,5 +69,34 @@ describe("mountain hero image selection", () => {
       location: "Eryri",
       routeIdentityKey: "route:v1:osm:Tryfan:53.114,-3.998",
     })).toBe("route:route:v1:osm:tryfan:53.114,-3.998");
+  });
+
+  it("resolves only exact internal generated-illustration URLs", () => {
+    expect(parseMountainIllustrationPath(
+      "/api/artwork/mountains/01b2c3d4-e5f6-4789-a012-3456789abcde/generated/11b2c3d4-e5f6-4789-a012-3456789abcde",
+    )).toEqual({
+      mountainId: "01b2c3d4-e5f6-4789-a012-3456789abcde",
+      jobId: "11b2c3d4-e5f6-4789-a012-3456789abcde",
+    });
+    // Legacy persisted absolute candidates resolve by exact internal path only;
+    // their hostname is never fetched.
+    expect(parseMountainIllustrationPath(
+      "https://old-dev-domain.replit.dev/api/artwork/mountains/01b2c3d4-e5f6-4789-a012-3456789abcde/generated/11b2c3d4-e5f6-4789-a012-3456789abcde",
+    )).toEqual({
+      mountainId: "01b2c3d4-e5f6-4789-a012-3456789abcde",
+      jobId: "11b2c3d4-e5f6-4789-a012-3456789abcde",
+    });
+    expect(parseMountainIllustrationPath("/api/storage/objects/private-file")).toBeNull();
+    expect(parseMountainIllustrationPath("//127.0.0.1/api/artwork/mountains/a/generated/b")).toBeNull();
+    expect(parseMountainIllustrationPath(
+      "/api/artwork/mountains/01b2c3d4-e5f6-4789-a012-3456789abcde/generated/11b2c3d4-e5f6-4789-a012-3456789abcde?redirect=https://example.com",
+    )).toBeNull();
+  });
+
+  it("allows only Wikimedia image hosts for external proxy fetches", () => {
+    expect(isAllowedExternalMountainImageUrl("https://upload.wikimedia.org/wikipedia/commons/a/a1/test.jpg")).toBe(true);
+    expect(isAllowedExternalMountainImageUrl("https://upload.wikimedia.org.evil.test/test.jpg")).toBe(false);
+    expect(isAllowedExternalMountainImageUrl("http://upload.wikimedia.org/test.jpg")).toBe(false);
+    expect(isAllowedExternalMountainImageUrl("https://127.0.0.1/private")).toBe(false);
   });
 });

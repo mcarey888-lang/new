@@ -36,9 +36,13 @@ import { eq } from "drizzle-orm";
 import {
   approveMountainHero,
   findMountainHeroCandidates,
+  getMountainHeroGeneration,
   listMountainHeroReviews,
   rejectMountainHeroCandidate,
+  runMountainHeroGeneration,
+  startMountainHeroGeneration,
 } from "../services/artwork/mountainHeroReview.js";
+import { streamMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
 import { requireAdminKey } from "../middlewares/requireAdminKey.js";
 import {
   approveBatch01Version,
@@ -332,6 +336,48 @@ artworkRouter.post("/mountains/:id/candidates", requireAdminKey, async (req, res
   } catch (err) {
     console.error("[artwork/mountains/candidates]", err);
     return res.status(500).json({ error: err instanceof Error ? err.message : "Candidate search failed" });
+  }
+});
+
+artworkRouter.post("/mountains/:id/generate", requireAdminKey, async (req, res) => {
+  const mountainId = param(req.params.id);
+  if (req.body?.confirmed !== true) {
+    return res.status(400).json({ error: "Mountain artwork generation requires explicit confirmation" });
+  }
+  try {
+    const job = await startMountainHeroGeneration(mountainId);
+    void runMountainHeroGeneration(mountainId, job.jobId!).catch((error) => {
+      logger.error({ err: error, mountainId, jobId: job.jobId }, "Mountain hero background generation failed");
+    });
+    return res.status(202).json({ jobId: job.jobId, status: "generating" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Mountain artwork generation could not start";
+    return res.status(message === "Mountain not found" ? 404 : 409).json({ error: message });
+  }
+});
+
+artworkRouter.get("/mountains/:id/generation", requireAdminKey, async (req, res) => {
+  try {
+    const generation = await getMountainHeroGeneration(param(req.params.id));
+    return res.json({
+      status: generation.status,
+      ...(generation.jobId ? { jobId: generation.jobId } : {}),
+      ...(generation.candidate ? { candidate: generation.candidate } : {}),
+      ...(generation.error ? { error: generation.error } : {}),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load mountain generation status";
+    return res.status(message === "Mountain not found" ? 404 : 500).json({ error: message });
+  }
+});
+
+// Image URLs are opaque job IDs and are used directly by the review UI's <img>.
+artworkRouter.get("/mountains/:id/generated/:jobId", async (req, res) => {
+  try {
+    await streamMountainHeroIllustration(param(req.params.id), param(req.params.jobId), res);
+  } catch (err) {
+    logger.error({ err, mountainId: req.params.id, jobId: req.params.jobId }, "Failed to stream generated mountain illustration");
+    if (!res.headersSent) res.status(404).json({ error: "Generated mountain illustration not found" });
   }
 });
 

@@ -1,11 +1,15 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { db, pool, cachedMountains } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import sharp from "sharp";
 import {
   canonicalImageSubject,
   clearMountainImageMemoryCache,
   scenicCandidateScore,
 } from "../../routes/mountain-image.js";
+import { defaultImageProvider, type ImageProvider } from "./imageProvider.js";
+import { uploadMountainHeroIllustration } from "./artworkStorage.js";
+import { logger } from "../../lib/logger.js";
 
 const WIKI_HEADERS = { "User-Agent": "SummitReady/1.0 (mountain hero review)" };
 const REVIEW_VERSION = "v1";
@@ -16,7 +20,7 @@ export interface MountainHeroCandidate {
   title: string;
   imageUrl: string;
   sourcePageUrl: string;
-  source: "Wikimedia Commons";
+  source: "Wikimedia Commons" | "AI-generated illustration";
   width: number;
   height: number;
   license: string | null;
@@ -43,9 +47,22 @@ interface ReviewRecord {
   updatedAt: string;
 }
 
+export type MountainHeroGenerationStatus = "idle" | "generating" | "ready" | "failed";
+
+export interface MountainHeroGenerationRecord {
+  status: MountainHeroGenerationStatus;
+  jobId?: string;
+  startedAt?: string;
+  updatedAt: string;
+  candidate?: MountainHeroCandidate;
+  error?: string;
+}
+
 const reviewKey = (id: string) => `hero-review:${REVIEW_VERSION}:${id}`;
+const generationKey = (id: string) => `hero-generation:${REVIEW_VERSION}:${id}`;
 const approvedKey = (name: string) =>
   `hero-approved:${APPROVED_VERSION}:${canonicalImageSubject(name).toLowerCase()}`;
+const GENERATION_STALE_AFTER_MS = 10 * 60 * 1000;
 
 function decodeMetadata(value?: string): string | null {
   if (!value) return null;
@@ -231,6 +248,7 @@ export async function findMountainHeroCandidates(id: string) {
       rejected = new Set(reviewRecord.rejectedUrls ?? []);
     } catch { /* ignore */ }
   }
+  const generation = await readMountainHeroGeneration(id);
   return {
     mountain: {
       ...mountain,
@@ -241,18 +259,224 @@ export async function findMountainHeroCandidates(id: string) {
     candidates: [...unique.values()]
       .filter(candidate => !rejected.has(candidate.imageUrl))
       .sort((a, b) => b.score - a.score)
-      .slice(0, 12),
+      .slice(0, 12)
+      .concat(generation.candidate && !rejected.has(generation.candidate.imageUrl)
+        ? [generation.candidate]
+        : []),
   };
+}
+
+async function readMountainHeroGeneration(id: string): Promise<MountainHeroGenerationRecord> {
+  const [row] = await db.select({ data: cachedMountains.data })
+    .from(cachedMountains)
+    .where(eq(cachedMountains.slug, generationKey(id)))
+    .limit(1);
+  let record: MountainHeroGenerationRecord = { status: "idle", updatedAt: new Date(0).toISOString() };
+  if (row?.data) {
+    try {
+      record = JSON.parse(row.data) as MountainHeroGenerationRecord;
+    } catch {
+      throw new Error("Mountain generation state is invalid");
+    }
+  }
+  const leaseTimestamp = record.updatedAt || record.startedAt;
+  if (record.status === "generating" && leaseTimestamp &&
+      Date.now() - Date.parse(leaseTimestamp) > GENERATION_STALE_AFTER_MS) {
+    const failed: MountainHeroGenerationRecord = {
+      ...record,
+      status: "failed",
+      error: "Generation worker expired before completing; retry is available",
+      updatedAt: new Date().toISOString(),
+    };
+    await pool.query(`
+      UPDATE public.cached_mountains
+      SET data = $2, cached_at = NOW()
+      WHERE slug = $1
+        AND data::jsonb->>'status' = 'generating'
+        AND data::jsonb->>'jobId' = $3
+    `, [generationKey(id), JSON.stringify(failed), record.jobId]);
+    return failed;
+  }
+  return record;
+}
+
+export async function getMountainHeroGeneration(id: string): Promise<MountainHeroGenerationRecord> {
+  if (!await getMountain(id)) throw new Error("Mountain not found");
+  const generation = await readMountainHeroGeneration(id);
+  if (!generation.candidate) return generation;
+  const [review] = await db.select({ data: cachedMountains.data })
+    .from(cachedMountains)
+    .where(eq(cachedMountains.slug, reviewKey(id)))
+    .limit(1);
+  let rejectedUrls: string[] = [];
+  if (review?.data) {
+    try {
+      rejectedUrls = (JSON.parse(review.data) as ReviewRecord).rejectedUrls ?? [];
+    } catch {
+      // Keep the generation result visible if the independent review record is malformed.
+    }
+  }
+  return withoutRejectedMountainHeroCandidate(generation, rejectedUrls);
+}
+
+export function withoutRejectedMountainHeroCandidate(
+  generation: MountainHeroGenerationRecord,
+  rejectedUrls: readonly string[],
+): MountainHeroGenerationRecord {
+  if (!generation.candidate || !rejectedUrls.includes(generation.candidate.imageUrl)) return generation;
+  const { candidate: _rejected, ...visibleGeneration } = generation;
+  return visibleGeneration;
+}
+
+/** Persist a generation claim atomically across all API processes. */
+export async function startMountainHeroGeneration(id: string): Promise<MountainHeroGenerationRecord> {
+  if (!await getMountain(id)) throw new Error("Mountain not found");
+  const previous = await readMountainHeroGeneration(id);
+  const jobId = randomUUID();
+  const startedAt = new Date().toISOString();
+  const record: MountainHeroGenerationRecord = {
+    status: "generating",
+    jobId,
+    startedAt,
+    updatedAt: startedAt,
+    ...(previous.candidate ? { candidate: previous.candidate } : {}),
+  };
+  const claim = await pool.query(`
+    INSERT INTO public.cached_mountains (slug, data, cached_at)
+    VALUES ($1, $2, NOW())
+    ON CONFLICT (slug) DO UPDATE
+      SET data = EXCLUDED.data, cached_at = NOW()
+      WHERE COALESCE(public.cached_mountains.data::jsonb->>'status', 'idle') <> 'generating'
+    RETURNING slug
+  `, [generationKey(id), JSON.stringify(record)]);
+  if (claim.rowCount === 0) throw new Error("Mountain artwork generation is already in progress");
+  return record;
+}
+
+async function saveMountainHeroGeneration(
+  id: string,
+  jobId: string,
+  update: (current: MountainHeroGenerationRecord) => MountainHeroGenerationRecord,
+): Promise<void> {
+  const current = await readMountainHeroGeneration(id);
+  if (current.jobId !== jobId || current.status !== "generating") return;
+  const next = update(current);
+  await pool.query(`
+    UPDATE public.cached_mountains
+    SET data = $2, cached_at = NOW()
+    WHERE slug = $1
+      AND data::jsonb->>'status' = 'generating'
+      AND data::jsonb->>'jobId' = $3
+  `, [generationKey(id), JSON.stringify(next), jobId]);
+}
+
+/** One provider request per job; the result is persisted only as a review candidate. */
+export async function runMountainHeroGeneration(
+  id: string,
+  jobId: string,
+  provider: ImageProvider = defaultImageProvider,
+): Promise<void> {
+  const heartbeat = setInterval(() => {
+    void saveMountainHeroGeneration(id, jobId, (current) => ({
+      ...current,
+      updatedAt: new Date().toISOString(),
+    })).catch((error) => logger.warn({ err: error, mountainId: id, jobId }, "Mountain artwork generation lease heartbeat failed"));
+  }, 2 * 60 * 1000);
+  heartbeat.unref();
+  try {
+    const mountain = await getMountain(id);
+    if (!mountain) throw new Error("Mountain not found");
+    const location = [mountain.area, mountain.region, mountain.country]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join(", ");
+    const prompt = [
+      `Create one distinctive AI-generated mountain landscape illustration inspired specifically by ${mountain.name}${location ? ` (${location})` : ""}.`,
+      "This must read clearly as original illustrated artwork, not an authentic photograph and not documentary evidence.",
+      "Use a refined hand-painted editorial travel-poster style with natural mountain forms, atmospheric depth, elegant color, and no text, labels, logos, borders, or watermark.",
+      "Create an artistic interpretation of this named mountain and its regional landscape, not a claim of photographic accuracy.",
+    ].join(" ");
+    const generated = await provider.generate(prompt, { size: "1536x1024" });
+    if (!generated.buffer.length) throw new Error("Image provider returned an empty image");
+    const metadata = await sharp(generated.buffer).metadata();
+    const contentType = metadata.format === "png" ? "image/png" : metadata.format === "jpeg" ? "image/jpeg" : null;
+    if (!contentType) throw new Error("Image provider returned an unsupported image format");
+    const imageUrl = await uploadMountainHeroIllustration(id, jobId, generated.buffer, contentType);
+    const generatedAt = new Date().toISOString();
+    const candidate: MountainHeroCandidate = {
+      id: jobId,
+      title: `${mountain.name} — AI-generated illustration (not a photograph)`,
+      imageUrl,
+      sourcePageUrl: imageUrl,
+      source: "AI-generated illustration",
+      width: metadata.width ?? 1536,
+      height: metadata.height ?? 1024,
+      license: null,
+      artist: `Generated with ${generated.provider}`,
+      score: 0,
+    };
+    await saveMountainHeroGeneration(id, jobId, (current) => ({
+      status: "ready",
+      jobId,
+      startedAt: current.startedAt,
+      updatedAt: generatedAt,
+      candidate,
+    }));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    await saveMountainHeroGeneration(id, jobId, (current) => ({
+      ...current,
+      status: "failed",
+      error: reason,
+      updatedAt: new Date().toISOString(),
+    }));
+    throw error;
+  } finally {
+    clearInterval(heartbeat);
+  }
+}
+
+function getGeneratedMountainOwner(imageUrl: string): string | null {
+  try {
+    const path = new URL(imageUrl, "https://mountain-artwork.invalid").pathname;
+    const match = path.match(/^\/api\/artwork\/mountains\/([^/]+)\/generated\/[^/]+$/);
+    return match ? decodeURIComponent(match[1]!) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isGeneratedMountainCandidateOwnedBy(
+  candidate: MountainHeroCandidate,
+  mountainId: string,
+  storedCandidate?: MountainHeroCandidate,
+): boolean {
+  if (candidate.source !== "AI-generated illustration" || !storedCandidate) return false;
+  return candidate.id === storedCandidate.id &&
+    candidate.imageUrl === storedCandidate.imageUrl &&
+    getGeneratedMountainOwner(storedCandidate.imageUrl) === mountainId;
 }
 
 export async function approveMountainHero(id: string, candidate: MountainHeroCandidate) {
   const mountain = await getMountain(id);
   if (!mountain) throw new Error("Mountain not found");
-  if (!candidate.imageUrl.startsWith("https://")) throw new Error("Invalid image URL");
+  const generation = await readMountainHeroGeneration(id);
+  const isGenerated = candidate.source === "AI-generated illustration" ||
+    candidate.imageUrl === generation.candidate?.imageUrl;
+  let selectedCandidate = candidate;
+  if (isGenerated) {
+    if (!isGeneratedMountainCandidateOwnedBy(candidate, id, generation.candidate)) {
+      throw new Error("Generated candidate does not belong to this mountain");
+    }
+    selectedCandidate = generation.candidate!;
+  } else if (!candidate.imageUrl.startsWith("https://")) {
+    throw new Error("Invalid image URL");
+  } else if (getGeneratedMountainOwner(candidate.imageUrl)) {
+    throw new Error("Generated candidate does not belong to this mountain");
+  }
   const record: ReviewRecord = {
     status: "approved",
-    imageUrl: candidate.imageUrl,
-    selected: candidate,
+    imageUrl: selectedCandidate.imageUrl,
+    selected: selectedCandidate,
     updatedAt: new Date().toISOString(),
   };
   await Promise.all([
@@ -264,18 +488,18 @@ export async function approveMountainHero(id: string, candidate: MountainHeroCan
     db.insert(cachedMountains).values({
       slug: approvedKey(mountain.name),
       data: JSON.stringify({
-        imageUrl: candidate.imageUrl,
+        imageUrl: selectedCandidate.imageUrl,
         mountainId: id,
-        source: candidate,
+        source: selectedCandidate,
         approvedAt: record.updatedAt,
       }),
     }).onConflictDoUpdate({
       target: cachedMountains.slug,
       set: {
         data: JSON.stringify({
-          imageUrl: candidate.imageUrl,
+          imageUrl: selectedCandidate.imageUrl,
           mountainId: id,
-          source: candidate,
+          source: selectedCandidate,
           approvedAt: record.updatedAt,
         }),
         cachedAt: new Date(),
@@ -283,7 +507,7 @@ export async function approveMountainHero(id: string, candidate: MountainHeroCan
     }),
   ]);
   clearMountainImageMemoryCache(mountain.name);
-  return { mountain, approved: true, candidate };
+  return { mountain, approved: true, candidate: selectedCandidate };
 }
 
 export async function rejectMountainHeroCandidate(id: string, imageUrl: string) {

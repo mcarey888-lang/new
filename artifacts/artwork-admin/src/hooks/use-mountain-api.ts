@@ -33,6 +33,52 @@ export type Candidate = {
   score: number;
 };
 
+export type MountainGeneration = {
+  status: "idle" | "generating" | "ready" | "failed";
+  jobId?: string;
+  candidate?: Candidate;
+  error?: string;
+};
+
+async function responseError(res: Response): Promise<Error> {
+  const body = await res.json().catch(() => null) as { error?: string } | null;
+  return new Error(body?.error || `Request failed (${res.status})`);
+}
+
+export function useGetMountainGeneration(mountainId: string | null) {
+  return useQuery({
+    queryKey: ["mountain-generation", mountainId],
+    queryFn: async () => {
+      if (!mountainId) throw new Error("No mountain id");
+      const res = await fetch(`/api/artwork/mountains/${mountainId}/generation`, {
+        headers: adminHeaders(),
+      });
+      if (!res.ok) throw await responseError(res);
+      return res.json() as Promise<MountainGeneration>;
+    },
+    enabled: !!mountainId,
+    refetchInterval: (query) => query.state.data?.status === "generating" ? 4000 : false,
+  });
+}
+
+export function useGenerateMountainArtwork() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ mountainId }: { mountainId: string }) => {
+      const res = await fetch(`/api/artwork/mountains/${mountainId}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
+        body: JSON.stringify({ confirmed: true }),
+      });
+      if (!res.ok) throw await responseError(res);
+      return res.json() as Promise<{ jobId: string; status: "generating" }>;
+    },
+    onSuccess: (_, { mountainId }) => {
+      queryClient.invalidateQueries({ queryKey: ["mountain-generation", mountainId] });
+    },
+  });
+}
+
 export function useGetMountains(params: { page: number; pageSize: number; search: string; status: string; sort: string }) {
   return useQuery({
     queryKey: ["mountains", params],

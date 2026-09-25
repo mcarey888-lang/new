@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { cachedMountains } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { downloadMountainHeroIllustration } from "../services/artwork/artworkStorage.js";
 
 const router: IRouter = Router();
 
@@ -597,6 +598,39 @@ async function fallbackGeocode(name: string): Promise<Coord> {
 
 // ── GET /api/mountain-image ───────────────────────────────────────────────────
 
+const MOUNTAIN_ILLUSTRATION_URL_PATTERN =
+  /^\/api\/artwork\/mountains\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/generated\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
+
+export function parseMountainIllustrationPath(imageUrl: string): { mountainId: string; jobId: string } | null {
+  let internalPath = imageUrl;
+  if (!imageUrl.startsWith("/")) {
+    try {
+      const url = new URL(imageUrl);
+      if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+        return null;
+      }
+      internalPath = url.pathname;
+    } catch {
+      return null;
+    }
+  }
+  const match = MOUNTAIN_ILLUSTRATION_URL_PATTERN.exec(internalPath);
+  return match ? { mountainId: match[1]!, jobId: match[2]! } : null;
+}
+
+export function isAllowedExternalMountainImageUrl(imageUrl: string): boolean {
+  try {
+    const url = new URL(imageUrl);
+    return url.protocol === "https:" &&
+      url.hostname === "upload.wikimedia.org" &&
+      !url.username &&
+      !url.password &&
+      (!url.port || url.port === "443");
+  } catch {
+    return false;
+  }
+}
+
 router.get("/mountain-image", async (req, res) => {
   const rawName     = typeof req.query["name"]     === "string" ? req.query["name"]     : "";
   const rawLocation = typeof req.query["location"] === "string" ? req.query["location"] : "";
@@ -628,10 +662,27 @@ router.get("/mountain-image", async (req, res) => {
       coord: verifiedCoord,
     });
 
-    // ── Proxy the photo ───────────────────────────────────────────────────────
+    // Approved AI illustrations are stored in App Storage. Resolve only this
+    // exact internal URL shape; never fetch an arbitrary relative URL.
+    const generatedIllustration = thumbUrl ? parseMountainIllustrationPath(thumbUrl) : null;
+    if (generatedIllustration) {
+      const stored = await downloadMountainHeroIllustration(
+        generatedIllustration.mountainId,
+        generatedIllustration.jobId,
+      );
+      res.set("Content-Type", stored.mimeType);
+      res.set("Cache-Control", "public, max-age=2592000");
+      res.set("Content-Length", String(stored.buffer.byteLength));
+      res.send(stored.buffer);
+      return;
+    }
+
+    // ── Proxy Wikimedia photos only; other URL values cannot trigger SSRF. ───
     if (thumbUrl) {
-      const imgRes = await fetch(thumbUrl, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10000) });
-      if (imgRes.ok) {
+      const imgRes = isAllowedExternalMountainImageUrl(thumbUrl)
+        ? await fetch(thumbUrl, { headers: WIKI_HEADERS, signal: AbortSignal.timeout(10000) })
+        : null;
+      if (imgRes?.ok) {
         const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
         // Double-check we're not proxying an SVG or HTML error page
         if (contentType.includes("svg") || contentType.includes("html") || contentType.includes("text")) {

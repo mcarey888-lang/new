@@ -108,6 +108,78 @@ export async function uploadReviewCandidate(
   };
 }
 
+const MOUNTAIN_HERO_ILLUSTRATION_PREFIX = "expedition-artwork/mountain-hero-illustrations";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function mountainHeroIllustrationPath(mountainId: string, jobId: string, extension: "jpg" | "png") {
+  if (!UUID_PATTERN.test(mountainId) || !UUID_PATTERN.test(jobId)) {
+    throw new Error("Invalid mountain illustration identifier");
+  }
+  return `${MOUNTAIN_HERO_ILLUSTRATION_PREFIX}/${mountainId}/${jobId}.${extension}`;
+}
+
+/** Persist the original generated image bytes for an individual mountain review candidate. */
+export async function uploadMountainHeroIllustration(
+  mountainId: string,
+  jobId: string,
+  buffer: Buffer,
+  contentType: "image/jpeg" | "image/png",
+): Promise<string> {
+  const extension = contentType === "image/png" ? "png" : "jpg";
+  const objectPath = mountainHeroIllustrationPath(mountainId, jobId, extension);
+  await getBucket().file(objectPath).save(buffer, {
+    contentType,
+    metadata: { cacheControl: "private, no-store, max-age=0" },
+    resumable: false,
+    preconditionOpts: { ifGenerationMatch: 0 },
+  });
+  return `/api/artwork/mountains/${encodeURIComponent(mountainId)}/generated/${encodeURIComponent(jobId)}`;
+}
+
+export async function downloadMountainHeroIllustration(
+  mountainId: string,
+  jobId: string,
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  const bucket = getBucket();
+  let file = bucket.file(mountainHeroIllustrationPath(mountainId, jobId, "jpg"));
+  let [exists] = await file.exists();
+  if (!exists) {
+    file = bucket.file(mountainHeroIllustrationPath(mountainId, jobId, "png"));
+    [exists] = await file.exists();
+  }
+  if (!exists) throw new Error("Generated mountain illustration not found");
+  const [[buffer], [metadata]] = await Promise.all([file.download(), file.getMetadata()]);
+  return {
+    buffer,
+    mimeType: metadata.contentType || (file.name.endsWith(".png") ? "image/png" : "image/jpeg"),
+  };
+}
+
+/** Stream a stored mountain illustration. The opaque job ID is its stable review URL. */
+export async function streamMountainHeroIllustration(
+  mountainId: string,
+  jobId: string,
+  res: ExpressResponse,
+): Promise<void> {
+  const bucket = getBucket();
+  let file = bucket.file(mountainHeroIllustrationPath(mountainId, jobId, "jpg"));
+  let [exists] = await file.exists();
+  if (!exists) {
+    file = bucket.file(mountainHeroIllustrationPath(mountainId, jobId, "png"));
+    [exists] = await file.exists();
+  }
+  if (!exists) {
+    res.status(404).json({ error: "Generated mountain illustration not found" });
+    return;
+  }
+  const [metadata] = await file.getMetadata();
+  res.setHeader("Content-Type", metadata.contentType || (file.name.endsWith(".png") ? "image/png" : "image/jpeg"));
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  file.createReadStream()
+    .on("error", () => res.status(500).end())
+    .pipe(res);
+}
+
 export async function writeReviewBatchManifest(
   batchId: string,
   manifest: unknown,

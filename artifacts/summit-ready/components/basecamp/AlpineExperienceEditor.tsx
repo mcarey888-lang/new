@@ -40,10 +40,6 @@ export function AlpineExperienceEditor({
     const detail = note.trim();
     const when = date.trim();
     const parsedDate = when ? new Date(`${when}T12:00:00`) : null;
-    if (!detail) {
-      setError("Describe the experience, training, or booked trip.");
-      return;
-    }
     if (when && (!/^\d{4}-\d{2}-\d{2}$/.test(when)
       || !parsedDate || Number.isNaN(parsedDate.getTime())
       || parsedDate.toISOString().slice(0, 10) !== when)) {
@@ -131,7 +127,7 @@ export function AlpineExperienceEditor({
               ))}
             </View>
 
-            <Text style={styles.label}>DETAILS</Text>
+            <Text style={styles.label}>DETAILS (OPTIONAL)</Text>
             <TextInput
               value={note} onChangeText={setNote} multiline
               maxLength={600}
@@ -140,7 +136,7 @@ export function AlpineExperienceEditor({
                 : "e.g. Booked a trip with two acclimatisation days…"}
               placeholderTextColor={T.textDim}
               style={[styles.input, styles.notes]}
-              accessibilityLabel="Experience or trip details"
+              accessibilityLabel="Experience or trip details, optional"
               textAlignVertical="top"
             />
             <Text style={styles.label}>DATE (OPTIONAL)</Text>
