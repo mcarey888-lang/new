@@ -696,12 +696,12 @@ export default function SetupScreen() {
                       <Text style={styles.verifiedRouteNoticeTitle}>
                         {mountainResult.routes.length > 0
                           ? "Verified route data found"
-                          : "No verified routes available yet"}
+                          : "Be the first to help map a route"}
                       </Text>
                       <Text style={styles.verifiedRouteNoticeText}>
                         {mountainResult.routes.length > 0
                           ? "These catalogue routes do not include a verified difficulty rating, so enter your training details manually below."
-                          : "Enter the route distance, ascent, altitude and difficulty manually below."}
+                          : "Enter your training details below. You can later track a free hike to contribute GPS data for review; a hike does not automatically verify a route."}
                       </Text>
                     </View>
                   </View>

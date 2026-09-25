@@ -237,13 +237,12 @@ export function offlineDownloadRequest(
   };
 }
 
-/** Copy for the unverified state. One wording, used everywhere. */
+/** Invite a contribution without implying a saved hike verifies a route. */
 export const VERIFICATION_NOTICE = {
-  badge: "UNVERIFIED",
-  title: "Route verification in progress",
+  badge: "HELP MAP THIS ROUTE",
+  title: "Be the first to help map this route",
   body:
-    "We are still confirming this route's geometry against recorded tracks. SummitReady enables "
-    + "navigation and offline download once a route is verified — until then you can explore the "
-    + "detail and add it to your plan.",
-  blockedAction: "Verification in progress",
+    "Track a free hike and contribute your GPS trace to SummitReady. Contributions are reviewed "
+    + "before a route is verified; tracking alone does not unlock route navigation or offline download.",
+  trackAction: "Track a hike",
 } as const;

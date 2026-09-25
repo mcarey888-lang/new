@@ -360,6 +360,16 @@ export default function MountainDetailScreen() {
     });
   }
 
+  // Free-hike tracking records a trace for review, not a navigable route
+  // handoff. Never attach an unverified route's ID or geometry here.
+  function trackFreeHike() {
+    if (!mountain) return;
+    router.push({
+      pathname: "/hike-tracking" as any,
+      params: { trackingMode: "freehike", hillName: mountain.name },
+    });
+  }
+
   const topPad = Platform.OS === "web" ? 18 : insets.top + 8;
   const bottomPad = (presented ? 132 : 24) + TAB_BAR_HEIGHT
     + (Platform.OS === "web" ? 0 : insets.bottom);
@@ -600,6 +610,8 @@ export default function MountainDetailScreen() {
               icon={<MountainIcon size={20} color={BASECAMP.textDim} />}
               title={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.title : NO_ROUTES_NOTICE.title}
               body={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.body : NO_ROUTES_NOTICE.body}
+              action="Track a free hike"
+              onAction={trackFreeHike}
               style={styles.gutter}
             />
           ) : (
@@ -622,6 +634,7 @@ export default function MountainDetailScreen() {
                         selected={presented}
                         dna={dna}
                         mountainSummitElevation={mountain.summitElevation}
+                        mountainName={mountain.name}
                       />
                     ) : (
                       <SRPanel radius={8} style={styles.pending}>
@@ -672,6 +685,7 @@ export default function MountainDetailScreen() {
             ? () => router.push("/setup?mode=change" as any)
             : undefined}
           onStart={startRoute}
+          onTrackHike={trackFreeHike}
           bottomOffset={TAB_BAR_HEIGHT + (Platform.OS === "web" ? 0 : insets.bottom)}
         />
       ) : null}

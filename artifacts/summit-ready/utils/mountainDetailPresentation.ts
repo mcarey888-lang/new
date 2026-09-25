@@ -651,22 +651,22 @@ export const PRACTICAL_FOOTNOTE =
   "SummitReady shows what has been verified for this mountain. Fields we do not hold are marked, never filled in.";
 
 export const FALLBACK_NOTICE = {
-  title: "Not in the verified catalogue yet",
+  title: "Help put this mountain on the route map",
   body:
-    "This mountain has not been matched to SummitReady's verified catalogue, so its routes carry no canonical "
-    + "identity. You can read what we hold, but planning and navigation stay closed until it is verified.",
+    "The routes shown here are browse-only; planning and route navigation remain unavailable. "
+    + "Track a free hike to contribute a GPS trace for review. A recorded hike does not automatically verify a route.",
 } as const;
 
 export const DISCOVERY_CANDIDATE_NOTICE = {
-  title: "Browse-only mountain candidate",
+  title: "Help put this peak on the route map",
   body:
-    "This result came from mountain discovery and has no canonical identity. Any listed catalogue facts are candidates, not verified facts. "
+    "This discovery result has no verified catalogue identity. Its listed facts are candidates, not verified facts. "
     + "No routes are available here; route planning and navigation are not available for this result.",
 } as const;
 
 export const DISCOVERY_NO_ROUTES_NOTICE = {
-  title: "Routes are not available",
-  body: "This browse-only discovery result does not include verified routes. Search the catalogue again later for verified route information.",
+  title: "Be the first to help map a route",
+  body: "Track a free hike and contribute its GPS trace for review. A saved hike does not automatically create a verified route.",
 } as const;
 
 export const CATALOGUE_UNAVAILABLE_NOTICE = {
@@ -677,8 +677,8 @@ export const CATALOGUE_UNAVAILABLE_NOTICE = {
 } as const;
 
 export const NO_ROUTES_NOTICE = {
-  title: "No verified routes yet",
-  body: "SummitReady has verified this mountain but holds no routes for it yet.",
+  title: "Be the first to help map a route",
+  body: "Track a free hike on this mountain and contribute your GPS trace for review. Recording a hike does not automatically verify a route.",
 } as const;
 
 export function routePickerHint(mountainName: string): string {

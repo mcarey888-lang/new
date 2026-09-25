@@ -12,12 +12,12 @@
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CalendarPlus, Check, Play, ShieldAlert } from "lucide-react-native";
+import { CalendarPlus, Check, Play, Route as RouteIcon } from "lucide-react-native";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { VERIFICATION_NOTICE, type RouteEligibility } from "@/utils/routeEligibility";
 
 export function RouteActionBar({
-  mountainName, routeName, eligibility, planned, onAddToPlan, onStart, bottomOffset = 0,
+  mountainName, routeName, eligibility, planned, onAddToPlan, onStart, onTrackHike, bottomOffset = 0,
 }: {
   mountainName: string;
   routeName: string;
@@ -25,6 +25,7 @@ export function RouteActionBar({
   planned: boolean;
   onAddToPlan?: () => void;
   onStart?: () => void;
+  onTrackHike?: () => void;
   /** Height of whatever sits below, so the bar clears the tab bar. */
   bottomOffset?: number;
 }) {
@@ -67,19 +68,23 @@ export function RouteActionBar({
               Start This Route
             </Text>
           </Pressable>
-        ) : (
-          <View
-            accessible
+        ) : onTrackHike ? (
+          <Pressable
+            onPress={onTrackHike}
             accessibilityRole="button"
-            accessibilityState={{ disabled: true }}
-            accessibilityLabel={VERIFICATION_NOTICE.blockedAction}
-            accessibilityHint={VERIFICATION_NOTICE.body}
-            style={[styles.action, styles.secondary, styles.disabled]}
+            accessibilityLabel={`Track a free hike on ${mountainName}`}
+            accessibilityHint="Record a GPS trace to contribute for review. This does not navigate or verify this route."
+            hitSlop={HIT.slop}
+            style={[styles.action, styles.primary]}
           >
-            <ShieldAlert size={13} color={BASECAMP.textDim} />
-            <Text style={[styles.actionText, styles.blockedText]} numberOfLines={2}>
-              {VERIFICATION_NOTICE.blockedAction}
+            <RouteIcon size={15} color={EXPLORE.accentInk} />
+            <Text style={[styles.actionText, { color: EXPLORE.accentInk }]} numberOfLines={2}>
+              {VERIFICATION_NOTICE.trackAction}
             </Text>
+          </Pressable>
+        ) : (
+          <View style={[styles.action, styles.secondary, styles.disabled]}>
+            <Text style={[styles.actionText, styles.blockedText]}>Route tracking unavailable</Text>
           </View>
         )}
       </View>

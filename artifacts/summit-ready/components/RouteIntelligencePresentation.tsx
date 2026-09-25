@@ -82,7 +82,11 @@ export function RouteIntelligencePresentation({
         <View style={styles.trustRow}>
           <Shield size={14} color={trust?.engineStatus === "verified" ? T.green : T.textMuted} />
           <Text style={styles.trustText}>
-            Verification: {trust?.engineStatus === "verified" ? "Verified" : "Unverified"}
+            {trust?.engineStatus === "verified"
+              ? "SummitReady data: Verified"
+              : exploreRoute
+                ? "Help map this route: contribute a tracked hike for review"
+                : "SummitReady data: Awaiting review"}
           </Text>
         </View>
 

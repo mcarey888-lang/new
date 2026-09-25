@@ -23,9 +23,9 @@ export function verificationTone(state: RouteVerificationState) {
     return { tone: EXPLORE.verified, dim: EXPLORE.verifiedDim, line: EXPLORE.verifiedLine, label: "VERIFIED" };
   }
   if (state === "candidate") {
-    return { tone: EXPLORE.unverified, dim: EXPLORE.unverifiedDim, line: EXPLORE.unverifiedLine, label: "UNVERIFIED" };
+    return { tone: EXPLORE.unverified, dim: EXPLORE.unverifiedDim, line: EXPLORE.unverifiedLine, label: VERIFICATION_NOTICE.badge };
   }
-  return { tone: BASECAMP.textDim, dim: "rgba(255,255,255,0.04)", line: BASECAMP.hairline, label: "NOT IDENTIFIED" };
+  return { tone: BASECAMP.textDim, dim: "rgba(255,255,255,0.04)", line: BASECAMP.hairline, label: VERIFICATION_NOTICE.badge };
 }
 
 export function VerificationBadge({
@@ -37,7 +37,11 @@ export function VerificationBadge({
     <View
       style={[styles.badge, { backgroundColor: dim, borderColor: line }, style]}
       accessible
-      accessibilityLabel={`Route status: ${label.toLowerCase()}`}
+      accessibilityLabel={state === "verified"
+        ? "Route verified"
+        : state === "candidate"
+          ? "Route awaiting review. Help map this route with a tracked hike"
+          : "Route not linked to the verified catalogue. Help map this route with a tracked hike"}
     >
       <Icon size={compact ? 9 : 11} color={tone} />
       <Text style={[styles.badgeText, compact && { fontSize: 8.5 }, { color: tone }]} numberOfLines={1}>
@@ -95,16 +99,19 @@ export function FactList({ facts, style }: { facts: readonly PresentedFact[]; st
  * verified. It says what is missing and what still works, rather than leaving
  * a disabled button to explain itself.
  */
-export function VerificationNotice({ style }: { style?: ViewStyle }) {
+export function VerificationNotice({ style, mountainName }: { style?: ViewStyle; mountainName?: string }) {
+  const title = mountainName
+    ? `Help put ${mountainName} on the route map`
+    : VERIFICATION_NOTICE.title;
   return (
     <View
       style={[styles.notice, style]}
       accessible
-      accessibilityLabel={`${VERIFICATION_NOTICE.title}. ${VERIFICATION_NOTICE.body}`}
+      accessibilityLabel={`${title}. ${VERIFICATION_NOTICE.body}`}
     >
       <ShieldAlert size={16} color={EXPLORE.unverified} style={styles.noticeIcon} />
       <View style={styles.noticeBody}>
-        <Text style={styles.noticeTitle}>{VERIFICATION_NOTICE.title}</Text>
+        <Text style={styles.noticeTitle}>{title}</Text>
         <Text style={styles.noticeText}>{VERIFICATION_NOTICE.body}</Text>
       </View>
     </View>

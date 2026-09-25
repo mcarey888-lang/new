@@ -27,12 +27,13 @@ const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: s
 };
 
 export function SelectedRoute({
-  selected, dna, mountainSummitElevation, onDownloadOffline,
+  selected, dna, mountainSummitElevation, mountainName, onDownloadOffline,
 }: {
   selected: PresentedSelectedRoute;
   dna: PresentedDna;
   /** The MOUNTAIN's height. Shown beside the route's ascent, never merged. */
   mountainSummitElevation: PresentedFact;
+  mountainName?: string;
   onDownloadOffline?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -130,7 +131,7 @@ export function SelectedRoute({
               : "Offline route packaging is not part of this version of SummitReady. Your recorded activities already work offline."}
           </Text>
         ) : (
-          <VerificationNotice />
+          <VerificationNotice mountainName={mountainName} />
         )}
       </View>
     </SRPanel>
