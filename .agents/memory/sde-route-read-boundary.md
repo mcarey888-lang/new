@@ -20,3 +20,9 @@ A failed canonical read is not evidence that a mountain is absent from the verif
 **Why:** An absent engine connection was silently converted to an empty lookup, making familiar curated mountains appear “not in the verified catalogue.”
 
 **How to apply:** On identity lookups, propagate read failures as an unavailable state; reserve no-match for completed reads with zero verified candidates. Never manufacture verified IDs from names or cached route facts.
+
+The absence of `ENGINE_DATABASE_URL` does not prove that engine data is absent. The managed development and production databases may already contain engine-owned tables, even though the API's dedicated read connection is unconfigured. Imported records and trusted source evidence are not the same as a verified mountain lifecycle state.
+
+**Why:** A missing read-connection secret initially looked like a missing catalogue, but read-only inspection found the independently owned catalogue tables in both managed environments; most imported hills had not been verified for app display.
+
+**How to apply:** Inspect both environments' table presence and verification-status distribution read-only before proposing new databases, migration, or blanket promotion. Maintain a dedicated read-only connection and the existing verified-only lookup rule; never silently fall back to the app's general `DATABASE_URL`.
