@@ -39,7 +39,7 @@ const DIFF_TONE: Record<string, string> = {
 type FilterId = "all" | "mountains" | "hills" | "loops" | "moderate" | "hard";
 
 const FILTERS: { id: FilterId; label: string; icon: React.ElementType; match: (t: Trail) => boolean }[] = [
-  { id: "all", label: "All peaks", icon: Compass, match: () => true },
+  { id: "all", label: "Browse", icon: Compass, match: () => true },
   { id: "mountains", label: "Mountains", icon: MountainIcon, match: t => t.terrain === "mountain" },
   { id: "hills", label: "Hills", icon: TrendingUp, match: t => t.terrain === "hill" },
   { id: "loops", label: "Loops", icon: RouteIcon, match: t => t.routeType === "loop" },
@@ -503,7 +503,6 @@ export default function ExploreScreen() {
     [],
   );
   const popular = useMemo(() => CURATED_HILLS.slice(0, 8), []);
-  const showingAiSuggestion = discoveryItems.some(item => item.source === "ai");
 
   const topPad = Platform.OS === "web" ? 20 : insets.top + 12;
   const Section = reducedMotion ? View : Animated.View;
@@ -573,16 +572,25 @@ export default function ExploreScreen() {
           <Text style={styles.heroTitle}>Discover your next peak</Text>
           <Text style={styles.heroSub}>Find a mountain and a route worth the journey.</Text>
           <View style={styles.search}>
-            <Search size={13} color={BASECAMP.textDim} />
+            <Pressable
+              onPress={submitSearch}
+              disabled={queryTooShort}
+              accessibilityRole="button"
+              accessibilityLabel="Search peaks worldwide"
+              accessibilityState={{ disabled: queryTooShort }}
+              hitSlop={HIT.slop}
+            >
+              <Search size={13} color={BASECAMP.textDim} />
+            </Pressable>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search peaks, regions..."
+              placeholder="Search local peaks, regions..."
               placeholderTextColor={BASECAMP.textDim}
               value={query}
               onChangeText={updateQuery}
               returnKeyType="search"
               onSubmitEditing={submitSearch}
-              accessibilityLabel="Search peaks, regions"
+              accessibilityLabel="Search local peaks, regions"
             />
             {query.length > 0 ? (
               <Pressable
@@ -607,7 +615,6 @@ export default function ExploreScreen() {
           {FILTERS.map(f => {
             const on = f.id === filter;
             const Icon = f.icon;
-            const count = CURATED_HILLS.filter(f.match).length;
             return (
               <Pressable
                 key={f.id}
@@ -621,7 +628,6 @@ export default function ExploreScreen() {
                 <Text style={[styles.chipLabel, on && styles.chipLabelOn]}>
                   {f.label}
                 </Text>
-                <Text style={styles.chipCount}>{count}</Text>
               </Pressable>
             );
           })}
@@ -637,10 +643,8 @@ export default function ExploreScreen() {
               <SRSectionHeader title={queryTooShort
                 ? "Search"
                 : textQuery
-                ? `${discoveryItems.length} ${showingAiSuggestion
-                  ? (discoveryItems.length === 1 ? "search result" : "search results")
-                  : (discoveryItems.length === 1 ? "catalogue result" : "catalogue results")}`
-                : `${results.length} ${results.length === 1 ? "result" : "results"}`} />
+                ? "Mountain search"
+                : "Selected peaks"} />
             </View>
             {textQuery ? (
               <View style={[styles.gutter, styles.resultList]}>
@@ -657,7 +661,7 @@ export default function ExploreScreen() {
                 ) : (
                   <>
                 <Text style={styles.searchScope}>
-                  Searching the mountain catalogue. Terrain filters apply only to the curated browse list, not this catalogue search.
+                  Search peaks worldwide by name or region. If there is no catalogue match, press Search to find and save an unverified AI suggestion.
                 </Text>
                 {(discoveryLoading || !catalogueSearched) && discoveryItems.length === 0 && !discoveryError ? (
                   <View style={styles.searchStatus}>
@@ -683,7 +687,7 @@ export default function ExploreScreen() {
                     <Text style={styles.emptyBody}>
                       {catalogueUnavailable
                         ? "AI suggestions are unavailable while the catalogue is down."
-                        : "No matching mountain was found in the catalogue."}
+                        : "Press Search or use the button below to find and save an unverified peak."}
                     </Text>
                     {!catalogueUnavailable ? (
                       <>
@@ -691,12 +695,12 @@ export default function ExploreScreen() {
                           onPress={() => void requestAiSuggestion()}
                           disabled={aiLoading}
                           accessibilityRole="button"
-                          accessibilityLabel={`Ask AI for an unverified suggestion for ${textQuery}`}
+                          accessibilityLabel={`Find and save an unverified peak for ${textQuery} with AI`}
                           style={styles.aiAction}
                         >
                           {aiLoading
                             ? <ActivityIndicator size="small" color={BASECAMP.ink} />
-                            : <Text style={styles.aiActionText}>Ask AI for a suggestion</Text>}
+                            : <Text style={styles.aiActionText}>Find and save with AI</Text>}
                         </Pressable>
                         {aiError ? <Text style={styles.errorText}>{aiError}</Text> : null}
                         {aiNoResult ? <Text style={styles.statusText}>No AI suggestion was available for this query.</Text> : null}
@@ -868,7 +872,6 @@ const styles = StyleSheet.create({
   },
   chipLabel: { marginTop: 4, fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.88)", textAlign: "center" },
   chipLabelOn: { color: EXPLORE.accent },
-  chipCount: { marginTop: 1, fontSize: 10, lineHeight: 11, color: "rgba(255,255,255,0.42)", textAlign: "center" },
 
   railSection: { marginTop: 16 },
   railLarge: { paddingHorizontal: BASECAMP.gutter, gap: 9, paddingTop: 5, paddingBottom: 2 },
