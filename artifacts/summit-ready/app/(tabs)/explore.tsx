@@ -94,7 +94,7 @@ function FeaturedCard({ trail }: { trail: Trail }) {
     >
       {failed
         ? <Fallback />
-        : <Image source={{ uri: imageUri(trail, 800, 1070) }} style={StyleSheet.absoluteFill}
+        : <Image source={{ uri: imageUri(trail, 520, 480) }} style={StyleSheet.absoluteFill}
                  onError={() => setFailed(true)} accessible={false} />}
       <LinearGradient
         colors={["rgba(5,9,11,0)", "rgba(5,9,11,0)", "rgba(5,9,11,0.88)", "#05090B"]}
@@ -140,7 +140,7 @@ function PopularCard({ trail }: { trail: Trail }) {
       <View style={styles.popularImage}>
         {failed
           ? <Fallback />
-          : <Image source={{ uri: imageUri(trail, 360, 440) }} style={StyleSheet.absoluteFill}
+          : <Image source={{ uri: imageUri(trail, 240, 200) }} style={StyleSheet.absoluteFill}
                    onError={() => setFailed(true)} accessible={false} />}
 
       </View>
@@ -461,8 +461,8 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BASECAMP.ink },
-  gutter: { paddingHorizontal: 21 },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 285 },
+  gutter: { paddingHorizontal: BASECAMP.gutter },
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 262 },
 
   appBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SP.sm },
   brand: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, minWidth: 0 },
@@ -471,14 +471,14 @@ const styles = StyleSheet.create({
   brandTag: { marginTop: 2, fontSize: 6, lineHeight: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 1.9, color: BASECAMP.textDim },
   appBarActions: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
   iconButton: {
-    width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    width: HIT.minTarget, height: HIT.minTarget, borderRadius: 22, alignItems: "center", justifyContent: "center",
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
 
-  heroCopy: { marginTop: 34, paddingHorizontal: BASECAMP.gutter },
-  heroKicker: { ...TYPE.eyebrow, color: BASECAMP.accent, marginBottom: 6 },
-  heroTitle: { ...TYPE.hero, color: BASECAMP.text, maxWidth: 300 },
-  heroSub: { ...TYPE.body, color: BASECAMP.textMuted, marginTop: 9, maxWidth: 280 },
+  heroCopy: { marginTop: 12, paddingHorizontal: BASECAMP.gutter },
+  heroKicker: { ...TYPE.eyebrow, color: BASECAMP.accent, marginBottom: 4 },
+  heroTitle: { ...TYPE.hero, fontSize: 30, lineHeight: 33, color: BASECAMP.text, maxWidth: 330 },
+  heroSub: { ...TYPE.body, fontSize: 12.5, lineHeight: 17, color: BASECAMP.textMuted, marginTop: 5, maxWidth: 330 },
 
   segmentedControlWrap: { marginTop: 18 },
   segmentedControl: {
@@ -502,16 +502,16 @@ const styles = StyleSheet.create({
   },
 
   search: {
-    marginTop: 15, height: 34, borderRadius: 999,
+    marginTop: 10, height: HIT.minTarget, borderRadius: 999,
     flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14,
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
   searchInput: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.text },
 
-  chipRow: { paddingHorizontal: 21, gap: 8, paddingTop: 20 },
+  chipRow: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 12 },
   chip: {
-    width: 62, height: 72, borderRadius: 6.5,
-    alignItems: "center", paddingTop: 10, paddingHorizontal: 3,
+    width: 62, height: 62, borderRadius: 6.5,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
     backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.085)",
   },
   chipOn: {
@@ -521,12 +521,12 @@ const styles = StyleSheet.create({
   chipLabelOn: { color: EXPLORE.accent },
   chipCount: { marginTop: 1, fontSize: 10, lineHeight: 11, color: "rgba(255,255,255,0.42)", textAlign: "center" },
 
-  railSection: { marginTop: 24 },
-  railLarge: { paddingHorizontal: 21, gap: 14, paddingTop: 8 },
-  railSmall: { paddingHorizontal: 21, gap: 14, paddingTop: 8 },
+  railSection: { marginTop: 16 },
+  railLarge: { paddingHorizontal: BASECAMP.gutter, gap: 9, paddingTop: 5, paddingBottom: 2 },
+  railSmall: { paddingHorizontal: BASECAMP.gutter, gap: 8, paddingTop: 5, paddingBottom: 2 },
 
   featured: {
-    width: 254, height: 340, borderRadius: 9, overflow: "hidden",
+    width: 204, height: 188, borderRadius: 9, overflow: "hidden",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
   },
   favBtn: {
@@ -535,28 +535,28 @@ const styles = StyleSheet.create({
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
     alignItems: "center", justifyContent: "center"
   },
-  featuredBody: { position: "absolute", left: 16, right: 16, bottom: 16 },
-  featuredType: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+  featuredBody: { position: "absolute", left: 12, right: 12, bottom: 11 },
+  featuredType: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 5 },
   featuredTypeIcon: {
-    width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center",
+    width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center",
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder
   },
   featuredTypeText: { fontSize: 10, lineHeight: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", textTransform: "uppercase", letterSpacing: 0.2 },
-  featuredName: { fontSize: 20, lineHeight: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.2, color: BASECAMP.text },
-  featuredMeta: { marginTop: 4, fontSize: 12, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
-  featuredTags: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  featuredName: { fontSize: 16, lineHeight: 19, fontFamily: "Inter_700Bold", letterSpacing: -0.2, color: BASECAMP.text },
+  featuredMeta: { marginTop: 2, fontSize: 11, lineHeight: 14, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
+  featuredTags: { marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 5 },
   tagPill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 7, paddingVertical: 4.5, borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6,
     backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)"
   },
   tagPillText: { fontSize: 10, lineHeight: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)" },
 
-  popular: { width: 114 },
+  popular: { width: 105, minHeight: 135 },
   popularImage: {
-    width: 114, height: 142, borderRadius: 7, overflow: "hidden",
+    width: 105, height: 83, borderRadius: 7, overflow: "hidden",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#12202A",
-    marginBottom: 8
+    marginBottom: 4
   },
   favBtnSmall: {
     position: "absolute", top: 8, right: 8,
@@ -564,12 +564,12 @@ const styles = StyleSheet.create({
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
     alignItems: "center", justifyContent: "center"
   },
-  popularName: { marginTop: 2, fontSize: 11, lineHeight: 13, fontFamily: "Inter_700Bold", color: BASECAMP.text, letterSpacing: -0.1 },
-  popularMeta: { marginTop: 3, fontSize: 10.5, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
-  popularStats: { marginTop: 1, flexDirection: "row", alignItems: "center", gap: 4 },
+  popularName: { marginTop: 1, fontSize: 10.5, lineHeight: 12, fontFamily: "Inter_700Bold", color: BASECAMP.text, letterSpacing: -0.1 },
+  popularMeta: { marginTop: 2, fontSize: 10, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
+  popularStats: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 4 },
   popularDiff: { fontSize: 9.5, lineHeight: 11, fontFamily: "Inter_500Medium" },
 
-  resultsSection: { marginTop: 24 },
+  resultsSection: { marginTop: 16 },
   resultList: { marginTop: 10, gap: 9 },
   result: {},
   resultRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 10 },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   resultTag: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1, minWidth: 0 },
   resultTagText: { ...TYPE.caption, fontSize: 10.5, color: BASECAMP.textMuted, flexShrink: 1 },
 
-  mapSection: { marginTop: 18 },
+  mapSection: { marginTop: 16 },
   mapSub: { marginTop: 2, ...TYPE.caption, fontSize: 11.5, color: BASECAMP.textDim },
   mapCard: { marginTop: 8, height: 76, justifyContent: "center" },
   mapPins: { ...StyleSheet.absoluteFillObject, flexDirection: "row", alignItems: "center", paddingLeft: 12 },
