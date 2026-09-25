@@ -98,6 +98,7 @@ app.use("/api/coach-assessment",             aiLimiter);
 app.use("/api/coach-ask",                    aiLimiter);
 app.use("/api/alpine-assessment",            aiLimiter);
 app.use("/api/mountain-lookup",              aiLimiter);
+app.use("/api/mountain-discovery/ai",        aiLimiter);
 app.use("/api/hills-lookup",                 aiLimiter);
 app.use("/api/hills-search",                 aiLimiter);
 app.use("/api/hills-unified",                aiLimiter);

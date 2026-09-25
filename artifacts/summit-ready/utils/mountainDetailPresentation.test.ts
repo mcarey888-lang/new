@@ -121,6 +121,39 @@ describe("presentMountain", () => {
       expect(m.verified).toBe(false);
     }
   });
+
+  it("shows discovery catalogue facts as candidates and never exposes routes", () => {
+    const lookup = canonicalLookup({
+      source: "catalogue",
+      canonicalIdentity: undefined,
+      trustedFacts: undefined,
+      catalogueFacts: { verificationStatus: "imported", area: "Candidate area", elevationM: 801 },
+    });
+    const mountain = presentMountain(lookup);
+    expect(mountain.id).toBeNull();
+    expect(mountain.discoveryCandidate).toBe(true);
+    expect(mountain.candidateStatus).toBe("imported");
+    expect(mountain.summitElevation).toMatchObject({
+      label: "Candidate elevation", value: "801 m", state: "candidate",
+    });
+    expect(mountain.practical.find(f => f.key === "area")).toMatchObject({
+      value: "Candidate area", state: "candidate",
+    });
+    expect(presentRoutes(lookup, mountain)).toEqual([]);
+  });
+
+  it("keeps an AI discovery result browse-only even when it has no facts", () => {
+    const lookup = canonicalLookup({
+      source: "ai",
+      canonicalIdentity: undefined,
+      trustedFacts: undefined,
+      routes: [],
+    });
+    const mountain = presentMountain(lookup);
+    expect(mountain.discoveryCandidate).toBe(true);
+    expect(mountain.id).toBeNull();
+    expect(presentRoutes(lookup, mountain)).toEqual([]);
+  });
 });
 
 describe("presentRoutes", () => {

@@ -14,3 +14,4 @@ export * from "./stage2-activity-ledgers";
 export * from "./virtual-expedition-engine";
 export * from "./signature-challenges";
 export * from "./atlas";
+export * from "./ai-mountain-discoveries";

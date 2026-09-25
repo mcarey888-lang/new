@@ -1,6 +1,6 @@
 import { Router, type IRouter, type RequestHandler } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { db, cachedMountains } from "@workspace/db";
+import { aiMountainDiscoveries, db, cachedMountains, executeEngineReadOnlyQuery } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -12,10 +12,17 @@ import {
 } from "../services/mountain/canonicalMountainLookup";
 
 const RequestSchema = z.object({
-  name: z.string().min(2).max(200).trim(),
+  name: z.string().min(2).max(200).trim().optional(),
   country: z.string().trim().min(1).max(100).optional(),
   region: z.string().trim().min(1).max(200).optional(),
-});
+  catalogueId: z.string().min(1).max(200).optional(),
+  discoveryId: z.string().min(1).max(200).optional(),
+}).refine((input) => {
+  if (input.catalogueId || input.discoveryId) {
+    return !(input.catalogueId && input.discoveryId);
+  }
+  return Boolean(input.name);
+}, "Provide a name or exactly one discovery ID");
 
 const RouteSchema = z.object({
   name: z.string(),
@@ -43,6 +50,23 @@ export interface MountainLookupDependencies {
   cacheLookup: (slug: string) => Promise<MountainResponse | null>;
   cacheStore: (slug: string, result: MountainResponse) => Promise<void>;
   aiLookup: (name: string) => Promise<MountainResponse>;
+  catalogueById?: (id: string) => Promise<{
+    id: string;
+    name: string;
+    country: string | null;
+    region: string | null;
+    area: string | null;
+    elevationM: number | null;
+    status: string;
+  } | null>;
+  discoveryById?: (id: string) => Promise<{
+    id: string;
+    name: string;
+    country: string;
+    region: string;
+    area: string | null;
+    elevationM: number | null;
+  } | null>;
 }
 
 const SYSTEM_PROMPT = `You are a mountain hiking and alpine routes expert. When given a mountain or hike name, return accurate route information as a JSON object.
@@ -102,6 +126,41 @@ async function storeCache(
       target: cachedMountains.slug,
       set: { data: JSON.stringify(result), cachedAt: new Date() },
     });
+}
+
+async function getCatalogueById(id: string) {
+  const rows = await executeEngineReadOnlyQuery<{
+    id: string;
+    name: string;
+    country: string | null;
+    region: string | null;
+    area: string | null;
+    elevationM: number | null;
+    status: string;
+  }>(
+    `SELECT m.id::text AS "id", m.name AS "name", m.country AS "country",
+      m.region AS "region", m.area AS "area", m.elevation_m AS "elevationM",
+      m.status AS "status"
+     FROM public.mountains AS m WHERE m.id::text = $1 LIMIT 1`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+async function getDiscoveryById(id: string) {
+  const rows = await db
+    .select({
+      id: aiMountainDiscoveries.id,
+      name: aiMountainDiscoveries.name,
+      country: aiMountainDiscoveries.country,
+      region: aiMountainDiscoveries.region,
+      area: aiMountainDiscoveries.area,
+      elevationM: aiMountainDiscoveries.elevationM,
+    })
+    .from(aiMountainDiscoveries)
+    .where(eq(aiMountainDiscoveries.id, id))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 async function lookupWithAi(name: string): Promise<MountainResponse> {
@@ -184,6 +243,8 @@ const defaultDependencies: MountainLookupDependencies = {
   cacheLookup: lookupCache,
   cacheStore: storeCache,
   aiLookup: lookupWithAi,
+  catalogueById: getCatalogueById,
+  discoveryById: getDiscoveryById,
 };
 
 export function createMountainLookupHandler(
@@ -202,10 +263,85 @@ export function createMountainLookupHandler(
 
     const input = parsed.data;
 
+    if (input.discoveryId) {
+      try {
+        const discovery = await dependencies.discoveryById!(input.discoveryId);
+        if (!discovery) {
+          res.status(404).json({ error: "Mountain discovery not found", code: "MOUNTAIN_NOT_FOUND" });
+          return;
+        }
+        res.json({
+          source: "ai",
+          mountainName: discovery.name,
+          country: discovery.country,
+          region: discovery.region,
+          routes: [],
+          routeSource: "unavailable",
+          catalogueFacts: {
+            elevationM: discovery.elevationM,
+            area: discovery.area,
+            verificationStatus: "ai_unverified",
+          },
+        });
+      } catch (err) {
+        req.log.error({ err }, "AI mountain discovery lookup failed");
+        res.status(503).json({ error: "Mountain discovery is temporarily unavailable", code: "MOUNTAIN_DISCOVERY_UNAVAILABLE" });
+      }
+      return;
+    }
+
+    if (input.catalogueId) {
+      let candidate;
+      try {
+        candidate = await dependencies.catalogueById!(input.catalogueId);
+      } catch (err) {
+        req.log.warn({ err }, "Exact catalogue mountain lookup failed");
+        res.status(503).json({ error: "Mountain catalogue is temporarily unavailable", code: "CANONICAL_LOOKUP_UNAVAILABLE" });
+        return;
+      }
+      if (!candidate) {
+        res.status(404).json({ error: "Mountain not found", code: "MOUNTAIN_NOT_FOUND" });
+        return;
+      }
+
+      try {
+        const exactCanonical = await dependencies.canonicalLookup({
+          name: candidate.name,
+          ...(candidate.country ? { country: candidate.country } : {}),
+          ...(candidate.region ? { region: candidate.region } : {}),
+        });
+        if (exactCanonical.kind === "match" && exactCanonical.mountain.id === candidate.id) {
+          res.json(canonicalResponse(exactCanonical.mountain, candidate.name));
+          return;
+        }
+      } catch (err) {
+        req.log.warn({ err }, "Verified identity confirmation unavailable for exact catalogue record");
+      }
+      res.json({
+        source: "catalogue",
+        mountainName: candidate.name,
+        country: candidate.country ?? undefined,
+        region: candidate.region ?? undefined,
+        routes: [],
+        routeSource: "unavailable",
+        catalogueFacts: {
+          elevationM: candidate.elevationM,
+          area: candidate.area,
+          verificationStatus: candidate.status === "verified" ? "verified" : "imported",
+        },
+      });
+      return;
+    }
+
+    const mountainName = input.name!;
     let canonical: CanonicalLookupResult = { kind: "none" };
     let catalogueUnavailable = false;
     try {
-      canonical = await dependencies.canonicalLookup(input);
+      canonical = await dependencies.canonicalLookup({
+        name: mountainName,
+        ...(input.country ? { country: input.country } : {}),
+        ...(input.region ? { region: input.region } : {}),
+      });
     } catch (err) {
       if (err instanceof CanonicalCatalogueUnavailableError) {
         catalogueUnavailable = true;
@@ -243,11 +379,11 @@ export function createMountainLookupHandler(
         },
         "Canonical mountain catalogue hit",
       );
-      res.json(canonicalResponse(canonical.mountain, input.name));
+      res.json(canonicalResponse(canonical.mountain, mountainName));
       return;
     }
 
-    const slug = mountainSlug(input.name);
+    const slug = mountainSlug(mountainName);
 
     try {
       const cached = await dependencies.cacheLookup(slug);
@@ -264,7 +400,7 @@ export function createMountainLookupHandler(
     }
 
     try {
-      const result = await dependencies.aiLookup(input.name);
+      const result = await dependencies.aiLookup(mountainName);
 
       try {
         await dependencies.cacheStore(slug, result);

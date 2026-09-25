@@ -51,6 +51,7 @@ import { startRouteHandoff } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
 import {
   CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
+  DISCOVERY_CANDIDATE_NOTICE, DISCOVERY_NO_ROUTES_NOTICE,
   ROUTE_SORTS, presentMountain, presentMountainDna, presentRoutes, presentSelectedRoute,
   routePickerHint, sortRoutes,
   type MountainLookupResponse, type PresentedRoute, type RouteSort,
@@ -72,8 +73,8 @@ export default function MountainDetailScreen() {
   const { shellMode } = useApp();
   const { getToken, userId } = useAuth();
 
-  const { name, region, country } = useLocalSearchParams<{
-    name?: string; region?: string; country?: string;
+  const { name, region, country, catalogueId, discoveryId } = useLocalSearchParams<{
+    name?: string; region?: string; country?: string; catalogueId?: string; discoveryId?: string;
   }>();
 
   const [lookup, setLookup] = useState<MountainLookupResponse | null>(null);
@@ -96,6 +97,8 @@ export default function MountainDetailScreen() {
           name,
           ...(region ? { region } : {}),
           ...(country ? { country } : {}),
+          ...(catalogueId ? { catalogueId } : {}),
+          ...(discoveryId ? { discoveryId } : {}),
         }),
       });
       if (!response.ok) throw new Error(String(response.status));
@@ -104,7 +107,7 @@ export default function MountainDetailScreen() {
     } catch {
       setState("error");
     }
-  }, [name, region, country]);
+  }, [name, region, country, catalogueId, discoveryId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -306,7 +309,11 @@ export default function MountainDetailScreen() {
             {/* The mountain's height. A route's ascent is a different number
                 and is never shown here. */}
             {mountain.summitElevation.value ? (
-              <Text style={styles.heroElevation}>{mountain.summitElevation.value}</Text>
+              <Text style={styles.heroElevation}>
+                {mountain.discoveryCandidate
+                  ? `${mountain.summitElevation.value} · CANDIDATE`
+                  : mountain.summitElevation.value}
+              </Text>
             ) : null}
             {mountain.place ? (
               <View style={styles.heroPlace}>
@@ -317,6 +324,14 @@ export default function MountainDetailScreen() {
             <View style={styles.heroBadges}>
               {lookup?.catalogueStatus === "unavailable"
                 ? <Text style={styles.catalogueUnavailableBadge}>CATALOGUE UNAVAILABLE</Text>
+              : mountain.discoveryCandidate
+                ? <Text style={styles.candidateBadge}>
+                    {mountain.candidateStatus === "imported"
+                      ? "IMPORTED · NOT VERIFIED"
+                      : mountain.candidateStatus === "ai_unverified"
+                        ? "AI CANDIDATE · NOT VERIFIED"
+                        : "CANDIDATE · NOT VERIFIED"}
+                  </Text>
                 : <VerificationBadge state={mountain.verified ? "verified" : "unidentified"} />}
             </View>
           </View>
@@ -331,10 +346,18 @@ export default function MountainDetailScreen() {
                 <Info size={16} color={EXPLORE.unverified} />
                 <View style={styles.fallbackText}>
                   <Text style={styles.fallbackTitle}>
-                    {lookup?.catalogueStatus === "unavailable" ? CATALOGUE_UNAVAILABLE_NOTICE.title : FALLBACK_NOTICE.title}
+                    {mountain.discoveryCandidate
+                      ? DISCOVERY_CANDIDATE_NOTICE.title
+                      : lookup?.catalogueStatus === "unavailable"
+                        ? CATALOGUE_UNAVAILABLE_NOTICE.title
+                        : FALLBACK_NOTICE.title}
                   </Text>
                   <Text style={styles.fallbackBody}>
-                    {lookup?.catalogueStatus === "unavailable" ? CATALOGUE_UNAVAILABLE_NOTICE.body : FALLBACK_NOTICE.body}
+                    {mountain.discoveryCandidate
+                      ? DISCOVERY_CANDIDATE_NOTICE.body
+                      : lookup?.catalogueStatus === "unavailable"
+                        ? CATALOGUE_UNAVAILABLE_NOTICE.body
+                        : FALLBACK_NOTICE.body}
                   </Text>
                 </View>
               </View>
@@ -386,8 +409,8 @@ export default function MountainDetailScreen() {
           {routes.length === 0 ? (
             <SREmptyState
               icon={<MountainIcon size={20} color={BASECAMP.textDim} />}
-              title={NO_ROUTES_NOTICE.title}
-              body={NO_ROUTES_NOTICE.body}
+              title={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.title : NO_ROUTES_NOTICE.title}
+              body={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.body : NO_ROUTES_NOTICE.body}
               style={styles.gutter}
             />
           ) : (
@@ -485,6 +508,13 @@ const styles = StyleSheet.create({
     borderColor: EXPLORE.unverifiedLine, borderWidth: 1, borderRadius: 5,
     paddingHorizontal: 8, paddingVertical: 4,
     fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1,
+    overflow: "hidden",
+  },
+  candidateBadge: {
+    color: EXPLORE.unverified, backgroundColor: EXPLORE.unverifiedDim,
+    borderColor: EXPLORE.unverifiedLine, borderWidth: 1, borderRadius: 5,
+    paddingHorizontal: 8, paddingVertical: 4,
+    fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.7,
     overflow: "hidden",
   },
 

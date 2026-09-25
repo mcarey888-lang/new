@@ -73,7 +73,7 @@ export interface MountainLookupResponse {
   mountainName: string;
   country?: string;
   region?: string;
-  source?: "canonical" | "cache" | "ai";
+  source?: "canonical" | "cache" | "catalogue" | "ai";
   /** The engine could not be read; cache/AI routes are browse-only. */
   catalogueStatus?: "unavailable";
   routeSource?: "canonical" | "unavailable";
@@ -92,6 +92,12 @@ export interface MountainLookupResponse {
     gridReference?: string;
     summitFeature?: string;
     provenanceVersion?: string;
+  };
+  /** Search-discovery facts are candidates, not canonical identity or evidence. */
+  catalogueFacts?: {
+    verificationStatus?: "verified" | "imported" | "ai_unverified";
+    area?: string;
+    elevationM?: number;
   };
 }
 
@@ -175,6 +181,9 @@ export interface PresentedMountain {
   verified: boolean;
   /** True when the lookup is not canonical — no identity, so no navigation. */
   fallback: boolean;
+  /** Search discovery rows are explicitly browse-only and never canonical. */
+  discoveryCandidate: boolean;
+  candidateStatus: string | null;
   provenanceVersion: string | null;
 }
 
@@ -187,14 +196,28 @@ export interface PresentedMountain {
  */
 export function presentMountain(lookup: MountainLookupResponse): PresentedMountain {
   const canonical = lookup.source === "canonical" && typeof lookup.canonicalIdentity?.id === "string";
+  const discoveryCandidate = lookup.source === "catalogue"
+    || (lookup.source === "ai" && (!!lookup.catalogueFacts || (lookup.routes?.length ?? 0) === 0));
   const id: SdeMountainId | null = canonical
     ? (`sde:mountain:${lookup.canonicalIdentity!.id}` as SdeMountainId)
     : null;
   const facts = lookup.trustedFacts;
+  const discoveryFacts = discoveryCandidate ? lookup.catalogueFacts : undefined;
   const place = [lookup.region, lookup.country].filter(part => !!part && part.trim()).join(", ") || null;
 
   /* The mountain's own elevation, which is an ALTITUDE. */
-  const summit = fact("summit", "Summit", formatMetres(facts?.elevationM));
+  const summit = fact(
+    "summit",
+    discoveryCandidate ? "Candidate elevation" : "Summit",
+    formatMetres(discoveryFacts?.elevationM ?? facts?.elevationM),
+    discoveryCandidate ? "candidate" : "verified",
+  );
+  const areaFact = fact(
+    "area",
+    "Area",
+    discoveryFacts?.area ?? facts?.area ?? null,
+    discoveryCandidate ? "candidate" : "verified",
+  );
 
   return {
     id,
@@ -203,18 +226,20 @@ export function presentMountain(lookup: MountainLookupResponse): PresentedMounta
     summitElevation: summit,
     overview: [
       summit,
-      fact("place", "Location", place),
-      fact("prominence", "Prominence", formatMetres(facts?.prominenceM)),
+      fact("place", "Location", place, discoveryCandidate ? "candidate" : "verified"),
+      fact("prominence", "Prominence", formatMetres(facts?.prominenceM), discoveryCandidate ? "candidate" : "verified"),
     ],
     practical: [
-      fact("area", "Area", facts?.area ?? null),
-      fact("county", "County", facts?.county ?? null),
-      fact("grid", "Grid reference", facts?.gridReference ?? null),
-      fact("summitFeature", "Summit feature", facts?.summitFeature ?? null),
-      fact("country", "Country", lookup.country ?? null),
+      areaFact,
+      fact("county", "County", discoveryCandidate ? null : facts?.county ?? null, discoveryCandidate ? "candidate" : "verified"),
+      fact("grid", "Grid reference", discoveryCandidate ? null : facts?.gridReference ?? null, discoveryCandidate ? "candidate" : "verified"),
+      fact("summitFeature", "Summit feature", discoveryCandidate ? null : facts?.summitFeature ?? null, discoveryCandidate ? "candidate" : "verified"),
+      fact("country", "Country", lookup.country ?? null, discoveryCandidate ? "candidate" : "verified"),
     ],
     verified: canonical && facts?.verificationStatus === "verified",
     fallback: !canonical,
+    discoveryCandidate,
+    candidateStatus: discoveryCandidate ? discoveryFacts?.verificationStatus ?? null : null,
     provenanceVersion: facts?.provenanceVersion ?? null,
   };
 }
@@ -345,6 +370,7 @@ export function presentRoutes(
   lookup: MountainLookupResponse,
   mountain: PresentedMountain,
 ): PresentedRoute[] {
+  if (mountain.discoveryCandidate) return [];
   const rows = lookup.routes ?? [];
   return rows.map((row, index) =>
     isTrustedRouteRow(row)
@@ -619,6 +645,18 @@ export const FALLBACK_NOTICE = {
   body:
     "This mountain has not been matched to SummitReady's verified catalogue, so its routes carry no canonical "
     + "identity. You can read what we hold, but planning and navigation stay closed until it is verified.",
+} as const;
+
+export const DISCOVERY_CANDIDATE_NOTICE = {
+  title: "Browse-only mountain candidate",
+  body:
+    "This result came from mountain discovery and has no canonical identity. Any listed catalogue facts are candidates, not verified facts. "
+    + "No routes are available here; route planning and navigation are not available for this result.",
+} as const;
+
+export const DISCOVERY_NO_ROUTES_NOTICE = {
+  title: "Routes are not available",
+  body: "This browse-only discovery result does not include verified routes. Search the catalogue again later for verified route information.",
 } as const;
 
 export const CATALOGUE_UNAVAILABLE_NOTICE = {

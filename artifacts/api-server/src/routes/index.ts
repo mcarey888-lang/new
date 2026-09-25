@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import mountainRouter from "./mountain";
+import mountainDiscoveryRouter from "./mountain-discovery";
 import mountainImageRouter from "./mountain-image";
 import hillsRouter from "./hills";
 import hillsUnifiedRouter from "./hills-unified";
@@ -37,6 +38,7 @@ const router: IRouter = Router();
 router.use(healthRouter);
 router.use(redditConversionsRouter);
 router.use(mountainRouter);
+router.use(mountainDiscoveryRouter);
 router.use(mountainImageRouter);
 router.use(hillsRouter);
 router.use(hillsUnifiedRouter);

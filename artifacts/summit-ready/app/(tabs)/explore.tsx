@@ -5,9 +5,9 @@
  * scrolls out of, a search field, terrain filters, a Featured rail, a Popular
  * rail and the map entry.
  */
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
-  Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
+  ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
   useWindowDimensions, View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,6 +23,7 @@ import { SREmptyState, SRPanel, SRSectionHeader } from "@/components/ui";
 import { useScreenView } from "@/lib/analytics";
 import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
+import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -64,6 +65,43 @@ function openMountain(trail: Trail) {
       // regions. Exact region filtering can hide an otherwise unique match.
     },
   });
+}
+
+type DiscoveryItem = {
+  id: string;
+  name: string;
+  country?: string;
+  region?: string;
+  area?: string;
+  elevationM?: number;
+  latitude?: number;
+  longitude?: number;
+  source: "catalogue" | "ai";
+  verificationStatus: "verified" | "imported" | "ai_unverified";
+};
+
+type DiscoveryResponse = {
+  items: DiscoveryItem[];
+  hasMore: boolean;
+  catalogueStatus: "available";
+};
+
+function openDiscoveryMountain(item: DiscoveryItem) {
+  router.push({
+    pathname: "/mountain" as any,
+    params: {
+      name: item.name,
+      ...(item.region ? { region: item.region } : {}),
+      ...(item.country ? { country: item.country } : {}),
+      ...(item.source === "ai" ? { discoveryId: item.id } : { catalogueId: item.id }),
+    },
+  });
+}
+
+function discoveryImageUri(item: DiscoveryItem, width: number, height: number) {
+  const location = [item.region, item.country].filter(Boolean).join(", ");
+  return `${API_BASE}/mountain-image?name=${encodeURIComponent(item.name)}`
+    + `&location=${encodeURIComponent(location)}&width=${width}&height=${height}`;
 }
 
 function imageUri(trail: Trail, width: number, height: number) {
@@ -196,6 +234,50 @@ function ResultRow({ trail }: { trail: Trail }) {
   );
 }
 
+function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
+  const [failed, setFailed] = useState(false);
+  const place = [item.region, item.country].filter(Boolean).join(", ");
+  const statusLabel = item.verificationStatus === "verified"
+    ? "Verified catalogue"
+    : item.verificationStatus === "imported"
+      ? "Imported · not verified"
+      : "AI suggestion · not verified";
+  return (
+    <SRPanel
+      radius={7.5}
+      onPress={() => openDiscoveryMountain(item)}
+      accessibilityLabel={`${item.name}${place ? `, ${place}` : ""}. ${statusLabel}.`}
+      style={styles.result}
+    >
+      <View style={styles.resultRow}>
+        <View style={styles.resultImage}>
+          {failed
+            ? <Fallback />
+            : <Image source={{ uri: discoveryImageUri(item, 220, 200) }} style={StyleSheet.absoluteFill}
+                     onError={() => setFailed(true)} accessible={false} />}
+        </View>
+        <View style={styles.resultBody}>
+          <Text style={styles.resultName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.resultPlace} numberOfLines={1}>{place || item.area || "Location not recorded"}</Text>
+          <View style={styles.resultStats}>
+            {typeof item.elevationM === "number" && Number.isFinite(item.elevationM) ? (
+              <View style={styles.resultTag}>
+                <TrendingUp size={11} color={BASECAMP.textDim} />
+                <Text style={styles.resultTagText}>{Math.round(item.elevationM).toLocaleString()} m elevation</Text>
+              </View>
+            ) : null}
+            <Text style={[
+              styles.discoveryStatus,
+              item.verificationStatus === "verified" ? styles.discoveryVerified : styles.discoveryUnverified,
+            ]}>{statusLabel}</Text>
+          </View>
+        </View>
+        <ChevronRight size={15} color={BASECAMP.textFaint} />
+      </View>
+    </SRPanel>
+  );
+}
+
 export default function ExploreScreen() {
   useScreenView("explore");
   const insets = useSafeAreaInsets();
@@ -203,6 +285,22 @@ export default function ExploreScreen() {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
+  const [discoveryItems, setDiscoveryItems] = useState<DiscoveryItem[]>([]);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [catalogueSearched, setCatalogueSearched] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [catalogueUnavailable, setCatalogueUnavailable] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiNoResult, setAiNoResult] = useState(false);
+  const requestId = useRef(0);
+  const aiRequestGuard = useMemo(() => createExploreAiRequestGuard(), []);
+  const abortRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const committedQueryRef = useRef<string | null>(null);
+  const latestQuery = useRef("");
+  latestQuery.current = query.trim();
   const [heroFailed, setHeroFailed] = useState(false);
   const [heroUri, setHeroUri] = useState<string | null>(null);
 
@@ -220,25 +318,184 @@ export default function ExploreScreen() {
   const { width } = useWindowDimensions();
   const compactBrand = width < 430;
 
-  const searching = query.trim().length > 0 || filter !== "all";
+  const textQuery = query.trim();
+  const queryTooShort = Array.from(textQuery).length < 2;
+  const searching = textQuery.length > 0 || filter !== "all";
+
+  const fetchCatalogue = async (term: string, append = false, committed = false) => {
+    aiRequestGuard.invalidate();
+    setAiLoading(false);
+    const currentRequest = ++requestId.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setDiscoveryLoading(true);
+    setCatalogueSearched(false);
+    setDiscoveryError(null);
+    setCatalogueUnavailable(false);
+    try {
+      const offset = append ? discoveryItems.length : 0;
+      const response = await fetch(
+        `${API_BASE}/mountain-discovery?q=${encodeURIComponent(term)}&limit=20&offset=${offset}`,
+        { signal: controller.signal },
+      );
+      if (currentRequest !== requestId.current) return;
+      if (response.status === 503) {
+        setCatalogueUnavailable(true);
+        setDiscoveryError("The mountain catalogue is temporarily unavailable. Try again shortly.");
+        setDiscoveryItems([]);
+        setHasMore(false);
+        return;
+      }
+      if (!response.ok) throw new Error(`Search failed (${response.status}).`);
+      const data = await response.json() as DiscoveryResponse;
+      if (currentRequest !== requestId.current) return;
+      setDiscoveryItems(current => append ? [...current, ...data.items] : data.items);
+      setHasMore(data.hasMore);
+      setCatalogueSearched(true);
+      setCatalogueUnavailable(false);
+      setDiscoveryError(null);
+      setAiError(null);
+      setAiNoResult(false);
+      if (committed && data.items.length === 0) void requestAiSuggestion(term, true);
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError" || currentRequest !== requestId.current) return;
+      setDiscoveryError(error instanceof Error ? error.message : "Search could not be completed.");
+      setDiscoveryItems([]);
+      setHasMore(false);
+    } finally {
+      if (currentRequest === requestId.current) setDiscoveryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (!textQuery) {
+      requestId.current += 1;
+      abortRef.current?.abort();
+      setDiscoveryItems([]);
+      setDiscoveryLoading(false);
+      setCatalogueSearched(false);
+      setDiscoveryError(null);
+      setCatalogueUnavailable(false);
+      setHasMore(false);
+      setAiError(null);
+      setAiNoResult(false);
+      return;
+    }
+    if (queryTooShort) {
+      requestId.current += 1;
+      abortRef.current?.abort();
+      setDiscoveryLoading(false);
+      setCatalogueSearched(false);
+      setDiscoveryItems([]);
+      setHasMore(false);
+      return;
+    }
+    if (committedQueryRef.current === textQuery) return;
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      void fetchCatalogue(textQuery);
+    }, 300);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [textQuery, queryTooShort]);
+
+  useEffect(() => () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    abortRef.current?.abort();
+  }, []);
+
+  const submitSearch = () => {
+    const term = query.trim();
+    if (Array.from(term).length < 2) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    committedQueryRef.current = term;
+    void fetchCatalogue(term, false, true);
+  };
+
+  const updateQuery = (value: string) => {
+    committedQueryRef.current = null;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    setQuery(value);
+    aiRequestGuard.invalidate();
+    requestId.current += 1;
+    abortRef.current?.abort();
+    setDiscoveryItems([]);
+    setDiscoveryLoading(false);
+    setCatalogueSearched(false);
+    setHasMore(false);
+    setDiscoveryError(null);
+    setCatalogueUnavailable(false);
+    setAiError(null);
+    setAiNoResult(false);
+    setAiLoading(false);
+  };
+
+  const requestAiSuggestion = async (termOverride?: string, afterSuccessfulEmptySearch = false) => {
+    const term = termOverride ?? query.trim();
+    if (Array.from(term).length < 2 || (!afterSuccessfulEmptySearch &&
+        (!catalogueSearched || catalogueUnavailable || discoveryError || discoveryItems.length > 0))) return;
+    const currentAiRequest = aiRequestGuard.begin();
+    setAiLoading(true);
+    setAiError(null);
+    setAiNoResult(false);
+    try {
+      const response = await fetch(`${API_BASE}/mountain-discovery/ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: term }),
+      });
+      if (!aiRequestGuard.isCurrent(currentAiRequest) || latestQuery.current !== term) return;
+      if (response.status === 404) {
+        setAiNoResult(true);
+        return;
+      }
+      if (response.status === 503) {
+        setCatalogueUnavailable(true);
+        setDiscoveryError("The mountain catalogue is temporarily unavailable. AI suggestions are unavailable until it returns.");
+        return;
+      }
+      if (response.status === 409) {
+        void fetchCatalogue(term);
+        return;
+      }
+      if (!response.ok) throw new Error(`Suggestion request failed (${response.status}).`);
+      const data = await response.json() as { item: DiscoveryItem };
+      if (!aiRequestGuard.isCurrent(currentAiRequest) || latestQuery.current !== term) return;
+      setDiscoveryItems([data.item]);
+    } catch (error) {
+      if (!aiRequestGuard.isCurrent(currentAiRequest)) return;
+      setAiError(error instanceof Error ? error.message : "An AI suggestion could not be loaded.");
+    } finally {
+      if (aiRequestGuard.isCurrent(currentAiRequest)) setAiLoading(false);
+    }
+  };
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const matcher = FILTERS.find(f => f.id === filter)?.match ?? (() => true);
-    return CURATED_HILLS.filter(trail =>
-      matcher(trail) && (
-        q.length === 0 ||
-        trail.name.toLowerCase().includes(q) ||
-        trail.location.toLowerCase().includes(q) ||
-        (trail.region?.toLowerCase().includes(q) ?? false)
-      ));
-  }, [query, filter]);
+    return CURATED_HILLS.filter(matcher);
+  }, [filter]);
 
   const featured = useMemo(
     () => CURATED_HILLS.filter(t => t.terrain === "mountain").slice(0, 5),
     [],
   );
   const popular = useMemo(() => CURATED_HILLS.slice(0, 8), []);
+  const showingAiSuggestion = discoveryItems.some(item => item.source === "ai");
 
   const topPad = Platform.OS === "web" ? 20 : insets.top + 12;
   const Section = reducedMotion ? View : Animated.View;
@@ -314,13 +571,14 @@ export default function ExploreScreen() {
               placeholder="Search peaks, regions..."
               placeholderTextColor={BASECAMP.textDim}
               value={query}
-              onChangeText={setQuery}
+              onChangeText={updateQuery}
               returnKeyType="search"
+              onSubmitEditing={submitSearch}
               accessibilityLabel="Search peaks, regions"
             />
             {query.length > 0 ? (
               <Pressable
-                onPress={() => setQuery("")}
+                onPress={() => updateQuery("")}
                 accessibilityRole="button"
                 accessibilityLabel="Clear search"
                 hitSlop={HIT.slop}
@@ -368,15 +626,98 @@ export default function ExploreScreen() {
             style={styles.resultsSection}
           >
             <View style={styles.gutter}>
-              <SRSectionHeader title={`${results.length} ${results.length === 1 ? "result" : "results"}`} />
+              <SRSectionHeader title={queryTooShort
+                ? "Search"
+                : textQuery
+                ? `${discoveryItems.length} ${showingAiSuggestion
+                  ? (discoveryItems.length === 1 ? "search result" : "search results")
+                  : (discoveryItems.length === 1 ? "catalogue result" : "catalogue results")}`
+                : `${results.length} ${results.length === 1 ? "result" : "results"}`} />
             </View>
-            {results.length === 0 ? (
+            {textQuery ? (
+              <View style={[styles.gutter, styles.resultList]}>
+                {queryTooShort ? (
+                  <View
+                    accessible
+                    accessibilityLiveRegion="polite"
+                    accessibilityLabel="Enter at least two characters to search the mountain catalogue. Terrain filters apply only to the curated browse list."
+                  >
+                    <Text style={styles.shortQueryHint}>
+                      Enter at least two characters to search the mountain catalogue. Terrain filters apply only to the curated browse list.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                <Text style={styles.searchScope}>
+                  Searching the mountain catalogue. Terrain filters apply only to the curated browse list, not this catalogue search.
+                </Text>
+                {(discoveryLoading || !catalogueSearched) && discoveryItems.length === 0 && !discoveryError ? (
+                  <View style={styles.searchStatus}>
+                    <ActivityIndicator size="small" color={EXPLORE.accent} />
+                    <Text style={styles.statusText}>Searching mountains…</Text>
+                  </View>
+                ) : null}
+                {discoveryError ? (
+                  <View style={styles.errorPanel}>
+                    <Text style={styles.errorText}>{discoveryError}</Text>
+                    <Pressable onPress={() => void fetchCatalogue(textQuery)} accessibilityRole="button" style={styles.textAction}>
+                      <Text style={styles.actionText}>Retry catalogue search</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+                {!discoveryError ? discoveryItems.map(item => (
+                  <DiscoveryResultRow key={`${item.source}:${item.id}`} item={item} />
+                )) : null}
+                {!discoveryLoading && catalogueSearched && !discoveryError && discoveryItems.length === 0 ? (
+                  <View style={styles.emptySearch}>
+                    <MapPin size={20} color={BASECAMP.textDim} />
+                    <Text style={styles.emptyTitle}>No catalogue matches</Text>
+                    <Text style={styles.emptyBody}>
+                      {catalogueUnavailable
+                        ? "AI suggestions are unavailable while the catalogue is down."
+                        : "No matching mountain was found in the catalogue."}
+                    </Text>
+                    {!catalogueUnavailable ? (
+                      <>
+                        <Pressable
+                          onPress={() => void requestAiSuggestion()}
+                          disabled={aiLoading}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ask AI for an unverified suggestion for ${textQuery}`}
+                          style={styles.aiAction}
+                        >
+                          {aiLoading
+                            ? <ActivityIndicator size="small" color={BASECAMP.ink} />
+                            : <Text style={styles.aiActionText}>Ask AI for a suggestion</Text>}
+                        </Pressable>
+                        {aiError ? <Text style={styles.errorText}>{aiError}</Text> : null}
+                        {aiNoResult ? <Text style={styles.statusText}>No AI suggestion was available for this query.</Text> : null}
+                      </>
+                    ) : null}
+                  </View>
+                ) : null}
+                {hasMore && !discoveryError ? (
+                  <Pressable
+                    onPress={() => void fetchCatalogue(textQuery, true)}
+                    disabled={discoveryLoading}
+                    accessibilityRole="button"
+                    style={styles.loadMore}
+                  >
+                    {discoveryLoading
+                      ? <ActivityIndicator size="small" color={EXPLORE.accent} />
+                      : <Text style={styles.actionText}>Load more mountains</Text>}
+                  </Pressable>
+                ) : null}
+                  </>
+                )}
+              </View>
+            ) : results.length === 0 ? (
               <SREmptyState
                 icon={<MapPin size={20} color={BASECAMP.textDim} />}
-                title="Nothing matches that"
-                body="Try a mountain name, a region, or clear the filters to browse the catalogue."
+                title="Nothing matches that filter"
+                body="These terrain filters apply to the curated browse list. Search by name or region to explore the wider mountain catalogue."
                 action="Clear filters"
-                onAction={() => { setQuery(""); setFilter("all"); }}
+                onAction={() => setFilter("all")}
                 style={styles.gutter}
               />
             ) : (
@@ -583,6 +924,27 @@ const styles = StyleSheet.create({
   resultStats: { marginTop: 5, flexDirection: "row", flexWrap: "wrap", columnGap: 10, rowGap: 2 },
   resultTag: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1, minWidth: 0 },
   resultTagText: { ...TYPE.caption, fontSize: 10.5, color: BASECAMP.textMuted, flexShrink: 1 },
+  discoveryStatus: { ...TYPE.caption, fontSize: 9.5, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  discoveryVerified: { color: EXPLORE.verified },
+  discoveryUnverified: { color: EXPLORE.unverified },
+  searchScope: { ...TYPE.caption, color: BASECAMP.textDim, marginBottom: 2 },
+  shortQueryHint: { ...TYPE.small, color: BASECAMP.textMuted, paddingVertical: SP.sm },
+  searchStatus: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: SP.sm },
+  statusText: { ...TYPE.caption, color: BASECAMP.textDim },
+  errorPanel: { gap: SP.sm, padding: SP.md, borderRadius: 7, backgroundColor: EXPLORE.unverifiedDim, borderWidth: 1, borderColor: EXPLORE.unverifiedLine },
+  errorText: { ...TYPE.caption, color: EXPLORE.unverified },
+  textAction: { minHeight: 36, justifyContent: "center", alignSelf: "flex-start" },
+  actionText: { ...TYPE.smallBold, color: EXPLORE.accent },
+  emptySearch: { alignItems: "flex-start", gap: SP.sm, paddingVertical: SP.md },
+  emptyTitle: { ...TYPE.bodyBold, color: BASECAMP.text },
+  emptyBody: { ...TYPE.caption, color: BASECAMP.textDim },
+  aiAction: {
+    minHeight: 42, borderRadius: 7, paddingHorizontal: SP.lg,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: BASECAMP.accent, alignSelf: "flex-start",
+  },
+  aiActionText: { ...TYPE.smallBold, color: BASECAMP.ink },
+  loadMore: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center" },
 
   mapSection: { marginTop: 16 },
   mapSub: { marginTop: 2, ...TYPE.caption, fontSize: 11.5, color: BASECAMP.textDim },
