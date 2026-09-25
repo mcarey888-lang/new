@@ -94,6 +94,23 @@ describe("formatting never invents a value", () => {
 });
 
 describe("presentMountain", () => {
+  it("only exposes verified canonical summit coordinates as an exact map pin", () => {
+    const coordinates = { latitude: 53.3487, longitude: -1.8091 };
+    expect(presentMountain(canonicalLookup({
+      trustedFacts: { verificationStatus: "verified", coordinates },
+    })).summitCoordinates).toEqual(coordinates);
+    expect(presentMountain(canonicalLookup({
+      trustedFacts: { verificationStatus: "imported", coordinates },
+    })).summitCoordinates).toBeNull();
+    expect(presentMountain(canonicalLookup({
+      source: "catalogue", canonicalIdentity: undefined,
+      trustedFacts: { verificationStatus: "verified", coordinates },
+    })).summitCoordinates).toBeNull();
+    expect(presentMountain(canonicalLookup({
+      trustedFacts: { verificationStatus: "verified", coordinates: { latitude: 95, longitude: -1.8091 } },
+    })).summitCoordinates).toBeNull();
+  });
+
   it("carries canonical identity and keeps summit elevation as an altitude", () => {
     const m = presentMountain(canonicalLookup());
     expect(m.id).toBe(MOUNTAIN_ID);

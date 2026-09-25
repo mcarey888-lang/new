@@ -24,7 +24,7 @@
  * not have. It does not start navigation on an unverified route, and hiding
  * the button is not how it stops you — `startRouteHandoff()` refuses.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, View,
@@ -33,7 +33,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
-import { AlertCircle, Info, MapPin, Mountain as MountainIcon, Route as RouteIcon } from "lucide-react-native";
+import { AlertCircle, Info, MapPin, Mountain as MountainIcon, Navigation, Route as RouteIcon } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRHeroFrame, SRPanel, SRScreenHeader, SRSectionHeader, SRSegmented,
@@ -53,6 +53,7 @@ import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
 import { startRouteHandoff } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
+import { openMapPin, openMapsForHill } from "@/utils/openMaps";
 import {
   CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
   DISCOVERY_CANDIDATE_NOTICE, DISCOVERY_NO_ROUTES_NOTICE,
@@ -76,6 +77,10 @@ export default function MountainDetailScreen() {
   const reducedMotion = useReducedMotion() ?? false;
   const { shellMode } = useApp();
   const { getToken, userId } = useAuth();
+  // The auth hook may provide a new function on render. A new token getter
+  // must not restart image generation or refetch route data.
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const { name, region, country, catalogueId, discoveryId } = useLocalSearchParams<{
     name?: string; region?: string; country?: string; catalogueId?: string; discoveryId?: string;
@@ -93,6 +98,8 @@ export default function MountainDetailScreen() {
   const [record, setRecord] = useState<CanonicalRouteRecord | null>(null);
   const [recordPending, setRecordPending] = useState(false);
   const [recordFailure, setRecordFailure] = useState<string | null>(null);
+  const [summitDescription, setSummitDescription] = useState<string | null>(null);
+  const [descriptionState, setDescriptionState] = useState<LoadState>("loading");
 
   const load = useCallback(async () => {
     if (!name) { setState("error"); return; }
@@ -124,6 +131,37 @@ export default function MountainDetailScreen() {
     ? lookup.canonicalIdentity?.id
     : null;
 
+  // Reuse the existing summit guide description. It is narrative context,
+  // not evidence of a verified route, start point or parking location.
+  useEffect(() => {
+    if (!mountain) return;
+    const controller = new AbortController();
+    setSummitDescription(null);
+    setDescriptionState("loading");
+    void fetch(`${API_BASE}/hill-detail`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hillName: mountain.name,
+        location: mountain.place ?? undefined,
+        summitIdentityKey: mountain.id ?? undefined,
+        summitLat: mountain.summitCoordinates?.latitude,
+        summitLng: mountain.summitCoordinates?.longitude,
+      }),
+      signal: controller.signal,
+    }).then(async response => {
+      if (!response.ok) throw new Error(`Summit description failed (${response.status})`);
+      const detail = await response.json() as { description?: string };
+      if (!controller.signal.aborted) {
+        setSummitDescription(detail.description?.trim() || null);
+        setDescriptionState("ready");
+      }
+    }).catch(() => {
+      if (!controller.signal.aborted) setDescriptionState("error");
+    });
+    return () => controller.abort();
+  }, [mountain]);
+
   // Only the detail screen starts generation, after catalogue identity is resolved.
   // List thumbnails and general image reads never request paid artwork.
   useEffect(() => {
@@ -139,7 +177,7 @@ export default function MountainDetailScreen() {
 
     const check = async (request: boolean) => {
       try {
-        const result = await fetchMountainHeroStatus(canonicalMountainId, API_BASE, getToken, request);
+        const result = await fetchMountainHeroStatus(canonicalMountainId, API_BASE, () => getTokenRef.current(), request);
         if (cancelled) return;
         statusFailures = 0;
         if (result.status === "ready") {
@@ -178,7 +216,7 @@ export default function MountainDetailScreen() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [canonicalMountainId, getToken, userId]);
+  }, [canonicalMountainId, userId]);
   const routes = useMemo(
     () => (lookup && mountain ? presentRoutes(lookup, mountain) : []),
     [lookup, mountain],
@@ -203,7 +241,7 @@ export default function MountainDetailScreen() {
     setRecord(null);
     setRecordFailure(null);
     setRecordPending(true);
-    void fetchCanonicalRouteRecord(identity.routeId, identity.mountainId, getToken)
+    void fetchCanonicalRouteRecord(identity.routeId, identity.mountainId, () => getTokenRef.current())
       .then(result => {
         if (cancelled) return;
         setRecord(result.record);
@@ -211,7 +249,7 @@ export default function MountainDetailScreen() {
         setRecordPending(false);
       });
     return () => { cancelled = true; };
-  }, [getToken, selected?.selection?.routeId, selected?.selection?.mountainId]);
+  }, [selected?.selection?.routeId, selected?.selection?.mountainId]);
 
   /* The engine's own verdict for the selected route. */
   const exploreRoute: ExploreRoute | null = useMemo(() => {
@@ -401,15 +439,6 @@ export default function MountainDetailScreen() {
                 <Text style={styles.heroPlaceText} numberOfLines={2}>{mountain.place}</Text>
               </View>
             ) : null}
-            {heroGenerationStatus === "generating" && (
-              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>Creating a mountain-specific hero image…</Text>
-            )}
-            {generatedHeroUri && !generatedHeroFailed && (
-              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>AI-generated mountain depiction</Text>
-            )}
-            {heroGenerationStatus === "failed" && (
-              <Text style={{ color: BASECAMP.textDim, fontSize: 10 }}>New hero unavailable — showing the existing image</Text>
-            )}
             <View style={styles.heroBadges}>
               {lookup?.catalogueStatus === "unavailable"
                 ? <Text style={styles.catalogueUnavailableBadge}>CATALOGUE UNAVAILABLE</Text>
@@ -425,6 +454,19 @@ export default function MountainDetailScreen() {
             </View>
           </View>
         </SRHeroFrame>
+        {canonicalMountainId && userId ? (
+          <View style={styles.heroStatusSlot}>
+            <Text style={styles.heroStatusText} numberOfLines={1}>
+              {heroGenerationStatus === "generating"
+                ? "Creating a mountain-specific hero image…"
+                : generatedHeroUri && !generatedHeroFailed
+                  ? "AI-generated mountain depiction"
+                  : heroGenerationStatus === "failed"
+                    ? "New hero unavailable — showing the existing image"
+                    : ""}
+            </Text>
+          </View>
+        ) : null}
 
         {/* A missing catalogue connection is not evidence that this mountain
             is absent from the catalogue. Keep untrusted routes browse-only. */}
@@ -472,6 +514,64 @@ export default function MountainDetailScreen() {
             </View>
           </SRPanel>
           <Footnote>{ELEVATION_FOOTNOTE}</Footnote>
+        </Section>
+
+        {/* A guide overview is not canonical evidence; navigation uses only the
+            catalogue's verified summit point. Parking remains a map search. */}
+        <Section style={styles.detailsSection}>
+          <View style={styles.gutter}>
+            <SRSectionHeader title="About this summit" />
+            <Text style={styles.description}>
+              {descriptionState === "loading"
+                ? "Loading summit description…"
+                : descriptionState === "error"
+                  ? "Summit description is unavailable right now."
+                  : summitDescription ?? "No summit description is available yet."}
+            </Text>
+            {summitDescription ? (
+              <Text style={styles.descriptionNote}>Guide overview · route and access details are not verified by this description.</Text>
+            ) : null}
+            <View style={styles.accessHeading}>
+              <SRSectionHeader title="Summit location & parking" />
+            </View>
+            <SRPanel radius={8} style={styles.accessPanel}>
+              <Text style={styles.accessLabel}>SUMMIT LOCATION</Text>
+              <Text style={styles.accessValue}>
+                {mountain.summitCoordinates
+                  ? `${mountain.summitCoordinates.latitude.toFixed(5)}, ${mountain.summitCoordinates.longitude.toFixed(5)}`
+                  : mountain.place ?? "Exact summit coordinates not verified"}
+              </Text>
+              <Pressable
+                onPress={() => mountain.summitCoordinates
+                  ? openMapPin(mountain.summitCoordinates.latitude, mountain.summitCoordinates.longitude, mountain.name)
+                  : openMapsForHill(null, null, mountain.name, false, mountain.place ?? undefined)}
+                accessibilityRole="button"
+                accessibilityLabel={mountain.summitCoordinates ? "View verified summit location on map" : "Search for summit on map"}
+                testID="summit-map-button"
+                style={styles.accessAction}
+              >
+                <MapPin size={15} color={EXPLORE.accent} />
+                <Text style={styles.accessActionText}>
+                  {mountain.summitCoordinates ? "View summit on map" : "Search summit on map"}
+                </Text>
+              </Pressable>
+              <View style={styles.accessDivider} />
+              <Text style={styles.accessLabel}>PARKING & ACCESS</Text>
+              <Text style={styles.accessValue}>
+                No parking spot or trailhead has been independently verified. Check the map result and local signs before travelling.
+              </Text>
+              <Pressable
+                onPress={() => openMapsForHill(null, null, mountain.name, true, mountain.place ?? undefined)}
+                accessibilityRole="button"
+                accessibilityLabel={`Find parking directions near ${mountain.name}`}
+                testID="summit-parking-button"
+                style={styles.accessAction}
+              >
+                <Navigation size={15} color={EXPLORE.accent} />
+                <Text style={styles.accessActionText}>Find parking directions</Text>
+              </Pressable>
+            </SRPanel>
+          </View>
         </Section>
 
         {/* ── Routes, with the selected one expanded in place ───────────── */}
@@ -587,6 +687,8 @@ const styles = StyleSheet.create({
   gutter: { paddingHorizontal: BASECAMP.gutter },
 
   heroBody: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 14 },
+  heroStatusSlot: { height: 16, marginHorizontal: BASECAMP.gutter, justifyContent: "center" },
+  heroStatusText: { fontSize: 10, color: BASECAMP.textDim },
   heroName: { ...TYPE.hero, fontSize: 34, lineHeight: 37, color: BASECAMP.text },
   heroElevation: { marginTop: 4, fontSize: 22, lineHeight: 26, fontFamily: "Inter_700Bold", color: BASECAMP.text },
   heroPlace: { marginTop: 4, flexDirection: "row", alignItems: "center", gap: 6 },
@@ -618,6 +720,16 @@ const styles = StyleSheet.create({
   overviewItem: { flex: 1, minWidth: 0, alignItems: "center" },
   overviewValue: { fontSize: 13, lineHeight: 17, fontFamily: "Inter_700Bold", color: BASECAMP.text, textAlign: "center" },
   overviewLabel: { marginTop: 1, fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim, textAlign: "center" },
+  detailsSection: { marginTop: 18 },
+  description: { marginTop: 9, ...TYPE.body, color: BASECAMP.textMuted },
+  descriptionNote: { marginTop: 5, ...TYPE.caption, color: BASECAMP.textDim },
+  accessHeading: { marginTop: 20 },
+  accessPanel: { marginTop: 10, padding: 14 },
+  accessLabel: { ...TYPE.eyebrow, color: BASECAMP.textDim },
+  accessValue: { marginTop: 5, ...TYPE.body, color: BASECAMP.text },
+  accessAction: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start", minHeight: 44 },
+  accessActionText: { ...TYPE.smallBold, color: EXPLORE.accent },
+  accessDivider: { height: 1, backgroundColor: BASECAMP.glassBorder, marginVertical: 12 },
 
   routesSection: { marginTop: 18 },
   sort: { marginTop: 10, alignSelf: "flex-start" },

@@ -92,6 +92,7 @@ export interface MountainLookupResponse {
     gridReference?: string;
     summitFeature?: string;
     provenanceVersion?: string;
+    coordinates?: { latitude: number; longitude: number };
   };
   /** Search-discovery facts are candidates, not canonical identity or evidence. */
   catalogueFacts?: {
@@ -178,6 +179,8 @@ export interface PresentedMountain {
   overview: PresentedFact[];
   /** The Practical information list. */
   practical: PresentedFact[];
+  /** Only the canonical, verified catalogue point may be opened as an exact map pin. */
+  summitCoordinates: { latitude: number; longitude: number } | null;
   verified: boolean;
   /** True when the lookup is not canonical — no identity, so no navigation. */
   fallback: boolean;
@@ -202,6 +205,12 @@ export function presentMountain(lookup: MountainLookupResponse): PresentedMounta
     ? (`sde:mountain:${lookup.canonicalIdentity!.id}` as SdeMountainId)
     : null;
   const facts = lookup.trustedFacts;
+  const point = facts?.coordinates;
+  const summitCoordinates = canonical && facts?.verificationStatus === "verified" &&
+    point && Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90 &&
+    Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180
+    ? { latitude: point.latitude, longitude: point.longitude }
+    : null;
   const discoveryFacts = discoveryCandidate ? lookup.catalogueFacts : undefined;
   const place = [lookup.region, lookup.country].filter(part => !!part && part.trim()).join(", ") || null;
 
@@ -236,6 +245,7 @@ export function presentMountain(lookup: MountainLookupResponse): PresentedMounta
       fact("summitFeature", "Summit feature", discoveryCandidate ? null : facts?.summitFeature ?? null, discoveryCandidate ? "candidate" : "verified"),
       fact("country", "Country", lookup.country ?? null, discoveryCandidate ? "candidate" : "verified"),
     ],
+    summitCoordinates,
     verified: canonical && facts?.verificationStatus === "verified",
     fallback: !canonical,
     discoveryCandidate,
