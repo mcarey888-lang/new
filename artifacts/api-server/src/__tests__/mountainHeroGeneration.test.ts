@@ -3,6 +3,7 @@ import {
   applyMountainHeroRejection,
   isApprovalRecordForRejectedImage,
   isGeneratedMountainCandidateOwnedBy,
+  readyGeneratedReviewIds,
   withoutRejectedMountainHeroCandidate,
   type MountainHeroCandidate,
   type MountainHeroGenerationRecord,
@@ -103,5 +104,31 @@ describe("rejected generated candidate visibility", () => {
     const reviewData = JSON.stringify({ rejectedUrls: [candidate.imageUrl] });
     expect(isMountainHeroImageRejected(reviewData, candidate.imageUrl)).toBe(true);
     expect(isMountainHeroImageRejected(reviewData, "/different/mountain/image.jpg")).toBe(false);
+  });
+});
+
+describe("generated artwork review filter", () => {
+  const row = (id: string, status: string) => ({
+    slug: `hero-generation:v1:${id}`,
+    data: JSON.stringify({ status, candidate }),
+  });
+
+  it("includes ready candidates without an approval", () => {
+    expect(readyGeneratedReviewIds(
+      [row(mountainId, "ready"), row("still-generating", "generating")],
+      new Map(),
+    )).toEqual([mountainId]);
+  });
+
+  it("excludes approved, rejected, and malformed generation records", () => {
+    const reviews = new Map([
+      ["approved", { status: "approved" as const, updatedAt: "" }],
+      ["rejected", { status: "pending" as const, rejectedUrls: [candidate.imageUrl], updatedAt: "" }],
+    ]);
+    expect(readyGeneratedReviewIds([
+      row("approved", "ready"),
+      row("rejected", "ready"),
+      { slug: "hero-generation:v1:malformed", data: "not-json" },
+    ], reviews)).toEqual([]);
   });
 });

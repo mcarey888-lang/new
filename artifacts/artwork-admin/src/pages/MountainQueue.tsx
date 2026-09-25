@@ -109,6 +109,7 @@ export default function MountainQueue() {
           </div>
           <select
             value={statusFilter}
+            aria-label="Filter mountain heroes"
             onChange={(e) => {
               setStatusFilter(e.target.value);
               setPage(1);
@@ -117,6 +118,7 @@ export default function MountainQueue() {
           >
             <option value="all">All Status</option>
             <option value="review-required">Review required</option>
+            <option value="generated-review">Generated · needs review</option>
             <option value="approved">Approved</option>
           </select>
           <select
@@ -210,12 +212,17 @@ export default function MountainQueue() {
                         <div className="mt-1">Prom: {mountain.prominenceM ? `${mountain.prominenceM}m` : "N/A"}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge 
-                          variant="outline" 
-                          className={mountain.status === "approved" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"}
-                        >
-                          {mountain.status.toUpperCase()}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge
+                            variant="outline"
+                            className={mountain.status === "approved" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"}
+                          >
+                            {mountain.status.toUpperCase()}
+                          </Badge>
+                          {statusFilter === "generated-review" && (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">AI READY</Badge>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

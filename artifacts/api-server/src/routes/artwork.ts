@@ -314,8 +314,8 @@ artworkRouter.get("/mountains", async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(48, Math.max(6, Number(req.query.pageSize) || 24));
-    const status = ["review-required", "approved"].includes(String(req.query.status))
-      ? String(req.query.status) as "review-required" | "approved"
+    const status = ["review-required", "approved", "generated-review"].includes(String(req.query.status))
+      ? String(req.query.status) as "review-required" | "approved" | "generated-review"
       : "all";
     const sort = ["prominence", "elevation", "name"].includes(String(req.query.sort))
       ? String(req.query.sort) as "prominence" | "elevation" | "name"

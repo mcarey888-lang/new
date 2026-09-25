@@ -106,11 +106,32 @@ async function getMountain(id: string): Promise<MountainRecord | null> {
   return getCanonicalMountainById(id);
 }
 
+export function readyGeneratedReviewIds(
+  generationRows: readonly { slug: string; data: string }[],
+  reviews: ReadonlyMap<string, ReviewRecord>,
+): string[] {
+  const prefix = `hero-generation:${REVIEW_VERSION}:`;
+  return generationRows.flatMap((row) => {
+    if (!row.slug.startsWith(prefix)) return [];
+    const id = row.slug.slice(prefix.length);
+    const review = reviews.get(id);
+    if (review?.status === "approved") return [];
+    try {
+      const generation = JSON.parse(row.data) as MountainHeroGenerationRecord;
+      const imageUrl = generation.candidate?.imageUrl;
+      return generation.status === "ready" && imageUrl &&
+        !review?.rejectedUrls?.includes(imageUrl) ? [id] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
 export async function listMountainHeroReviews(input: {
   page: number;
   pageSize: number;
   search?: string;
-  status?: "all" | "review-required" | "approved";
+  status?: "all" | "review-required" | "approved" | "generated-review";
   sort?: "prominence" | "elevation" | "name";
 }) {
   const offset = (input.page - 1) * input.pageSize;
@@ -120,21 +141,30 @@ export async function listMountainHeroReviews(input: {
     "SELECT slug, data FROM public.cached_mountains WHERE slug LIKE $1",
     [`hero-review:${REVIEW_VERSION}:%`],
   );
-  const approvedIds = reviewRows.rows.flatMap((row) => {
+  const reviews = new Map<string, ReviewRecord>();
+  for (const row of reviewRows.rows) {
     try {
-      return (JSON.parse(row.data) as ReviewRecord).status === "approved"
-        ? [row.slug.slice(`hero-review:${REVIEW_VERSION}:`.length)]
-        : [];
-    } catch {
-      return [];
-    }
-  });
+      reviews.set(row.slug.slice(`hero-review:${REVIEW_VERSION}:`.length), JSON.parse(row.data) as ReviewRecord);
+    } catch { /* Malformed review state cannot authorize an approval. */ }
+  }
+  const approvedIds = [...reviews].filter(([, review]) => review.status === "approved").map(([id]) => id);
+  let generatedReviewIds: string[] = [];
+  if (status === "generated-review") {
+    const generationRows = await pool.query<{ slug: string; data: string }>(
+      "SELECT slug, data FROM public.cached_mountains WHERE slug LIKE $1",
+      [`hero-generation:${REVIEW_VERSION}:%`],
+    );
+    generatedReviewIds = readyGeneratedReviewIds(generationRows.rows, reviews);
+  }
   const statusClause = status === "approved"
     ? "AND m.id::text = ANY($2::text[])"
     : status === "review-required"
       ? "AND NOT (m.id::text = ANY($2::text[]))"
+      : status === "generated-review"
+        ? "AND m.id::text = ANY($2::text[])"
       : "";
-  const queryParams: unknown[] = status === "all" ? [search] : [search, approvedIds];
+  const queryParams: unknown[] = status === "all" ? [search] :
+    [search, status === "generated-review" ? generatedReviewIds : approvedIds];
   const orderBy = input.sort === "name"
     ? "m.name, m.country NULLS LAST, m.id"
     : input.sort === "elevation"
