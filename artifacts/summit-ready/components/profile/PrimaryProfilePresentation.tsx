@@ -36,7 +36,7 @@ type Props = {
 /** The shared editorial identity and local navigation for both primary shells. */
 export function PrimaryProfilePresentation({
   displayName,
-  displayEmail,
+  displayEmail: _displayEmail,
   avatarInitial,
   avatarImageUrl,
   isSignedIn,
@@ -118,9 +118,7 @@ export function PrimaryProfilePresentation({
             <View style={styles.nameBlock}>
               <Text style={styles.rank} numberOfLines={1}>{rankName.toUpperCase()}</Text>
               <Text style={styles.name} numberOfLines={2}>{displayName}</Text>
-              {displayEmail && displayEmail !== displayName ? (
-                <Text style={styles.email} numberOfLines={1}>{displayEmail}</Text>
-              ) : null}
+              <Text style={styles.email}>YOUR MOUNTAIN STORY</Text>
             </View>
           </View>
           <View style={styles.metrics}>
@@ -156,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: SP.md,
   },
   cover: {
-    height: 226,
+    height: 255,
     justifyContent: "flex-start",
     backgroundColor: BASECAMP.ink,
     overflow: "hidden",
@@ -219,7 +217,7 @@ const styles = StyleSheet.create({
   },
   identity: {
     paddingHorizontal: BASECAMP.gutter,
-    marginTop: -42,
+    marginTop: -49,
     paddingBottom: SP.md,
   },
   identityRow: {
@@ -228,9 +226,9 @@ const styles = StyleSheet.create({
     gap: SP.md,
   },
   avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -252,8 +250,8 @@ const styles = StyleSheet.create({
   },
   name: {
     marginTop: 3,
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: 26,
+    lineHeight: 31,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.35,
     color: BASECAMP.text,
@@ -265,7 +263,7 @@ const styles = StyleSheet.create({
   },
   metrics: {
     flexDirection: "row",
-    marginTop: SP.lg,
+    marginTop: SP.xl,
     paddingTop: SP.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: BASECAMP.hairline,

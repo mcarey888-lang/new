@@ -5,6 +5,86 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type CommunityPostCreateKind =
+  (typeof CommunityPostCreateKind)[keyof typeof CommunityPostCreateKind];
+
+export const CommunityPostCreateKind = {
+  story: "story",
+  badge: "badge",
+  photo: "photo",
+} as const;
+
+export type CommunityPostCreateVisibility =
+  (typeof CommunityPostCreateVisibility)[keyof typeof CommunityPostCreateVisibility];
+
+export const CommunityPostCreateVisibility = {
+  private: "private",
+  members: "members",
+} as const;
+
+export interface CommunityPostCreate {
+  kind: CommunityPostCreateKind;
+  /** @maxLength 600 */
+  text?: string;
+  /**
+   * @maxLength 128
+   * @nullable
+   */
+  badgeId?: string | null;
+  /**
+   * @maxLength 160
+   * @nullable
+   */
+  badgeTitle?: string | null;
+  visibility?: CommunityPostCreateVisibility;
+}
+
+export type CommunityPostVisibilityInputVisibility =
+  (typeof CommunityPostVisibilityInputVisibility)[keyof typeof CommunityPostVisibilityInputVisibility];
+
+export const CommunityPostVisibilityInputVisibility = {
+  private: "private",
+  members: "members",
+} as const;
+
+export interface CommunityPostVisibilityInput {
+  visibility: CommunityPostVisibilityInputVisibility;
+}
+
+export type CommunityPostKind =
+  (typeof CommunityPostKind)[keyof typeof CommunityPostKind];
+
+export const CommunityPostKind = {
+  story: "story",
+  badge: "badge",
+  photo: "photo",
+} as const;
+
+export type CommunityPostVisibility =
+  (typeof CommunityPostVisibility)[keyof typeof CommunityPostVisibility];
+
+export const CommunityPostVisibility = {
+  private: "private",
+  members: "members",
+} as const;
+
+export interface CommunityPost {
+  id: string;
+  kind: CommunityPostKind;
+  text: string;
+  /** @nullable */
+  badgeId: string | null;
+  /** @nullable */
+  badgeTitle: string | null;
+  visibility: CommunityPostVisibility;
+  authorName: string;
+  /** @nullable */
+  authorAvatarUrl: string | null;
+  ownerUserId: string;
+  createdAt: string;
+  hasPhoto: boolean;
+}
+
 export interface MountainHeroPrompt {
   prompt: string;
   hasReference: boolean;
@@ -257,3 +337,39 @@ export const GetCanonicalHistoryFilter = {
   expeditions: "expeditions",
   mountains_free_hike: "mountains_free_hike",
 } as const;
+
+export type CreateCommunityPost201 = {
+  post: CommunityPost;
+};
+
+export type GetCommunityPostsParams = {
+  scope?: GetCommunityPostsScope;
+};
+
+export type GetCommunityPostsScope =
+  (typeof GetCommunityPostsScope)[keyof typeof GetCommunityPostsScope];
+
+export const GetCommunityPostsScope = {
+  mine: "mine",
+  members: "members",
+} as const;
+
+export type GetCommunityPosts200 = {
+  posts: CommunityPost[];
+};
+
+export type UpdateCommunityPostVisibility200 = {
+  post: CommunityPost;
+};
+
+export type DeleteCommunityPost200 = {
+  deleted: boolean;
+};
+
+export type UploadCommunityPostPhoto200 = {
+  post: CommunityPost;
+};
+
+export type ReportCommunityPost201 = {
+  reported: boolean;
+};

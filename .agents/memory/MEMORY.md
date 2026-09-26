@@ -64,3 +64,5 @@
 - [Artwork admin API mismatch](artwork-admin-api-mismatch.md) — HTML from a JSON status endpoint means routing/version mismatch; never allow paid generation while status is unknown.
 - [Directions place lookup limits](directions-place-lookup-limits.md) — maps keys may lack Places entitlement; keep first-lookups provisional and only share GPS-confirmed parking pins.
 - [Signature challenge ascent meaning](signature-challenge-ascent.md) — local stage ascent is the challenge target; mountain-route ascent needs a stated start and source, never silently replaces saved goals.
+- [Community sharing privacy](community-sharing-privacy.md) — member posts are opt-in per post, private by default; isolate private media across account changes.
+- [Generated binary upload requests](orval-binary-upload.md) — Orval can JSON-stringify Blob image requests; verify raw-byte transport after codegen.

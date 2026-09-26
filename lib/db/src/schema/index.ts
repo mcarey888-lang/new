@@ -16,3 +16,4 @@ export * from "./virtual-expedition-engine";
 export * from "./signature-challenges";
 export * from "./atlas";
 export * from "./ai-mountain-discoveries";
+export * from "./community";

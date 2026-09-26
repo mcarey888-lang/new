@@ -228,3 +228,128 @@ export const GetCanonicalHistoryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Create a private-by-default member post
+ */
+export const createCommunityPostBodyTextMax = 600;
+
+export const createCommunityPostBodyBadgeIdMax = 128;
+
+export const createCommunityPostBodyBadgeTitleMax = 160;
+
+export const createCommunityPostBodyVisibilityDefault = `private`;
+
+export const CreateCommunityPostBody = zod.object({
+  kind: zod.enum(["story", "badge", "photo"]),
+  text: zod.string().max(createCommunityPostBodyTextMax).optional(),
+  badgeId: zod.string().max(createCommunityPostBodyBadgeIdMax).nullish(),
+  badgeTitle: zod.string().max(createCommunityPostBodyBadgeTitleMax).nullish(),
+  visibility: zod
+    .enum(["private", "members"])
+    .default(createCommunityPostBodyVisibilityDefault),
+});
+
+/**
+ * @summary Read owned posts or posts visible to members
+ */
+export const getCommunityPostsQueryScopeDefault = `mine`;
+
+export const GetCommunityPostsQueryParams = zod.object({
+  scope: zod
+    .enum(["mine", "members"])
+    .default(getCommunityPostsQueryScopeDefault),
+});
+
+export const GetCommunityPostsResponse = zod.object({
+  posts: zod.array(
+    zod.object({
+      id: zod.string(),
+      kind: zod.enum(["story", "badge", "photo"]),
+      text: zod.string(),
+      badgeId: zod.string().nullable(),
+      badgeTitle: zod.string().nullable(),
+      visibility: zod.enum(["private", "members"]),
+      authorName: zod.string(),
+      authorAvatarUrl: zod.string().url().nullable(),
+      ownerUserId: zod.string(),
+      createdAt: zod.coerce.date(),
+      hasPhoto: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update visibility of an owned post
+ */
+export const UpdateCommunityPostVisibilityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateCommunityPostVisibilityBody = zod.object({
+  visibility: zod.enum(["private", "members"]),
+});
+
+export const UpdateCommunityPostVisibilityResponse = zod.object({
+  post: zod.object({
+    id: zod.string(),
+    kind: zod.enum(["story", "badge", "photo"]),
+    text: zod.string(),
+    badgeId: zod.string().nullable(),
+    badgeTitle: zod.string().nullable(),
+    visibility: zod.enum(["private", "members"]),
+    authorName: zod.string(),
+    authorAvatarUrl: zod.string().url().nullable(),
+    ownerUserId: zod.string(),
+    createdAt: zod.coerce.date(),
+    hasPhoto: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Delete an owned post and its photo
+ */
+export const DeleteCommunityPostParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteCommunityPostResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
+/**
+ * @summary Upload one private, normalized image to an owned photo post
+ */
+export const UploadCommunityPostPhotoParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UploadCommunityPostPhotoResponse = zod.object({
+  post: zod.object({
+    id: zod.string(),
+    kind: zod.enum(["story", "badge", "photo"]),
+    text: zod.string(),
+    badgeId: zod.string().nullable(),
+    badgeTitle: zod.string().nullable(),
+    visibility: zod.enum(["private", "members"]),
+    authorName: zod.string(),
+    authorAvatarUrl: zod.string().url().nullable(),
+    ownerUserId: zod.string(),
+    createdAt: zod.coerce.date(),
+    hasPhoto: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Read photo only when the post is visible to the signed-in member
+ */
+export const GetCommunityPostPhotoParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Report another member's visible post
+ */
+export const ReportCommunityPostParams = zod.object({
+  id: zod.coerce.string(),
+});

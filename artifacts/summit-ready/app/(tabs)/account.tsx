@@ -1,4 +1,4 @@
-import { User, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera, ChevronLeft } from "lucide-react-native";
+import { User, Users, Shield, Zap, Circle, Check, ArrowRight, Flag, TrendingUp, MapPin, Compass, ChevronRight, CheckCircle, AlertCircle, RefreshCw, CreditCard, LogOut, Trash2, Trophy, PenLine, Activity, Lock, Camera, ChevronLeft } from "lucide-react-native";
 import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -67,6 +68,8 @@ import {
   PrimaryProfilePresentation,
   type PrimaryProfileTab,
 } from "@/components/profile/PrimaryProfilePresentation";
+import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
+import { useCommunity } from "@/hooks/useCommunity";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
 
@@ -117,23 +120,27 @@ export default function AccountScreen() {
   return <PrimaryProfileScreen />;
 }
 
-export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: string }) {
+export function PrimaryProfileScreen({ screenName = "account", community: suppliedCommunity }: { screenName?: string; community?: CommunityHubProps }) {
   useScreenView(screenName);
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
-  const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue } = useStage8();
+  const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue, achievements: stage8Achievements } = useStage8();
   const stage8Tracked = Object.values(stage8Projection.progress)
     .filter((item) => item.status === "active" || item.status === "completed");
   const stage8ConfirmedAwards = Object.values(stage8Projection.awards)
     .filter((award) => award.status === "confirmed");
   const { isSignedIn, getToken } = useAuth();
+  const memberCommunity = useCommunity();
+  const community = suppliedCommunity ?? (isSignedIn ? memberCommunity : undefined);
   const { user } = useUser();
   const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
+  const communityY = useRef(0);
   const [tab, setTab] = useState<PrimaryProfileTab>("profile");
+  const [badgeDraft, setBadgeDraft] = useState<{ id: string; title: string; nonce: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
 
@@ -155,6 +162,17 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
       return () => clearTimeout(timer);
     }
   }, [scrollTo]);
+
+  useEffect(() => {
+    if (tab !== "activity" || !badgeDraft) return;
+    const timer = setTimeout(() => scrollRef.current?.scrollTo({ y: communityY.current, animated: true }), 350);
+    return () => clearTimeout(timer);
+  }, [tab, badgeDraft]);
+
+  function prepareBadgePost(id: string, title: string) {
+    setBadgeDraft({ id, title, nonce: Date.now() });
+    setTab("activity");
+  }
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
   const inProgressChallenges = activeChallenges.filter(ac => !ac.completed);
@@ -184,6 +202,15 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
     sessions.filter(session => session.completed),
     exploreHikes,
   );
+  const recentActivity = [
+    ...sessions.filter(s => s.completed).map(s => ({
+      id: `session:${s.id}`, title: s.hillName ?? (s.type === "bigDay" ? "Big day" : s.type === "hill" ? "Hill session" : "Cardio session"),
+      date: s.date, distance: s.distance, elevation: s.elevationGain, kind: "Session",
+    })),
+    ...exploreHikes.map(h => ({
+      id: `hike:${h.id}`, title: h.name, date: h.date, distance: h.distance, elevation: h.elevationGain, kind: "Hike",
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
   // Lifetime stats
   const lifetimeSessions = uniqueCurrentActivities.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
   const lifetimeElevation = uniqueCurrentActivities.reduce((s, activity) => s + activity.elevationGain, 0)
@@ -427,6 +454,22 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
             onPress={() => router.push("/elevation-history")}
           />
         </Animated.View>
+        <TouchableOpacity
+          style={styles.communityEntry}
+          accessibilityRole="button"
+          accessibilityLabel="Open SummitReady member stories"
+          onPress={() => {
+            setTab("activity");
+            setTimeout(() => scrollRef.current?.scrollTo({ y: communityY.current, animated: true }), 350);
+          }}
+        >
+          <View style={styles.communityEntryIcon}><Users size={20} color={BASECAMP.accent} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.communityTitle}>Mountain stories</Text>
+            <Text style={styles.communityNote}>Choose what you share with SummitReady members</Text>
+          </View>
+          <ChevronRight size={17} color={BASECAMP.accent} />
+        </TouchableOpacity>
 
         {/* Current Context Banner */}
         <Animated.View entering={FadeInDown.delay(20).duration(400)} style={{ marginBottom: 16 }}>
@@ -607,6 +650,9 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
 
         </>)}
         {tab === "stats" && !showSettings && (<>
+        <Animated.View entering={FadeInDown.duration(400)} style={{ marginBottom: 18 }}>
+          <ElevationBankCard expanded emphasis onPress={() => router.push("/elevation-history")} />
+        </Animated.View>
         {/* Progress summary */}
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
@@ -670,6 +716,29 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
 
         </>)}
         {tab === "activity" && !showSettings && (<>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
+          <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
+          {recentActivity.length ? recentActivity.map(activity => (
+            <View key={activity.id} style={styles.activityRow}>
+              <View style={styles.activityMarker}><Mountain size={19} color={BASECAMP.accent} /></View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
+                <Text style={styles.activityMeta}>{activity.kind} · {activity.date}</Text>
+                <Text style={styles.activityMeta}>{activity.distance} km · {activity.elevation} m ascent</Text>
+              </View>
+            </View>
+          )) : <SREmptyState icon={<Activity size={20} color={BASECAMP.textDim} />} title="No activity yet" body="Your completed sessions and recorded hikes will appear here." />}
+          <TouchableOpacity onPress={() => router.push("/sessions")} style={styles.activityLink} accessibilityRole="button" accessibilityLabel="View all sessions"><Text style={styles.activityLinkText}>View all sessions</Text><ChevronRight size={16} color={BASECAMP.accent} /></TouchableOpacity>
+        </Animated.View>
+        {/* Community posts are loaded from the signed-in member API.
+            Device-local activity and journal photos never publish automatically. */}
+        {community ? <View onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}><CommunityHub {...community} draftBadge={badgeDraft} /></View> : (
+          <View style={styles.communityUnavailable}>
+            <Text style={styles.sectionLabel}>COMMUNITY</Text>
+            <Text style={styles.communityTitle}>Mountain stories</Text>
+            <Text style={styles.communityNote}>Sign in to share with SummitReady members. Your activity and journal photos remain private.</Text>
+          </View>
+        )}
         {/* Training History */}
         {completedGoals.length === 0 && (
           <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
@@ -865,6 +934,16 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
                         </View>
                         <Text style={styles.achieveTitle} numberOfLines={2}>{a.title}</Text>
                         <Text style={styles.achieveDesc} numberOfLines={2}>{a.description}</Text>
+                        {isUnlocked && (
+                          <TouchableOpacity
+                            onPress={() => community
+                              ? prepareBadgePost(a.id, a.title)
+                              : void Share.share({ message: `I earned ${a.title} on SummitReady. ${a.description}` })}
+                            style={styles.shareAchievement}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Share unlocked achievement ${a.title}`}
+                          ><Text style={styles.shareAchievementText}>Share</Text><ArrowRight size={13} color={BASECAMP.accent} /></TouchableOpacity>
+                        )}
                       </View>
                     );
                   })}
@@ -873,6 +952,21 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
               );
             })}
           </View>
+          {stage8ConfirmedAwards.length > 0 && (
+            <View style={{ marginTop: 18 }}>
+              <Text style={styles.sectionLabel}>CONFIRMED AWARDS</Text>
+              {stage8ConfirmedAwards.map(award => {
+                const definition = stage8Achievements.find(item => item.achievementId === award.achievementId);
+                return <View key={award.awardIdentity} style={styles.activityRow}>
+                  <Award size={22} color={BASECAMP.accent} />
+                  <Text style={[styles.activityTitle, { flex: 1 }]}>{definition?.title ?? "Verified award"}</Text>
+                  <TouchableOpacity onPress={() => community
+                    ? prepareBadgePost(award.achievementId, definition?.title ?? "a confirmed award")
+                    : void Share.share({ message: `I earned ${definition?.title ?? "a confirmed award"} on SummitReady.` })} accessibilityRole="button" accessibilityLabel={`Share confirmed award ${definition?.title ?? "Confirmed award"}`} style={styles.shareAchievement}><Text style={styles.shareAchievementText}>Share</Text></TouchableOpacity>
+                </View>;
+              })}
+            </View>
+          )}
         </Animated.View>
 
         </>)}
@@ -1102,7 +1196,7 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
         </>)}
         {tab === "photos" && !showSettings && (
           <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
-            <SRSectionHeader title="Your photos" />
+            <SRSectionHeader title="Your journal photos" />
             {journalPhotos.length > 0 ? (
               <View style={styles.photoGrid}>
                 {journalPhotos.map(photo => (
@@ -1127,6 +1221,18 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
                   : "Start an expedition and add photos to its journal — they will appear here. Photos stay on this device."}
                 style={{ marginTop: 10 }}
               />
+            )}
+            {!!community && (
+              <View style={styles.memberPhotos}>
+                <Text style={styles.sectionLabel}>SHARED BY MEMBERS</Text>
+                <Text style={styles.communityNote}>Only photos members chose to share appear here.</Text>
+                <View style={styles.photoGrid}>
+                  {community.posts.filter(post => post.visibility === "members" && post.hasPhoto).map(post => {
+                    const source = community.photoSource(post);
+                    return source ? <Image key={post.id} source={source} style={styles.photo} accessibilityLabel={`Photo shared by ${post.authorName}`} /> : null;
+                  })}
+                </View>
+              </View>
             )}
           </Animated.View>
         )}
@@ -1153,6 +1259,29 @@ export function PrimaryProfileScreen({ screenName = "account" }: { screenName?: 
 }
 
 const styles = StyleSheet.create({
+  activityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
+  activityMarker: { width: 46, height: 46, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: BASECAMP.accentDim },
+  activityTitle: { ...TYPE.bodyBold, color: BASECAMP.text },
+  activityMeta: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 3 },
+  activityLink: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 8 },
+  activityLinkText: { ...TYPE.smallBold, color: BASECAMP.accent },
+  communityEntry: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    minHeight: 76, padding: 14, marginBottom: 16,
+    borderWidth: 1, borderColor: BASECAMP.panelBorder,
+    borderRadius: 12, backgroundColor: BASECAMP.panelSub,
+  },
+  communityEntryIcon: {
+    width: 38, height: 38, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: BASECAMP.accentDim,
+  },
+  communityUnavailable: { marginHorizontal: 0, marginBottom: 20, padding: 18, borderRadius: 12, borderWidth: 1, borderColor: BASECAMP.panelBorder, backgroundColor: BASECAMP.panelSub },
+  communityTitle: { ...TYPE.heading, color: BASECAMP.text, marginTop: 6 },
+  communityNote: { ...TYPE.small, color: BASECAMP.textMuted, marginTop: 7, lineHeight: 19 },
+  memberPhotos: { marginTop: 24 },
+  shareAchievement: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 5 },
+  shareAchievementText: { ...TYPE.smallBold, color: BASECAMP.accent },
   settingsHeader: {
     flexDirection: "row",
     alignItems: "center",

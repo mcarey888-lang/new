@@ -31,6 +31,7 @@ import exploreHikeCanonicalRouter from "./explore-hike-canonical";
 import elevationBankRouter from "./elevation-bank";
 import canonicalHistoryRouter from "./canonical-history";
 import canonicalRouteRecordsRouter, { canonicalRouteRecordsEnabled } from "./canonical-route-records";
+import communityRouter from "./community";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -60,6 +61,11 @@ router.use("/artwork", artworkRouter);
 router.use("/atlas", atlasRouter);
 
 // ── Auth-required routes ──────────────────────────────────────────────────────
+// Community checks getAuth(req).userId in every handler, including image reads.
+// Mount before the broad requireAuth() routers so anonymous requests receive
+// a JSON 401 rather than Clerk's browser redirect to the app root.
+router.use(communityRouter);
+
 // trackedRoutesRouter handles its own per-method auth (DELETE requires auth +
 // ownership; GET/POST are public). Auth is enforced inside the router.
 router.use(trackedRoutesRouter);
@@ -76,6 +82,8 @@ if (canonicalRouteRecordsEnabled()) {
 }
 router.use(requireAuth(), elevationBankRouter);
 router.use(requireAuth(), canonicalHistoryRouter);
+// This router performs an explicit getAuth(req).userId check in every handler;
+// requireAuth middleware is a development no-op and is not relied upon here.
 
 // User account management — requires auth.
 router.use(requireAuth(), userRouter);

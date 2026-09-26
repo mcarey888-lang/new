@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: artwork
     description: AI Artwork Pipeline operations
+  - name: community
+    description: Authenticated SummitReady member sharing
 paths:
   /healthz:
     get:
@@ -247,8 +249,259 @@ paths:
         "503":
           description: Canonical history dependency unavailable
 
+  /community/posts:
+    post:
+      operationId: createCommunityPost
+      tags: [community]
+      summary: Create a private-by-default member post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityPostCreate"
+      responses:
+        "201":
+          description: Created community post
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [post]
+                properties:
+                  post:
+                    $ref: "#/components/schemas/CommunityPost"
+        "400":
+          description: Invalid post
+        "401":
+          description: Authentication required
+    get:
+      operationId: getCommunityPosts
+      tags: [community]
+      summary: Read owned posts or posts visible to members
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [mine, members]
+            default: mine
+      responses:
+        "200":
+          description: Community posts (private posts from other owners are excluded)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [posts]
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CommunityPost"
+        "401":
+          description: Authentication required
+
+  /community/posts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateCommunityPostVisibility
+      tags: [community]
+      summary: Update visibility of an owned post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityPostVisibilityInput"
+      responses:
+        "200":
+          description: Updated post
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [post]
+                properties:
+                  post:
+                    $ref: "#/components/schemas/CommunityPost"
+        "401":
+          description: Authentication required
+        "404":
+          description: Post not found or not owned
+    delete:
+      operationId: deleteCommunityPost
+      tags: [community]
+      summary: Delete an owned post and its photo
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted]
+                properties:
+                  deleted:
+                    type: boolean
+        "401":
+          description: Authentication required
+        "404":
+          description: Post not found or not owned
+
+  /community/posts/{id}/photo:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      operationId: uploadCommunityPostPhoto
+      tags: [community]
+      summary: Upload one private, normalized image to an owned photo post
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Photo attached; visibility remains private
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [post]
+                properties:
+                  post:
+                    $ref: "#/components/schemas/CommunityPost"
+        "400":
+          description: Invalid image or oversized body
+        "401":
+          description: Authentication required
+        "409":
+          description: Photo already attached
+        "415":
+          description: Unsupported or mismatched image content
+    get:
+      operationId: getCommunityPostPhoto
+      tags: [community]
+      summary: Read photo only when the post is visible to the signed-in member
+      responses:
+        "200":
+          description: Normalized WebP photo
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Authentication required
+        "404":
+          description: Photo not found or not visible to this member
+
+  /community/posts/{id}/report:
+    post:
+      operationId: reportCommunityPost
+      tags: [community]
+      summary: Report another member's visible post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reported]
+                properties:
+                  reported:
+                    type: boolean
+        "401":
+          description: Authentication required
+        "404":
+          description: Post not found or not visible
+
 components:
   schemas:
+    CommunityPostCreate:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [story, badge, photo]
+        text:
+          type: string
+          maxLength: 600
+        badgeId:
+          type: ["string", "null"]
+          maxLength: 128
+        badgeTitle:
+          type: ["string", "null"]
+          maxLength: 160
+        visibility:
+          type: string
+          enum: [private, members]
+          default: private
+    CommunityPostVisibilityInput:
+      type: object
+      required: [visibility]
+      properties:
+        visibility:
+          type: string
+          enum: [private, members]
+    CommunityPost:
+      type: object
+      required: [id, kind, text, badgeId, badgeTitle, visibility, authorName, authorAvatarUrl, ownerUserId, createdAt, hasPhoto]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [story, badge, photo]
+        text:
+          type: string
+        badgeId:
+          type: ["string", "null"]
+        badgeTitle:
+          type: ["string", "null"]
+        visibility:
+          type: string
+          enum: [private, members]
+        authorName:
+          type: string
+        authorAvatarUrl:
+          type: ["string", "null"]
+          format: uri
+        ownerUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        hasPhoto:
+          type: boolean
     MountainHeroPrompt:
       type: object
       required: [prompt, hasReference]

@@ -67,13 +67,26 @@ describe("rank, achievements and challenges stay separate", () => {
 });
 
 describe("no fabricated social data", () => {
-  for (const rel of ["app/(tabs)/account.tsx", "app/rank.tsx", "app/elevation-history.tsx"]) {
-    it(`${rel} records no likes, followers or engagement counts`, () => {
+  for (const rel of ["app/(tabs)/account.tsx", "app/rank.tsx", "app/elevation-history.tsx", "components/profile/CommunityHub.tsx"]) {
+    it(`${rel} records no fabricated engagement counts`, () => {
       const body = code(read(rel));
-      expect(body).not.toMatch(/\blikes\b|\bfollowers\b|\bfollowing\b|\bcomments\b|\bfeed\b/i);
+      expect(body).not.toMatch(/\b\d[\d,]*\s+(?:likes|followers|following|comments|members|posts)\b/i);
       expect(body).not.toMatch(/leaderboard|ranking against|percentile/i);
     });
   }
+
+  it("never silently shares journal photos and defaults new posts to private", () => {
+    const hub = code(read("components/profile/CommunityHub.tsx"));
+    expect(hub).toMatch(/useState<"private" \| "members">\("private"\)/);
+    expect(hub).toMatch(/launchImageLibraryAsync/);
+    expect(hub).toMatch(/onCreate\(\{[\s\S]*?kind:/);
+    expect(hub).toMatch(/onVisibility\(post\.id/);
+    expect(hub).toMatch(/onDelete\(id\)/);
+    expect(hub).toMatch(/onReport\(id\)/);
+    expect(ACCOUNT_CODE).toMatch(/community \? <View[\s\S]*?<CommunityHub \{\.\.\.community\}/);
+    expect(ACCOUNT_CODE).toMatch(/unlockedAchievements\.includes\(a\.id\)/);
+    expect(ACCOUNT_CODE).toMatch(/stage8ConfirmedAwards/);
+  });
 
   it("the Photos tab shows only photos that genuinely exist", () => {
     expect(ACCOUNT_CODE).toMatch(/summitready:expedition-journal:/);

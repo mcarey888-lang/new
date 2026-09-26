@@ -1,7 +1,6 @@
-import { ChevronRight, Mountain, RefreshCw, ShieldCheck } from "lucide-react-native";
+import { ChevronRight, Mountain, RefreshCw } from "lucide-react-native";
 import React from "react";
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,7 +35,7 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
     if (presentation.kind === "loading") {
       return (
         <View style={styles.stateRow} testID="elevation-bank-loading">
-          <ActivityIndicator size="small" color={T.green} />
+          <View style={styles.loadingBar} />
           <Text style={styles.stateText}>Loading your credited ascent…</Text>
         </View>
       );
@@ -98,17 +97,18 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
             >
               {formatElevationBankMetres(data.lifetimeAscentM)}
             </Text>
-            <Text style={styles.metricLabel}>Credited ascent</Text>
+            <Text style={styles.metricLabel}>Qualified recorded outdoor ascent</Text>
           </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricItem}>
+          <View style={styles.secondaryGrid}>
+          <View style={styles.secondaryItem}>
             <Text style={styles.metricValue}>{formatElevationBankMetres(data.periodAscentM)}</Text>
             <Text style={styles.metricLabel}>This month</Text>
           </View>
           <View style={styles.metricDivider} />
-          <View style={styles.metricItem}>
+          <View style={styles.secondaryItem}>
             <Text style={styles.metricValue}>{data.everestEquivalent.toFixed(1)}</Text>
             <Text style={styles.metricLabel}>Everests</Text>
+          </View>
           </View>
         </View>
 
@@ -163,27 +163,29 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 0,
     marginBottom: 0,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 8,
+    padding: 18,
+    backgroundColor: T.basecampSurface,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: T.blue + "65",
   },
   expandedCard: { marginHorizontal: 0 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   titleWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
-  icon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(52, 211, 153, 0.15)" },
-  title: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  icon: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: T.blueDim },
+  title: { color: T.basecampText, fontSize: 17, fontFamily: "Inter_700Bold" },
   viewDetailsBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   viewDetailsText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.6)" },
-  helperTextBase: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 20 },
+  helperTextBase: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14 },
   contentWrap: {},
-  metricsGrid: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  metricItem: { flex: 1, alignItems: "center" },
-  metricValue: { color: "#fff", fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  metricsGrid: { gap: 16 },
+  metricItem: { alignItems: "flex-start" },
+  secondaryGrid: { flexDirection: "row", alignItems: "center", paddingTop: 12, borderTopWidth: 1, borderTopColor: T.basecampBorder },
+  secondaryItem: { flex: 1 },
+  metricValue: { color: T.basecampText, fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 4 },
   /* Presentation only — the figure itself is unchanged. */
-  metricValueEmphasis: { fontSize: 30, lineHeight: 34, letterSpacing: -0.6 },
-  metricLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontFamily: "Inter_500Medium", textAlign: "center" },
+  metricValueEmphasis: { fontSize: 36, lineHeight: 42, letterSpacing: -1 },
+  metricLabel: { color: T.basecampTextMuted, fontSize: 11, fontFamily: "Inter_500Medium" },
   metricDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.1)" },
 
   eyebrow: { color: T.green, fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1.1 },
@@ -198,6 +200,7 @@ const styles = StyleSheet.create({
   everestText: { color: T.orange, fontSize: 12, fontFamily: "Inter_600SemiBold" },
   displayOnly: { color: T.basecampTextDim, fontSize: 10, fontFamily: "Inter_400Regular" },
   stateRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+  loadingBar: { width: 42, height: 18, backgroundColor: T.blueDim, borderRadius: 4 },
   stateText: { color: T.basecampTextMuted, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
   unavailable: { gap: 7 },
   helperText: { color: T.basecampTextDim, fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
