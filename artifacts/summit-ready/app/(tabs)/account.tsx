@@ -3,6 +3,7 @@ import { useAuth, useUser, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useLocalSearchParams } from "expo-router";
@@ -142,6 +143,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const [showSettings, setShowSettings] = useState(false);
   const memberCommunity = useCommunity(!suppliedCommunity && !showSettings && (tab === "activity" || tab === "photos"));
   const community = suppliedCommunity ?? (isSignedIn ? memberCommunity : undefined);
+  const sharedPhotos = useMemo(
+    () => community?.posts.filter(post => post.visibility === "members" && post.hasPhoto) ?? [],
+    [community?.posts],
+  );
+  const [visiblePhotoCount, setVisiblePhotoCount] = useState(8);
 
 
   const achievementsY = useRef<number>(0);
@@ -1199,11 +1205,13 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             <SRSectionHeader title="Your journal photos" />
             {journalPhotos.length > 0 ? (
               <View style={styles.photoGrid}>
-                {journalPhotos.map(photo => (
-                  <Image
+                {journalPhotos.slice(0, visiblePhotoCount).map(photo => (
+                  <ExpoImage
                     key={photo.id}
                     source={{ uri: photo.uri }}
                     style={styles.photo}
+                    contentFit="cover"
+                    cachePolicy="none"
                     accessibilityLabel="Expedition journal photo"
                   />
                 ))}
@@ -1227,12 +1235,22 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
                 <Text style={styles.sectionLabel}>SHARED BY MEMBERS</Text>
                 <Text style={styles.communityNote}>Only photos members chose to share appear here.</Text>
                 <View style={styles.photoGrid}>
-                  {community.posts.filter(post => post.visibility === "members" && post.hasPhoto).map(post => {
+                  {sharedPhotos.slice(0, visiblePhotoCount).map(post => {
                     const source = community.photoSource(post);
-                    return source ? <Image key={post.id} source={source} style={styles.photo} accessibilityLabel={`Photo shared by ${post.authorName}`} /> : null;
+                    return source ? <ExpoImage key={post.id} source={source} style={styles.photo} contentFit="cover" cachePolicy="none" accessibilityLabel={`Photo shared by ${post.authorName}`} /> : null;
                   })}
                 </View>
               </View>
+            )}
+            {(journalPhotos.length > visiblePhotoCount || sharedPhotos.length > visiblePhotoCount) && (
+              <TouchableOpacity
+                onPress={() => setVisiblePhotoCount(count => count + 8)}
+                style={styles.activityLink}
+                accessibilityRole="button"
+                accessibilityLabel="Show more photos"
+              >
+                <Text style={styles.activityLinkText}>Show more photos</Text>
+              </TouchableOpacity>
             )}
           </Animated.View>
         )}

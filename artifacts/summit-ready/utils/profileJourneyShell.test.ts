@@ -81,6 +81,12 @@ describe("no fabricated social data", () => {
     expect(ACCOUNT_CODE).toMatch(/useCommunity\(!suppliedCommunity && !showSettings && \(tab === "activity" \|\| tab === "photos"\)\)/);
     expect(communityHook).toMatch(/const enabled = visible && isLoaded/);
     expect(communityHook).toMatch(/offset \+= 4/);
+    expect(communityHook).toMatch(/getTokenRef\.current\(\)/);
+    expect(communityHook).toMatch(/\}, \[enabled, hasPhotos, userId\]\)/);
+    expect(communityHook).toMatch(/if \(Platform\.OS !== "web"\) return;/);
+    expect(hub).toMatch(/visiblePosts\.slice\(0, visiblePostCount\)/);
+    expect(ACCOUNT_CODE).toMatch(/journalPhotos\.slice\(0, visiblePhotoCount\)/);
+    expect(ACCOUNT_CODE).toMatch(/sharedPhotos\.slice\(0, visiblePhotoCount\)/);
     expect(hub).toMatch(/useState<"private" \| "members">\("private"\)/);
     expect(hub).toMatch(/launchImageLibraryAsync/);
     expect(hub).toMatch(/onCreate\(\{[\s\S]*?kind:/);

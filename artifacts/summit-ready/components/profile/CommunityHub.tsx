@@ -1,5 +1,6 @@
 import { Camera, ChevronDown, Flag, ImagePlus, RefreshCw, Send, Trash2, Users, LockKeyhole, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Image as ExpoImage } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
@@ -52,6 +53,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const [audience, setAudience] = useState<"private" | "members">("private");
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [visiblePostCount, setVisiblePostCount] = useState(8);
   const notifyError = (message: string) => {
     if (Platform.OS === "web") window.alert(message);
     else Alert.alert("Could not update post", message);
@@ -165,22 +167,32 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
         <Text style={styles.privacy}>Photos on your device are never added automatically.</Text>
         <TouchableOpacity onPress={submit} disabled={busy || submitting || (!text.trim() && !photoUri)} style={[styles.submit, (busy || submitting || (!text.trim() && !photoUri)) && styles.disabled]} accessibilityRole="button" accessibilityLabel="Post to selected audience" testID="community-submit"><Send size={16} color={BASECAMP.accentInk} /><Text style={styles.submitText}>{submitting ? "Posting…" : "Post"}</Text></TouchableOpacity>
       </View>
-      <View style={styles.switcher}>{(["members", "mine"] as const).map(v => <TouchableOpacity key={v} onPress={() => setView(v)} style={[styles.switch, view === v && styles.switchActive]} accessibilityRole="tab" accessibilityState={{ selected: view === v }}><Text style={[styles.switchText, view === v && styles.switchTextActive]}>{v === "members" ? "Members" : "My posts"}</Text></TouchableOpacity>)}</View>
+      <View style={styles.switcher}>{(["members", "mine"] as const).map(v => <TouchableOpacity key={v} onPress={() => { setView(v); setVisiblePostCount(8); }} style={[styles.switch, view === v && styles.switchActive]} accessibilityRole="tab" accessibilityState={{ selected: view === v }}><Text style={[styles.switchText, view === v && styles.switchTextActive]}>{v === "members" ? "Members" : "My posts"}</Text></TouchableOpacity>)}</View>
       {loading ? <View style={styles.skeleton}><View style={styles.skeletonLine} /><View style={styles.skeletonLine} /></View>
         : error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Stories unavailable</Text><Text style={styles.emptyBody}>{error}</Text><TouchableOpacity onPress={onRefresh} style={styles.retry} accessibilityRole="button"><RefreshCw size={16} color={BASECAMP.accent} /><Text style={styles.retryText}>Try again</Text></TouchableOpacity></View>
         : visiblePosts.length === 0 ? <View style={styles.empty}><Camera size={24} color={BASECAMP.accent} /><Text style={styles.emptyTitle}>{view === "mine" ? "Your story starts here" : "No member stories yet"}</Text><Text style={styles.emptyBody}>{view === "mine" ? "Share a trail note or choose a photo above. Only you decide who sees it." : "When members choose to share, their stories will appear here."}</Text></View>
-        : visiblePosts.map(post => {
+        : visiblePosts.slice(0, visiblePostCount).map(post => {
           const owned = minePosts.some(mine => mine.id === post.id);
           const source = post.hasPhoto ? photoSource(post) : null;
           const date = new Date(post.createdAt);
           return <View key={post.id} style={styles.post} testID={`community-post-${post.id}`}>
             <View style={styles.postHeader}>{post.authorAvatarUrl ? <Image source={{ uri: post.authorAvatarUrl }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{post.authorName.charAt(0).toUpperCase()}</Text></View>}<View style={{ flex: 1 }}><Text style={styles.author} numberOfLines={1}>{post.authorName}</Text><Text style={styles.meta}>{Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {audienceLabel(post.visibility)}</Text></View></View>
-            {source && <Image source={source} style={styles.postPhoto} resizeMode="cover" accessibilityLabel="Member shared photo" />}
+            {source && <ExpoImage source={source} style={styles.postPhoto} contentFit="cover" cachePolicy="none" accessibilityLabel="Member shared photo" />}
             {post.badgeTitle && post.kind === "badge" && <Text style={styles.badge}>Award · {post.badgeTitle}</Text>}
             {!!post.text && <Text style={styles.postText}>{post.text}</Text>}
             <View style={styles.postActions}>{owned ? <><TouchableOpacity onPress={() => changeAudience(post)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel={`Change audience to ${audienceLabel(post.visibility === "private" ? "members" : "private")}`}><LockKeyhole size={14} color={BASECAMP.accent} /><Text style={styles.actionText}>Change audience</Text></TouchableOpacity><TouchableOpacity onPress={() => confirmDelete(post.id)} disabled={busy} style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Delete post"><Trash2 size={17} color={BASECAMP.textMuted} /></TouchableOpacity></> : <TouchableOpacity onPress={() => confirmReport(post.id)} disabled={busy} style={styles.action} accessibilityRole="button" accessibilityLabel="Report post"><Flag size={15} color={BASECAMP.textMuted} /><Text style={styles.actionText}>Report</Text></TouchableOpacity>}</View>
           </View>;
         })}
+      {visiblePosts.length > visiblePostCount && (
+        <TouchableOpacity
+          onPress={() => setVisiblePostCount(count => count + 8)}
+          style={styles.refresh}
+          accessibilityRole="button"
+          accessibilityLabel="Show more community posts"
+        >
+          <Text style={styles.refreshText}>Show more stories</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={onRefresh} disabled={loading || busy} style={styles.refresh} accessibilityRole="button" accessibilityLabel="Refresh community posts"><RefreshCw size={15} color={BASECAMP.textMuted} /><Text style={styles.refreshText}>Refresh stories</Text></TouchableOpacity>
     </View>
   );

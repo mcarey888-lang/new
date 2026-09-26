@@ -26,6 +26,8 @@ export function useCommunity(visible = true): CommunityHubProps {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [imageToken, setImageToken] = useState<{ userId: string; token: string } | null>(null);
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   const previousUserId = useRef<string | null>(null);
   const mineKey = [...getGetCommunityPostsQueryKey({ scope: "mine" }), userId] as const;
   const membersKey = [...getGetCommunityPostsQueryKey({ scope: "members" }), userId] as const;
@@ -45,27 +47,34 @@ export function useCommunity(visible = true): CommunityHubProps {
     previousUserId.current = userId ?? null;
   }, [queryClient, userId]);
 
+  const minePosts = useMemo(() => enabled ? (mine.data?.posts ?? []) as CommunityPost[] : [], [enabled, mine.data]);
+  const posts = useMemo(() => enabled ? (members.data?.posts ?? []) as CommunityPost[] : [], [enabled, members.data]);
+  const hasPhotos = useMemo(
+    () => [...posts, ...minePosts].some(post => post.hasPhoto),
+    [posts, minePosts],
+  );
   useEffect(() => {
-    if (!enabled || !userId) {
-      setImageToken(null);
+    if (!enabled || !userId || Platform.OS === "web" || !hasPhotos) {
+      setImageToken(current => current === null ? current : null);
       return;
     }
     let active = true;
-    setImageToken(null);
-    void getToken().then(token => { if (active) setImageToken(token ? { userId, token } : null); })
+    // Clerk can supply a new getToken function on re-render. Depending on that
+    // function here would request a token, update state, then repeat forever.
+    setImageToken(current => current?.userId === userId ? current : null);
+    void getTokenRef.current().then(token => { if (active) setImageToken(token ? { userId, token } : null); })
       .catch(() => { if (active) setImageToken(null); });
     return () => { active = false; };
-  }, [enabled, getToken, userId]);
+  }, [enabled, hasPhotos, userId]);
 
-  const minePosts = useMemo(() => enabled ? (mine.data?.posts ?? []) as CommunityPost[] : [], [enabled, mine.data]);
-  const posts = useMemo(() => enabled ? (members.data?.posts ?? []) as CommunityPost[] : [], [enabled, members.data]);
   const [webPhotos, setWebPhotos] = useState<{ userId: string; urls: Record<string, string> }>({ userId: "", urls: {} });
 
   // Web image elements cannot pass Authorization headers. Blob URLs stay
   // inside this signed-in session and are revoked when the visible set changes.
   useEffect(() => {
-    if (Platform.OS !== "web" || !enabled || !userId) {
-      setWebPhotos({ userId: "", urls: {} });
+    if (Platform.OS !== "web") return;
+    if (!enabled || !userId) {
+      setWebPhotos(current => current.userId ? { userId: "", urls: {} } : current);
       return;
     }
     let active = true;
