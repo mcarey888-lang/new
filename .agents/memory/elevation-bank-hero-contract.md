@@ -15,7 +15,7 @@ Development Bank availability is a two-part condition: a Clerk-authenticated API
 
 **How to apply:** Distinguish an authenticated zero response from an error. Before enabling ledger reads/writes in another environment, verify that environment's schema and release policy; the production gate is intentional and must not be bypassed just to make the hero appear.
 
-An API redirect from the preview despite the frontend being signed in can indicate that the preview's Clerk development publishable key and the API's live Clerk secret belong to different environments. Preserve the live key for production; do not bypass authentication to make ledger data visible.
+An API redirect from the preview despite the frontend being signed in can indicate that the preview's Clerk development publishable key and the API's live Clerk secret belong to different environments. In this project, this mismatch was confirmed by the live-key-only redirect path versus the frontend's development-key warning; with a matching development secret, unauthenticated requests receive a JSON 401 instead. Preserve the live key for production; do not bypass authentication to make ledger data visible.
 
 **Why:** A development request still returned an authentication redirect after token-getter ordering was fixed. The frontend reported development keys, while the route's auth wrapper only redirects with the live secret. Ordering alone cannot make a development token valid to a live Clerk instance.
 
