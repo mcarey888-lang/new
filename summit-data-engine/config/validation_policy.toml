@@ -1,0 +1,50 @@
+# Versioned, deterministic validation policy.
+#
+# `EngineSettings.validation_policy_path` has always pointed here and the file
+# has never existed, so `load_validation_policy` had nothing to load. These are
+# the values the recorded-trace planner validates against; changing any of them
+# changes what the engine accepts, so the version below moves with them.
+#
+# Thresholds are chosen for British and Irish hill walking, which is what the
+# DoBIH catalogue covers.
+
+version = "summitready_validation_v1"
+
+[extraction]
+# Padding around a route's bounding box when pulling source extracts.
+bbox_padding_degrees = 0.02
+
+[elevation]
+calculation_version = "summitready_elevation_v1"
+# Distance between resampled elevation profile points.
+sample_spacing_m = 25.0
+# Window for median-smoothing a noisy altitude series.
+median_window = 5
+# Altitude change below this does not count as ascent or descent. GPS and
+# barometric altitude both jitter by several metres while standing still;
+# without a deadband a stationary walker accumulates hundreds of metres.
+vertical_deadband_m = 3.0
+# Above this share of missing DEM samples a profile is not publishable.
+max_nodata_fraction = 0.1
+
+[validation]
+# Shorter than this is not a route. 500 m excludes a walk from the car park to
+# a viewpoint while still admitting short, steep hill-repeat lines.
+min_route_length_m = 500.0
+# Longer than this is a multi-day itinerary, not a single route, and should be
+# modelled as stages. 60 km is beyond any single British hill day.
+max_route_length_m = 60_000.0
+# Altitude bounds for Great Britain and Ireland with generous margin: below sea
+# level is a bad fix, and Ben Nevis is 1,345 m.
+min_elevation_m = -50.0
+max_elevation_m = 1_500.0
+# Consecutive fixes further apart than this mean a dropout or a device waking
+# up elsewhere. The straight line drawn across such a gap is fiction. At a
+# typical 1 Hz walking cadence, 250 m is far beyond any real step.
+max_segment_jump_m = 250.0
+# How close a trace must pass to a summit to be filed under that mountain.
+# Generous enough for a trace that stops just below a rocky top, tight enough
+# that a valley path is not filed under the hill above it.
+summit_reach_tolerance_m = 150.0
+# Two lines closer than this everywhere are the same route recorded twice.
+duplicate_hausdorff_tolerance_m = 50.0
