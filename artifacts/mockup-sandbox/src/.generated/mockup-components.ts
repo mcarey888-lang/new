@@ -2,6 +2,11 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/summit-landing-redesign/Redesign.tsx": () => import("../components/mockups/summit-landing-redesign/Redesign.tsx"),
+  "./components/mockups/summit-ui/AlpineLight.tsx": () => import("../components/mockups/summit-ui/AlpineLight.tsx"),
+  "./components/mockups/summit-ui/NightTrail.tsx": () => import("../components/mockups/summit-ui/NightTrail.tsx"),
+  "./components/mockups/summit-ui/PaywallMockup.tsx": () => import("../components/mockups/summit-ui/PaywallMockup.tsx"),
+  "./components/mockups/summit-ui/SavedHikes.tsx": () => import("../components/mockups/summit-ui/SavedHikes.tsx"),
+  "./components/mockups/summit-ui/SummitRefined.tsx": () => import("../components/mockups/summit-ui/SummitRefined.tsx"),
   "./components/mockups/summitready-explore/AchievementConstellation.tsx": () => import("../components/mockups/summitready-explore/AchievementConstellation.tsx"),
   "./components/mockups/summitready-explore/AchievementFieldJournal.tsx": () => import("../components/mockups/summitready-explore/AchievementFieldJournal.tsx"),
   "./components/mockups/summitready-explore/AchievementJourneyMap.tsx": () => import("../components/mockups/summitready-explore/AchievementJourneyMap.tsx"),
@@ -14,10 +19,5 @@ export const modules: ModuleMap = {
   "./components/mockups/summitready-explore/RankAlpineAscent.tsx": () => import("../components/mockups/summitready-explore/RankAlpineAscent.tsx"),
   "./components/mockups/summitready-explore/RankExpeditionLeague.tsx": () => import("../components/mockups/summitready-explore/RankExpeditionLeague.tsx"),
   "./components/mockups/summitready-explore/RankMountainLineage.tsx": () => import("../components/mockups/summitready-explore/RankMountainLineage.tsx"),
-  "./components/mockups/summitready-explore/RankTrailPatches.tsx": () => import("../components/mockups/summitready-explore/RankTrailPatches.tsx"),
-  "./components/mockups/summit-ui/AlpineLight.tsx": () => import("../components/mockups/summit-ui/AlpineLight.tsx"),
-  "./components/mockups/summit-ui/NightTrail.tsx": () => import("../components/mockups/summit-ui/NightTrail.tsx"),
-  "./components/mockups/summit-ui/PaywallMockup.tsx": () => import("../components/mockups/summit-ui/PaywallMockup.tsx"),
-  "./components/mockups/summit-ui/SavedHikes.tsx": () => import("../components/mockups/summit-ui/SavedHikes.tsx"),
-  "./components/mockups/summit-ui/SummitRefined.tsx": () => import("../components/mockups/summit-ui/SummitRefined.tsx")
+  "./components/mockups/summitready-explore/RankTrailPatches.tsx": () => import("../components/mockups/summitready-explore/RankTrailPatches.tsx")
 };
