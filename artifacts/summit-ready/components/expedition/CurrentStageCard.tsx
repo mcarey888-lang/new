@@ -11,7 +11,7 @@
  */
 import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { Footprints, Play, TrendingUp, Trophy } from "lucide-react-native";
+import { ChevronRight, Footprints, Play, TrendingUp, Trophy } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BASECAMP, EXPLORE, HIT, SP, TYPE } from "@/constants/tokens";
 import { SRPanel } from "@/components/ui";
@@ -19,7 +19,7 @@ import { metres } from "./parts";
 
 export function CurrentStageCard({
   eyebrow, name, routeName, gainM, imageUri, complete,
-  primaryLabel, onPrimary, onFreeHike,
+  primaryLabel, onPrimary, onFreeHike, onDetails,
 }: {
   eyebrow: string;
   name: string;
@@ -30,6 +30,7 @@ export function CurrentStageCard({
   primaryLabel: string;
   onPrimary?: () => void;
   onFreeHike?: () => void;
+  onDetails?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
   const gain = metres(gainM);
@@ -37,7 +38,15 @@ export function CurrentStageCard({
   return (
     <SRPanel radius={9} style={styles.panel}>
       <View style={styles.body}>
-        <View style={styles.row}>
+        <Pressable
+          onPress={onDetails}
+          disabled={!onDetails}
+          accessibilityRole={onDetails ? "button" : undefined}
+          accessibilityLabel={onDetails ? `View mountain information for ${name}` : undefined}
+          accessibilityHint={onDetails ? "Opens the next stage's mountain and route details" : undefined}
+          testID={onDetails ? "next-stage-details" : undefined}
+          style={styles.row}
+        >
           <View style={styles.thumb}>
             {imageUri && !failed ? (
               <Image
@@ -63,7 +72,8 @@ export function CurrentStageCard({
               </View>
             ) : null}
           </View>
-        </View>
+          {onDetails ? <ChevronRight size={17} color={BASECAMP.textMuted} /> : null}
+        </Pressable>
 
         <Pressable
           onPress={onPrimary}

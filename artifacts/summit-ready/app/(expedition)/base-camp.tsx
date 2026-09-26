@@ -1207,6 +1207,28 @@ export default function BaseCampScreen() {
               )}
               complete={false}
               primaryLabel="Start next stage"
+              onDetails={() => router.push({
+                pathname: "/hill-detail",
+                params: {
+                  name: nextHill.name,
+                  location: activeExpedition?.location ?? summitGoal.location ?? "",
+                  lat: nextHill.lat?.toString() ?? "",
+                  lng: nextHill.lng?.toString() ?? "",
+                  elevation: nextHill.elevation.toString(),
+                  distance: nextHill.distance.toString(),
+                  routeDistance: (nextHill.routeDistance ?? nextHill.distance).toString(),
+                  estimatedTime: nextHill.estimatedTime ?? "",
+                  routeType: nextHill.routeType ?? "",
+                  grade: nextHill.grade ?? "",
+                  surface: nextHill.surface ?? "",
+                  emoji: nextHill.emoji ?? "⛰️",
+                  expeditionMode: "true",
+                  expeditionId: activeExpeditionId ?? "",
+                  routeIdentityKey: nextHill.routeIdentityKey ?? "",
+                  summitIdentityKey: nextHill.summitIdentityKey ?? "",
+                  objectiveType: nextHill.objectiveType ?? "",
+                },
+              })}
               onPrimary={() => {
                 router.push({
                   pathname: "/hike-tracking" as any,

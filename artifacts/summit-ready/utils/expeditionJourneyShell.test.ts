@@ -91,6 +91,18 @@ describe("stages stay real hills with real identities", () => {
     expect(code(read("components/expedition/CurrentStageCard.tsx")))
       .toMatch(/free-hike-base-camp-cta/);
   });
+
+  it("opens the next stage's route information without replacing tracking actions", () => {
+    const camp = code(read("app/(expedition)/base-camp.tsx"));
+    const card = code(read("components/expedition/CurrentStageCard.tsx"));
+    expect(camp).toMatch(/onDetails=\{\(\) => router\.push\(\{/);
+    expect(camp).toMatch(/pathname: "\/hill-detail"/);
+    expect(camp).toMatch(/expeditionMode: "true"/);
+    expect(camp).toMatch(/routeIdentityKey: nextHill\.routeIdentityKey/);
+    expect(camp).toMatch(/onPrimary=\{\(\) => \{/);
+    expect(card).toMatch(/onPress=\{onDetails\}/);
+    expect(card).toMatch(/next-stage-details/);
+  });
 });
 
 describe("no prototype figures reach the expedition surfaces", () => {
