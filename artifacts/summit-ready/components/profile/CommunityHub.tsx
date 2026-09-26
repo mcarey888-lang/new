@@ -53,6 +53,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const [audience, setAudience] = useState<"private" | "members">("private");
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [visiblePostCount, setVisiblePostCount] = useState(8);
   const notifyError = (message: string) => {
     if (Platform.OS === "web") window.alert(message);
@@ -95,6 +96,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   };
   const submit = async () => {
     if (busy || submitting || (!text.trim() && !photoUri)) return;
+    setSubmitError(null);
     setSubmitting(true);
     try {
       await onCreate({
@@ -108,8 +110,13 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
       setPhotoUri(null);
       setKind("story");
       setAudience("private");
-    } catch {
-      notifyError("Your draft is still here. Please try again.");
+      setSubmitError(null);
+    } catch (error) {
+      const status = error && typeof error === "object" && "status" in error ? error.status : null;
+      const message = status === 401 || status === 403
+        ? "Your sign-in session could not be verified. Sign out and sign in again, then retry. Your draft is still here."
+        : error instanceof Error ? error.message : "Could not post. Your draft is still here.";
+      setSubmitError(message);
     } finally {
       setSubmitting(false);
     }
@@ -166,6 +173,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
         {audienceOpen && <View style={styles.options}>{(["private", "members"] as const).map(v => <TouchableOpacity key={v} style={styles.option} onPress={() => { setAudience(v); setAudienceOpen(false); }} accessibilityRole="button" accessibilityLabel={`Set audience to ${audienceLabel(v)}`}><Text style={styles.optionText}>{audienceLabel(v)}</Text></TouchableOpacity>)}</View>}
         <Text style={styles.privacy}>Photos on your device are never added automatically.</Text>
         <TouchableOpacity onPress={submit} disabled={busy || submitting || (!text.trim() && !photoUri)} style={[styles.submit, (busy || submitting || (!text.trim() && !photoUri)) && styles.disabled]} accessibilityRole="button" accessibilityLabel="Post to selected audience" testID="community-submit"><Send size={16} color={BASECAMP.accentInk} /><Text style={styles.submitText}>{submitting ? "Posting…" : "Post"}</Text></TouchableOpacity>
+        {submitError && <Text style={styles.submitError} accessibilityRole="alert" testID="community-submit-error">{submitError}</Text>}
       </View>
       <View style={styles.switcher}>{(["members", "mine"] as const).map(v => <TouchableOpacity key={v} onPress={() => { setView(v); setVisiblePostCount(8); }} style={[styles.switch, view === v && styles.switchActive]} accessibilityRole="tab" accessibilityState={{ selected: view === v }}><Text style={[styles.switchText, view === v && styles.switchTextActive]}>{v === "members" ? "Members" : "My posts"}</Text></TouchableOpacity>)}</View>
       {loading ? <View style={styles.skeleton}><View style={styles.skeletonLine} /><View style={styles.skeletonLine} /></View>
@@ -220,6 +228,7 @@ const styles = StyleSheet.create({
   privacy: { ...TYPE.caption, color: BASECAMP.textDim, marginTop: 12 },
   submit: { minHeight: HIT.minTarget, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: BASECAMP.accent, marginTop: 14 },
   submitText: { ...TYPE.bodyBold, color: BASECAMP.accentInk }, disabled: { opacity: 0.4 },
+  submitError: { ...TYPE.caption, color: BASECAMP.text, marginTop: SP.sm },
   switcher: { flexDirection: "row", marginTop: 22, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
   switch: { flex: 1, minHeight: HIT.minTarget, alignItems: "center", justifyContent: "center" }, switchActive: { borderBottomWidth: 2, borderBottomColor: BASECAMP.accent }, switchText: { ...TYPE.smallBold, color: BASECAMP.textMuted }, switchTextActive: { color: BASECAMP.accent },
   skeleton: { padding: 18, gap: 12 }, skeletonLine: { height: 46, borderRadius: 8, backgroundColor: BASECAMP.panelSub },

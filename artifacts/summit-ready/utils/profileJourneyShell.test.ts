@@ -29,6 +29,13 @@ describe("Profile is a mountain résumé", () => {
     expect(EXPEDITION_PROFILE).toMatch(/PrimaryProfileScreen/);
   });
 
+  it("keeps the You header compact and gives every recent activity an honest image", () => {
+    expect(PROFILE_PRESENTATION).toMatch(/cover:\s*\{\s*height: 153/);
+    expect(ACCOUNT_CODE).toMatch(/<ActivityThumbnail subject=\{activity\.imageSubject\}/);
+    expect(ACCOUNT_CODE).toMatch(/hasApprovedMountainImage\(subject\)/);
+    expect(ACCOUNT_CODE).toMatch(/local-hill-illustration\.png/);
+  });
+
   it("leads with rank and lifetime ascent, from the engines", () => {
     expect(ACCOUNT_CODE).toMatch(/rankResult\.currentRank/);
     expect(ACCOUNT_CODE).toMatch(/lifetimeElevation/);
@@ -82,6 +89,9 @@ describe("no fabricated social data", () => {
     expect(communityHook).toMatch(/const enabled = visible && isLoaded/);
     expect(communityHook).toMatch(/offset \+= 4/);
     expect(communityHook).toMatch(/getTokenRef\.current\(\)/);
+    expect(communityHook).toMatch(/createCommunityPost\([\s\S]*?authenticatedHeaders\(token\)/);
+    expect(hub).toMatch(/status === 401 \|\| status === 403/);
+    expect(hub).toMatch(/community-submit-error/);
     expect(communityHook).toMatch(/\}, \[enabled, hasPhotos, userId\]\)/);
     expect(communityHook).toMatch(/if \(Platform\.OS !== "web"\) return;/);
     expect(hub).toMatch(/visiblePosts\.slice\(0, visiblePostCount\)/);

@@ -9,7 +9,7 @@ import { ClerkProvider, useAuth } from "@clerk/expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Image, Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { T } from "@/constants/theme";
@@ -53,17 +53,19 @@ function UserSwitchGuard({ children }: { children: React.ReactNode }) {
  */
 function AuthBridge() {
   const { getToken, isSignedIn } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   useEffect(() => {
     if (isSignedIn) {
-      setAuthTokenGetter(() => getToken());
+      setAuthTokenGetter(() => getTokenRef.current());
     } else {
       setAuthTokenGetter(null);
     }
     return () => {
       setAuthTokenGetter(null);
     };
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   return null;
 }

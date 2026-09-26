@@ -24,7 +24,6 @@ export function useCommunity(visible = true): CommunityHubProps {
   // display the You header. Activate the community only on its visible tabs.
   const enabled = visible && isLoaded && Boolean(isSignedIn && userId);
   const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [imageToken, setImageToken] = useState<{ userId: string; token: string } | null>(null);
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
@@ -110,7 +109,6 @@ export function useCommunity(visible = true): CommunityHubProps {
   }, [enabled, minePosts, posts, userId]);
 
   const refresh = useCallback(async () => {
-    setActionError(null);
     await Promise.all([mine.refetch(), members.refetch()]);
   }, [mine.refetch, members.refetch]);
 
@@ -124,19 +122,17 @@ export function useCommunity(visible = true): CommunityHubProps {
   const run = useCallback(async (action: () => Promise<void>) => {
     if (!enabled || busy) throw new Error("Sign in to share with members.");
     setBusy(true);
-    setActionError(null);
     try {
       await action();
       await revalidate();
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Could not update your post.");
-      throw error;
     } finally {
       setBusy(false);
     }
   }, [busy, enabled, revalidate]);
 
   const onCreate = useCallback((input: CommunityCreate) => run(async () => {
+    const token = await getToken();
+    if (!token) throw new Error("Your sign-in session has expired. Sign in again to post; your draft is still here.");
     const isPhoto = input.kind === "photo";
     // Photos remain private until their bytes are safely stored. Visibility is
     // changed only AFTER the upload succeeds, and only when explicitly chosen.
@@ -146,7 +142,7 @@ export function useCommunity(visible = true): CommunityHubProps {
       ...(input.badgeId ? { badgeId: input.badgeId } : {}),
       ...(input.badgeTitle ? { badgeTitle: input.badgeTitle } : {}),
       visibility: isPhoto ? "private" : input.visibility,
-    });
+    }, { headers: authenticatedHeaders(token) });
     if (!isPhoto) return;
     try {
       if (!input.photoUri) throw new Error("Select a photo before posting.");
@@ -156,8 +152,6 @@ export function useCommunity(visible = true): CommunityHubProps {
       if (photo.size > 5 * 1024 * 1024) throw new Error("Choose a photo smaller than 5 MB.");
       const mime = photo.type.split(";")[0] || (/\.(png)$/i.test(input.photoUri) ? "image/png" : /\.(webp)$/i.test(input.photoUri) ? "image/webp" : "image/jpeg");
       if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) throw new Error("Choose a JPEG, PNG, or WebP photo.");
-      const token = await getToken();
-      if (!token) throw new Error("Sign in again before sharing a photo.");
       const upload = await fetch(`${BASE_URL}${getGetCommunityPostPhotoUrl(created.post.id)}`, {
         method: "PUT",
         headers: { ...authenticatedHeaders(token), "Content-Type": mime },
@@ -195,7 +189,7 @@ export function useCommunity(visible = true): CommunityHubProps {
     posts,
     minePosts,
     loading: enabled && (mine.isLoading || members.isLoading),
-    error: actionError ?? (mine.isError || members.isError ? "Could not load member stories. Try again." : null),
+    error: mine.isError || members.isError ? "Could not load member stories. Try signing in again." : null,
     busy,
     onRefresh: () => { void refresh(); },
     onCreate,

@@ -71,8 +71,28 @@ import {
 } from "@/components/profile/PrimaryProfilePresentation";
 import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
 import { useCommunity } from "@/hooks/useCommunity";
+import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
+
+const illustrativeActivityImage = require("@/assets/images/local-hill-illustration.png");
+
+function ActivityThumbnail({ subject }: { subject: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const photoUri = subject && hasApprovedMountainImage(subject)
+    ? mountainImageUri(subject, { width: 128, height: 128 })
+    : null;
+  useEffect(() => { setFailed(false); }, [photoUri]);
+  return (
+    <ExpoImage
+      source={photoUri && !failed ? { uri: photoUri } : illustrativeActivityImage}
+      onError={() => setFailed(true)}
+      style={styles.activityMarker}
+      contentFit="cover"
+      accessibilityLabel={photoUri && !failed ? `${subject} mountain photo` : "Illustrative hill artwork"}
+    />
+  );
+}
 
 const DIFF_COLORS: Record<Difficulty, string> = {
   Easy: T.green, Moderate: T.blue, Hard: T.orange, Alpine: "#FF4444",
@@ -212,9 +232,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     ...sessions.filter(s => s.completed).map(s => ({
       id: `session:${s.id}`, title: s.hillName ?? (s.type === "bigDay" ? "Big day" : s.type === "hill" ? "Hill session" : "Cardio session"),
       date: s.date, distance: s.distance, elevation: s.elevationGain, kind: "Session",
+      imageSubject: s.hillName ?? null,
     })),
     ...exploreHikes.map(h => ({
       id: `hike:${h.id}`, title: h.name, date: h.date, distance: h.distance, elevation: h.elevationGain, kind: "Hike",
+      imageSubject: h.canonicalRouteIdentityKey || h.canonicalMountainId ? h.name : null,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [sessions, exploreHikes]);
   // Lifetime stats
@@ -726,7 +748,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
           <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
           {recentActivity.length ? recentActivity.map(activity => (
             <View key={activity.id} style={styles.activityRow}>
-              <View style={styles.activityMarker}><Mountain size={19} color={BASECAMP.accent} /></View>
+              <ActivityThumbnail subject={activity.imageSubject} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.activityTitle} numberOfLines={1}>{activity.title}</Text>
                 <Text style={styles.activityMeta}>{activity.kind} · {activity.date}</Text>
@@ -1278,7 +1300,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
 const styles = StyleSheet.create({
   activityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
-  activityMarker: { width: 46, height: 46, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: BASECAMP.accentDim },
+  activityMarker: { width: 46, height: 46, borderRadius: 11, backgroundColor: BASECAMP.accentDim },
   activityTitle: { ...TYPE.bodyBold, color: BASECAMP.text },
   activityMeta: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 3 },
   activityLink: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 8 },

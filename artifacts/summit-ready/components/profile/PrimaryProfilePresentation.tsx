@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: SP.md,
   },
   cover: {
-    height: 255,
+    height: 153,
     justifyContent: "flex-start",
     backgroundColor: BASECAMP.ink,
     overflow: "hidden",
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
   },
   identity: {
     paddingHorizontal: BASECAMP.gutter,
-    marginTop: -49,
-    paddingBottom: SP.md,
+    marginTop: -28,
+    paddingBottom: SP.sm,
   },
   identityRow: {
     flexDirection: "row",
@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
     gap: SP.md,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: BASECAMP.accent,
   },
-  nameBlock: { flex: 1, minWidth: 0, paddingTop: 37 },
+  nameBlock: { flex: 1, minWidth: 0, paddingTop: 9 },
   rank: {
     ...TYPE.eyebrow,
     color: BASECAMP.accent,
@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
   },
   metrics: {
     flexDirection: "row",
-    marginTop: SP.xl,
-    paddingTop: SP.md,
+    marginTop: SP.md,
+    paddingTop: SP.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: BASECAMP.hairline,
   },
