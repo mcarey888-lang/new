@@ -17,21 +17,29 @@ stays off. `test_recorded_route_planner.py` asserts this directly.
 from __future__ import annotations
 
 import re
-import uuid
-from dataclasses import dataclass, field
-from enum import StrEnum
+from dataclasses import dataclass
 
 from summit_data_engine.config.policy import ValidationPolicy
 from summit_data_engine.models.domain import VerificationStatus
-from summit_data_engine.recorded.traces import (
+from summit_data_engine.routes.geometry import (
     TracePoint,
     ascent_descent_m,
     max_segment_jump_m,
-    nearest_approach_m,
     path_length_m,
     resample,
     to_linestring_coordinates,
     trim_ends,
+)
+from summit_data_engine.routes.matching import match_mountain
+from summit_data_engine.routes.plan import (
+    CandidateMountain,
+    ImportPlan,
+    PlannedFacts,
+    PlannedGeometry,
+    PlannedRoute,
+    QaFlag,
+    SkippedSource,
+    SkipReason,
 )
 
 # How many points a planned canonical line carries. Enough to hold the shape of
@@ -52,29 +60,6 @@ MAX_PRIVACY_TRIM_FRACTION = 0.35
 IDENTITY_NAMESPACE = "recorded"
 
 DERIVATION_METHOD = "recorded_trace_merge_v1"
-
-
-class SkipReason(StrEnum):
-    """Why a trace produced no route. Values are stable; they are reported on."""
-
-    TOO_FEW_POINTS = "too_few_points"
-    TOO_SHORT = "too_short"
-    TOO_LONG = "too_long"
-    GPS_JUMP = "gps_jump"
-    NO_SUMMIT_MATCH = "no_summit_match"
-    AMBIGUOUS_SUMMIT = "ambiguous_summit"
-    IMPLAUSIBLE_ELEVATION = "implausible_elevation"
-    PRIVACY_TRIM_EXHAUSTED = "privacy_trim_exhausted"
-
-
-class QaFlag(StrEnum):
-    """Accepted, but a human should know. Present on the planned record."""
-
-    AUTO_GENERATED_NAME = "auto_generated_name"
-    SINGLE_CONTRIBUTION = "single_contribution"
-    PRIVACY_TRIM_SIGNIFICANT = "privacy_trim_significant"
-    REPORTED_DISTANCE_DIFFERS = "reported_distance_differs"
-    NO_ALTITUDE = "no_altitude"
 
 
 @dataclass(frozen=True)
@@ -104,75 +89,6 @@ class RecordedTrace:
     contributed_duration_secs: tuple[int, ...] = ()
 
 
-@dataclass(frozen=True)
-class CandidateMountain:
-    """A row of `mountains` a trace might belong to."""
-
-    mountain_id: uuid.UUID
-    name: str
-    lat: float
-    lon: float
-    elevation_m: float | None = None
-
-
-@dataclass(frozen=True)
-class PlannedGeometry:
-    """Coordinates are `(longitude, latitude)`, ready for a 4326 LINESTRING."""
-
-    coordinates: list[tuple[float, float]]
-    derivation_method: str
-    source_point_count: int
-
-
-@dataclass(frozen=True)
-class PlannedFacts:
-    distance_km: float
-    total_ascent_m: float
-    total_descent_m: float
-    typical_duration_hours: float | None
-    summit_elevation_m: float | None
-
-
-@dataclass(frozen=True)
-class PlannedRoute:
-    """Everything the apply step needs, with no decisions left to make."""
-
-    trace_id: str
-    mountain_id: uuid.UUID
-    identity_key: str
-    version: str
-    canonical_name: str
-    aliases: tuple[str, ...]
-    description: str
-    status: VerificationStatus
-    geometry: PlannedGeometry
-    facts: PlannedFacts
-    qa_flags: tuple[QaFlag, ...]
-    contribution_count: int
-
-
-@dataclass(frozen=True)
-class SkippedTrace:
-    trace_id: str
-    reason: SkipReason
-    detail: str
-
-
-@dataclass(frozen=True)
-class ImportPlan:
-    planned: list[PlannedRoute] = field(default_factory=list)
-    skipped: list[SkippedTrace] = field(default_factory=list)
-    policy_version: str = ""
-
-    @property
-    def planned_count(self) -> int:
-        return len(self.planned)
-
-    @property
-    def skipped_count(self) -> int:
-        return len(self.skipped)
-
-
 # The app mints a placeholder title of the form "Hike – 24 Sept 2026, 10:37"
 # when the user does not name an activity, and the tracked-route table defaults
 # its location to "GPS Tracked Route". Neither is a route name, and neither
@@ -193,55 +109,16 @@ def looks_auto_generated(name: str) -> bool:
     return any(pattern.match(candidate) for pattern in _AUTO_NAME_PATTERNS)
 
 
-def _match_mountain(
-    points: list[TracePoint],
-    mountains: list[CandidateMountain],
-    tolerance_m: float,
-) -> tuple[CandidateMountain | None, SkipReason | None, str]:
-    """Which mountain, if any, this trace belongs to.
-
-    A trace matches a summit when it passes within `summit_reach_tolerance_m`
-    of it. Where two summits both qualify and neither is clearly closer, the
-    match is refused rather than guessed: `.agents/memory/ambiguous-hill-identity.md`
-    records what name- and proximity-based guessing has already cost us, and a
-    route filed under the wrong mountain is worse than a route filed under none.
-    """
-    approaches = sorted(
-        (
-            (nearest_approach_m(points, mountain.lat, mountain.lon), mountain)
-            for mountain in mountains
-        ),
-        key=lambda pair: (pair[0], str(pair[1].mountain_id)),
-    )
-    within = [(distance, mountain) for distance, mountain in approaches if distance <= tolerance_m]
-
-    if not within:
-        closest = f"{approaches[0][0]:.0f} m" if approaches else "no candidates"
-        return None, SkipReason.NO_SUMMIT_MATCH, f"closest summit approach {closest}"
-
-    if len(within) > 1:
-        (nearest_m, nearest), (second_m, second) = within[0], within[1]
-        # A clear winner has to be closer by at least half the tolerance.
-        if second_m - nearest_m < tolerance_m / 2:
-            return (
-                None,
-                SkipReason.AMBIGUOUS_SUMMIT,
-                f"{nearest.name} at {nearest_m:.0f} m and {second.name} at {second_m:.0f} m",
-            )
-
-    return within[0][1], None, ""
-
-
 def _plan_one(
     trace: RecordedTrace,
     mountains: list[CandidateMountain],
     policy: ValidationPolicy,
     privacy_trim_m: float,
-) -> PlannedRoute | SkippedTrace:
+) -> PlannedRoute | SkippedSource:
     rules = policy.validation
 
     if len(trace.points) < MIN_TRACE_POINTS:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.TOO_FEW_POINTS,
             f"{len(trace.points)} points, minimum {MIN_TRACE_POINTS}",
@@ -249,7 +126,7 @@ def _plan_one(
 
     jump_m = max_segment_jump_m(trace.points)
     if jump_m > rules.max_segment_jump_m:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.GPS_JUMP,
             f"{jump_m:.0f} m gap between fixes, limit {rules.max_segment_jump_m:.0f} m",
@@ -259,12 +136,12 @@ def _plan_one(
     # place, so there is no privacy reason to hide the approach to it — and
     # matching after the trim would lose the summit on exactly the routes that
     # finish on one.
-    mountain, reason, detail = _match_mountain(
+    mountain, reason, detail = match_mountain(
         trace.points, mountains, rules.summit_reach_tolerance_m
     )
     if mountain is None:
         assert reason is not None
-        return SkippedTrace(trace.trace_id, reason, detail)
+        return SkippedSource(trace.trace_id, reason, detail)
 
     # Privacy trim BEFORE any measurement, so every published number describes
     # the line that will actually be published. The summit is protected from
@@ -278,7 +155,7 @@ def _plan_one(
         protect_radius_m=rules.summit_reach_tolerance_m,
     )
     if len(trimmed) < MIN_TRACE_POINTS:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.PRIVACY_TRIM_EXHAUSTED,
             f"{len(trimmed)} points survived a {privacy_trim_m:.0f} m trim",
@@ -287,20 +164,20 @@ def _plan_one(
     trimmed_length_m = path_length_m(trimmed)
     removed_fraction = 1.0 - (trimmed_length_m / raw_length_m) if raw_length_m > 0 else 1.0
     if removed_fraction > MAX_PRIVACY_TRIM_FRACTION:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.PRIVACY_TRIM_EXHAUSTED,
             f"trim removed {removed_fraction:.0%} of the line",
         )
 
     if trimmed_length_m < rules.min_route_length_m:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.TOO_SHORT,
             f"{trimmed_length_m:.0f} m, minimum {rules.min_route_length_m:.0f} m",
         )
     if trimmed_length_m > rules.max_route_length_m:
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.TOO_LONG,
             f"{trimmed_length_m:.0f} m, maximum {rules.max_route_length_m:.0f} m",
@@ -310,7 +187,7 @@ def _plan_one(
     if altitudes and not all(
         rules.min_elevation_m <= altitude <= rules.max_elevation_m for altitude in altitudes
     ):
-        return SkippedTrace(
+        return SkippedSource(
             trace.trace_id,
             SkipReason.IMPLAUSIBLE_ELEVATION,
             f"altitudes {min(altitudes):.0f}–{max(altitudes):.0f} m outside "
@@ -366,7 +243,7 @@ def _plan_one(
     typical_hours = (sorted(durations)[len(durations) // 2] / 3600) if durations else None
 
     return PlannedRoute(
-        trace_id=trace.trace_id,
+        source_id=trace.trace_id,
         mountain_id=mountain.mountain_id,
         # Keyed on the trace's own immutable id, never on its name: names are
         # editable and duplicated, and `identity_key` is marked immutable.
@@ -412,11 +289,11 @@ def plan_import(
     The caller applies the plan, or reads it and decides not to.
     """
     planned: list[PlannedRoute] = []
-    skipped: list[SkippedTrace] = []
+    skipped: list[SkippedSource] = []
 
     for trace in traces:
         outcome = _plan_one(trace, mountains, policy, privacy_trim_m)
-        if isinstance(outcome, SkippedTrace):
+        if isinstance(outcome, SkippedSource):
             skipped.append(outcome)
         else:
             planned.append(outcome)

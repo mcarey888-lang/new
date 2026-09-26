@@ -16,14 +16,11 @@ from summit_data_engine.config.policy import load_validation_policy
 from summit_data_engine.models.domain import VerificationStatus
 from summit_data_engine.recorded.planner import (
     CANONICAL_SAMPLE_COUNT,
-    CandidateMountain,
-    QaFlag,
     RecordedTrace,
-    SkipReason,
     looks_auto_generated,
     plan_import,
 )
-from summit_data_engine.recorded.traces import (
+from summit_data_engine.routes.geometry import (
     TracePoint,
     ascent_descent_m,
     haversine_m,
@@ -33,6 +30,7 @@ from summit_data_engine.recorded.traces import (
     to_linestring_coordinates,
     trim_ends,
 )
+from summit_data_engine.routes.plan import CandidateMountain, QaFlag, SkipReason
 
 POLICY_PATH = Path(__file__).parents[1] / "config" / "validation_policy.toml"
 

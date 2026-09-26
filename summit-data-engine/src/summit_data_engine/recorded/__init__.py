@@ -22,17 +22,16 @@ human decision made elsewhere.
 
 from __future__ import annotations
 
-from summit_data_engine.recorded.planner import (
+from summit_data_engine.recorded.planner import RecordedTrace, plan_import
+from summit_data_engine.routes.geometry import TracePoint
+from summit_data_engine.routes.plan import (
     CandidateMountain,
     ImportPlan,
     PlannedGeometry,
     PlannedRoute,
-    RecordedTrace,
-    SkippedTrace,
+    SkippedSource,
     SkipReason,
-    plan_import,
 )
-from summit_data_engine.recorded.traces import TracePoint
 
 __all__ = [
     "CandidateMountain",
@@ -41,7 +40,7 @@ __all__ = [
     "PlannedRoute",
     "RecordedTrace",
     "SkipReason",
-    "SkippedTrace",
+    "SkippedSource",
     "TracePoint",
     "plan_import",
 ]

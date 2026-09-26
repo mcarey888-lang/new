@@ -33,7 +33,7 @@ from summit_data_engine.db.models import (
     RouteIdentity,
     SourceBundle,
 )
-from summit_data_engine.recorded.planner import ImportPlan, PlannedRoute
+from summit_data_engine.routes.plan import ImportPlan, PlannedRoute
 
 # Distinct from the international importer's namespace: the two sources must
 # never be able to collide on a generated id.
@@ -164,7 +164,7 @@ def _write_route(session: Session, route: PlannedRoute, bundle: SourceBundle) ->
                 # The trace id, not the recorder. The link back to the evidence
                 # must never become a link back to a person.
                 source_member_type="recorded_trace",
-                source_member_id=route.trace_id,
+                source_member_id=route.source_id,
                 direction=1,
             )
         )
