@@ -212,7 +212,14 @@ export function presentMountain(lookup: MountainLookupResponse): PresentedMounta
     ? { latitude: point.latitude, longitude: point.longitude }
     : null;
   const discoveryFacts = discoveryCandidate ? lookup.catalogueFacts : undefined;
-  const place = [lookup.region, lookup.country].filter(part => !!part && part.trim()).join(", ") || null;
+  // The catalogue region can be a hill-list section ("34B: Lake District C&W"),
+  // not a visitor-facing place. Prefer the verified area without changing the
+  // original region used for mountain identity resolution.
+  const codedRegion = /^\d{1,3}[A-Za-z]?:\s*/.test(lookup.region ?? "");
+  const displayRegion = codedRegion && canonical && facts?.verificationStatus === "verified" && facts.area?.trim()
+    ? facts.area.trim().replace(/\s+-\s+/g, " – ")
+    : lookup.region?.replace(/^\d{1,3}[A-Za-z]?:\s*/, "").trim();
+  const place = [displayRegion, lookup.country].filter(part => !!part && part.trim()).join(", ") || null;
 
   /* The mountain's own elevation, which is an ALTITUDE. */
   const summit = fact(

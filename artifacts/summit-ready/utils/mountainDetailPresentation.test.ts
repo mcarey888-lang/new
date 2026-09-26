@@ -91,6 +91,20 @@ describe("formatting never invents a value", () => {
     expect(firstSentence("   ")).toBeNull();
     expect(firstSentence(undefined)).toBeNull();
   });
+
+  it("shows the recorded area instead of a catalogue section code", () => {
+    const mountain = presentMountain(canonicalLookup({
+      region: "34B: Lake District C&W",
+      country: "England",
+      trustedFacts: {
+        verificationStatus: "verified",
+        area: "Lake District - Western Fells",
+        elevationM: 899,
+      },
+    }));
+    expect(mountain.place).toBe("Lake District – Western Fells, England");
+    expect(mountain.overview.find(f => f.key === "place")?.value).toBe(mountain.place);
+  });
 });
 
 describe("presentMountain", () => {
