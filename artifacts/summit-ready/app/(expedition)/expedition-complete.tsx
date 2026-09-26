@@ -104,9 +104,15 @@ export default function ExpeditionCompleteScreen() {
 
   const expeditionName   = expeditionSnapshot?.challengeName ?? "Your Expedition";
   const mountainName     = expeditionSnapshot?.targetMountainName ?? expeditionName;
-  const completionImageUri = hasApprovedMountainImage(mountainName)
+  // Don't display an older challenge hero on the completed Matterhorn screen
+  // before the reviewed Batch 01 artwork. The approved endpoint is only
+  // available in the development artwork preview.
+  const reviewedMatterhornUri = __DEV__ && mountainName.trim().toLowerCase() === "matterhorn"
     ? mountainImageUri(mountainName, { width: 640, height: 360 })
-    : heroArtwork ?? mountainImageUri(mountainName, { width: 640, height: 360 });
+    : null;
+  const completionImageUri = reviewedMatterhornUri ?? (hasApprovedMountainImage(mountainName)
+    ? mountainImageUri(mountainName, { width: 640, height: 360 })
+    : heroArtwork ?? mountainImageUri(mountainName, { width: 640, height: 360 }));
   const routeCount       = new Set(expeditionSnapshot?.completedRoutes ?? []).size;
 
   // ── Mark complete once (idempotent) ──────────────────────────────────────────
