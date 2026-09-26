@@ -341,6 +341,8 @@ export interface Session {
   treadmillInclinePct?: number;
   stepperFloors?: number;
   activityId?: string;
+  /** Local logged-hike link; unlike activityId, this is not a GPS/canonical ID. */
+  sourceHikeId?: string;
   expeditionId?: string;
   routeIdentityKey?: string;
   summitIdentityKey?: string;

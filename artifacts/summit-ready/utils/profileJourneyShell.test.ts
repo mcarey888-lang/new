@@ -152,7 +152,10 @@ describe("the progression screens use the shared system", () => {
       .toMatch(/backTestID="elevation-history-back"/);
   });
 
-  it("the Elevation Bank ledger still states what it counts", () => {
-    expect(read("app/elevation-history.tsx")).toMatch(/qualified recorded outdoor ascent/);
+  it("the Elevation Bank explains recorded versus self-reported ascent", () => {
+    const history = read("app/elevation-history.tsx");
+    expect(history).toMatch(/Self-reported hikes and completed training sessions count toward/);
+    expect(history).toMatch(/not GPS-verified/);
+    expect(history).toMatch(/not yet synced between devices/);
   });
 });

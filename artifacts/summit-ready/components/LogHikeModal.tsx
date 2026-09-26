@@ -70,7 +70,7 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
     if (!name.trim()) return;
     setSaving(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await logExploreHike({ name: name.trim(), date, distance, elevationGain, timeTaken, notes });
+    const hikeId = await logExploreHike({ name: name.trim(), date, distance, elevationGain, timeTaken, notes });
     if (hasSummitGoal && addToSummit) {
       await addSession({
         type: "bigDay",
@@ -83,6 +83,7 @@ export function LogHikeModal({ visible, prefillName, prefillDistance, prefillEle
         completed: true,
         weekNumber: currentWeekNumber,
         hillName: name.trim(),
+        sourceHikeId: hikeId,
       });
     }
     setSaving(false);

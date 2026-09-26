@@ -4,8 +4,10 @@ import React from "react";
 import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Defs, LinearGradient as SvgGradient, Path, Stop } from "react-native-svg";
 import { T } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
 import { useElevationBank } from "@/hooks/useElevationBank";
 import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
+import { calculateManualBankAscent } from "@/utils/manualBankAscent";
 
 type Props = {
   onPress?: () => void;
@@ -32,17 +34,25 @@ function BankMark() {
 
 export function ElevationBankCard({ onPress, expanded = false, emphasis = false }: Props) {
   const { presentation, isSignedIn, refetch } = useElevationBank();
+  const { sessions, exploreHikes, isLoading: localLoading } = useApp();
+  const manual = calculateManualBankAscent(sessions, exploreHikes);
   const ready = presentation.kind === "ready" ? presentation.data : null;
   const empty = presentation.kind === "empty";
+  const canShowTotal = isSignedIn && !localLoading && manual.status === "available" && (ready !== null || empty);
+  const manualAscent = manual.status === "available" ? manual.lifetimeM : 0;
+  const totalAscent = (ready?.lifetimeAscentM ?? 0) + manualAscent;
+  const monthAscent = (ready?.periodAscentM ?? 0) + (manual.status === "available" ? manual.monthM : 0);
+  const hasManual = isSignedIn && !localLoading && manual.status === "available" && manual.activities > 0;
+  const manualOnly = hasManual && presentation.kind === "unavailable";
   const recent = ready?.recentCredits ?? [];
   const bars = recent.slice(0, 7).reverse();
   const largest = Math.max(1, ...bars.map(credit => credit.creditedAscentM));
 
   const metrics = [
-    { label: "THIS MONTH", value: ready ? displayMetres(ready.periodAscentM) : empty ? "0 m" : "—", Icon: TrendingUp },
-    { label: "EVEREST EQUIVALENTS", value: ready ? ready.everestEquivalent.toFixed(1) : empty ? "0.0" : "—", Icon: Mountain },
-    { label: "RECENT CREDITS", value: ready ? String(recent.length) : empty ? "0" : "—", Icon: Flag },
-    { label: "LATEST CREDIT", value: recent[0] ? displayMetres(recent[0].creditedAscentM) : "—", Icon: ArrowUpRight },
+    { label: manualOnly ? "MANUAL THIS MONTH" : "THIS MONTH", value: canShowTotal ? displayMetres(monthAscent) : manualOnly && manual.status === "available" ? displayMetres(manual.monthM) : "—", Icon: TrendingUp },
+    { label: "EVEREST EQUIVALENTS", value: canShowTotal ? (totalAscent / 8_849).toFixed(1) : "—", Icon: Mountain },
+    { label: "RECORDED CREDITS", value: ready ? String(ready.creditedActivities) : empty ? "0" : "—", Icon: Flag },
+    { label: hasManual ? "MANUAL ENTRIES" : "LATEST CREDIT", value: hasManual && manual.status === "available" ? String(manual.activities) : recent[0] ? displayMetres(recent[0].creditedAscentM) : "—", Icon: ArrowUpRight },
   ];
 
   return (
@@ -84,21 +94,25 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
               )}
             </View>
           </View>
-          <View style={styles.heroValue} testID={ready ? "elevation-bank-values" : undefined}>
+          <View style={styles.heroValue} testID={canShowTotal ? "elevation-bank-values" : manualOnly ? "elevation-bank-manual-only" : undefined}>
             <Text
               style={[styles.total, emphasis && styles.totalEmphasis]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.6}
             >
-              {ready ? displayMetres(ready.lifetimeAscentM) : empty ? "0 m" : "— m"}
+              {canShowTotal ? displayMetres(totalAscent) : manualOnly ? displayMetres(manualAscent) : "— m"}
             </Text>
-            <Text style={styles.scope}>Qualified recorded outdoor ascent</Text>
+            <Text style={styles.scope}>
+              {manualOnly
+                ? "Self-reported on this device · recorded balance unavailable"
+                : hasManual ? "Recorded + self-reported ascent · this device" : "Qualified recorded outdoor ascent"}
+            </Text>
           </View>
-          {presentation.kind === "loading" && (
-            <Text style={styles.heroStatus} testID="elevation-bank-loading">Loading your credited ascent…</Text>
+          {(presentation.kind === "loading" || localLoading) && (
+            <Text style={styles.heroStatus} testID="elevation-bank-loading">Loading your ascent…</Text>
           )}
-          {!isSignedIn && presentation.kind !== "loading" && (
+          {!isSignedIn && presentation.kind !== "loading" && !localLoading && (
             <Text style={styles.heroStatus}>Sign in to see your personal, ledger-backed ascent.</Text>
           )}
           {isSignedIn && presentation.kind === "unavailable" && (
@@ -115,15 +129,24 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
               </TouchableOpacity>
             </View>
           )}
-          {empty && (
+          {isSignedIn && !localLoading && manual.status === "unavailable" && (
+            <Text style={styles.heroStatus}>Some saved ascent could not be calculated.</Text>
+          )}
+          {empty && !localLoading && manual.status === "available" && manual.activities === 0 && (
             <Text style={styles.heroStatus} testID="elevation-bank-empty">
-              No qualified recorded ascent yet.
+              No recorded or manually logged ascent yet.
             </Text>
           )}
         </View>
       </ImageBackground>
 
       <View style={styles.panel}>
+        {hasManual && (
+          <View style={styles.breakdown} testID="elevation-bank-manual-breakdown">
+            <Text style={styles.breakdownText}>Recorded outdoor: {ready ? displayMetres(ready.lifetimeAscentM) : empty ? "0 m" : "—"}</Text>
+            <Text style={styles.breakdownText}>Self-reported on this device: {displayMetres(manualAscent)}</Text>
+          </View>
+        )}
         <View style={styles.metricsGrid}>
           {metrics.map(({ label, value, Icon }) => (
             <View key={label} style={styles.metric}>
@@ -134,7 +157,7 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
           ))}
         </View>
         <View style={styles.chartBlock}>
-          <Text style={styles.chartTitle}>RECENT CREDIT ASCENT</Text>
+          <Text style={styles.chartTitle}>RECENT RECORDED CREDIT ASCENT</Text>
           {bars.length ? (
             <View style={styles.chart}>
               {bars.map((credit, index) => (
@@ -154,7 +177,7 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
               ))}
             </View>
           ) : (
-            <Text style={styles.chartEmpty}>{presentation.kind === "unavailable" ? "Credit history unavailable" : "No recent credits"}</Text>
+            <Text style={styles.chartEmpty}>{presentation.kind === "unavailable" ? "Credit history unavailable" : "No recent recorded credits"}</Text>
           )}
         </View>
         {expanded && recent.length > 0 && (
@@ -219,6 +242,8 @@ const styles = StyleSheet.create({
     borderColor: T.blue + "35",
     backgroundColor: "rgba(1,20,36,0.97)",
   },
+  breakdown: { paddingHorizontal: 6, paddingBottom: 11, marginBottom: 5, borderBottomWidth: 1, borderBottomColor: T.blue + "22", gap: 3 },
+  breakdownText: { color: T.basecampTextMuted, fontSize: 11, lineHeight: 16, fontFamily: "Inter_500Medium" },
   metricsGrid: { flexDirection: "row", flexWrap: "wrap" },
   metric: {
     width: "50%",

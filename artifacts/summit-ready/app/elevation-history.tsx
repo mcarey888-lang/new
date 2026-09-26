@@ -40,8 +40,8 @@ export default function ElevationHistoryScreen() {
         <SREyebrow tone={BASECAMP.accent}>PRIVATE ACTIVITY RECORD</SREyebrow>
         <Text style={styles.title}>Elevation History</Text>
         <Text style={styles.subtitle}>
-          One physical activity, one effective personal credit. Corrections
-          remain visible without rewriting the original record.
+          Your total includes recorded credits and ascent you entered yourself.
+          Recorded credits keep their own activity history below.
         </Text>
 
         <ElevationBankCard expanded emphasis />
@@ -49,10 +49,10 @@ export default function ElevationHistoryScreen() {
         <View style={styles.note}>
           <Info size={16} color={BASECAMP.accent} />
           <Text style={styles.noteText}>
-            Only qualified recorded outdoor ascent appears in this ledger.
-            Manual, indoor, and unavailable or untrusted evidence remain in
-            your existing history but do not count toward Elevation Bank
-            totals.
+            Self-reported hikes and completed training sessions count toward
+            the total shown here on this device. They are not GPS-verified or
+            recorded ledger credits, and do not grant verified achievements.
+            Manual entries are not yet synced between devices.
           </Text>
         </View>
       </ScrollView>

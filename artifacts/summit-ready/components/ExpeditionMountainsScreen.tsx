@@ -377,6 +377,7 @@ export default function ExpeditionMountainsScreen() {
     summitGoal,
     sessions,
     exploreHikes,
+    logExploreHike,
     trainingPlan,
     shellMode,
   } = useApp();
@@ -1203,6 +1204,17 @@ export default function ExpeditionMountainsScreen() {
           hikesLogged: prev.hikesLogged + 1,
           creditedHikeIds: prev.creditedHikeIds,
         },
+      });
+      // A manually entered expedition hike needs an individual local record
+      // too; the progress aggregate alone cannot be safely counted in the Bank.
+      await logExploreHike({
+        name: `Expedition hike — ${activeExpedition.challengeName}`,
+        date: new Date().toISOString(),
+        distance: isNaN(distKm) ? 0 : distKm,
+        elevationGain: elevM,
+        timeTaken: 0,
+        notes: "Self-reported expedition hike",
+        expeditionId: activeExpeditionId,
       });
       setLogElev("");
       setLogDist("");
