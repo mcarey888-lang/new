@@ -17,9 +17,19 @@ const code = (src: string) =>
 const ACCOUNT = read("app/(tabs)/account.tsx");
 const ACCOUNT_CODE = code(ACCOUNT);
 const PROFILE_PRESENTATION = code(read("components/profile/PrimaryProfilePresentation.tsx"));
+const DEMO_COMMUNITY = code(read("components/profile/DemoCommunityPreview.tsx"));
 const EXPEDITION_PROFILE = code(read("app/(expedition)/profile.tsx"));
 
 describe("Profile is a mountain résumé", () => {
+  it("shows fictional member stories only as a preview, outside real post and achievement data", () => {
+    const hub = code(read("components/profile/CommunityHub.tsx"));
+    expect(DEMO_COMMUNITY).toMatch(/Fictional members and achievements/);
+    expect(DEMO_COMMUNITY).toMatch(/Perfect Week/);
+    expect(DEMO_COMMUNITY).toMatch(/First Thousand/);
+    expect(DEMO_COMMUNITY).not.toMatch(/createCommunityPost|ownerUserId|onReport|onDelete/);
+    expect(hub).toMatch(/view === "members" && !loading && visiblePosts\.length === 0 && <DemoCommunityPreview/);
+    expect(ACCOUNT_CODE).toMatch(/Sign in to share with SummitReady members\.[\s\S]*?<DemoCommunityPreview/);
+  });
   it("exposes the five sections as tabs", () => {
     expect(ACCOUNT_CODE).toMatch(/PrimaryProfilePresentation/);
     expect(PROFILE_PRESENTATION).toMatch(/SRUnderlineTabs/);

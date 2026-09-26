@@ -70,6 +70,7 @@ import {
   type PrimaryProfileTab,
 } from "@/components/profile/PrimaryProfilePresentation";
 import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
+import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
 import { useCommunity } from "@/hooks/useCommunity";
 import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
@@ -765,6 +766,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             <Text style={styles.sectionLabel}>COMMUNITY</Text>
             <Text style={styles.communityTitle}>Mountain stories</Text>
             <Text style={styles.communityNote}>Sign in to share with SummitReady members. Your activity and journal photos remain private.</Text>
+            <DemoCommunityPreview />
           </View>
         )}
         {/* Training History */}

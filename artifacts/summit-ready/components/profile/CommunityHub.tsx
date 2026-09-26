@@ -4,6 +4,7 @@ import { Image as ExpoImage } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { Alert, Image, type ImageSourcePropType, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
+import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
 
 export type CommunityPost = {
   id: string;
@@ -201,6 +202,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
           <Text style={styles.refreshText}>Show more stories</Text>
         </TouchableOpacity>
       )}
+      {view === "members" && !loading && visiblePosts.length === 0 && <DemoCommunityPreview />}
       <TouchableOpacity onPress={onRefresh} disabled={loading || busy} style={styles.refresh} accessibilityRole="button" accessibilityLabel="Refresh community posts"><RefreshCw size={15} color={BASECAMP.textMuted} /><Text style={styles.refreshText}>Refresh stories</Text></TouchableOpacity>
     </View>
   );

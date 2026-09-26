@@ -8,3 +8,9 @@ Member sharing is an opt-in, per-post audience choice between Only me and all si
 **Why:** The user asked for Facebook-like audience controls rather than an automatically public profile. Journal photos are device-local and may reveal people or private locations, while Elevation Bank credits have a separate evidence standard.
 
 **How to apply:** Preserve private defaults on all new posting surfaces, isolate cached private posts and photo URLs by active account on shared devices, strip photo metadata before storing, and enforce member/owner checks on every media read.
+
+Sample member stories are presentation-only examples, visibly labeled as fictional. Never seed them into the member API or mix sample achievements into personal progress; show them separately when the real feed is empty or unavailable, and do not let them conceal a feed error.
+
+**Why:** The user wanted to see what a populated community could look like before real members post. Treating fictional members as live accounts would misrepresent social activity and blur the user's private achievement totals.
+
+**How to apply:** Keep preview cards read-only and independent of authentication, reporting, photo uploads, award evidence, and real feed state. When real member posts are available, let them replace the preview.
