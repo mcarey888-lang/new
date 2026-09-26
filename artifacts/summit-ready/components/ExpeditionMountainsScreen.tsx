@@ -75,6 +75,7 @@ import {
 } from "@/utils/signatureExpedition";
 import { createReadinessInput } from "@/utils/readinessAdapter";
 import { projectExpeditionReadiness } from "@/utils/expeditionReadinessProjection";
+import { validateExpeditionResultContract } from "@/utils/expeditionResultContract";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -622,6 +623,7 @@ export default function ExpeditionMountainsScreen() {
         return;
       }
       if (!res.ok) throw new Error(body.error ?? `Server error ${res.status}`);
+      validateExpeditionResultContract(body, { resolveOnly, mode });
       setRouteChooserOpen(false);
       setRouteChoices([]);
       setPendingRouteRequest(null);
@@ -1257,24 +1259,8 @@ export default function ExpeditionMountainsScreen() {
   // ── Results view ─────────────────────────────────────────────────────────────
   if (view === "results" && results) {
     const tp = results.targetProfile;
-    const hills = results.recommendedHills;
     const manual = results.manualBuilder;
-    const readinessProjection = projectExpeditionReadiness(
-      shellMode === "training" ? readinessInput : null,
-      hills.map(hill => ({
-        routeIdentityKey: hill.routeIdentityKey ?? hill.routeId,
-        routeDataStatus: hill.routeDataStatus,
-        dataSource: hill.dataSource,
-        confidence: hill.routeDataStatus === "verified" && hill.dataSource === "canonical_verified"
-          ? "verified"
-          : null,
-        // Use facts for one actual route completion, never the aggregate virtual
-        // elevation total or planned repeat count.
-        distanceKm: hill.routeDistance,
-        ascentM: hill.elevation,
-      })),
-    );
-    if (results.resolutionOnly && setupResolved && !creationChoice) {
+    if (results.resolutionOnly) {
       return (
         <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 14 }}>
@@ -1444,6 +1430,24 @@ export default function ExpeditionMountainsScreen() {
         </LinearGradient>
       );
     }
+    // Resolve-only and manual responses do not promise recommendedHills.
+    // Only the full automatic plan reaches the readiness projection.
+    const hills = results.recommendedHills;
+    const readinessProjection = projectExpeditionReadiness(
+      shellMode === "training" ? readinessInput : null,
+      hills.map(hill => ({
+        routeIdentityKey: hill.routeIdentityKey ?? hill.routeId,
+        routeDataStatus: hill.routeDataStatus,
+        dataSource: hill.dataSource,
+        confidence: hill.routeDataStatus === "verified" && hill.dataSource === "canonical_verified"
+          ? "verified"
+          : null,
+        // Use facts for one actual route completion, never the aggregate virtual
+        // elevation total or planned repeat count.
+        distanceKm: hill.routeDistance,
+        ascentM: hill.elevation,
+      })),
+    );
     const currentTotals = plannedTotals(hills);
     const score = matchPercent(currentTotals.gain, currentTotals.distance, tp);
     const bd = results.scoreBreakdown;
