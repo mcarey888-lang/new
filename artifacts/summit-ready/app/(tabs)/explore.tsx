@@ -26,6 +26,8 @@ import { CURATED_HILLS, type Trail } from "@/constants/trailData";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
+import type { NearbyHill } from "@/context/AppContext";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -287,6 +289,60 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
   );
 }
 
+function NearbyHillResultRow({ hill, postcode }: { hill: NearbyHill; postcode: string }) {
+  function openHill() {
+    router.push({
+      pathname: "/hill-detail" as any,
+      params: {
+        name: hill.name,
+        routeIdentityKey: hill.routeIdentityKey ?? "",
+        summitIdentityKey: hill.summitIdentityKey ?? "",
+        location: postcode,
+        lat: hill.lat?.toString() ?? "",
+        lng: hill.lng?.toString() ?? "",
+        elevation: hill.elevation.toString(),
+        distance: hill.distance.toString(),
+        routeDistance: hill.routeDistance?.toString() ?? "",
+        estimatedTime: hill.estimatedTime ?? "",
+        routeType: hill.routeType ?? "",
+        grade: hill.grade,
+        surface: hill.surface,
+        emoji: hill.emoji,
+      },
+    });
+  }
+
+  return (
+    <SRPanel
+      radius={7.5}
+      onPress={openHill}
+      accessibilityLabel={`${hill.name}, ${hill.distance} kilometres from ${postcode}, ${hill.elevation} metres of ascent. View hill details.`}
+      style={styles.result}
+    >
+      <View style={styles.resultRow}>
+        <View style={styles.localHillIcon}>
+          <MountainIcon size={23} color={EXPLORE.accent} />
+        </View>
+        <View style={styles.resultBody}>
+          <Text style={styles.resultName} numberOfLines={2}>{hill.name}</Text>
+          <Text style={styles.resultPlace} numberOfLines={1}>{hill.surface}</Text>
+          <View style={styles.resultStats}>
+            <View style={styles.resultTag}>
+              <MapPin size={11} color={BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{hill.distance} km away</Text>
+            </View>
+            <View style={styles.resultTag}>
+              <TrendingUp size={11} color={BASECAMP.textDim} />
+              <Text style={styles.resultTagText}>{hill.elevation} m ascent</Text>
+            </View>
+          </View>
+        </View>
+        <ChevronRight size={15} color={BASECAMP.textFaint} />
+      </View>
+    </SRPanel>
+  );
+}
+
 export default function ExploreScreen() {
   useScreenView("explore");
   const insets = useSafeAreaInsets();
@@ -303,6 +359,10 @@ export default function ExploreScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNoResult, setAiNoResult] = useState(false);
+  const [nearbyHills, setNearbyHills] = useState<NearbyHill[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbySearched, setNearbySearched] = useState(false);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
   const requestId = useRef(0);
   const aiRequestGuard = useMemo(() => createExploreAiRequestGuard(), []);
   const abortRef = useRef<AbortController | null>(null);
@@ -328,6 +388,8 @@ export default function ExploreScreen() {
   const compactBrand = width < 430;
 
   const textQuery = query.trim();
+  const postcode = normalizeUkPostcode(textQuery);
+  const incompletePostcode = !postcode && looksLikeUkPostcode(textQuery);
   const queryTooShort = Array.from(textQuery).length < 2;
   const searching = textQuery.length > 0 || filter !== "all";
 
@@ -385,6 +447,40 @@ export default function ExploreScreen() {
     }
   };
 
+  const fetchNearbyHills = async (term: string) => {
+    aiRequestGuard.invalidate();
+    const currentRequest = ++requestId.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setNearbyLoading(true);
+    setNearbySearched(false);
+    setNearbyError(null);
+    try {
+      const response = await fetch(`${API_BASE}/hills-unified`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location: term, radius: 25 }),
+        signal: controller.signal,
+      });
+      if (currentRequest !== requestId.current) return;
+      if (!response.ok) throw new Error(response.status === 429
+        ? "Search is busy. Wait a moment and try again."
+        : "Could not find hills near this postcode. Check it and try again.");
+      const data = await response.json() as { hills: NearbyHill[] };
+      if (currentRequest !== requestId.current) return;
+      if (!Array.isArray(data.hills)) throw new Error("Nearby hills are unavailable right now.");
+      setNearbyHills(data.hills);
+      setNearbySearched(true);
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError" || currentRequest !== requestId.current) return;
+      setNearbyHills([]);
+      setNearbyError(error instanceof Error ? error.message : "Nearby hills are unavailable right now.");
+    } finally {
+      if (currentRequest === requestId.current) setNearbyLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -412,18 +508,20 @@ export default function ExploreScreen() {
       setHasMore(false);
       return;
     }
+    if (incompletePostcode) return;
     if (committedQueryRef.current === textQuery) return;
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
-      void fetchCatalogue(textQuery);
-    }, 300);
+      if (postcode) void fetchNearbyHills(postcode);
+      else void fetchCatalogue(textQuery);
+    }, postcode ? 450 : 300);
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
     };
-  }, [textQuery, queryTooShort]);
+  }, [textQuery, queryTooShort, postcode, incompletePostcode]);
 
   useEffect(() => () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -438,7 +536,8 @@ export default function ExploreScreen() {
       debounceTimerRef.current = null;
     }
     committedQueryRef.current = term;
-    void fetchCatalogue(term, false, true);
+    if (postcode) void fetchNearbyHills(postcode);
+    else if (!incompletePostcode) void fetchCatalogue(term, false, true);
   };
 
   const updateQuery = (value: string) => {
@@ -460,11 +559,17 @@ export default function ExploreScreen() {
     setAiError(null);
     setAiNoResult(false);
     setAiLoading(false);
+    setNearbyHills([]);
+    setNearbyLoading(false);
+    setNearbySearched(false);
+    setNearbyError(null);
+    if (normalizeUkPostcode(value)) setFilter("hills");
   };
 
   const requestAiSuggestion = async (termOverride?: string, afterSuccessfulEmptySearch = false) => {
     const term = termOverride ?? query.trim();
-    if (Array.from(term).length < 2 || (!afterSuccessfulEmptySearch &&
+    if (normalizeUkPostcode(term) || looksLikeUkPostcode(term) ||
+        Array.from(term).length < 2 || (!afterSuccessfulEmptySearch &&
         (!catalogueSearched || catalogueUnavailable || discoveryError || discoveryItems.length > 0))) return;
     const currentAiRequest = aiRequestGuard.begin();
     setAiLoading(true);
@@ -588,7 +693,7 @@ export default function ExploreScreen() {
               onPress={submitSearch}
               disabled={queryTooShort}
               accessibilityRole="button"
-              accessibilityLabel="Search peaks worldwide"
+              accessibilityLabel="Search peaks or local hills by postcode"
               accessibilityState={{ disabled: queryTooShort }}
               hitSlop={HIT.slop}
             >
@@ -596,13 +701,13 @@ export default function ExploreScreen() {
             </Pressable>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search local peaks, regions..."
+              placeholder="Peaks, regions or UK postcode..."
               placeholderTextColor={BASECAMP.textDim}
               value={query}
               onChangeText={updateQuery}
               returnKeyType="search"
               onSubmitEditing={submitSearch}
-              accessibilityLabel="Search local peaks, regions"
+              accessibilityLabel="Search peaks, regions or UK postcode"
             />
             {query.length > 0 ? (
               <Pressable
@@ -654,8 +759,9 @@ export default function ExploreScreen() {
             <View style={styles.gutter}>
               <SRSectionHeader title={queryTooShort
                 ? "Search"
-                : textQuery
-                ? "Mountain search"
+                : postcode ? `Hills near ${postcode}`
+                : incompletePostcode ? "Find local hills"
+                : textQuery ? "Mountain search"
                 : "Selected peaks"} />
             </View>
             {textQuery ? (
@@ -670,6 +776,40 @@ export default function ExploreScreen() {
                       Enter at least two characters to search the mountain catalogue. Terrain filters apply only to the curated browse list.
                     </Text>
                   </View>
+                ) : postcode ? (
+                  <>
+                    <Text style={styles.searchScope}>
+                      Training hills around {postcode} (25 km). Distances and ascent are approximate; check route details before setting out.
+                    </Text>
+                    {(nearbyLoading || !nearbySearched) && !nearbyError ? (
+                      <View style={styles.searchStatus}>
+                        <ActivityIndicator size="small" color={EXPLORE.accent} />
+                        <Text style={styles.statusText}>Finding local hills…</Text>
+                      </View>
+                    ) : null}
+                    {nearbyError ? (
+                      <View style={styles.errorPanel}>
+                        <Text style={styles.errorText}>{nearbyError}</Text>
+                        <Pressable onPress={() => void fetchNearbyHills(postcode)} accessibilityRole="button" style={styles.textAction}>
+                          <Text style={styles.actionText}>Retry local hill search</Text>
+                        </Pressable>
+                      </View>
+                    ) : nearbyHills.map(hill => (
+                      <NearbyHillResultRow key={`${hill.routeIdentityKey ?? hill.name}:${hill.lat ?? ""}`} hill={hill} postcode={postcode} />
+                    ))}
+                    {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length === 0 ? (
+                      <View style={styles.emptySearch}>
+                        <MapPin size={20} color={BASECAMP.textDim} />
+                        <Text style={styles.emptyTitle}>No hills found within 25 km</Text>
+                        <Text style={styles.emptyBody}>Try a different postcode or widen the search radius in Training Hills.</Text>
+                        <Pressable onPress={() => router.push("/hills-finder" as any)} accessibilityRole="button" style={styles.textAction}>
+                          <Text style={styles.actionText}>Open Training Hills</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </>
+                ) : incompletePostcode ? (
+                  <Text style={styles.shortQueryHint}>Enter a full UK postcode to find local training hills.</Text>
                 ) : (
                   <>
                 <Text style={styles.searchScope}>
@@ -941,6 +1081,10 @@ const styles = StyleSheet.create({
   resultImage: {
     width: 68, height: 62, borderRadius: 5.5, overflow: "hidden",
     backgroundColor: "#12202A", flexShrink: 0,
+  },
+  localHillIcon: {
+    width: 68, height: 62, borderRadius: 5.5, alignItems: "center", justifyContent: "center",
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
   resultBody: { flex: 1, minWidth: 0 },
   resultName: { ...TYPE.bodyBold, fontSize: 13.5, lineHeight: 17, color: BASECAMP.text },
