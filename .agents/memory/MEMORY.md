@@ -67,3 +67,4 @@
 - [Community sharing privacy](community-sharing-privacy.md) — member posts are opt-in per post, private by default; isolate private media across account changes.
 - [Android community responsiveness](android-community-freeze.md) — Android Activity/Photos freeze needs stable token effects and bounded native photo mounting; signed-out web checks cannot confirm it.
 - [Generated binary upload requests](orval-binary-upload.md) — Orval can JSON-stringify Blob image requests; verify raw-byte transport after codegen.
+- [Elevation Bank hero contract](elevation-bank-hero-contract.md) — Profile hero is approved presentation-only UI; wire real figures, preserve its SVG icons, omit unavailable stats.

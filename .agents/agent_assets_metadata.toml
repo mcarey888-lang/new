@@ -494,3 +494,17 @@ mtime_ms = 1790353869371
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/3344b6ce-238a-4366-838f-a5a0d8b02e9b/b67535b9-6cb5-46e1-a61b-7da74b32518d"
 storage_version_token = "1790353946482606"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "76HwjgFj-P2VHAEOUXSa1"
+uri = "file://screenshots/elevation-bank-hero-reference-390.png"
+type = "image"
+title = "Elevation Bank hero — 390pt reference render"
+description = "Source-commit render showing all four SVG stat icons. This contains mockup sample values, not the authenticated live profile."
+logical_id = "c89b3451-54ee-4976-86b5-9eef9facbd92"
+content_hash = "sha256:5e92976e813235dd8ad84a4802ad1a00b00474bf75fe958845d5c578ca2360db"
+size = 100930
+mtime_ms = 1790449040920
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/c89b3451-54ee-4976-86b5-9eef9facbd92/7841646b-5525-491a-a563-70a704d58cb4"
+storage_version_token = "1790449051992040"
+content_type = "image/png"
