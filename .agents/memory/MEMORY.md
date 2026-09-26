@@ -69,3 +69,4 @@
 - [Generated binary upload requests](orval-binary-upload.md) — Orval can JSON-stringify Blob image requests; verify raw-byte transport after codegen.
 - [Elevation Bank hero contract](elevation-bank-hero-contract.md) — Profile hero is approved presentation-only UI; wire real figures, preserve its SVG icons, omit unavailable stats.
 - [Saved sample profiles](saved-sample-profiles.md) — fictional year stays account-scoped and private; never turn demo hikes/posts into verified activity or public member content.
+- [Publish composite foreign keys](publish-composite-foreign-keys.md) — publish diffs can omit redundant-looking unique indexes and order prerequisite constraints after FKs; inspect the generated SQL.

@@ -8,6 +8,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -41,6 +42,9 @@ export const canonicalActivities = pgTable("canonical_activities", {
 }, (t) => [
   uniqueIndex("canonical_activities_owner_source_uidx").on(t.ownerUserId, t.sourceType, t.sourceId),
   uniqueIndex("canonical_activities_owner_id_uidx").on(t.ownerUserId, t.id),
+  // Publish must preserve this key even when an index containing the primary key
+  // looks redundant: owner-scoped ledger foreign keys reference both columns.
+  unique("canonical_activities_owner_id_key").on(t.ownerUserId, t.id),
   index("canonical_activities_owner_occurred_idx").on(t.ownerUserId, t.occurredAt),
   index("canonical_activities_context_idx").on(t.primaryContext),
   check("chk_canonical_activity_context", sql`${t.primaryContext} IN ('training', 'expedition', 'free_hike', 'mountain_simulation')`),

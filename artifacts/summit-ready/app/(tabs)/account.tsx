@@ -455,8 +455,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             displayName={displayName}
             displayEmail={displayEmail}
             avatarInitial={avatarInitial}
-            avatarImageUrl={user?.imageUrl}
-            demoAvatar={!!sampleYear && !user?.imageUrl}
+            avatarImageUrl={user?.hasImage ? user.imageUrl : null}
+            demoAvatar={!!sampleYear && !user?.hasImage}
             isSignedIn={!!isSignedIn}
             rankName={rankResult.currentRank ?? "Unranked"}
             metrics={sampleYear ? [
@@ -514,9 +514,23 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         )}
 
         {tab === "profile" && !showSettings && (<>
+        {sampleYear && (
+          <SavedDemoYearSummary
+            year={sampleYear}
+            onRemove={sampleProfile.remove}
+            busy={sampleProfile.busy}
+            onOpenActivity={() => { setTab("activity"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+            onOpenPhotos={() => { setTab("photos"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+          />
+        )}
         {/* ── Elevation Bank ───────────────────────────────────────────────
             The headline of the profile, not a widget further down it: it is
             the running total of everything the user has actually climbed. */}
+        {sampleYear && (
+          <Text style={{ color: BASECAMP.textMuted, marginBottom: 9, marginHorizontal: 4, fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1 }}>
+            REAL ACTIVITY · VERIFIED BALANCE BELOW
+          </Text>
+        )}
         <Animated.View entering={FadeInDown.delay(30).duration(400)} style={{ marginBottom: 16 }}>
           <ElevationBankHero
             lifetimeAscentM={bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? bankPresentation.data.lifetimeAscentM : null}
@@ -563,7 +577,6 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             </Text>
           )}
         </Animated.View>
-        {sampleYear && <SavedDemoYearSummary year={sampleYear} onRemove={sampleProfile.remove} busy={sampleProfile.busy} />}
         <TouchableOpacity
           style={styles.communityEntry}
           accessibilityRole="button"

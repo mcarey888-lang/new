@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -31,6 +32,8 @@ export const personalElevationCreditEvents = pgTable("personal_elevation_credit_
   uniqueIndex("personal_elevation_credit_events_identity_uidx")
     .on(t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
   uniqueIndex("personal_elevation_credit_events_lineage_uidx")
+    .on(t.id, t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
+  unique("personal_elevation_credit_events_lineage_key")
     .on(t.id, t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
   index("personal_elevation_credit_events_activity_idx").on(t.ownerUserId, t.activityId),
   index("personal_elevation_credit_events_effective_idx")
@@ -61,6 +64,7 @@ export const expeditionRuns = pgTable("expedition_runs", {
 }, (t) => [
   uniqueIndex("expedition_runs_owner_run_uidx").on(t.ownerUserId, t.runKey),
   uniqueIndex("expedition_runs_owner_id_uidx").on(t.ownerUserId, t.id),
+  unique("expedition_runs_owner_id_key").on(t.ownerUserId, t.id),
   index("expedition_runs_owner_expedition_idx").on(t.ownerUserId, t.expeditionId),
   check("chk_expedition_run_status", sql`${t.status} IN ('active', 'completed', 'revoked')`),
 ]);
@@ -85,6 +89,8 @@ export const expeditionStageContributions = pgTable("expedition_stage_contributi
   uniqueIndex("expedition_stage_contributions_identity_uidx")
     .on(t.ownerUserId, t.runId, t.stageKey, t.activityId, t.ruleVersion, t.scoreVersion, t.revision),
   uniqueIndex("expedition_stage_contributions_lineage_uidx")
+    .on(t.id, t.ownerUserId, t.runId, t.stageKey, t.activityId, t.ruleVersion, t.scoreVersion, t.revision),
+  unique("expedition_stage_contributions_lineage_key")
     .on(t.id, t.ownerUserId, t.runId, t.stageKey, t.activityId, t.ruleVersion, t.scoreVersion, t.revision),
   index("expedition_stage_contributions_run_stage_idx").on(t.ownerUserId, t.runId, t.stageKey),
   index("expedition_stage_contributions_activity_idx").on(t.ownerUserId, t.activityId),
