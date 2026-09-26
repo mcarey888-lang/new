@@ -1148,11 +1148,11 @@ export default function BaseCampScreen() {
             if (!approvedMountainPhoto && challengeHeroUri && !artworkError) setArtworkError(true);
             else setFallbackError(true);
           }}
-          minHeight={300}
+          minHeight={230}
           dim={0.95}
           style={{ justifyContent: "space-between" }}
         >
-          <View style={{ paddingTop: PILL_OFFSET + topInset + 12, paddingHorizontal: BASECAMP.gutter }}>
+          <View style={{ paddingTop: PILL_OFFSET + topInset + 8, paddingHorizontal: BASECAMP.gutter }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <SRStatusPill label="Active expedition" tone={EXPLORE.accent} />
               <TouchableOpacity
@@ -1171,7 +1171,7 @@ export default function BaseCampScreen() {
             </View>
           </View>
 
-          <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
+          <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 12 }}>
             <Text style={s.activeTitle} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.62}>
               {expTitle}
             </Text>
@@ -1181,7 +1181,7 @@ export default function BaseCampScreen() {
         </SRHeroFrame>
 
         {/* ── Mountain Progress — centrepiece of Expedition Mode ───────────── */}
-        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 14 }}>
+        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ marginTop: 2 }}>
           {/* mountainImageRef placed on the inner mountain image view via CompactBasecampMountain */}
           <CompactBasecampMountain
             presentation={presentation}
@@ -1191,22 +1191,8 @@ export default function BaseCampScreen() {
         </Animated.View>
 
 
-        {/* ── Every stage at a glance ─────────────────────────────────── */}
-        {presentation.stages.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(90).duration(400)} style={{ marginTop: 16 }}>
-            <View style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: SP.sm }}>
-              <SRSectionHeader
-                title="Stages"
-                action="Full progress"
-                onAction={() => router.push("/(expedition)/progress" as any)}
-              />
-            </View>
-            <StageRail stages={presentation.stages} />
-          </Animated.View>
-        ) : null}
-
         {/* ── The next stage — a real hill, with a real route ──────────── */}
-        <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginTop: 14 }}>
+        <Animated.View entering={FadeInDown.delay(90).duration(400)} style={{ marginTop: 10 }}>
           {nextHill ? (
             <CurrentStageCard
               eyebrow={presentation.progress.totalStageCount > 0
@@ -1272,6 +1258,20 @@ export default function BaseCampScreen() {
             </SRPanel>
           )}
         </Animated.View>
+
+        {/* ── Stage timeline follows the current stage, as in the reference ── */}
+        {presentation.stages.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={{ marginTop: 12 }}>
+            <View style={{ paddingHorizontal: BASECAMP.gutter, marginBottom: SP.sm }}>
+              <SRSectionHeader
+                title="Stages"
+                action="Full progress"
+                onAction={() => router.push("/(expedition)/progress" as any)}
+              />
+            </View>
+            <StageRail stages={presentation.stages} />
+          </Animated.View>
+        ) : null}
 
         {/* ── Journey History ─────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(140).duration(400)}>

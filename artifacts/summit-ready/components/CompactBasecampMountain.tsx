@@ -9,8 +9,8 @@
  * The reduced-motion path is not a lesser version: it states the same
  * progress and the same stage statuses without animating anything.
  */
-import React, { useMemo } from "react";
-import { View, StyleSheet, TouchableOpacity, Dimensions, Text } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, StyleSheet, TouchableOpacity, Text, useWindowDimensions } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
@@ -18,6 +18,10 @@ import MountainProgress from "@/components/MountainProgress";
 import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import type { ExpeditionPresentationState } from "@/utils/expeditionProgress";
+import {
+  BASECAMP_AXIS_WIDTH, basecampMountainLayout,
+} from "@/utils/basecampMountainLayout";
+import { getPointAtFraction } from "@/utils/mountainPath";
 
 interface Props {
   presentation: ExpeditionPresentationState;
@@ -43,7 +47,14 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
     });
   }, [stages]);
 
-  const height = Math.min(Math.max(Dimensions.get("window").height * 0.32, 240), 320);
+  const { width: screenWidth } = useWindowDimensions();
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+  const availableWidth = measuredWidth ?? screenWidth - BASECAMP.gutter * 2 - 2;
+  const { plotWidth, plotHeight, topSpace, totalHeight } = basecampMountainLayout(availableWidth);
+  const axisTicks = [1, 0.66, 0.33, 0].map(fraction => ({
+    label: `${Math.round(progress.targetSimulatedElevationM * fraction).toLocaleString()}m`,
+    top: topSpace + getPointAtFraction(fraction).y / 344 * plotHeight,
+  }));
   const reducedMotion = useReducedMotion();
 
   return (
@@ -71,33 +82,58 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
         </View>
       </View>
 
-      <View ref={mountainImageRef} collapsable={false} style={{ height }}>
-        {reducedMotion ? (
-          <View style={styles.fallbackContainer} accessibilityLabel={`Expedition progress: ${Math.round(progress.simulatedPercent * 100)}%`}>
-            <View style={styles.fallbackBar}>
-              <View style={[styles.fallbackFill, { width: `${Math.max(0, Math.min(100, progress.simulatedPercent * 100))}%` }]} />
-            </View>
-            <View style={styles.fallbackStages}>
-              {mpStages.map((s, i) => (
-                <Text key={i} style={[
-                  styles.fallbackStageText,
-                  s.status === "completed" && { color: T.green },
-                  s.status === "active" && { color: T.blue, fontFamily: "Inter_700Bold" }
-                ]}>
-                  {s.status === "completed" ? "✓ " : ""}{s.name}
-                </Text>
-              ))}
-            </View>
+      <View
+        style={{ height: totalHeight }}
+        onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)}
+      >
+        {!reducedMotion ? (
+          <View style={[styles.axis, { height: totalHeight }]} pointerEvents="none">
+            <View style={[styles.axisLine, { top: topSpace, height: plotHeight }]} />
+            {axisTicks.map((tick, index) => (
+              <View key={index} style={[styles.axisTick, { top: Math.max(0, Math.min(totalHeight - 12, tick.top - 6)) }]}>
+                <Text style={styles.axisText}>{tick.label}</Text>
+                <View style={styles.axisDash} />
+              </View>
+            ))}
           </View>
-        ) : (
-          <MountainProgress
-            targetElevationGain={progress.targetSimulatedElevationM}
-            currentElevationGain={progress.currentSimulatedElevationM}
-            stages={mpStages}
-            style={styles.mountain}
-            replayTrigger={replayTrigger}
-          />
-        )}
+        ) : null}
+        <View
+          ref={mountainImageRef}
+          collapsable={false}
+          style={{
+            marginLeft: reducedMotion ? 0 : BASECAMP_AXIS_WIDTH,
+            marginTop: reducedMotion ? 0 : topSpace,
+            width: reducedMotion ? availableWidth : plotWidth,
+            height: reducedMotion ? totalHeight : plotHeight,
+          }}
+        >
+          {reducedMotion ? (
+            <View style={styles.fallbackContainer} accessibilityLabel={`Expedition progress: ${Math.round(progress.simulatedPercent * 100)}%`}>
+              <View style={styles.fallbackBar}>
+                <View style={[styles.fallbackFill, { width: `${Math.max(0, Math.min(100, progress.simulatedPercent * 100))}%` }]} />
+              </View>
+              <View style={styles.fallbackStages}>
+                {mpStages.map((stage, i) => (
+                  <Text key={i} style={[
+                    styles.fallbackStageText,
+                    stage.status === "completed" && { color: T.green },
+                    stage.status === "active" && { color: T.blue, fontFamily: "Inter_700Bold" },
+                  ]}>
+                    {stage.status === "completed" ? "✓ " : ""}{stage.name}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <MountainProgress
+              targetElevationGain={progress.targetSimulatedElevationM}
+              currentElevationGain={progress.currentSimulatedElevationM}
+              stages={mpStages}
+              style={styles.mountain}
+              replayTrigger={replayTrigger}
+            />
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -154,8 +190,38 @@ const styles = StyleSheet.create({
     color: EXPLORE.accent,
   },
   mountain: {
-    flex: 1,
     borderRadius: 0,
+    overflow: "visible",
+  },
+  axis: {
+    position: "absolute",
+    left: 0,
+    width: BASECAMP_AXIS_WIDTH,
+  },
+  axisLine: {
+    position: "absolute",
+    left: BASECAMP_AXIS_WIDTH - 3,
+    width: 1,
+    backgroundColor: BASECAMP.textDim,
+  },
+  axisTick: {
+    position: "absolute",
+    left: 2,
+    width: BASECAMP_AXIS_WIDTH,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  axisText: {
+    width: BASECAMP_AXIS_WIDTH - 10,
+    textAlign: "right",
+    fontSize: 9,
+    fontFamily: "Inter_500Medium",
+    color: BASECAMP.textMuted,
+  },
+  axisDash: {
+    width: 5,
+    height: 1,
+    backgroundColor: BASECAMP.textDim,
   },
   fallbackContainer: {
     flex: 1,
