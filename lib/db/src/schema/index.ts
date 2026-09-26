@@ -5,6 +5,7 @@ export * from "./tracked-routes";
 export * from "./route-contributions";
 export * from "./cached-hills";
 export * from "./hill-descriptions";
+export * from "./verified-directions";
 export * from "./cached-mountains";
 export * from "./cached-alpine";
 export * from "./mountain-verification";

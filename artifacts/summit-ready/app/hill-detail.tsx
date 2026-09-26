@@ -3,6 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import {
   ActivityIndicator,
   Alert,
@@ -72,7 +74,7 @@ interface HillDetail {
   };
 }
 
-import { openMapPin, openMapDirections, openDirectionsToPostcode, openMapsForHill } from "@/utils/openMaps";
+import { openMapPin, openMapDirections, openMapsForHill } from "@/utils/openMaps";
 import { RouteIntelligencePresentation } from "@/components/RouteIntelligencePresentation";
 import { mapTrainingTarget, mapExploreRoute, mapExpeditionStage, selectCanonicalRoute, type RouteReadResult, type RouteIntelligence } from "@/utils/routeIntelligence";
 import { fetchCanonicalRouteRecord } from "@/utils/canonicalRouteApi";
@@ -81,7 +83,7 @@ import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
   const { activeExpedition } = useApp();
   const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
     useLocalSearchParams<{
@@ -109,6 +111,16 @@ export default function HillDetailScreen() {
   const [detail, setDetail] = useState<HillDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState(false);
+  const [directionsBusy, setDirectionsBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [directionResult, setDirectionResult] = useState<{
+    status: "internet_lookup" | "gps_confirmed";
+    name: string;
+    address?: string;
+    placeId?: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [canonicalRecord, setCanonicalRecord] = useState<CanonicalRouteRecord | null>(null);
 
   const [imageError, setImageError] = useState(false);
@@ -292,16 +304,95 @@ export default function HillDetailScreen() {
   const hasVerifiedMapCoordinates = detail?.provenance?.mapCoordinates === "verified" &&
     Number.isFinite(detail?.summitLat) && Number.isFinite(detail?.summitLng);
 
-  function openStartPointDirections() {
-    if (
-      startPoint &&
-      hasVerifiedStartPoint
-    ) {
-      openMapDirections(startPoint.lat!, startPoint.lng!, startPoint.name);
-    } else if (startPoint?.postcode) {
-      openDirectionsToPostcode(startPoint.postcode, startPoint.name);
-    } else {
-      openMapsForHill(null, null, name ?? "", true, mapSearchContext);
+  const directionTarget = {
+    hillName: name ?? "",
+    location: mapSearchContext ?? "",
+    routeIdentityKey: routeIdentityKey || undefined,
+    summitIdentityKey: summitIdentityKey || undefined,
+    summitLat: hillLat,
+    summitLng: hillLng,
+  };
+  const candidateKey = `directions:candidate:${routeIdentityKey || summitIdentityKey || name}:${hillLat}:${hillLng}`;
+
+  async function openStartPointDirections() {
+    if (directionsBusy) return;
+    if (!Number.isFinite(hillLat) || !Number.isFinite(hillLng)) {
+      Alert.alert("Location needed", "This hill has no mapped location. Check its official access information before travelling.");
+      return;
+    }
+    setDirectionsBusy(true);
+    try {
+      let result = directionResult;
+      if (!result) {
+        const cached = await AsyncStorage.getItem(candidateKey);
+        if (cached) {
+          const record = JSON.parse(cached) as { result: NonNullable<typeof directionResult>; expires: number };
+          if (record.expires > Date.now() && record.result?.status === "internet_lookup" &&
+              Number.isFinite(record.result.lat) && Number.isFinite(record.result.lng) && record.result.placeId) {
+            result = record.result;
+          }
+        }
+      }
+      if (!result) {
+        const response = await fetch(`${API_BASE}/directions/lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(directionTarget),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "No suitable parking place was found.");
+        result = body;
+        if (result?.status === "internet_lookup") {
+          await AsyncStorage.setItem(candidateKey, JSON.stringify({
+            result, expires: Date.now() + 24 * 60 * 60 * 1000,
+          }));
+        }
+      }
+      if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) {
+        throw new Error("No mapped destination was returned.");
+      }
+      setDirectionResult(result);
+      openMapDirections(result.lat, result.lng, result.name);
+    } catch (error) {
+      Alert.alert("Directions unavailable", error instanceof Error ? error.message : "Please try again later.");
+    } finally {
+      setDirectionsBusy(false);
+    }
+  }
+
+  async function confirmDirectionsWithGps() {
+    if (gpsBusy || !directionResult?.placeId || !userId) {
+      if (!userId) Alert.alert("Sign in required", "Sign in to confirm this destination.");
+      return;
+    }
+    setGpsBusy(true);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") throw new Error("Location permission is needed to confirm your arrival.");
+      const fix = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const token = await getToken();
+      if (!token) throw new Error("Sign in to confirm this destination.");
+      const response = await fetch(`${API_BASE}/directions/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ...directionTarget,
+          placeId: directionResult.placeId,
+          fix: {
+            lat: fix.coords.latitude, lng: fix.coords.longitude,
+            accuracy: fix.coords.accuracy, timestamp: fix.timestamp,
+          },
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not confirm your arrival.");
+      setDirectionResult(body);
+      await AsyncStorage.removeItem(candidateKey);
+      Alert.alert("Location confirmed", "This parking pin is saved for future users. Your exact GPS position is not saved. Check local parking and access signs.");
+    } catch (error) {
+      Alert.alert("Location not confirmed", error instanceof Error ? error.message : "Try again when you arrive.");
+    } finally {
+      setGpsBusy(false);
     }
   }
 
@@ -424,14 +515,38 @@ export default function HillDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.mapActionBtn}
-                onPress={openStartPointDirections}
+                onPress={() => void openStartPointDirections()}
+                disabled={directionsBusy}
+                accessibilityRole="button"
                 activeOpacity={0.8}
               >
                 <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-                <Navigation size={15} color={T.blue} />
-                <Text style={[styles.mapActionText, { color: T.blue }]}>Get directions</Text>
+                {directionsBusy ? <ActivityIndicator size="small" color={T.blue} /> : <Navigation size={15} color={T.blue} />}
+                <Text style={[styles.mapActionText, { color: T.blue }]}>{directionsBusy ? "Finding parking…" : "Get directions"}</Text>
               </TouchableOpacity>
             </View>
+            {directionResult && (
+              <View style={{ paddingHorizontal: 18, paddingBottom: 12 }}>
+                <Text style={{ color: T.textMuted, fontSize: 12 }}>
+                  {directionResult.status === "gps_confirmed" ? "GPS-confirmed arrival" : "OpenStreetMap parking pin — not yet GPS-confirmed"}
+                  {" · "}{directionResult.name}
+                  {directionResult.address ? `, ${directionResult.address}` : ""}
+                  {" · "}Not a confirmed route start or parking permission. © OpenStreetMap contributors.
+                </Text>
+                {directionResult.status === "internet_lookup" && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    disabled={gpsBusy}
+                    onPress={() => void confirmDirectionsWithGps()}
+                    style={{ marginTop: 8, paddingVertical: 7 }}
+                  >
+                    <Text style={{ color: T.blue, fontSize: 13 }}>
+                      {gpsBusy ? "Checking your GPS…" : "I’m here — confirm & share parking pin"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </Animated.View>
 
           {detailLoading && (
@@ -540,13 +655,7 @@ export default function HillDetailScreen() {
                   trainingTarget={trainingTarget}
                   expeditionStage={expeditionTarget}
                   exploreRoute={exploreTarget}
-                  onNavigateToStart={() => {
-                    if (startPoint?.postcode) {
-                      openDirectionsToPostcode(startPoint.postcode, startPoint.name);
-                    } else {
-                      openStartPointDirections();
-                    }
-                  }}
+                  onNavigateToStart={() => void openStartPointDirections()}
                 />
               </Animated.View>
             </>
