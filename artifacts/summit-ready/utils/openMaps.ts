@@ -31,6 +31,21 @@ export function openMapDirections(lat: number, lng: number, label: string) {
   }
 }
 
+/** Directions to the start of a verified route. This is not a parking recommendation. */
+export function openRouteStartDirections(lat: number, lng: number, mode: "walking" | "driving") {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+      lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+  const destination = `${lat},${lng}`;
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=${mode}`;
+  if (Platform.OS === "ios") {
+    openUrl(`maps://?daddr=${destination}&dirflg=${mode === "walking" ? "w" : "d"}`, web);
+  } else if (Platform.OS === "android") {
+    openUrl(`google.navigation:q=${destination}&mode=${mode === "walking" ? "w" : "d"}`, web);
+  } else {
+    Linking.openURL(web).catch(() => {});
+  }
+}
+
 /** Navigate to a UK postcode (postcodes.io-validated coords on server; postcode string on client). */
 export function openDirectionsToPostcode(postcode: string, label: string) {
   const dest = encodeURIComponent(`${postcode} ${label}`);

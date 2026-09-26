@@ -104,6 +104,20 @@ export function routeEligibility(route: ExploreRoute | null | undefined): RouteE
   };
 }
 
+/** Directions may use only the mapped start of a navigable, directionally identified route. */
+export function verifiedRouteStart(
+  route: ExploreRoute | null | undefined,
+): { latitude: number; longitude: number } | null {
+  if (!route || !routeEligibility(route).isNavigable) return null;
+  const geometry = route.geometry.availability === "available" ? route.geometry.value : null;
+  if (!geometry || geometry.direction === "unknown") return null;
+  const point = geometry.direction === "reverse"
+    ? geometry.coordinates[geometry.coordinates.length - 1]
+    : geometry.coordinates[0];
+  if (!point) return null;
+  return { longitude: point[0], latitude: point[1] };
+}
+
 /** A route line is authoritative only with explicit proof and reusable SDE geometry. */
 function authoritativeGeometryReady(route: ExploreRoute): boolean {
   const geometryResult = route.geometry;

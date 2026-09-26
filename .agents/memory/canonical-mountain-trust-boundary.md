@@ -14,3 +14,9 @@ Curated Explore region labels are display categories, not verified catalogue reg
 **Why:** Exact region matching can turn a known mountain into a false miss when the curated label (such as a national park) differs from the catalogue's administrative region.
 
 **How to apply:** Keep authoritative country/region context for genuinely ambiguous identity resolution; omit broad discovery labels from exact canonical-name lookups.
+
+Directions to a route start require a selected, navigable route with trusted geometry and a known route direction. A verified summit pin, place-name search, or narrative guide is not evidence of a trailhead or parking.
+
+**Why:** A summit and a trailhead can be far apart, and a mapped route start is not necessarily accessible by car. Sending someone to a guessed start could be unsafe.
+
+**How to apply:** Offer walking/driving directions only to the mapped start of a qualifying route. Describe driving as directions *near* the start, not to verified parking. Otherwise offer an explicitly labelled search for access points that the user must check locally.

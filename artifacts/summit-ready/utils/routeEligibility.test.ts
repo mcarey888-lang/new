@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  canonicalSelection, offlineDownloadRequest, routeEligibility, startRouteHandoff,
+  canonicalSelection, offlineDownloadRequest, routeEligibility, startRouteHandoff, verifiedRouteStart,
 } from "./routeEligibility";
 import { CAPABILITIES } from "../constants/capabilities";
 import type { ExploreRoute, MountainVerification, RouteVersion } from "./routeIntelligence";
@@ -132,6 +132,30 @@ describe("routeEligibility", () => {
     expect(e.reasons).toContain("missing_metric");
     /* de-duplicated */
     expect(e.reasons.filter(r => r === "missing_geometry")).toHaveLength(1);
+  });
+});
+
+describe("verifiedRouteStart", () => {
+  it("uses the first coordinate for a forward route and the last for a reversed route", () => {
+    expect(verifiedRouteStart(route())).toEqual({ latitude: 53.1, longitude: -3.9 });
+    const geometry = (route().geometry as any).value;
+    expect(verifiedRouteStart(route({
+      geometry: { availability: "available", value: { ...geometry, direction: "reverse" }, reasons: [] },
+    }))).toEqual({ latitude: 53.2, longitude: -3.8 });
+  });
+
+  it("never offers a start for unverified, ambiguous or unavailable geometry", () => {
+    expect(verifiedRouteStart(route({ trackAvailability: "identity_only" }))).toBeNull();
+    expect(verifiedRouteStart(route({
+      trust: { ...VERIFIED_TRUST, engineStatus: "needs_review" },
+    }))).toBeNull();
+    const geometry = (route().geometry as any).value;
+    expect(verifiedRouteStart(route({
+      geometry: { availability: "available", value: { ...geometry, direction: "unknown" }, reasons: [] },
+    }))).toBeNull();
+    expect(verifiedRouteStart(route({
+      geometry: { availability: "unavailable", value: null, reasons: ["missing_geometry"] },
+    }))).toBeNull();
   });
 });
 

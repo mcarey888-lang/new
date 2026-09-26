@@ -11,7 +11,7 @@
  */
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ChevronDown, ChevronUp, Clock, Download, Route as RouteIcon, TrendingUp } from "lucide-react-native";
+import { Car, ChevronDown, ChevronUp, Clock, Download, Footprints, Route as RouteIcon, TrendingUp } from "lucide-react-native";
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { SREyebrow, SRPanel, SRSubPanel } from "@/components/ui";
 import { CAPABILITIES } from "@/constants/capabilities";
@@ -27,13 +27,17 @@ const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: s
 };
 
 export function SelectedRoute({
-  selected, dna, mountainSummitElevation, mountainName, onDownloadOffline,
+  selected, dna, mountainSummitElevation, mountainName, startPointLabel,
+  onWalkToStart, onDriveToStart, onDownloadOffline,
 }: {
   selected: PresentedSelectedRoute;
   dna: PresentedDna;
   /** The MOUNTAIN's height. Shown beside the route's ascent, never merged. */
   mountainSummitElevation: PresentedFact;
   mountainName?: string;
+  startPointLabel?: string;
+  onWalkToStart?: () => void;
+  onDriveToStart?: () => void;
   onDownloadOffline?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -61,6 +65,36 @@ export function SelectedRoute({
       {selected.headline.length > 0 ? (
         <View style={styles.metrics}>
           {selected.headline.map(f => <HeadlineTile key={f.key} fact={f} />)}
+        </View>
+      ) : null}
+
+      {eligibility.isNavigable && startPointLabel && onWalkToStart && onDriveToStart ? (
+        <View style={styles.section} testID="route-start-directions">
+          <Text style={styles.sectionLabel}>GET TO THE ROUTE START</Text>
+          <Text style={styles.startLabel}>{startPointLabel}</Text>
+          <View style={styles.directionsRow}>
+            <Pressable
+              onPress={onWalkToStart}
+              accessibilityRole="button"
+              accessibilityLabel={`Walking directions to the mapped start of ${route.name}`}
+              style={styles.directionsButton}
+            >
+              <Footprints size={15} color={EXPLORE.accent} />
+              <Text style={styles.directionsText}>Walk to start</Text>
+            </Pressable>
+            <Pressable
+              onPress={onDriveToStart}
+              accessibilityRole="button"
+              accessibilityLabel={`Driving directions towards the mapped start of ${route.name}`}
+              style={styles.directionsButton}
+            >
+              <Car size={15} color={EXPLORE.accent} />
+              <Text style={styles.directionsText}>Drive near start</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.startNote}>
+            Mapped route start, not confirmed parking. Driving directions may end at the nearest road.
+          </Text>
         </View>
       ) : null}
 
@@ -181,6 +215,15 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 13, marginTop: 15 },
   sectionLabel: { ...TYPE.eyebrow, fontSize: 11, letterSpacing: 1.8, color: BASECAMP.textMuted },
+  startLabel: { ...TYPE.smallBold, color: BASECAMP.text, marginTop: 6 },
+  directionsRow: { flexDirection: "row", flexWrap: "wrap", gap: SP.sm, marginTop: 10 },
+  directionsButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    minHeight: 44, paddingHorizontal: 12, borderRadius: 7,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  },
+  directionsText: { ...TYPE.smallBold, color: EXPLORE.accent },
+  startNote: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 6 },
   profile: { marginTop: 7 },
   description: { marginTop: 7, fontSize: 12.5, lineHeight: 18, fontFamily: "Inter_400Regular", color: BASECAMP.textMuted },
   more: { marginTop: 5, flexDirection: "row", alignItems: "center", gap: 5, minHeight: 28 },

@@ -33,7 +33,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
-import { AlertCircle, Info, MapPin, Mountain as MountainIcon, Navigation, Route as RouteIcon } from "lucide-react-native";
+import { AlertCircle, Car, Footprints, Info, MapPin, Mountain as MountainIcon, Navigation, Route as RouteIcon } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRHeroFrame, SRPanel, SRScreenHeader, SRSectionHeader, SRSegmented,
@@ -51,9 +51,9 @@ import {
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
 import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence";
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
-import { startRouteHandoff } from "@/utils/routeEligibility";
+import { startRouteHandoff, verifiedRouteStart } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
-import { openMapPin, openMapsForHill } from "@/utils/openMaps";
+import { openMapPin, openMapSearch, openMapsForHill, openRouteStartDirections } from "@/utils/openMaps";
 import {
   CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
   DISCOVERY_CANDIDATE_NOTICE, DISCOVERY_NO_ROUTES_NOTICE,
@@ -267,6 +267,13 @@ export default function MountainDetailScreen() {
     () => selected ? presentSelectedRoute(selected, exploreRoute, record?.elevationProfile) : null,
     [selected, exploreRoute, record],
   );
+  const routeStart = useMemo(() => verifiedRouteStart(exploreRoute), [exploreRoute]);
+  const routeStartLabel = record?.definition?.startLabel?.trim() || "Mapped route start";
+
+  function getDirectionsToRouteStart(mode: "walking" | "driving") {
+    if (!routeStart) return;
+    openRouteStartDirections(routeStart.latitude, routeStart.longitude, mode);
+  }
 
   /* Mountain DNA compares this route with the user's target route. No target
      route identity exists in production today (see the batch report), so the
@@ -526,6 +533,58 @@ export default function MountainDetailScreen() {
           <Footnote>{ELEVATION_FOOTNOTE}</Footnote>
         </Section>
 
+        {/* Do not treat the summit pin or a map-search result as a route start. */}
+        <Section style={styles.gettingThereSection}>
+          <View style={styles.gutter}>
+            <SRSectionHeader title="Getting there" icon={<Navigation size={13} color={EXPLORE.accent} />} />
+            <SRPanel radius={8} style={styles.accessPanel}>
+              <Text style={styles.accessLabel}>ROUTE START</Text>
+              <Text style={styles.accessValue}>
+                {routeStart && presented
+                  ? `${presented.route.name} · ${routeStartLabel}`
+                  : "Choose a verified route below for directions to its mapped start. If no start is confirmed, search nearby access points and check locally before setting out."}
+              </Text>
+              {routeStart && presented ? (
+                <>
+                  <View style={styles.directionsRow}>
+                    <Pressable
+                      onPress={() => getDirectionsToRouteStart("walking")}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Walking directions to the mapped start of ${presented.route.name}`}
+                      style={styles.directionsButton}
+                    >
+                      <Footprints size={16} color={EXPLORE.accent} />
+                      <Text style={styles.accessActionText}>Walk to start</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => getDirectionsToRouteStart("driving")}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Driving directions towards the mapped start of ${presented.route.name}`}
+                      style={styles.directionsButton}
+                    >
+                      <Car size={16} color={EXPLORE.accent} />
+                      <Text style={styles.accessActionText}>Drive near start</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.directionsNote}>
+                    This is the route's mapped start, not a confirmed car park. Driving directions may stop at the nearest road; check access and local signs.
+                  </Text>
+                </>
+              ) : (
+                <Pressable
+                  onPress={() => openMapSearch(`${mountain.name} trailhead ${mountain.place ?? ""}`.trim())}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search for access points near ${mountain.name}`}
+                  style={styles.accessAction}
+                >
+                  <Navigation size={15} color={EXPLORE.accent} />
+                  <Text style={styles.accessActionText}>Search nearby trailheads</Text>
+                </Pressable>
+              )}
+            </SRPanel>
+          </View>
+        </Section>
+
         {/* A guide overview is not canonical evidence; navigation uses only the
             catalogue's verified summit point. Parking remains a map search. */}
         <Section style={styles.detailsSection}>
@@ -571,14 +630,14 @@ export default function MountainDetailScreen() {
                 No parking spot or trailhead has been independently verified. Check the map result and local signs before travelling.
               </Text>
               <Pressable
-                onPress={() => openMapsForHill(null, null, mountain.name, true, mountain.place ?? undefined)}
+                onPress={() => openMapSearch(`${mountain.name} parking ${mountain.place ?? ""}`.trim())}
                 accessibilityRole="button"
-                accessibilityLabel={`Find parking directions near ${mountain.name}`}
+                accessibilityLabel={`Search nearby parking for ${mountain.name}`}
                 testID="summit-parking-button"
                 style={styles.accessAction}
               >
                 <Navigation size={15} color={EXPLORE.accent} />
-                <Text style={styles.accessActionText}>Find parking directions</Text>
+                <Text style={styles.accessActionText}>Search nearby parking</Text>
               </Pressable>
             </SRPanel>
           </View>
@@ -635,6 +694,9 @@ export default function MountainDetailScreen() {
                         dna={dna}
                         mountainSummitElevation={mountain.summitElevation}
                         mountainName={mountain.name}
+                        startPointLabel={routeStart ? routeStartLabel : undefined}
+                        onWalkToStart={routeStart ? () => getDirectionsToRouteStart("walking") : undefined}
+                        onDriveToStart={routeStart ? () => getDirectionsToRouteStart("driving") : undefined}
                       />
                     ) : (
                       <SRPanel radius={8} style={styles.pending}>
@@ -734,6 +796,7 @@ const styles = StyleSheet.create({
   overviewItem: { flex: 1, minWidth: 0, alignItems: "center" },
   overviewValue: { fontSize: 13, lineHeight: 17, fontFamily: "Inter_700Bold", color: BASECAMP.text, textAlign: "center" },
   overviewLabel: { marginTop: 1, fontSize: 9.5, lineHeight: 12, fontFamily: "Inter_400Regular", color: BASECAMP.textDim, textAlign: "center" },
+  gettingThereSection: { marginTop: 18 },
   detailsSection: { marginTop: 18 },
   description: { marginTop: 9, ...TYPE.body, color: BASECAMP.textMuted },
   descriptionNote: { marginTop: 5, ...TYPE.caption, color: BASECAMP.textDim },
@@ -744,6 +807,13 @@ const styles = StyleSheet.create({
   accessAction: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start", minHeight: 44 },
   accessActionText: { ...TYPE.smallBold, color: EXPLORE.accent },
   accessDivider: { height: 1, backgroundColor: BASECAMP.glassBorder, marginVertical: 12 },
+  directionsRow: { flexDirection: "row", flexWrap: "wrap", gap: SP.sm, marginTop: 10 },
+  directionsButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    minHeight: 44, paddingHorizontal: 12, borderRadius: 7,
+    backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelSubBorder,
+  },
+  directionsNote: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 7 },
 
   routesSection: { marginTop: 18 },
   sort: { marginTop: 10, alignSelf: "flex-start" },
