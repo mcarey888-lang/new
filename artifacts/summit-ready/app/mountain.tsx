@@ -26,7 +26,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView,
+  ActivityIndicator, Alert, Linking, Platform, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -54,6 +54,7 @@ import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadRe
 import { startRouteHandoff, verifiedRouteStart } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
 import { openMapPin, openMapSearch, openMapsForHill, openRouteStartDirections } from "@/utils/openMaps";
+import { sourcedParkingOptionsForMountain } from "@/utils/mountainParkingOptions";
 import {
   CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
   DISCOVERY_CANDIDATE_NOTICE, DISCOVERY_NO_ROUTES_NOTICE,
@@ -127,6 +128,7 @@ export default function MountainDetailScreen() {
   useEffect(() => { void load(); }, [load]);
 
   const mountain = useMemo(() => lookup ? presentMountain(lookup) : null, [lookup]);
+  const parkingOptions = useMemo(() => sourcedParkingOptionsForMountain(lookup), [lookup]);
   const canonicalMountainId = lookup?.source === "canonical"
     ? lookup.canonicalIdentity?.id
     : null;
@@ -626,9 +628,48 @@ export default function MountainDetailScreen() {
               </Pressable>
               <View style={styles.accessDivider} />
               <Text style={styles.accessLabel}>PARKING & ACCESS</Text>
-              <Text style={styles.accessValue}>
-                No parking spot or trailhead has been independently verified. Check the map result and local signs before travelling.
-              </Text>
+              {parkingOptions.length ? (
+                <>
+                  <Text style={styles.accessValue}>
+                    Choose an approach. These car parks are listed by their operator, but none is confirmed as the start of a route in this app.
+                  </Text>
+                  {parkingOptions.map(option => (
+                    <View key={option.id} style={styles.parkingOption}>
+                      <Text style={styles.parkingName}>{option.name}</Text>
+                      <Text style={styles.parkingApproach}>{option.approach}</Text>
+                      <Text style={styles.parkingGrid}>{option.osGridReference} · {option.postcode}</Text>
+                      <Text style={styles.parkingNote}>{option.note}</Text>
+                      <View style={styles.parkingActions}>
+                        <Pressable
+                          onPress={() => openMapSearch(option.mapSearch)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Find ${option.name} in Maps`}
+                          style={styles.accessAction}
+                        >
+                          <MapPin size={15} color={EXPLORE.accent} />
+                          <Text style={styles.accessActionText}>Find in Maps</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => void Linking.openURL(option.sourceUrl).catch(() =>
+                            Alert.alert("Source unavailable", "The car park listing could not be opened right now."))}
+                          accessibilityRole="link"
+                          accessibilityLabel={`Read ${option.sourceName} listing for ${option.name}`}
+                          style={styles.accessAction}
+                        >
+                          <Text style={styles.accessActionText}>{option.sourceName} listing</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                  <Text style={styles.directionsNote}>
+                    OS grid references locate an area, not the exact vehicle entrance. Maps searches for each named car park; check its listing, current access and your walking route before travelling.
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.accessValue}>
+                  No source-checked car park options are available here yet. Check the map result and local signs before travelling.
+                </Text>
+              )}
               <Pressable
                 onPress={() => openMapSearch(`${mountain.name} parking ${mountain.place ?? ""}`.trim())}
                 accessibilityRole="button"
@@ -637,7 +678,9 @@ export default function MountainDetailScreen() {
                 style={styles.accessAction}
               >
                 <Navigation size={15} color={EXPLORE.accent} />
-                <Text style={styles.accessActionText}>Search nearby parking</Text>
+                <Text style={styles.accessActionText}>
+                  {parkingOptions.length ? "Search for other parking" : "Search nearby parking"}
+                </Text>
               </Pressable>
             </SRPanel>
           </View>
@@ -807,6 +850,15 @@ const styles = StyleSheet.create({
   accessAction: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start", minHeight: 44 },
   accessActionText: { ...TYPE.smallBold, color: EXPLORE.accent },
   accessDivider: { height: 1, backgroundColor: BASECAMP.glassBorder, marginVertical: 12 },
+  parkingOption: {
+    marginTop: 12, padding: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: BASECAMP.glassBorder, backgroundColor: BASECAMP.panelSub,
+  },
+  parkingName: { ...TYPE.bodyBold, color: BASECAMP.text },
+  parkingApproach: { ...TYPE.caption, color: EXPLORE.accent, marginTop: 3 },
+  parkingGrid: { ...TYPE.caption, color: BASECAMP.textStrong, marginTop: 6 },
+  parkingNote: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 6 },
+  parkingActions: { flexDirection: "row", flexWrap: "wrap", columnGap: 18, marginTop: 6 },
   directionsRow: { flexDirection: "row", flexWrap: "wrap", gap: SP.sm, marginTop: 10 },
   directionsButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,

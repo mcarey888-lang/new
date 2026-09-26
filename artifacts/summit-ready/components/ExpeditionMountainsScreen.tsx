@@ -2148,6 +2148,131 @@ export default function ExpeditionMountainsScreen() {
           </View>
         </Animated.View>
 
+        {/* ── Create a custom expedition ────────────────────────────────────
+            Keep the entry point and its expanded form together at the top,
+            before the browse filters and the expedition catalogue. */}
+        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
+          <TouchableOpacity
+            style={s.createRouteCard}
+            activeOpacity={0.85}
+            onPress={() => setCustomSearchOpen(v => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Create Custom Expedition"
+          >
+            <ExpoImage
+              source={require("../assets/images/hero-base-camp.png")}
+              style={[StyleSheet.absoluteFill, { opacity: 0.26 }]}
+              contentFit="cover"
+            />
+            <LinearGradient colors={["rgba(22,125,247,0.25)", "rgba(5,9,11,0.82)", "rgba(5,9,11,0.95)"]} style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 1, y: 1}} />
+            <View style={s.createRouteIconWrap}>
+              <Plus size={21} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.createRouteTitle}>Create Custom Expedition</Text>
+              <Text style={s.createRouteSub}>Pick any verified mountain and route, then build your own stage plan from the hill catalogue.</Text>
+            </View>
+            <ChevronRight size={16} color={EXPLORE.accent} />
+          </TouchableOpacity>
+
+          {/* Expandable custom search stays next to its entry point. */}
+          {customSearchOpen && (
+            <View style={[s.searchCard, { marginTop: 10 }]}>
+              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
+              <View style={s.searchRow}>
+                <Mountain size={14} color={T.blue} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchMountain}
+                  onChangeText={updateSearchMountain}
+                  onFocus={() => setShowMountainSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowMountainSuggestions(false), 180)}
+                  placeholder="Goal mountain (e.g. Mont Blanc)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="next"
+                  autoCorrect={false}
+                />
+              </View>
+              {showMountainSuggestions && matchingMountains.length > 0 && (
+                <View style={s.mountainSuggestions}>
+                  {matchingMountains.map((name, index) => (
+                    <TouchableOpacity
+                      key={name}
+                      activeOpacity={0.72}
+                      onPress={() => selectSearchMountain(name)}
+                      style={[
+                        s.mountainSuggestionRow,
+                        index < matchingMountains.length - 1 && s.mountainSuggestionBorder,
+                      ]}
+                    >
+                      <Mountain size={13} color={T.blue} />
+                      <Text style={s.mountainSuggestionText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              <View style={[s.searchRow, { marginTop: 10 }]}>
+                <MapPin size={14} color={T.green} />
+                <TextInput
+                  style={[s.searchInput, { flex: 1 }]}
+                  value={searchRegion}
+                  onChangeText={setSearchRegion}
+                  placeholder="Your hiking region (e.g. Lake District)"
+                  placeholderTextColor={T.textDim}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearch}
+                />
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
+                <View style={s.chipRow}>
+                  {[15, 30, 50, 80].map(r => (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setSearchRadius(r)}
+                      style={[s.chip, searchRadius === r && s.chipActive]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
+                <View style={s.chipRow}>
+                  {[1, 2, 3].map(day => (
+                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
+                      style={[s.chip, customDays === day && s.chipActive]}>
+                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
+                    <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
+                    <Text style={s.choiceCopy}>Use the unchanged deterministic planner and trusted route data.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
+                    <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
+                    <Text style={s.choiceCopy}>Build your route list and watch DNA update as you choose.</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
+                <>
+                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
+                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
+                </TouchableOpacity>
+                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
+                </>
+              )}
+            </View>
+          )}
+        </Animated.View>
+
         {/* ── Region filter pills ─────────────────────────────────────────── */}
         <ScrollView
           horizontal
@@ -2408,127 +2533,6 @@ export default function ExpeditionMountainsScreen() {
             </View>
           </Animated.View>
         )}
-
-        {/* ── Create Custom Route ──────────────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
-          <TouchableOpacity
-            style={s.createRouteCard}
-            activeOpacity={0.85}
-            onPress={() => setCustomSearchOpen(v => !v)}
-          >
-            <ExpoImage
-              source={require("../assets/images/hero-base-camp.png")}
-              style={[StyleSheet.absoluteFill, { opacity: 0.26 }]}
-              contentFit="cover"
-            />
-            <LinearGradient colors={["rgba(22,125,247,0.25)", "rgba(5,9,11,0.82)", "rgba(5,9,11,0.95)"]} style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 1, y: 1}} />
-            <View style={s.createRouteIconWrap}>
-              <Plus size={21} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.createRouteTitle}>Create Custom Expedition</Text>
-              <Text style={s.createRouteSub}>Pick any verified mountain and route, then build your own stage plan from the hill catalogue.</Text>
-            </View>
-            <ChevronRight size={16} color={EXPLORE.accent} />
-          </TouchableOpacity>
-
-          {/* Expandable custom search */}
-          {customSearchOpen && (
-            <View style={[s.searchCard, { marginTop: 10 }]}>
-              <LinearGradient colors={[T.blueDim, "transparent"]} style={StyleSheet.absoluteFill} />
-              <View style={s.searchRow}>
-                <Mountain size={14} color={T.blue} />
-                <TextInput
-                  style={[s.searchInput, { flex: 1 }]}
-                  value={searchMountain}
-                  onChangeText={updateSearchMountain}
-                  onFocus={() => setShowMountainSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowMountainSuggestions(false), 180)}
-                  placeholder="Goal mountain (e.g. Mont Blanc)"
-                  placeholderTextColor={T.textDim}
-                  returnKeyType="next"
-                  autoCorrect={false}
-                />
-              </View>
-              {showMountainSuggestions && matchingMountains.length > 0 && (
-                <View style={s.mountainSuggestions}>
-                  {matchingMountains.map((name, index) => (
-                    <TouchableOpacity
-                      key={name}
-                      activeOpacity={0.72}
-                      onPress={() => selectSearchMountain(name)}
-                      style={[
-                        s.mountainSuggestionRow,
-                        index < matchingMountains.length - 1 && s.mountainSuggestionBorder,
-                      ]}
-                    >
-                      <Mountain size={13} color={T.blue} />
-                      <Text style={s.mountainSuggestionText}>{name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              <View style={[s.searchRow, { marginTop: 10 }]}>
-                <MapPin size={14} color={T.green} />
-                <TextInput
-                  style={[s.searchInput, { flex: 1 }]}
-                  value={searchRegion}
-                  onChangeText={setSearchRegion}
-                  placeholder="Your hiking region (e.g. Lake District)"
-                  placeholderTextColor={T.textDim}
-                  returnKeyType="search"
-                  onSubmitEditing={handleSearch}
-                />
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Search radius</Text>
-                <View style={s.chipRow}>
-                  {[15, 30, 50, 80].map(r => (
-                    <TouchableOpacity
-                      key={r}
-                      onPress={() => setSearchRadius(r)}
-                      style={[s.chip, searchRadius === r && s.chipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[s.chipText, searchRadius === r && s.chipTextActive]}>{r}km</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <Text style={[s.inputLabel, { marginBottom: 6 }]}>Available days</Text>
-                <View style={s.chipRow}>
-                  {[1, 2, 3].map(day => (
-                    <TouchableOpacity key={day} onPress={() => setCustomDays(day as 1 | 2 | 3)}
-                      style={[s.chip, customDays === day && s.chipActive]}>
-                      <Text style={[s.chipText, customDays === day && s.chipTextActive]}>{day} {day === 1 ? "day" : "days"}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && setupResolved && (
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-                  <TouchableOpacity testID="find-equivalent-summits" onPress={() => chooseCreationMode("automatic")} style={[s.choiceCard, { borderColor: T.green + "55" }]}>
-                    <Text style={s.choiceTitle}>Find Equivalent Summits</Text>
-                    <Text style={s.choiceCopy}>Use the unchanged deterministic planner and trusted route data.</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity testID="choose-your-own-summits" onPress={() => chooseCreationMode("manual")} style={[s.choiceCard, { borderColor: T.blue + "55" }]}>
-                    <Text style={s.choiceTitle}>Choose Your Own Summits</Text>
-                    <Text style={s.choiceCopy}>Build your route list and watch DNA update as you choose.</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {searchMountain.trim().length >= 2 && searchRegion.trim().length >= 2 && !setupResolved && (
-                <>
-                <TouchableOpacity onPress={resolveTarget} disabled={customDays == null} style={[s.searchBtn, customDays == null && { opacity: 0.45 }]} activeOpacity={0.85}>
-                  <Search size={15} color="#fff" /><Text style={s.searchBtnText}>Continue</Text>
-                </TouchableOpacity>
-                {customDays == null && <Text style={s.improveCandidateMeta}>Choose available days before continuing.</Text>}
-                </>
-              )}
-            </View>
-          )}
-        </Animated.View>
 
         {/* ── Legend bar ───────────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>

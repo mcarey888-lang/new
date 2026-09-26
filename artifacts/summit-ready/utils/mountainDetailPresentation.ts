@@ -80,6 +80,7 @@ export interface MountainLookupResponse {
   routes?: Array<TrustedRouteRow | LegacyRouteRow>;
   canonicalIdentity?: {
     id: string;
+    canonicalSourceKey?: string;
     canonicalName?: string;
     matchedBy?: string;
   };
