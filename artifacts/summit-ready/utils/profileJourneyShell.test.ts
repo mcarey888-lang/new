@@ -46,6 +46,17 @@ describe("Profile is a mountain résumé", () => {
     expect(ACCOUNT_CODE).toMatch(/local-hill-illustration\.png/);
   });
 
+  it("uses the supplied Elevation Bank mountain without inventing the reference figures", () => {
+    const bank = code(read("components/ElevationBankCard.tsx"));
+    expect(bank).toMatch(/elevation-bank-mountain\.png/);
+    expect(bank).toMatch(/formatElevationBankMetres\(value\)/);
+    expect(bank).toMatch(/ready\.lifetimeAscentM/);
+    expect(bank).toMatch(/recentCredits/);
+    expect(bank).not.toMatch(/12,420|28%|317 h|127 Hikes/);
+    expect(bank).toMatch(/elevation-bank-unavailable/);
+    expect(bank).toMatch(/Credit history unavailable/);
+  });
+
   it("leads with rank and lifetime ascent, from the engines", () => {
     expect(ACCOUNT_CODE).toMatch(/rankResult\.currentRank/);
     expect(ACCOUNT_CODE).toMatch(/lifetimeElevation/);
