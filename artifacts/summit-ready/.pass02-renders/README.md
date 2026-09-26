@@ -34,3 +34,21 @@ sheet. Map **dominance and layout** were verified; tile rendering was not.
 Images are 1x. Mountain imagery is served by the production image service in
 the app; in these renders a single repository asset stands in for every
 `mountain-image` request, so the same photograph repeats.
+
+## bank/
+
+The Elevation Bank hero card (`components/elevation/ElevationBankHero.tsx`),
+rendered from the real module against the approved mockup.
+
+| file | width | shows |
+| --- | --- | --- |
+| `wide-1000.png` | 1000 pt | the mockup's landscape composition |
+| `phone-390.png` | 390 pt | the stacked layout the app actually uses |
+| `phone-320.png` | 320 pt | narrowest supported width |
+
+The figures in these renders are harness demo values, not production data. The
+card itself computes nothing — every number is a prop, and `12,420` is one of
+the forbidden hard-codes, so it exists only in `/tmp/harness/bankhero.jsx`.
+
+Type renders as a serif here because the harness does not load Inter; the app
+does.
