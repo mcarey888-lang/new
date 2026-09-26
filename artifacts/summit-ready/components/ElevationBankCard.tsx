@@ -18,41 +18,44 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
   const recent = ready?.recentCredits ?? [];
   const chartCredits = recent.slice(0, 5).reverse();
   const chartMax = Math.max(1, ...chartCredits.map(credit => credit.creditedAscentM));
+  const header = (
+    <View style={styles.topLine}>
+      <Mountain size={30} color={T.blue} strokeWidth={1.8} />
+      <Text style={styles.heading}>ELEVATION BANK</Text>
+      {onPress ? (
+        <TouchableOpacity
+          onPress={onPress}
+          testID="elevation-bank-open"
+          accessibilityRole="button"
+          accessibilityLabel="View Elevation Bank details"
+          style={styles.infoButton}
+        >
+          <Info size={20} color={T.basecampText} />
+        </TouchableOpacity>
+      ) : (
+        <Info size={20} color={T.basecampTextMuted} accessibilityLabel="Elevation Bank information below" />
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.card} testID="elevation-bank-card">
-      <ImageBackground
-        source={require("@/assets/images/mountain-bg.png")}
-        resizeMode="cover"
-        style={styles.hero}
-        imageStyle={styles.heroImage}
-        accessibilityLabel="Illustrative alpine mountain artwork"
-      >
-        <LinearGradient
-          colors={["rgba(3,15,27,0.72)", "rgba(3,15,27,0.88)", "rgba(3,15,27,0.37)"]}
-          locations={[0, 0.53, 1]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.topLine}>
-          <Mountain size={30} color={T.blue} strokeWidth={1.8} />
-          <Text style={styles.heading}>ELEVATION BANK</Text>
-          {onPress ? (
-            <TouchableOpacity
-              onPress={onPress}
-              testID="elevation-bank-open"
-              accessibilityRole="button"
-              accessibilityLabel="View Elevation Bank details"
-              style={styles.infoButton}
-            >
-              <Info size={20} color={T.basecampText} />
-            </TouchableOpacity>
-          ) : (
-            <Info size={20} color={T.basecampTextMuted} accessibilityLabel="Elevation Bank information below" />
-          )}
-        </View>
-        {ready ? (
+      {ready ? (
+        <ImageBackground
+          source={require("@/assets/images/hero-base-camp.png")}
+          resizeMode="cover"
+          style={styles.hero}
+          imageStyle={styles.heroImage}
+          accessibilityLabel="Illustrative alpine mountain artwork"
+        >
+          <LinearGradient
+            colors={["rgba(3,15,27,0.95)", "rgba(3,15,27,0.78)", "rgba(3,15,27,0.15)"]}
+            locations={[0, 0.52, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {header}
           <View style={styles.heroValue} testID="elevation-bank-values">
             <Text
               style={[styles.total, emphasis && styles.totalEmphasis]}
@@ -64,10 +67,13 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
             </Text>
             <Text style={styles.scope}>Qualified recorded outdoor ascent</Text>
           </View>
-        ) : (
-          <Text style={styles.heroCaption}>Your personal, ledger-backed ascent.</Text>
-        )}
-      </ImageBackground>
+        </ImageBackground>
+      ) : (
+        <View style={styles.stateHero}>
+          {header}
+          <Text style={styles.stateSubtitle}>Your personal, ledger-backed ascent.</Text>
+        </View>
+      )}
 
       {ready ? (
         <View style={styles.panel}>
@@ -131,9 +137,9 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
             <Text style={styles.stateText}>Sign in to see your personal, ledger-backed ascent.</Text>
           ) : presentation.kind === "unavailable" ? (
             <View testID="elevation-bank-unavailable">
-              <Text style={styles.stateText}>Elevation Bank is being prepared for this environment.</Text>
+              <Text style={styles.emptyTitle}>Elevation Bank is unavailable</Text>
               <Text style={styles.helperText}>
-                Your existing training history is unchanged. Manual, indoor, and unavailable or untrusted evidence do not count here.
+                We couldn't load your credited ascent. Your training history is unchanged.
               </Text>
               <TouchableOpacity onPress={refetch} style={styles.retry} testID="elevation-bank-retry" accessibilityRole="button">
                 <RefreshCw size={14} color={T.green} />
@@ -163,14 +169,16 @@ const styles = StyleSheet.create({
     backgroundColor: T.basecampSurface,
   },
   hero: {
-    minHeight: 188,
+    minHeight: 196,
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 18,
     justifyContent: "space-between",
     backgroundColor: T.basecampSurface,
   },
-  heroImage: { opacity: 0.95 },
+  heroImage: { opacity: 0.88 },
+  stateHero: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
+  stateSubtitle: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 14 },
   topLine: { flexDirection: "row", alignItems: "center", gap: 10 },
   heading: {
     flex: 1,
@@ -184,7 +192,6 @@ const styles = StyleSheet.create({
   total: { color: T.basecampText, fontSize: 43, lineHeight: 52, fontFamily: "Inter_700Bold", letterSpacing: -1.5 },
   totalEmphasis: { fontSize: 48, lineHeight: 56 },
   scope: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 3 },
-  heroCaption: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_500Medium" },
   panel: {
     margin: 12,
     marginTop: 0,
