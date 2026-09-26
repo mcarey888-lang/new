@@ -58,10 +58,10 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
   return (
     <View style={styles.card} testID="elevation-bank-card">
       <ImageBackground
-        source={require("@/assets/images/elevation-bank-mountain.png")}
+        source={require("@/assets/images/hero-base-camp.png")}
         resizeMode="cover"
         style={styles.hero}
-        accessibilityLabel="Illustrative mountain panorama at sunset"
+        accessibilityLabel="Illustrative hiker overlooking mountains at sunrise"
       >
         <LinearGradient
           colors={["rgba(1,16,31,0.99)", "rgba(1,18,33,0.92)", "rgba(1,18,33,0.55)", "rgba(1,18,33,0.08)"]}

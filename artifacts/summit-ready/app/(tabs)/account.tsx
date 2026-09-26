@@ -496,7 +496,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
                   ascentM: c.creditedAscentM,
                 })), 9)
               : []}
-            photoUri={mountainImageUri(summitGoal?.mountainName, { width: 960, height: 520 })}
+            photoUri={Image.resolveAssetSource(require("@/assets/images/hero-base-camp.png")).uri}
             yearOnYearPercent={null}
             onPress={() => router.push("/elevation-history")}
             onInfoPress={() => router.push("/elevation-history")}

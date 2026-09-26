@@ -9,6 +9,12 @@ Keep the approved Elevation Bank hero and its icon artwork as the Profile's pers
 
 **How to apply:** For future Bank changes, adjust the call site and available data sources first. Preserve the reviewed SVG icons and figure semantics unless the user explicitly requests a new design or changes the credit contract. Protected queries must wait for the Clerk bearer getter to be installed, but do not turn authentication failure into a zero balance.
 
+The Bank hero's scene is a fixed reviewed composition: a hiker overlooking a sunlit mountain range. It must not change to the current goal mountain's photo. Older generic Bank panoramas are not fallback artwork for this surface.
+
+**Why:** The approved render used that composition, but the live Profile passed a goal-dependent image resolver and displayed a glacier instead. The user explicitly rejected this substitution and asked for the original Claude visual.
+
+**How to apply:** Keep Bank presentation imagery separate from named mountain/route identity imagery. Replace legacy art where an exact approved equivalent exists; do not put the generic Bank scene onto route cards merely to eliminate old images.
+
 Development Bank availability is a two-part condition: a Clerk-authenticated API request and an enabled Stage 2 ledger against an actually present development schema. A local manual subtotal can exist even while either condition fails.
 
 **Why:** A missing bearer returned an authentication redirect in preview; independently, the development ledger gate was off even though its tables existed. A successful login alone would still not have produced an API-backed zero or balance.
