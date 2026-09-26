@@ -68,3 +68,4 @@
 - [Android community responsiveness](android-community-freeze.md) — Android Activity/Photos freeze needs stable token effects and bounded native photo mounting; signed-out web checks cannot confirm it.
 - [Generated binary upload requests](orval-binary-upload.md) — Orval can JSON-stringify Blob image requests; verify raw-byte transport after codegen.
 - [Elevation Bank hero contract](elevation-bank-hero-contract.md) — Profile hero is approved presentation-only UI; wire real figures, preserve its SVG icons, omit unavailable stats.
+- [Saved sample profiles](saved-sample-profiles.md) — fictional year stays account-scoped and private; never turn demo hikes/posts into verified activity or public member content.

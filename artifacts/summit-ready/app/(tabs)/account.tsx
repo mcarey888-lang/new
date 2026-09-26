@@ -75,6 +75,9 @@ import {
 import { CommunityHub, type CommunityHubProps } from "@/components/profile/CommunityHub";
 import { DemoCommunityPreview } from "@/components/profile/DemoCommunityPreview";
 import { useCommunity } from "@/hooks/useCommunity";
+import { useSavedDemoYear } from "@/hooks/useSavedDemoYear";
+import { savedDemoYear } from "@/utils/savedDemoYear";
+import { SavedDemoYearSummary, SavedDemoYearActivity, SavedDemoYearPhotos } from "@/components/profile/SavedDemoYear";
 import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
 
 type Difficulty = "Easy" | "Moderate" | "Hard" | "Alpine";
@@ -150,6 +153,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const insets = useSafeAreaInsets();
   const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, expeditions, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals, isLoading: localLoading } = useApp();
   const { presentation: bankPresentation, refetch: refetchBank } = useElevationBank();
+  const sampleProfile = useSavedDemoYear();
+  const sampleYear = useMemo(
+    () => sampleProfile.enabled && sampleProfile.createdAt ? savedDemoYear(sampleProfile.createdAt) : null,
+    [sampleProfile.enabled, sampleProfile.createdAt],
+  );
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue, achievements: stage8Achievements } = useStage8();
   const stage8Tracked = Object.values(stage8Projection.progress)
@@ -448,9 +456,14 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             displayEmail={displayEmail}
             avatarInitial={avatarInitial}
             avatarImageUrl={user?.imageUrl}
+            demoAvatar={!!sampleYear && !user?.imageUrl}
             isSignedIn={!!isSignedIn}
             rankName={rankResult.currentRank ?? "Unranked"}
-            metrics={[
+            metrics={sampleYear ? [
+              { value: `${sampleYear.ascentM.toLocaleString("en-GB")} m`, label: "Sample ascent" },
+              { value: String(sampleYear.hikes.length), label: "Sample hikes" },
+              { value: String(sampleYear.expeditions.length), label: "Sample expeditions" },
+            ] : [
               { value: `${Math.round(lifetimeElevation).toLocaleString()} m`, label: "Lifetime ascent" },
               { value: String(lifetimeSessions), label: "Activities" },
               { value: `${unlockedAchievements.length}/${ACHIEVEMENTS.length}`, label: "Achievements" },
@@ -476,6 +489,28 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               <Text style={styles.settingsTitle}>Account & settings</Text>
             </View>
           </View>
+        )}
+
+        {!showSettings && isSignedIn && !sampleProfile.loading && !sampleYear && (
+          <TouchableOpacity
+            onPress={sampleProfile.add}
+            disabled={sampleProfile.busy}
+            accessibilityRole="button"
+            testID="add-saved-demo-year"
+            style={{ marginTop: 14, marginBottom: 14, padding: 16, borderRadius: 12, backgroundColor: BASECAMP.accentDim, borderWidth: 1, borderColor: BASECAMP.accentLine }}
+          >
+            <Text style={{ color: BASECAMP.accent, fontFamily: "Inter_700Bold" }}>
+              {sampleProfile.busy ? "Saving sample year…" : "Add a sample year to my profile"}
+            </Text>
+            <Text style={{ color: BASECAMP.textMuted, marginTop: 5, lineHeight: 18 }}>
+              Private example hikes, photo stories, ascent and three completed expeditions. Your real activity stays unchanged.
+            </Text>
+          </TouchableOpacity>
+        )}
+        {!!sampleProfile.error && isSignedIn && (
+          <Text style={{ color: BASECAMP.textMuted, marginBottom: 12 }} testID="saved-demo-year-error">
+            Sample profile unavailable: {sampleProfile.error}
+          </Text>
         )}
 
         {tab === "profile" && !showSettings && (<>
@@ -528,6 +563,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             </Text>
           )}
         </Animated.View>
+        {sampleYear && <SavedDemoYearSummary year={sampleYear} onRemove={sampleProfile.remove} busy={sampleProfile.busy} />}
         <TouchableOpacity
           style={styles.communityEntry}
           accessibilityRole="button"
@@ -790,6 +826,10 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
         </>)}
         {tab === "activity" && !showSettings && (<>
+        {sampleYear && <>
+          <SavedDemoYearActivity year={sampleYear} />
+          <SavedDemoYearPhotos year={sampleYear} />
+        </>}
         <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
           <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
           {recentActivity.length ? recentActivity.map(activity => (
@@ -1271,6 +1311,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         </>)}
         {tab === "photos" && !showSettings && (
           <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
+            {sampleYear && <SavedDemoYearPhotos year={sampleYear} />}
             <SRSectionHeader title="Your journal photos" />
             {journalPhotos.length > 0 ? (
               <View style={styles.photoGrid}>

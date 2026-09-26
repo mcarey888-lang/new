@@ -1,6 +1,7 @@
 import { Settings, UserRound } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { SRUnderlineTabs } from "@/components/ui";
@@ -24,6 +25,7 @@ type Props = {
   displayEmail?: string | null;
   avatarInitial: string;
   avatarImageUrl?: string | null;
+  demoAvatar?: boolean;
   isSignedIn: boolean;
   rankName: string;
   metrics: [Metric, Metric, Metric];
@@ -39,6 +41,7 @@ export function PrimaryProfilePresentation({
   displayEmail: _displayEmail,
   avatarInitial,
   avatarImageUrl,
+  demoAvatar = false,
   isSignedIn,
   rankName,
   metrics,
@@ -107,7 +110,15 @@ export function PrimaryProfilePresentation({
         <View style={styles.identity}>
           <View style={styles.identityRow}>
             <View style={styles.avatar}>
-              {avatarImageUrl ? (
+              {demoAvatar ? (
+                <ExpoImage
+                  source={require("@/assets/images/hero-base-camp.png")}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                  contentPosition={{ left: "87%", top: "47%" }}
+                  accessibilityLabel="Illustrative hiker profile picture for the saved sample year"
+                />
+              ) : avatarImageUrl ? (
                 <Image source={{ uri: avatarImageUrl }} style={styles.avatarImage} />
               ) : isSignedIn ? (
                 <Text style={styles.avatarInitial}>{avatarInitial}</Text>
@@ -118,7 +129,7 @@ export function PrimaryProfilePresentation({
             <View style={styles.nameBlock}>
               <Text style={styles.rank} numberOfLines={1}>{rankName.toUpperCase()}</Text>
               <Text style={styles.name} numberOfLines={2}>{displayName}</Text>
-              <Text style={styles.email}>YOUR MOUNTAIN STORY</Text>
+              <Text style={styles.email}>{demoAvatar ? "SAMPLE YEAR · PRIVATE" : "YOUR MOUNTAIN STORY"}</Text>
             </View>
           </View>
           <View style={styles.metrics}>

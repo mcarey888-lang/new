@@ -17,3 +17,4 @@ export * from "./signature-challenges";
 export * from "./atlas";
 export * from "./ai-mountain-discoveries";
 export * from "./community";
+export * from "./user-demo-profiles";
