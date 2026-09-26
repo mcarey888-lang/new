@@ -1,11 +1,7 @@
-import { ChevronRight, Mountain, RefreshCw } from "lucide-react-native";
+import { ChevronRight, Info, Mountain, RefreshCw } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { T } from "@/constants/theme";
 import { useElevationBank } from "@/hooks/useElevationBank";
 import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
@@ -13,147 +9,146 @@ import { formatElevationBankMetres } from "@/utils/elevationBankPresentation";
 type Props = {
   onPress?: () => void;
   expanded?: boolean;
-  /**
-   * Elevation Bank is a first-class SummitReady concept, not an ordinary stat.
-   * `emphasis` gives the lifetime figure the hierarchy the approved design
-   * calls for. It is PRESENTATION ONLY — the value, the credit rules and the
-   * qualification logic are unchanged and still come from the API.
-   */
   emphasis?: boolean;
 };
 
 export function ElevationBankCard({ onPress, expanded = false, emphasis = false }: Props) {
-  /* One query, shared with the Basecamp tile, so the two cannot disagree
-     about the same user's banked ascent. */
   const { presentation, isSignedIn, refetch } = useElevationBank();
-  const hasCollapsedRecentCredits =
-    !expanded
-    && presentation.kind === "ready"
-    && presentation.data.recentCredits.length > 0;
-
-  const content = (() => {
-    if (presentation.kind === "loading") {
-      return (
-        <View style={styles.stateRow} testID="elevation-bank-loading">
-          <View style={styles.loadingBar} />
-          <Text style={styles.stateText}>Loading your credited ascent…</Text>
-        </View>
-      );
-    }
-
-    if (!isSignedIn) {
-      return (
-        <Text style={styles.stateText}>
-          Sign in to see your personal, ledger-backed ascent.
-        </Text>
-      );
-    }
-
-    if (presentation.kind === "unavailable") {
-      return (
-        <View style={styles.unavailable} testID="elevation-bank-unavailable">
-          <Text style={styles.stateText}>
-            Elevation Bank is being prepared for this environment.
-          </Text>
-          <Text style={styles.helperText}>
-            Your existing training history is unchanged. Manual, indoor, and
-            unavailable or untrusted evidence do not count here.
-          </Text>
-          <TouchableOpacity
-            onPress={refetch}
-            style={styles.retry}
-            testID="elevation-bank-retry"
-          >
-            <RefreshCw size={13} color={T.green} />
-            <Text style={styles.retryText}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (presentation.kind === "empty") {
-      return (
-        <View testID="elevation-bank-empty">
-          <Text style={styles.emptyTitle}>No credited ascent yet</Text>
-          <Text style={styles.helperText}>
-            Recorded GPS ascent appears here after its evidence is qualified.
-            Manual, indoor, and unavailable or untrusted evidence stay out of
-            this total.
-          </Text>
-        </View>
-      );
-    }
-
-    const data = presentation.data;
-    return (
-      <View testID="elevation-bank-values">
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricItem}>
-            <Text
-              style={[styles.metricValue, emphasis && styles.metricValueEmphasis]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {formatElevationBankMetres(data.lifetimeAscentM)}
-            </Text>
-            <Text style={styles.metricLabel}>Qualified recorded outdoor ascent</Text>
-          </View>
-          <View style={styles.secondaryGrid}>
-          <View style={styles.secondaryItem}>
-            <Text style={styles.metricValue}>{formatElevationBankMetres(data.periodAscentM)}</Text>
-            <Text style={styles.metricLabel}>This month</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.secondaryItem}>
-            <Text style={styles.metricValue}>{data.everestEquivalent.toFixed(1)}</Text>
-            <Text style={styles.metricLabel}>Everests</Text>
-          </View>
-          </View>
-        </View>
-
-        {expanded && data.recentCredits.length > 0 && (
-          <View style={styles.recentList}>
-            {data.recentCredits.map((credit) => (
-              <View key={`${credit.activityId}:${credit.revision}`} style={styles.recentRow}>
-                <View style={styles.recentDot} />
-                <Text style={styles.recentLabel} numberOfLines={1}>
-                  {credit.status === "corrected" ? "Corrected credit" : "Credited activity"}
-                </Text>
-                <Text style={styles.recentValue}>+{formatElevationBankMetres(credit.creditedAscentM)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  })();
+  const ready = presentation.kind === "ready" ? presentation.data : null;
+  const recent = ready?.recentCredits ?? [];
+  const chartCredits = recent.slice(0, 5).reverse();
+  const chartMax = Math.max(1, ...chartCredits.map(credit => credit.creditedAscentM));
 
   return (
-    <View style={[styles.card, expanded && styles.expandedCard]} testID="elevation-bank-card">
-      <View style={styles.header}>
-        <View style={styles.titleWrap}>
-          <View style={styles.icon}>
-            <Mountain size={16} color={T.green} />
-          </View>
-          <Text style={styles.title}>Elevation Bank</Text>
+    <View style={styles.card} testID="elevation-bank-card">
+      <ImageBackground
+        source={require("@/assets/images/mountain-bg.png")}
+        resizeMode="cover"
+        style={styles.hero}
+        imageStyle={styles.heroImage}
+        accessibilityLabel="Illustrative alpine mountain artwork"
+      >
+        <LinearGradient
+          colors={["rgba(3,15,27,0.72)", "rgba(3,15,27,0.88)", "rgba(3,15,27,0.37)"]}
+          locations={[0, 0.53, 1]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.topLine}>
+          <Mountain size={30} color={T.blue} strokeWidth={1.8} />
+          <Text style={styles.heading}>ELEVATION BANK</Text>
+          {onPress ? (
+            <TouchableOpacity
+              onPress={onPress}
+              testID="elevation-bank-open"
+              accessibilityRole="button"
+              accessibilityLabel="View Elevation Bank details"
+              style={styles.infoButton}
+            >
+              <Info size={20} color={T.basecampText} />
+            </TouchableOpacity>
+          ) : (
+            <Info size={20} color={T.basecampTextMuted} accessibilityLabel="Elevation Bank information below" />
+          )}
         </View>
-        {onPress && (
-          <TouchableOpacity onPress={onPress} testID="elevation-bank-open" style={styles.viewDetailsBtn}>
-            <Text style={styles.viewDetailsText}>View details</Text>
-            <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
-          </TouchableOpacity>
+        {ready ? (
+          <View style={styles.heroValue} testID="elevation-bank-values">
+            <Text
+              style={[styles.total, emphasis && styles.totalEmphasis]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+            >
+              {formatElevationBankMetres(ready.lifetimeAscentM)}
+            </Text>
+            <Text style={styles.scope}>Qualified recorded outdoor ascent</Text>
+          </View>
+        ) : (
+          <Text style={styles.heroCaption}>Your personal, ledger-backed ascent.</Text>
         )}
-      </View>
-      <Text style={styles.helperTextBase}>Your personal, ledger-backed ascent.</Text>
-      <View style={styles.contentWrap}>
-        {content}
-      </View>
-      {hasCollapsedRecentCredits && (
-        <TouchableOpacity onPress={onPress} style={styles.detailLink}>
-          <Text style={styles.detailLinkText}>View credited activity</Text>
-          <ChevronRight size={14} color={T.green} />
-        </TouchableOpacity>
+      </ImageBackground>
+
+      {ready ? (
+        <View style={styles.panel}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>
+                {formatElevationBankMetres(ready.periodAscentM)}
+              </Text>
+              <Text style={styles.summaryLabel}>THIS MONTH</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue} numberOfLines={1}>
+                {ready.everestEquivalent.toFixed(1)}
+              </Text>
+              <Text style={styles.summaryLabel}>EVEREST EQUIVALENTS</Text>
+            </View>
+          </View>
+          {chartCredits.length > 0 && (
+            <View style={styles.chartBlock}>
+              <Text style={styles.chartTitle}>RECENT QUALIFIED CREDITS</Text>
+              <View style={styles.chart}>
+                {chartCredits.map(credit => (
+                  <View key={`${credit.activityId}:${credit.revision}`} style={styles.chartColumn}>
+                    <View
+                      style={[
+                        styles.chartBar,
+                        { height: Math.max(4, Math.round(36 * credit.creditedAscentM / chartMax)) },
+                      ]}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+          {expanded && recent.length > 0 && (
+            <View style={styles.recentList}>
+              {recent.map(credit => (
+                <View key={`${credit.activityId}:${credit.revision}`} style={styles.recentRow}>
+                  <View style={styles.recentDot} />
+                  <Text style={styles.recentLabel} numberOfLines={1}>
+                    {credit.status === "corrected" ? "Corrected credit" : "Credited activity"}
+                  </Text>
+                  <Text style={styles.recentValue}>+{formatElevationBankMetres(credit.creditedAscentM)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {!expanded && recent.length > 0 && onPress && (
+            <TouchableOpacity onPress={onPress} style={styles.detailLink} accessibilityRole="button">
+              <Text style={styles.detailLinkText}>View credited activity</Text>
+              <ChevronRight size={14} color={T.blue} />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.statePanel}>
+          {presentation.kind === "loading" ? (
+            <Text style={styles.stateText} testID="elevation-bank-loading">Loading your credited ascent…</Text>
+          ) : !isSignedIn ? (
+            <Text style={styles.stateText}>Sign in to see your personal, ledger-backed ascent.</Text>
+          ) : presentation.kind === "unavailable" ? (
+            <View testID="elevation-bank-unavailable">
+              <Text style={styles.stateText}>Elevation Bank is being prepared for this environment.</Text>
+              <Text style={styles.helperText}>
+                Your existing training history is unchanged. Manual, indoor, and unavailable or untrusted evidence do not count here.
+              </Text>
+              <TouchableOpacity onPress={refetch} style={styles.retry} testID="elevation-bank-retry" accessibilityRole="button">
+                <RefreshCw size={14} color={T.green} />
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View testID="elevation-bank-empty">
+              <Text style={styles.emptyTitle}>No credited ascent yet</Text>
+              <Text style={styles.helperText}>
+                Recorded GPS ascent appears here after its evidence is qualified. Manual, indoor, and unavailable or untrusted evidence stay out of this total.
+              </Text>
+            </View>
+          )}
+        </View>
       )}
     </View>
   );
@@ -161,57 +156,66 @@ export function ElevationBankCard({ onPress, expanded = false, emphasis = false 
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-    padding: 18,
-    backgroundColor: T.basecampSurface,
-    borderRadius: 14,
+    overflow: "hidden",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: T.blue + "65",
+    borderColor: T.blue + "55",
+    backgroundColor: T.basecampSurface,
   },
-  expandedCard: { marginHorizontal: 0 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  titleWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
-  icon: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: T.blueDim },
-  title: { color: T.basecampText, fontSize: 17, fontFamily: "Inter_700Bold" },
-  viewDetailsBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  viewDetailsText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.6)" },
-  helperTextBase: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14 },
-  contentWrap: {},
-  metricsGrid: { gap: 16 },
-  metricItem: { alignItems: "flex-start" },
-  secondaryGrid: { flexDirection: "row", alignItems: "center", paddingTop: 12, borderTopWidth: 1, borderTopColor: T.basecampBorder },
-  secondaryItem: { flex: 1 },
-  metricValue: { color: T.basecampText, fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 4 },
-  /* Presentation only — the figure itself is unchanged. */
-  metricValueEmphasis: { fontSize: 36, lineHeight: 42, letterSpacing: -1 },
-  metricLabel: { color: T.basecampTextMuted, fontSize: 11, fontFamily: "Inter_500Medium" },
-  metricDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.1)" },
-
-  eyebrow: { color: T.green, fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1.1 },
-  metricRow: { flexDirection: "row", alignItems: "flex-end", gap: 18 },
-  primaryMetric: { flex: 1 },
-  primaryValue: { color: T.basecampText, fontSize: 32, lineHeight: 36, fontFamily: "Inter_700Bold" },
-  primaryLabel: { color: T.basecampTextMuted, fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 3 },
-  secondaryMetric: { width: 100, paddingBottom: 2 },
-  secondaryValue: { color: T.green, fontSize: 18, fontFamily: "Inter_700Bold" },
-  secondaryLabel: { color: T.basecampTextMuted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
-  everestRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 },
-  everestText: { color: T.orange, fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  displayOnly: { color: T.basecampTextDim, fontSize: 10, fontFamily: "Inter_400Regular" },
-  stateRow: { flexDirection: "row", alignItems: "center", gap: 9 },
-  loadingBar: { width: 42, height: 18, backgroundColor: T.blueDim, borderRadius: 4 },
-  stateText: { color: T.basecampTextMuted, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
-  unavailable: { gap: 7 },
-  helperText: { color: T.basecampTextDim, fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
-  emptyTitle: { color: T.basecampText, fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
-  retry: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3, alignSelf: "flex-start" },
-  retryText: { color: T.green, fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  detailLink: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 14, alignSelf: "flex-start" },
-  detailLinkText: { color: T.green, fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  recentList: { marginTop: 15, gap: 8, borderTopWidth: 1, borderTopColor: T.basecampBorder, paddingTop: 12 },
+  hero: {
+    minHeight: 188,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
+    justifyContent: "space-between",
+    backgroundColor: T.basecampSurface,
+  },
+  heroImage: { opacity: 0.95 },
+  topLine: { flexDirection: "row", alignItems: "center", gap: 10 },
+  heading: {
+    flex: 1,
+    color: T.basecampText,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.4,
+  },
+  infoButton: { padding: 8, margin: -8 },
+  heroValue: { marginTop: 24 },
+  total: { color: T.basecampText, fontSize: 43, lineHeight: 52, fontFamily: "Inter_700Bold", letterSpacing: -1.5 },
+  totalEmphasis: { fontSize: 48, lineHeight: 56 },
+  scope: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 3 },
+  heroCaption: { color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_500Medium" },
+  panel: {
+    margin: 12,
+    marginTop: 0,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.blue + "2A",
+    backgroundColor: "rgba(3,19,34,0.94)",
+  },
+  summaryRow: { flexDirection: "row", alignItems: "center" },
+  summaryItem: { flex: 1, minWidth: 0, alignItems: "center", paddingHorizontal: 5 },
+  summaryValue: { color: T.basecampText, fontSize: 21, fontFamily: "Inter_700Bold" },
+  summaryLabel: { color: T.basecampTextMuted, fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6, marginTop: 5, textAlign: "center" },
+  divider: { width: 1, height: 36, backgroundColor: T.blue + "33" },
+  chartBlock: { marginTop: 15, borderTopWidth: 1, borderTopColor: T.blue + "2A", paddingTop: 12 },
+  chartTitle: { color: T.basecampTextMuted, fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.7 },
+  chart: { height: 44, flexDirection: "row", alignItems: "flex-end", gap: 8, borderBottomWidth: 1, borderBottomColor: T.blue + "33", paddingHorizontal: 4 },
+  chartColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
+  chartBar: { width: "80%", maxWidth: 35, borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: T.blue },
+  recentList: { marginTop: 16, gap: 8, borderTopWidth: 1, borderTopColor: T.blue + "2A", paddingTop: 12 },
   recentRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  recentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
+  recentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.blue },
   recentLabel: { flex: 1, color: T.basecampTextMuted, fontSize: 12, fontFamily: "Inter_400Regular" },
   recentValue: { color: T.basecampText, fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  detailLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, marginTop: 15 },
+  detailLinkText: { color: T.blue, fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  statePanel: { paddingHorizontal: 20, paddingBottom: 20 },
+  stateText: { color: T.basecampTextMuted, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
+  helperText: { color: T.basecampTextDim, fontSize: 11, lineHeight: 17, fontFamily: "Inter_400Regular", marginTop: 7 },
+  emptyTitle: { color: T.basecampText, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  retry: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, alignSelf: "flex-start" },
+  retryText: { color: T.green, fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });
