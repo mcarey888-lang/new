@@ -60,7 +60,8 @@ describe("Profile is a mountain résumé", () => {
   it("uses the supplied Elevation Bank mountain without inventing the reference figures", () => {
     const bank = code(read("components/ElevationBankCard.tsx"));
     expect(bank).toMatch(/hero-base-camp\.png/);
-    expect(ACCOUNT_CODE).toMatch(/photoUri=\{Image\.resolveAssetSource\(require\("@\/assets\/images\/hero-base-camp\.png"\)\)\.uri\}/);
+    expect(ACCOUNT_CODE).toMatch(/photoAsset=\{require\("@\/assets\/images\/hero-base-camp\.png"\)\}/);
+    expect(ACCOUNT_CODE).not.toMatch(/Image\.resolveAssetSource/);
     expect(ACCOUNT_CODE).not.toMatch(/photoUri=\{mountainImageUri\(/);
     expect(bank).toMatch(/formatElevationBankMetres\(value\)/);
     expect(bank).toMatch(/ready\.lifetimeAscentM/);

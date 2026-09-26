@@ -65,8 +65,10 @@ export interface ElevationBankHeroProps {
   monthly: readonly MonthlyGain[];
   /** Whole-percent change on the previous year, or null when not computable. */
   yearOnYearPercent?: number | null;
-  /** Place photography from the existing resolver. Never a hard-coded asset. */
+  /** Optional place photography supplied by a caller. */
   photoUri?: string | null;
+  /** Bundled approved illustration; passed directly to expo-image on web and native. */
+  photoAsset?: number;
   onPress?: () => void;
   onInfoPress?: () => void;
   testID?: string;
@@ -161,6 +163,7 @@ export function ElevationBankHero({
   monthly,
   yearOnYearPercent,
   photoUri,
+  photoAsset,
   onPress,
   onInfoPress,
   testID = "elevation-bank-hero",
@@ -221,10 +224,10 @@ export function ElevationBankHero({
 
         {/* Place photography, bleeding off the right edge and faded into the
             card. Mountain photography may bleed; this is never exercise art. */}
-        {photoUri ? (
+        {photoAsset || photoUri ? (
           <View style={[s.photoWrap, wide ? s.photoWrapWide : s.photoWrapNarrow]}>
             <ExpoImage
-              source={{ uri: photoUri }}
+              source={photoAsset ?? { uri: photoUri! }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={220}

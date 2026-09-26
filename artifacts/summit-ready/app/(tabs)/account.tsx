@@ -10,7 +10,6 @@ import { useLocalSearchParams } from "expo-router";
 import { openMapSearch } from "@/utils/openMaps";
 import {
   ActivityIndicator,
-  Image,
   Alert,
   Linking,
   Platform,
@@ -496,7 +495,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
                   ascentM: c.creditedAscentM,
                 })), 9)
               : []}
-            photoUri={Image.resolveAssetSource(require("@/assets/images/hero-base-camp.png")).uri}
+            photoAsset={require("@/assets/images/hero-base-camp.png")}
             yearOnYearPercent={null}
             onPress={() => router.push("/elevation-history")}
             onInfoPress={() => router.push("/elevation-history")}

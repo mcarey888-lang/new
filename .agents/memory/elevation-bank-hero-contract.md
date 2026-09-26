@@ -15,6 +15,12 @@ The Bank hero's scene is a fixed reviewed composition: a hiker overlooking a sun
 
 **How to apply:** Keep Bank presentation imagery separate from named mountain/route identity imagery. Replace legacy art where an exact approved equivalent exists; do not put the generic Bank scene onto route cards merely to eliminate old images.
 
+In this app's Expo web preview, `react-native`'s `Image.resolveAssetSource` is not callable even though the code typechecks. It crashes the whole Profile at render time.
+
+**Why:** A compile-and-test pass missed this platform-specific failure after the approved Bank scene was wired in.
+
+**How to apply:** Pass bundled image `require(...)` directly as an `expo-image` source; for cross-platform image changes, confirm the web bundle starts and do not infer runtime compatibility from typechecks alone.
+
 Development Bank availability is a two-part condition: a Clerk-authenticated API request and an enabled Stage 2 ledger against an actually present development schema. A local manual subtotal can exist even while either condition fails.
 
 **Why:** A missing bearer returned an authentication redirect in preview; independently, the development ledger gate was off even though its tables existed. A successful login alone would still not have produced an API-backed zero or balance.
