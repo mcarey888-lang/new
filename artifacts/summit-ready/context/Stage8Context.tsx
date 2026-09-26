@@ -256,16 +256,30 @@ export function Stage8Provider({ children }: { children: React.ReactNode }) {
   }, [key, userId]);
 
   useEffect(() => {
-    if (!userId || elevationBankQuery.data?.status !== "available") return;
-    for (const event of elevationBankQuery.data.recentEvents) {
-      const mapped = mapElevationBankEventToEvidence(event, userId);
-      if (!mapped) continue;
-      const window = resolveCalendarMonthForInstant(event.effectiveAt, "Europe/London");
-      void ingestEvidence({ ...mapped, windowBucketKey: window.windowKey }, { "monthly-elevation-1000": window }).catch(() => {
-        // Persistence retry is scheduled by the provider; reconciliation must not
-        // become an unhandled rejection in a background effect.
-      });
-    }
+    const recentEvents = elevationBankQuery.data?.status === "available"
+      ? elevationBankQuery.data.recentEvents : null;
+    if (!userId || !recentEvents) return;
+    let cancelled = false;
+    // AsyncStorage resolves immediately on web. Enqueuing every event at once
+    // otherwise creates an unbroken chain of projection rebuilds, storage
+    // writes and provider renders that blocks tab interactions until it drains.
+    void (async () => {
+      for (const event of recentEvents) {
+        if (cancelled) break;
+        const mapped = mapElevationBankEventToEvidence(event, userId);
+        if (!mapped) continue;
+        const window = resolveCalendarMonthForInstant(event.effectiveAt, "Europe/London");
+        try {
+          await ingestEvidence({ ...mapped, windowBucketKey: window.windowKey }, { "monthly-elevation-1000": window });
+        } catch {
+          // Persistence retry is scheduled by the provider; keep replaying.
+        }
+        // A timer, not a microtask, allows the browser to paint and respond to
+        // touches between events. Each ingestion still completes in order.
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+      }
+    })();
+    return () => { cancelled = true; };
   }, [elevationBankQuery.data, ingestEvidence, userId]);
 
   const pendingEvidence = useMemo(

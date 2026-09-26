@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { openMapSearch } from "@/utils/openMaps";
 import {
@@ -185,7 +185,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     0,
   );
 
-  const rankResult = evaluateRank({
+  const rankResult = useMemo(() => evaluateRank({
     ownerUserId: __DEV__ ? (user?.id ?? "dev-fixture-owner") : (user?.id ?? "signed-out"),
     evidence: __DEV__ ? devRankEvidence : [],
     signalAvailability: {
@@ -196,13 +196,13 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
       activeWeeks: __DEV__ ? "available" : "unavailable",
       expeditionMilestones: __DEV__ ? "available" : "unavailable",
     } satisfies Record<RankSignal, "available" | "unavailable">,
-  });
+  }), [user?.id, devRankEvidence]);
 
-  const uniqueCurrentActivities = mergeActivityKinds(
+  const uniqueCurrentActivities = useMemo(() => mergeActivityKinds(
     sessions.filter(session => session.completed),
     exploreHikes,
-  );
-  const recentActivity = [
+  ), [sessions, exploreHikes]);
+  const recentActivity = useMemo(() => [
     ...sessions.filter(s => s.completed).map(s => ({
       id: `session:${s.id}`, title: s.hillName ?? (s.type === "bigDay" ? "Big day" : s.type === "hill" ? "Hill session" : "Cardio session"),
       date: s.date, distance: s.distance, elevation: s.elevationGain, kind: "Session",
@@ -210,7 +210,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     ...exploreHikes.map(h => ({
       id: `hike:${h.id}`, title: h.name, date: h.date, distance: h.distance, elevation: h.elevationGain, kind: "Hike",
     })),
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12), [sessions, exploreHikes]);
   // Lifetime stats
   const lifetimeSessions = uniqueCurrentActivities.length + completedGoals.reduce((s, g) => s + g.sessionsLogged, 0);
   const lifetimeElevation = uniqueCurrentActivities.reduce((s, activity) => s + activity.elevationGain, 0)
