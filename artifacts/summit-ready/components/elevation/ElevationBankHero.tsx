@@ -22,7 +22,7 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flag, Footprints, Info, Mountain, TrendingUp } from "lucide-react-native";
+import { Info, Mountain, TrendingUp } from "lucide-react-native";
 import React from "react";
 import {
   StyleSheet,
@@ -33,6 +33,12 @@ import {
 } from "react-native";
 
 import { BASECAMP, EXPLORE } from "@/constants/tokens";
+import {
+  ExpeditionFlagIcon,
+  HikerIcon,
+  MovingTimeIcon,
+  SummitIcon,
+} from "@/components/elevation/BankStatIcons";
 import { barFractions, formatBankMetres, type MonthlyGain } from "@/utils/elevationBankHero";
 
 /** Above this the card lays out as the mockup's landscape composition. */
@@ -241,25 +247,25 @@ export function ElevationBankHero({
       <View style={[s.foot, wide && s.footWide]}>
         <View style={[s.statRow, wide && s.statRowWide]}>
           <Stat
-            icon={<Footprints size={20} color={EXPLORE.accent} />}
+            icon={<HikerIcon size={22} color={EXPLORE.accent} />}
             value={String(hikes)}
             label="Hikes"
           />
           <View style={s.statDivider} />
           <Stat
-            icon={<Mountain size={20} color={EXPLORE.accent} />}
+            icon={<SummitIcon size={22} color={EXPLORE.accent} />}
             value={mountains === null ? "—" : String(mountains)}
             label="Mountains"
           />
           <View style={s.statDivider} />
           <Stat
-            icon={<Flag size={20} color={EXPLORE.accent} />}
+            icon={<ExpeditionFlagIcon size={22} color={EXPLORE.accent} />}
             value={expeditions === null ? "—" : String(expeditions)}
             label="Expeditions"
           />
           <View style={s.statDivider} />
           <Stat
-            icon={<TrendingUp size={20} color={EXPLORE.accent} />}
+            icon={<MovingTimeIcon size={22} color={EXPLORE.accent} />}
             value={movingHours === null ? "—" : `${movingHours} h`}
             label="Moving Time"
           />
@@ -357,7 +363,7 @@ const s = StyleSheet.create({
   statRow: { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 8 },
   statRowWide: { flex: 1, minWidth: 0, paddingHorizontal: 18, alignSelf: "center" },
   stat: { flex: 1, minWidth: 0, alignItems: "center", paddingHorizontal: 4, gap: 5 },
-  statIcon: { height: 24, justifyContent: "center" },
+  statIcon: { height: 26, justifyContent: "center" },
   statValue: {
     fontSize: 23, lineHeight: 28, fontFamily: "Inter_700Bold", color: BASECAMP.text,
   },
