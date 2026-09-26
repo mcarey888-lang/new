@@ -26,7 +26,7 @@
 - [Firebase RNFB non-modular headers fix](firebase-rnfb-defines-module.md) — DEFINES_MODULE=NO for RNFB* targets in post_install; ALLOW_NON_MODULAR and -Wno flags both fail in Xcode 15 + RN 0.81.5.
 - [Plan tab redesign — Expedition Dashboard](plan-tab-redesign.md) — WeekCard sessions are tappable chips to session-detail; Plan tab has hero dashboard above Full Plan accordion; availableDays optional in SummitGoal.
 - [Virtual Expeditions Stage 3 — mode toggle + UI](virtual-expeditions-stage3.md) — floating pill over hero in dashboard; patchGoal for field-only updates; VirtualExpeditionView early-return in plan.tsx; shared confirmModeSwitch util.
-- [Mountain image loading pattern](mountain-image-api.md) — always remote URI via /api/mountain-image; never require() bundled assets; gradient behind ExpoImage as instant fallback.
+- [Mountain image loading pattern](mountain-image-api.md) — use remote image URIs; exact reviewed artwork outranks cached map fallbacks, with a gradient while resolving.
 - [Route image identity](route-image-identity.md) — route imagery must preserve route identity and coordinates; never accept broad nearby-place matches for identified routes.
 - [Local hill imagery privacy](local-hill-imagery-privacy.md) — label generic artwork as illustrative; journey photos require an explicit owner-private cover choice, never automatic public promotion.
 - [Dual-shell navigation](dual-shell-navigation.md) — Training and Expedition shells persist separate goal snapshots; switching shells swaps the active goal without leaking selections.

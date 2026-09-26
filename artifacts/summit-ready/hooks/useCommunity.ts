@@ -17,10 +17,12 @@ import type { CommunityCreate, CommunityHubProps, CommunityPost } from "@/compon
 
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? "summitready.uk"}`;
 
-export function useCommunity(): CommunityHubProps {
+export function useCommunity(visible = true): CommunityHubProps {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const queryClient = useQueryClient();
-  const enabled = isLoaded && Boolean(isSignedIn && userId);
+  // The profile and settings must not fetch feeds or decode photos just to
+  // display the You header. Activate the community only on its visible tabs.
+  const enabled = visible && isLoaded && Boolean(isSignedIn && userId);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [imageToken, setImageToken] = useState<{ userId: string; token: string } | null>(null);
@@ -69,16 +71,26 @@ export function useCommunity(): CommunityHubProps {
     let active = true;
     const ids = [...new Set([...posts, ...minePosts].filter(post => post.hasPhoto).map(post => post.id))];
     const urls: string[] = [];
-    void Promise.all(ids.map(async id => {
-      try {
-        const blob = await getCommunityPostPhoto(id);
-        const url = URL.createObjectURL(blob);
-        urls.push(url);
-        return [id, url] as const;
-      } catch {
-        return null;
+    const load = async () => {
+      const entries: (readonly [string, string])[] = [];
+      // A full member feed can have many photos; don't start all protected
+      // downloads on the same frame or block navigation with a request burst.
+      for (let offset = 0; offset < ids.length && active; offset += 4) {
+        const batch = await Promise.all(ids.slice(offset, offset + 4).map(async id => {
+          try {
+            const blob = await getCommunityPostPhoto(id);
+            const url = URL.createObjectURL(blob);
+            urls.push(url);
+            return [id, url] as const;
+          } catch {
+            return null;
+          }
+        }));
+        entries.push(...batch.filter((entry): entry is readonly [string, string] => entry !== null));
       }
-    })).then(entries => {
+      return entries;
+    };
+    void load().then(entries => {
       if (active) setWebPhotos({ userId, urls: Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => entry !== null)) });
       else urls.forEach(url => URL.revokeObjectURL(url));
     });

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "./mountainImage";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("approved mountain image subjects", () => {
   it("recognizes the approved mountain collection and documented name variants", () => {
@@ -67,5 +69,15 @@ describe("approved mountain image subjects", () => {
     expect(refreshed).toContain("location=Snowdonia%2C%20Wales&routeIdentityKey=pyg&approvedHeroRevision=");
     expect(appendApprovedImageRevision(refreshed, "Snowdon")).toBe(refreshed);
     expect(appendApprovedImageRevision(previous, "Matterhorn")).toBe(previous);
+  });
+
+  it("uses the exact reviewed Matterhorn asset instead of an old cached map in the artwork preview", () => {
+    vi.stubGlobal("__DEV__", true);
+    const previous = "/api/mountain-image?name=Matterhorn&width=800&height=300";
+    expect(appendApprovedImageRevision(previous, "Matterhorn"))
+      .toContain("/api/artwork/approved/SR-MTN-MATTERHORN-001/hero");
+    expect(mountainImageUri("Matterhorn"))
+      .toContain("/api/artwork/approved/SR-MTN-MATTERHORN-001/hero");
+    expect(appendApprovedImageRevision(previous, "Matterhorn Ridge")).toBe(previous);
   });
 });

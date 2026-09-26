@@ -52,6 +52,7 @@ import { CurrentStageCard } from "@/components/expedition/CurrentStageCard";
 import { StageRail } from "@/components/expedition/StageRail";
 import { JourneyHistory } from "@/components/JourneyHistory";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { resolveApprovedMatterhornArtwork } from "@/utils/artworkResolver";
 
 const CinematicPrototype = React.lazy(async () => {
   const module = await import("@/components/CinematicPrototype");
@@ -342,7 +343,9 @@ export default function BaseCampScreen() {
   const [mountainChoices, setMountainChoices] = useState<VerifiedMountainChoice[]>([]);
   const [mountainChooserOpen, setMountainChooserOpen] = useState<boolean>(false);
   const [pendingMountainRequest, setPendingMountainRequest] = useState<PendingBaseExpeditionRequest | null>(null);
-  const [challengeHeroUri, setChallengeHeroUri] = useState<string | null>(null);
+  // Keep the old mountain-image fallback off screen until we know whether
+  // approved challenge artwork exists for this exact expedition.
+  const [challengeHero, setChallengeHero] = useState<{ key: string; uri: string | null; ready: boolean } | null>(null);
   const [communityStats, setCommunityStats] = useState<CommunityStats | null>(null);
   const [communityLoading, setCommunityLoading] = useState(true);
   const [journalPhotos, setJournalPhotos] = useState<JournalPhoto[]>([]);
@@ -802,13 +805,19 @@ export default function BaseCampScreen() {
       ?? summitGoal?.targetMountain?.name
       ?? summitGoal?.mountainName;
 
-    setChallengeHeroUri(null);
+    const lookupKey = `${cid ?? ""}|${mountainName ?? ""}`;
+    setChallengeHero({ key: lookupKey, uri: null, ready: false });
     setArtworkError(false);
     setFallbackError(false);
 
     const controller = new AbortController();
     void (async () => {
       try {
+        const matterhornArtwork = await resolveApprovedMatterhornArtwork(mountainName);
+        if (matterhornArtwork) {
+          if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: matterhornArtwork.uri, ready: true });
+          return;
+        }
         let candidates: any[] = [];
 
         if (cid) {
@@ -836,9 +845,9 @@ export default function BaseCampScreen() {
 
         const approved = candidates.find(ch => ch?.approved && (ch.heroImage || ch.cardImage));
         const url = artworkUrl(approved?.heroImage ?? approved?.cardImage);
-        if (url) setChallengeHeroUri(url);
+        if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: url, ready: true });
       } catch {
-        // The canonical mountain-photo endpoint remains the fallback.
+        if (!controller.signal.aborted) setChallengeHero({ key: lookupKey, uri: null, ready: true });
       }
     })();
 
@@ -1076,18 +1085,28 @@ export default function BaseCampScreen() {
   // Use the real mountain name for the photo lookup; challengeName ("Matterhorn Ridge")
   // won't match — the API needs the actual peak ("Matterhorn").
   const heroMountain = target?.name ?? summitGoal.mountainName;
+  const heroLookupKey = `${activeExpedition?.challengeId ?? ""}|${activeExpedition?.targetMountainName
+    ?? activeExpedition?.targetMountain?.name
+    ?? summitGoal?.targetMountain?.name
+    ?? summitGoal?.mountainName ?? ""}`;
+  const heroLookupPending = !challengeHero || challengeHero.key !== heroLookupKey || !challengeHero.ready;
+  const challengeHeroUri = challengeHero?.key === heroLookupKey ? challengeHero.uri : null;
   const approvedMountainPhoto = hasApprovedMountainImage(heroMountain)
     ? mountainImageUri(heroMountain, { width: 800, height: 600 })
     : null;
   // Curated mountain photos take priority for the named approved peaks. Other
   // expeditions retain their existing artwork-first hero treatment.
-  const heroUri = approvedMountainPhoto
+  const heroUri = heroLookupPending && !approvedMountainPhoto
+    ? null
+    : approvedMountainPhoto
     ? (fallbackError ? null : approvedMountainPhoto)
     : (challengeHeroUri && !artworkError)
       ? challengeHeroUri
       : fallbackError
         ? null
-        : mountainImageUri(heroMountain, { width: 800, height: 600 });
+        : heroMountain.trim().toLowerCase() === "matterhorn"
+          ? null
+          : mountainImageUri(heroMountain, { width: 800, height: 600 });
 
   // Use mountainName (the challenge/expedition name the user chose) — not the
   // AI-generated expeditionPlan.title which changes on every generation.

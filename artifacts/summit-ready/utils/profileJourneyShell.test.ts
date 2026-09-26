@@ -77,6 +77,10 @@ describe("no fabricated social data", () => {
 
   it("never silently shares journal photos and defaults new posts to private", () => {
     const hub = code(read("components/profile/CommunityHub.tsx"));
+    const communityHook = code(read("hooks/useCommunity.ts"));
+    expect(ACCOUNT_CODE).toMatch(/useCommunity\(!suppliedCommunity && !showSettings && \(tab === "activity" \|\| tab === "photos"\)\)/);
+    expect(communityHook).toMatch(/const enabled = visible && isLoaded/);
+    expect(communityHook).toMatch(/offset \+= 4/);
     expect(hub).toMatch(/useState<"private" \| "members">\("private"\)/);
     expect(hub).toMatch(/launchImageLibraryAsync/);
     expect(hub).toMatch(/onCreate\(\{[\s\S]*?kind:/);

@@ -68,6 +68,7 @@ import {
   confirmExtraDayFlow,
 } from "@/utils/manualExpedition";
 import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { resolveApprovedMatterhornArtwork } from "@/utils/artworkResolver";
 import { mountainSuggestions } from "@/constants/mountains";
 import {
   signatureStageToNearbyHill,
@@ -473,6 +474,39 @@ export default function ExpeditionMountainsScreen() {
   }>>([]);
   const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
   const browseScrollRef = useRef<any>(null);
+  const cardMountain = activeExpedition?.targetMountain?.name;
+  const cardChallengeId = activeExpedition?.challengeId;
+  const cardArtworkKey = `${cardChallengeId ?? ""}|${cardMountain ?? ""}`;
+  const [activeCardArtwork, setActiveCardArtwork] = useState<{ key: string; uri: string | null } | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const key = `${cardChallengeId ?? ""}|${cardMountain ?? ""}`;
+    setActiveCardArtwork(null);
+    if (!cardMountain) return () => controller.abort();
+    void (async () => {
+      let uri = (await resolveApprovedMatterhornArtwork(cardMountain))?.uri ?? null;
+      if (!uri && cardChallengeId) {
+        try {
+          const response = await fetch(`${API_BASE}/sx/challenges/${encodeURIComponent(cardChallengeId)}`, {
+            signal: controller.signal,
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const challenge = data.challenge ?? data;
+            if (challenge?.approved) uri = artworkUrl(challenge.cardImage ?? challenge.heroImage);
+          }
+        } catch {
+          // Retain the designed gradient if the approved challenge lookup fails.
+        }
+      }
+      if (!uri && hasApprovedMountainImage(cardMountain)) {
+        uri = mountainImageUri(cardMountain, { width: 800, height: 300 });
+      }
+      if (!controller.signal.aborted) setActiveCardArtwork({ key, uri });
+    })();
+    return () => controller.abort();
+  }, [cardChallengeId, cardMountain]);
 
   // ── Auto-start from URL param (e.g. navigated here from base-camp) ────────────
   const { startMountain, region: regionParam } = useLocalSearchParams<{ startMountain?: string; region?: string }>();
@@ -2322,15 +2356,15 @@ export default function ExpeditionMountainsScreen() {
                 accessibilityHint="Opens Expedition Basecamp"
                 style={{ marginTop: 9, overflow: "hidden" }}
               >
-                <View style={{ height: 108, position: "relative" }}>
-                  <ExpoImage
-                    source={{ uri: appendApprovedImageRevision(
-                      `${API_BASE}/mountain-image?name=${encodeURIComponent(activeExpedition.targetMountain.name)}&width=800&height=300`,
-                      activeExpedition.targetMountain.name,
-                    ) }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                  />
+                <View style={{ height: 108, position: "relative", backgroundColor: BASECAMP.panelSub }}>
+                  {activeCardArtwork?.key === cardArtworkKey && activeCardArtwork.uri && (
+                    <ExpoImage
+                      key={activeCardArtwork.uri}
+                      source={{ uri: activeCardArtwork.uri }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                  )}
                   <LinearGradient colors={["#0a111900", "#0a111999", "#0a1119"]} style={StyleSheet.absoluteFill} />
                   <View style={{ position: "absolute", left: 13, right: 13, bottom: 10 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: EXPLORE.accent + "26", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: EXPLORE.accent + "4D" }}>

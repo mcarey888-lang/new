@@ -83,6 +83,14 @@ export function hasApprovedMountainImage(mountainName: string | null | undefined
 
 /** Preserve identity/route/location params while escaping old cached photos. */
 export function appendApprovedImageRevision(uri: string, mountainName: string): string {
+  // The reviewed Matterhorn Batch 01 asset has an exact approved URL. In the
+  // development artwork collection, use it instead of the old, long-cached
+  // /mountain-image response (which can be a topo/map fallback). This also
+  // covers callers that build the URL directly rather than mountainImageUri().
+  if (typeof __DEV__ !== "undefined" && __DEV__ && normalizeMountainName(mountainName) === "matterhorn") {
+    const origin = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+    return `${origin}/api/artwork/approved/SR-MTN-MATTERHORN-001/hero`;
+  }
   if (!hasApprovedMountainImage(mountainName) || uri.includes("approvedHeroRevision=")) return uri;
   return `${uri}${uri.includes("?") ? "&" : "?"}approvedHeroRevision=${APPROVED_HERO_REVISION}`;
 }

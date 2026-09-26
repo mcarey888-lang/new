@@ -26,6 +26,31 @@ export const TRAINING_BASECAMP_ARTWORK = {
   derivativePath: "/api/artwork/batches/batch-01/SR-MTN-MONTBLANC-001/v1/hero",
 } as const;
 
+/** Exact approved asset, not a fuzzy mountain-name or cached map lookup. */
+export async function resolveApprovedMatterhornArtwork(
+  mountainName: string | null | undefined,
+): Promise<ResolvedTrainingBasecampArtwork | null> {
+  if (!__DEV__ || mountainName?.trim().toLowerCase() !== "matterhorn") return null;
+  const assetId = "SR-MTN-MATTERHORN-001";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch(`${API_BASE}/artwork/resolve/${assetId}/hero`, { signal: controller.signal });
+    if (!response.ok) return null;
+    const data = await response.json() as ArtworkResolution;
+    const approvedPath = `/api/artwork/approved/${assetId}/hero`;
+    if (data?.assetId !== assetId || data.version !== 1 || data.placement !== "hero"
+      || data.derivativePath !== `/api/artwork/batches/batch-01/${assetId}/v1/hero`
+      || data.url !== approvedPath) return null;
+    const origin = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+    return { ...data, uri: `${origin}${approvedPath}` };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * These are approved Batch 01 *placements*, not the reference-only images in
  * the HTML mockups. The approved-image API is currently development-only.

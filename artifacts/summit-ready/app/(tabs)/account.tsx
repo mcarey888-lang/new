@@ -131,8 +131,6 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const stage8ConfirmedAwards = Object.values(stage8Projection.awards)
     .filter((award) => award.status === "confirmed");
   const { isSignedIn, getToken } = useAuth();
-  const memberCommunity = useCommunity();
-  const community = suppliedCommunity ?? (isSignedIn ? memberCommunity : undefined);
   const { user } = useUser();
   const { signOut } = useClerk();
   const queryClient = useQueryClient();
@@ -142,6 +140,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const [tab, setTab] = useState<PrimaryProfileTab>("profile");
   const [badgeDraft, setBadgeDraft] = useState<{ id: string; title: string; nonce: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const memberCommunity = useCommunity(!suppliedCommunity && !showSettings && (tab === "activity" || tab === "photos"));
+  const community = suppliedCommunity ?? (isSignedIn ? memberCommunity : undefined);
 
 
   const achievementsY = useRef<number>(0);
