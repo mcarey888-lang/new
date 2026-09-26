@@ -51,10 +51,10 @@ const PLOT_HEIGHT = 86;
 const LABEL_HEIGHT = 18;
 
 export interface ElevationBankHeroProps {
-  /** Lifetime credited ascent, in metres. From `lifetimeAscentM`. */
-  lifetimeAscentM: number;
-  /** Credited activities. From `creditedActivities`. */
-  hikes: number;
+  /** Lifetime credited ascent, in metres. Null until the API confirms it. */
+  lifetimeAscentM: number | null;
+  /** Credited activities. Null until the API confirms them. */
+  hikes: number | null;
   /** Distinct summits. Null when the caller cannot establish it. */
   mountains: number | null;
   /** Saved expeditions. Null when unknown. */
@@ -168,7 +168,9 @@ export function ElevationBankHero({
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_BREAKPOINT;
 
-  const label = `Elevation bank, ${formatBankMetres(lifetimeAscentM)} metres banked`;
+  const label = lifetimeAscentM === null
+    ? "Elevation bank, recorded balance unavailable"
+    : `Elevation bank, ${formatBankMetres(lifetimeAscentM)} metres banked`;
 
   const body = (
     <>
@@ -207,9 +209,9 @@ export function ElevationBankHero({
               adjustsFontSizeToFit
               minimumFontScale={0.6}
             >
-              {formatBankMetres(lifetimeAscentM)}
+              {lifetimeAscentM === null ? "—" : formatBankMetres(lifetimeAscentM)}
             </Text>
-            <Text style={[s.figureUnit, wide && s.figureUnitWide]}>m</Text>
+            {lifetimeAscentM !== null && <Text style={[s.figureUnit, wide && s.figureUnitWide]}>m</Text>}
           </View>
 
           {typeof yearOnYearPercent === "number"
@@ -248,7 +250,7 @@ export function ElevationBankHero({
         <View style={[s.statRow, wide && s.statRowWide]}>
           <Stat
             icon={<HikerIcon size={22} color={EXPLORE.accent} />}
-            value={String(hikes)}
+            value={hikes === null ? "—" : String(hikes)}
             label="Hikes"
           />
           <View style={s.statDivider} />

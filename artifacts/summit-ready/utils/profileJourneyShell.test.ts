@@ -20,6 +20,17 @@ const PROFILE_PRESENTATION = code(read("components/profile/PrimaryProfilePresent
 const DEMO_COMMUNITY = code(read("components/profile/DemoCommunityPreview.tsx"));
 const EXPEDITION_PROFILE = code(read("app/(expedition)/profile.tsx"));
 
+// Missing verified data keeps the approved layout, without pretending the
+// recorded balance is zero.
+describe("Profile Elevation Bank hero", () => {
+  it("does not switch back to the legacy card when the API is unavailable", () => {
+    expect(ACCOUNT_CODE).toMatch(/<ElevationBankHero[\s\S]*?lifetimeAscentM=\{bankPresentation\.kind/);
+    expect(ACCOUNT_CODE).toMatch(/bankPresentation\.data\.lifetimeAscentM : null/);
+    expect(ACCOUNT_CODE).toMatch(/Recorded balance unavailable right now\./);
+    expect(ACCOUNT_CODE).not.toMatch(/bankPresentation\.kind === "ready" \|\| bankPresentation\.kind === "empty" \? \([\s\S]*?<ElevationBankCard/);
+  });
+});
+
 describe("Profile is a mountain résumé", () => {
   it("shows fictional member stories only as a preview, outside real post and achievement data", () => {
     const hub = code(read("components/profile/CommunityHub.tsx"));
