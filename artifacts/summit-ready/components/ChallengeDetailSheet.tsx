@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Modal, Platform, ScrollView,
+  ActivityIndicator, Linking, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
@@ -24,6 +24,7 @@ import {
   type ExpeditionReadinessRoute,
 } from "@/utils/expeditionReadinessProjection";
 import { hasApprovedMountainImage, mountainImageUri } from "@/utils/mountainImage";
+import { signatureChallengeTarget } from "@/utils/signatureExpedition";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -149,6 +150,9 @@ export function ChallengeDetailSheet({
     readinessEnabled ? readinessInput : null,
     challenge?.stages ?? [],
   );
+  const localTarget = signatureChallengeTarget(challenge?.stages ?? []);
+  const summaryClaimsDifferentTarget = !!challenge && !!localTarget &&
+    challenge.totalAscentM != null && Math.round(challenge.totalAscentM) !== Math.round(localTarget.ascentM);
 
   return (
     <Modal
@@ -248,20 +252,18 @@ export function ChallengeDetailSheet({
                     <Text style={s.statLbl}>days</Text>
                   </View>
                 )}
-                {!!challenge.totalAscentM && (
+                {localTarget && (
                   <View style={s.statCell}>
                     <Text style={s.statVal}>
-                      {challenge.totalAscentM >= 1000
-                        ? `${(challenge.totalAscentM / 1000).toFixed(1)}k`
-                        : challenge.totalAscentM}m
+                      {localTarget.ascentM.toLocaleString()}m
                     </Text>
-                    <Text style={s.statLbl}>ascent</Text>
+                    <Text style={s.statLbl}>UK ascent</Text>
                   </View>
                 )}
-                {challenge.totalDistanceKm != null && (
+                {localTarget && (
                   <View style={s.statCell}>
-                    <Text style={s.statVal}>{challenge.totalDistanceKm}km</Text>
-                    <Text style={s.statLbl}>distance</Text>
+                    <Text style={s.statVal}>{localTarget.distanceKm}km</Text>
+                    <Text style={s.statLbl}>UK distance</Text>
                   </View>
                 )}
                 {challenge.adventureScore != null && (
@@ -277,6 +279,9 @@ export function ChallengeDetailSheet({
                   </View>
                 )}
               </View>
+              <Text style={{ marginHorizontal: 16, marginBottom: 10, fontSize: 12, lineHeight: 18, color: T.textMuted }}>
+                Fixed UK challenge: planned ascent across the listed local stages, based on curated estimates rather than a recorded GPS track. This is not the ascent of {challenge.targetMountainName}.
+              </Text>
 
               {/* Region */}
               {challenge.regions && (
@@ -287,10 +292,13 @@ export function ChallengeDetailSheet({
               )}
 
               {/* Summary */}
-              {challenge.summary && (
+              {localTarget && (
                 <View style={s.card}>
                   <Text style={s.cardLabel}>ABOUT THIS EXPEDITION</Text>
-                  <Text style={s.summaryText}>{challenge.summary}</Text>
+                  <Text style={s.summaryText}>
+                    {`${challenge.stages.map(stage => stage.routeName).join(" and ")} form this fixed ${challenge.recommendedDays}-day UK challenge. The ${localTarget.ascentM.toLocaleString()} m target is the planned ascent across these stages, not a measurement of the ${challenge.targetMountainName} route.`}
+                    {!summaryClaimsDifferentTarget && challenge.summary ? `\n\n${challenge.summary}` : ""}
+                  </Text>
                   {challenge.routeDnaFocus && (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
                       <Star size={11} color={T.purple} />
@@ -299,6 +307,29 @@ export function ChallengeDetailSheet({
                   )}
                 </View>
               )}
+              <View style={s.card}>
+                <Text style={s.cardLabel}>MOUNTAIN ROUTE INSPIRATION</Text>
+                <Text style={s.summaryText}>
+                  {challenge.targetMountainName}{challenge.targetRoute ? ` · ${challenge.targetRoute}` : ""}
+                </Text>
+                {challenge.challengeId === "SIG024" ? (
+                  <>
+                    <Text style={[s.summaryText, { marginTop: 7 }]}>
+                      Example start: Schwarzsee gondola station → Hörnli Hut → Matterhorn summit. The Swiss Alpine Club lists about 700 m of ascent to the hut; the hut (3,260 m) and summit (4,478 m) differ by 1,218 m in altitude. That is roughly 1,900 m before any extra undulations, separate from the UK challenge target. Starting in Zermatt changes the ascent.
+                    </Text>
+                    <TouchableOpacity accessibilityRole="link" onPress={() => void Linking.openURL("https://www.sac-cas.ch/de/huetten-und-touren/sac-tourenportal/hoernlihuette-2147000136/berg-und-alpinwandern/von-schwarzsee-260")}>
+                      <Text style={{ color: T.blue, fontSize: 12, marginTop: 8 }}>Source: Swiss Alpine Club — Schwarzsee to Hörnli Hut ↗</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity accessibilityRole="link" onPress={() => void Linking.openURL("https://www.sac-cas.ch/en/huts-and-tours/sac-route-portal/matterhorn-1138/alpinism/from-the-hoernlihuette-via-the-hoernligrat-ne-ridge-1028")}>
+                      <Text style={{ color: T.blue, fontSize: 12, marginTop: 6 }}>Source: Swiss Alpine Club — Hörnli Ridge to summit ↗</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <Text style={[s.summaryText, { marginTop: 7 }]}>
+                    Route ascent is not specified here: the start point and transport choices can change it. No mountain ascent is used as this UK challenge’s target.
+                  </Text>
+                )}
+              </View>
 
               {/* ── Pre-start readiness impact ─────────────────────────────── */}
               {readinessEnabled && <View style={s.card}>

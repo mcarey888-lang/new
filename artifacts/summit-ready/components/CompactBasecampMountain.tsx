@@ -25,11 +25,12 @@ import { getPointAtFraction } from "@/utils/mountainPath";
 
 interface Props {
   presentation: ExpeditionPresentationState;
+  progressLabel?: string;
   mountainImageRef?: React.RefObject<View | null>;
   replayTrigger?: number;
 }
 
-export function CompactBasecampMountain({ presentation, mountainImageRef, replayTrigger }: Props) {
+export function CompactBasecampMountain({ presentation, progressLabel = "SIMULATED PROGRESS", mountainImageRef, replayTrigger }: Props) {
   const { progress, stages } = presentation;
 
   // Transform canonical stages into MountainProgress expected format
@@ -69,7 +70,7 @@ export function CompactBasecampMountain({ presentation, mountainImageRef, replay
         <View style={styles.headerText}>
           {/* Simulated, and labelled as such. This is what the expedition
               credits towards the objective, not an altitude you stood at. */}
-          <Text style={styles.label}>SIMULATED PROGRESS</Text>
+          <Text style={styles.label}>{progressLabel}</Text>
           <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
             {`${Math.round(progress.currentSimulatedElevationM).toLocaleString()} m / ${Math.round(progress.targetSimulatedElevationM).toLocaleString()} m`}
           </Text>

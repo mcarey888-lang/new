@@ -55,3 +55,13 @@ export function signatureStageTotals(stages: SignatureStageMetrics[]) {
     { ascentM: 0, distanceKm: 0 },
   );
 }
+
+/** The challenge target is the sum of its actual UK stages, not an ascent of
+ * the mountain that inspired them. Never substitute a mountain-route figure. */
+export function signatureChallengeTarget(stages: SignatureStageMetrics[]) {
+  if (!stages.length || stages.some(stage =>
+    stage.ascentM == null || !Number.isFinite(stage.ascentM) || stage.ascentM <= 0 ||
+    stage.distanceKm == null || !Number.isFinite(stage.distanceKm) || stage.distanceKm <= 0
+  )) return null;
+  return signatureStageTotals(stages);
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   signatureStageToNearbyHill,
   signatureStageTotals,
+  signatureChallengeTarget,
 } from "./signatureExpedition";
 
 describe("signature expedition stage mapping", () => {
@@ -27,5 +28,14 @@ describe("signature expedition stage mapping", () => {
       { routeName: "Fairfield Horseshoe", distanceKm: 18, ascentM: 1100 },
       { routeName: "Corridor Route", distanceKm: 15, ascentM: 1000 },
     ])).toEqual({ distanceKm: 33, ascentM: 2100 });
+  });
+
+  it("uses UK stage totals even when the mountain-route metadata is different", () => {
+    const stages = [
+      { routeName: "Tryfan North Ridge", distanceKm: 6, ascentM: 700 },
+      { routeName: "Crib Goch Traverse", distanceKm: 10, ascentM: 900 },
+    ];
+    expect(signatureChallengeTarget(stages)).toEqual({ ascentM: 1600, distanceKm: 16 });
+    expect(signatureChallengeTarget([{ routeName: "Unknown", distanceKm: 10, ascentM: null }])).toBeNull();
   });
 });

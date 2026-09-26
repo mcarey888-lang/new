@@ -33,7 +33,7 @@ import { isRouteCompleted } from "@/utils/stateReliability";
 import { mergeActivityKinds } from "@/utils/activityReliability";
 import {
   signatureStageToNearbyHill,
-  signatureStageTotals,
+  signatureChallengeTarget,
 } from "@/utils/signatureExpedition";
 import {
   VerifiedMountainChooser,
@@ -507,6 +507,12 @@ export default function BaseCampScreen() {
 
   const target    = summitGoal?.targetMountain;
   const totalGoal = target?.totalElevationGain ?? summitGoal?.elevationGain ?? 0;
+  const savedStageAscent = activeExpedition?.challengeId
+    ? signatureChallengeTarget((activeExpedition.virtualHills ?? []).map(hill => ({
+        routeName: hill.name, ascentM: hill.totalElevation ?? hill.elevation,
+        distanceKm: hill.routeDistance ?? hill.distance,
+      })))?.ascentM
+    : undefined;
   const targetDist = target?.totalDistance ?? summitGoal?.distance ?? 0;
   const pct       = totalGoal > 0 ? Math.min(100, Math.round(totalTrained / totalGoal * 100)) : 0;
 
@@ -1031,7 +1037,11 @@ export default function BaseCampScreen() {
             // Build the goal IMMEDIATELY from challenge data so the active state
             // renders instantly with no API round-trip.
             const hills: NearbyHill[] = ch.stages.map(signatureStageToNearbyHill);
-            const stageTotals = signatureStageTotals(ch.stages);
+            const stageTotals = signatureChallengeTarget(ch.stages);
+            if (!stageTotals) {
+              Alert.alert("Challenge unavailable", "The local stages need complete ascent and distance figures before this expedition can start.");
+              return;
+            }
             // Add to Adventure Library and make active — preserves all existing progress.
             void startExpedition({
               challengeId:        ch.challengeId,
@@ -1042,8 +1052,8 @@ export default function BaseCampScreen() {
                 name:               ch.targetMountainName,
                 country:            ch.regions?.split(/[,/]/)[0]?.trim() ?? "United Kingdom",
                 summitElevation:    0,
-                totalElevationGain: ch.totalAscentM ?? stageTotals.ascentM,
-                totalDistance:      ch.totalDistanceKm ?? stageTotals.distanceKm,
+                totalElevationGain: stageTotals.ascentM,
+                totalDistance:      stageTotals.distanceKm,
                 estimatedDays:      (Math.min(2, Math.max(1, ch.recommendedDays)) as 1 | 2),
                 difficulty:         (ch.difficulty as SummitGoal["difficulty"]) ?? "Hard",
                 altitudeExposure:   "None" as const,
@@ -1185,9 +1195,16 @@ export default function BaseCampScreen() {
           {/* mountainImageRef placed on the inner mountain image view via CompactBasecampMountain */}
           <CompactBasecampMountain
             presentation={presentation}
+            progressLabel={activeExpedition?.challengeId ? "UK CHALLENGE PROGRESS" : undefined}
             mountainImageRef={mountainRef}
             replayTrigger={cinematicReplayTrigger}
           />
+          {savedStageAscent != null &&
+            Math.round(savedStageAscent) !== Math.round(presentation.progress.targetSimulatedElevationM) && (
+            <Text style={{ marginHorizontal: BASECAMP.gutter + 8, marginTop: 8, fontSize: 12, lineHeight: 17, color: T.textMuted }}>
+              This saved expedition has a {Math.round(presentation.progress.targetSimulatedElevationM).toLocaleString()} m target; its local stages total {Math.round(savedStageAscent).toLocaleString()} m. Your saved target and progress have not been changed.
+            </Text>
+          )}
         </Animated.View>
 
 

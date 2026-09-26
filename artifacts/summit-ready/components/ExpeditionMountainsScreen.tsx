@@ -71,7 +71,7 @@ import { appendApprovedImageRevision, hasApprovedMountainImage, mountainImageUri
 import { mountainSuggestions } from "@/constants/mountains";
 import {
   signatureStageToNearbyHill,
-  signatureStageTotals,
+  signatureChallengeTarget,
 } from "@/utils/signatureExpedition";
 import { createReadinessInput } from "@/utils/readinessAdapter";
 import { projectExpeditionReadiness } from "@/utils/expeditionReadinessProjection";
@@ -2624,7 +2624,11 @@ export default function ExpeditionMountainsScreen() {
             ?? activeExpedition?.location
             ?? "United Kingdom";
           const hills: NearbyHill[] = challenge.stages.map(signatureStageToNearbyHill);
-          const stageTotals = signatureStageTotals(challenge.stages);
+          const stageTotals = signatureChallengeTarget(challenge.stages);
+          if (!stageTotals) {
+            Alert.alert("Challenge unavailable", "The local stages need complete ascent and distance figures before this expedition can start.");
+            return;
+          }
           void startExpedition({
             challengeId:        challenge.challengeId,
             challengeName:      challenge.challengeName,
@@ -2633,8 +2637,8 @@ export default function ExpeditionMountainsScreen() {
               name:               challenge.targetMountainName,
               country:            region,
               summitElevation:    0,
-              totalElevationGain: challenge.totalAscentM ?? stageTotals.ascentM,
-              totalDistance:      challenge.totalDistanceKm ?? stageTotals.distanceKm,
+              totalElevationGain: stageTotals.ascentM,
+              totalDistance:      stageTotals.distanceKm,
               estimatedDays:      Math.min(2, Math.max(1, challenge.recommendedDays)) as 1 | 2,
               difficulty:         (challenge.difficulty as TargetMountain["difficulty"]) ?? "Hard",
               altitudeExposure:   "None" as const,
