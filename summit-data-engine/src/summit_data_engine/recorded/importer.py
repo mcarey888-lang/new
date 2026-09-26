@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from summit_data_engine.db.models import (
+    EvidenceSource,
     RouteDefinition,
     RouteFact,
     RouteGeometry,
@@ -33,6 +34,7 @@ from summit_data_engine.db.models import (
     RouteIdentity,
     SourceBundle,
 )
+from summit_data_engine.models.domain import RightsClassification
 from summit_data_engine.routes.plan import ImportPlan, PlannedRoute
 
 # Distinct from the international importer's namespace: the two sources must
@@ -47,6 +49,25 @@ LICENCE = (
     "Derived geometry only; no recorder identity is carried."
 )
 
+# The read path will not serve geometry unless an evidence source proves it may
+# be reused: `canonicalRouteRecord.ts` inner-joins evidence on the fact row, and
+# nulls the geometry unless every geometry member resolves to a source that is
+# classified `reusable_geometry` with `geometry_reuse_allowed`. That gate is the
+# point of the rights model, so this importer satisfies it explicitly rather
+# than routing around it.
+#
+# SummitReady is the publisher of both sources it writes. Recorded traces are
+# contributed under the app's terms; editorial lines are drawn by us. In both
+# cases the reuse right is genuinely ours, and it is recorded as a claim that
+# can be audited rather than assumed.
+EVIDENCE_TITLE = "SummitReady first-party route geometry"
+EVIDENCE_RIGHTS_STATEMENT = (
+    "First-party geometry. Recorded traces are contributed by SummitReady users "
+    "under the app's terms; editorial lines are drawn by SummitReady. Reuse "
+    "within SummitReady is permitted on that basis. No third-party mapping "
+    "geometry is incorporated."
+)
+
 
 @dataclass(frozen=True)
 class ImportResult:
@@ -54,6 +75,37 @@ class ImportResult:
     identities_written: int
     geometries_written: int
     unchanged: int
+
+
+def _evidence(session: Session, bundle: SourceBundle) -> EvidenceSource:
+    """The rights record the read path joins against.
+
+    Matched to the bundle by `publisher`/`url`, because that is how
+    `canonicalRouteRecord.ts` correlates the two.
+    """
+    evidence_id = uuid.uuid5(_UUID_NAMESPACE, f"evidence:{bundle.sha256}")
+    existing = session.get(EvidenceSource, evidence_id)
+    if existing is not None:
+        return existing
+
+    evidence = EvidenceSource(
+        id=evidence_id,
+        source_key=f"summitready:first-party:{bundle.source_type}",
+        version=bundle.provenance_version,
+        # Must equal bundle.provider / bundle.source_url: the read path
+        # correlates evidence to geometry members on exactly those two columns.
+        publisher=bundle.provider,
+        title=EVIDENCE_TITLE,
+        url=bundle.source_url,
+        rights_classification=RightsClassification.REUSABLE_GEOMETRY,
+        rights_statement=EVIDENCE_RIGHTS_STATEMENT,
+        geometry_reuse_allowed=True,
+        factual_anchors=[],
+        retrieved_at=bundle.retrieved_at,
+    )
+    session.add(evidence)
+    session.flush()
+    return evidence
 
 
 def _bundle(session: Session, plan: ImportPlan, *, snapshot_sha256: str) -> SourceBundle:
@@ -91,7 +143,12 @@ def _bundle(session: Session, plan: ImportPlan, *, snapshot_sha256: str) -> Sour
     return bundle
 
 
-def _write_route(session: Session, route: PlannedRoute, bundle: SourceBundle) -> bool:
+def _write_route(
+    session: Session,
+    route: PlannedRoute,
+    bundle: SourceBundle,
+    evidence: EvidenceSource,
+) -> bool:
     """Write one planned route. Returns True when anything new was inserted."""
     identity_id = uuid.uuid5(_UUID_NAMESPACE, f"route-identity:{route.identity_key}")
     definition_id = uuid.uuid5(
@@ -179,7 +236,7 @@ def _write_route(session: Session, route: PlannedRoute, bundle: SourceBundle) ->
                 id=fact_id,
                 route_definition_id=definition_id,
                 source_bundle_id=bundle.id,
-                evidence_source_id=None,
+                evidence_source_id=evidence.id,
                 version=route.version,
                 start_name=None,  # The trailhead is trimmed for privacy; see traces.trim_ends.
                 start_elevation_m=None,
@@ -204,10 +261,11 @@ def apply_plan(session: Session, plan: ImportPlan, *, snapshot_sha256: str) -> I
     Idempotent: applying the same plan twice inserts nothing the second time.
     """
     bundle = _bundle(session, plan, snapshot_sha256=snapshot_sha256)
+    evidence = _evidence(session, bundle)
 
     written = unchanged = 0
     for route in plan.planned:
-        if _write_route(session, route, bundle):
+        if _write_route(session, route, bundle, evidence):
             written += 1
         else:
             unchanged += 1
