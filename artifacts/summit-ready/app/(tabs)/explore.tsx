@@ -5,13 +5,14 @@
  * scrolls out of, a search field, terrain filters, a Featured rail, a Popular
  * rail and the map entry.
  */
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
   useWindowDimensions, View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -28,6 +29,7 @@ import { createExploreAiRequestGuard } from "@/utils/exploreRequestGuard";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
 import { looksLikeUkPostcode, normalizeUkPostcode } from "@/utils/explorePostcode";
 import type { NearbyHill } from "@/context/AppContext";
+import { personalHillCoverKey, readPersonalHillCover } from "@/utils/personalHillCover";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -289,7 +291,10 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
   );
 }
 
-function NearbyHillResultRow({ hill, postcode }: { hill: NearbyHill; postcode: string }) {
+function NearbyHillResultRow({ hill, postcode, coverUri }: { hill: NearbyHill; postcode: string; coverUri?: string }) {
+  const [coverFailed, setCoverFailed] = useState(false);
+  useEffect(() => setCoverFailed(false), [coverUri]);
+  const personalPhoto = !!coverUri && !coverFailed;
   function openHill() {
     router.push({
       pathname: "/hill-detail" as any,
@@ -321,11 +326,19 @@ function NearbyHillResultRow({ hill, postcode }: { hill: NearbyHill; postcode: s
     >
       <View style={styles.resultRow}>
         <View style={styles.localHillIcon}>
-          <MountainIcon size={23} color={EXPLORE.accent} />
+          <Image
+            source={personalPhoto ? { uri: coverUri } : require("../../assets/images/local-hill-illustration.png")}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => { if (personalPhoto) setCoverFailed(true); }}
+            accessible={false}
+          />
         </View>
         <View style={styles.resultBody}>
           <Text style={styles.resultName} numberOfLines={2}>{hill.name}</Text>
-          <Text style={styles.resultPlace} numberOfLines={1}>{hill.surface}</Text>
+          <Text style={styles.resultPlace} numberOfLines={1}>
+            {hill.surface} · {personalPhoto ? "Your journey photo" : "Illustrative image"}
+          </Text>
           <View style={styles.resultStats}>
             <View style={styles.resultTag}>
               <MapPin size={11} color={BASECAMP.textDim} />
@@ -345,6 +358,7 @@ function NearbyHillResultRow({ hill, postcode }: { hill: NearbyHill; postcode: s
 
 export default function ExploreScreen() {
   useScreenView("explore");
+  const { userId } = useAuth();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion() ?? false;
 
@@ -363,6 +377,7 @@ export default function ExploreScreen() {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbySearched, setNearbySearched] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
+  const [coverUris, setCoverUris] = useState<Record<string, string>>({});
   const requestId = useRef(0);
   const aiRequestGuard = useMemo(() => createExploreAiRequestGuard(), []);
   const abortRef = useRef<AbortController | null>(null);
@@ -392,6 +407,27 @@ export default function ExploreScreen() {
   const incompletePostcode = !postcode && looksLikeUkPostcode(textQuery);
   const queryTooShort = Array.from(textQuery).length < 2;
   const searching = textQuery.length > 0 || filter !== "all";
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    if (!userId || nearbyHills.length === 0) {
+      setCoverUris({});
+      return () => { active = false; };
+    }
+    void Promise.all(nearbyHills.map(async hill => {
+      const identity = {
+        name: hill.name, latitude: hill.lat, longitude: hill.lng,
+        routeIdentityKey: hill.routeIdentityKey, summitIdentityKey: hill.summitIdentityKey,
+      };
+      return [personalHillCoverKey(userId, identity), await readPersonalHillCover(userId, identity)] as const;
+    })).then(covers => {
+      if (!active) return;
+      setCoverUris(Object.fromEntries(covers.filter(
+        (entry): entry is readonly [string, string] => !!entry[0] && !!entry[1],
+      )));
+    });
+    return () => { active = false; };
+  }, [nearbyHills, userId]));
 
   const fetchCatalogue = async (term: string, append = false, committed = false) => {
     aiRequestGuard.invalidate();
@@ -795,7 +831,15 @@ export default function ExploreScreen() {
                         </Pressable>
                       </View>
                     ) : nearbyHills.map(hill => (
-                      <NearbyHillResultRow key={`${hill.routeIdentityKey ?? hill.name}:${hill.lat ?? ""}`} hill={hill} postcode={postcode} />
+                      <NearbyHillResultRow
+                        key={`${hill.routeIdentityKey ?? hill.name}:${hill.lat ?? ""}`}
+                        hill={hill}
+                        postcode={postcode}
+                        coverUri={coverUris[personalHillCoverKey(userId, {
+                          name: hill.name, latitude: hill.lat, longitude: hill.lng,
+                          routeIdentityKey: hill.routeIdentityKey, summitIdentityKey: hill.summitIdentityKey,
+                        }) ?? ""]}
+                      />
                     ))}
                     {nearbySearched && !nearbyLoading && !nearbyError && nearbyHills.length === 0 ? (
                       <View style={styles.emptySearch}>
@@ -1083,7 +1127,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#12202A", flexShrink: 0,
   },
   localHillIcon: {
-    width: 68, height: 62, borderRadius: 5.5, alignItems: "center", justifyContent: "center",
+    width: 68, height: 62, borderRadius: 5.5, overflow: "hidden",
     backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
   },
   resultBody: { flex: 1, minWidth: 0 },

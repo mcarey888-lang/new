@@ -2,8 +2,10 @@ import { ArrowLeft, TrendingUp, MapPin, Map, Navigation, AlertCircle, Flag, Info
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@clerk/expo";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ImageBackground,
   KeyboardAvoidingView,
@@ -24,6 +26,10 @@ import { BASECAMP, EXPLORE, TYPE } from "@/constants/tokens";
 import { SRHeroFrame, SRScreenHeader } from "@/components/ui";
 import { loadOverride, saveOverride, clearOverride, type StartPointOverride } from "@/utils/startPointOverrides";
 import { appendApprovedImageRevision } from "@/utils/mountainImage";
+import {
+  clearPersonalHillCover, personalHillCoverKey, readJourneyPhotos, readPersonalHillCover,
+  savePersonalHillCover, type JourneyPhoto,
+} from "@/utils/personalHillCover";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -75,6 +81,7 @@ import type { CanonicalRouteRecord } from "@/utils/routeIntelligence";
 
 export default function HillDetailScreen() {
   const insets = useSafeAreaInsets();
+  const { userId } = useAuth();
   const { activeExpedition } = useApp();
   const { name, location, lat, lng, elevation, distance, routeDistance, estimatedTime, routeType, grade, surface, emoji, expeditionMode, expeditionId, routeIdentityKey, summitIdentityKey, objectiveType } =
     useLocalSearchParams<{
@@ -105,6 +112,11 @@ export default function HillDetailScreen() {
   const [canonicalRecord, setCanonicalRecord] = useState<CanonicalRouteRecord | null>(null);
 
   const [imageError, setImageError] = useState(false);
+  const [coverUri, setCoverUri] = useState<string | null>(null);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [coverPhotos, setCoverPhotos] = useState<JourneyPhoto[]>([]);
+  const [coverSaving, setCoverSaving] = useState(false);
 
   const [override, setOverride] = useState<StartPointOverride | null>(null);
   const [editingStart, setEditingStart] = useState(false);
@@ -115,6 +127,66 @@ export default function HillDetailScreen() {
 
   const hillLat = lat ? parseFloat(lat) : null;
   const hillLng = lng ? parseFloat(lng) : null;
+  const coverIdentity = {
+    name: name ?? "",
+    latitude: hillLat,
+    longitude: hillLng,
+    routeIdentityKey,
+    summitIdentityKey,
+  };
+  const canSetCover = !!personalHillCoverKey(userId, coverIdentity);
+  const showPersonalCover = !isExpeditionMode && !!coverUri && !coverFailed;
+
+  useEffect(() => {
+    let current = true;
+    setCoverUri(null);
+    setCoverFailed(false);
+    void readPersonalHillCover(userId, coverIdentity).then(uri => {
+      if (current) setCoverUri(uri);
+    });
+    return () => { current = false; };
+  }, [userId, name, lat, lng, routeIdentityKey, summitIdentityKey]);
+
+  async function openCoverPicker() {
+    if (!userId || !activeExpedition?.id || !canSetCover) {
+      Alert.alert("Journey photo unavailable", "Sign in and start an expedition to choose one of your journey photos for this hill.");
+      return;
+    }
+    const photos = await readJourneyPhotos(userId, activeExpedition.id);
+    if (!photos.length) {
+      Alert.alert("No journey photos yet", "Add photos in your Expedition Journal, then return here to choose a personal cover.");
+      return;
+    }
+    setCoverPhotos(photos);
+    setCoverPickerOpen(true);
+  }
+
+  async function chooseCover(photo: JourneyPhoto) {
+    if (!userId || !activeExpedition?.id || coverSaving) return;
+    setCoverSaving(true);
+    try {
+      const saved = await savePersonalHillCover(userId, coverIdentity, activeExpedition.id, photo.id);
+      if (!saved) throw new Error("Photo no longer exists in the journal");
+      setCoverUri(photo.uri);
+      setCoverFailed(false);
+      setCoverPickerOpen(false);
+    } catch {
+      Alert.alert("Cover not saved", "This journey photo is no longer available. Please choose another.");
+    } finally {
+      setCoverSaving(false);
+    }
+  }
+
+  async function resetCover() {
+    if (!userId) return;
+    try {
+      await clearPersonalHillCover(userId, coverIdentity);
+      setCoverUri(null);
+      setCoverFailed(false);
+    } catch {
+      Alert.alert("Could not remove cover", "Please try again.");
+    }
+  }
 
   const heroImageUri = name && !imageError
     ? appendApprovedImageRevision(
@@ -264,14 +336,17 @@ export default function HillDetailScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero ──────────────────────────────────────────────────────────
-            The stage's own mountain photograph, through the existing
-            mountain-image service with its canonical identities attached, so
-            the picture is of THIS route and not a lookalike. A failure falls
-            through to the designed gradient. */}
+        {/* Expedition routes keep their identity-bound artwork. Training hills
+            use a clearly illustrative local asset or the owner's chosen journal photo. */}
         <SRHeroFrame
-          uri={heroImageUri}
-          onImageError={() => setImageError(true)}
+          uri={isExpeditionMode ? heroImageUri : showPersonalCover ? coverUri : null}
+          source={!isExpeditionMode && !showPersonalCover
+            ? require("../assets/images/local-hill-illustration.png")
+            : undefined}
+          onImageError={() => {
+            if (showPersonalCover) setCoverFailed(true);
+            else setImageError(true);
+          }}
           minHeight={300}
           dim={0.95}
           style={{ justifyContent: "space-between" }}
@@ -279,6 +354,11 @@ export default function HillDetailScreen() {
           <View style={{ paddingTop: topInset + 8 }}>
             <SRScreenHeader title="" onBack={() => router.back()} />
           </View>
+          {!isExpeditionMode ? (
+            <Text style={styles.coverLabel}>
+              {showPersonalCover ? "YOUR JOURNEY PHOTO" : "ILLUSTRATIVE IMAGE"}
+            </Text>
+          ) : null}
 
           <View style={{ paddingHorizontal: BASECAMP.gutter, paddingBottom: 16 }}>
             <View style={styles.heroMeta}>
@@ -308,6 +388,20 @@ export default function HillDetailScreen() {
             {surface ? <Text style={styles.heroSurface} numberOfLines={2}>{surface}</Text> : null}
           </View>
         </SRHeroFrame>
+
+        {!isExpeditionMode && canSetCover ? (
+          <View style={styles.coverActions}>
+            <TouchableOpacity onPress={() => void openCoverPicker()} accessibilityRole="button" style={styles.coverAction}>
+              <Text style={styles.coverActionText}>Choose a journey photo as my cover</Text>
+            </TouchableOpacity>
+            {coverUri ? (
+              <TouchableOpacity onPress={() => void resetCover()} accessibilityRole="button" style={styles.coverAction}>
+                <Text style={styles.coverActionText}>Use illustration</Text>
+              </TouchableOpacity>
+            ) : null}
+            <Text style={styles.coverPrivacy}>Only you see your chosen cover on this device.</Text>
+          </View>
+        ) : null}
 
         <View style={styles.body}>
           {/* Quick map actions */}
@@ -548,6 +642,42 @@ export default function HillDetailScreen() {
         </View>
       )}
 
+      <Modal
+        visible={coverPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCoverPickerOpen(false)}
+      >
+        <View style={styles.coverModalBackdrop}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setCoverPickerOpen(false)} accessibilityLabel="Close cover picker" />
+          <View style={[styles.coverModal, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+            <View style={styles.coverModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.coverModalTitle}>Choose your hill cover</Text>
+                <Text style={styles.coverPrivacy}>Photos from your current expedition journal. Only you can see this cover.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setCoverPickerOpen(false)} accessibilityRole="button" accessibilityLabel="Close cover picker">
+                <Text style={styles.coverActionText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.coverPhotoGrid}>
+              {coverPhotos.map((photo, index) => (
+                <TouchableOpacity
+                  key={photo.id}
+                  onPress={() => void chooseCover(photo)}
+                  disabled={coverSaving}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use journey photo ${index + 1} as my cover`}
+                  style={styles.coverPhoto}
+                >
+                  <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Edit start point sheet ── */}
       <Modal
         visible={editingStart}
@@ -660,6 +790,25 @@ export default function HillDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  coverLabel: {
+    position: "absolute", top: 62, right: BASECAMP.gutter,
+    ...TYPE.eyebrow, color: BASECAMP.textStrong,
+    backgroundColor: BASECAMP.glass, paddingHorizontal: 8, paddingVertical: 5,
+    borderRadius: 5, overflow: "hidden",
+  },
+  coverActions: { paddingHorizontal: BASECAMP.gutter, paddingVertical: 10, gap: 3, backgroundColor: BASECAMP.ink },
+  coverAction: { alignSelf: "flex-start", minHeight: 38, justifyContent: "center" },
+  coverActionText: { ...TYPE.smallBold, color: EXPLORE.accent },
+  coverPrivacy: { ...TYPE.caption, color: BASECAMP.textDim },
+  coverModalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "flex-end" },
+  coverModal: {
+    maxHeight: "70%", padding: BASECAMP.gutter, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    backgroundColor: BASECAMP.ink, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+  },
+  coverModalHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 14 },
+  coverModalTitle: { ...TYPE.bodyBold, color: BASECAMP.text, marginBottom: 4 },
+  coverPhotoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingBottom: 20 },
+  coverPhoto: { width: "47%", height: 120, borderRadius: 8, overflow: "hidden", backgroundColor: BASECAMP.glass },
   heroContainer: { position: "relative" },
   heroImage: { width: "100%", height: 300 },
   fallbackEmoji: { fontSize: 64, textAlign: "center" },
