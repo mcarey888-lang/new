@@ -62,6 +62,7 @@ import { discardActiveHike } from "@/utils/activeHikeSession";
 import { ElevationBankCard } from "@/components/ElevationBankCard";
 import { ElevationBankHero } from "@/components/elevation/ElevationBankHero";
 import { monthlyGain, movingHours } from "@/utils/elevationBankHero";
+import { calculateManualBankAscent } from "@/utils/manualBankAscent";
 import { useElevationBank } from "@/hooks/useElevationBank";
 import { RankExperience } from "@/components/RankExperience";
 import { evaluateRank } from "@/utils/rankEvaluator";
@@ -148,7 +149,7 @@ export default function AccountScreen() {
 export function PrimaryProfileScreen({ screenName = "account", community: suppliedCommunity }: { screenName?: string; community?: CommunityHubProps }) {
   useScreenView(screenName);
   const insets = useSafeAreaInsets();
-  const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, expeditions, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals } = useApp();
+  const { summitGoal, sessions, shellMode, activeExpedition, exploreHikes, expeditions, trainingPlan, completedPlanSessions, resetAllData, unlockedAchievements, completedGoals, isLoading: localLoading } = useApp();
   const { presentation: bankPresentation } = useElevationBank();
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue, achievements: stage8Achievements } = useStage8();
@@ -157,6 +158,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const stage8ConfirmedAwards = Object.values(stage8Projection.awards)
     .filter((award) => award.status === "confirmed");
   const { isSignedIn, getToken } = useAuth();
+  const manualBank = calculateManualBankAscent(sessions, exploreHikes);
   const { user } = useUser();
   const { signOut } = useClerk();
   const queryClient = useQueryClient();
@@ -482,25 +484,37 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             The headline of the profile, not a widget further down it: it is
             the running total of everything the user has actually climbed. */}
         <Animated.View entering={FadeInDown.delay(30).duration(400)} style={{ marginBottom: 16 }}>
-          {bankPresentation.kind === "ready" ? (
-            <ElevationBankHero
-              lifetimeAscentM={bankPresentation.data.lifetimeAscentM}
-              hikes={bankPresentation.data.creditedActivities}
-              mountains={null}
-              expeditions={expeditions.length}
-              movingHours={movingHours(exploreHikes.reduce((total, hike) => total + hike.timeTaken * 60, 0))}
-              monthly={monthlyGain(
-                bankPresentation.data.recentCredits.map(c => ({
-                  effectiveAt: c.effectiveAt,
-                  ascentM: c.creditedAscentM,
-                })),
-                9,
+          {bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? (
+            <>
+              <ElevationBankHero
+                lifetimeAscentM={bankPresentation.data.lifetimeAscentM}
+                hikes={bankPresentation.data.creditedActivities}
+                mountains={null}
+                expeditions={expeditions.length}
+                movingHours={movingHours(exploreHikes.reduce((total, hike) => total + hike.timeTaken * 60, 0))}
+                monthly={monthlyGain(
+                  bankPresentation.data.recentCredits.map(c => ({
+                    effectiveAt: c.effectiveAt,
+                    ascentM: c.creditedAscentM,
+                  })),
+                  9,
+                )}
+                photoUri={mountainImageUri(summitGoal?.mountainName, { width: 960, height: 520 })}
+                yearOnYearPercent={null}
+                onPress={() => router.push("/elevation-history")}
+                onInfoPress={() => router.push("/elevation-history")}
+              />
+              {isSignedIn && !localLoading && manualBank.status === "available" && manualBank.activities > 0 && (
+                <Text style={{ color: BASECAMP.textDim, marginTop: 10, marginHorizontal: 4 }}>
+                  + {manualBank.lifetimeM.toLocaleString("en-GB")} m self-reported on this device · not verified credit
+                </Text>
               )}
-              photoUri={mountainImageUri(summitGoal?.mountainName, { width: 960, height: 520 })}
-              yearOnYearPercent={null}
-              onPress={() => router.push("/elevation-history")}
-              onInfoPress={() => router.push("/elevation-history")}
-            />
+              {bankPresentation.kind === "empty" && (
+                <Text style={{ color: BASECAMP.textDim, marginTop: 10, marginHorizontal: 4 }}>
+                  No recorded ascent yet. Your next tracked hike is a great place to start.
+                </Text>
+              )}
+            </>
           ) : (
             <ElevationBankCard
               expanded

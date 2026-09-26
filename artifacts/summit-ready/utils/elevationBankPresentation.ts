@@ -6,7 +6,7 @@ import type {
 export type ElevationBankPresentation =
   | { kind: "loading" }
   | { kind: "unavailable" }
-  | { kind: "empty" }
+  | { kind: "empty"; data: ElevationBankResponse }
   | { kind: "ready"; data: ElevationBankResponse };
 
 export function getElevationBankPresentation(input: {
@@ -23,7 +23,7 @@ export function getElevationBankPresentation(input: {
     return { kind: "unavailable" };
   }
   if (input.data.lifetimeAscentM === 0 && input.data.recentCredits.length === 0) {
-    return { kind: "empty" };
+    return { kind: "empty", data: input.data };
   }
   return { kind: "ready", data: input.data };
 }

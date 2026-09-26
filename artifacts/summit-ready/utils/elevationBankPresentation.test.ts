@@ -29,11 +29,12 @@ describe("Elevation Bank mobile presentation states", () => {
   });
 
   it("does not substitute legacy totals for an empty ledger", () => {
+    const emptyResponse = { ...response, lifetimeAscentM: 0, periodAscentM: 0, creditedActivities: 0 };
     expect(getElevationBankPresentation({
       isLoading: false,
       isError: false,
-      data: { ...response, lifetimeAscentM: 0, periodAscentM: 0, creditedActivities: 0 },
-    })).toEqual({ kind: "empty" });
+      data: emptyResponse,
+    })).toEqual({ kind: "empty", data: emptyResponse });
   });
 
   it("shows only ledger-backed totals and correction-capable recent rows", () => {

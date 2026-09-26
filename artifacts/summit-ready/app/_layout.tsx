@@ -51,23 +51,25 @@ function UserSwitchGuard({ children }: { children: React.ReactNode }) {
  * Keeps the API client auth token in sync with the active Clerk session.
  * Must live inside ClerkProvider so useAuth() works.
  */
-function AuthBridge() {
-  const { getToken, isSignedIn } = useAuth();
+function AuthBridge({ children }: { children: React.ReactNode }) {
+  const { getToken, isLoaded, userId } = useAuth();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
+  const [configuredUserId, setConfiguredUserId] = useState<string | null | undefined>(undefined);
+  const currentUserId = isLoaded ? userId ?? null : undefined;
 
   useEffect(() => {
-    if (isSignedIn) {
-      setAuthTokenGetter(() => getTokenRef.current());
-    } else {
-      setAuthTokenGetter(null);
-    }
+    if (!isLoaded) return;
+    setAuthTokenGetter(userId ? () => getTokenRef.current() : null);
+    setConfiguredUserId(userId ?? null);
     return () => {
       setAuthTokenGetter(null);
     };
-  }, [isSignedIn]);
+  }, [isLoaded, userId]);
 
-  return null;
+  // A protected query must not mount between Clerk becoming signed in and the
+  // bearer getter being installed (or during a switch to a different user).
+  return !isLoaded || configuredUserId === currentUserId ? <>{children}</> : null;
 }
 
 function SyncOutboxBridge() {
@@ -249,9 +251,9 @@ function RootApp() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={clerkTokenCache}>
-      <AuthBridge />
-      <SyncOutboxBridge />
-      <ClerkLoadedOrTimeout>
+      <AuthBridge>
+        <SyncOutboxBridge />
+        <ClerkLoadedOrTimeout>
         <NativeServicesGate>
           <SafeAreaProvider>
             <QueryClientProvider client={queryClient}>
@@ -273,7 +275,8 @@ function RootApp() {
             </QueryClientProvider>
           </SafeAreaProvider>
         </NativeServicesGate>
-      </ClerkLoadedOrTimeout>
+        </ClerkLoadedOrTimeout>
+      </AuthBridge>
     </ClerkProvider>
   );
 }
