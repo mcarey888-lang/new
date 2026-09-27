@@ -39,11 +39,8 @@ export const personalElevationCreditEvents = pgTable("personal_elevation_credit_
   index("personal_elevation_credit_events_effective_idx")
     .on(t.ownerUserId, t.activityId, t.ruleVersion, t.revision),
   index("personal_elevation_credit_events_rule_idx").on(t.ownerUserId, t.ruleVersion, t.status),
-  foreignKey({
-    name: "personal_elevation_credit_events_activity_owner_fk",
-    columns: [t.ownerUserId, t.activityId],
-    foreignColumns: [canonicalActivities.ownerUserId, canonicalActivities.id],
-  }).onDelete("restrict"),
+  // Stage 1 Publish: restore the owner-scoped activity FK after the prerequisite
+  // canonical_activities owner/id unique constraint reaches production.
   check("chk_personal_elevation_credit_status", sql`${t.status} IN ('credited', 'revoked', 'corrected')`),
   check("chk_personal_elevation_credit_evidence", sql`${t.evidenceClass} IN ('recorded_unverified', 'quality_accepted', 'verified_activity')`),
   check("chk_personal_elevation_credit_metric", sql`${t.creditedAscentM} >= 0`),
@@ -101,11 +98,7 @@ export const expeditionStageContributions = pgTable("expedition_stage_contributi
     columns: [t.ownerUserId, t.runId],
     foreignColumns: [expeditionRuns.ownerUserId, expeditionRuns.id],
   }).onDelete("restrict"),
-  foreignKey({
-    name: "expedition_stage_contributions_activity_owner_fk",
-    columns: [t.ownerUserId, t.activityId],
-    foreignColumns: [canonicalActivities.ownerUserId, canonicalActivities.id],
-  }).onDelete("restrict"),
+  // Stage 1 Publish: restore the owner-scoped activity FK in the second publish.
   check("chk_expedition_contribution_status", sql`${t.status} IN ('accepted', 'revoked', 'corrected')`),
   check("chk_expedition_contribution_metric", sql`${t.acceptedMetric} >= 0`),
   check("chk_expedition_contribution_elevation", sql`${t.acceptedElevationM} IS NULL OR ${t.acceptedElevationM} >= 0`),
