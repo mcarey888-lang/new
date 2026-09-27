@@ -71,6 +71,16 @@ describe("Profile is a mountain résumé", () => {
     expect(PROFILE_PRESENTATION).not.toMatch(/selectedTab === "feed" \?/);
   });
 
+  it("places the feed composer immediately under the tabs without the Mountain stories introduction", () => {
+    const hub = code(read("components/profile/CommunityHub.tsx"));
+    expect(ACCOUNT_CODE).toMatch(/tab === "feed" && !showSettings && \([\s\S]*?<View style=\{styles\.feedContent\}[\s\S]*?<CommunityHub/);
+    expect(ACCOUNT_CODE).toMatch(/feedContent:\s*\{\s*marginTop: -12/);
+    expect(hub).toMatch(/<View style=\{styles\.root\} testID="community-hub">\s*\{!composing \?/);
+    expect(hub).toMatch(/Share a moment from your journey…[\s\S]*?<ImagePlus/);
+    expect(hub).not.toMatch(/YOUR FEED|Photos, trail updates and achievements shared/);
+    expect(hub).toMatch(/visiblePosts\.slice\(0, visiblePostCount\)\.map/);
+  });
+
   it("shows the real next rank and only its evaluated eligible ascent shortfall", () => {
     expect(ACCOUNT_CODE).toMatch(/nextRankName=\{rankResult\.nextRank\}/);
     expect(ACCOUNT_CODE).toMatch(/nextRankAscent=\{rankResult\.nextRequirements\.find\(requirement => requirement\.signal === "eligibleElevation"\)\}/);

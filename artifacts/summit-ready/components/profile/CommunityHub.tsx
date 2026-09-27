@@ -1,4 +1,4 @@
-import { Camera, ChevronDown, Flag, ImagePlus, RefreshCw, Send, Trash2, Users, LockKeyhole, X } from "lucide-react-native";
+import { Camera, ChevronDown, Flag, ImagePlus, RefreshCw, Send, Trash2, LockKeyhole, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image as ExpoImage } from "expo-image";
 import React, { useEffect, useState } from "react";
@@ -163,8 +163,6 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const visiblePosts = view === "mine" ? minePosts : posts.filter(p => p.visibility === "members");
   return (
     <View style={styles.root} testID="community-hub">
-      <View style={styles.heading}><View><Text style={styles.eyebrow}>YOUR FEED</Text><Text style={styles.title}>Mountain stories</Text></View><Users size={21} color={BASECAMP.accent} /></View>
-      <Text style={styles.intro}>Photos, trail updates and achievements shared by SummitReady members.</Text>
       {!composing ? (
         <TouchableOpacity
           onPress={() => setComposing(true)}
@@ -226,15 +224,11 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
 }
 
 const styles = StyleSheet.create({
-  root: { marginTop: SP.md, marginBottom: SP.xl },
-  heading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  eyebrow: { ...TYPE.eyebrow, color: BASECAMP.accent },
-  title: { ...TYPE.title, color: BASECAMP.text, marginTop: 4 },
-  intro: { ...TYPE.small, color: BASECAMP.textMuted, marginTop: 8, lineHeight: 18 },
-  composePrompt: { minHeight: 54, marginTop: 18, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
+  root: { marginBottom: SP.xl },
+  composePrompt: { minHeight: 54, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
   composePromptText: { ...TYPE.small, color: BASECAMP.textMuted, flex: 1 },
   composeClose: { marginLeft: "auto", width: HIT.minTarget, height: HIT.minTarget, alignItems: "center", justifyContent: "center" },
-  composer: { marginTop: 18, padding: 16, borderRadius: 14, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
+  composer: { padding: 16, borderRadius: 14, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
   composerTop: { flexDirection: "row", alignItems: "center", gap: 9 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: BASECAMP.accent },
   composerTitle: { ...TYPE.bodyBold, color: BASECAMP.text },
@@ -251,7 +245,7 @@ const styles = StyleSheet.create({
   submit: { minHeight: HIT.minTarget, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: BASECAMP.accent, marginTop: 14 },
   submitText: { ...TYPE.bodyBold, color: BASECAMP.accentInk }, disabled: { opacity: 0.4 },
   submitError: { ...TYPE.caption, color: BASECAMP.text, marginTop: SP.sm },
-  switcher: { flexDirection: "row", marginTop: 22, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
+  switcher: { flexDirection: "row", marginTop: SP.sm, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
   switch: { flex: 1, minHeight: HIT.minTarget, alignItems: "center", justifyContent: "center" }, switchActive: { borderBottomWidth: 2, borderBottomColor: BASECAMP.accent }, switchText: { ...TYPE.smallBold, color: BASECAMP.textMuted }, switchTextActive: { color: BASECAMP.accent },
   skeleton: { padding: 18, gap: 12 }, skeletonLine: { height: 46, borderRadius: 8, backgroundColor: BASECAMP.panelSub },
   empty: { alignItems: "center", paddingVertical: 30, paddingHorizontal: 18, gap: 8, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },

@@ -529,13 +529,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
         {tab === "feed" && !showSettings && (
           community ? (
-            <View onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}>
+            <View style={styles.feedContent} onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}>
               <CommunityHub {...community} draftBadge={badgeDraft} />
             </View>
           ) : (
-            <View style={styles.communityUnavailable}>
-              <Text style={styles.sectionLabel}>COMMUNITY FEED</Text>
-              <Text style={styles.communityTitle}>Mountain stories</Text>
+            <View style={[styles.communityUnavailable, styles.feedContent]}>
               <Text style={styles.communityNote}>Sign in to see stories, photos and achievements shared by SummitReady members. Your activity and journal photos remain private.</Text>
               <DemoCommunityPreview />
             </View>
@@ -1492,7 +1490,8 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     backgroundColor: BASECAMP.accentDim,
   },
-  communityUnavailable: { marginHorizontal: 0, marginBottom: 20, padding: 18, borderRadius: 12, borderWidth: 1, borderColor: BASECAMP.panelBorder, backgroundColor: BASECAMP.panelSub },
+  feedContent: { marginTop: -12 },
+  communityUnavailable: { marginBottom: 20 },
   communityTitle: { ...TYPE.heading, color: BASECAMP.text, marginTop: 6 },
   communityNote: { ...TYPE.small, color: BASECAMP.textMuted, marginTop: 7, lineHeight: 19 },
   memberPhotos: { marginTop: 24 },
