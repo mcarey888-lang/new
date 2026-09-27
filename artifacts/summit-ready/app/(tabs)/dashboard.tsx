@@ -29,7 +29,7 @@ import { AchievementToast } from "@/components/AchievementToast";
 import { getDaysRemaining, getWeeklyCompletion, isRequirementMet } from "@/utils/readinessScore";
 import { getCurrentWeek } from "@/utils/planGenerator";
 import { assessTime } from "@/utils/timeValidator";
-import { BASECAMP } from "@/constants/tokens";
+import { BASECAMP, TYPE } from "@/constants/tokens";
 import { BasecampHero } from "@/components/basecamp/BasecampHero";
 import { BasecampReadiness } from "@/components/basecamp/BasecampReadiness";
 import { AlpineExperienceEditor } from "@/components/basecamp/AlpineExperienceEditor";
@@ -736,12 +736,20 @@ export default function DashboardScreen() {
         {/* ── This week's mission ───────────────────────────────────── */}
         {trainingPlan.length > 0 && (
           <View style={styles.section}>
-            <SRSectionHeader
-              title="This week's mission"
-              action="View plan"
-              onAction={() => router.push("/(tabs)/plan")}
-            />
-            <View style={{ marginTop: 7 }}>
+            <TouchableOpacity
+              style={styles.missionPlanButton}
+              onPress={() => router.push("/(tabs)/plan")}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="This week's mission. View training plan"
+            >
+              <Text style={styles.missionPlanTitle}>THIS WEEK'S MISSION</Text>
+              <View style={styles.missionPlanAction}>
+                <Text style={styles.missionPlanActionText}>View plan</Text>
+                <ChevronRight size={16} color={BASECAMP.accentInk} />
+              </View>
+            </TouchableOpacity>
+            <View>
               {mission ? (
                 <MissionCard
                   session={mission}
@@ -1142,6 +1150,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: BASECAMP.gutter,
     marginTop: 15,
   },
+  missionPlanButton: {
+    width: "100%",
+    minHeight: 52,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 12,
+    backgroundColor: BASECAMP.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  missionPlanTitle: {
+    ...TYPE.eyebrow,
+    color: BASECAMP.accentInk,
+    flexShrink: 1,
+  },
+  missionPlanAction: { flexDirection: "row", alignItems: "center", gap: 4 },
+  missionPlanActionText: { ...TYPE.smallBold, color: BASECAMP.accentInk },
   insightPanel: { borderColor: "rgba(227,166,74,0.28)" },
   insightRow: { flexDirection: "row", alignItems: "flex-start", gap: 11, padding: 14 },
   insightIcon: {
