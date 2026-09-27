@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { generatePlan, parseDurationMidpoint } from "@/utils/planGenerator";
+import { restoreTrainingPlan } from "@/utils/trainingPlanRestore";
 import { calculateReadiness, diagnoseScoreStagnation, ScoreInsight } from "@/utils/readinessScore";
 import { computeUnlocked } from "@/utils/achievements";
 import { logTrainingPlanGenerated, logReadinessScoreImproved } from "@/lib/analytics";
@@ -962,8 +963,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : [];
 
         if (goal) {
+          // A persisted empty plan must not leave a valid Training objective
+          // with no weeks. Keep existing sessions and completion records; only
+          // restore the missing plan from its own Training goal.
+          const storedPlan: TrainingWeek[] | null = planStr ? JSON.parse(planStr) : null;
           const rawPlan: TrainingWeek[] = ensurePlanSessionIds(
-            planStr ? JSON.parse(planStr) : generatePlan(goal),
+            restoreTrainingPlan(storedPlan, loadedTrainingGoal, generatePlan),
           ) as TrainingWeek[];
 
           // Migrate stored plans that are missing fields added in later versions.

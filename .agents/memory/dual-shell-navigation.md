@@ -57,6 +57,12 @@ Opening the Expeditions tab while Training is selected is discovery, not a mode 
 
 **How to apply:** Keep plan clearing and full account-data reset as separate operations; never wire destructive account controls to the Training-only clear method.
 
+If a saved Training goal exists but its persisted week list is empty, restore only the missing plan from that Training goal; leave existing plan edits, logged activities, and completion records intact. Never generate Training weeks from an Expedition-only goal.
+
+**Why:** A valid mountain objective can otherwise appear on Basecamp with no mission or plan link, while the separate Expedition goal must not leak into Training.
+
+**How to apply:** Treat a missing or empty plan as a recoverable hydration case, not a reason to reset the user's goal or sessions.
+
 ## Expedition tab screens
 - `base-camp.tsx` — expedition home, hero image + simulation score ring + hills list + target profile
 - `mountains.tsx` — Expedition-owned mountain browse and selection screen
