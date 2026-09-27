@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Image,
   Modal,
   Platform,
   ScrollView,
@@ -10,10 +11,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Activity, Check, ChevronRight, Layers, Mountain, Package,
-  RefreshCw, TrendingUp, X,
+  Check, ChevronRight, RefreshCw, X,
 } from "lucide-react-native";
 import { T } from "@/constants/theme";
+import { exerciseThumbnailArtwork } from "@/utils/exerciseArtwork";
 
 export type GymExercise =
   | "treadmill"
@@ -27,8 +28,6 @@ interface ExerciseOption {
   key: GymExercise;
   label: string;
   subtitle: string;
-  iconBg: string;
-  Icon: React.ComponentType<{ size: number; color: string }>;
 }
 
 const EXERCISES: ExerciseOption[] = [
@@ -36,43 +35,31 @@ const EXERCISES: ExerciseOption[] = [
     key: "treadmill",
     label: "Incline Treadmill",
     subtitle: "10–15% incline, brisk hike pace",
-    iconBg: T.blue,
-    Icon: TrendingUp,
   },
   {
     key: "stepper",
     label: "Stairmaster",
     subtitle: "Step machine for leg drive and cardio",
-    iconBg: T.orange,
-    Icon: Layers,
   },
   {
     key: "box-steps",
     label: "Box Step-Ups",
     subtitle: "Weighted step-ups onto a box or bench",
-    iconBg: "#7C3AED",
-    Icon: Activity,
   },
   {
     key: "weighted-stairs",
     label: "Weighted Stairs",
     subtitle: "Stairs with a loaded pack or weight vest",
-    iconBg: "#D97706",
-    Icon: Package,
   },
   {
     key: "elliptical",
     label: "Elliptical (High Resistance)",
     subtitle: "High resistance, simulate climbing effort",
-    iconBg: "#0891B2",
-    Icon: RefreshCw,
   },
   {
     key: "outdoor",
     label: "Outdoor Walk / Run",
     subtitle: "Any outdoor terrain with elevation",
-    iconBg: T.green,
-    Icon: Mountain,
   },
 ];
 
@@ -134,14 +121,19 @@ export function ExercisePickerModal({ visible, current, onSelect, onClose }: Pro
             return (
               <TouchableOpacity
                 key={ex.key}
-                style={[ep.row, isActive && ep.rowActive]}
+                style={ep.row}
                 onPress={() => onSelect(ex.key)}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                testID={`exercise-option-${ex.key}`}
               >
-                {/* Icon box */}
-                <View style={[ep.iconBox, { backgroundColor: ex.iconBg + (isActive ? "FF" : "30") }]}>
-                  <ex.Icon size={18} color={isActive ? "#fff" : ex.iconBg} />
-                </View>
+                <Image
+                  source={exerciseThumbnailArtwork(ex.key)}
+                  style={ep.thumbnail}
+                  resizeMode="cover"
+                  accessible={false}
+                />
 
                 {/* Text */}
                 <View style={{ flex: 1 }}>
@@ -229,15 +221,11 @@ const ep = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: T.border,
   },
-  rowActive: {
-    // subtle tint handled by iconBox
-  },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  thumbnail: {
+    width: 54,
+    height: 54,
+    borderRadius: 10,
+    backgroundColor: T.border,
   },
   rowLabel: {
     fontSize: 15,

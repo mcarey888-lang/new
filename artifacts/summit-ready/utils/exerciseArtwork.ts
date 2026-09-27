@@ -37,6 +37,11 @@ const CARD_ARTWORK: Record<GymExercise, ImageSourcePropType> = {
   outdoor: require("@/assets/images/exercise-outdoor-right-half.png"),
 };
 
+/** The same exercise-specific crop used by the plan cards, sized by the caller. */
+export function exerciseThumbnailArtwork(exercise: GymExercise): ImageSourcePropType {
+  return CARD_ARTWORK[exercise];
+}
+
 export function exerciseCardArtwork(session: ExerciseSession | null | undefined): ImageSourcePropType | null {
   const exercise = exerciseForSession(session);
   return exercise ? CARD_ARTWORK[exercise] : null;
