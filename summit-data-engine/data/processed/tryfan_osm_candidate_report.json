@@ -1,0 +1,307 @@
+{
+  "bbox_epsg4326": [
+    -4.073583,
+    53.0521369,
+    -3.9214208,
+    53.1782877
+  ],
+  "candidates": [
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 4340 m away, further than the 1922 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 1922.4,
+      "name": "Craig Fach Track",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 4340.2,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        1082210347
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 5150 m away, further than the 951 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 950.7,
+      "name": "Crib Goch",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 5149.7,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        168426574,
+        168426583,
+        1111478730
+      ]
+    },
+    {
+      "chain_count": 2,
+      "detail": "fragmented across 2 chain(s); widest gap 305 m",
+      "largest_gap_m": 304.5,
+      "length_m": 660.5,
+      "name": "Crib Ogwen",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 4.9,
+      "shape": "fragmented",
+      "verdict": "not_a_single_line",
+      "way_ids": [
+        114871121,
+        1111458062,
+        1136472277
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 4091 m away, further than the 3132 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 3131.7,
+      "name": "Cylchdaith yr Wyddfa",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 4091.4,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        111635143
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 3656 m away, further than the 647 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 647.0,
+      "name": "Llech Ddu Spur",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 3655.9,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        1111449669,
+        1111449670
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 4155 m away, further than the 4144 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 4144.2,
+      "name": "Llwybr Bwlch Moch",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 4155.1,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        140115342,
+        140115388,
+        167869302,
+        372419761,
+        838586519,
+        838586520
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "443 m, below the 500 m minimum",
+      "largest_gap_m": 0.0,
+      "length_m": 443.3,
+      "name": "Llwybr Defaid",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 2505.4,
+      "shape": "simple_path",
+      "verdict": "too_short",
+      "way_ids": [
+        1214357495
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "simple path reaching within 135 m of Tryfan (tolerance 150 m)",
+      "largest_gap_m": 0.0,
+      "length_m": 1066.1,
+      "name": "Llwybr Gwregys",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 134.8,
+      "shape": "simple_path",
+      "verdict": "reviewable",
+      "way_ids": [
+        719316342,
+        880802866
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 5943 m away, further than the 924 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 923.8,
+      "name": "Llwybr Llyn Llydaw",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 5942.9,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        140115370
+      ]
+    },
+    {
+      "chain_count": 2,
+      "detail": "fragmented across 2 chain(s); widest gap 3 m",
+      "largest_gap_m": 2.8,
+      "length_m": 1111.0,
+      "name": "Llwybr y Carw",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 2025.6,
+      "shape": "fragmented",
+      "verdict": "not_a_single_line",
+      "way_ids": [
+        83537005,
+        373983941,
+        672637571,
+        672637572,
+        1418171605
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 5230 m away, further than the 1542 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 1541.7,
+      "name": "Llwybr y Llwynog",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 5230.3,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        1023707858
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "closest approach 655 m to Tryfan, tolerance 150 m",
+      "largest_gap_m": 0.0,
+      "length_m": 3575.0,
+      "name": "Miners' Track",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 654.9,
+      "shape": "simple_path",
+      "verdict": "summit_out_of_range",
+      "way_ids": [
+        38577576,
+        114871144,
+        114871145,
+        163848958,
+        163848959,
+        240048607,
+        240048608,
+        1074855932
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "6 m, below the 500 m minimum",
+      "largest_gap_m": 0.0,
+      "length_m": 5.8,
+      "name": "Pont Bodesi",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 1538.9,
+      "shape": "simple_path",
+      "verdict": "too_short",
+      "way_ids": [
+        907182829
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "7 m, below the 500 m minimum",
+      "largest_gap_m": 0.0,
+      "length_m": 7.2,
+      "name": "Pont Nant Efan",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 2200.4,
+      "shape": "simple_path",
+      "verdict": "too_short",
+      "way_ids": [
+        829360083
+      ]
+    },
+    {
+      "chain_count": 2,
+      "detail": "fragmented across 2 chain(s); widest gap 9 m",
+      "largest_gap_m": 9.2,
+      "length_m": 1706.2,
+      "name": "Roman Road",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 3930.9,
+      "shape": "fragmented",
+      "verdict": "not_a_single_line",
+      "way_ids": [
+        32543877,
+        314490866
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "102 m, below the 500 m minimum",
+      "largest_gap_m": 0.0,
+      "length_m": 101.6,
+      "name": "Senior's Gully",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 1824.7,
+      "shape": "simple_path",
+      "verdict": "too_short",
+      "way_ids": [
+        1352734067
+      ]
+    },
+    {
+      "chain_count": 2,
+      "detail": "233 m, below the 500 m minimum",
+      "largest_gap_m": 5.8,
+      "length_m": 233.0,
+      "name": "Track to Bryn Poeth",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 1511.1,
+      "shape": "fragmented",
+      "verdict": "too_short",
+      "way_ids": [
+        144399050,
+        907182828
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "341 m, below the 500 m minimum",
+      "largest_gap_m": 0.0,
+      "length_m": 340.5,
+      "name": "Y Grib Bigog",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 747.8,
+      "shape": "simple_path",
+      "verdict": "too_short",
+      "way_ids": [
+        334433650
+      ]
+    },
+    {
+      "chain_count": 1,
+      "detail": "nearest supplied peak Tryfan is 1206 m away, further than the 961 m way is long",
+      "largest_gap_m": 0.0,
+      "length_m": 961.3,
+      "name": "Y Gribin",
+      "nearest_peak": "Tryfan",
+      "nearest_peak_m": 1206.5,
+      "shape": "simple_path",
+      "verdict": "no_peak_nearby",
+      "way_ids": [
+        107252655
+      ]
+    }
+  ],
+  "linking_method": "endpoint_coordinate_identity_v1",
+  "min_route_length_m": 500.0,
+  "peaks_in_extract": [
+    "Tryfan"
+  ],
+  "policy_version": "summitready_validation_v1",
+  "summit_reach_tolerance_m": 150.0
+}

@@ -1,0 +1,12 @@
+{
+  "_comment": "Peaks used to judge OSM named ways in the candidate report. Each entry must come from a source, never from memory: Tryfan is OSM node 29580544 as recorded in data/processed/tryfan_manifest.json. Add a peak only with its source noted here.",
+  "peaks": [
+    {
+      "name": "Tryfan",
+      "lat": 53.1149311,
+      "lon": -3.997578,
+      "osm_id": 29580544,
+      "source": "OSM node 29580544 via data/processed/tryfan_manifest.json summit block"
+    }
+  ]
+}

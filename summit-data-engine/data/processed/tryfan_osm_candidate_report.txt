@@ -1,0 +1,35 @@
+extract bbox: -4.07358,53.05214 .. -3.92142,53.17829
+peaks inside the extract: Tryfan
+
+OSM named-way candidate report (review only; nothing here is publishable)
+
+ways: 650   named: 43   names: 19
+linking: endpoint_coordinate_identity_v1 (a proxy for OSM node identity)
+policy: summitready_validation_v1   summit tolerance: 150 m   minimum length: 500 m
+
+name                       shape         len m   gap m  peak m  verdict
+--------------------------------------------------------------------------------------------
+Craig Fach Track           simple_path    1922     0.0    4340  no_peak_nearby: nearest supplied peak Tryfan is 4340 m away, further than the 1922 m way is long
+Crib Goch                  simple_path     951     0.0    5150  no_peak_nearby: nearest supplied peak Tryfan is 5150 m away, further than the 951 m way is long
+Crib Ogwen                 fragmented      660   304.5       5  not_a_single_line: fragmented across 2 chain(s); widest gap 305 m
+Cylchdaith yr Wyddfa       simple_path    3132     0.0    4091  no_peak_nearby: nearest supplied peak Tryfan is 4091 m away, further than the 3132 m way is long
+Llech Ddu Spur             simple_path     647     0.0    3656  no_peak_nearby: nearest supplied peak Tryfan is 3656 m away, further than the 647 m way is long
+Llwybr Bwlch Moch          simple_path    4144     0.0    4155  no_peak_nearby: nearest supplied peak Tryfan is 4155 m away, further than the 4144 m way is long
+Llwybr Defaid              simple_path     443     0.0    2505  too_short: 443 m, below the 500 m minimum
+Llwybr Gwregys             simple_path    1066     0.0     135  reviewable: simple path reaching within 135 m of Tryfan (tolerance 150 m)
+Llwybr Llyn Llydaw         simple_path     924     0.0    5943  no_peak_nearby: nearest supplied peak Tryfan is 5943 m away, further than the 924 m way is long
+Llwybr y Carw              fragmented     1111     2.8    2026  not_a_single_line: fragmented across 2 chain(s); widest gap 3 m
+Llwybr y Llwynog           simple_path    1542     0.0    5230  no_peak_nearby: nearest supplied peak Tryfan is 5230 m away, further than the 1542 m way is long
+Miners' Track              simple_path    3575     0.0     655  summit_out_of_range: closest approach 655 m to Tryfan, tolerance 150 m
+Pont Bodesi                simple_path       6     0.0    1539  too_short: 6 m, below the 500 m minimum
+Pont Nant Efan             simple_path       7     0.0    2200  too_short: 7 m, below the 500 m minimum
+Roman Road                 fragmented     1706     9.2    3931  not_a_single_line: fragmented across 2 chain(s); widest gap 9 m
+Senior's Gully             simple_path     102     0.0    1825  too_short: 102 m, below the 500 m minimum
+Track to Bryn Poeth        fragmented      233     5.8    1511  too_short: 233 m, below the 500 m minimum
+Y Grib Bigog               simple_path     340     0.0     748  too_short: 341 m, below the 500 m minimum
+Y Gribin                   simple_path     961     0.0    1206  no_peak_nearby: nearest supplied peak Tryfan is 1206 m away, further than the 961 m way is long
+
+REVIEWABLE: 1 of 19
+   Llwybr Gwregys — ways 719316342, 880802866
+
+wrote data/processed/tryfan_osm_candidate_report.json

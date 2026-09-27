@@ -18,3 +18,9 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/README.md
+
+# Review findings are not geospatial data. The candidate report is a small text
+# and JSON summary of what an extract would yield, and it is the record of why
+# no OSM importer was built, so it is kept under version control deliberately.
+!data/processed/*_osm_candidate_report.txt
+!data/processed/*_osm_candidate_report.json

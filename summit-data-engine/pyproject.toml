@@ -42,6 +42,7 @@ summit-import-dobih = "summit_data_engine.dobih.importer:main"
 summit-import-international = "summit_data_engine.international.importer:main"
 summit-rebuild-international = "summit_data_engine.international.rebuild:main"
 summit-prepare-wales-dobih = "summit_data_engine.dobih.wales_review:main"
+summit-osm-candidate-report = "summit_data_engine.osm.report:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/summit_data_engine"]

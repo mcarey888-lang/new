@@ -191,6 +191,73 @@ python scripts/download_tryfan_sources.py --output data/raw \
   --tile-id Copernicus_DSM_COG_10_N53_00_W004_00_DEM
 ```
 
+## OSM named-way candidate report
+
+Review-only. Opens no database, plans no route, publishes nothing. It answers
+one question about a path network already on disk: if we tried to build
+canonical routes out of the named ways in it, what would we get?
+
+```bash
+summit-osm-candidate-report \
+  data/processed/tryfan_candidate_path_network.geojson \
+  --policy config/validation_policy.toml \
+  --peaks config/snowdonia_peaks.json \
+  --json data/processed/tryfan_osm_candidate_report.json
+```
+
+The committed output is `data/processed/tryfan_osm_candidate_report.txt` and
+`.json`. Against the committed Tryfan extract — 650 ways, 43 named, 19 distinct
+names — it yields **one** reviewable candidate, and that one only because
+`config/validation_policy.toml` sets `summit_reach_tolerance_m = 150.0`. The run
+that produced the extract used 75.0 (see `validation_policy` in
+`data/processed/tryfan_manifest.json`), and at 75 m there are none.
+
+Two rules in it are worth knowing before reading a report:
+
+* **Ways are chained by identical endpoint coordinates**, which is a *proxy* for
+  OSM node identity — a candidate-path-network export carries way ids and drops
+  node ids. `LINKING_METHOD` names the proxy so a report cannot be mistaken for
+  publishable topology. Anything built for publication must compare node ids
+  from the PBF itself.
+* **A peak only judges a way it could plausibly belong to** — one no further
+  from the way than the way is long. Without that bound the report announces
+  that Crib Goch fails to reach Tryfan: true, irrelevant, and it reads like a
+  mapping defect rather than a peak nobody supplied.
+
+Grouping is by name, so two distinct routes sharing a name surface as
+`not_a_single_line` rather than being silently merged.
+
+### Why there is a report here and not an importer
+
+The obvious next step after extracting a path network is to route across it:
+find the summit, find a trailhead, and let a shortest-path algorithm join them.
+That step is deliberately not taken, and the report is the evidence for why.
+
+`Crib Ogwen` carries the three ways `data/processed/tryfan_review.md` names as
+the Tryfan North Ridge topology (1136472277, 1111458062, 114871121). It reaches
+within **5 m** of the summit, so the ridge really is mapped — but it is broken
+into two chains by a single gap of **304.5 m** near the base. Every other gap in
+the whole extract is under ten metres. That distribution is the argument:
+refusing to join costs almost nothing, and a rule permissive enough to close
+304 m would invent a third of a kilometre of ridge in exactly the place where
+no single line exists on the ground.
+
+So an importer built on this network would be a large machine returning almost
+nothing, and the only way to make it return more is to manufacture precision.
+The drawn-route path in `summit_data_engine.editorial` is the supported way to
+get geometry for a named route: a person draws the line, `drawn_on` records the
+basemap they drew it over, and `QaFlag.DRAWN_NOT_SURVEYED` travels with the
+result. The path network is useful as the thing they draw over.
+
+> **Not in this repository.** `scripts/import_tryfan.py`,
+> `scripts/validate_tryfan.py`, `scripts/download_tryfan_sources.py`,
+> `scripts/prepare_wales_dobih_review.py` and the
+> `summit_data_engine.pipelines` package are documented above and in
+> `[project.scripts]`, but no version of them is present in any branch's
+> history. Their *outputs* are committed under `data/processed/`. Treat the
+> Tryfan proof-of-concept section as a record of a run that happened
+> elsewhere, not as instructions that currently work.
+
 ## Tests and quality
 
 ```bash
