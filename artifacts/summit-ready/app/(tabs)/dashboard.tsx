@@ -740,6 +740,7 @@ export default function DashboardScreen() {
               style={styles.missionPlanButton}
               onPress={() => router.push("/(tabs)/plan")}
               activeOpacity={0.82}
+              hitSlop={{ top: 8, bottom: 8 }}
               accessibilityRole="button"
               accessibilityLabel="This week's mission. View training plan"
             >
@@ -1152,10 +1153,10 @@ const styles = StyleSheet.create({
   },
   missionPlanButton: {
     width: "100%",
-    minHeight: 52,
+    minHeight: 29,
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 0,
     marginBottom: 12,
     backgroundColor: BASECAMP.accent,
     flexDirection: "row",
