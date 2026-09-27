@@ -1,4 +1,5 @@
 - [Hills elevation pipeline](hills-elevation-pipeline.md) — Overpass-first + terrain sampling + KNOWN_GAINS override; AI fallback for alpine/sparse areas.
+- [Hill picker ascent targets](hill-picker-ascent-targets.md) — area searches list hills; picker shows climb ascent only, while the plan calculates reps without inflating its target.
 - [Ambiguous hill identity](ambiguous-hill-identity.md) — Common hill names require location/coordinates across caches, detail generation, directions, and gain overrides.
 - [Mountain profile ascent semantics](mountain-profile-ascent.md) — Target gain starts at the conventional route access point, never the valley floor or summit altitude.
 - [Topo elevation sanity check bounds](topo-elevation-sanity.md) — lower bound (< 0.25× AI) must exist alongside upper bound or misplaced coords produce tiny gains that slip through.

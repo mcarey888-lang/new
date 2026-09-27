@@ -135,6 +135,21 @@ describe("Training Plan keeps its behaviour", () => {
 describe("Training Session keeps its behaviour", () => {
   const src = read(SESSION);
 
+  it("shows multiple hills for an area without prescribing reps in the picker", () => {
+    const picker = read("components/HillPickerModal.tsx");
+    expect(picker).toMatch(/kind === "area"\s*\?\s*\{ location: q, radius: 50 \}/);
+    expect(picker).toMatch(/searchResults\.map\(\(hill, index\)/);
+    expect(picker).toMatch(/hillName: q, location/);
+    expect(picker).not.toMatch(/hill\.repeats\}/);
+  });
+
+  it("calculates full hill repetitions without inflating the session's ascent target", () => {
+    expect(src).toMatch(/\? session\.targetElevation : hill\.elevation/);
+    expect(src).toMatch(/Math\.ceil\(sessionTarget \/ Math\.max\(1, hill\.elevation\)\)/);
+    expect(src).toMatch(/targetElevation: sessionTarget, description/);
+    expect(src).toMatch(/repeats: adjustedReps, totalElevation: adjustedReps \* hill\.elevation/);
+  });
+
   it("keeps every route out of the screen", () => {
     expect(src).toMatch(/pathname: "\/hike-tracking"/);
     expect(src).toMatch(/togglePlanSession\(weekNum, sessionIdx\)/);

@@ -284,16 +284,18 @@ export default function SessionDetailScreen() {
 
   const handleHillSelect = useCallback(async (hill: NearbyHill) => {
     setHillPickerOpen(false);
-    // Recalculate reps to keep total gain near the session's target, not the hill's default
-    const sessionTarget = session?.targetElevation ?? hill.elevation * hill.repeats;
-    const adjustedReps = Math.max(1, Math.round(sessionTarget / Math.max(1, hill.elevation)));
+    // The session's ascent target stays fixed. Round UP so full hill climbs meet
+    // or exceed it; the hill's default repeats are not a prescription.
+    const sessionTarget = session?.targetElevation && session.targetElevation > 0
+      ? session.targetElevation : hill.elevation;
+    const adjustedReps = Math.max(1, Math.ceil(sessionTarget / Math.max(1, hill.elevation)));
     const adjustedHill: NearbyHill = { ...hill, repeats: adjustedReps, totalElevation: adjustedReps * hill.elevation };
     const description =
       `Head to ${adjustedHill.name} (${adjustedHill.elevation}m gain per rep). ` +
-      `Complete ${adjustedReps} rep${adjustedReps !== 1 ? "s" : ""} for a total of ${adjustedHill.totalElevation}m elevation gain. ` +
+      `Your target is ${sessionTarget}m of ascent. Complete ${adjustedReps} rep${adjustedReps !== 1 ? "s" : ""} for approximately ${adjustedHill.totalElevation}m gain. ` +
       `Focus on a steady pace on the ascent and controlled steps on the descent to build the leg strength you'll need on summit day.`;
     await assignHillToSession(weekNum, sessionIdx, adjustedHill);
-    await updatePlanSession(weekNum, sessionIdx, { targetElevation: adjustedHill.totalElevation, description });
+    await updatePlanSession(weekNum, sessionIdx, { targetElevation: sessionTarget, description });
   }, [weekNum, sessionIdx, session?.targetElevation, assignHillToSession, updatePlanSession]);
 
   const EXERCISE_LABEL: Record<GymExercise, string> = {
