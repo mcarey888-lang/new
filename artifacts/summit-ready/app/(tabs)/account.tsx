@@ -158,6 +158,13 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
     () => sampleProfile.enabled && sampleProfile.createdAt ? savedDemoYear(sampleProfile.createdAt) : null,
     [sampleProfile.enabled, sampleProfile.createdAt],
   );
+  const sampleMonthly = useMemo(() => sampleYear
+    ? monthlyGain(
+        sampleYear.hikes.map(hike => ({ effectiveAt: `${hike.date}T12:00:00`, ascentM: hike.ascentM })),
+        12,
+        new Date(`${sampleYear.hikes[0].date}T12:00:00`),
+      )
+    : [], [sampleYear]);
   const { activeChallenges, getProgress, clearChallenges } = useChallenges();
   const { projection: stage8Projection, pendingEvidence: stage8Pending, catalogue: stage8Catalogue, achievements: stage8Achievements } = useStage8();
   const stage8Tracked = Object.values(stage8Projection.progress)
@@ -514,31 +521,18 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         )}
 
         {tab === "profile" && !showSettings && (<>
-        {sampleYear && (
-          <SavedDemoYearSummary
-            year={sampleYear}
-            onRemove={sampleProfile.remove}
-            busy={sampleProfile.busy}
-            onOpenActivity={() => { setTab("activity"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
-            onOpenPhotos={() => { setTab("photos"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
-          />
-        )}
-        {/* ── Elevation Bank ───────────────────────────────────────────────
-            The headline of the profile, not a widget further down it: it is
-            the running total of everything the user has actually climbed. */}
-        {sampleYear && (
-          <Text style={{ color: BASECAMP.textMuted, marginBottom: 9, marginHorizontal: 4, fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1 }}>
-            REAL ACTIVITY · VERIFIED BALANCE BELOW
-          </Text>
-        )}
+        {/* The approved composition presents either recorded credit or an
+            explicitly fictional sample layer. Only the API supplies real credit. */}
         <Animated.View entering={FadeInDown.delay(30).duration(400)} style={{ marginBottom: 16 }}>
           <ElevationBankHero
-            lifetimeAscentM={bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? bankPresentation.data.lifetimeAscentM : null}
-            hikes={bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? bankPresentation.data.creditedActivities : null}
-            mountains={null}
-            expeditions={expeditions.length}
-            movingHours={movingHours(exploreHikes.reduce((total, hike) => total + hike.timeTaken * 60, 0))}
-            monthly={bankPresentation.kind === "ready" || bankPresentation.kind === "empty"
+            mode={sampleYear ? "sample" : "bank"}
+            lifetimeAscentM={sampleYear ? sampleYear.ascentM : bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? bankPresentation.data.lifetimeAscentM : null}
+            hikes={sampleYear ? sampleYear.hikes.length : bankPresentation.kind === "ready" || bankPresentation.kind === "empty" ? bankPresentation.data.creditedActivities : null}
+            mountains={sampleYear ? new Set(sampleYear.hikes.map(hike => hike.name)).size : null}
+            expeditions={sampleYear ? sampleYear.expeditions.length : expeditions.length}
+            movingHours={sampleYear ? null : movingHours(exploreHikes.reduce((total, hike) => total + hike.timeTaken * 60, 0))}
+            sampleMonths={sampleYear ? 12 : undefined}
+            monthly={sampleYear ? sampleMonthly : bankPresentation.kind === "ready" || bankPresentation.kind === "empty"
               ? monthlyGain(bankPresentation.data.recentCredits.map(c => ({
                   effectiveAt: c.effectiveAt,
                   ascentM: c.creditedAscentM,
@@ -546,15 +540,15 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               : []}
             photoAsset={require("@/assets/images/hero-base-camp.png")}
             yearOnYearPercent={null}
-            onPress={() => router.push("/elevation-history")}
-            onInfoPress={() => router.push("/elevation-history")}
+            onPress={sampleYear ? undefined : () => router.push("/elevation-history")}
+            onInfoPress={sampleYear ? undefined : () => router.push("/elevation-history")}
           />
-          {bankPresentation.kind === "loading" && (
+          {!sampleYear && bankPresentation.kind === "loading" && (
             <Text style={{ color: BASECAMP.textDim, marginTop: 10, marginHorizontal: 4 }} testID="elevation-bank-loading">
               Loading your recorded ascent…
             </Text>
           )}
-          {bankPresentation.kind === "unavailable" && (
+          {!sampleYear && bankPresentation.kind === "unavailable" && (
             <View style={{ marginTop: 10, marginHorizontal: 4 }} testID="elevation-bank-unavailable">
               <Text style={{ color: BASECAMP.textDim }}>
                 {isSignedIn ? "Recorded balance unavailable right now." : "Sign in to see your recorded ascent."}
@@ -566,17 +560,51 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               )}
             </View>
           )}
-          {isSignedIn && !localLoading && manualBank.status === "available" && manualBank.activities > 0 && (
+          {!sampleYear && isSignedIn && !localLoading && manualBank.status === "available" && manualBank.activities > 0 && (
             <Text style={{ color: BASECAMP.textDim, marginTop: 10, marginHorizontal: 4 }}>
               + {manualBank.lifetimeM.toLocaleString("en-GB")} m self-reported on this device · not verified credit
             </Text>
           )}
-          {bankPresentation.kind === "empty" && (
+          {!sampleYear && bankPresentation.kind === "empty" && (
             <Text style={{ color: BASECAMP.textDim, marginTop: 10, marginHorizontal: 4 }}>
               No recorded ascent yet. Your next tracked hike is a great place to start.
             </Text>
           )}
         </Animated.View>
+        {sampleYear && (
+          <>
+            <View style={{ backgroundColor: BASECAMP.panelSub, borderColor: BASECAMP.panelBorder, borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => router.push("/elevation-history")} accessibilityRole="button" accessibilityLabel="View your real Elevation Bank" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: BASECAMP.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Your real Elevation Bank</Text>
+                  <Text style={{ color: BASECAMP.textMuted, marginTop: 4, fontSize: 12 }}>
+                    {bankPresentation.kind === "ready" || bankPresentation.kind === "empty"
+                      ? `${bankPresentation.data.lifetimeAscentM.toLocaleString("en-GB")} m recorded · ${bankPresentation.data.creditedActivities} credited hikes`
+                      : bankPresentation.kind === "loading" ? "Loading recorded activity…" : "Recorded balance unavailable"}
+                  </Text>
+                </View>
+                <ChevronRight size={17} color={BASECAMP.accent} />
+              </TouchableOpacity>
+              {bankPresentation.kind === "unavailable" && isSignedIn && (
+                <TouchableOpacity onPress={refetchBank} accessibilityRole="button" testID="elevation-bank-retry" style={{ marginTop: 10 }}>
+                  <Text style={{ color: BASECAMP.accent }}>Try again</Text>
+                </TouchableOpacity>
+              )}
+              {isSignedIn && !localLoading && manualBank.status === "available" && manualBank.activities > 0 && (
+                <Text style={{ color: BASECAMP.textDim, marginTop: 9, fontSize: 11 }}>
+                  + {manualBank.lifetimeM.toLocaleString("en-GB")} m self-reported on this device · not verified credit
+                </Text>
+              )}
+            </View>
+            <SavedDemoYearSummary
+              year={sampleYear}
+              onRemove={sampleProfile.remove}
+              busy={sampleProfile.busy}
+              onOpenActivity={() => { setTab("activity"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+              onOpenPhotos={() => { setTab("photos"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+            />
+          </>
+        )}
         <TouchableOpacity
           style={styles.communityEntry}
           accessibilityRole="button"

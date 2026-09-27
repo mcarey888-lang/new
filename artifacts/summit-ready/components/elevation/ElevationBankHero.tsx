@@ -2,9 +2,10 @@
  * Elevation Bank — the hero card, from the approved mockup.
  *
  * PRESENTATION ONLY. Every figure arrives as a prop: this component computes
- * nothing, reads no query and estimates nothing. Credit rules, qualification
- * and the lifetime total all stay behind the Elevation Bank API, and the
- * derived figures come from `utils/elevationBankHero.ts`.
+ * nothing, reads no query and estimates nothing. In bank mode, credit rules,
+ * qualification and the lifetime total stay behind the Elevation Bank API.
+ * The explicit sample mode reuses this approved composition for account-private
+ * fictional figures and labels them as unbanked throughout.
  *
  * Two things in the mockup are deliberately conditional rather than assumed:
  *
@@ -51,9 +52,9 @@ const PLOT_HEIGHT = 86;
 const LABEL_HEIGHT = 18;
 
 export interface ElevationBankHeroProps {
-  /** Lifetime credited ascent, in metres. Null until the API confirms it. */
+  /** Recorded ascent in bank mode; fictional ascent in clearly labelled sample mode. */
   lifetimeAscentM: number | null;
-  /** Credited activities. Null until the API confirms them. */
+  /** Credited activities in bank mode; fictional hikes in sample mode. */
   hikes: number | null;
   /** Distinct summits. Null when the caller cannot establish it. */
   mountains: number | null;
@@ -61,7 +62,10 @@ export interface ElevationBankHeroProps {
   expeditions: number | null;
   /** Whole hours of moving time. Null when unknown. */
   movingHours: number | null;
-  /** Consecutive months of banked ascent, oldest first. */
+  /** The sample year can reuse the approved composition without claiming bank credit. */
+  mode?: "bank" | "sample";
+  sampleMonths?: number;
+  /** Consecutive months of recorded or explicitly fictional ascent, oldest first. */
   monthly: readonly MonthlyGain[];
   /** Whole-percent change on the previous year, or null when not computable. */
   yearOnYearPercent?: number | null;
@@ -112,17 +116,18 @@ function Stat({
 
 /** The monthly bars. Scaled to the tallest month, so a quiet year still reads. */
 function MonthlyChart({
-  series, yearOnYear, wide,
+  series, yearOnYear, wide, sample,
 }: {
   series: readonly MonthlyGain[];
   yearOnYear?: number | null;
   wide: boolean;
+  sample?: boolean;
 }) {
   const fractions = barFractions(series);
   return (
     <View style={[s.chartBlock, wide && s.chartBlockWide]}>
       <View style={s.chartHead}>
-        <Text style={s.chartTitle}>MONTHLY ELEVATION GAIN</Text>
+        <Text style={s.chartTitle}>{sample ? "MONTHLY ASCENT · SAMPLE" : "MONTHLY ELEVATION GAIN"}</Text>
         {typeof yearOnYear === "number" ? <YearOnYear percent={yearOnYear} compact /> : null}
       </View>
 
@@ -160,6 +165,8 @@ export function ElevationBankHero({
   mountains,
   expeditions,
   movingHours,
+  mode = "bank",
+  sampleMonths,
   monthly,
   yearOnYearPercent,
   photoUri,
@@ -170,8 +177,11 @@ export function ElevationBankHero({
 }: ElevationBankHeroProps) {
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_BREAKPOINT;
+  const sample = mode === "sample";
 
-  const label = lifetimeAscentM === null
+  const label = sample
+    ? `Fictional sample year, ${lifetimeAscentM === null ? "ascent unavailable" : `${formatBankMetres(lifetimeAscentM)} metres of sample ascent`}, not banked`
+    : lifetimeAscentM === null
     ? "Elevation bank, recorded balance unavailable"
     : `Elevation bank, ${formatBankMetres(lifetimeAscentM)} metres banked`;
 
@@ -193,8 +203,8 @@ export function ElevationBankHero({
             <View style={s.mark}>
               <Mountain size={wide ? 30 : 22} color={EXPLORE.accent} />
             </View>
-            <Text style={s.title}>ELEVATION BANK</Text>
-            <TouchableOpacity
+            <Text style={s.title}>{sample ? "SAMPLE YEAR · PRIVATE" : "ELEVATION BANK"}</Text>
+            {!sample && <TouchableOpacity
               onPress={onInfoPress}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityLabel="What is the Elevation Bank?"
@@ -202,7 +212,7 @@ export function ElevationBankHero({
               disabled={!onInfoPress}
             >
               <Info size={wide ? 20 : 15} color={BASECAMP.textDim} />
-            </TouchableOpacity>
+            </TouchableOpacity>}
           </View>
 
           <View style={s.figureRow}>
@@ -216,6 +226,7 @@ export function ElevationBankHero({
             </Text>
             {lifetimeAscentM !== null && <Text style={[s.figureUnit, wide && s.figureUnitWide]}>m</Text>}
           </View>
+          {sample && <Text style={s.sampleCaption}>FICTIONAL ASCENT · NOT BANKED</Text>}
 
           {typeof yearOnYearPercent === "number"
             ? <YearOnYear percent={yearOnYearPercent} />
@@ -254,32 +265,32 @@ export function ElevationBankHero({
           <Stat
             icon={<HikerIcon size={22} color={EXPLORE.accent} />}
             value={hikes === null ? "—" : String(hikes)}
-            label="Hikes"
+            label={sample ? "Sample hikes" : "Hikes"}
           />
           <View style={s.statDivider} />
           <Stat
             icon={<SummitIcon size={22} color={EXPLORE.accent} />}
             value={mountains === null ? "—" : String(mountains)}
-            label="Mountains"
+            label={sample ? "Sample peaks" : "Mountains"}
           />
           <View style={s.statDivider} />
           <Stat
             icon={<ExpeditionFlagIcon size={22} color={EXPLORE.accent} />}
             value={expeditions === null ? "—" : String(expeditions)}
-            label="Expeditions"
+            label={sample ? "Sample expeditions" : "Expeditions"}
           />
           <View style={s.statDivider} />
           <Stat
             icon={<MovingTimeIcon size={22} color={EXPLORE.accent} />}
-            value={movingHours === null ? "—" : `${movingHours} h`}
-            label="Moving Time"
+            value={sample ? (sampleMonths === undefined ? "—" : String(sampleMonths)) : (movingHours === null ? "—" : `${movingHours} h`)}
+            label={sample ? "Sample months" : "Moving Time"}
           />
         </View>
 
         {monthly.length > 0 ? (
           <>
             {wide ? <View style={s.statDivider} /> : null}
-            <MonthlyChart series={monthly} yearOnYear={yearOnYearPercent} wide={wide} />
+            <MonthlyChart series={monthly} yearOnYear={yearOnYearPercent} wide={wide} sample={sample} />
           </>
         ) : null}
       </View>
@@ -345,6 +356,10 @@ const s = StyleSheet.create({
     color: BASECAMP.text, marginLeft: 6, letterSpacing: -0.5,
   },
   figureUnitWide: { fontSize: 44, lineHeight: 58, marginLeft: 10 },
+  sampleCaption: {
+    marginTop: 3, fontSize: 10, lineHeight: 15, fontFamily: "Inter_700Bold",
+    letterSpacing: 1, color: EXPLORE.accent,
+  },
 
   yoyRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8 },
   yoyValue: { fontSize: 19, lineHeight: 24, fontFamily: "Inter_700Bold" },
