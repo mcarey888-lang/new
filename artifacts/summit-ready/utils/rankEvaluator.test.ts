@@ -79,6 +79,7 @@ describe("SummitReady rank evaluator", () => {
     });
     expect(result.currentRank).toBe("Trailhead");
     expect(result.nextRank).toBe("Hillwalker");
+    expect(result.nextRequirements.find((item) => item.signal === "eligibleElevation")?.remaining).toBe(880);
   });
 
   it("excludes manual, indoor, simulated, pending, cross-owner, and unprovenanced summit evidence", () => {

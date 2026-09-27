@@ -71,6 +71,15 @@ describe("Profile is a mountain résumé", () => {
     expect(PROFILE_PRESENTATION).not.toMatch(/selectedTab === "feed" \?/);
   });
 
+  it("shows the real next rank and only its evaluated eligible ascent shortfall", () => {
+    expect(ACCOUNT_CODE).toMatch(/nextRankName=\{rankResult\.nextRank\}/);
+    expect(ACCOUNT_CODE).toMatch(/nextRankAscent=\{rankResult\.nextRequirements\.find\(requirement => requirement\.signal === "eligibleElevation"\)\}/);
+    expect(PROFILE_PRESENTATION).toMatch(/nextRankAscent\.remaining\.toLocaleString\("en-GB"\)/);
+    expect(PROFILE_PRESENTATION).toMatch(/nextRankAscent\?\.availability === "available"/);
+    expect(PROFILE_PRESENTATION).toMatch(/Eligible ascent progress unavailable/);
+    expect(PROFILE_PRESENTATION).not.toMatch(/sampleYear\.ascentM/);
+  });
+
   it("gives every recent activity an honest image", () => {
     expect(ACCOUNT_CODE).toMatch(/<ActivityThumbnail subject=\{activity\.imageSubject\}/);
     expect(ACCOUNT_CODE).toMatch(/hasApprovedMountainImage\(subject\)/);

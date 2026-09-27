@@ -1,4 +1,4 @@
-import { Settings, UserRound } from "lucide-react-native";
+import { ChevronRight, Settings, UserRound } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SRUnderlineTabs } from "@/components/ui";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
+import type { RankRequirementResult } from "@/utils/rankDomain";
 
 export type PrimaryProfileTab = "feed" | "profile" | "achievements" | "photos" | "stats";
 
@@ -28,6 +29,8 @@ type Props = {
   demoAvatar?: boolean;
   isSignedIn: boolean;
   rankName: string;
+  nextRankName?: string | null;
+  nextRankAscent?: RankRequirementResult | null;
   metrics: [Metric, Metric, Metric];
   selectedTab: PrimaryProfileTab;
   onTabChange: (tab: PrimaryProfileTab) => void;
@@ -44,6 +47,8 @@ export function PrimaryProfilePresentation({
   demoAvatar = false,
   isSignedIn,
   rankName,
+  nextRankName,
+  nextRankAscent,
   metrics,
   selectedTab,
   onTabChange,
@@ -51,6 +56,11 @@ export function PrimaryProfilePresentation({
   topInset,
 }: Props) {
   const [approvedCoverUri, setApprovedCoverUri] = useState<string | null>(null);
+  const ascentProgress = nextRankAscent?.availability === "available" && nextRankAscent.remaining !== null
+    ? nextRankAscent.remaining > 0
+      ? `+${nextRankAscent.remaining.toLocaleString("en-GB")} m eligible ascent to go`
+      : "Eligible ascent target met"
+    : "Eligible ascent progress unavailable";
 
   useEffect(() => {
     let cancelled = false;
@@ -127,7 +137,20 @@ export function PrimaryProfilePresentation({
               )}
             </View>
             <View style={styles.nameBlock}>
-              <Text style={styles.rank} numberOfLines={1}>{rankName.toUpperCase()}</Text>
+              <View style={styles.rankLine}>
+                <Text style={styles.rank} numberOfLines={1}>{rankName.toUpperCase()}</Text>
+                {nextRankName && (
+                  <>
+                    <ChevronRight size={12} color={BASECAMP.textMuted} accessibilityElementsHidden />
+                    <Text style={styles.nextRank} numberOfLines={1}>NEXT {nextRankName.toUpperCase()}</Text>
+                  </>
+                )}
+              </View>
+              {nextRankName && (
+                <Text style={styles.nextAscent} numberOfLines={1} accessibilityLabel={`${nextRankName}, ${ascentProgress}. Other rank requirements may also apply.`}>
+                  {ascentProgress}
+                </Text>
+              )}
               <Text style={styles.name} numberOfLines={2}>{displayName}</Text>
               <Text style={styles.email}>{demoAvatar ? "SAMPLE YEAR · PRIVATE" : "YOUR MOUNTAIN STORY"}</Text>
             </View>
@@ -255,10 +278,13 @@ const styles = StyleSheet.create({
     color: BASECAMP.accent,
   },
   nameBlock: { flex: 1, minWidth: 0, paddingTop: 9 },
+  rankLine: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 0 },
   rank: {
     ...TYPE.eyebrow,
     color: BASECAMP.accent,
   },
+  nextRank: { ...TYPE.eyebrow, color: BASECAMP.textMuted, opacity: 0.72, flexShrink: 1 },
+  nextAscent: { ...TYPE.caption, color: BASECAMP.textMuted, opacity: 0.78, marginTop: 2 },
   name: {
     marginTop: 3,
     fontSize: 26,

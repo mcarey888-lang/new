@@ -468,6 +468,8 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             demoAvatar={!!sampleYear && !user?.hasImage}
             isSignedIn={!!isSignedIn}
             rankName={rankResult.currentRank ?? "Unranked"}
+            nextRankName={rankResult.nextRank}
+            nextRankAscent={rankResult.nextRequirements.find(requirement => requirement.signal === "eligibleElevation")}
             metrics={sampleYear ? [
               { value: `${sampleYear.ascentM.toLocaleString("en-GB")} m`, label: "Sample ascent" },
               { value: String(sampleYear.hikes.length), label: "Sample hikes" },
