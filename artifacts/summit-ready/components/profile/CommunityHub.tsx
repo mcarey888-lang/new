@@ -48,6 +48,7 @@ const audienceLabel = (v: "private" | "members") => v === "private" ? "Only me" 
 
 export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh, onCreate, onVisibility, onDelete, onReport, photoSource, draftBadge }: CommunityHubProps) {
   const [view, setView] = useState<"members" | "mine">("members");
+  const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<CommunityCreate["kind"]>("story");
   const [text, setText] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
     setPhotoUri(null);
     setAudience("private");
     setView("mine");
+    setComposing(true);
   }, [draftBadge]);
 
   const pickPhoto = async () => {
@@ -112,6 +114,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
       setKind("story");
       setAudience("private");
       setSubmitError(null);
+      setComposing(false);
     } catch (error) {
       const status = error && typeof error === "object" && "status" in error ? error.status : null;
       const message = status === 401 || status === 403
@@ -160,10 +163,23 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
   const visiblePosts = view === "mine" ? minePosts : posts.filter(p => p.visibility === "members");
   return (
     <View style={styles.root} testID="community-hub">
-      <View style={styles.heading}><View><Text style={styles.eyebrow}>THE COMMUNITY</Text><Text style={styles.title}>Mountain stories</Text></View><Users size={21} color={BASECAMP.accent} /></View>
-      <Text style={styles.intro}>Your trail, your choice. Posts start private and are seen by members only when you choose.</Text>
+      <View style={styles.heading}><View><Text style={styles.eyebrow}>YOUR FEED</Text><Text style={styles.title}>Mountain stories</Text></View><Users size={21} color={BASECAMP.accent} /></View>
+      <Text style={styles.intro}>Photos, trail updates and achievements shared by SummitReady members.</Text>
+      {!composing ? (
+        <TouchableOpacity
+          onPress={() => setComposing(true)}
+          style={styles.composePrompt}
+          accessibilityRole="button"
+          accessibilityLabel="Write a new story or share a photo"
+          testID="community-compose-open"
+        >
+          <View style={styles.dot} />
+          <Text style={styles.composePromptText}>Share a moment from your journey…</Text>
+          <ImagePlus size={19} color={BASECAMP.accent} />
+        </TouchableOpacity>
+      ) : (
       <View style={styles.composer}>
-        <View style={styles.composerTop}><View style={styles.dot} /><Text style={styles.composerTitle}>Share a moment</Text></View>
+        <View style={styles.composerTop}><View style={styles.dot} /><Text style={styles.composerTitle}>Share a moment</Text><TouchableOpacity onPress={() => setComposing(false)} style={styles.composeClose} accessibilityRole="button" accessibilityLabel="Close post composer"><X size={18} color={BASECAMP.textMuted} /></TouchableOpacity></View>
         {kind === "badge" && draftBadge && <Text style={styles.privacy}>Ready to post your {draftBadge.title} badge. Choose an audience before posting.</Text>}
         <TextInput value={text} onChangeText={setText} placeholder="What happened out there?" placeholderTextColor={BASECAMP.textDim} multiline maxLength={600} style={styles.input} accessibilityLabel="Post text" testID="community-compose-text" />
         {photoUri && <View style={styles.previewWrap}><Image source={{ uri: photoUri }} style={styles.preview} accessibilityLabel="Selected photo preview" /><TouchableOpacity onPress={() => { setPhotoUri(null); setKind("story"); }} style={styles.removePhoto} accessibilityLabel="Remove selected photo" accessibilityRole="button"><X size={18} color={BASECAMP.text} /></TouchableOpacity></View>}
@@ -176,6 +192,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
         <TouchableOpacity onPress={submit} disabled={busy || submitting || (!text.trim() && !photoUri)} style={[styles.submit, (busy || submitting || (!text.trim() && !photoUri)) && styles.disabled]} accessibilityRole="button" accessibilityLabel="Post to selected audience" testID="community-submit"><Send size={16} color={BASECAMP.accentInk} /><Text style={styles.submitText}>{submitting ? "Posting…" : "Post"}</Text></TouchableOpacity>
         {submitError && <Text style={styles.submitError} accessibilityRole="alert" testID="community-submit-error">{submitError}</Text>}
       </View>
+      )}
       <View style={styles.switcher}>{(["members", "mine"] as const).map(v => <TouchableOpacity key={v} onPress={() => { setView(v); setVisiblePostCount(8); }} style={[styles.switch, view === v && styles.switchActive]} accessibilityRole="tab" accessibilityState={{ selected: view === v }}><Text style={[styles.switchText, view === v && styles.switchTextActive]}>{v === "members" ? "Members" : "My posts"}</Text></TouchableOpacity>)}</View>
       {loading ? <View style={styles.skeleton}><View style={styles.skeletonLine} /><View style={styles.skeletonLine} /></View>
         : error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Stories unavailable</Text><Text style={styles.emptyBody}>{error}</Text><TouchableOpacity onPress={onRefresh} style={styles.retry} accessibilityRole="button"><RefreshCw size={16} color={BASECAMP.accent} /><Text style={styles.retryText}>Try again</Text></TouchableOpacity></View>
@@ -209,11 +226,14 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
 }
 
 const styles = StyleSheet.create({
-  root: { marginTop: SP.xl, marginBottom: SP.xl },
+  root: { marginTop: SP.md, marginBottom: SP.xl },
   heading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   eyebrow: { ...TYPE.eyebrow, color: BASECAMP.accent },
   title: { ...TYPE.title, color: BASECAMP.text, marginTop: 4 },
   intro: { ...TYPE.small, color: BASECAMP.textMuted, marginTop: 8, lineHeight: 18 },
+  composePrompt: { minHeight: 54, marginTop: 18, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
+  composePromptText: { ...TYPE.small, color: BASECAMP.textMuted, flex: 1 },
+  composeClose: { marginLeft: "auto", width: HIT.minTarget, height: HIT.minTarget, alignItems: "center", justifyContent: "center" },
   composer: { marginTop: 18, padding: 16, borderRadius: 14, backgroundColor: BASECAMP.panelSub, borderWidth: 1, borderColor: BASECAMP.panelBorder },
   composerTop: { flexDirection: "row", alignItems: "center", gap: 9 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: BASECAMP.accent },

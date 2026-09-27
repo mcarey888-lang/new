@@ -49,14 +49,19 @@ describe("Profile is a mountain résumé", () => {
     expect(DEMO_COMMUNITY).toMatch(/First Thousand/);
     expect(DEMO_COMMUNITY).not.toMatch(/createCommunityPost|ownerUserId|onReport|onDelete/);
     expect(hub).toMatch(/view === "members" && !loading && visiblePosts\.length === 0 && <DemoCommunityPreview/);
-    expect(ACCOUNT_CODE).toMatch(/Sign in to share with SummitReady members\.[\s\S]*?<DemoCommunityPreview/);
+    expect(ACCOUNT_CODE).toMatch(/Sign in to see stories, photos and achievements shared by SummitReady members\.[\s\S]*?<DemoCommunityPreview/);
   });
-  it("exposes the five sections as tabs", () => {
+  it("opens You on the feed, with Activity inside Achievements", () => {
     expect(ACCOUNT_CODE).toMatch(/PrimaryProfilePresentation/);
     expect(PROFILE_PRESENTATION).toMatch(/SRUnderlineTabs/);
-    for (const label of ["Profile", "Achievements", "Activity", "Photos", "Stats"]) {
+    for (const label of ["Feed", "Profile", "Achievements", "Photos", "Stats"]) {
       expect(PROFILE_PRESENTATION).toMatch(new RegExp(`label: "${label}"`));
     }
+    expect(PROFILE_PRESENTATION).not.toMatch(/value: "activity"/);
+    expect(ACCOUNT_CODE).toMatch(/useState<PrimaryProfileTab>\("feed"\)/);
+    expect(ACCOUNT_CODE).toMatch(/tab === "feed" && !showSettings && \([\s\S]*?<CommunityHub/);
+    expect(ACCOUNT_CODE).toMatch(/tab === "achievements" && achievementsSection === "activity" && !showSettings/);
+    expect(ACCOUNT_CODE).toMatch(/testID=\{`achievements-\$\{section\}`\}/);
     expect(EXPEDITION_PROFILE).toMatch(/PrimaryProfileScreen/);
   });
 
@@ -130,7 +135,7 @@ describe("no fabricated social data", () => {
   it("never silently shares journal photos and defaults new posts to private", () => {
     const hub = code(read("components/profile/CommunityHub.tsx"));
     const communityHook = code(read("hooks/useCommunity.ts"));
-    expect(ACCOUNT_CODE).toMatch(/useCommunity\(!suppliedCommunity && !showSettings && \(tab === "activity" \|\| tab === "photos"\)\)/);
+    expect(ACCOUNT_CODE).toMatch(/useCommunity\(!suppliedCommunity && !showSettings && \(tab === "feed" \|\| tab === "photos"\)\)/);
     expect(communityHook).toMatch(/const enabled = visible && isLoaded/);
     expect(communityHook).toMatch(/offset \+= 4/);
     expect(communityHook).toMatch(/getTokenRef\.current\(\)/);
@@ -148,7 +153,7 @@ describe("no fabricated social data", () => {
     expect(hub).toMatch(/onVisibility\(post\.id/);
     expect(hub).toMatch(/onDelete\(id\)/);
     expect(hub).toMatch(/onReport\(id\)/);
-    expect(ACCOUNT_CODE).toMatch(/community \? <View[\s\S]*?<CommunityHub \{\.\.\.community\}/);
+    expect(ACCOUNT_CODE).toMatch(/community \? \([\s\S]*?<CommunityHub \{\.\.\.community\}/);
     expect(ACCOUNT_CODE).toMatch(/unlockedAchievements\.includes\(a\.id\)/);
     expect(ACCOUNT_CODE).toMatch(/stage8ConfirmedAwards/);
   });

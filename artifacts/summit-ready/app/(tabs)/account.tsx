@@ -179,10 +179,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const communityY = useRef(0);
-  const [tab, setTab] = useState<PrimaryProfileTab>("profile");
+  const [tab, setTab] = useState<PrimaryProfileTab>("feed");
+  const [achievementsSection, setAchievementsSection] = useState<"awards" | "activity">("awards");
   const [badgeDraft, setBadgeDraft] = useState<{ id: string; title: string; nonce: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const memberCommunity = useCommunity(!suppliedCommunity && !showSettings && (tab === "activity" || tab === "photos"));
+  const memberCommunity = useCommunity(!suppliedCommunity && !showSettings && (tab === "feed" || tab === "photos"));
   const community = suppliedCommunity ?? (isSignedIn ? memberCommunity : undefined);
   const sharedPhotos = useMemo(
     () => community?.posts.filter(post => post.visibility === "members" && post.hasPhoto) ?? [],
@@ -191,7 +192,6 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
   const [visiblePhotoCount, setVisiblePhotoCount] = useState(8);
 
 
-  const achievementsY = useRef<number>(0);
   const [devRankEvidence, setDevRankEvidence] = useState<readonly import("@/utils/challengeDomain").EvidenceReference[]>([]);
 
   useEffect(() => {
@@ -203,22 +203,24 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 
   useEffect(() => {
     if (scrollTo === "achievements") {
+      setTab("achievements");
+      setAchievementsSection("awards");
       const timer = setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: achievementsY.current, animated: true });
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
       }, 350);
       return () => clearTimeout(timer);
     }
   }, [scrollTo]);
 
   useEffect(() => {
-    if (tab !== "activity" || !badgeDraft) return;
+    if (tab !== "feed" || !badgeDraft) return;
     const timer = setTimeout(() => scrollRef.current?.scrollTo({ y: communityY.current, animated: true }), 350);
     return () => clearTimeout(timer);
   }, [tab, badgeDraft]);
 
   function prepareBadgePost(id: string, title: string) {
     setBadgeDraft({ id, title, nonce: Date.now() });
-    setTab("activity");
+    setTab("feed");
   }
 
   const completedChallenges = activeChallenges.filter(ac => ac.completed);
@@ -476,7 +478,10 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               { value: `${unlockedAchievements.length}/${ACHIEVEMENTS.length}`, label: "Achievements" },
             ]}
             selectedTab={tab}
-            onTabChange={setTab}
+            onTabChange={(nextTab) => {
+              setTab(nextTab);
+              scrollRef.current?.scrollTo({ y: 0, animated: false });
+            }}
             onOpenSettings={() => setShowSettings(true)}
             topInset={topInset}
           />
@@ -498,7 +503,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
           </View>
         )}
 
-        {!showSettings && isSignedIn && !sampleProfile.loading && !sampleYear && (
+        {tab === "profile" && !showSettings && isSignedIn && !sampleProfile.loading && !sampleYear && (
           <TouchableOpacity
             onPress={sampleProfile.add}
             disabled={sampleProfile.busy}
@@ -514,10 +519,47 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
             </Text>
           </TouchableOpacity>
         )}
-        {!!sampleProfile.error && isSignedIn && (
+        {tab === "profile" && !!sampleProfile.error && isSignedIn && (
           <Text style={{ color: BASECAMP.textMuted, marginBottom: 12 }} testID="saved-demo-year-error">
             Sample profile unavailable: {sampleProfile.error}
           </Text>
+        )}
+
+        {tab === "feed" && !showSettings && (
+          community ? (
+            <View onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}>
+              <CommunityHub {...community} draftBadge={badgeDraft} />
+            </View>
+          ) : (
+            <View style={styles.communityUnavailable}>
+              <Text style={styles.sectionLabel}>COMMUNITY FEED</Text>
+              <Text style={styles.communityTitle}>Mountain stories</Text>
+              <Text style={styles.communityNote}>Sign in to see stories, photos and achievements shared by SummitReady members. Your activity and journal photos remain private.</Text>
+              <DemoCommunityPreview />
+            </View>
+          )
+        )}
+
+        {tab === "achievements" && !showSettings && (
+          <View style={styles.achievementSwitcher} accessibilityRole="tablist">
+            {(["awards", "activity"] as const).map(section => (
+              <TouchableOpacity
+                key={section}
+                testID={`achievements-${section}`}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: achievementsSection === section }}
+                onPress={() => {
+                  setAchievementsSection(section);
+                  scrollRef.current?.scrollTo({ y: 0, animated: false });
+                }}
+                style={[styles.achievementSwitch, achievementsSection === section && styles.achievementSwitchActive]}
+              >
+                <Text style={[styles.achievementSwitchText, achievementsSection === section && styles.achievementSwitchTextActive]}>
+                  {section === "awards" ? "Awards" : "Activity"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         {tab === "profile" && !showSettings && (<>
@@ -600,7 +642,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
               year={sampleYear}
               onRemove={sampleProfile.remove}
               busy={sampleProfile.busy}
-              onOpenActivity={() => { setTab("activity"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
+              onOpenActivity={() => { setAchievementsSection("activity"); setTab("achievements"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
               onOpenPhotos={() => { setTab("photos"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}
             />
           </>
@@ -610,7 +652,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
           accessibilityRole="button"
           accessibilityLabel="Open SummitReady member stories"
           onPress={() => {
-            setTab("activity");
+            setTab("feed");
             setTimeout(() => scrollRef.current?.scrollTo({ y: communityY.current, animated: true }), 350);
           }}
         >
@@ -866,7 +908,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         </Animated.View>
 
         </>)}
-        {tab === "activity" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "activity" && !showSettings && (<>
         {sampleYear && <>
           <SavedDemoYearActivity year={sampleYear} />
           <SavedDemoYearPhotos year={sampleYear} />
@@ -885,16 +927,6 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
           )) : <SREmptyState icon={<Activity size={20} color={BASECAMP.textDim} />} title="No activity yet" body="Your completed sessions and recorded hikes will appear here." />}
           <TouchableOpacity onPress={() => router.push("/sessions")} style={styles.activityLink} accessibilityRole="button" accessibilityLabel="View all sessions"><Text style={styles.activityLinkText}>View all sessions</Text><ChevronRight size={16} color={BASECAMP.accent} /></TouchableOpacity>
         </Animated.View>
-        {/* Community posts are loaded from the signed-in member API.
-            Device-local activity and journal photos never publish automatically. */}
-        {community ? <View onLayout={event => { communityY.current = event.nativeEvent.layout.y; }}><CommunityHub {...community} draftBadge={badgeDraft} /></View> : (
-          <View style={styles.communityUnavailable}>
-            <Text style={styles.sectionLabel}>COMMUNITY</Text>
-            <Text style={styles.communityTitle}>Mountain stories</Text>
-            <Text style={styles.communityNote}>Sign in to share with SummitReady members. Your activity and journal photos remain private.</Text>
-            <DemoCommunityPreview />
-          </View>
-        )}
         {/* Training History */}
         {completedGoals.length === 0 && (
           <Animated.View entering={FadeInDown.delay(125).duration(400)} style={styles.section}>
@@ -967,7 +999,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         )}
 
         </>)}
-        {tab === "activity" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "activity" && !showSettings && (<>
         {/* Hills you're ready for */}
         {readyForPeaks.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -1020,7 +1052,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         </Animated.View>
 
         </>)}
-        {tab === "achievements" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "awards" && !showSettings && (<>
         {/* Verified progress */}
         {(Object.keys(stage8Projection.progress).length > 0 || Object.keys(stage8Projection.awards).length > 0 || stage8Pending.length > 0) && (
           <Animated.View entering={FadeInDown.delay(127).duration(400)} style={styles.section}>
@@ -1044,12 +1076,11 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         )}
 
         </>)}
-        {tab === "achievements" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "awards" && !showSettings && (<>
         {/* Achievements */}
         <Animated.View
           entering={FadeInDown.delay(130).duration(400)}
           style={styles.section}
-          onLayout={e => { achievementsY.current = e.nativeEvent.layout.y; }}
         >
           <Text style={styles.sectionLabel}>
             ACHIEVEMENTS · {unlockedAchievements.length}/{ACHIEVEMENTS.length}
@@ -1126,7 +1157,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         </Animated.View>
 
         </>)}
-        {tab === "achievements" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "awards" && !showSettings && (<>
         {/* Active Challenges */}
         {inProgressChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(128).duration(400)} style={styles.section}>
@@ -1174,7 +1205,7 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
         )}
 
         </>)}
-        {tab === "achievements" && !showSettings && (<>
+        {tab === "achievements" && achievementsSection === "awards" && !showSettings && (<>
         {/* Completed Challenges */}
         {completedChallenges.length > 0 && (
           <Animated.View entering={FadeInDown.delay(129).duration(400)} style={styles.section}>
@@ -1428,6 +1459,20 @@ export function PrimaryProfileScreen({ screenName = "account", community: suppli
 }
 
 const styles = StyleSheet.create({
+  achievementSwitcher: {
+    flexDirection: "row",
+    marginTop: SP.md,
+    marginBottom: SP.sm,
+    borderRadius: 10,
+    padding: 4,
+    backgroundColor: BASECAMP.panelSub,
+    borderWidth: 1,
+    borderColor: BASECAMP.panelBorder,
+  },
+  achievementSwitch: { flex: 1, minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  achievementSwitchActive: { backgroundColor: BASECAMP.accentDim },
+  achievementSwitchText: { ...TYPE.smallBold, color: BASECAMP.textMuted },
+  achievementSwitchTextActive: { color: BASECAMP.accent },
   activityRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: BASECAMP.panelBorder },
   activityMarker: { width: 46, height: 46, borderRadius: 11, backgroundColor: BASECAMP.accentDim },
   activityTitle: { ...TYPE.bodyBold, color: BASECAMP.text },

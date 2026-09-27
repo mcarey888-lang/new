@@ -8,12 +8,12 @@ import { SRUnderlineTabs } from "@/components/ui";
 import { BASECAMP, HIT, SP, TYPE } from "@/constants/tokens";
 import { resolveApprovedTabHeroArtwork } from "@/utils/artworkResolver";
 
-export type PrimaryProfileTab = "profile" | "achievements" | "activity" | "photos" | "stats";
+export type PrimaryProfileTab = "feed" | "profile" | "achievements" | "photos" | "stats";
 
 export const PRIMARY_PROFILE_TABS: { value: PrimaryProfileTab; label: string }[] = [
+  { value: "feed", label: "Feed" },
   { value: "profile", label: "Profile" },
   { value: "achievements", label: "Achievements" },
-  { value: "activity", label: "Activity" },
   { value: "photos", label: "Photos" },
   { value: "stats", label: "Stats" },
 ];
@@ -66,6 +66,26 @@ export function PrimaryProfilePresentation({
 
   return (
     <>
+      {selectedTab === "feed" ? (
+        <View style={[styles.feedHeader, { paddingTop: topInset + SP.sm }]}>
+          <View>
+            <Text style={styles.brand}>SUMMITREADY</Text>
+            <Text style={styles.feedTitle}>You</Text>
+            <Text style={styles.feedSubtitle}>Stories from the mountains</Text>
+          </View>
+          <TouchableOpacity
+            onPress={onOpenSettings}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Open account settings"
+            testID="profile-settings"
+            hitSlop={HIT.slop}
+            style={styles.settingsButton}
+          >
+            <Settings size={18} color={BASECAMP.text} />
+          </TouchableOpacity>
+        </View>
+      ) : (
       <View style={styles.hero}>
         <View style={styles.cover}>
           {approvedCoverUri ? (
@@ -149,6 +169,7 @@ export function PrimaryProfilePresentation({
           </View>
         </View>
       </View>
+      )}
       <SRUnderlineTabs
         options={PRIMARY_PROFILE_TABS}
         value={selectedTab}
@@ -160,6 +181,17 @@ export function PrimaryProfilePresentation({
 }
 
 const styles = StyleSheet.create({
+  feedHeader: {
+    marginHorizontal: -18,
+    paddingHorizontal: BASECAMP.gutter,
+    paddingBottom: SP.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: BASECAMP.ink,
+  },
+  feedTitle: { ...TYPE.title, color: BASECAMP.text, marginTop: SP.sm },
+  feedSubtitle: { ...TYPE.small, color: BASECAMP.textMuted, marginTop: 2 },
   hero: {
     marginHorizontal: -18,
     marginBottom: SP.md,
