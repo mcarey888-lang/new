@@ -38,7 +38,7 @@ export function DemoCommunityPreview() {
     <View style={styles.root} testID="community-demo-preview">
       <View style={styles.heading}>
         <Users size={17} color={BASECAMP.accent} />
-        <Text style={styles.headingText}>What member stories could look like</Text>
+        <Text style={styles.headingText}>Sample stories · fictional</Text>
       </View>
       <Text style={styles.disclaimer}>Preview only · Fictional members and achievements. These are not real posts or your progress.</Text>
       {examples.map(example => (

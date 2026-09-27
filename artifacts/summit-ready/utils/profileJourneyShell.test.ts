@@ -45,10 +45,13 @@ describe("Profile is a mountain résumé", () => {
   it("shows fictional member stories only as a preview, outside real post and achievement data", () => {
     const hub = code(read("components/profile/CommunityHub.tsx"));
     expect(DEMO_COMMUNITY).toMatch(/Fictional members and achievements/);
+    expect(DEMO_COMMUNITY).toMatch(/Sample stories · fictional/);
     expect(DEMO_COMMUNITY).toMatch(/Perfect Week/);
     expect(DEMO_COMMUNITY).toMatch(/First Thousand/);
     expect(DEMO_COMMUNITY).not.toMatch(/createCommunityPost|ownerUserId|onReport|onDelete/);
-    expect(hub).toMatch(/view === "members" && !loading && visiblePosts\.length === 0 && <DemoCommunityPreview/);
+    expect(hub).toMatch(/view === "members" && !loading && !error && visiblePosts\.length === 0 && <DemoCommunityPreview/);
+    expect(hub).not.toMatch(/No member stories yet/);
+    expect(hub).toMatch(/view === "mine"[\s\S]*?Your story starts here/);
     expect(ACCOUNT_CODE).toMatch(/Sign in to see stories, photos and achievements shared by SummitReady members\.[\s\S]*?<DemoCommunityPreview/);
   });
   it("opens You on the feed, with Activity inside Achievements", () => {

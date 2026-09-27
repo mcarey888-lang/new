@@ -194,7 +194,9 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
       <View style={styles.switcher}>{(["members", "mine"] as const).map(v => <TouchableOpacity key={v} onPress={() => { setView(v); setVisiblePostCount(8); }} style={[styles.switch, view === v && styles.switchActive]} accessibilityRole="tab" accessibilityState={{ selected: view === v }}><Text style={[styles.switchText, view === v && styles.switchTextActive]}>{v === "members" ? "Members" : "My posts"}</Text></TouchableOpacity>)}</View>
       {loading ? <View style={styles.skeleton}><View style={styles.skeletonLine} /><View style={styles.skeletonLine} /></View>
         : error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Stories unavailable</Text><Text style={styles.emptyBody}>{error}</Text><TouchableOpacity onPress={onRefresh} style={styles.retry} accessibilityRole="button"><RefreshCw size={16} color={BASECAMP.accent} /><Text style={styles.retryText}>Try again</Text></TouchableOpacity></View>
-        : visiblePosts.length === 0 ? <View style={styles.empty}><Camera size={24} color={BASECAMP.accent} /><Text style={styles.emptyTitle}>{view === "mine" ? "Your story starts here" : "No member stories yet"}</Text><Text style={styles.emptyBody}>{view === "mine" ? "Share a trail note or choose a photo above. Only you decide who sees it." : "When members choose to share, their stories will appear here."}</Text></View>
+        : visiblePosts.length === 0 ? view === "mine"
+          ? <View style={styles.empty}><Camera size={24} color={BASECAMP.accent} /><Text style={styles.emptyTitle}>Your story starts here</Text><Text style={styles.emptyBody}>Share a trail note or choose a photo above. Only you decide who sees it.</Text></View>
+          : null
         : visiblePosts.slice(0, visiblePostCount).map(post => {
           const owned = minePosts.some(mine => mine.id === post.id);
           const source = post.hasPhoto ? photoSource(post) : null;
@@ -217,7 +219,7 @@ export function CommunityHub({ posts, minePosts, loading, error, busy, onRefresh
           <Text style={styles.refreshText}>Show more stories</Text>
         </TouchableOpacity>
       )}
-      {view === "members" && !loading && visiblePosts.length === 0 && <DemoCommunityPreview />}
+      {view === "members" && !loading && !error && visiblePosts.length === 0 && <DemoCommunityPreview />}
       <TouchableOpacity onPress={onRefresh} disabled={loading || busy} style={styles.refresh} accessibilityRole="button" accessibilityLabel="Refresh community posts"><RefreshCw size={15} color={BASECAMP.textMuted} /><Text style={styles.refreshText}>Refresh stories</Text></TouchableOpacity>
     </View>
   );
