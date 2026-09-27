@@ -60,6 +60,11 @@
       "package": "uk.summitready.app",
       "versionCode": 77,
       "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBa8-9ouORh6p2Q12qTlNcTyyF3oz7WhWI"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
