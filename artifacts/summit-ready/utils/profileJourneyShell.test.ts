@@ -65,8 +65,13 @@ describe("Profile is a mountain résumé", () => {
     expect(EXPEDITION_PROFILE).toMatch(/PrimaryProfileScreen/);
   });
 
-  it("keeps the You header compact and gives every recent activity an honest image", () => {
+  it("keeps the same cover, identity and metrics above every You tab, including Feed", () => {
     expect(PROFILE_PRESENTATION).toMatch(/cover:\s*\{\s*height: 153/);
+    expect(PROFILE_PRESENTATION).toMatch(/<View style=\{styles\.hero\}>[\s\S]*?<View style=\{styles\.cover\}>[\s\S]*?<View style=\{styles\.identity\}>[\s\S]*?<View style=\{styles\.metrics\}>[\s\S]*?<SRUnderlineTabs/);
+    expect(PROFILE_PRESENTATION).not.toMatch(/selectedTab === "feed" \?/);
+  });
+
+  it("gives every recent activity an honest image", () => {
     expect(ACCOUNT_CODE).toMatch(/<ActivityThumbnail subject=\{activity\.imageSubject\}/);
     expect(ACCOUNT_CODE).toMatch(/hasApprovedMountainImage\(subject\)/);
     expect(ACCOUNT_CODE).toMatch(/local-hill-illustration\.png/);
