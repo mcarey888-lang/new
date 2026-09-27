@@ -841,7 +841,6 @@ export default function DashboardScreen() {
               ) : undefined}
               onRetry={fetchCoach}
               onRefresh={isSubscribed ? fetchCoach : undefined}
-              onOpen={isSubscribed ? () => askInputRef.current?.focus() : undefined}
               onUnlock={() => router.push("/paywall")}
             />
 

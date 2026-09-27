@@ -40,8 +40,6 @@ export interface CoachInsightProps {
   variant?: "compact" | "full";
   onRetry?: () => void;
   onRefresh?: () => void;
-  /** Opens the fuller Coach experience already in the app. */
-  onOpen?: () => void;
   onUnlock?: () => void;
   style?: ViewStyle;
   /** Plays the existing wave once on appearance. Never loops. */
@@ -49,7 +47,7 @@ export interface CoachInsightProps {
 }
 
 export function CoachInsight({
-  state, mascot, askControl, variant = "compact", onRetry, onRefresh, onOpen, onUnlock, style, onAppear,
+  state, mascot, askControl, variant = "compact", onRetry, onRefresh, onUnlock, style, onAppear,
 }: CoachInsightProps) {
   const reduced = useReducedMotion();
   useEffect(() => { if (state.kind === "ready") onAppear?.(); }, [state.kind, onAppear]);
@@ -194,20 +192,6 @@ export function CoachInsight({
                 </View>
               </View>
             </View>
-          ) : null}
-
-          {onOpen ? (
-            <TouchableOpacity
-              onPress={onOpen}
-              style={styles.action}
-              accessibilityRole="button"
-              accessibilityLabel="Open your coach"
-            >
-              <Text style={styles.actionText}>
-                {compact.hasMore ? "See all guidance" : "Ask your coach"}
-              </Text>
-              <ChevronRight size={14} color={BASECAMP.accent} />
-            </TouchableOpacity>
           ) : null}
 
           <Text style={styles.disclaimer}>{compact.disclaimer}</Text>
