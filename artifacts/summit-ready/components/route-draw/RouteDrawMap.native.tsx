@@ -33,6 +33,7 @@ export function RouteDrawMap({
   pathHints,
   onTap,
   tileUrlTemplate,
+  tileMaximumZ,
 }: RouteDrawMapProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -61,7 +62,16 @@ export function RouteDrawMap({
       rotateEnabled={false}
       onPress={event => onTap(event.nativeEvent.coordinate)}
     >
-      {tileUrlTemplate ? <UrlTile urlTemplate={tileUrlTemplate} maximumZ={17} zIndex={-1} /> : null}
+      {tileUrlTemplate ? (
+        <UrlTile
+          urlTemplate={tileUrlTemplate}
+          // Past a layer's published maximum the API returns blank tiles rather
+          // than an error, so the map empties exactly when someone zooms in to
+          // place a point precisely. Capping stretches the last good level.
+          maximumZ={tileMaximumZ ?? 16}
+          zIndex={-1}
+        />
+      ) : null}
 
       {pathHints.map((hint, index) => (
         <Polyline

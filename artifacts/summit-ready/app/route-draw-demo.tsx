@@ -27,6 +27,8 @@ import { SRButton, SREyebrow, SRPanel } from "@/components/ui";
 import { RouteDrawMap } from "@/components/route-draw/RouteDrawMap";
 import { BASECAMP, EXPLORE } from "@/constants/tokens";
 import { useSnapDrawing } from "@/hooks/useSnapDrawing";
+import { osMapsKey } from "@/utils/appSecrets";
+import { osTileSource } from "@/utils/osMapsTiles";
 import { regionFromBbox, staticPathNetworkSource } from "@/utils/pathNetworkSource";
 import demoNetwork from "@/assets/path-networks/ogwen-demo.json";
 
@@ -40,6 +42,10 @@ const SOURCE = staticPathNetworkSource({
 });
 
 const REGION = regionFromBbox([-4.03, 53.09, -3.96, 53.14]);
+
+/* Null without an OS_MAPS_KEY at build time, and the platform basemap shows
+   instead. Resolved once: the key cannot change while the app is running. */
+const OS_TILES = osTileSource(osMapsKey());
 
 const INITIAL = {
   latitude: 53.1149,
@@ -75,8 +81,8 @@ export default function RouteDrawDemoScreen() {
           drawing={drawing}
           pathHints={pathHints}
           onTap={tap}
-          // An Ordnance Survey raster endpoint would go here once licensed.
-          tileUrlTemplate={null}
+          tileUrlTemplate={OS_TILES?.urlTemplate ?? null}
+          tileMaximumZ={OS_TILES?.maximumZ ?? null}
         />
       </View>
 
@@ -152,6 +158,11 @@ export default function RouteDrawDemoScreen() {
               ? "No path data for this area. Drawing still works, entirely freehand."
               : null}
             {status.kind === "failed" ? status.message : null}
+          </Text>
+          <Text style={s.meta}>
+            {OS_TILES
+              ? `Basemap: Ordnance Survey ${OS_TILES.layer}\n${OS_TILES.attribution}`
+              : "Basemap: platform default — no OS_MAPS_KEY set at build time."}
           </Text>
           <Text style={s.disclaimer}>
             Demo extract. Presentation here is scaffolding awaiting an approved
