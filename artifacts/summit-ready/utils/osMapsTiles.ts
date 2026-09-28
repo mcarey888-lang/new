@@ -26,12 +26,14 @@
  * shows the platform basemap with no overlay. A developer without the secret
  * gets a working app, and the drawing engine does not care what is underneath.
  *
- * ⚠️ UNVERIFIED: the endpoint shape below is written from knowledge of the OS
- * Data Hub, not from reading their documentation — every `os.uk` domain is
- * blocked from the environment this was written in. Confirm the host, path and
- * layer names against the OS Data Hub before relying on it, and confirm what
- * the licence says about caching tiles offline, which is a separate question
- * from fetching them.
+ * VERIFIED AGAINST THE LIVE API, over Tryfan: the host, path, `Outdoor_3857`
+ * and the `key` parameter all return imagery, and a wrong layer name returns an
+ * OGC ExceptionReport rather than failing silently, so a mistake here is loud.
+ *
+ * ⚠️ STILL OPEN: whether the licence permits CACHING tiles for offline use.
+ * That is a separate permission from fetching them, it is not answerable from
+ * the API's behaviour, and it is the one that matters most for a mountain app —
+ * settle it before offline planning is designed around stored tiles.
  */
 
 /** OS Maps API layers that are Web Mercator, and so usable with UrlTile. */
@@ -49,8 +51,15 @@ const OS_ZXY_HOST = "https://api.os.uk/maps/raster/v1/zxy";
  * error, so the map goes empty exactly when someone zooms in to place a point
  * precisely. Capping means the last good level is stretched instead, which is
  * ugly and legible rather than tidy and blank.
+ *
+ * 17 is confirmed against the live API over Tryfan rather than assumed: z15, 16
+ * and 17 all return imagery, and 17 is where rights of way become legible — the
+ * detail that makes OS worth carrying over the path network we snap to. The
+ * layer may serve deeper still; nothing breaks if it does, since the map
+ * stretches the last level rather than blanking. Raise this only on the same
+ * evidence.
  */
-export const OS_MAX_ZOOM = 16;
+export const OS_MAX_ZOOM = 17;
 
 export interface OsTileSource {
   urlTemplate: string;

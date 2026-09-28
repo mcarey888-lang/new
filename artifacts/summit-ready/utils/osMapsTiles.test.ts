@@ -18,6 +18,13 @@ describe("osTileSource", () => {
     expect(source?.maximumZ).toBe(OS_MAX_ZOOM);
   });
 
+  it("requests as deep as the layer is confirmed to serve", () => {
+    /* Verified against the live API over Tryfan: z15, 16 and 17 all return
+       imagery, and rights of way are legible at 17. Lowering this throws away
+       precision exactly where a waypoint needs placing on a ridge. */
+    expect(OS_MAX_ZOOM).toBeGreaterThanOrEqual(17);
+  });
+
   it("defaults to the only walker-facing Web Mercator layer", () => {
     /* Leisure_27700 is the 1:25k Explorer mapping people actually want, but it
        is British National Grid and would silently return tiles for the wrong
