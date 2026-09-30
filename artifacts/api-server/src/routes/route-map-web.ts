@@ -83,7 +83,18 @@ export function baseLayers(osKey: string | undefined): BaseLayerSpec[] {
 const TERRAIN_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 const TERRAIN_ATTRIBUTION = "Elevation: Mapzen / AWS Terrain Tiles";
 
-export function buildRouteMapHtml(osKey: string | undefined): string {
+/**
+ * `chrome: "none"` hides the page's own controls.
+ *
+ * Embedded in the app the screen supplies its own 2D/3D and Flyover buttons,
+ * and showing both sets leaves two controls for one thing, disagreeing the
+ * moment either is used. Opened directly in a browser the page has no host to
+ * supply them, so it keeps its own.
+ */
+export function buildRouteMapHtml(
+  osKey: string | undefined,
+  chrome: "full" | "none" = "full",
+): string {
   const layers = baseLayers(osKey);
   const initial = layers[0];
 
@@ -114,6 +125,7 @@ export function buildRouteMapHtml(osKey: string | undefined): string {
   .modes button{min-width:0;flex:1;text-align:center}
   #fly{background:rgba(36,239,164,.16);color:#24EFA4;border-color:rgba(36,239,164,.45)}
   #fly[disabled]{opacity:.4;cursor:default}
+  ${chrome === "none" ? ".panel{display:none}" : ""}
 </style>
 </head>
 <body>
@@ -341,11 +353,13 @@ document.getElementById("fly").onclick = flyover;
 </html>`;
 }
 
-router.get("/route-map", (_req, res) => {
+router.get("/route-map", (req, res) => {
   const osKey = process.env.OS_MAPS_KEY;
+  const chrome = req.query["chrome"] === "none" ? "none" : "full";
   res.setHeader("Content-Type", "text/html; charset=utf-8");
+  // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey));
+  res.send(buildRouteMapHtml(osKey, chrome));
 });
 
 export default router;

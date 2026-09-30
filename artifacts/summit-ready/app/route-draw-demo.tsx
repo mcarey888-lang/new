@@ -19,16 +19,14 @@
  * engine's committed network. It is demo data and labelled as such on screen.
  */
 
-import React, { useMemo } from "react";
+import React, { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { SRButton, SREyebrow, SRPanel } from "@/components/ui";
-import { RouteDrawMap } from "@/components/route-draw/RouteDrawMap";
+import { RouteMapBridge, type MapMode } from "@/components/route-draw/RouteMapBridge";
 import { BASECAMP, EXPLORE } from "@/constants/tokens";
 import { useSnapDrawing } from "@/hooks/useSnapDrawing";
-import { osMapsKey } from "@/utils/appSecrets";
-import { osTileSource } from "@/utils/osMapsTiles";
 import { regionFromBbox, staticPathNetworkSource } from "@/utils/pathNetworkSource";
 import demoNetwork from "@/assets/path-networks/ogwen-demo.json";
 
@@ -43,27 +41,25 @@ const SOURCE = staticPathNetworkSource({
 
 const REGION = regionFromBbox([-4.03, 53.09, -3.96, 53.14]);
 
-/* Null without an OS_MAPS_KEY at build time, and the platform basemap shows
-   instead. Resolved once: the key cannot change while the app is running. */
-const OS_TILES = osTileSource(osMapsKey());
-
-const INITIAL = {
-  latitude: 53.1149,
-  longitude: -3.9976,
-  latitudeDelta: 0.03,
-  longitudeDelta: 0.03,
-};
+/* Tryfan, which is what the demo extract covers. The map page opens here and
+   the person pans from there. */
+const INITIAL = { latitude: 53.1149, longitude: -3.9976 };
 
 export default function RouteDrawDemoScreen() {
   const { drawing, status, ready, onPathFraction, tap, acceptGap, rejectGap, undo, clear } =
     useSnapDrawing(SOURCE, REGION);
 
-  /* Faint hints so a person can see what there is to snap to. Capped because
-     drawing 277 polylines is more than the map needs to make the point. */
-  const pathHints = useMemo(() => {
-    if (status.kind !== "ready") return [];
-    return status.bundle.ways.slice(0, 200).map(way => way.points);
-  }, [status]);
+  const [mode, setMode] = useState<MapMode>("2d");
+  const [layerId, setLayerId] = useState<string | null>(null);
+  /* A counter, not a flag: asking for a second flyover has to run a second
+     flyover rather than latch on the first. */
+  const [flyoverToken, setFlyoverToken] = useState(0);
+  const [basemap, setBasemap] = useState<string | null>(null);
+
+  const handleLayerChanged = useCallback((id: string, reason?: string) => {
+    setLayerId(id);
+    setBasemap(reason === "tiles_failed" ? `${id} (OS tiles failed)` : id);
+  }, []);
 
   const km = (drawing.lengthM / 1000).toFixed(2);
   const gap = drawing.pendingGap;
@@ -76,13 +72,14 @@ export default function RouteDrawDemoScreen() {
       </View>
 
       <View style={s.mapWrap}>
-        <RouteDrawMap
-          initialRegion={INITIAL}
+        <RouteMapBridge
           drawing={drawing}
-          pathHints={pathHints}
+          mode={mode}
+          layerId={layerId}
           onTap={tap}
-          tileUrlTemplate={OS_TILES?.urlTemplate ?? null}
-          tileMaximumZ={OS_TILES?.maximumZ ?? null}
+          onLayerChanged={handleLayerChanged}
+          flyoverToken={flyoverToken}
+          initialCentre={INITIAL}
         />
       </View>
 
@@ -108,6 +105,24 @@ export default function RouteDrawDemoScreen() {
             <Stat
               label="On path"
               value={drawing.lengthM > 0 ? `${Math.round(onPathFraction * 100)}%` : "—"}
+            />
+          </View>
+          <View style={s.row}>
+            <SRButton
+              label={mode === "3d" ? "2D" : "3D"}
+              variant="secondary"
+              compact
+              onPress={() => setMode(mode === "3d" ? "2d" : "3d")}
+              accessibilityHint="Switch between a flat map and terrain"
+            />
+            <SRButton
+              label="Flyover"
+              variant="secondary"
+              compact
+              /* Only in 3D, and only with a line to follow: a flyover of a flat
+                 map is just a pan, and a flyover of nothing is nothing. */
+              disabled={mode !== "3d" || drawing.coordinates.length < 2}
+              onPress={() => setFlyoverToken(t => t + 1)}
             />
           </View>
           <View style={s.row}>
@@ -160,9 +175,9 @@ export default function RouteDrawDemoScreen() {
             {status.kind === "failed" ? status.message : null}
           </Text>
           <Text style={s.meta}>
-            {OS_TILES
-              ? `Basemap: Ordnance Survey ${OS_TILES.layer}\n${OS_TILES.attribution}`
-              : "Basemap: platform default — no OS_MAPS_KEY set at build time."}
+            {basemap
+              ? `Basemap: ${basemap}`
+              : "Basemap: served by /api/route-map — switch layers on the map itself."}
           </Text>
           <Text style={s.disclaimer}>
             Demo extract. Presentation here is scaffolding awaiting an approved
