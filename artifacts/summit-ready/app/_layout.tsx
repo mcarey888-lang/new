@@ -191,6 +191,7 @@ function RootLayoutNav() {
       <Stack.Screen name="subscription" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="hill-detail" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="trail-list" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="route-planner" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="trail-detail" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="trails-saved" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="trails-completed" options={{ headerShown: false, presentation: "card" }} />
