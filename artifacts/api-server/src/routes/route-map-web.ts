@@ -134,6 +134,10 @@ export function buildRouteMapHtml(
   chrome: "full" | "none" = "full",
   tilePrefix?: string,
   hasMapbox = false,
+  /** Where this server answers snap requests. Absent means no snapping is
+   *  available, and the page then draws straight lines and says so — which is
+   *  the same honest state it is in when the network has no paths. */
+  snapUrl?: string,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -166,6 +170,8 @@ export function buildRouteMapHtml(
   #fly{background:rgba(36,239,164,.16);color:#24EFA4;border-color:rgba(36,239,164,.45)}
   #fly[disabled]{opacity:.4;cursor:default}
   #draw[aria-pressed="true"]{background:#E9B949;color:#05090B;border-color:transparent}
+  #snap[aria-pressed="true"]{background:#24EFA4;color:#05090B;border-color:transparent}
+  #snap[disabled]{opacity:.4;cursor:default}
   .edit{display:flex;gap:5px}
   .edit button{min-width:0;flex:1;text-align:center}
   .edit button[disabled]{opacity:.4;cursor:default}
@@ -200,6 +206,7 @@ export function buildRouteMapHtml(
     )
     .join("")}
   <button id="draw" aria-pressed="false">Draw route</button>
+  <button id="snap" aria-pressed="${snapUrl ? "true" : "false"}"${snapUrl ? "" : " disabled"}>Follow paths</button>
   <div class="edit">
     <button id="undo" disabled>Undo</button>
     <button id="clear" disabled>Clear</button>
@@ -210,6 +217,7 @@ export function buildRouteMapHtml(
 <script>
 var LAYERS = ${JSON.stringify(layers)};
 var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
+var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
 var ROUTE_COLOR = "#167DF7";
 var ASSERTED_COLOR = "#E9B949";
 
@@ -276,10 +284,19 @@ var mode = "2d";
    snapping exists, everything drawn here is unsnapped, so it renders amber and
    dashed and the readout says why. Presenting a guess as a surveyed route is
    the one failure this feature cannot have. */
+/* A route is the taps a person made, plus what happened between each pair.
+   Keeping those apart is what lets a leg be re-snapped when an end moves, and
+   what lets one leg follow a path while the next is honestly a straight line
+   over ground the map has nothing for. anchors[i] joins anchors[i+1] via
+   legs[i], so there is always exactly one fewer leg than anchor. */
+var anchors = [];
+var legs = [];
+
+/* Derived: every coordinate in order, for the flyover and the length. */
 var routePts = [];
-var routeSnapped = false;
 
 var drawing = false;
+var snapping = !!SNAP_URL;
 var dragIndex = -1;
 var suppressClick = false;
 
@@ -370,14 +387,23 @@ map.on("load", function () {
   }
   function move(e) {
     if (dragIndex < 0) return;
-    routePts[dragIndex] = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-    routeSnapped = false;
+    anchors[dragIndex] = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+    /* Both legs become straight for the duration of the drag. Leaving the old
+       snapped geometry on screen would show the line still following a path it
+       no longer touches. */
+    if (dragIndex > 0) legs[dragIndex - 1] = { kind: "straight", points: null };
+    if (dragIndex < anchors.length - 1) legs[dragIndex] = { kind: "straight", points: null };
     redraw();
   }
   function drop() {
     if (dragIndex < 0) return;
+    var moved = dragIndex;
     dragIndex = -1;
     map.dragPan.enable();
+    /* Re-snapped on release rather than on every mousemove: a drag across the
+       map would otherwise fire a request per frame at a service we are
+       supposed to be sparing. */
+    resnapAround(moved);
     emit();
   }
   map.on("mousedown", "mark-dots", grab);
@@ -412,53 +438,125 @@ function metres(a, b) {
         + Math.cos(la1) * Math.cos(la2) * Math.sin(dlo / 2) * Math.sin(dlo / 2);
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+
+/* A leg is "surveyed" only when the server routed it over mapped paths. Every
+   other state — waiting for an answer, a gap with no path across it, a tap on
+   open ground, snapping switched off or unavailable — is a straight line
+   between two taps, and is drawn and described as one. The default below is
+   deliberately the cautious one: a leg nobody has confirmed is not surveyed. */
+function legIsSurveyed(leg) { return leg && leg.kind === "routed"; }
+
+/** Every coordinate of the route in order, legs expanded. */
+function flatten() {
+  var out = [];
+  for (var i = 0; i < anchors.length; i++) {
+    var leg = i > 0 ? legs[i - 1] : null;
+    var pts = leg && leg.points && leg.points.length ? leg.points : [anchors[i]];
+    for (var j = 0; j < pts.length; j++) {
+      var q = pts[j];
+      var last = out[out.length - 1];
+      /* A leg starts where the previous one ended, so without this every
+         junction is listed twice and the length counts a zero-length hop. */
+      if (!last || last.lat !== q.lat || last.lng !== q.lng) out.push(q);
+    }
+  }
+  return out;
+}
+
 function routeLength() {
   var t = 0;
   for (var i = 1; i < routePts.length; i++) t += metres(routePts[i - 1], routePts[i]);
   return t;
 }
 
+function fc(lineStrings) {
+  return { type: "FeatureCollection", features: lineStrings.filter(function (c) {
+    return c.length > 1;
+  }).map(function (coords) {
+    return { type: "Feature", properties: {},
+      geometry: { type: "LineString", coordinates: coords } };
+  }) };
+}
+
 /* One place decides what the map shows, so the line, the dots, the readout and
-   the buttons can never disagree about how many points there are. */
+   the buttons can never disagree. Surveyed legs and asserted ones go to
+   different sources because they are drawn in different ink, and that
+   difference is the point. */
 function redraw() {
-  var drawn = line(routePts);
-  map.getSource("route").setData(routeSnapped ? drawn : empty());
-  map.getSource("asserted").setData(routeSnapped ? empty() : drawn);
-  map.getSource("marks").setData({ type: "FeatureCollection", features: routePts.map(function (p, i) {
+  var surveyed = [], asserted = [];
+  for (var i = 0; i < legs.length; i++) {
+    var leg = legs[i];
+    var pts = (leg && leg.points && leg.points.length) ? leg.points : [anchors[i], anchors[i + 1]];
+    var coords = pts.map(function (q) { return [q.lng, q.lat]; });
+    (legIsSurveyed(leg) ? surveyed : asserted).push(coords);
+  }
+  map.getSource("route").setData(fc(surveyed));
+  map.getSource("asserted").setData(fc(asserted));
+  map.getSource("marks").setData({ type: "FeatureCollection", features: anchors.map(function (q, i) {
+    /* A tap the server could not place on any path is marked amber, so the
+       person can see which one to move rather than guessing. */
+    var off = (legs[i] && legs[i].offPath === "from") || (legs[i - 1] && legs[i - 1].offPath === "to");
     return { type: "Feature",
-      properties: { kind: i === 0 ? "first" : "point", idx: i },
-      geometry: { type: "Point", coordinates: [p.lng, p.lat] } };
+      properties: { kind: off ? "warn" : (i === 0 ? "first" : "point"), idx: i },
+      geometry: { type: "Point", coordinates: [q.lng, q.lat] } };
   }) });
 
-  var hud = document.getElementById("hud");
-  if (hud) {
-    if (routePts.length === 0) { hud.hidden = true; }
-    else {
-      hud.hidden = false;
-      var km = routeLength() / 1000;
-      document.getElementById("hudMain").textContent =
-        routePts.length + (routePts.length === 1 ? " point" : " points")
-        + (routePts.length > 1 ? " · " + km.toFixed(2) + " km" : "");
-      /* Said plainly and every time, not once on first use. The number above
-         is the length of the straight hops, not of a walk. */
-      document.getElementById("hudNote").textContent = routeSnapped
-        ? ""
-        : "Straight lines — not following paths yet";
-    }
-  }
+  routePts = flatten();
+  updateHud();
 
   var undo = document.getElementById("undo");
   var clr = document.getElementById("clear");
-  if (undo) undo.disabled = routePts.length === 0;
-  if (clr) clr.disabled = routePts.length === 0;
+  if (undo) undo.disabled = anchors.length === 0;
+  if (clr) clr.disabled = anchors.length === 0;
   var fly = document.getElementById("fly");
   if (fly) fly.disabled = !(mode === "3d" && routePts.length > 1);
 }
 
+function updateHud() {
+  var hud = document.getElementById("hud");
+  if (!hud) return;
+  if (anchors.length === 0) { hud.hidden = true; return; }
+  hud.hidden = false;
+
+  var km = routeLength() / 1000;
+  document.getElementById("hudMain").textContent =
+    anchors.length + (anchors.length === 1 ? " point" : " points")
+    + (routePts.length > 1 ? " · " + km.toFixed(2) + " km" : "");
+
+  /* Counted rather than summarised, because "3 straight sections" tells
+     somebody how much of their route is a guess and "partly snapped" does
+     not. Said in words as well as colour: amber against blue fails anyone who
+     cannot separate the two, and fails everyone in bright sun. */
+  var pending = 0, gaps = 0, offPath = 0, plain = 0;
+  for (var i = 0; i < legs.length; i++) {
+    var k = legs[i] ? legs[i].kind : "straight";
+    if (k === "pending") pending++;
+    else if (k === "gap") gaps++;
+    else if (k === "offPath") offPath++;
+    else if (k !== "routed") plain++;
+  }
+  var note = "";
+  if (pending) note = "Finding paths…";
+  else if (!snapping) note = "Snapping off — straight lines";
+  else if (gaps || offPath || plain) {
+    var straight = gaps + offPath + plain;
+    note = straight + (straight === 1 ? " section" : " sections") + " not on a path";
+    if (gaps) note += " · no path across the gap";
+    else if (offPath) note += " · tap is off the path network";
+  }
+  document.getElementById("hudNote").textContent = note;
+}
+
 /** Tell the host what the route is now, so it can hold the authoritative copy. */
 function emit() {
-  post({ type: "routeChanged", snapped: routeSnapped,
-         lengthM: Math.round(routeLength()), points: routePts.slice() });
+  post({ type: "routeChanged",
+         /* One straight section makes the whole route unsurveyed. A route that
+            is "mostly" on paths is not a route that was checked. */
+         snapped: legs.length > 0 && legs.every(legIsSurveyed),
+         lengthM: Math.round(routeLength()),
+         anchors: anchors.slice(),
+         legs: legs.map(function (l) { return { kind: l.kind, lengthM: l.lengthM || null }; }),
+         points: routePts.slice() });
 }
 
 function setDrawing(on) {
@@ -469,26 +567,96 @@ function setDrawing(on) {
   post({ type: "drawingChanged", on: drawing });
 }
 
+function setSnapping(on) {
+  snapping = !!on && !!SNAP_URL;
+  var b = document.getElementById("snap");
+  if (b) b.setAttribute("aria-pressed", String(snapping));
+  /* Switching snapping on re-asks for every leg that is not already on a path;
+     switching it off leaves what is there, since a leg that does follow a path
+     is still true. */
+  if (snapping) for (var i = 0; i < legs.length; i++) if (!legIsSurveyed(legs[i])) snapLeg(i);
+  redraw();
+  post({ type: "snappingChanged", on: snapping });
+}
+
+/**
+ * Ask the server to route one leg over the path network.
+ *
+ * Every failure lands on the same side: the leg stays a straight line, drawn
+ * amber. A request that times out, a server that is down, a gap with no path
+ * across it and a tap on open ground all leave a line the person can see is
+ * unconfirmed. Nothing here can turn a failure into an apparently surveyed
+ * route, which is the only outcome that would matter.
+ */
+var legToken = 0;
+function snapLeg(i) {
+  if (!snapping || !SNAP_URL) return;
+  var from = anchors[i], to = anchors[i + 1];
+  if (!from || !to) return;
+
+  /* Each leg carries the token of its most recent request. An answer arriving
+     for a leg that has since been dragged, undone or re-snapped is stale and
+     is dropped — otherwise a slow reply overwrites a newer one and the line
+     silently reverts to where the point used to be. */
+  var token = ++legToken;
+  legs[i] = { kind: "pending", token: token, points: null };
+  redraw();
+
+  fetch(SNAP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ from: from, to: to })
+  }).then(function (r) { return r.json(); }).then(function (data) {
+    if (!legs[i] || legs[i].token !== token) return;
+    if (data.outcome === "routed") {
+      legs[i] = { kind: "routed", token: token, points: data.points,
+                  lengthM: data.lengthM, detourFactor: data.detourFactor,
+                  wayName: data.wayName };
+    } else if (data.outcome === "disconnected") {
+      legs[i] = { kind: "gap", token: token, points: null, gapM: data.gapM };
+    } else if (data.outcome === "off_path") {
+      legs[i] = { kind: "offPath", token: token, points: null, offPath: data.which };
+    } else {
+      legs[i] = { kind: "straight", token: token, points: null, reason: data.outcome };
+    }
+    redraw();
+    emit();
+  }).catch(function () {
+    if (!legs[i] || legs[i].token !== token) return;
+    legs[i] = { kind: "straight", token: token, points: null, reason: "unreachable" };
+    redraw();
+    emit();
+  });
+}
+
 function addPoint(lngLat) {
-  /* A point added by hand makes the route a drawn one again. Without this a
-     snapped route that someone extends would keep claiming to be snapped
-     along a section that never was. */
-  routeSnapped = false;
-  routePts.push({ lat: lngLat.lat, lng: lngLat.lng });
+  anchors.push({ lat: lngLat.lat, lng: lngLat.lng });
+  if (anchors.length > 1) {
+    var i = anchors.length - 2;
+    legs[i] = { kind: "straight", points: null };
+    snapLeg(i);
+  }
   redraw();
   emit();
 }
 
+/** After a point moves, only the legs touching it can have changed. */
+function resnapAround(i) {
+  if (i > 0) snapLeg(i - 1);
+  if (i < anchors.length - 1) snapLeg(i);
+}
+
 function undoPoint() {
-  if (!routePts.length) return;
-  routePts.pop();
+  if (!anchors.length) return;
+  anchors.pop();
+  legs.length = Math.max(0, anchors.length - 1);
   redraw();
   emit();
 }
 
 function clearRoute() {
-  routePts = [];
-  routeSnapped = false;
+  anchors = [];
+  legs = [];
   redraw();
   emit();
 }
@@ -531,11 +699,17 @@ function handleMsg(ev) {
   if (!msg || !msg.type) return;
 
   if (msg.type === "route" && Array.isArray(msg.points)) {
-    routePts = msg.points;
-    /* A route handed in by the host is snapped unless it says otherwise, since
-       the host is where snapping will happen. An explicit false still reads as
-       unsnapped, so a host passing a draft cannot have it drawn as surveyed. */
-    routeSnapped = msg.snapped !== false;
+    /* A route handed in by the host counts as surveyed unless it says
+       otherwise. An explicit false still reads as unsurveyed, so a host
+       passing a draft cannot have it drawn as checked by omission. */
+    var surveyed = msg.snapped !== false;
+    anchors = msg.points.slice();
+    legs = [];
+    for (var li = 0; li < anchors.length - 1; li++) {
+      legs.push(surveyed
+        ? { kind: "routed", points: [anchors[li], anchors[li + 1]] }
+        : { kind: "straight", points: null });
+    }
     redraw();
   }
   if (msg.type === "asserted" && Array.isArray(msg.points)) {
@@ -556,6 +730,7 @@ function handleMsg(ev) {
   if (msg.type === "clear") clearRoute();
   if (msg.type === "draw") setDrawing(msg.on !== false);
   if (msg.type === "undo") undoPoint();
+  if (msg.type === "snap") setSnapping(msg.on !== false);
 }
 document.addEventListener("message", handleMsg);
 window.addEventListener("message", handleMsg);
@@ -569,6 +744,7 @@ document.getElementById("fly").onclick = flyover;
 document.getElementById("draw").onclick = function () { setDrawing(!drawing); };
 document.getElementById("undo").onclick = undoPoint;
 document.getElementById("clear").onclick = clearRoute;
+document.getElementById("snap").onclick = function () { setSnapping(!snapping); };
 </script>
 </body>
 </html>`;
@@ -580,10 +756,11 @@ router.get("/route-map", (req, res) => {
   /* Derived from where this router is actually mounted rather than written as
      "/api", so moving the mount does not silently break every satellite tile. */
   const tilePrefix = `${req.baseUrl}/map-tiles`;
+  const snapUrl = `${req.baseUrl}/path-snap`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN)));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl));
 });
 
 export default router;

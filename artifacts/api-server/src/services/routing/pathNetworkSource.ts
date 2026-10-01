@@ -1,0 +1,258 @@
+import type { PathWay } from "./pathSnapping";
+
+/**
+ * Where the path network comes from.
+ *
+ * Snapping is only as good as the paths it snaps to, and the paths come from
+ * OpenStreetMap via Overpass. This module is the boundary: it asks for ways in
+ * a bounding box and returns them in the shape the snap engine wants. Nothing
+ * downstream needs to know Overpass exists.
+ *
+ * OVERPASS IS SOMEONE ELSE'S FREE SERVICE, AND IT IS SMALL
+ * -------------------------------------------------------
+ * The public instances are donated capacity with a usage policy, not an API we
+ * are entitled to. A tile-style endpoint pointed at it from a public page could
+ * generate thousands of queries an hour and get the whole deployment blocked —
+ * which would take path snapping down for every user, not just the abusive one.
+ * So three things are deliberate here and should not be loosened casually:
+ *
+ *   1. A hard cap on bounding box area. A request for half of Wales is refused
+ *      rather than forwarded.
+ *   2. Cache keys snapped to a grid, so panning a few metres reuses the cached
+ *      network instead of issuing a near-identical query.
+ *   3. An identifying User-Agent, which the policy asks for and which means a
+ *      problem reaches us as an email rather than as a silent block.
+ *
+ * ⚠️ UNVERIFIED AGAINST THE LIVE SERVICE. The network policy of the machine
+ * this was written on refuses Overpass outright, so the query, the response
+ * parsing and the error handling are all tested against recorded fixtures
+ * only. Everything here is shaped from the documented API rather than observed
+ * behaviour. Confirm it against the real endpoint before relying on it — the
+ * most likely surprises are the exact error body on a rate limit and whether
+ * the server honours the timeout in the query.
+ */
+
+/** Public Overpass instance. Swappable by env for a self-hosted one, which is
+ *  the honest fix if this ever carries real traffic. */
+const OVERPASS_URL = process.env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter";
+
+/**
+ * Identifies us to Overpass, per their usage policy.
+ *
+ * A contact address in the agent is what turns "we blocked an abusive IP" into
+ * "we emailed someone". Set OVERPASS_CONTACT to a real address in deployment.
+ */
+const USER_AGENT = `SummitReady/1.0 (+${process.env.OVERPASS_CONTACT ?? "unset-contact"})`;
+
+/**
+ * Largest area we will ask for, in square degrees.
+ *
+ * 0.04 is roughly 22 km by 22 km at this latitude — comfortably more than a
+ * day's walk, and enough that a planner zoomed out to pick a line has the whole
+ * route in one fetch. Past that the response runs to megabytes and takes long
+ * enough that the person assumes the map has broken.
+ */
+export const MAX_BBOX_AREA_DEG2 = 0.04;
+
+/**
+ * Grid the cache key is snapped to, in degrees (~550 m of latitude).
+ *
+ * Without this, every pixel of pan produces a new key and the cache never hits.
+ * Snapping outward means a slightly larger box is fetched than asked for, which
+ * costs one query and saves many.
+ */
+const CACHE_GRID_DEG = 0.005;
+
+export interface BBox {
+  minLat: number;
+  minLng: number;
+  maxLat: number;
+  maxLng: number;
+}
+
+export function bboxAreaDeg2(b: BBox): number {
+  return Math.abs(b.maxLat - b.minLat) * Math.abs(b.maxLng - b.minLng);
+}
+
+/** Valid ranges, right way round, and not a point. */
+export function validBBox(b: BBox): boolean {
+  const finite = [b.minLat, b.minLng, b.maxLat, b.maxLng].every(Number.isFinite);
+  if (!finite) return false;
+  if (b.minLat < -90 || b.maxLat > 90 || b.minLng < -180 || b.maxLng > 180) return false;
+  if (b.minLat >= b.maxLat || b.minLng >= b.maxLng) return false;
+  return true;
+}
+
+/** Expand to the cache grid. Always outward, so the result still covers the ask. */
+export function snapBBox(b: BBox): BBox {
+  const f = (v: number) => Math.floor(v / CACHE_GRID_DEG) * CACHE_GRID_DEG;
+  const c = (v: number) => Math.ceil(v / CACHE_GRID_DEG) * CACHE_GRID_DEG;
+  /* Rounded because floating point leaves 53.115000000000002 here, and that
+     would make two identical requests miss each other in the cache. */
+  const r = (v: number) => Math.round(v * 1e6) / 1e6;
+  return { minLat: r(f(b.minLat)), minLng: r(f(b.minLng)), maxLat: r(c(b.maxLat)), maxLng: r(c(b.maxLng)) };
+}
+
+export function cacheKey(b: BBox): string {
+  const s = snapBBox(b);
+  return `${s.minLat},${s.minLng},${s.maxLat},${s.maxLng}`;
+}
+
+/**
+ * The Overpass query.
+ *
+ * Only ways a person could reasonably walk. `highway=path` is the general case
+ * in UK hill country; footway, track, bridleway and steps cover the rest of
+ * what appears on a mountain. Roads are deliberately absent: snapping a hill
+ * route onto the A5 because it happened to be the nearest line is worse than
+ * not snapping at all.
+ *
+ * `out geom` returns each way's coordinates inline, which avoids a second pass
+ * to resolve node ids — the ways are what we need and the nodes come with them.
+ */
+export function overpassQuery(b: BBox, timeoutS = 25): string {
+  const s = snapBBox(b);
+  const box = `${s.minLat},${s.minLng},${s.maxLat},${s.maxLng}`;
+  return `[out:json][timeout:${timeoutS}];
+(
+  way["highway"~"^(path|footway|track|bridleway|steps|cycleway)$"](${box});
+);
+out geom;`;
+}
+
+/** The subset of the Overpass response this module reads. */
+interface OverpassWay {
+  type?: string;
+  id?: number;
+  tags?: Record<string, string>;
+  geometry?: Array<{ lat: number; lon: number }>;
+}
+
+/**
+ * Turn an Overpass response into ways the snap engine can use.
+ *
+ * Tolerant on purpose: a single malformed way should cost that way, not the
+ * whole region. A way with fewer than two points cannot carry a segment and is
+ * dropped rather than passed on to become a zero-length edge.
+ */
+export function parseOverpass(body: unknown): PathWay[] {
+  const elements = (body as { elements?: unknown })?.elements;
+  if (!Array.isArray(elements)) return [];
+
+  const ways: PathWay[] = [];
+  for (const raw of elements as OverpassWay[]) {
+    if (!raw || raw.type !== "way" || !Array.isArray(raw.geometry)) continue;
+    const points = raw.geometry
+      .filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lon))
+      .map(p => ({ latitude: p.lat, longitude: p.lon }));
+    if (points.length < 2) continue;
+    ways.push({
+      wayId: typeof raw.id === "number" ? raw.id : ways.length,
+      /* An unnamed path is the normal case on a mountain, and null says that
+         honestly. Inventing a name from the tags would put words in a map's
+         mouth that a person would then read back as fact. */
+      name: raw.tags?.["name"] ?? null,
+      points,
+    });
+  }
+  return ways;
+}
+
+export type FetchOutcome =
+  | { kind: "ways"; ways: PathWay[]; cached: boolean }
+  /** The box is bigger than we will ask for. Carries the limit so the caller
+   *  can say by how much rather than just refusing. */
+  | { kind: "too_large"; areaDeg2: number; limitDeg2: number }
+  | { kind: "bad_bbox" }
+  /** Overpass said no — rate limited, overloaded, or down. Distinguished from
+   *  an empty result, because "no paths here" and "we could not ask" must not
+   *  look the same to someone drawing a route. */
+  | { kind: "upstream_failed"; status: number | null; detail: string };
+
+interface CacheEntry {
+  ways: PathWay[];
+  at: number;
+}
+
+/* OSM paths change on the timescale of weeks, so an hour is cautious. The cache
+   is in memory and dies with the process, which is the right size for something
+   whose job is to spare a donated service, not to be a datastore. */
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 64;
+const cache = new Map<string, CacheEntry>();
+
+export function clearNetworkCache(): void {
+  cache.clear();
+}
+export function networkCacheSize(): number {
+  return cache.size;
+}
+
+/** Injectable so tests can exercise this without a network. */
+export type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
+
+export async function fetchPathWays(
+  bbox: BBox,
+  opts: { fetcher?: Fetcher; now?: () => number } = {},
+): Promise<FetchOutcome> {
+  if (!validBBox(bbox)) return { kind: "bad_bbox" };
+
+  const area = bboxAreaDeg2(snapBBox(bbox));
+  if (area > MAX_BBOX_AREA_DEG2) {
+    return { kind: "too_large", areaDeg2: area, limitDeg2: MAX_BBOX_AREA_DEG2 };
+  }
+
+  const now = opts.now ?? Date.now;
+  const key = cacheKey(bbox);
+  const hit = cache.get(key);
+  if (hit && now() - hit.at < CACHE_TTL_MS) {
+    return { kind: "ways", ways: hit.ways, cached: true };
+  }
+
+  const doFetch = opts.fetcher ?? fetch;
+  let res: Response;
+  try {
+    res = await doFetch(OVERPASS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": USER_AGENT,
+      },
+      body: new URLSearchParams({ data: overpassQuery(bbox) }).toString(),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    return {
+      kind: "upstream_failed",
+      status: null,
+      detail: err instanceof Error ? err.message : "request failed",
+    };
+  }
+
+  if (!res.ok) {
+    /* 429 and 504 are Overpass's two ways of saying "not now" and both are
+       expected under load. They are passed through rather than flattened so
+       the caller can back off rather than retry into a wall. */
+    return { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
+  }
+
+  const ways = parseOverpass(body);
+
+  /* Oldest-first eviction. The cache exists to spare Overpass, not to be
+     clever, and a region nobody has looked at for an hour is the right thing
+     to lose. */
+  if (cache.size >= CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+  cache.set(key, { ways, at: now() });
+
+  return { kind: "ways", ways, cached: false };
+}

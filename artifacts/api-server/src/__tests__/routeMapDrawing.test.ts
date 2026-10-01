@@ -61,68 +61,113 @@ describe("drawing controls", () => {
 });
 
 describe("a drawn line is never dressed as a surveyed one", () => {
-  /* The safety property this whole feature turns on. A line drawn by tapping
-     hops straight between taps — over crag, over cliff, over water. Rendering
-     it in the same solid blue as a path-following route would tell someone it
-     had been checked when it has not. */
+  /* The safety property this whole feature turns on. A leg that has not been
+     routed over mapped paths hops straight between taps — over crag, over
+     cliff, over water. Rendering it in the same solid blue as a path-following
+     leg would say it had been checked when nothing checked it. */
 
-  it("sends an unsnapped route to the dashed layer and leaves the solid one empty", () => {
-    const html = page();
-    expect(html).toContain(
-      'map.getSource("route").setData(routeSnapped ? drawn : empty());',
-    );
-    expect(html).toContain(
-      'map.getSource("asserted").setData(routeSnapped ? empty() : drawn);',
+  it("counts only a routed leg as surveyed", () => {
+    /* Every other state — waiting on the server, a gap with no path across it,
+       a tap on open ground, snapping off, the server unreachable — is a
+       straight line, and the one predicate decides that for all of them. */
+    expect(page()).toContain('return leg && leg.kind === "routed";');
+  });
+
+  it("sends surveyed and unsurveyed legs to different sources", () => {
+    expect(page()).toContain(
+      "(legIsSurveyed(leg) ? surveyed : asserted).push(coords);",
     );
   });
 
   it("draws the two states in different ink", () => {
     const html = page();
-    /* Amber and dashed for asserted, solid blue for a surveyed route. Same
-       colour for both would make the distinction invisible, which is worse
-       than not drawing it at all. */
+    /* Amber and dashed for asserted, solid blue for surveyed. The same colour
+       for both would make the distinction invisible, which is worse than not
+       drawing it at all. */
     expect(html).toContain('"line-dasharray": [2, 1.6]');
     expect(html).toContain('var ASSERTED_COLOR = "#E9B949"');
     expect(html).toContain('var ROUTE_COLOR = "#167DF7"');
   });
 
   it("says so in words as well as colour", () => {
-    /* Colour alone fails anyone who cannot distinguish amber from blue, and
-       fails everyone on a bright hillside. */
-    expect(page()).toContain("not following paths yet");
+    /* Colour alone fails anyone who cannot separate amber from blue, and fails
+       everyone on a bright hillside. The count is spelled out because "3
+       sections" says how much of a route is a guess and "partly snapped"
+       does not. */
+    const html = page();
+    expect(html).toContain('" not on a path"');
+    expect(html).toContain("no path across the gap");
+    expect(html).toContain("Snapping off — straight lines");
   });
 
-  it("starts unsnapped, so the cautious state is the default", () => {
-    expect(page()).toContain("var routeSnapped = false;");
+  it("falls back to straight on every failure, never to apparently routed", () => {
+    const html = page();
+    /* A gap, an off-path tap, an unknown outcome and a thrown request all end
+       in a kind that legIsSurveyed rejects. */
+    for (const kind of ['kind: "gap"', 'kind: "offPath"', 'kind: "straight"', 'kind: "pending"']) {
+      expect(html).toContain(kind);
+    }
+    expect(html).toContain('reason: "unreachable"');
   });
 
-  it("drops the snapped claim the moment a point is added by hand", () => {
-    /* Extending a snapped route by tapping makes part of it unsurveyed. The
-       whole line has to stop claiming otherwise. */
-    expect(bodyOf(page(), "function addPoint")).toContain("routeSnapped = false");
+  it("makes a new leg straight before it is ever routed", () => {
+    /* The cautious state is what a leg is born in. If the server never answers
+       the leg simply stays as drawn. */
+    expect(bodyOf(page(), "function addPoint")).toContain('legs[i] = { kind: "straight", points: null };');
   });
 
-  it("drops it when a point is dragged, too", () => {
-    expect(bodyOf(page(), "function move(e)")).toContain("routeSnapped = false");
+  it("drops the routed geometry the moment a point is dragged", () => {
+    /* Keeping it would leave the line following a path it no longer touches. */
+    const move = bodyOf(page(), "function move(e)");
+    expect(move).toContain('legs[dragIndex - 1] = { kind: "straight", points: null }');
+    expect(move).toContain('legs[dragIndex] = { kind: "straight", points: null }');
   });
 
-  it("treats a host route without an explicit flag as snapped, but honours false", () => {
-    /* msg.snapped !== false, not msg.snapped === true: a host that omits the
-       flag is handing over a real route, while one that passes false is
-       handing over a draft and must not have it drawn as surveyed. */
-    expect(page()).toContain("routeSnapped = msg.snapped !== false;");
+  it("re-asks only for the legs a moved point touches", () => {
+    expect(bodyOf(page(), "function resnapAround")).toContain("snapLeg(i - 1)");
+  });
+
+  it("re-snaps on release, not on every frame of a drag", () => {
+    /* A request per mousemove would hammer a service we are meant to be
+       sparing, and most of those answers would be stale before they landed. */
+    expect(bodyOf(page(), "function drop")).toContain("resnapAround(moved)");
+  });
+
+  it("ignores an answer for a leg that has since changed", () => {
+    /* A slow reply landing after the point moved would drag the line back to
+       where it used to be, with nothing on screen to explain it. */
+    expect(page()).toContain("legs[i].token !== token");
+  });
+
+  it("treats a host route without an explicit flag as surveyed, but honours false", () => {
+    /* msg.snapped !== false, not === true: a host that omits the flag is
+       handing over a real route, while one passing false is handing over a
+       draft and must not have it drawn as checked. */
+    expect(page()).toContain("var surveyed = msg.snapped !== false;");
   });
 });
 
 describe("the route the host receives", () => {
-  it("carries whether it is snapped, so the app cannot lose that", () => {
-    const html = page();
-    expect(html).toContain('post({ type: "routeChanged", snapped: routeSnapped,');
+  it("calls the route snapped only when every leg is", () => {
+    /* One straight section makes the whole route unsurveyed. A route that is
+       "mostly" on paths is not a route that was checked. */
+    expect(page()).toContain("legs.length > 0 && legs.every(legIsSurveyed)");
+  });
+
+  it("hands over the legs as well as the line, so detail is not lost", () => {
+    expect(page()).toContain("anchors: anchors.slice()");
+    expect(page()).toContain("legs: legs.map(");
   });
 
   it("reports length from great-circle distance, not a flat approximation", () => {
-    /* The only number this page states. Over a long day a flat-earth shortcut
-       is wrong by enough to matter to someone planning around it. */
+    /* The only number this page states. Over a long day the shortcut is wrong
+       by enough to matter to someone planning around it. */
     expect(page()).toContain("Math.asin(Math.min(1, Math.sqrt(h)))");
+  });
+
+  it("never counts a shared junction twice", () => {
+    /* Each leg starts where the last ended. Without the guard the length
+       counts a zero-length hop at every junction and the point list doubles. */
+    expect(bodyOf(page(), "function flatten")).toContain("last.lat !== q.lat || last.lng !== q.lng");
   });
 });
