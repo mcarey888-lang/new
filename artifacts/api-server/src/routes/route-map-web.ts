@@ -41,6 +41,9 @@ export interface BaseLayerSpec {
   tiles: string;
   attribution: string;
   maxZoom: number;
+  /** Tile scheme size. Mapbox's styled imagery serves 512; everything else
+   *  here serves 256, and mixing them up misaligns imagery against terrain. */
+  tileSize: 256 | 512;
 }
 
 /**
@@ -50,7 +53,15 @@ export interface BaseLayerSpec {
  * thing a UK hill route is planned against. OSM last as the layer that always
  * works: no key, no quota, and the fallback when OS tiles fail.
  */
-export function baseLayers(osKey: string | undefined): BaseLayerSpec[] {
+export function baseLayers(
+  osKey: string | undefined,
+  /** Where this server serves proxied tiles, e.g. "/api/map-tiles". Passed in
+   *  rather than hardcoded so the page keeps working if the API mount moves. */
+  tilePrefix?: string,
+  /** Whether a Mapbox token is configured. The token itself never reaches this
+   *  function — it stays in the proxy, which is the whole point of the proxy. */
+  hasMapbox = false,
+): BaseLayerSpec[] {
   const os = (layer: string, label: string): BaseLayerSpec | null =>
     osKey
       ? {
@@ -61,6 +72,30 @@ export function baseLayers(osKey: string | undefined): BaseLayerSpec[] {
           // 17 is confirmed against the live API; past a layer's maximum the
           // API returns blank tiles rather than an error.
           maxZoom: 17,
+          tileSize: 256,
+        }
+      : null;
+
+  /* Satellite comes through this server, not straight from Mapbox, so the
+     token stays server-side. See map-tiles.ts for why that matters.
+
+     It sits after the OS layers deliberately. Imagery shows ground cover,
+     crag and scree, which is worth having when judging whether a line is
+     walkable — but it marks no paths at all, so it is the layer you check
+     against, not the one you draw on. */
+  const satellite = (id: string, label: string, tileSize: 256 | 512): BaseLayerSpec | null =>
+    hasMapbox && tilePrefix
+      ? {
+          id,
+          label,
+          tiles: `${tilePrefix}/${id}/{z}/{x}/{y}`,
+          attribution:
+            '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> ' +
+            '&copy; <a href="https://www.maxar.com/">Maxar</a>',
+          // The proxy refuses anything deeper, so asking for more would only
+          // produce 400s where a stretched tile reads better.
+          maxZoom: 19,
+          tileSize,
         }
       : null;
 
@@ -75,7 +110,10 @@ export function baseLayers(osKey: string | undefined): BaseLayerSpec[] {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
+      tileSize: 256,
     },
+    satellite("satellite", "Satellite", 256),
+    satellite("satellite-streets", "Satellite + Labels", 512),
   ].filter((l): l is BaseLayerSpec => l !== null);
 }
 
@@ -94,8 +132,10 @@ const TERRAIN_ATTRIBUTION = "Elevation: Mapzen / AWS Terrain Tiles";
 export function buildRouteMapHtml(
   osKey: string | undefined,
   chrome: "full" | "none" = "full",
+  tilePrefix?: string,
+  hasMapbox = false,
 ): string {
-  const layers = baseLayers(osKey);
+  const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
 
   return `<!DOCTYPE html>
@@ -167,7 +207,7 @@ var sources = { terrain: {
 var styleLayers = [{ id: "bg", type: "background", paint: { "background-color": "#0B1418" } }];
 LAYERS.forEach(function (l, i) {
   sources["base-" + l.id] = {
-    type: "raster", tiles: [l.tiles], tileSize: 256,
+    type: "raster", tiles: [l.tiles], tileSize: l.tileSize,
     maxzoom: l.maxZoom, attribution: l.attribution
   };
   styleLayers.push({
@@ -369,10 +409,13 @@ document.getElementById("fly").onclick = flyover;
 router.get("/route-map", (req, res) => {
   const osKey = process.env.OS_MAPS_KEY;
   const chrome = req.query["chrome"] === "none" ? "none" : "full";
+  /* Derived from where this router is actually mounted rather than written as
+     "/api", so moving the mount does not silently break every satellite tile. */
+  const tilePrefix = `${req.baseUrl}/map-tiles`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN)));
 });
 
 export default router;

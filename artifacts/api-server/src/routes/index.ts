@@ -12,6 +12,7 @@ import trailMapImageRouter from "./trail-map-image";
 import trailMapWebRouter from "./trail-map-web";
 import hikeMapWebRouter from "./hike-map-web";
 import routeMapWebRouter from "./route-map-web";
+import mapTilesRouter from "./map-tiles";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import demoLoadRouter from "./demo-load";
@@ -49,6 +50,9 @@ router.use(trailMapImageRouter);
 router.use(trailMapWebRouter);
 router.use(hikeMapWebRouter);
 router.use(routeMapWebRouter);
+// Satellite tiles. Public because the map page it serves is public — see the
+// abuse note in map-tiles.ts before this leaves development.
+router.use(mapTilesRouter);
 router.use(seededTrailsRouter);
 router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
