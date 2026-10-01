@@ -176,11 +176,24 @@ LAYERS.forEach(function (l, i) {
   });
 });
 /* Hillshade sits above the basemap and below the route. In 2D it is hidden:
-   OS sheets already carry their own relief, and doubling it muddies them. */
+   OS sheets already carry their own relief, and doubling it muddies them.
+
+   In 3D it is deliberately faint, and SHADOW ONLY. MapLibre's default
+   highlight is white, which lays a wash over the basemap and drains the
+   colour out of an OS sheet — the cartography stops reading as cartography.
+   A transparent highlight and accent leave the lit faces as OS drew them,
+   and the small amount of shadow left is enough to seat the sheet on the
+   terrain. The sense of relief comes from the 3D geometry anyway; the
+   hillshade only has to stop the far slopes looking flat. */
 styleLayers.push({
   id: "hillshade", type: "hillshade", source: "terrain",
   layout: { visibility: "none" },
-  paint: { "hillshade-exaggeration": 0.45 }
+  paint: {
+    "hillshade-exaggeration": 0.15,
+    "hillshade-shadow-color": "#3C4A42",
+    "hillshade-highlight-color": "rgba(255,255,255,0)",
+    "hillshade-accent-color": "rgba(0,0,0,0)"
+  }
 });
 
 var map = new maplibregl.Map({
