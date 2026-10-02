@@ -138,6 +138,10 @@ export function buildRouteMapHtml(
    *  available, and the page then draws straight lines and says so — which is
    *  the same honest state it is in when the network has no paths. */
   snapUrl?: string,
+  /** Where this server computes height profiles. Absent means no ascent is
+   *  shown — which is the right failure, since a wrong ascent on a mountain
+   *  route is worse than none. */
+  profileUrl?: string,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -218,6 +222,7 @@ export function buildRouteMapHtml(
 var LAYERS = ${JSON.stringify(layers)};
 var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
 var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
+var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
 var ROUTE_COLOR = "#167DF7";
 var ASSERTED_COLOR = "#E9B949";
 
@@ -297,6 +302,12 @@ var routePts = [];
 
 var drawing = false;
 var snapping = !!SNAP_URL;
+
+/* The last height profile, and the route it was computed for. Held together so
+   a stale ascent can never be shown beside a route it does not describe —
+   which on a mountain is the kind of wrong that gets believed. */
+var profile = null;
+var profileToken = 0;
 var dragIndex = -1;
 var suppressClick = false;
 
@@ -519,9 +530,15 @@ function updateHud() {
   hud.hidden = false;
 
   var km = routeLength() / 1000;
-  document.getElementById("hudMain").textContent =
-    anchors.length + (anchors.length === 1 ? " point" : " points")
+  var main = anchors.length + (anchors.length === 1 ? " point" : " points")
     + (routePts.length > 1 ? " · " + km.toFixed(2) + " km" : "");
+  /* Ascent only when it is known for the whole route. A partial figure reads
+     as the whole climb, and the part that failed is exactly where it might be
+     climbing hardest. */
+  if (profile && profile.outcome === "profiled") {
+    main += " · ↑" + profile.ascentM + " m";
+  }
+  document.getElementById("hudMain").textContent = main;
 
   /* Counted rather than summarised, because "3 straight sections" tells
      somebody how much of their route is a guess and "partly snapped" does
@@ -555,6 +572,13 @@ function updateHud() {
     else if (gaps) note += " · no path across the gap";
     else if (offPath) note += " · tap further onto the path";
   }
+  /* Said rather than left blank. A readout with distance and no climb looks
+     like a route with no climb, which on a mountain is a dangerous reading. */
+  if (!note && profile && profile.outcome && profile.outcome !== "profiled") {
+    note = profile.outcome === "incomplete"
+      ? "No height data for part of this route"
+      : "Climb not available";
+  }
   document.getElementById("hudNote").textContent = note;
 }
 
@@ -568,6 +592,10 @@ function emit() {
          anchors: anchors.slice(),
          legs: legs.map(function (l) { return { kind: l.kind, lengthM: l.lengthM || null }; }),
          points: routePts.slice() });
+  /* Hooked here because emit already fires on exactly the changes that
+     invalidate a profile: a point added, undone, dragged, cleared, or a leg
+     coming back snapped. One place to keep in step rather than six. */
+  requestProfile();
 }
 
 function setDrawing(on) {
@@ -658,6 +686,47 @@ function snapLeg(i) {
     redraw();
     emit();
   });
+}
+
+/**
+ * Ask the server what the route climbs.
+ *
+ * Debounced, and deliberately not per tap: a profile means sampling the ground
+ * every thirty metres, and recomputing that mid-drag would be a lot of work
+ * for a figure nobody can read while the line is still moving.
+ *
+ * The profile is cleared the moment the route changes. A number left on screen
+ * from the previous shape would be read as describing the current one.
+ */
+var profileTimer = null;
+function requestProfile() {
+  profile = null;
+  updateHud();
+  if (!PROFILE_URL) return;
+  if (profileTimer) clearTimeout(profileTimer);
+  if (routePts.length < 2) return;
+
+  profileTimer = setTimeout(function () {
+    var token = ++profileToken;
+    var pts = routePts.slice();
+    fetch(PROFILE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ points: pts })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      /* Dropped if the route moved on. An ascent for a line that no longer
+         exists is worse than no ascent at all. */
+      if (token !== profileToken) return;
+      profile = data && data.outcome === "profiled" ? data : null;
+      if (data && data.outcome !== "profiled") profile = { outcome: data.outcome };
+      updateHud();
+      post({ type: "profile", profile: data });
+    }).catch(function () {
+      if (token !== profileToken) return;
+      profile = { outcome: "unavailable" };
+      updateHud();
+    });
+  }, 600);
 }
 
 function addPoint(lngLat) {
@@ -788,10 +857,11 @@ router.get("/route-map", (req, res) => {
      "/api", so moving the mount does not silently break every satellite tile. */
   const tilePrefix = `${req.baseUrl}/map-tiles`;
   const snapUrl = `${req.baseUrl}/path-snap`;
+  const profileUrl = `${req.baseUrl}/route-profile`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl));
 });
 
 export default router;

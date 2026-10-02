@@ -16,6 +16,7 @@ import hikeMapWebRouter from "./hike-map-web";
 import routeMapWebRouter from "./route-map-web";
 import mapTilesRouter from "./map-tiles";
 import pathSnapRouter from "./path-snap";
+import routeProfileRouter from "./route-profile";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import demoLoadRouter from "./demo-load";
@@ -60,6 +61,7 @@ router.use(routeMapWebRouter);
 // public — see the abuse note in map-tiles.ts before this leaves development.
 router.use(mapTilesRouter);
 router.use(pathSnapRouter);
+router.use(routeProfileRouter);
 router.use(seededTrailsRouter);
 router.use(demoLoadRouter);
 router.use(virtualExpeditionRouter);
