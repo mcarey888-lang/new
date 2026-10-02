@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  contains,
+  inFlightCount,
   MAX_BBOX_AREA_DEG2,
   bboxAreaDeg2,
   cacheKey,
@@ -246,5 +248,127 @@ describe("fetching", () => {
 describe("area", () => {
   it("is computed so the cap means something", () => {
     expect(bboxAreaDeg2(box(53, -4, 53.2, -3.8))).toBeCloseTo(0.04, 6);
+  });
+});
+
+describe("many taps at once", () => {
+  /* The failure that sent this back for a second look. Someone tapped sixteen
+     points in a few seconds. Every tap asked for a leg, every one found an
+     empty cache because none of the answers had arrived yet, and all fifteen
+     went to Overpass at once. Overpass serves about two concurrent queries per
+     client and refused the rest, so seven sections of a real route came back
+     unanswerable and were drawn as straight lines.
+
+     The cache was never the problem. The gap between asking and answering
+     was. */
+
+  it("asks once when fifteen legs want the same region at the same time", async () => {
+    let calls = 0;
+    let release!: () => void;
+    const held = new Promise<void>(r => { release = r; });
+    const fetcher = async () => {
+      calls += 1;
+      await held; // nothing comes back until every request has been made
+      return ok(ogwen());
+    };
+
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    const all = Array.from({ length: 15 }, () => fetchPathWays(b, { fetcher }));
+    /* All fifteen are now in flight with nothing answered. Before the fix this
+       is the moment fifteen queries left for Overpass. */
+    expect(inFlightCount()).toBe(1);
+    release();
+
+    const results = await Promise.all(all);
+    expect(calls).toBe(1);
+    expect(results.every(r => r.kind === "ways")).toBe(true);
+    expect(results.every(r => r.kind === "ways" && r.ways.length === 277)).toBe(true);
+  });
+
+  it("clears the shared request afterwards, so a later tap is not stuck on it", async () => {
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    await fetchPathWays(b, { fetcher: async () => ok(ogwen()) });
+    expect(inFlightCount()).toBe(0);
+  });
+
+  it("does not leave a failure behind for everyone after it to inherit", async () => {
+    /* A settled failure left in the in-flight map would make every later
+       request for that region wait on it and fail too, long after the service
+       recovered. */
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    const bad = await fetchPathWays(b, {
+      fetcher: async () => ({ ok: false, status: 429 }) as unknown as Response,
+    });
+    expect(bad.kind).toBe("upstream_failed");
+    expect(inFlightCount()).toBe(0);
+
+    const good = await fetchPathWays(b, { fetcher: async () => ok(ogwen()) });
+    expect(good.kind).toBe("ways");
+  });
+
+  it("tells waiters the shared request failed rather than reporting empty ground", async () => {
+    /* "No paths here" is a fact about the mountain. "We could not ask" is a
+       fact about our plumbing. A waiter must not be handed the first when the
+       second happened. */
+    let release!: () => void;
+    const held = new Promise<void>(r => { release = r; });
+    const fetcher = async () => {
+      await held;
+      return ({ ok: false, status: 429 }) as unknown as Response;
+    };
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    const pair = [fetchPathWays(b, { fetcher }), fetchPathWays(b, { fetcher })];
+    release();
+    const [first, second] = await Promise.all(pair);
+    expect(first.kind).toBe("upstream_failed");
+    expect(second.kind).toBe("upstream_failed");
+  });
+});
+
+describe("one fetch serves a whole walk", () => {
+  it("answers a smaller region from a larger one already held", async () => {
+    let calls = 0;
+    const fetcher = async () => { calls += 1; return ok(ogwen()); };
+    await fetchPathWays(box(53.10, -4.04, 53.16, -3.96), { fetcher });
+    /* A leg drawn well inside the region already fetched. Asking again for it
+       would be a round trip to learn something already known. */
+    const inside = await fetchPathWays(box(53.12, -4.00, 53.13, -3.99), { fetcher });
+    expect(calls).toBe(1);
+    expect(inside.kind === "ways" && inside.cached).toBe(true);
+  });
+
+  it("still fetches for a region that sticks out of what is held", async () => {
+    let calls = 0;
+    const fetcher = async () => { calls += 1; return ok({ elements: [] }); };
+    await fetchPathWays(box(53.10, -4.04, 53.12, -4.00), { fetcher });
+    await fetchPathWays(box(53.30, -4.04, 53.32, -4.00), { fetcher });
+    expect(calls).toBe(2);
+  });
+
+  it("uses cells big enough that a walk fits in one or two", () => {
+    /* A 2.7 km route across a hillside crossed five or six of the old 550 m
+       cells and so asked five or six times for a region one query covers. */
+    const a = box(53.101, -4.019, 53.104, -4.016);
+    const b = box(53.105, -4.015, 53.108, -4.012);
+    expect(cacheKey(a)).toBe(cacheKey(b));
+    /* And the cell really is a couple of kilometres across, not a few hundred
+       metres. 0.02 degrees of latitude is about 2.2 km. */
+    const cell = snapBBox(a);
+    /* Compared with a tolerance: 53.12 - 53.10 is 0.01999999999999602 in
+       double arithmetic, and an exact comparison would fail on a cell that is
+       the right size. */
+    expect(cell.maxLat - cell.minLat).toBeCloseTo(0.02, 6);
+  });
+});
+
+describe("contains", () => {
+  it("is true only when one box fully encloses the other", () => {
+    const outer = box(53.0, -4.1, 53.2, -3.9);
+    expect(contains(outer, box(53.05, -4.05, 53.15, -3.95))).toBe(true);
+    expect(contains(outer, outer)).toBe(true);
+    /* Overlapping is not containing: half a region's paths is worse than none,
+       because the missing half looks like genuine gaps. */
+    expect(contains(outer, box(53.05, -4.05, 53.25, -3.95))).toBe(false);
+    expect(contains(outer, box(52.9, -4.05, 53.15, -3.95))).toBe(false);
   });
 });

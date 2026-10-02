@@ -32,13 +32,31 @@ import {
  * hole in the data becomes 304 m of invented ridge on someone's route.
  */
 
-/** Metres a tap may be from a path and still count as on it.
+/**
+ * How far a tap may be from a path and still count as on it.
  *
- *  Generous enough for a thumb on a phone at a sensible zoom, tight enough that
- *  a tap in open country does not grab a path on the far side of a valley.
- *  Beyond it the answer is `off_path`, which is the truthful answer for ground
- *  with no path on it. */
-const SNAP_RADIUS_M = 45;
+ * A fixed radius is wrong, because what a tap means depends on the zoom. At
+ * zoom 13 over Snowdonia one screen pixel is about 11 m of ground, so a
+ * fingertip covers a couple of hundred metres and a 45 m radius is roughly
+ * four pixels — far tighter than anyone can aim. At zoom 17 the same fingertip
+ * is worth about 25 m, and a wide radius would start grabbing the wrong path.
+ *
+ * So the caller sends a radius derived from its own zoom and this clamps it.
+ * The floor keeps a very deep zoom from demanding impossible precision; the
+ * ceiling stops a tap in open country reaching across a valley for a path the
+ * person never meant, which would place their route somewhere they did not
+ * choose and look deliberate.
+ */
+export const SNAP_RADIUS_DEFAULT_M = 45;
+export const SNAP_RADIUS_MIN_M = 20;
+export const SNAP_RADIUS_MAX_M = 250;
+
+export function clampRadius(requested: unknown): number {
+  if (typeof requested !== "number" || !Number.isFinite(requested)) {
+    return SNAP_RADIUS_DEFAULT_M;
+  }
+  return Math.min(SNAP_RADIUS_MAX_M, Math.max(SNAP_RADIUS_MIN_M, requested));
+}
 
 /** Padding around a leg when asking for paths, in degrees (~1.1 km).
  *
@@ -95,7 +113,7 @@ export type SnapResponse =
    *  about the ground and "we could not ask" is a fact about our plumbing, and
    *  someone drawing a route deserves to know which. */
   | { outcome: "no_paths" }
-  | { outcome: "unavailable"; detail: string }
+  | { outcome: "unavailable"; detail: string; status?: number | null }
   | { outcome: "area_too_large" }
   | { outcome: "bad_request" };
 
@@ -104,8 +122,9 @@ export type SnapResponse =
 export async function snapLeg(
   from: LatLng | null,
   to: LatLng,
-  opts: { fetcher?: Fetcher; ways?: PathWay[] } = {},
+  opts: { fetcher?: Fetcher; ways?: PathWay[]; radiusM?: number } = {},
 ): Promise<SnapResponse> {
+  const radius = clampRadius(opts.radiusM ?? SNAP_RADIUS_DEFAULT_M);
   let ways: PathWay[];
   if (opts.ways) {
     ways = opts.ways;
@@ -113,7 +132,9 @@ export async function snapLeg(
     const got = await fetchPathWays(legBBox(from ? [from, to] : [to]), { fetcher: opts.fetcher });
     if (got.kind === "bad_bbox") return { outcome: "bad_request" };
     if (got.kind === "too_large") return { outcome: "area_too_large" };
-    if (got.kind === "upstream_failed") return { outcome: "unavailable", detail: got.detail };
+    if (got.kind === "upstream_failed") {
+      return { outcome: "unavailable", detail: got.detail, status: got.status };
+    }
     ways = got.ways;
   }
 
@@ -121,7 +142,7 @@ export async function snapLeg(
   const network: PathNetwork = buildPathNetwork(ways);
   if (network.edges.length === 0) return { outcome: "no_paths" };
 
-  const toSnap = snapToNetwork(network, to, SNAP_RADIUS_M);
+  const toSnap = snapToNetwork(network, to, radius);
 
   if (!from) {
     if (!toSnap) return { outcome: "off_path", which: "to" };
@@ -133,7 +154,7 @@ export async function snapLeg(
     };
   }
 
-  const fromSnap = snapToNetwork(network, from, SNAP_RADIUS_M);
+  const fromSnap = snapToNetwork(network, from, radius);
   if (!fromSnap || !toSnap) {
     return {
       outcome: "off_path",
@@ -178,7 +199,16 @@ router.post("/path-snap", async (req, res) => {
   if (hasFrom && !from) { res.status(400).json({ outcome: "bad_request" }); return; }
 
   try {
-    res.json(await snapLeg(from, to));
+    const result = await snapLeg(from, to, { radiusM: body?.["radiusM"] as number | undefined });
+    /* Logged because the page can only say that a leg is not on a path; it
+       cannot say whether Overpass refused, whether the region has nothing
+       mapped, or whether the tap simply missed. Without this the only way to
+       tell them apart is to guess. */
+    if (result.outcome !== "routed" && result.outcome !== "snapped") {
+      req.log?.info({ outcome: result.outcome, ...(result.outcome === "unavailable"
+        ? { detail: result.detail, status: result.status } : {}) }, "path-snap not routed");
+    }
+    res.json(result);
   } catch (err) {
     req.log?.warn({ err }, "path-snap failed");
     res.status(500).json({ outcome: "unavailable", detail: "snap failed" });

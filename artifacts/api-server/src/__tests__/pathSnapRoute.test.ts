@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { legBBox, snapLeg } from "../routes/path-snap";
+import {
+  SNAP_RADIUS_DEFAULT_M,
+  SNAP_RADIUS_MAX_M,
+  SNAP_RADIUS_MIN_M,
+  clampRadius,
+  legBBox,
+  snapLeg,
+} from "../routes/path-snap";
 import {
   clearNetworkCache,
   parseOverpass,
@@ -146,5 +153,48 @@ describe("when there is no network to snap against", () => {
     });
     expect(down.outcome).toBe("unavailable");
     expect(down).not.toHaveProperty("points");
+  });
+});
+
+describe("snap radius", () => {
+  /* A fixed radius is wrong because what a tap means depends on the zoom. At
+     zoom 13 over Snowdonia one pixel is about 11 m of ground, so the old fixed
+     45 m was roughly four pixels — tighter than any thumb can aim, which is
+     why most of a real route came back unsnapped. */
+
+  it("takes what the caller asks for, within reason", () => {
+    expect(clampRadius(115)).toBe(115);
+  });
+
+  it("will not let a tap reach across a valley", () => {
+    /* An unbounded radius would grab the nearest path from anywhere and put
+       the route somewhere the person never chose, while looking deliberate. */
+    expect(clampRadius(99999)).toBe(SNAP_RADIUS_MAX_M);
+  });
+
+  it("will not demand impossible precision at deep zoom", () => {
+    expect(clampRadius(2)).toBe(SNAP_RADIUS_MIN_M);
+  });
+
+  it("falls back to a sane default for a missing or nonsense value", () => {
+    expect(clampRadius(undefined)).toBe(SNAP_RADIUS_DEFAULT_M);
+    expect(clampRadius("45")).toBe(SNAP_RADIUS_DEFAULT_M);
+    expect(clampRadius(NaN)).toBe(SNAP_RADIUS_DEFAULT_M);
+    expect(clampRadius(Infinity)).toBe(SNAP_RADIUS_DEFAULT_M);
+  });
+
+  it("actually changes what snaps", async () => {
+    /* A point deliberately further from any path than the tight radius allows
+       but inside the generous one. Proves the number is used, not just
+       accepted and ignored. */
+    const nearIsh: LatLng = { latitude: 53.12105, longitude: -3.99935 };
+    const tight = await snapLeg(null, nearIsh, { ways: ways(), radiusM: SNAP_RADIUS_MIN_M });
+    const loose = await snapLeg(null, nearIsh, { ways: ways(), radiusM: SNAP_RADIUS_MAX_M });
+    expect(loose.outcome).toBe("snapped");
+    expect(["snapped", "off_path"]).toContain(tight.outcome);
+    if (tight.outcome === "snapped" && loose.outcome === "snapped") {
+      /* If both snapped, the generous one must not have found something worse. */
+      expect(loose.distanceM).toBeLessThanOrEqual(tight.distanceM + 1);
+    }
   });
 });

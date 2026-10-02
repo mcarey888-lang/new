@@ -527,22 +527,33 @@ function updateHud() {
      somebody how much of their route is a guess and "partly snapped" does
      not. Said in words as well as colour: amber against blue fails anyone who
      cannot separate the two, and fails everyone in bright sun. */
-  var pending = 0, gaps = 0, offPath = 0, plain = 0;
+  var pending = 0, gaps = 0, offPath = 0, unavailable = 0, noPaths = 0, other = 0;
   for (var i = 0; i < legs.length; i++) {
-    var k = legs[i] ? legs[i].kind : "straight";
+    var leg = legs[i];
+    var k = leg ? leg.kind : "straight";
     if (k === "pending") pending++;
     else if (k === "gap") gaps++;
     else if (k === "offPath") offPath++;
-    else if (k !== "routed") plain++;
+    else if (k !== "routed") {
+      if (leg && leg.reason === "unavailable") unavailable++;
+      else if (leg && leg.reason === "no_paths") noPaths++;
+      else other++;
+    }
   }
+  var straight = gaps + offPath + unavailable + noPaths + other;
   var note = "";
   if (pending) note = "Finding paths…";
   else if (!snapping) note = "Snapping off — straight lines";
-  else if (gaps || offPath || plain) {
-    var straight = gaps + offPath + plain;
+  else if (straight) {
     note = straight + (straight === 1 ? " section" : " sections") + " not on a path";
-    if (gaps) note += " · no path across the gap";
-    else if (offPath) note += " · tap is off the path network";
+    /* One reason, the most actionable first. Listing all of them on a phone
+       produces a sentence nobody reads; naming the one to act on is the point.
+       A service that would not answer comes first because it is the only one
+       that fixes itself by waiting, and the only one that is our fault. */
+    if (unavailable) note += " · map service busy, try again";
+    else if (noPaths) note += " · no paths mapped here";
+    else if (gaps) note += " · no path across the gap";
+    else if (offPath) note += " · tap further onto the path";
   }
   document.getElementById("hudNote").textContent = note;
 }
@@ -588,6 +599,22 @@ function setSnapping(on) {
  * unconfirmed. Nothing here can turn a failure into an apparently surveyed
  * route, which is the only outcome that would matter.
  */
+/**
+ * How far from a path a tap should still count, for the zoom now on screen.
+ *
+ * A fingertip is about twenty screen pixels wide whatever the zoom; what those
+ * pixels are worth on the ground is not. Zoomed out over a hillside each one
+ * is ten metres or more, so a fixed radius asks for an accuracy no thumb has.
+ * Deriving it from the scale means the tolerance matches what the person can
+ * actually see and aim at. The server clamps it, so a silly value here cannot
+ * make a tap reach across a valley.
+ */
+function snapRadiusM() {
+  var lat = map.getCenter().lat;
+  var metresPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());
+  return Math.round(metresPerPixel * 20);
+}
+
 var legToken = 0;
 function snapLeg(i) {
   if (!snapping || !SNAP_URL) return;
@@ -605,7 +632,7 @@ function snapLeg(i) {
   fetch(SNAP_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from: from, to: to })
+    body: JSON.stringify({ from: from, to: to, radiusM: snapRadiusM() })
   }).then(function (r) { return r.json(); }).then(function (data) {
     if (!legs[i] || legs[i].token !== token) return;
     if (data.outcome === "routed") {
@@ -617,6 +644,10 @@ function snapLeg(i) {
     } else if (data.outcome === "off_path") {
       legs[i] = { kind: "offPath", token: token, points: null, offPath: data.which };
     } else {
+      /* no_paths, unavailable, or anything unrecognised. The reason is kept
+         rather than flattened, because "Overpass refused" and "nothing is
+         mapped here" call for completely different responses from the person
+         holding the phone. */
       legs[i] = { kind: "straight", token: token, points: null, reason: data.outcome };
     }
     redraw();

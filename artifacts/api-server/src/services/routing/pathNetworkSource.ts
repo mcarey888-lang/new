@@ -55,13 +55,18 @@ const USER_AGENT = `SummitReady/1.0 (+${process.env.OVERPASS_CONTACT ?? "unset-c
 export const MAX_BBOX_AREA_DEG2 = 0.04;
 
 /**
- * Grid the cache key is snapped to, in degrees (~550 m of latitude).
+ * Grid the cache key is snapped to, in degrees (~2.2 km of latitude).
  *
  * Without this, every pixel of pan produces a new key and the cache never hits.
- * Snapping outward means a slightly larger box is fetched than asked for, which
- * costs one query and saves many.
+ * Snapping outward means a larger box is fetched than asked for, which costs
+ * one query and saves many.
+ *
+ * It was 0.005 (~550 m), which was too fine: a 2.7 km route drawn across a
+ * hillside crossed five or six cells and so asked Overpass five or six times
+ * for a region a single query covers. A walk fits inside a couple of these
+ * cells, which is the size this wants to be.
  */
-const CACHE_GRID_DEG = 0.005;
+const CACHE_GRID_DEG = 0.02;
 
 export interface BBox {
   minLat: number;
@@ -172,6 +177,15 @@ export type FetchOutcome =
 interface CacheEntry {
   ways: PathWay[];
   at: number;
+  /** The region actually fetched, so a later, smaller request inside it can be
+   *  answered from here rather than asking again. */
+  box: BBox;
+}
+
+/** True when `outer` fully contains `inner`. */
+export function contains(outer: BBox, inner: BBox): boolean {
+  return outer.minLat <= inner.minLat && outer.maxLat >= inner.maxLat
+      && outer.minLng <= inner.minLng && outer.maxLng >= inner.maxLng;
 }
 
 /* OSM paths change on the timescale of weeks, so an hour is cautious. The cache
@@ -181,11 +195,47 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 64;
 const cache = new Map<string, CacheEntry>();
 
+/**
+ * Fetches currently in flight, by cache key.
+ *
+ * THIS IS THE ONE THAT MATTERS. Someone drawing a route taps fifteen times in
+ * a few seconds, and every tap asks for a leg. Without this, all fifteen find
+ * an empty cache — because none of the answers has arrived yet — and all
+ * fifteen go to Overpass at once. Overpass serves about two concurrent queries
+ * per client and refuses the rest, so most of the route comes back
+ * unanswerable and is drawn as straight lines. The cache was never the problem;
+ * the gap between asking and answering was.
+ *
+ * Sharing the promise means the first tap fetches and the other fourteen wait
+ * on the same result.
+ */
+const inFlight = new Map<string, Promise<PathWay[] | null>>();
+
 export function clearNetworkCache(): void {
   cache.clear();
+  inFlight.clear();
 }
 export function networkCacheSize(): number {
   return cache.size;
+}
+export function inFlightCount(): number {
+  return inFlight.size;
+}
+
+/**
+ * A cached region that covers this one, or null.
+ *
+ * Scanned rather than looked up, because a request for a small box should be
+ * answered by a larger cached region containing it. With a bounded cache this
+ * is a few dozen comparisons and saves a network round trip, which is not a
+ * close trade.
+ */
+function covering(want: BBox, now: number): CacheEntry | null {
+  for (const entry of cache.values()) {
+    if (now - entry.at >= CACHE_TTL_MS) continue;
+    if (contains(entry.box, want)) return entry;
+  }
+  return null;
 }
 
 /** Injectable so tests can exercise this without a network. */
@@ -197,62 +247,92 @@ export async function fetchPathWays(
 ): Promise<FetchOutcome> {
   if (!validBBox(bbox)) return { kind: "bad_bbox" };
 
-  const area = bboxAreaDeg2(snapBBox(bbox));
+  const want = snapBBox(bbox);
+  const area = bboxAreaDeg2(want);
   if (area > MAX_BBOX_AREA_DEG2) {
     return { kind: "too_large", areaDeg2: area, limitDeg2: MAX_BBOX_AREA_DEG2 };
   }
 
   const now = opts.now ?? Date.now;
+  const hit = covering(want, now());
+  if (hit) return { kind: "ways", ways: hit.ways, cached: true };
+
   const key = cacheKey(bbox);
-  const hit = cache.get(key);
-  if (hit && now() - hit.at < CACHE_TTL_MS) {
-    return { kind: "ways", ways: hit.ways, cached: true };
+
+  /* Someone already asked for this region and has not been answered yet. Wait
+     on their request instead of starting another — see the note on inFlight. */
+  const pending = inFlight.get(key);
+  if (pending) {
+    const ways = await pending;
+    if (ways) return { kind: "ways", ways, cached: true };
+    /* The shared request failed. Say so rather than silently reporting empty
+       ground, and do not retry here: fifteen waiters all retrying on failure
+       is the stampede again, one step later. */
+    return { kind: "upstream_failed", status: null, detail: "shared request failed" };
   }
 
   const doFetch = opts.fetcher ?? fetch;
-  let res: Response;
+  let failure: FetchOutcome | null = null;
+
+  const work = (async (): Promise<PathWay[] | null> => {
+    let res: Response;
+    try {
+      res = await doFetch(OVERPASS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": USER_AGENT,
+        },
+        body: new URLSearchParams({ data: overpassQuery(bbox) }).toString(),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      failure = {
+        kind: "upstream_failed",
+        status: null,
+        detail: err instanceof Error ? err.message : "request failed",
+      };
+      return null;
+    }
+
+    if (!res.ok) {
+      /* 429 and 504 are Overpass's two ways of saying "not now" and both are
+         expected under load. Passed through rather than flattened, so the
+         caller can back off rather than retry into a wall. */
+      failure = { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
+      return null;
+    }
+
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      failure = { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
+      return null;
+    }
+
+    const ways = parseOverpass(body);
+
+    /* Oldest-first eviction. The cache exists to spare Overpass, not to be
+       clever, and a region nobody has looked at for an hour is the right thing
+       to lose. */
+    if (cache.size >= CACHE_MAX_ENTRIES) {
+      const oldest = cache.keys().next();
+      if (!oldest.done) cache.delete(oldest.value);
+    }
+    cache.set(key, { ways, at: now(), box: want });
+    return ways;
+  })();
+
+  inFlight.set(key, work);
   try {
-    res = await doFetch(OVERPASS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": USER_AGENT,
-      },
-      body: new URLSearchParams({ data: overpassQuery(bbox) }).toString(),
-      signal: AbortSignal.timeout(30_000),
-    });
-  } catch (err) {
-    return {
-      kind: "upstream_failed",
-      status: null,
-      detail: err instanceof Error ? err.message : "request failed",
-    };
+    const ways = await work;
+    if (ways) return { kind: "ways", ways, cached: false };
+    return failure ?? { kind: "upstream_failed", status: null, detail: "unknown failure" };
+  } finally {
+    /* Cleared whether it succeeded or failed. Leaving a settled failure in here
+       would make every later request for this region wait on it and inherit
+       its error, long after the service recovered. */
+    inFlight.delete(key);
   }
-
-  if (!res.ok) {
-    /* 429 and 504 are Overpass's two ways of saying "not now" and both are
-       expected under load. They are passed through rather than flattened so
-       the caller can back off rather than retry into a wall. */
-    return { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
-  }
-
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    return { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
-  }
-
-  const ways = parseOverpass(body);
-
-  /* Oldest-first eviction. The cache exists to spare Overpass, not to be
-     clever, and a region nobody has looked at for an hour is the right thing
-     to lose. */
-  if (cache.size >= CACHE_MAX_ENTRIES) {
-    const oldest = cache.keys().next();
-    if (!oldest.done) cache.delete(oldest.value);
-  }
-  cache.set(key, { ways, at: now() });
-
-  return { kind: "ways", ways, cached: false };
 }
