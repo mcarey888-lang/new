@@ -1,44 +1,46 @@
-import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import { useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { useAuth } from "@clerk/expo";
+import { ChevronLeft, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  deleteRoute,
+  describeRoute,
+  listRoutes,
+  saveRoute,
+  type PlannedRoute,
+} from "../utils/plannedRouteApi";
 
 /**
  * Route planner — the map, inside the app.
  *
  * The map itself is a web page this app's own server renders at
- * /api/route-map: basemaps, 3D terrain, drawing, and snapping to the
- * OpenStreetMap path network. It lives there rather than here because the
- * snapping engine and the Mapbox token both have to stay server-side, and
- * because that is already how this app shows maps — hike tracking and trail
- * detail both load a served page into a WebView.
+ * /api/route-map: basemaps, 3D terrain, drawing, snapping to the OpenStreetMap
+ * path network, ascent, and GPX. It lives there because the snapping engine
+ * and the Mapbox token both have to stay server-side, and because that is
+ * already how this app shows maps.
  *
- * So this screen is deliberately thin: it is a frame and a way back. Every
- * control belongs to the page, which is why `chrome` is left at its default.
- * Adding buttons here would leave two sets disagreeing the moment either was
- * used.
+ * This screen is the frame, the way back, and the one thing the page cannot do
+ * for itself: saving. Saving needs the signed-in person's token, and handing
+ * one to a web page means putting it somewhere it can be read or logged. So
+ * the page hands the route up and this screen saves it.
  *
- * ⚠️ A TEST SCREEN, not a finished feature. Nothing it draws is saved yet: the
- * route lives in the page and is gone when the screen closes. Wiring it to the
- * app's route storage is the next piece, and that touches canonical route
- * handling, so it waits for a decision rather than being assumed.
+ * ⚠️ Saved routes are personal plans. They are not canonical routes, they are
+ * not published, and nothing here can make them either.
  */
 
-/**
- * Where the map page is served from.
- *
- * EXPO_PUBLIC_MAP_BASE comes first and exists for development. In a Replit
- * workspace the Expo dev server and the API server listen on different ports,
- * so the relative "/api" fallback resolves against Expo and returns its 404
- * rather than the map — a blank screen with nothing to explain it. Setting
- * EXPO_PUBLIC_MAP_BASE to the API server's own origin, port included, is the
- * way through that, and it leaves the shared EXPO_PUBLIC_DOMAIN convention
- * alone for everything else.
- *
- * Built apps have EXPO_PUBLIC_DOMAIN set (see eas.json) and need none of this.
- */
 const API_BASE =
   process.env.EXPO_PUBLIC_MAP_BASE ??
   (process.env.EXPO_PUBLIC_DOMAIN
@@ -46,22 +48,103 @@ const API_BASE =
     : "/api");
 
 const MAP_URL = `${API_BASE}/route-map`;
-
-/** True when the URL has no host and so cannot be opened by a WebView. On the
- *  phone a relative path is not a mistake that shows up as a 404; it fails
- *  before any request is made, and the screen is simply black. */
 const MAP_URL_IS_RELATIVE = !/^https?:\/\//i.test(MAP_URL);
+
+interface DraftFromPage {
+  anchors: Array<{ lat: number; lng: number }>;
+  geometry: Array<{ lat: number; lng: number }>;
+  /* The page emits exactly these. Typed narrowly here so a new kind added
+     there becomes a compile error rather than a silently unsaved leg. */
+  legs: Array<{ kind: "routed" | "gap" | "offPath" | "straight" | "pending"; lengthM: number | null }>;
+  lengthM: number;
+  ascentM: number | null;
+  descentM: number | null;
+  fullySnapped: boolean;
+}
 
 export default function RoutePlannerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { getToken } = useAuth();
+  const webViewRef = useRef<WebView>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+
+  const [draft, setDraft] = useState<DraftFromPage | null>(null);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+
+  /** Send a message into the page, whichever way it is embedded. */
+  const toPage = useCallback((msg: unknown) => {
+    const text = JSON.stringify(msg);
+    if (Platform.OS === "web") frameRef.current?.contentWindow?.postMessage(text, "*");
+    else webViewRef.current?.postMessage(text);
+  }, []);
+
+  const onMessage = useCallback((raw: string) => {
+    let msg: { type?: string; route?: DraftFromPage };
+    try { msg = JSON.parse(raw); } catch { return; }
+    /* Only the save handshake is handled here. Everything else the page emits
+       is its own business, and reacting to it from two places is how the two
+       get out of step. */
+    if (msg.type === "saveRequested" && msg.route) {
+      setDraft(msg.route);
+      setName("");
+    }
+  }, []);
+
+  /* On web the page talks through window.postMessage, which needs a listener
+     rather than a prop. */
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const handler = (e: MessageEvent) => {
+      if (typeof e.data === "string") onMessage(e.data);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onMessage]);
+
+  const doSave = useCallback(async () => {
+    if (!draft) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    const result = await saveRoute({ ...draft, name: trimmed }, getToken);
+    setSaving(false);
+    /* The page is told either way, so the readout stops saying "Saving…"
+       whatever happened. A spinner that never resolves is worse than a
+       failure. */
+    toPage({ type: "saveResult", ok: result.ok, reason: result.ok ? null : result.reason });
+    if (result.ok) {
+      setDraft(null);
+      setRoutes(null); // the list is stale now
+    }
+  }, [draft, name, getToken, toPage]);
+
+  const openList = useCallback(async () => {
+    setListOpen(true);
+    setListError(null);
+    const result = await listRoutes(getToken);
+    if (result.ok) setRoutes(result.value);
+    else { setRoutes([]); setListError(result.reason); }
+  }, [getToken]);
+
+  const open = useCallback((route: PlannedRoute) => {
+    toPage({ type: "loadRoute", route });
+    setListOpen(false);
+  }, [toPage]);
+
+  const remove = useCallback(async (route: PlannedRoute) => {
+    const result = await deleteRoute(route.id, getToken);
+    if (result.ok) setRoutes(prev => (prev ?? []).filter(r => r.id !== route.id));
+    else setListError(result.reason);
+  }, [getToken]);
 
   /* A map that will not load is the likely state while this is being set up,
-     and a black screen says nothing about why. Naming the address it tried,
-     and what to set, turns a dead end into a one-line fix. */
-  const cannotLoad = Platform.OS !== "web" && MAP_URL_IS_RELATIVE;
-
-  if (cannotLoad) {
+     and a black screen says nothing about why. */
+  if (Platform.OS !== "web" && MAP_URL_IS_RELATIVE) {
     return (
       <View style={[styles.container, styles.centred]}>
         <Text style={styles.failTitle}>No map server configured</Text>
@@ -83,27 +166,23 @@ export default function RoutePlannerScreen() {
 
   return (
     <View style={styles.container}>
-      {/* react-native-webview has no real web implementation, so on web the
-          same page goes in an iframe. Same URL, same page — only the element
-          holding it differs. */}
       {Platform.OS === "web" ? (
-        // eslint-disable-next-line react/forbid-dom-props
         React.createElement("iframe", {
+          ref: frameRef,
           src: MAP_URL,
           style: { border: "none", width: "100%", height: "100%" },
           title: "Route planner",
         })
       ) : (
         <WebView
+          ref={webViewRef}
           source={{ uri: MAP_URL }}
           style={styles.webview}
           javaScriptEnabled
           domStorageEnabled
           geolocationEnabled
           originWhitelist={["*"]}
-          /* The map is one page that talks to its own server; following a link
-             away from it would strand someone inside a frame with no browser
-             chrome to get back. */
+          onMessage={e => onMessage(e.nativeEvent.data)}
           allowsBackForwardNavigationGestures={false}
         />
       )}
@@ -116,6 +195,91 @@ export default function RoutePlannerScreen() {
         <ChevronLeft size={18} color="#fff" />
         <Text style={styles.backLabel}>Back</Text>
       </Pressable>
+
+      <Pressable
+        onPress={openList}
+        style={[styles.saved, { top: Platform.OS === "web" ? 16 : insets.top + 12 }]}
+      >
+        <Text style={styles.backLabel}>Saved routes</Text>
+      </Pressable>
+
+      {/* Naming happens here rather than in the page because Alert.prompt is
+          iOS only, and a route worth saving is worth being able to name on
+          every device. */}
+      <Modal visible={draft !== null} transparent animationType="fade" onRequestClose={() => setDraft(null)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Name this route</Text>
+            {draft ? (
+              <Text style={styles.sheetMeta}>
+                {describeRoute({
+                  lengthM: draft.lengthM,
+                  ascentM: draft.ascentM,
+                  fullySnapped: draft.fullySnapped,
+                })}
+              </Text>
+            ) : null}
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="North Ridge"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              style={styles.input}
+              autoFocus
+              maxLength={120}
+              onSubmitEditing={doSave}
+            />
+            <View style={styles.sheetRow}>
+              <Pressable onPress={() => setDraft(null)} style={[styles.sheetBtn, styles.sheetBtnGhost]}>
+                <Text style={styles.sheetBtnGhostLabel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={doSave}
+                disabled={saving || !name.trim()}
+                style={[styles.sheetBtn, (saving || !name.trim()) && styles.sheetBtnOff]}
+              >
+                {saving
+                  ? <ActivityIndicator size="small" color="#05090B" />
+                  : <Text style={styles.sheetBtnLabel}>Save</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={listOpen} transparent animationType="slide" onRequestClose={() => setListOpen(false)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={[styles.sheet, styles.listSheet]}>
+            <Text style={styles.sheetTitle}>Saved routes</Text>
+            {listError ? <Text style={styles.sheetError}>{listError}</Text> : null}
+            {routes === null ? (
+              <ActivityIndicator color="#24EFA4" style={{ marginVertical: 24 }} />
+            ) : routes.length === 0 && !listError ? (
+              <Text style={styles.sheetMeta}>Nothing saved yet.</Text>
+            ) : (
+              <FlatList
+                data={routes}
+                keyExtractor={r => r.id}
+                style={{ maxHeight: 320 }}
+                renderItem={({ item }) => (
+                  <View style={styles.row}>
+                    <Pressable onPress={() => open(item)} style={{ flex: 1 }}>
+                      <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.rowMeta}>{describeRoute(item)}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => remove(item)} hitSlop={10} style={styles.rowDelete}>
+                      <Trash2 size={16} color="rgba(255,255,255,0.45)" />
+                    </Pressable>
+                  </View>
+                )}
+              />
+            )}
+            <Pressable onPress={() => setListOpen(false)} style={[styles.sheetBtn, styles.sheetBtnGhost, { marginTop: 10 }]}>
+              <Text style={styles.sheetBtnGhostLabel}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -124,17 +288,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#05090B" },
   webview: { flex: 1, backgroundColor: "#05090B" },
   back: {
-    position: "absolute",
-    left: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 11,
-    borderRadius: 9,
-    backgroundColor: "rgba(11,20,24,0.86)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    position: "absolute", left: 12, flexDirection: "row", alignItems: "center", gap: 4,
+    paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9,
+    backgroundColor: "rgba(11,20,24,0.86)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  },
+  saved: {
+    position: "absolute", left: 92, paddingVertical: 8, paddingHorizontal: 11, borderRadius: 9,
+    backgroundColor: "rgba(11,20,24,0.86)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
   backLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600" },
   centred: { alignItems: "center", justifyContent: "center", padding: 28, gap: 10 },
@@ -143,7 +303,36 @@ const styles = StyleSheet.create({
   failUrl: { color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 4 },
   failBack: {
     marginTop: 12, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 9,
-    backgroundColor: "rgba(11,20,24,0.86)",
+    backgroundColor: "rgba(11,20,24,0.86)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  },
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(5,9,11,0.72)", justifyContent: "center", padding: 22 },
+  sheet: {
+    backgroundColor: "#0B1418", borderRadius: 16, padding: 18, gap: 10,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
+  listSheet: { maxHeight: "80%" },
+  sheetTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  sheetMeta: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
+  sheetError: { color: "#E9B949", fontSize: 12 },
+  input: {
+    backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 9, paddingHorizontal: 12,
+    paddingVertical: 10, color: "#fff", fontSize: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+  },
+  sheetRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+  sheetBtn: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    paddingVertical: 11, borderRadius: 9, backgroundColor: "#24EFA4", minHeight: 42,
+  },
+  sheetBtnOff: { opacity: 0.4 },
+  sheetBtnLabel: { color: "#05090B", fontSize: 13, fontWeight: "700" },
+  sheetBtnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  sheetBtnGhostLabel: { color: "rgba(255,255,255,0.78)", fontSize: 13, fontWeight: "600" },
+  row: {
+    flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)",
+  },
+  rowName: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  rowMeta: { color: "rgba(255,255,255,0.5)", fontSize: 11, marginTop: 2 },
+  rowDelete: { padding: 6 },
 });

@@ -18,6 +18,7 @@ import mapTilesRouter from "./map-tiles";
 import pathSnapRouter from "./path-snap";
 import routeProfileRouter from "./route-profile";
 import routeGpxRouter from "./route-gpx";
+import plannedRoutesRouter from "./planned-routes";
 import seededTrailsRouter from "./seeded-trails";
 import trackedRoutesRouter from "./tracked-routes";
 import demoLoadRouter from "./demo-load";
@@ -84,6 +85,7 @@ router.use(trackedRoutesRouter);
 
 // Hill sessions and tracking data belong to a user — require auth.
 // The mobile app (only caller) provides a Clerk JWT in the Authorization header.
+router.use(requireAuth(), plannedRoutesRouter);
 router.use("/hill-session", requireAuth(), hillSessionRouter);
 router.use(requireAuth(), activitiesRouter);
 router.use("/explore-hike", requireAuth(), exploreHikeCanonicalRouter);

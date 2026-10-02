@@ -180,6 +180,7 @@ export function buildRouteMapHtml(
   #snap[disabled]{opacity:.4;cursor:default}
   #gpx[disabled]{opacity:.4;cursor:default}
   #gpx[hidden]{display:none}
+  #save[disabled]{opacity:.4;cursor:default}
   .edit{display:flex;gap:5px}
   .edit button{min-width:0;flex:1;text-align:center}
   .edit button[disabled]{opacity:.4;cursor:default}
@@ -221,6 +222,7 @@ export function buildRouteMapHtml(
   </div>
   <button id="fly" disabled>Flyover</button>
   <button id="gpx" disabled${gpxUrl ? "" : " hidden"}>Download GPX</button>
+  <button id="save" disabled>Save route</button>
 </div>
 <div id="hud" hidden><span id="hudMain"></span><span id="hudNote"></span></div>
 <script>
@@ -529,6 +531,8 @@ function redraw() {
   if (fly) fly.disabled = !(mode === "3d" && routePts.length > 1);
   var gpx = document.getElementById("gpx");
   if (gpx) gpx.disabled = routePts.length < 2;
+  var save = document.getElementById("save");
+  if (save) save.disabled = routePts.length < 2;
 }
 
 function updateHud() {
@@ -839,6 +843,37 @@ function handleMsg(ev) {
   if (msg.type === "draw") setDrawing(msg.on !== false);
   if (msg.type === "undo") undoPoint();
   if (msg.type === "snap") setSnapping(msg.on !== false);
+
+  /* A saved route coming back. Anchors and legs are restored together so the
+     route can be edited rather than only looked at, and so a leg that was a
+     straight line when it was saved is still drawn as one. Reconstructing it
+     from the line alone would lose both. */
+  if (msg.type === "loadRoute" && msg.route) {
+    var r = msg.route;
+    anchors = Array.isArray(r.anchors) ? r.anchors.slice() : [];
+    legs = [];
+    var savedLegs = Array.isArray(r.legs) ? r.legs : [];
+    var geom = Array.isArray(r.geometry) ? r.geometry : [];
+    for (var li = 0; li < anchors.length - 1; li++) {
+      var k = savedLegs[li] && savedLegs[li].kind ? savedLegs[li].kind : "straight";
+      /* Only a leg saved as routed is redrawn as routed. Anything else — and
+         anything missing — is a straight line, which is the cautious reading. */
+      legs.push(k === "routed"
+        ? { kind: "routed", points: null }
+        : { kind: k === "gap" || k === "offPath" ? k : "straight", points: null });
+    }
+    /* The saved line is the truth about shape. Where it exists, the whole
+       route is drawn from it rather than from straight hops between anchors. */
+    if (geom.length > 1 && legs.length === 1) legs[0] = { kind: legs[0].kind, points: geom };
+    redraw();
+    emit();
+    if (typeof r.name === "string") post({ type: "routeLoaded", name: r.name });
+  }
+
+  if (msg.type === "saveResult") {
+    var n = document.getElementById("hudNote");
+    if (n) n.textContent = msg.ok ? "Saved" : (msg.reason || "Could not save");
+  }
 }
 document.addEventListener("message", handleMsg);
 window.addEventListener("message", handleMsg);
@@ -853,6 +888,48 @@ document.getElementById("draw").onclick = function () { setDrawing(!drawing); };
 document.getElementById("undo").onclick = undoPoint;
 document.getElementById("clear").onclick = clearRoute;
 document.getElementById("snap").onclick = function () { setSnapping(!snapping); };
+
+/**
+ * Hand the route to the app to be saved.
+ *
+ * Saving needs the signed-in person's token, and this page does not have one.
+ * Giving it one would mean putting a token in a URL or in page script, where
+ * it can be read, logged or left in history — so the page hands the route up
+ * and the app, which holds the session, does the saving.
+ *
+ * Opened directly in a browser there is no app to hand it to. That says so
+ * rather than appearing to work, because a save that silently does nothing is
+ * how someone loses an afternoon's planning.
+ */
+function hasHost() {
+  return !!window.ReactNativeWebView || window.parent !== window;
+}
+
+document.getElementById("save").onclick = function () {
+  if (routePts.length < 2) return;
+  var note = document.getElementById("hudNote");
+  if (!hasHost()) {
+    if (note) note.textContent = "Open the planner in the app to save routes";
+    return;
+  }
+  var straight = 0;
+  for (var i = 0; i < legs.length; i++) if (!legIsSurveyed(legs[i])) straight++;
+  post({
+    type: "saveRequested",
+    route: {
+      anchors: anchors.slice(),
+      geometry: routePts.slice(),
+      legs: legs.map(function (l) { return { kind: l.kind, lengthM: l.lengthM || null }; }),
+      lengthM: Math.round(routeLength()),
+      /* Null rather than absent or zero when unknown. A route whose heights
+         could not be read has unknown ascent, and zero would say it is flat. */
+      ascentM: (profile && profile.outcome === "profiled") ? profile.ascentM : null,
+      descentM: (profile && profile.outcome === "profiled") ? profile.descentM : null,
+      fullySnapped: legs.length > 0 && straight === 0
+    }
+  });
+  if (note) note.textContent = "Saving…";
+};
 
 /**
  * Hand the route over as a GPX file.
