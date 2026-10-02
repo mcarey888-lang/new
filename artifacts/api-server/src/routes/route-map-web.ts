@@ -142,6 +142,8 @@ export function buildRouteMapHtml(
    *  shown — which is the right failure, since a wrong ascent on a mountain
    *  route is worse than none. */
   profileUrl?: string,
+  /** Where this server builds GPX. Absent hides the download. */
+  gpxUrl?: string,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -176,6 +178,8 @@ export function buildRouteMapHtml(
   #draw[aria-pressed="true"]{background:#E9B949;color:#05090B;border-color:transparent}
   #snap[aria-pressed="true"]{background:#24EFA4;color:#05090B;border-color:transparent}
   #snap[disabled]{opacity:.4;cursor:default}
+  #gpx[disabled]{opacity:.4;cursor:default}
+  #gpx[hidden]{display:none}
   .edit{display:flex;gap:5px}
   .edit button{min-width:0;flex:1;text-align:center}
   .edit button[disabled]{opacity:.4;cursor:default}
@@ -216,6 +220,7 @@ export function buildRouteMapHtml(
     <button id="clear" disabled>Clear</button>
   </div>
   <button id="fly" disabled>Flyover</button>
+  <button id="gpx" disabled${gpxUrl ? "" : " hidden"}>Download GPX</button>
 </div>
 <div id="hud" hidden><span id="hudMain"></span><span id="hudNote"></span></div>
 <script>
@@ -223,6 +228,7 @@ var LAYERS = ${JSON.stringify(layers)};
 var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
 var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
 var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
+var GPX_URL = ${JSON.stringify(gpxUrl ?? null)};
 var ROUTE_COLOR = "#167DF7";
 var ASSERTED_COLOR = "#E9B949";
 
@@ -521,6 +527,8 @@ function redraw() {
   if (clr) clr.disabled = anchors.length === 0;
   var fly = document.getElementById("fly");
   if (fly) fly.disabled = !(mode === "3d" && routePts.length > 1);
+  var gpx = document.getElementById("gpx");
+  if (gpx) gpx.disabled = routePts.length < 2;
 }
 
 function updateHud() {
@@ -845,6 +853,51 @@ document.getElementById("draw").onclick = function () { setDrawing(!drawing); };
 document.getElementById("undo").onclick = undoPoint;
 document.getElementById("clear").onclick = clearRoute;
 document.getElementById("snap").onclick = function () { setSnapping(!snapping); };
+
+/**
+ * Hand the route over as a GPX file.
+ *
+ * The points go up rather than being re-derived on the server, because the
+ * page is what the person is looking at and the file has to match it. Heights
+ * are NOT sent: the profile is sampled every thirty metres while the route has
+ * a point at every bend, so pairing them off by position attaches heights to
+ * the wrong coordinates. The server looks up each one for the exact point it
+ * is writing.
+ */
+document.getElementById("gpx").onclick = function () {
+  if (!GPX_URL || routePts.length < 2) return;
+  var pts = routePts.map(function (q) { return { lat: q.lat, lng: q.lng }; });
+  var straight = 0;
+  for (var i = 0; i < legs.length; i++) if (!legIsSurveyed(legs[i])) straight++;
+
+  fetch(GPX_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      points: pts,
+      unsnappedSections: straight,
+      lengthM: Math.round(routeLength()),
+      ascentM: (profile && profile.outcome === "profiled") ? profile.ascentM : null
+    })
+  }).then(function (r) {
+    if (!r.ok) throw new Error("gpx failed");
+    var name = r.headers.get("Content-Disposition") || "";
+    var m = /filename="([^"]+)"/.exec(name);
+    return r.blob().then(function (blob) { return { blob: blob, filename: m ? m[1] : "route.gpx" }; });
+  }).then(function (out) {
+    var url = URL.createObjectURL(out.blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = out.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    /* Revoked on a later tick: revoking immediately races the download on
+       some browsers and hands the person an empty file. */
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    post({ type: "gpxDownloaded", filename: out.filename });
+  }).catch(function () {
+    var note = document.getElementById("hudNote");
+    if (note) note.textContent = "Could not build the GPX file";
+  });
+};
 </script>
 </body>
 </html>`;
@@ -858,10 +911,11 @@ router.get("/route-map", (req, res) => {
   const tilePrefix = `${req.baseUrl}/map-tiles`;
   const snapUrl = `${req.baseUrl}/path-snap`;
   const profileUrl = `${req.baseUrl}/route-profile`;
+  const gpxUrl = `${req.baseUrl}/route-gpx`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl));
 });
 
 export default router;
