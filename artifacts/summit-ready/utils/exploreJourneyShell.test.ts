@@ -18,6 +18,17 @@ const code = (src: string) =>
 describe("Explore", () => {
   const body = code(read("app/(tabs)/explore.tsx"));
 
+  it("opens the existing map planner in the app and labels its unsaved test scope", () => {
+    expect(body).toContain('router.push("/route-planner")');
+    expect(body).toContain('testID="open-route-planner"');
+    expect(body).toContain("Test planner · routes aren’t saved yet");
+    const planner = code(read("app/route-planner.tsx"));
+    expect(planner).toContain('Platform.OS === "web"');
+    expect(planner).toContain('React.createElement("iframe"');
+    expect(planner).toContain("source={{ uri: MAP_URL }}");
+    expect(planner).toContain("router.back()");
+  });
+
   it("opens the one Mountain Detail decision surface, not the old trail route", () => {
     expect(body).toMatch(/pathname: "\/mountain"/);
     expect(body).not.toMatch(/trail-detail/);
