@@ -32,9 +32,57 @@ import type { PathWay } from "./pathSnapping";
  * the server honours the timeout in the query.
  */
 
-/** Public Overpass instance. Swappable by env for a self-hosted one, which is
- *  the honest fix if this ever carries real traffic. */
-const OVERPASS_URL = process.env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter";
+/**
+ * Overpass instances, tried in order.
+ *
+ * More than one because a single public instance is not a dependency you can
+ * plan a route on. They are donated capacity, frequently at their limit, and
+ * they refuse requests under load — which arrives here as a leg that will not
+ * snap, on a route somebody is in the middle of drawing. Observed in use:
+ * a single 0.77 km leg came back unroutable while the elevation service beside
+ * it answered fine, because the one instance was busy.
+ *
+ * They run the same API over the same data, so moving to the next one is a
+ * retry against a different queue rather than a different answer.
+ *
+ * OVERPASS_URL still overrides, and a self-hosted instance remains the honest
+ * fix if this ever carries real traffic — this only makes the public ones less
+ * fragile in the meantime.
+ */
+export const OVERPASS_ENDPOINTS: readonly string[] =
+  process.env.OVERPASS_URL
+    ? [process.env.OVERPASS_URL]
+    : [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+      ];
+
+/* ⚠️ ANY ENDPOINT ADDED HERE MUST CARRY THE WHOLE PLANET.
+ *
+ * Several public Overpass instances hold one country or region. One of those
+ * does not fail for a query outside its area — it answers 200 with no
+ * elements, which this code cannot tell from open moorland with nothing
+ * mapped on it. The route would then be reported as having no paths near it,
+ * confidently and wrongly, and the person would believe it.
+ *
+ * Both above are full-planet mirrors. A regional one is worse than no
+ * fallback at all.
+ *
+ * ⚠️ UNVERIFIED FROM THE MACHINE THIS WAS WRITTEN ON: its network policy
+ * refuses Overpass outright, so the fallback is tested against fixtures only.
+ * The order, the retry rule and the sharing are proven; that these two hosts
+ * answer is not. */
+
+/** Statuses worth trying elsewhere rather than giving up on.
+ *
+ *  429 is "too many requests" and 504 is "I gave up"; both are about this
+ *  instance's load at this moment and say nothing about the data. A 400 means
+ *  the query is wrong and would be wrong everywhere, so it is not retried —
+ *  three instances all rejecting the same bad query is three times the
+ *  nuisance for the same answer. */
+export function worthRetrying(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
 
 /**
  * Identifies us to Overpass, per their usage policy.
@@ -275,41 +323,55 @@ export async function fetchPathWays(
   let failure: FetchOutcome | null = null;
 
   const work = (async (): Promise<PathWay[] | null> => {
-    let res: Response;
-    try {
-      res = await doFetch(OVERPASS_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "User-Agent": USER_AGENT,
-        },
-        body: new URLSearchParams({ data: overpassQuery(bbox) }).toString(),
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (err) {
-      failure = {
-        kind: "upstream_failed",
-        status: null,
-        detail: err instanceof Error ? err.message : "request failed",
-      };
-      return null;
+    const query = new URLSearchParams({ data: overpassQuery(bbox) }).toString();
+    let body: unknown = null;
+
+    /* Each instance gets one attempt. No backoff loop on a single endpoint:
+       waiting and asking the same busy queue again is how a person ends up
+       staring at a half-drawn route, and the next instance is a better bet
+       than the same one later. */
+    for (let i = 0; i < OVERPASS_ENDPOINTS.length; i += 1) {
+      const endpoint = OVERPASS_ENDPOINTS[i]!;
+      let res: Response;
+      try {
+        res = await doFetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": USER_AGENT,
+          },
+          body: query,
+          signal: AbortSignal.timeout(30_000),
+        });
+      } catch (err) {
+        failure = {
+          kind: "upstream_failed",
+          status: null,
+          detail: err instanceof Error ? err.message : "request failed",
+        };
+        continue;
+      }
+
+      if (!res.ok) {
+        failure = { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
+        /* A rejection that is about the query rather than the load would be
+           rejected identically everywhere, so stop rather than make the same
+           mistake three times. */
+        if (!worthRetrying(res.status)) break;
+        continue;
+      }
+
+      try {
+        body = await res.json();
+      } catch {
+        failure = { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
+        continue;
+      }
+      failure = null;
+      break;
     }
 
-    if (!res.ok) {
-      /* 429 and 504 are Overpass's two ways of saying "not now" and both are
-         expected under load. Passed through rather than flattened, so the
-         caller can back off rather than retry into a wall. */
-      failure = { kind: "upstream_failed", status: res.status, detail: `overpass ${res.status}` };
-      return null;
-    }
-
-    let body: unknown;
-    try {
-      body = await res.json();
-    } catch {
-      failure = { kind: "upstream_failed", status: res.status, detail: "response was not JSON" };
-      return null;
-    }
+    if (body === null) return null;
 
     const ways = parseOverpass(body);
 

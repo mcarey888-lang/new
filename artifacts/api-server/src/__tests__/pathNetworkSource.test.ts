@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  OVERPASS_ENDPOINTS,
+  worthRetrying,
   contains,
   inFlightCount,
   MAX_BBOX_AREA_DEG2,
@@ -370,5 +372,106 @@ describe("contains", () => {
        because the missing half looks like genuine gaps. */
     expect(contains(outer, box(53.05, -4.05, 53.25, -3.95))).toBe(false);
     expect(contains(outer, box(52.9, -4.05, 53.15, -3.95))).toBe(false);
+  });
+});
+
+describe("when one Overpass instance will not answer", () => {
+  /* Observed in use: a single 0.77 km leg came back unroutable while the
+     elevation service beside it answered fine. One public instance was busy,
+     and there was nowhere else to ask. These are donated services, frequently
+     at their limit, and a route planner that stops working when one of them is
+     loaded is not a route planner. */
+
+  const busy = (status: number) => ({ ok: false, status }) as unknown as Response;
+
+  it("knows which refusals are about load and which are about the query", () => {
+    /* 429 and 504 are this instance, right now. A 400 means the query is
+       wrong and would be wrong everywhere — asking three instances the same
+       bad question is three times the nuisance for the same answer. */
+    expect(worthRetrying(429)).toBe(true);
+    expect(worthRetrying(504)).toBe(true);
+    expect(worthRetrying(503)).toBe(true);
+    expect(worthRetrying(400)).toBe(false);
+    expect(worthRetrying(401)).toBe(false);
+    expect(worthRetrying(404)).toBe(false);
+  });
+
+  it("has somewhere else to ask", () => {
+    expect(OVERPASS_ENDPOINTS.length).toBeGreaterThan(1);
+    /* Different hosts, or it is one queue wearing three hats. */
+    const hosts = new Set(OVERPASS_ENDPOINTS.map(u => new URL(u).host));
+    expect(hosts.size).toBe(OVERPASS_ENDPOINTS.length);
+  });
+
+  it("moves to the next instance when the first is busy", async () => {
+    const tried: string[] = [];
+    const fetcher = async (url: string) => {
+      tried.push(url);
+      return tried.length === 1 ? busy(429) : ok(ogwen());
+    };
+    const res = await fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    expect(res.kind).toBe("ways");
+    expect(res.kind === "ways" && res.ways.length).toBe(277);
+    expect(tried.length).toBe(2);
+    expect(tried[0]).not.toBe(tried[1]);
+  });
+
+  it("moves on when one instance cannot be reached at all", async () => {
+    let n = 0;
+    const fetcher = async () => {
+      n += 1;
+      if (n === 1) throw new Error("ECONNRESET");
+      return ok(ogwen());
+    };
+    const res = await fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    expect(res.kind).toBe("ways");
+  });
+
+  it("gives up honestly when every instance refuses", async () => {
+    /* Not an empty result. "No paths here" is a fact about the mountain;
+       "nobody would answer" is a fact about our plumbing. */
+    let n = 0;
+    const fetcher = async () => { n += 1; return busy(429); };
+    const res = await fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    expect(res.kind).toBe("upstream_failed");
+    expect(n).toBe(OVERPASS_ENDPOINTS.length);
+  });
+
+  it("does not ask everyone the same bad question", async () => {
+    let n = 0;
+    const fetcher = async () => { n += 1; return busy(400); };
+    const res = await fetchPathWays(box(53.1, -4.02, 53.14, -3.98), { fetcher });
+    expect(res.kind).toBe("upstream_failed");
+    expect(n).toBe(1);
+  });
+
+  it("caches what the second instance returned, same as the first", async () => {
+    let n = 0;
+    const fetcher = async () => { n += 1; return n === 1 ? busy(503) : ok(ogwen()); };
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    await fetchPathWays(b, { fetcher });
+    const again = await fetchPathWays(b, { fetcher });
+    expect(again.kind === "ways" && again.cached).toBe(true);
+    expect(n).toBe(2); // not three — the second call asked nobody
+  });
+
+  it("still shares one fetch across many waiting legs", async () => {
+    /* The stampede fix must survive the fallback: fifteen legs wanting the
+       same region while the first instance is busy is one journey through the
+       list, not fifteen. */
+    let calls = 0;
+    let release!: () => void;
+    const held = new Promise<void>(r => { release = r; });
+    const fetcher = async () => {
+      calls += 1;
+      await held;
+      return calls === 1 ? busy(429) : ok(ogwen());
+    };
+    const b = box(53.1, -4.02, 53.14, -3.98);
+    const all = Array.from({ length: 15 }, () => fetchPathWays(b, { fetcher }));
+    release();
+    const results = await Promise.all(all);
+    expect(results.every(r => r.kind === "ways")).toBe(true);
+    expect(calls).toBe(2); // one refusal, one success — not thirty
   });
 });
