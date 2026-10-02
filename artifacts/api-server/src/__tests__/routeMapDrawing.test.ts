@@ -89,6 +89,14 @@ describe("a drawn line is never dressed as a surveyed one", () => {
     expect(html).toContain('var ROUTE_COLOR = "#167DF7"');
   });
 
+  it("never leaves a failure without a reason", () => {
+    /* A bare "13 sections not on a path" is the least useful state this
+       readout has: it is the one where somebody cannot tell a broken
+       deployment from genuinely pathless ground. It cost an afternoon of
+       looking in the wrong place. */
+    expect(page()).toContain("could not reach the path service");
+  });
+
   it("says so in words as well as colour", () => {
     /* Colour alone fails anyone who cannot separate amber from blue, and fails
        everyone on a bright hillside. The count is spelled out because "3

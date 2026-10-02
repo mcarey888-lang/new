@@ -583,6 +583,15 @@ function updateHud() {
     else if (noPaths) note += " · no paths mapped here";
     else if (gaps) note += " · no path across the gap";
     else if (offPath) note += " · tap further onto the path";
+    /* Every remaining case says SOMETHING. A bare "13 sections not on a path"
+       is the least useful thing this readout can do: it is the one state where
+       the person cannot tell a broken deployment from genuinely pathless
+       ground, and it cost an afternoon of looking in the wrong place. The
+       reasons that land here — a request that never came back, a server
+       answering something that is not JSON, a route map served by a build
+       that predates the snapping endpoint — all mean the same thing to
+       whoever is holding the phone. */
+    else note += " · could not reach the path service";
   }
   /* Said rather than left blank. A readout with distance and no climb looks
      like a route with no climb, which on a mountain is a dangerous reading. */
