@@ -30,6 +30,8 @@ export interface PlannedRouteLeg {
 export interface PlannedRoute {
   id: string;
   name: string;
+  /** Which summit this route climbs. Null when it is not about one. */
+  hillSlug: string | null;
   anchors: PlannedRoutePoint[];
   geometry: PlannedRoutePoint[];
   legs: PlannedRouteLeg[];
@@ -46,6 +48,7 @@ export interface PlannedRoute {
 export interface SaveDraft {
   id?: string;
   name: string;
+  hillSlug?: string | null;
   anchors: PlannedRoutePoint[];
   geometry: PlannedRoutePoint[];
   legs?: PlannedRouteLeg[];
@@ -113,8 +116,15 @@ export function saveRoute(draft: SaveDraft, getToken: GetToken): Promise<ApiResu
   );
 }
 
-export function listRoutes(getToken: GetToken): Promise<ApiResult<PlannedRoute[]>> {
-  return call("/planned-routes", { method: "GET" }, getToken, body => {
+/** All of this person's routes, or only the ones planned for one summit. */
+export function listRoutes(
+  getToken: GetToken,
+  hillSlug?: string | null,
+): Promise<ApiResult<PlannedRoute[]>> {
+  const path = hillSlug
+    ? `/planned-routes?hill=${encodeURIComponent(hillSlug)}`
+    : "/planned-routes";
+  return call(path, { method: "GET" }, getToken, body => {
     const routes = (body as { routes?: unknown })?.routes;
     return Array.isArray(routes) ? (routes as PlannedRoute[]) : [];
   });

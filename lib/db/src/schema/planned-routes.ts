@@ -16,6 +16,11 @@ export const plannedRoutes = pgTable("planned_routes", {
   /** Clerk userId. A plan belongs to one person and is not published. */
   userId:        text("user_id").notNull(),
   name:          text("name").notNull(),
+  /** Which summit this route climbs, by slug. Null when it is not about one —
+   *  a valley walk or a training loop. Slug rather than an id, and with no
+   *  foreign key, because summits live in more than one table here and both
+   *  key on slug; pointing at the wrong one would reject most of them. */
+  hillSlug:      text("hill_slug"),
 
   /** The taps, so a route can be reopened and edited rather than redrawn. */
   anchors:       jsonb("anchors").notNull(),
@@ -39,6 +44,7 @@ export const plannedRoutes = pgTable("planned_routes", {
   updatedAt:     timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("planned_routes_user_idx").on(t.userId, t.updatedAt),
+  index("planned_routes_hill_idx").on(t.hillSlug),
 ]);
 
 export const insertPlannedRouteSchema = createInsertSchema(plannedRoutes).omit({

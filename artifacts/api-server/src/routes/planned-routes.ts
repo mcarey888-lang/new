@@ -27,11 +27,17 @@ const router: IRouter = Router();
 router.get("/planned-routes", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "sign in required" }); return; }
+  /* ?hill=<slug> narrows to the routes planned for one summit, which is what a
+     summit's own page needs. The owner stays in the filter either way: this
+     narrows someone's own list, it does not open anyone else's. */
+  const hill = typeof req.query["hill"] === "string" ? req.query["hill"] : null;
   try {
     const rows = await db
       .select()
       .from(plannedRoutes)
-      .where(eq(plannedRoutes.userId, userId))
+      .where(hill
+        ? and(eq(plannedRoutes.userId, userId), eq(plannedRoutes.hillSlug, hill))
+        : eq(plannedRoutes.userId, userId))
       .orderBy(desc(plannedRoutes.updatedAt))
       .limit(PAGE_SIZE);
     res.json({ routes: rows });
@@ -73,6 +79,10 @@ router.post("/planned-routes", async (req, res) => {
     id: typeof b["id"] === "string" && b["id"] ? b["id"] : randomUUID(),
     userId,
     name: check.name,
+    /* Null rather than an empty string when there is no summit, so "no hill"
+       is one value rather than two that have to be checked for separately. */
+    hillSlug: typeof b["hillSlug"] === "string" && b["hillSlug"].trim()
+      ? b["hillSlug"].trim() : null,
     anchors: b["anchors"] as unknown,
     geometry: b["geometry"] as unknown,
     legs: Array.isArray(b["legs"]) ? (b["legs"] as unknown) : [],
