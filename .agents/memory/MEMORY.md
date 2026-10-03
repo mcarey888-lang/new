@@ -73,3 +73,4 @@
 - [Expo Clerk test redirects](expo-clerk-test-redirect.md) — programmatic test login can reject the shared-host redirect even when local Expo renders; distinguish helper failure from app failure.
 - [Personal route following](personal-route-following.md) — saved plans are recording targets, but planned geometry is navigation-only; actual GPS and expedition evidence remain separate.
 - [Planner globe intent](planner-globe-intent.md) — global browsing belongs in 3D; keep 2D flat and preserve route state when changing the view.
+- [Recording discard lifecycle](recording-discard-lifecycle.md) — fence checkpoint writes before deletion; Discard must remove recovery data, not just navigate Back.

@@ -264,7 +264,7 @@ TaskManager.defineTask(HIKE_LOCATION_TASK, async ({ data, error }: any) => {
 export default function HikeTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { getToken, userId } = useAuth();
-  const { appMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
+  const { appMode, shellMode, addSession, logExploreHike, trainingPlan, togglePlanSession, completedPlanSessions,
           summitGoal, patchExpedition, activeExpeditionId, expeditions } = useApp();
   const { lastConsequence: stage8LastConsequence } = useStage8();
   const elevationBankQuery = useGetElevationBank({
@@ -375,6 +375,9 @@ export default function HikeTrackingScreen() {
   const [isOffline, setIsOffline]         = useState(false);
   const [permDenied, setPermDenied]       = useState(false);
   const [saving, setSaving]               = useState(false);
+  const [discarding, setDiscarding]       = useState(false);
+  const [discardError, setDiscardError]   = useState<string | null>(null);
+  const discardInFlightRef               = useRef(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [addToPlan, setAddToPlan]         = useState(() => !!(trainingPlan && trainingPlan.length > 0));
   const [drawerOpen, setDrawerOpen]       = useState(true);
@@ -1442,9 +1445,45 @@ export default function HikeTrackingScreen() {
     setConfirmFinish(true);
   }, []);
 
+  const handleDiscard = useCallback(async () => {
+    if (discardInFlightRef.current || saveInFlightRef.current) return;
+    discardInFlightRef.current = true;
+    setDiscarding(true);
+    setDiscardError(null);
+    await serialize(async () => {
+      const previousStatus = statusRef.current;
+      try {
+        // Fence queued checkpoint writes before deleting the recovery record.
+        // A late write must never recreate a hike the user just discarded.
+        statusRef.current = "idle";
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = null;
+        safeRemoveSub(locationSubRef.current);
+        locationSubRef.current = null;
+        backgroundedRef.current = false;
+        await checkpointWriteRef.current;
+        await discardActiveHike({ userId: userId ?? undefined, routeId: routeIdRef.current });
+        if (userId) await clearPendingHikeSelection(userId);
+        if (canonicalRouteContext) await clearCanonicalRouteHandoff(canonicalRouteContext);
+        trackPoints.current = [];
+        setConfirmFinish(false);
+        // Restored hikes are often opened with replace(), with no back stack.
+        // An explicit destination also prevents returning to a stale summary.
+        router.replace(shellMode === "expedition" ? "/(expedition)/track" : "/(tabs)/explore");
+      } catch (failure) {
+        statusRef.current = previousStatus === "tracking" ? "paused" : previousStatus;
+        setStatus(statusRef.current);
+        setDiscardError(failure instanceof Error ? failure.message : "Could not discard this hike. Please try again.");
+      } finally {
+        discardInFlightRef.current = false;
+        setDiscarding(false);
+      }
+    });
+  }, [serialize, userId, shellMode, canonicalRouteContext]);
+
   // ── Save completed hike ──────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
-    if (saveInFlightRef.current) return;
+    if (saveInFlightRef.current || discardInFlightRef.current) return;
     saveInFlightRef.current = true;
     setSaving(true);
     const name     = routeName.trim() || "Tracked Hike";
@@ -1694,8 +1733,10 @@ export default function HikeTrackingScreen() {
             addToPlan={addToPlan}
             setAddToPlan={setAddToPlan}
             saving={saving}
+            discarding={discarding}
+            discardError={discardError}
             onSave={handleSave}
-            onDiscard={() => router.back()}
+            onDiscard={handleDiscard}
           />
         </ScrollView>
 
@@ -2169,8 +2210,9 @@ export default function HikeTrackingScreen() {
             <>
               <Text style={s.confirmTitle}>Discard this hike?</Text>
               <Text style={s.confirmSub}>You haven't been tracking long — your route won't be saved.</Text>
-              <TouchableOpacity style={s.confirmDestructive} onPress={() => { setConfirmFinish(false); router.back(); }} activeOpacity={0.85}>
-                <Text style={s.confirmDestructiveText}>Discard</Text>
+              {discardError ? <Text style={s.confirmSub} accessibilityRole="alert">{discardError}</Text> : null}
+              <TouchableOpacity style={s.confirmDestructive} onPress={handleDiscard} disabled={discarding || saving} activeOpacity={0.85}>
+                <Text style={s.confirmDestructiveText}>{discarding ? "Discarding…" : "Discard"}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -2182,7 +2224,7 @@ export default function HikeTrackingScreen() {
               </TouchableOpacity>
             </>
           )}
-          <TouchableOpacity style={s.confirmCancel} onPress={() => { setConfirmFinish(false); setDrawerOpen(true); }} activeOpacity={0.7}>
+          <TouchableOpacity style={s.confirmCancel} disabled={discarding || saving} onPress={() => { setConfirmFinish(false); setDrawerOpen(true); }} activeOpacity={0.7}>
             <Text style={s.confirmCancelText}>Keep Going</Text>
           </TouchableOpacity>
         </Animated.View>

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-import { selectBatchKeys } from "@/utils/hikeReliability";
+import { selectBatchKeys } from "./hikeReliability";
 
 export const ACTIVE_HIKE_KEY = "summitready_active_hike_session";
 const ACTIVE_HIKE_OWNER_KEY = "summitready_active_hike_owner_v1";
@@ -77,6 +77,12 @@ export async function discardActiveHike(
   checkpoint?: ActiveHikeIdentity | null,
 ): Promise<void> {
   let routeId = checkpoint?.routeId;
+  if (checkpoint?.userId && routeId) {
+    const active = await readActiveHike<ActiveHikeIdentity>(checkpoint.userId);
+    if (active?.routeId && active.routeId !== routeId) {
+      throw new Error("A different hike is now active. Return to Track to resume it.");
+    }
+  }
   if (!routeId) {
     try {
       const storedCheckpoint = checkpoint?.userId
@@ -86,9 +92,14 @@ export async function discardActiveHike(
     } catch {}
   }
 
+  const background = await readBackgroundActiveHike<ActiveHikeIdentity>();
+  const ownsBackgroundTask = !background || (
+    background.routeId === routeId &&
+    (!checkpoint?.userId || background.userId === checkpoint.userId)
+  );
   // Remove the producer's source record first so any in-flight callback exits.
-  await clearActiveHike(checkpoint?.userId).catch(() => {});
-  await stopBackgroundLocationTask();
+  await clearActiveHike(checkpoint?.userId);
+  if (ownsBackgroundTask) await stopBackgroundLocationTask();
 
   if (!routeId) return;
   try {

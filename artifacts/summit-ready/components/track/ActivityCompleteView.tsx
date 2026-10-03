@@ -47,6 +47,8 @@ export interface ActivityCompleteViewProps {
   addToPlan: boolean;
   setAddToPlan: (fn: (v: boolean) => boolean) => void;
   saving: boolean;
+  discarding?: boolean;
+  discardError?: string | null;
   onSave: () => void;
   onDiscard: () => void;
 }
@@ -72,6 +74,7 @@ function RecordStat({ value, label }: { value: string | null; label: string }) {
 export function ActivityCompleteView({
   completionPresentation, elevGainM, elevLossM, distanceKm, elapsedSecs, currentAltM,
   fmtM, fmtKm, formatTime, trainingPlan, addToPlan, setAddToPlan, saving, onSave, onDiscard,
+  discarding = false, discardError,
 }: ActivityCompleteViewProps) {
   return (
           <Animated.View entering={FadeInDown.duration(400)}>
@@ -292,7 +295,7 @@ export function ActivityCompleteView({
             <SRButton
               label={saving ? "Saving\u2026" : ACTIVITY_DETAILS_COPY.cta}
               onPress={onSave}
-              disabled={saving}
+              disabled={saving || discarding}
               style={{ marginTop: 14 }}
               accessibilityHint="Saves this activity's details to the activity already recorded"
             />
@@ -300,12 +303,16 @@ export function ActivityCompleteView({
             <TouchableOpacity
               style={s.discardBtn}
               onPress={onDiscard}
+              disabled={saving || discarding}
+              testID="discard-hike"
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Discard"
+              accessibilityState={{ disabled: saving || discarding, busy: discarding }}
             >
-              <Text style={s.discardBtnText}>Discard</Text>
+              <Text style={s.discardBtnText}>{discarding ? "Discarding…" : "Discard"}</Text>
             </TouchableOpacity>
+            {discardError ? <Text style={s.detailsSubtitle} accessibilityRole="alert">{discardError}</Text> : null}
           </Animated.View>
   );
 }
