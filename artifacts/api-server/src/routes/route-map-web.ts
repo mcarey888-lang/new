@@ -651,17 +651,30 @@ function setSnapping(on) {
 /**
  * How far from a path a tap should still count, for the zoom now on screen.
  *
- * A fingertip is about twenty screen pixels wide whatever the zoom; what those
- * pixels are worth on the ground is not. Zoomed out over a hillside each one
- * is ten metres or more, so a fixed radius asks for an accuracy no thumb has.
- * Deriving it from the scale means the tolerance matches what the person can
- * actually see and aim at. The server clamps it, so a silly value here cannot
- * make a tap reach across a valley.
+ * Scaled by zoom, because what a screen pixel is worth on the ground changes
+ * and a fixed radius asks for an accuracy no thumb has when zoomed out.
+ *
+ * THE MULTIPLIER IS 45, AND IT WAS 20, AND 20 WAS WRONG.
+ *
+ * Twenty pixels was reasoned from fingertip size and it fails in practice,
+ * because the error is not how wide a finger is — it is that a path at
+ * planning zoom is a hairline a pixel or two across. Measured: picking a point
+ * that looked like it was on a path, zoomed in, on a screenshot, taking care,
+ * landed 113 m from the nearest mapped way. Twenty pixels was about 60 m
+ * there, so the tap found nothing, and a whole route came back as straight
+ * lines with the snapping working perfectly throughout.
+ *
+ * Forty-five pixels is roughly 135 m at planning zoom and about 30 m zoomed
+ * right in, which is the shape this needs: forgiving where the map is small,
+ * precise where it is not.
+ *
+ * The server still clamps it, so this cannot make a tap reach across a valley
+ * however the zoom is abused.
  */
 function snapRadiusM() {
   var lat = map.getCenter().lat;
   var metresPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());
-  return Math.round(metresPerPixel * 20);
+  return Math.round(metresPerPixel * 45);
 }
 
 var legToken = 0;

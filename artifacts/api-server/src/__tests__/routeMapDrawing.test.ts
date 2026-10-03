@@ -155,6 +155,32 @@ describe("a drawn line is never dressed as a surveyed one", () => {
   });
 });
 
+describe("the snap radius the page asks for", () => {
+  /* The bug this exists to prevent happened: a whole route came back as
+     straight lines with the snapping working perfectly throughout, because the
+     tolerance was smaller than anyone can tap. */
+
+  it("scales with the zoom rather than being fixed", () => {
+    expect(page()).toContain("156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom())");
+  });
+
+  it("is forgiving enough to actually hit a path", () => {
+    /* Measured: a point chosen deliberately, zoomed in, on a screenshot, was
+       still 113 m from the nearest mapped way. At planning zoom the old
+       multiplier of 20 gave about 60 m, so nothing snapped. 45 gives about
+       135 m there, which catches a tap like that. */
+    const html = page();
+    const m = /metresPerPixel \* (\d+)/.exec(html);
+    expect(m, "radius multiplier not found").not.toBeNull();
+    const multiplier = Number(m![1]);
+    expect(multiplier).toBeGreaterThanOrEqual(40);
+
+    /* At zoom 14 over Snowdonia that must comfortably clear 113 m. */
+    const metresPerPixel = (156543.03392 * Math.cos(53.12 * Math.PI / 180)) / 2 ** 14;
+    expect(metresPerPixel * multiplier).toBeGreaterThan(113);
+  });
+});
+
 describe("the route the host receives", () => {
   it("calls the route snapped only when every leg is", () => {
     /* One straight section makes the whole route unsurveyed. A route that is
