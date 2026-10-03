@@ -173,3 +173,57 @@ describe("Track draws on the shared system", () => {
     }
   });
 });
+
+describe("off-route warning", () => {
+  /* Added when the detector was wired in. These are source-level because the
+     thing worth protecting is not how the banner looks — it is that the
+     warning stays a statement of position and never becomes navigation. */
+
+  it("judges every tracking fix, not only some of them", () => {
+    /* There are three watchers that record a fix. A warning that only works on
+       one of them is worse than none, because it is trusted and silent. */
+    const hooks = TRACK_CODE.match(/checkOffRoute\(latitude, longitude/g) ?? [];
+    expect(hooks.length).toBe(3);
+  });
+
+  it("passes the fix's own accuracy through", () => {
+    /* The threshold widens with GPS uncertainty. Dropping the accuracy here
+       would silently make every judgement use the cautious default. */
+    expect(TRACK_CODE).toContain("loc.coords.accuracy ?? null");
+  });
+
+  it("never tells anybody which way to walk", () => {
+    /* THE RULE. "Head west" asserts west is walkable, and the straight line
+       back to a path can cross a crag that nothing in this data can see. The
+       banner renders only the message the detector produced, which is a
+       position. */
+    const banner = TRACK_CODE.slice(
+      TRACK_CODE.indexOf("offRoute?.message"),
+      TRACK_CODE.indexOf("offRoute?.message") + 400,
+    );
+    expect(banner).toContain("{offRoute.message}");
+    for (const word of ["Head ", "Turn ", "Go back", "Walk "]) {
+      expect(banner).not.toContain(word);
+    }
+  });
+
+  it("is judged against the same line the map is drawing", () => {
+    /* Taken from where the overlay is sent, so the alert and the picture can
+       never disagree about where the route is. */
+    const sends = TRACK_CODE.match(/followedRouteRef\.current = /g) ?? [];
+    expect(sends.length).toBe(2); // the canonical route and the community one
+  });
+
+  it("clears when the hike is saved", () => {
+    /* A banner left standing would greet the next walk with a warning about a
+       route nobody is on. */
+    const save = TRACK_CODE.slice(TRACK_CODE.indexOf("const handleSave"));
+    expect(save.slice(0, 600)).toContain("initialOffRouteMemory()");
+  });
+
+  it("does nothing on a free hike", () => {
+    /* No route to leave. The detector returns early, and the banner needs a
+       message that will never arrive. */
+    expect(TRACK_CODE).toContain("if (route.length < 2) return;");
+  });
+});

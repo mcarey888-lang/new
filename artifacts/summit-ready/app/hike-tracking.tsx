@@ -38,6 +38,13 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import {
+  assess as assessOffRoute,
+  initialMemory as initialOffRouteMemory,
+  type OffRouteMemory,
+  type OffRouteReading,
+  type RoutePoint,
+} from "../utils/offRoute";
 import { logHillSessionStarted, logHillSessionCompleted, logHikeTracked } from "@/lib/analytics";
 import Animated, {
   FadeIn,
@@ -701,6 +708,36 @@ export default function HikeTrackingScreen() {
   }, []);
 
   // ── Send a GPS point to the live map ─────────────────────────────────────
+  /**
+   * Judge one GPS fix against the route being followed.
+   *
+   * Called from every tracking watcher rather than from sendPointToMap,
+   * because this needs the fix's accuracy and that function is only given a
+   * position. The detector itself decides what to do with a poor fix; this
+   * only has to hand over what the device reported, including nothing.
+   *
+   * Everything here is local arithmetic on a route already on the phone, so it
+   * keeps working in a valley with no signal — which is exactly where it
+   * matters.
+   */
+  const checkOffRoute = useCallback((lat: number, lng: number, accuracyM: number | null) => {
+    const route = followedRouteRef.current;
+    if (route.length < 2) return;
+    const { memory, reading } = assessOffRoute(
+      offRouteMemoryRef.current,
+      route,
+      { latitude: lat, longitude: lng, accuracyM, at: Date.now() },
+    );
+    offRouteMemoryRef.current = memory;
+    setOffRoute(reading.status === "off_route" ? reading : null);
+    /* A buzz, because the phone is usually in a pocket when this matters and a
+       banner nobody is looking at is not an alert. Only on announce, so a
+       steady state does not vibrate every fix. */
+    if (reading.announce) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    }
+  }, []);
+
   const sendPointToMap = useCallback((lat: number, lng: number) => {
     const msg = JSON.stringify({ type: "point", lat, lng });
     if (Platform.OS === "web") {
@@ -742,6 +779,10 @@ export default function HikeTrackingScreen() {
       const pts = data.route.trackPoints ?? [];
       if (pts.length < 2) return;
       const points = pts.map(p => [p.lat, p.lon]);
+      /* The same route the map is drawing is the one to be judged against.
+         Taking it from here rather than re-fetching means the line on screen
+         and the line in the alert can never disagree. */
+      followedRouteRef.current = pts.map(q => ({ latitude: q.lat, longitude: q.lon }));
       const msg = JSON.stringify({ type: "referenceRoute", points });
       if (Platform.OS === "web") {
         try { iframeRef.current?.contentWindow?.postMessage(msg, "*"); } catch { /* cross-origin */ }
@@ -750,6 +791,14 @@ export default function HikeTrackingScreen() {
       }
     } catch { /* best-effort */ }
   }, [canonicalRouteIntent]);
+
+  /* The route being followed, if any, as plain points for the off-route check.
+     Held in a ref rather than state because it is read inside GPS callbacks,
+     where a stale closure over state would compare against whatever route was
+     loaded when the watcher started. */
+  const followedRouteRef = useRef<RoutePoint[]>([]);
+  const offRouteMemoryRef = useRef<OffRouteMemory>(initialOffRouteMemory());
+  const [offRoute, setOffRoute] = useState<OffRouteReading | null>(null);
 
   const referenceRouteSentRef = useRef(false);
   const sendReferenceRouteToMap = useCallback(async () => {
@@ -767,6 +816,9 @@ export default function HikeTrackingScreen() {
     if (canonicalRouteOverlaySentRef.current === handoffId) return;
     const points = canonicalRouteMapPoints(canonicalRouteContext.geometry.coordinates);
     if (points.length < 2) return;
+    /* Judged against the same line the map is drawing, for the same reason as
+       the community overlay: the alert and the picture must agree. */
+    followedRouteRef.current = points.map(([latitude, longitude]) => ({ latitude, longitude }));
     const msg = JSON.stringify({ type: "referenceRoute", points });
     try {
       if (Platform.OS === "web") {
@@ -1123,6 +1175,7 @@ export default function HikeTrackingScreen() {
                 }
                 pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
                 sendPointToMap(latitude, longitude);
+                checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
               },
             );
             locationSubRef.current = fgSub;
@@ -1265,6 +1318,7 @@ export default function HikeTrackingScreen() {
           }
           pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
           sendPointToMap(latitude, longitude);
+          checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
         },
       );
       locationSubRef.current = fgSub;
@@ -1375,6 +1429,7 @@ export default function HikeTrackingScreen() {
           }
           pts.push({ lat: latitude, lon: longitude, alt: altitude, ts: loc.timestamp });
           sendPointToMap(latitude, longitude);
+          checkOffRoute(latitude, longitude, loc.coords.accuracy ?? null);
         },
       );
       locationSubRef.current = fgSub;
@@ -1421,6 +1476,10 @@ export default function HikeTrackingScreen() {
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
     setSaving(true);
+    /* Cleared with the hike. A banner left standing would greet the next walk
+       with a warning about a route nobody is on any more. */
+    setOffRoute(null);
+    offRouteMemoryRef.current = initialOffRouteMemory();
     const name     = routeName.trim() || "Tracked Hike";
     const distKm   = parseFloat(distanceKm.toFixed(2));
     const elevGain = Math.round(elevGainM);
@@ -1832,6 +1891,17 @@ export default function HikeTrackingScreen() {
         </View>
       )}
 
+      {/* Where they are relative to the route, and nothing about which way to
+          walk. The straight line back to a path can cross a crag, and this
+          cannot see one. Sits below the offline banner so two warnings stack
+          rather than cover each other. */}
+      {offRoute?.message && !isIdle && (
+        <View style={[s.offRouteBanner, { top: insets.top + (isOffline ? 108 : 68) }]}>
+          <MapPin size={13} color={T.red} />
+          <Text style={s.offRouteBannerText}>{offRoute.message}</Text>
+        </View>
+      )}
+
       {/* ── Route name card — floats over map, only visible when idle ── */}
       {isIdle && (
         <Animated.View
@@ -2231,6 +2301,25 @@ const s = StyleSheet.create({
     borderColor: T.orange,
   },
   offlineBannerText: {
+    color: T.text,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  offRouteBanner: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.red,
+  },
+  offRouteBannerText: {
     color: T.text,
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
