@@ -1030,6 +1030,9 @@ importers:
 
   artifacts/summit-ready:
     dependencies:
+      '@react-native-community/netinfo':
+        specifier: 11.4.1
+        version: 11.4.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
       '@react-native-community/slider':
         specifier: 5.0.1
         version: 5.0.1
@@ -1057,6 +1060,9 @@ importers:
       expo-build-properties:
         specifier: ~1.0.10
         version: 1.0.10(expo@54.0.37)
+      expo-file-system:
+        specifier: ~19.0.24
+        version: 19.0.24(expo@54.0.37)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
       expo-sharing:
         specifier: ^14.0.8
         version: 14.0.8(expo@54.0.37)
@@ -3437,6 +3443,11 @@ packages:
     peerDependencies:
       react-native: ^0.0.0-0 || >=0.65 <1.0
 
+  '@react-native-community/netinfo@11.4.1':
+    resolution: {integrity: sha512-B0BYAkghz3Q2V09BF88RA601XursIEA111tnc2JOaN7axJWmNefmfjZqw/KdSxKZp7CZUuPpjBmz/WCR9uaHYg==}
+    peerDependencies:
+      react-native: '>=0.59'
+
   '@react-native-community/slider@5.0.1':
     resolution: {integrity: sha512-K3JRWkIW4wQ79YJ6+BPZzp1SamoikxfPRw7Yw4B4PElEQmqZFrmH9M5LxvIo460/3QSrZF/wCgi3qizJt7g/iw==}
 
@@ -4669,6 +4680,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-in-js-utils@3.1.0:
     resolution: {integrity: sha512-fJAcud6B3rRu+KHYk+Bwf+WFL2MDCJJ1XG9x137tJQ0xYxor7XziQtuGFbWNdqrvF4Tk26O3H73nfVqXt/fW1A==}
@@ -6422,7 +6434,7 @@ packages:
     engines: {node: ^16.14.0 || >=18.0.0}
 
   npm-run-path@6.0.0:
-    resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==, tarball: https://registry.npmjs.org/npm-run-path/-/npm-run-path-6.0.0.tgz}
+    resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
     engines: {node: '>=18'}
 
   nth-check@2.1.1:
@@ -7576,6 +7588,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -11072,6 +11085,10 @@ snapshots:
   '@react-native-async-storage/async-storage@2.2.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))':
     dependencies:
       merge-options: 3.0.4
+      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
+
+  '@react-native-community/netinfo@11.4.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))':
+    dependencies:
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
 
   '@react-native-community/slider@5.0.1': {}

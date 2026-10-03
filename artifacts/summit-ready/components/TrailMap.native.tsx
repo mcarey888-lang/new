@@ -6,6 +6,8 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import { OsMapTiles } from "@/components/OsMapTiles.native";
+import { CAPABILITIES } from "@/constants/capabilities";
 import { T } from "@/constants/theme";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -114,6 +116,7 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor, onInter
           }
         }}
       >
+        <OsMapTiles />
         {hasRoute && coordinates.length > 0 && (
           <Polyline
             coordinates={coordinates}
@@ -141,6 +144,9 @@ export function TrailMap({ landmarkName, trailLocation, difficultyColor, onInter
       <View style={s.badge}>
         <Text style={s.badgeText}>
           {hasRoute ? "Route · OpenStreetMap" : "Area · OpenStreetMap"}
+          {(__DEV__ || CAPABILITIES.routeOfflineDownload)
+            ? ` · OS Outdoor © Crown copyright and database rights ${new Date().getFullYear()} Ordnance Survey`
+            : ""}
         </Text>
       </View>
     </View>

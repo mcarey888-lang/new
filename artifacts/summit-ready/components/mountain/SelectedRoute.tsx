@@ -19,6 +19,8 @@ import { FactList, VerificationBadge } from "./parts";
 import { ElevationProfile } from "./ElevationProfile";
 import { MountainDnaPanel } from "./MountainDnaPanel";
 import type { PresentedDna, PresentedFact, PresentedSelectedRoute } from "@/utils/mountainDetailPresentation";
+import { OsRouteMaps } from "./OsRouteMaps";
+import type { RoutePoint } from "@/utils/offRoute";
 
 const SUMMARY_LINES = 3;
 
@@ -28,7 +30,7 @@ const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: s
 
 export function SelectedRoute({
   selected, dna, mountainSummitElevation, mountainName, startPointLabel,
-  onWalkToStart, onDriveToStart, onDownloadOffline, onSaveDataPackage, dataPackageSaved, onViewMap,
+   onWalkToStart, onDriveToStart, onDownloadOffline, onSaveDataPackage, dataPackageSaved, onViewMap, mapPoints,
 }: {
   selected: PresentedSelectedRoute;
   dna: PresentedDna;
@@ -43,6 +45,7 @@ export function SelectedRoute({
   onSaveDataPackage?: () => void;
   dataPackageSaved?: boolean;
   onViewMap?: () => void;
+  mapPoints?: readonly RoutePoint[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const { route, eligibility } = selected;
@@ -151,6 +154,7 @@ export function SelectedRoute({
 
       {dna.state !== "unavailable" ? <MountainDnaPanel dna={dna} /> : null}
 
+      {eligibility.isNavigable && mapPoints?.length ? <OsRouteMaps points={mapPoints} /> : null}
       <View style={styles.footer}>
         {eligibility.isNavigable && onViewMap ? (
           <Pressable onPress={onViewMap} accessibilityRole="button" accessibilityLabel="View mapped route"

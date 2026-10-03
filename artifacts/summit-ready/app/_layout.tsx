@@ -19,6 +19,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RootErrorFallback } from "@/components/RootErrorFallback";
+import { OfflineMapLifecycle } from "@/components/OfflineMapLifecycle";
 import { AppProvider } from "@/context/AppContext";
 import { ChallengesProvider } from "@/context/ChallengesContext";
 import { Stage8Provider } from "@/context/Stage8Context";
@@ -265,6 +266,7 @@ function RootApp() {
                       <AppProvider>
                         <ChallengesProvider>
                           <Stage8Provider>
+                            <OfflineMapLifecycle />
                             <RootLayoutNav />
                           </Stage8Provider>
                         </ChallengesProvider>

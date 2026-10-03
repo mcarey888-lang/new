@@ -355,6 +355,9 @@ export default function MountainDetailScreen() {
     () => selected ? presentSelectedRoute(selected, exploreRoute, record?.elevationProfile) : null,
     [selected, exploreRoute, record],
   );
+  const osMapPoints = useMemo(() =>
+    record?.geometry?.coordinates.map(([longitude, latitude]) => ({ latitude, longitude })),
+  [record]);
   const routeStart = useMemo(() => verifiedRouteStart(exploreRoute), [exploreRoute]);
   const routeStartLabel = record?.definition?.startLabel?.trim() || "Mapped route start";
 
@@ -747,6 +750,7 @@ export default function MountainDetailScreen() {
                       </SRPanel>
                     ) : presented ? (
                       <SelectedRoute
+                        mapPoints={osMapPoints}
                         selected={presented}
                         dna={dna}
                         mountainSummitElevation={mountain.summitElevation}

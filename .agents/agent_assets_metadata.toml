@@ -522,3 +522,17 @@ mtime_ms = 1791067732366
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/7cd92423-52a8-40de-8b7a-a337165623d1/7dda87de-1cd0-4f60-9395-e172a4290871"
 storage_version_token = "1791067830127561"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "z0FQQ3RMIz4xq0T19ET8F"
+uri = "file://docs/OFFLINE_OS_MAPS_WIRING_REPORT.md"
+type = "text"
+title = "OS maps wiring and verification report"
+description = "Implemented plumbing, test results, known recorder gap and the real-device release checklist. Offline capability remains disabled."
+logical_id = "b0ddfe95-4e81-4d66-ba06-82d13735cc48"
+content_hash = "sha256:165baf6f3cb92759bc8316fd30a5a8d143603349da8cdac6c30e40f6d35aa449"
+size = 5426
+mtime_ms = 1791070709750
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/b0ddfe95-4e81-4d66-ba06-82d13735cc48/18f3c543-1985-4326-87c8-c4f6872cd42a"
+storage_version_token = "1791070756262869"
+content_type = "text/markdown"

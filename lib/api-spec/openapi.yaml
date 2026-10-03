@@ -15,6 +15,25 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /map-tiles/os-outdoor/{z}/{x}/{y}:
+    get:
+      operationId: getOsOutdoorTile
+      summary: Server-proxied OS Outdoor Web Mercator raster tile
+      description: No key reaches the client. No HTTP caching; native downloads enforce the separate 22-hour day-cache window.
+      parameters:
+        - { name: z, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 17 } }
+        - { name: x, in: path, required: true, schema: { type: integer, minimum: 0 } }
+        - { name: y, in: path, required: true, description: "Tile row, optionally with a .png suffix", schema: { type: string } }
+      responses:
+        "200":
+          description: PNG tile
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid tile address }
+        "429": { description: Tile request budget exceeded }
+        "502": { description: Upstream failed or did not return a valid PNG }
+        "503": { description: OS server key is not configured }
   /healthz:
     get:
       operationId: healthCheck

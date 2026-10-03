@@ -8,6 +8,24 @@
 import * as zod from "zod";
 
 /**
+ * No key reaches the client. No HTTP caching; native downloads enforce the separate 22-hour day-cache window.
+ * @summary Server-proxied OS Outdoor Web Mercator raster tile
+ */
+export const getOsOutdoorTilePathZMin = 0;
+export const getOsOutdoorTilePathZMax = 17;
+
+export const getOsOutdoorTilePathXMin = 0;
+
+export const GetOsOutdoorTileParams = zod.object({
+  z: zod.coerce
+    .number()
+    .min(getOsOutdoorTilePathZMin)
+    .max(getOsOutdoorTilePathZMax),
+  x: zod.coerce.number().min(getOsOutdoorTilePathXMin),
+  y: zod.coerce.string().describe("Tile row, optionally with a .png suffix"),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

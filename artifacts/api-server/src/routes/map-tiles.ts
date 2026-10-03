@@ -143,6 +143,58 @@ function cachePut(key: string, tile: CachedTile): void {
 
 const router: IRouter = Router();
 
+const osBudgets = new Map<string, { start: number; count: number }>();
+let osGlobal = { start: 0, count: 0 };
+export const OS_MAX_TILE_ZOOM = 17;
+export function validOsTile(z: number, x: number, y: number): boolean {
+  return validTile(z, x, y) && z <= OS_MAX_TILE_ZOOM;
+}
+router.get("/map-tiles/os-outdoor/:z/:x/:y", async (req, res) => {
+  // Do not use the satellite cache: it has no fetched-at/expiry authority.
+  res.set("Cache-Control", "no-store");
+  const z = Number(req.params.z);
+  const x = Number(req.params.x);
+  const y = Number(String(req.params.y).replace(/\.png$/i, ""));
+  if (!validOsTile(z, x, y)) { res.status(400).end(); return; }
+  const token = process.env.OS_MAPS_KEY;
+  if (!token) { res.status(503).end(); return; }
+  const now = Date.now();
+  if (now - osGlobal.start >= 60000) osGlobal = { start: now, count: 0 };
+  const ip = req.ip ?? "unknown";
+  let budget = osBudgets.get(ip);
+  if (!budget || now - budget.start >= 60000) {
+    if (osBudgets.size >= 2048) osBudgets.delete(osBudgets.keys().next().value!);
+    budget = { start: now, count: 0 };
+    osBudgets.set(ip, budget);
+  }
+  if (++budget.count > 1000 || ++osGlobal.count > 3000) {
+    res.set("Retry-After", "60").status(429).end(); return;
+  }
+  try {
+    const upstream = await fetch(
+      `https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/${z}/${x}/${y}.png?key=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(8000), cache: "no-store" },
+    );
+    if (!upstream.ok) {
+      req.log?.warn({ status: upstream.status, z, x, y }, "OS tile upstream rejected request");
+      res.status(upstream.status).end(); return;
+    }
+    if (Number(upstream.headers.get("content-length")) > 2 * 1024 * 1024) {
+      res.status(502).end(); return;
+    }
+    const body = Buffer.from(await upstream.arrayBuffer());
+    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    if (body.length > 2 * 1024 * 1024 || body.length <= 8 || !body.subarray(0, 8).equals(png)) {
+      res.status(502).end(); return;
+    }
+    res.type("png").send(body);
+  } catch {
+    // Fetch errors can contain the upstream URL/key. Never log that object.
+    req.log?.warn({ z, x, y }, "OS tile fetch failed");
+    res.status(502).end();
+  }
+});
+
 router.get("/map-tiles/:tileset/:z/:x/:y", async (req, res) => {
   const spec = TILESETS[req.params.tileset];
   if (!spec) { res.status(404).end(); return; }

@@ -75,3 +75,5 @@
 - [Planner globe intent](planner-globe-intent.md) — global browsing belongs in 3D; keep 2D flat and preserve route state when changing the view.
 - [Recording discard lifecycle](recording-discard-lifecycle.md) — fence checkpoint writes before deletion; Discard must remove recovery data, not just navigate Back.
 - [Mountain page extension scope](mountain-page-extension-scope.md) — extend existing systems; no duplicate recorder, fake capabilities or broad production changes.
+- [OS offline-map constraints](offline-os-map-constraints.md) — keep the 22-hour licence margin and require real-device proof; maps must never delay Start or alter protected systems.
+- [Failed Orval cleanup](orval-failed-generation-cleanup.md) — invalid specs can delete generated clients before validation; regenerate before checking consumers.

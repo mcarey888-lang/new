@@ -53,6 +53,105 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
+ * No key reaches the client. No HTTP caching; native downloads enforce the separate 22-hour day-cache window.
+ * @summary Server-proxied OS Outdoor Web Mercator raster tile
+ */
+export const getGetOsOutdoorTileUrl = (z: number, x: number, y: string) => {
+  return `/api/map-tiles/os-outdoor/${z}/${x}/${y}`;
+};
+
+export const getOsOutdoorTile = async (
+  z: number,
+  x: number,
+  y: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetOsOutdoorTileUrl(z, x, y), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOsOutdoorTileQueryKey = (
+  z: number,
+  x: number,
+  y: string,
+) => {
+  return [`/api/map-tiles/os-outdoor/${z}/${x}/${y}`] as const;
+};
+
+export const getGetOsOutdoorTileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOsOutdoorTile>>,
+  TError = ErrorType<void>,
+>(
+  z: number,
+  x: number,
+  y: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOsOutdoorTile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOsOutdoorTileQueryKey(z, x, y);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOsOutdoorTile>>
+  > = ({ signal }) => getOsOutdoorTile(z, x, y, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(z && x && y),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOsOutdoorTile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOsOutdoorTileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOsOutdoorTile>>
+>;
+export type GetOsOutdoorTileQueryError = ErrorType<void>;
+
+/**
+ * @summary Server-proxied OS Outdoor Web Mercator raster tile
+ */
+
+export function useGetOsOutdoorTile<
+  TData = Awaited<ReturnType<typeof getOsOutdoorTile>>,
+  TError = ErrorType<void>,
+>(
+  z: number,
+  x: number,
+  y: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOsOutdoorTile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOsOutdoorTileQueryOptions(z, x, y, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * Returns server health status
  * @summary Health check
  */
