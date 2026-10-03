@@ -152,8 +152,8 @@ export function buildRouteMapHtml(
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Plan a route</title>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <style>
   html,body{margin:0;height:100%;background:#05090B;overflow:hidden}
   #map{position:absolute;inset:0}
@@ -287,6 +287,37 @@ map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-
 
 var activeLayer = ${JSON.stringify(initial.id)};
 var mode = "2d";
+var mapLoaded = false;
+var terrainEnabled = false;
+var worldView = false;
+var localPitch = 62;
+
+/* Globe projection automatically converges to Mercator around zoom 12,
+   keeping local route geometry precise. Terrain belongs to that detailed
+   view, not a planet-sized DEM. Only change it at the boundary, not on every
+   animation frame. */
+function syncTerrainForZoom() {
+  if (!mapLoaded) return;
+  var enabled = mode === "3d" && map.getZoom() >= 12;
+  if (enabled === terrainEnabled) return;
+  terrainEnabled = enabled;
+  map.setTerrain(enabled ? { source: "terrain", exaggeration: 1.4 } : null);
+  map.setLayoutProperty("hillshade", "visibility", enabled ? "visible" : "none");
+}
+
+map.on("zoom", function () {
+  if (!mapLoaded) return;
+  syncTerrainForZoom();
+  var nextWorld = mode === "3d" && map.getZoom() < 6;
+  if (worldView === nextWorld) return;
+  worldView = nextWorld;
+  if (nextWorld) {
+    localPitch = map.getPitch();
+    map.setPitch(0);
+  } else if (mode === "3d") {
+    map.setPitch(localPitch);
+  }
+});
 
 /* The route, and whether it has been snapped to a surveyed path network.
    These travel together on purpose. A line drawn by tapping is a straight hop
@@ -347,13 +378,13 @@ function setMode(next) {
   mode = next;
   document.getElementById("m2d").setAttribute("aria-pressed", String(next === "2d"));
   document.getElementById("m3d").setAttribute("aria-pressed", String(next === "3d"));
+  if (!mapLoaded) return;
+  worldView = next === "3d" && map.getZoom() < 6;
+  map.setProjection({ type: next === "3d" ? "globe" : "mercator" });
+  syncTerrainForZoom();
   if (next === "3d") {
-    map.setTerrain({ source: "terrain", exaggeration: 1.4 });
-    map.setLayoutProperty("hillshade", "visibility", "visible");
-    map.easeTo({ pitch: 62, duration: 900 });
+    map.easeTo({ pitch: worldView ? 0 : localPitch, duration: 900 });
   } else {
-    map.setTerrain(null);
-    map.setLayoutProperty("hillshade", "visibility", "none");
     map.easeTo({ pitch: 0, bearing: 0, duration: 700 });
   }
   var fly = document.getElementById("fly");
@@ -361,6 +392,8 @@ function setMode(next) {
 }
 
 map.on("load", function () {
+  mapLoaded = true;
+  if (mode === "3d") setMode(mode);
   map.addSource("route", { type: "geojson", data: empty() });
   map.addSource("asserted", { type: "geojson", data: empty() });
   map.addSource("marks", { type: "geojson", data: { type: "FeatureCollection", features: [] } });

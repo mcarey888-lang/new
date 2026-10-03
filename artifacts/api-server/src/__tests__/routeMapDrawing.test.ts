@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { runInNewContext } from "node:vm";
 import { buildRouteMapHtml } from "../routes/route-map-web";
 
 /**
@@ -17,6 +18,88 @@ import { buildRouteMapHtml } from "../routes/route-map-web";
  */
 
 const page = () => buildRouteMapHtml("K", "full", "/api/map-tiles", true);
+
+describe("zooming out in 3D", () => {
+  function cameraHarness() {
+    let zoom = 13;
+    let pitch = 0;
+    const events = new Map<string, () => void>();
+    const map = {
+      addControl: vi.fn(),
+      on: vi.fn((name: string, callback: () => void) => { events.set(name, callback); }),
+      getZoom: () => zoom, getPitch: () => pitch,
+      setPitch: vi.fn((value: number) => { pitch = value; }),
+      setTerrain: vi.fn(), setProjection: vi.fn(), setLayoutProperty: vi.fn(),
+      easeTo: vi.fn((value: { pitch: number }) => { pitch = value.pitch; }),
+    };
+    const window = { parent: null as unknown, addEventListener: vi.fn() };
+    window.parent = window;
+    const context = {
+      maplibregl: { Map: function () { return map; }, NavigationControl: function () {} },
+      window,
+      document: {
+        getElementById: () => ({ setAttribute: vi.fn() }),
+        querySelectorAll: () => [], addEventListener: vi.fn(),
+      },
+      setTimeout, clearTimeout,
+    };
+    const script = page().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    expect(script).toBeTruthy();
+    runInNewContext(script!, context);
+    const runtime = context as typeof context & {
+      mapLoaded: boolean; setMode: (mode: string) => void; routePts: unknown[];
+    };
+    runtime.mapLoaded = true;
+    return {
+      map, runtime,
+      zoomTo(value: number) { zoom = value; events.get("zoom")?.(); },
+    };
+  }
+
+  it("transitions from terrain to globe and back without replacing the route", () => {
+    const { map, runtime, zoomTo } = cameraHarness();
+    runtime.routePts = [{ lat: 53.12, lng: -4 }, { lat: 53.13, lng: -4 }];
+    const points = runtime.routePts;
+    runtime.setMode("3d");
+    expect(map.setProjection).toHaveBeenLastCalledWith({ type: "globe" });
+    expect(map.setTerrain).toHaveBeenLastCalledWith({ source: "terrain", exaggeration: 1.4 });
+    zoomTo(1);
+    expect(map.setTerrain).toHaveBeenLastCalledWith(null);
+    expect(map.getPitch()).toBe(0);
+    const calls = map.setTerrain.mock.calls.length;
+    zoomTo(0.5);
+    expect(map.setTerrain).toHaveBeenCalledTimes(calls);
+    zoomTo(13);
+    expect(map.setTerrain).toHaveBeenLastCalledWith({ source: "terrain", exaggeration: 1.4 });
+    expect(map.getPitch()).toBe(62);
+    expect(runtime.routePts).toBe(points);
+    runtime.setMode("2d");
+    expect(map.setProjection).toHaveBeenLastCalledWith({ type: "mercator" });
+    expect(map.setTerrain).toHaveBeenLastCalledWith(null);
+    expect(map.getPitch()).toBe(0);
+  });
+
+  it("pins matching globe-capable renderer and stylesheet versions", () => {
+    expect(page()).toContain("maplibre-gl@5.24.0/dist/maplibre-gl.js");
+    expect(page()).toContain("maplibre-gl@5.24.0/dist/maplibre-gl.css");
+  });
+  it("uses a globe in 3D and retains a flat Mercator projection in 2D", () => {
+    expect(page()).toContain('map.setProjection({ type: next === "3d" ? "globe" : "mercator" })');
+  });
+  it("only enables terrain at detailed zoom levels and removes it at globe scale", () => {
+    const html = page();
+    expect(html).toContain('mode === "3d" && map.getZoom() >= 12');
+    expect(html).toContain('map.setTerrain(enabled ? { source: "terrain", exaggeration: 1.4 } : null)');
+    expect(html).toContain("if (enabled === terrainEnabled) return");
+  });
+  it("centres the globe without losing the previous local terrain pitch", () => {
+    const html = page();
+    expect(html).toContain('mode === "3d" && map.getZoom() < 6');
+    expect(html).toContain("localPitch = map.getPitch()");
+    expect(html).toContain("map.setPitch(0)");
+    expect(html).toContain("map.setPitch(localPitch)");
+  });
+});
 
 /** The body of one function in the emitted script, up to the next one. A fixed
  *  character window would be at the mercy of comment length. */
