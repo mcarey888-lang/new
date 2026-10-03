@@ -9,7 +9,7 @@ import { useAuth } from "@clerk/expo";
 
 import React, { useEffect, useMemo, useState, } from "react";
 import {
-  Platform, ScrollView, StyleSheet, Text,
+  Image, Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -21,9 +21,9 @@ import { isRouteCompleted } from "@/utils/stateReliability";
 import { useApp } from "@/context/AppContext";
 import { useScreenView } from "@/lib/analytics";
 
-import { T } from "@/constants/theme";
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { getCurrentWeek } from "@/utils/planGenerator";
+import { SavedRoutesSection } from "@/components/track/SavedRoutesSection";
 import {
   buildExpeditionStageLaunchContext,
   buildFreeHikeLaunchContext,
@@ -168,7 +168,20 @@ export function SharedTrackScreen() {
   };
 
   return (
-    <LinearGradient colors={T.bgGrad} style={{ flex: 1 }} testID="track-landing-screen">
+    <View style={s.screen} testID="track-landing-screen">
+      <Image
+        source={require("@/assets/images/track-mountain-hiker.png")}
+        resizeMode="cover"
+        style={s.backgroundImage}
+        accessible={false}
+        testID="track-background-artwork"
+      />
+      <LinearGradient
+        colors={["rgba(3, 9, 21, 0.90)", "rgba(3, 9, 21, 0.82)", "rgba(3, 9, 21, 0.48)", "rgba(3, 9, 21, 0.24)", "rgba(3, 9, 21, 0.83)"]}
+        locations={[0, 0.24, 0.44, 0.74, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : insets.bottom + 120 }}
@@ -341,6 +354,8 @@ export function SharedTrackScreen() {
             </View>
           </Animated.View>
 
+          <SavedRoutesSection />
+
           <Animated.View entering={FadeInUp.delay(170).duration(400)} style={s.recentSection}>
             <View style={s.recentHeading}>
               <View>
@@ -376,11 +391,13 @@ export function SharedTrackScreen() {
           </Animated.View>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: BASECAMP.ink },
+  backgroundImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   page: { paddingHorizontal: BASECAMP.gutter, paddingBottom: 26 },
   header: { marginBottom: SP.lg },
   eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },

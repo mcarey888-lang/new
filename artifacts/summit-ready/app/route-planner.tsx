@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import { ChevronLeft, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,7 @@ import {
   deleteRoute,
   describeRoute,
   listRoutes,
+  loadRoute,
   saveRoute,
   type PlannedRoute,
 } from "../utils/plannedRouteApi";
@@ -64,8 +65,14 @@ interface DraftFromPage {
 
 export default function RoutePlannerScreen() {
   const router = useRouter();
+  const { plannedRouteId } = useLocalSearchParams<{ plannedRouteId?: string }>();
   const insets = useSafeAreaInsets();
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
+  const tokenGetter = useRef(getToken);
+  tokenGetter.current = getToken;
+  const [mapReady, setMapReady] = useState(false);
+  const [routeLoadError, setRouteLoadError] = useState<string | null>(null);
+  const [routeLoadAttempt, setRouteLoadAttempt] = useState(0);
   const webViewRef = useRef<WebView>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -86,9 +93,7 @@ export default function RoutePlannerScreen() {
   const onMessage = useCallback((raw: string) => {
     let msg: { type?: string; route?: DraftFromPage };
     try { msg = JSON.parse(raw); } catch { return; }
-    /* Only the save handshake is handled here. Everything else the page emits
-       is its own business, and reacting to it from two places is how the two
-       get out of step. */
+    if (msg.type === "ready") setMapReady(true);
     if (msg.type === "saveRequested" && msg.route) {
       setDraft(msg.route);
       setName("");
@@ -105,6 +110,20 @@ export default function RoutePlannerScreen() {
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, [onMessage]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRouteLoadError(null);
+    if (!mapReady || !plannedRouteId) return;
+    toPage({ type: "clear" });
+    if (!userId) return;
+    void loadRoute(plannedRouteId, () => tokenGetter.current()).then(result => {
+      if (cancelled) return;
+      if (result.ok) toPage({ type: "loadRoute", route: result.value });
+      else setRouteLoadError(result.reason);
+    });
+    return () => { cancelled = true; };
+  }, [mapReady, plannedRouteId, userId, routeLoadAttempt, toPage]);
 
   const doSave = useCallback(async () => {
     if (!draft) return;
@@ -166,6 +185,13 @@ export default function RoutePlannerScreen() {
 
   return (
     <View style={styles.container}>
+      {routeLoadError && (
+        <Pressable onPress={() => setRouteLoadAttempt(value => value + 1)}
+          accessibilityRole="button" accessibilityLabel="Retry loading saved route"
+          style={styles.routeLoadError}>
+          <Text style={styles.backLabel}>Could not open saved route: {routeLoadError}. Tap to retry.</Text>
+        </Pressable>
+      )}
       {Platform.OS === "web" ? (
         React.createElement("iframe", {
           ref: frameRef,
@@ -285,6 +311,7 @@ export default function RoutePlannerScreen() {
 }
 
 const styles = StyleSheet.create({
+  routeLoadError: { position: "absolute", bottom: 150, left: 16, right: 16, zIndex: 10, backgroundColor: "#16221e", padding: 16, borderRadius: 12 },
   container: { flex: 1, backgroundColor: "#05090B" },
   webview: { flex: 1, backgroundColor: "#05090B" },
   back: {
