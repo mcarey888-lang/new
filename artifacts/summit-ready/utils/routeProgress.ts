@@ -151,3 +151,38 @@ export function ascentProgress(
     remainingM: Math.max(0, totalM - climbedM),
   };
 }
+
+/**
+ * Height on a drawn profile at a distance along it.
+ *
+ * Lives here rather than in the chart because it is arithmetic, and arithmetic
+ * inside a component is arithmetic that does not get tested — this project's
+ * test runner reads .ts and not .tsx, so a function in there is invisible to
+ * it by construction.
+ *
+ * Interpolates between samples, which is not invented terrain: it is the same
+ * straight run the chart already draws between two readings. A marker placed
+ * anywhere else would sit off the curve it belongs to.
+ *
+ * Clamped at both ends. Continuing the last gradient past the final sample
+ * would draw ground nobody measured.
+ */
+export function elevationAtDistance(
+  points: readonly { distanceM: number; elevationM: number }[],
+  distanceM: number,
+): number | null {
+  if (points.length === 0) return null;
+  if (distanceM <= points[0]!.distanceM) return points[0]!.elevationM;
+  const last = points[points.length - 1]!;
+  if (distanceM >= last.distanceM) return last.elevationM;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    if (distanceM <= b.distanceM) {
+      const span = b.distanceM - a.distanceM;
+      if (span <= 0) return a.elevationM;
+      return a.elevationM + (b.elevationM - a.elevationM) * ((distanceM - a.distanceM) / span);
+    }
+  }
+  return last.elevationM;
+}
