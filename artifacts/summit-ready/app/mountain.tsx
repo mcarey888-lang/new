@@ -26,19 +26,19 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, Linking, Platform, Pressable, RefreshControl, ScrollView,
+  ActivityIndicator, Alert, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/expo";
 import Animated, { FadeInDown, useReducedMotion } from "react-native-reanimated";
-import { AlertCircle, Car, Footprints, Info, MapPin, Mountain as MountainIcon, Navigation, Route as RouteIcon } from "lucide-react-native";
+import { AlertCircle, Info, MapPin, Mountain as MountainIcon, Route as RouteIcon } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRHeroFrame, SRPanel, SRScreenHeader, SRSectionHeader, SRSegmented,
 } from "@/components/ui";
-import { FactList, Footnote, VerificationBadge } from "@/components/mountain/parts";
+import { Footnote, VerificationBadge } from "@/components/mountain/parts";
 import { RouteCard } from "@/components/mountain/RouteCard";
 import { SelectedRoute } from "@/components/mountain/SelectedRoute";
 import { RouteActionBar } from "@/components/mountain/RouteActionBar";
@@ -53,11 +53,23 @@ import { mapExploreRoute, selectCanonicalRoute } from "@/utils/routeIntelligence
 import type { CanonicalRouteRecord, ExploreRoute, RouteIntelligence, RouteReadResult } from "@/utils/routeIntelligence";
 import { startRouteHandoff, verifiedRouteStart } from "@/utils/routeEligibility";
 import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
-import { openMapPin, openMapSearch, openMapsForHill, openRouteStartDirections } from "@/utils/openMaps";
+import { openRouteStartDirections } from "@/utils/openMaps";
+import { ActionGrid, ActionTile, TrackChoices } from "@/components/mountain/HubActions";
+import { ParkingSection } from "@/components/mountain/ParkingSection";
+import type { AccessState } from "@/components/mountain/ParkingSection";
+import {
+  AboutSection, CorrectionRow, KeyFacts, OfflineSection, ProvenanceNote, SafetySection, SourcesSection, known,
+} from "@/components/mountain/InfoSections";
+import type { HazardItem } from "@/components/mountain/InfoSections";
+import { useRoutePackage, useTrackLauncher } from "@/hooks/useMountainHub";
+import { readMountainPageCache, writeMountainPageCache, readMountainRoutePackage } from "@/utils/mountainHubStorage";
+import { lookupMountainAccess } from "@/utils/mountainAccess";
+import { mountainHazardNotes } from "@/utils/mountainSafety";
+import type { MountainAccessPoint } from "@/utils/mountainAccess";
 import { sourcedParkingOptionsForMountain } from "@/utils/mountainParkingOptions";
 import {
-  CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE, NO_ROUTES_NOTICE, PRACTICAL_FOOTNOTE,
-  DISCOVERY_CANDIDATE_NOTICE, DISCOVERY_NO_ROUTES_NOTICE,
+  CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE,
+  DISCOVERY_CANDIDATE_NOTICE,
   ROUTE_SORTS, presentMountain, presentMountainDna, presentRoutes, presentSelectedRoute,
   routePickerHint, sortRoutes,
   type MountainLookupResponse, type PresentedRoute, type RouteSort,
@@ -76,7 +88,7 @@ export default function MountainDetailScreen() {
   useScreenView("mountain-detail");
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion() ?? false;
-  const { shellMode } = useApp();
+  const { shellMode, activeExpeditionId } = useApp();
   const { getToken, userId } = useAuth();
   // The auth hook may provide a new function on render. A new token getter
   // must not restart image generation or refetch route data.
@@ -102,13 +114,46 @@ export default function MountainDetailScreen() {
   const [summitDescription, setSummitDescription] = useState<string | null>(null);
   const [descriptionState, setDescriptionState] = useState<LoadState>("loading");
 
+  const [offlineNotice, setOfflineNotice] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
+  const [access, setAccess] = useState<MountainAccessPoint | null>(null);
+  const [accessState, setAccessState] = useState<AccessState>("idle");
+  const lookupRef = useRef<MountainLookupResponse | null>(null);
+  lookupRef.current = lookup;
+  const scrollRef = useRef<ScrollView>(null);
+  const ys = useRef<Record<string, number>>({});
+  const accessAbort = useRef<AbortController | null>(null);
+  const loadGeneration = useRef(0);
+  const loadAbort = useRef<AbortController | null>(null);
+  const cacheRequest = useMemo(
+    () => ({ name: name ?? "", region, country, catalogueId, discoveryId }),
+    [name, region, country, catalogueId, discoveryId],
+  );
+
   const load = useCallback(async () => {
     if (!name) { setState("error"); return; }
+    const generation = ++loadGeneration.current;
+    loadAbort.current?.abort();
+    const controller = new AbortController();
+    loadAbort.current = controller;
     setState("loading");
+    let hadCache = !!lookupRef.current;
+    if (!hadCache) {
+      const cached = await readMountainPageCache(cacheRequest).catch(() => null);
+      if (generation !== loadGeneration.current) return;
+      if (cached) {
+        hadCache = true;
+        setLookup(cached.lookup);
+        if (cached.description) { setSummitDescription(cached.description); setDescriptionState("ready"); }
+        setState("ready");
+      }
+    }
     try {
       const response = await fetch(`${API_BASE}/mountain-lookup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           name,
           ...(region ? { region } : {}),
@@ -118,15 +163,38 @@ export default function MountainDetailScreen() {
         }),
       });
       if (!response.ok) throw new Error(String(response.status));
-      setLookup(await response.json() as MountainLookupResponse);
+      const fresh = await response.json() as MountainLookupResponse;
+      if (generation !== loadGeneration.current) return;
+      setLookup(fresh);
+      setOfflineNotice(false);
       setState("ready");
+      void writeMountainPageCache(cacheRequest, fresh).catch(() => {});
     } catch {
-      setState("error");
+      if (generation !== loadGeneration.current) return;
+      if (hadCache) { setOfflineNotice(true); setState("ready"); }
+      else setState("error");
     }
-  }, [name, region, country, catalogueId, discoveryId]);
+  }, [name, region, country, catalogueId, discoveryId, cacheRequest]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    lookupRef.current = null;
+    setLookup(null);
+    setSummitDescription(null);
+    setSelectedKey(null);
+    setAccess(null);
+    setAccessState("idle");
+    setOfflineNotice(false);
+    setSearched(false);
+    void load();
+    return () => {
+      loadGeneration.current++;
+      loadAbort.current?.abort();
+      accessAbort.current?.abort();
+    };
+  }, [load]);
 
+  const descRef = useRef<string | null>(null);
+  descRef.current = summitDescription;
   const mountain = useMemo(() => lookup ? presentMountain(lookup) : null, [lookup]);
   const parkingOptions = useMemo(() => sourcedParkingOptionsForMountain(lookup), [lookup]);
   const canonicalMountainId = lookup?.source === "canonical"
@@ -138,8 +206,7 @@ export default function MountainDetailScreen() {
   useEffect(() => {
     if (!mountain) return;
     const controller = new AbortController();
-    setSummitDescription(null);
-    setDescriptionState("loading");
+    if (!descRef.current) setDescriptionState("loading");
     void fetch(`${API_BASE}/hill-detail`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -155,13 +222,16 @@ export default function MountainDetailScreen() {
       if (!response.ok) throw new Error(`Summit description failed (${response.status})`);
       const detail = await response.json() as { description?: string };
       if (!controller.signal.aborted) {
-        setSummitDescription(detail.description?.trim() || null);
+        const text = detail.description?.trim() || null;
+        setSummitDescription(text);
         setDescriptionState("ready");
+        if (text && lookupRef.current) void writeMountainPageCache(cacheRequest, lookupRef.current, text).catch(() => {});
       }
     }).catch(() => {
-      if (!controller.signal.aborted) setDescriptionState("error");
+      if (!controller.signal.aborted) setDescriptionState(descRef.current ? "ready" : "error");
     });
     return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mountain]);
 
   // Only the detail screen starts generation, after catalogue identity is resolved.
@@ -219,6 +289,10 @@ export default function MountainDetailScreen() {
       if (pollTimer) clearTimeout(pollTimer);
     };
   }, [canonicalMountainId, userId]);
+  useEffect(() => {
+    setSelectedKey(null); setRecord(null); setAccess(null); setAccessState("idle"); setTrackOpen(false);
+    accessAbort.current?.abort();
+  }, [userId]);
   const routes = useMemo(
     () => (lookup && mountain ? presentRoutes(lookup, mountain) : []),
     [lookup, mountain],
@@ -246,12 +320,24 @@ export default function MountainDetailScreen() {
     void fetchCanonicalRouteRecord(identity.routeId, identity.mountainId, () => getTokenRef.current())
       .then(result => {
         if (cancelled) return;
-        setRecord(result.record);
-        setRecordFailure(result.record ? null : result.reasons.join(", ") || result.status);
-        setRecordPending(false);
+        if (result.record || !userId) {
+          setRecord(result.record);
+          setRecordFailure(result.record ? null : result.reasons.join(", ") || result.status);
+          setRecordPending(false);
+          return;
+        }
+        void readMountainRoutePackage(userId, identity.routeId, identity.mountainId, identity.routeVersion)
+          .catch(() => null)
+          .then(pkg => {
+            if (cancelled) return;
+            setRecord(pkg?.record ?? null);
+            setRecordFailure(pkg ? null : result.reasons.join(", ") || result.status);
+            setRecordPending(false);
+          });
       });
     return () => { cancelled = true; };
-  }, [selected?.selection?.routeId, selected?.selection?.mountainId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.selection?.routeId, selected?.selection?.mountainId, userId]);
 
   /* The engine's own verdict for the selected route. */
   const exploreRoute: ExploreRoute | null = useMemo(() => {
@@ -307,7 +393,7 @@ export default function MountainDetailScreen() {
    * The guard runs here, not in the button's visibility. A null handoff means
    * this route may not be navigated, whatever the screen was showing.
    */
-  async function startRoute() {
+  async function startRouteInner() {
     if (!presented) return;
     const handoff = startRouteHandoff(exploreRoute, {
       routeName: presented.route.name,
@@ -369,15 +455,91 @@ export default function MountainDetailScreen() {
     });
   }
 
-  // Free-hike tracking records a trace for review, not a navigable route
-  // handoff. Never attach an unverified route's ID or geometry here.
-  function trackFreeHike() {
-    if (!mountain) return;
+  const { launch, resume, launching, resumable } = useTrackLauncher(userId);
+  const startRoute = () => { void launch(startRouteInner); };
+  const rawMountainId = lookup?.source === "canonical" ? lookup.canonicalIdentity?.id : undefined;
+  const pkgState = useRoutePackage(userId, record, parkingOptions);
+  async function viewRouteMap() {
+    if (!userId) {
+      Alert.alert("Sign in required", "Sign in to save and view an exact route snapshot on this device.");
+      return;
+    }
+    const saved = await pkgState.save();
+    if (!saved) return;
     router.push({
-      pathname: "/hike-tracking" as any,
-      params: { trackingMode: "freehike", hillName: mountain.name },
+      pathname: "/route-planner" as any,
+      params: {
+        canonicalPackageRouteId: saved.record.route.version.routeId,
+        canonicalPackageMountainId: saved.record.mountain.id,
+        canonicalPackageVersion: saved.record.route.version.version,
+      },
     });
   }
+
+  // recordingMountainId is the raw canonical id; canonicalMountainId is
+  // deliberately NOT passed because it would trigger route handoff intent.
+  function trackFreeHike() {
+    if (!mountain) return;
+    void launch(() => {
+      router.push({
+        pathname: "/hike-tracking" as any,
+        params: {
+          trackingMode: "freehike",
+          hillName: mountain.name,
+          ...(rawMountainId ? { recordingMountainId: rawMountainId } : {}),
+          ...(shellMode === "expedition" && activeExpeditionId ? { expeditionId: activeExpeditionId } : {}),
+        },
+      });
+    });
+  }
+
+  function planRoute(focus?: { latitude: number; longitude: number; label?: string }) {
+    const c = focus ?? mountain?.summitCoordinates;
+    router.push({
+      pathname: "/route-planner" as any,
+      params: c ? {
+        focusLat: String(c.latitude), focusLng: String(c.longitude),
+        ...(focus?.label ? { startLabel: focus.label } : {}),
+      } : {},
+    });
+  }
+
+  function scrollTo(key: string) {
+    scrollRef.current?.scrollTo({ y: Math.max(0, (ys.current[key] ?? 0) - 8), animated: !reducedMotion });
+  }
+  const mark = (key: string) => (e: { nativeEvent: { layout: { y: number } } }) => { ys.current[key] = e.nativeEvent.layout.y; };
+
+  async function findRoutes() {
+    setSearched(false);
+    await load();
+    setSearched(true);
+  }
+
+  async function findParking() {
+    if (!lookup) return;
+    accessAbort.current?.abort();
+    const controller = new AbortController();
+    accessAbort.current = controller;
+    setAccessState("loading");
+    try {
+      const found = await lookupMountainAccess(lookup, controller.signal);
+      if (controller.signal.aborted) return;
+      setAccess(found);
+      setAccessState("done");
+    } catch {
+      if (!controller.signal.aborted) setAccessState("error");
+    }
+  }
+
+  const hazards = useMemo<HazardItem[]>(() => mountainHazardNotes(record), [record]);
+
+  const sources = useMemo(() => {
+    const out = new Set<string>();
+    if (mountain?.provenanceVersion) out.add(`Summit Data Engine, provenance ${mountain.provenanceVersion}`);
+    for (const r of routes) if (r.attribution) out.add(r.attribution);
+    for (const o of parkingOptions) out.add(`${o.sourceName}, car park listing`);
+    return [...out];
+  }, [mountain, routes, parkingOptions]);
 
   const topPad = Platform.OS === "web" ? 18 : insets.top + 8;
   const bottomPad = (presented ? 132 : 24) + TAB_BAR_HEIGHT
@@ -417,6 +579,7 @@ export default function MountainDetailScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -469,7 +632,9 @@ export default function MountainDetailScreen() {
                         ? "AI CANDIDATE · NOT VERIFIED"
                         : "CANDIDATE · NOT VERIFIED"}
                   </Text>
-                : <VerificationBadge state={mountain.verified ? "verified" : "unidentified"} />}
+                : mountain.verified
+                  ? <VerificationBadge state="verified" />
+                  : <Text style={styles.candidateBadge}>GUIDE INFORMATION · NOT VERIFIED</Text>}
             </View>
           </View>
         </SRHeroFrame>
@@ -487,215 +652,53 @@ export default function MountainDetailScreen() {
           </View>
         ) : null}
 
-        {/* A missing catalogue connection is not evidence that this mountain
-            is absent from the catalogue. Keep untrusted routes browse-only. */}
-        {mountain.fallback ? (
+        {offlineNotice ? (
           <View style={styles.gutter}>
-            <SRPanel radius={8} style={styles.fallbackPanel}>
-              <View style={styles.fallbackRow}>
-                <Info size={16} color={EXPLORE.unverified} />
-                <View style={styles.fallbackText}>
-                  <Text style={styles.fallbackTitle}>
-                    {mountain.discoveryCandidate
-                      ? DISCOVERY_CANDIDATE_NOTICE.title
-                      : lookup?.catalogueStatus === "unavailable"
-                        ? CATALOGUE_UNAVAILABLE_NOTICE.title
-                        : FALLBACK_NOTICE.title}
-                  </Text>
-                  <Text style={styles.fallbackBody}>
-                    {mountain.discoveryCandidate
-                      ? DISCOVERY_CANDIDATE_NOTICE.body
-                      : lookup?.catalogueStatus === "unavailable"
-                        ? CATALOGUE_UNAVAILABLE_NOTICE.body
-                        : FALLBACK_NOTICE.body}
-                  </Text>
-                </View>
-              </View>
-            </SRPanel>
+            <Text style={styles.offlineNotice} testID="mountain-offline-notice">
+              Live information could not be refreshed. Showing data saved on this device.
+            </Text>
           </View>
         ) : null}
 
-        {/* ── Overview ──────────────────────────────────────────────────── */}
-        <Section
-          entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(360)}
-          style={styles.gutter}
-        >
-          <SRPanel radius={8} style={styles.overviewPanel}>
-            <View style={styles.overviewRow}>
-              {mountain.overview.map(f => (
-                <View key={f.key} style={styles.overviewItem}>
-                  <Text style={styles.overviewValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                    {f.value ?? "—"}
-                  </Text>
-                  <Text style={styles.overviewLabel} numberOfLines={2}>{f.label}</Text>
-                </View>
-              ))}
-            </View>
-          </SRPanel>
-          <Footnote>{ELEVATION_FOOTNOTE}</Footnote>
-        </Section>
-
-        {/* Do not treat the summit pin or a map-search result as a route start. */}
-        <Section style={styles.gettingThereSection}>
-          <View style={styles.gutter}>
-            <SRSectionHeader title="Getting there" icon={<Navigation size={13} color={EXPLORE.accent} />} />
-            <SRPanel radius={8} style={styles.accessPanel}>
-              <Text style={styles.accessLabel}>ROUTE START</Text>
-              <Text style={styles.accessValue}>
-                {routeStart && presented
-                  ? `${presented.route.name} · ${routeStartLabel}`
-                  : "Choose a verified route below for directions to its mapped start. If no start is confirmed, search nearby access points and check locally before setting out."}
-              </Text>
-              {routeStart && presented ? (
-                <>
-                  <View style={styles.directionsRow}>
-                    <Pressable
-                      onPress={() => getDirectionsToRouteStart("walking")}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Walking directions to the mapped start of ${presented.route.name}`}
-                      style={styles.directionsButton}
-                    >
-                      <Footprints size={16} color={EXPLORE.accent} />
-                      <Text style={styles.accessActionText}>Walk to start</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => getDirectionsToRouteStart("driving")}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Driving directions towards the mapped start of ${presented.route.name}`}
-                      style={styles.directionsButton}
-                    >
-                      <Car size={16} color={EXPLORE.accent} />
-                      <Text style={styles.accessActionText}>Drive near start</Text>
-                    </Pressable>
+        {known(mountain.overview).length ? (
+          <Section entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(360)} style={styles.gutter}>
+            <SRPanel radius={8} style={styles.overviewPanel}>
+              <View style={styles.overviewRow}>
+                {known(mountain.overview).map(f => (
+                  <View key={f.key} style={styles.overviewItem}>
+                    <Text style={styles.overviewValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{f.value}</Text>
+                    <Text style={styles.overviewLabel} numberOfLines={2}>{f.label}</Text>
                   </View>
-                  <Text style={styles.directionsNote}>
-                    This is the route's mapped start, not a confirmed car park. Driving directions may stop at the nearest road; check access and local signs.
-                  </Text>
-                </>
-              ) : (
-                <Pressable
-                  onPress={() => openMapSearch(`${mountain.name} trailhead ${mountain.place ?? ""}`.trim())}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Search for access points near ${mountain.name}`}
-                  style={styles.accessAction}
-                >
-                  <Navigation size={15} color={EXPLORE.accent} />
-                  <Text style={styles.accessActionText}>Search nearby trailheads</Text>
-                </Pressable>
-              )}
+                ))}
+              </View>
             </SRPanel>
-          </View>
-        </Section>
+            <Footnote>{ELEVATION_FOOTNOTE}</Footnote>
+          </Section>
+        ) : null}
 
-        {/* A guide overview is not canonical evidence; navigation uses only the
-            catalogue's verified summit point. Parking remains a map search. */}
-        <Section style={styles.detailsSection}>
-          <View style={styles.gutter}>
-            <SRSectionHeader title="About this summit" />
-            <Text style={styles.description}>
-              {descriptionState === "loading"
-                ? "Loading summit description…"
-                : descriptionState === "error"
-                  ? "Summit description is unavailable right now."
-                  : summitDescription ?? "No summit description is available yet."}
-            </Text>
-            {summitDescription ? (
-              <Text style={styles.descriptionNote}>Guide overview · route and access details are not verified by this description.</Text>
-            ) : null}
-            <View style={styles.accessHeading}>
-              <SRSectionHeader title="Summit location & parking" />
-            </View>
-            <SRPanel radius={8} style={styles.accessPanel}>
-              <Text style={styles.accessLabel}>SUMMIT LOCATION</Text>
-              <Text style={styles.accessValue}>
-                {mountain.summitCoordinates
-                  ? `${mountain.summitCoordinates.latitude.toFixed(5)}, ${mountain.summitCoordinates.longitude.toFixed(5)}`
-                  : mountain.place ?? "Exact summit coordinates not verified"}
-              </Text>
-              <Pressable
-                onPress={() => mountain.summitCoordinates
-                  ? openMapPin(mountain.summitCoordinates.latitude, mountain.summitCoordinates.longitude, mountain.name)
-                  : openMapsForHill(null, null, mountain.name, false, mountain.place ?? undefined)}
-                accessibilityRole="button"
-                accessibilityLabel={mountain.summitCoordinates ? "View verified summit location on map" : "Search for summit on map"}
-                testID="summit-map-button"
-                style={styles.accessAction}
-              >
-                <MapPin size={15} color={EXPLORE.accent} />
-                <Text style={styles.accessActionText}>
-                  {mountain.summitCoordinates ? "View summit on map" : "Search summit on map"}
-                </Text>
-              </Pressable>
-              <View style={styles.accessDivider} />
-              <Text style={styles.accessLabel}>PARKING & ACCESS</Text>
-              {parkingOptions.length ? (
-                <>
-                  <Text style={styles.accessValue}>
-                    Choose an approach. These car parks are listed by their operator, but none is confirmed as the start of a route in this app.
-                  </Text>
-                  {parkingOptions.map(option => (
-                    <View key={option.id} style={styles.parkingOption}>
-                      <Text style={styles.parkingName}>{option.name}</Text>
-                      <Text style={styles.parkingApproach}>{option.approach}</Text>
-                      <Text style={styles.parkingGrid}>{option.osGridReference} · {option.postcode}</Text>
-                      <Text style={styles.parkingNote}>{option.note}</Text>
-                      <View style={styles.parkingActions}>
-                        <Pressable
-                          onPress={() => openMapSearch(option.mapSearch)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Find ${option.name} in Maps`}
-                          style={styles.accessAction}
-                        >
-                          <MapPin size={15} color={EXPLORE.accent} />
-                          <Text style={styles.accessActionText}>Find in Maps</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => void Linking.openURL(option.sourceUrl).catch(() =>
-                            Alert.alert("Source unavailable", "The car park listing could not be opened right now."))}
-                          accessibilityRole="link"
-                          accessibilityLabel={`Read ${option.sourceName} listing for ${option.name}`}
-                          style={styles.accessAction}
-                        >
-                          <Text style={styles.accessActionText}>{option.sourceName} listing</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ))}
-                  <Text style={styles.directionsNote}>
-                    OS grid references locate an area, not the exact vehicle entrance. Maps searches for each named car park; check its listing, current access and your walking route before travelling.
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.accessValue}>
-                  No source-checked car park options are available here yet. Check the map result and local signs before travelling.
-                </Text>
-              )}
-              <Pressable
-                onPress={() => openMapSearch(`${mountain.name} parking ${mountain.place ?? ""}`.trim())}
-                accessibilityRole="button"
-                accessibilityLabel={`Search nearby parking for ${mountain.name}`}
-                testID="summit-parking-button"
-                style={styles.accessAction}
-              >
-                <Navigation size={15} color={EXPLORE.accent} />
-                <Text style={styles.accessActionText}>
-                  {parkingOptions.length ? "Search for other parking" : "Search nearby parking"}
-                </Text>
-              </Pressable>
-            </SRPanel>
-          </View>
-        </Section>
+        <ActionGrid
+          resumable={resumable}
+          busy={launching}
+          onRoutes={() => scrollTo("routes")}
+          onParking={() => scrollTo("parking")}
+          onTrack={() => setTrackOpen(v => !v)}
+          onResume={resume}
+          onOffline={() => scrollTo("offline")}
+        />
+        {trackOpen && !resumable ? (
+          <TrackChoices
+            busy={launching}
+            onFollow={() => { setTrackOpen(false); scrollTo("routes"); }}
+            onFreeHike={() => { setTrackOpen(false); trackFreeHike(); }}
+            onPlan={() => planRoute()}
+            onSaved={() => router.push("/trails-saved" as any)}
+            onClose={() => setTrackOpen(false)}
+          />
+        ) : null}
 
-        {/* ── Routes, with the selected one expanded in place ───────────── */}
-        <Section
-          entering={reducedMotion ? undefined : FadeInDown.delay(110).duration(360)}
-          style={styles.routesSection}
-        >
+        <View onLayout={mark("routes")} style={styles.routesSection}>
           <View style={styles.gutter}>
-            <SRSectionHeader
-              title={`Routes (${routes.length})`}
-              icon={<RouteIcon size={13} color={EXPLORE.accent} />}
-            />
+            <SRSectionHeader title="Routes" icon={<RouteIcon size={13} color={EXPLORE.accent} />} />
             {routes.length > 1 ? (
               <SRSegmented
                 compact
@@ -708,14 +711,22 @@ export default function MountainDetailScreen() {
           </View>
 
           {routes.length === 0 ? (
-            <SREmptyState
-              icon={<MountainIcon size={20} color={BASECAMP.textDim} />}
-              title={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.title : NO_ROUTES_NOTICE.title}
-              body={mountain.discoveryCandidate ? DISCOVERY_NO_ROUTES_NOTICE.body : NO_ROUTES_NOTICE.body}
-              action="Track a free hike"
-              onAction={trackFreeHike}
-              style={styles.gutter}
-            />
+            <View style={styles.gutter}>
+              <SREmptyState
+                icon={<MountainIcon size={20} color={BASECAMP.textDim} />}
+                title="No mapped routes yet"
+                body={searched
+                  ? "The route library was refreshed and holds no routes for this mountain. Route discovery is not available yet, so nothing was built."
+                  : "Routes appear here once they are stored for this mountain. You can refresh the library, plan your own route or record a free hike."}
+                action="Find routes for this mountain"
+                onAction={() => void findRoutes()}
+                style={styles.emptyRoutes}
+                testID="mountain-find-routes"
+              />
+              <View style={styles.emptyActions}>
+                <ActionTileRow onPlan={() => planRoute()} onFree={trackFreeHike} busy={launching} />
+              </View>
+            </View>
           ) : (
             <View style={[styles.gutter, styles.routeList]}>
               {sorted.map(route => (
@@ -724,6 +735,9 @@ export default function MountainDetailScreen() {
                     route={route}
                     selected={route.key === selectedKey}
                     onPress={() => choose(route)}
+                    mapping={route.key === selectedKey && !recordPending
+                      ? (presented?.eligibility.isNavigable ? "mapped" : "guide")
+                      : null}
                   />
                   {route.key === selectedKey ? (
                     recordPending ? (
@@ -739,45 +753,67 @@ export default function MountainDetailScreen() {
                         mountainName={mountain.name}
                         startPointLabel={routeStart ? routeStartLabel : undefined}
                         onWalkToStart={routeStart ? () => getDirectionsToRouteStart("walking") : undefined}
-                        onDriveToStart={routeStart ? () => getDirectionsToRouteStart("driving") : undefined}
+                        onSaveDataPackage={userId ? () => void pkgState.save() : undefined}
+                        onViewMap={() => void viewRouteMap()}
+                        dataPackageSaved={!!pkgState.pkg}
                       />
                     ) : (
                       <SRPanel radius={8} style={styles.pending}>
                         <Text style={styles.pendingText}>
-                          {recordFailure
-                            ? `Canonical route detail is unavailable (${recordFailure}). No route geometry is being used.`
-                            : "This route has no available canonical record. Route geometry is not available."}
+                          Route guide only — mapping not available. No route geometry is being used.
                         </Text>
                       </SRPanel>
                     )
                   ) : null}
                 </View>
               ))}
-              {!selected ? (
-                <Text style={styles.pickerHint}>{routePickerHint(mountain.name)}</Text>
-              ) : null}
+              {!selected ? <Text style={styles.pickerHint}>{routePickerHint(mountain.name)}</Text> : null}
             </View>
           )}
-        </Section>
+        </View>
 
-        {/* ── Practical information ─────────────────────────────────────── */}
-        <Section
-          entering={reducedMotion ? undefined : FadeInDown.delay(160).duration(360)}
-          style={styles.practicalSection}
-        >
-          <View style={styles.gutter}>
-            <SRSectionHeader title="Practical information" />
-            <SRPanel radius={8} style={styles.practicalPanel}>
-              <FactList facts={mountain.practical} />
-            </SRPanel>
-            <Footnote>{PRACTICAL_FOOTNOTE}</Footnote>
-            {mountain.provenanceVersion ? (
-              <Text style={styles.provenance} numberOfLines={2}>
-                {`Summit Data Engine · provenance ${mountain.provenanceVersion}`}
-              </Text>
-            ) : null}
-          </View>
-        </Section>
+        <View onLayout={mark("parking")}>
+          <ParkingSection
+            mountainName={mountain.name}
+            place={mountain.place}
+            options={parkingOptions}
+            access={access}
+            accessState={accessState}
+            onFind={() => void findParking()}
+            onUseAsStart={p => planRoute({ latitude: p.latitude, longitude: p.longitude, label: p.name })}
+            routeStart={routeStart ? { label: routeStartLabel } : null}
+            onWalkToRouteStart={routeStart ? () => getDirectionsToRouteStart("walking") : undefined}
+          />
+        </View>
+
+        <SafetySection hazards={hazards} />
+        <AboutSection text={summitDescription} state={descriptionState} />
+        <KeyFacts facts={mountain.practical} />
+
+        <View onLayout={mark("offline")}>
+          <OfflineSection
+            routeName={presented?.route.name ?? null}
+            canPackage={!!presented?.eligibility.isNavigable && !!userId}
+            pkg={pkgState.pkg}
+            saving={pkgState.status === "saving"}
+            onSave={() => void pkgState.save()}
+            onRemove={() => void pkgState.remove()}
+          />
+        </View>
+
+        <SourcesSection sources={sources} />
+        <CorrectionRow />
+        {/* Unavailable catalogue/contribution guidance is secondary, never the primary action. */}
+        {mountain.fallback ? (
+          <ProvenanceNote text={mountain.discoveryCandidate
+            ? `${DISCOVERY_CANDIDATE_NOTICE.title}. ${DISCOVERY_CANDIDATE_NOTICE.body}`
+            : lookup?.catalogueStatus === "unavailable"
+              ? `${CATALOGUE_UNAVAILABLE_NOTICE.title}. ${CATALOGUE_UNAVAILABLE_NOTICE.body}`
+              : FALLBACK_NOTICE.body} />
+        ) : null}
+        {mountain.provenanceVersion ? (
+          <ProvenanceNote text={`Summit Data Engine, provenance ${mountain.provenanceVersion}. Static information, not live conditions.`} />
+        ) : null}
       </ScrollView>
 
       {presented && !recordPending ? (
@@ -867,7 +903,10 @@ const styles = StyleSheet.create({
   },
   directionsNote: { ...TYPE.caption, color: BASECAMP.textMuted, marginTop: 7 },
 
-  routesSection: { marginTop: 18 },
+  routesSection: { marginTop: 20 },
+  offlineNotice: { marginTop: 10, fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular", color: EXPLORE.unverified },
+  emptyRoutes: { marginTop: 4 },
+  emptyActions: { marginTop: 8 },
   sort: { marginTop: 10, alignSelf: "flex-start" },
   routeList: { marginTop: 10, gap: 9 },
   pickerHint: { marginTop: 2, fontSize: 11, lineHeight: 15, fontFamily: "Inter_400Regular", color: BASECAMP.textDim },
@@ -878,3 +917,12 @@ const styles = StyleSheet.create({
   practicalPanel: { marginTop: 10 },
   provenance: { marginTop: 6, fontSize: 9.5, lineHeight: 13, fontFamily: "Inter_400Regular", color: BASECAMP.textFaint },
 });
+
+function ActionTileRow({ onPlan, onFree, busy }: { onPlan: () => void; onFree: () => void; busy: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SP.sm }}>
+      <ActionTile testID="mountain-empty-plan" label="Plan my own route" onPress={onPlan} icon={<RouteIcon size={17} color={EXPLORE.accent} />} />
+      <ActionTile testID="mountain-empty-free" label="Record free hike" onPress={onFree} disabled={busy} icon={<MapPin size={17} color={EXPLORE.accent} />} />
+    </View>
+  );
+}

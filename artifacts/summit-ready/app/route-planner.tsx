@@ -24,6 +24,7 @@ import {
   saveRoute,
   type PlannedRoute,
 } from "../utils/plannedRouteApi";
+import { readMountainRoutePackage } from "../utils/mountainHubStorage";
 
 /**
  * Route planner — the map, inside the app.
@@ -66,7 +67,11 @@ interface DraftFromPage {
 
 export default function RoutePlannerScreen() {
   const router = useRouter();
-  const { plannedRouteId } = useLocalSearchParams<{ plannedRouteId?: string }>();
+  const { plannedRouteId, focusLat, focusLng, startLabel, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion } =
+    useLocalSearchParams<{
+      plannedRouteId?: string; focusLat?: string; focusLng?: string; startLabel?: string;
+      canonicalPackageRouteId?: string; canonicalPackageMountainId?: string; canonicalPackageVersion?: string;
+    }>();
   const insets = useSafeAreaInsets();
   const { getToken, userId } = useAuth();
   const tokenGetter = useRef(getToken);
@@ -87,6 +92,8 @@ export default function RoutePlannerScreen() {
   const [listOpen, setListOpen] = useState(false);
   const [routes, setRoutes] = useState<PlannedRoute[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const [snapshotName, setSnapshotName] = useState<string | null>(null);
+  const [snapshotAttribution, setSnapshotAttribution] = useState<string | null>(null);
 
   /** Send a message into the page, whichever way it is embedded. */
   const toPage = useCallback((msg: unknown) => {
@@ -140,6 +147,45 @@ export default function RoutePlannerScreen() {
     });
     return () => { cancelled = true; };
   }, [mapReady, plannedRouteId, userId, routeLoadAttempt, toPage]);
+
+  useEffect(() => {
+    if (!mapReady || plannedRouteId || canonicalPackageRouteId) return;
+    if (!focusLat?.trim() || !focusLng?.trim()) return;
+    const lat = Number(focusLat), lng = Number(focusLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+    if (startLabel?.trim()) {
+      // An explicit access-point choice seeds a PERSONAL plan, not a canonical route.
+      toPage({ type: "route", points: [{ lat, lng }], snapped: false });
+    }
+    toPage({ type: "locate", lat, lng, zoom: 13 });
+  }, [mapReady, plannedRouteId, canonicalPackageRouteId, focusLat, focusLng, startLabel, toPage]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSnapshotName(null);
+    setSnapshotAttribution(null);
+    if (!mapReady || plannedRouteId || !canonicalPackageRouteId || !canonicalPackageMountainId) return;
+    toPage({ type: "clear" });
+    if (!userId) { setRouteLoadError("Sign in to view your saved route data."); return; }
+    void readMountainRoutePackage(userId, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion)
+      .then(pkg => {
+        if (cancelled) return;
+        if (!pkg?.record.geometry) { setRouteLoadError("This exact route snapshot is not saved on this device."); return; }
+        const points = pkg.record.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+        toPage({ type: "loadRoute", route: {
+          name: pkg.record.route.canonicalName,
+          anchors: [points[0], points[points.length - 1]], geometry: points,
+          legs: [{ kind: "routed" }],
+        } });
+        toPage({ type: "draw", on: false });
+        toPage({ type: "locate", ...points[0], zoom: 13 });
+        setSnapshotName(pkg.record.route.canonicalName);
+        setSnapshotAttribution([...new Set(pkg.record.geometry.sourceMembers.map(source =>
+          `${source.attribution || source.provider}${source.licence ? ` · ${source.licence}` : ""}`,
+        ))].join("; "));
+      }).catch(() => { if (!cancelled) setRouteLoadError("Saved route data could not be read."); });
+    return () => { cancelled = true; };
+  }, [mapReady, plannedRouteId, canonicalPackageRouteId, canonicalPackageMountainId, canonicalPackageVersion, userId, toPage]);
 
   const doSave = useCallback(async () => {
     if (!draft) return;
@@ -239,6 +285,15 @@ export default function RoutePlannerScreen() {
         <ChevronLeft size={18} color="#fff" />
         <Text style={styles.backLabel}>Back</Text>
       </Pressable>
+      {snapshotName || startLabel ? (
+        <View pointerEvents="none" style={{ position: "absolute", bottom: Math.max(34, insets.bottom + 12), left: 12, right: 12, padding: 12, borderRadius: 8, backgroundColor: "#080e16ee" }}>
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{snapshotName ?? startLabel}</Text>
+          <Text style={{ color: "#c4ceda", fontSize: 11, marginTop: 4 }}>
+            {snapshotName ? "Saved route snapshot. Basemap tiles require a connection. Any edited copy is a personal plan." : "Selected access point for your personal plan. Confirm local access before setting out."}
+          </Text>
+          {snapshotAttribution ? <Text style={{ color: "#c4ceda", fontSize: 10, marginTop: 4 }}>{snapshotAttribution}</Text> : null}
+        </View>
+      ) : null}
 
       <Pressable
         onPress={openList}

@@ -9,6 +9,15 @@ import {
 } from "../services/directionsLookup.js";
 
 const router: IRouter = Router();
+function sourceUrl(placeId: string): string {
+  const short = /^([NWR])(\d+)$/.exec(placeId);
+  if (short) {
+    const kind = { N: "node", W: "way", R: "relation" }[short[1] as "N" | "W" | "R"];
+    return `https://www.openstreetmap.org/${kind}/${short[2]}`;
+  }
+  const match = /^(node|way|relation):(\d+)$/.exec(placeId);
+  return match ? `https://www.openstreetmap.org/${match[1]}/${match[2]}` : "https://www.openstreetmap.org/copyright";
+}
 const targetSchema = z.object({
   hillName: z.string().trim().min(2).max(160),
   location: z.string().max(160).default(""),
@@ -28,6 +37,8 @@ router.post("/directions/lookup", async (req, res) => {
       .where(eq(verifiedDirections.identityKey, identityKey)).limit(1);
     if (verified) return res.json({
       status: "gps_confirmed", name: verified.label, lat: verified.lat, lng: verified.lng,
+      placeId: verified.placeId, sourceUrl: sourceUrl(verified.placeId),
+      lastChecked: verified.verifiedAt?.toISOString(),
     });
 
     const result = await searchParking(target.hillName, target.location, {
@@ -36,7 +47,10 @@ router.post("/directions/lookup", async (req, res) => {
     if (!result) return res.status(404).json({
       error: "No nearby named parking place was found. Check local route information before travelling.",
     });
-    return res.json({ status: "internet_lookup", ...result });
+    return res.json({
+      status: "internet_lookup", ...result, sourceUrl: sourceUrl(result.placeId),
+      lastChecked: new Date().toISOString(),
+    });
   } catch (err) {
     req.log.error({ err }, "Directions lookup failed");
     return res.status(503).json({ error: "Parking lookup is unavailable. Please try again later." });

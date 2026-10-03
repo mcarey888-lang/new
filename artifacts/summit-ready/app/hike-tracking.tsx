@@ -301,8 +301,16 @@ export default function HikeTrackingScreen() {
     canonicalRouteVersion?: string;
     canonicalMountainId?: string;
     canonicalRouteName?: string;
+    recordingMountainId?: string;
   }>();
   const personalRoute = usePersonalRouteTracking(params.plannedRouteId);
+  // Association only: unlike canonical route params, this never gates free recording.
+  const recordingMountainIdRef = useRef(
+    params.recordingMountainId && /^[A-Za-z0-9:_-]{1,160}$/.test(params.recordingMountainId)
+      ? (params.recordingMountainId.startsWith("sde:mountain:")
+        ? params.recordingMountainId : `sde:mountain:${params.recordingMountainId}`)
+      : undefined,
+  );
   const canonicalRouteParamsIntent = Boolean(
     params.routeHandoffId || params.canonicalRouteId || params.canonicalRouteIdentityKey ||
     params.canonicalRouteVersion || params.canonicalMountainId || params.canonicalRouteName,
@@ -935,6 +943,7 @@ export default function HikeTrackingScreen() {
         canonicalRouteVersion: canonicalRouteContext?.routeVersion ?? params.canonicalRouteVersion,
         canonicalMountainId: canonicalRouteContext?.mountainId ?? params.canonicalMountainId,
         personalRoute: personalRoute.context ?? undefined,
+        recordingMountainId: recordingMountainIdRef.current,
         syncState: isOffline ? "queued" : "local_only",
         userId: userId ?? undefined,
         hillMeta: {
@@ -1027,6 +1036,7 @@ export default function HikeTrackingScreen() {
 
         // Restore route name (may differ from hillName for custom-named routes)
         if (session.routeName) setRouteName(session.routeName);
+        recordingMountainIdRef.current = session.recordingMountainId;
         personalRoute.restore(session.personalRoute, ownerUserId);
         if (session.routeId) routeIdRef.current = session.routeId;
         if (session.canonicalRouteHandoffId && session.canonicalRouteId &&
@@ -1508,7 +1518,7 @@ export default function HikeTrackingScreen() {
         canonicalRouteId: canonicalRouteContext?.routeId,
         canonicalRouteVersion: canonicalRouteContext?.routeVersion,
         canonicalRouteIdentityKey: canonicalRouteContext?.routeIdentityKey,
-        canonicalMountainId: canonicalRouteContext?.mountainId,
+        canonicalMountainId: canonicalRouteContext?.mountainId ?? recordingMountainIdRef.current,
         syncState: isOffline ? "queued" : "local_only",
       });
       setCompletionSaveStarted(true);

@@ -37,6 +37,8 @@ export interface HikeCheckpoint {
   canonicalRouteIdentityKey?: string;
   canonicalRouteVersion?: string;
   canonicalMountainId?: string;
+  /** Mountain association for a free recording, never a navigation handoff. */
+  recordingMountainId?: string;
   personalRoute?: PersonalRouteHandoff;
   syncState?: "local_only" | "queued" | "synced";
   hillMeta: Record<string, unknown>;

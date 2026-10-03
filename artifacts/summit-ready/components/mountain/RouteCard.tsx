@@ -24,8 +24,9 @@ const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: s
 };
 
 export function RouteCard({
-  route, selected, onPress,
-}: { route: PresentedRoute; selected: boolean; onPress: () => void }) {
+  route, selected, onPress, mapping,
+}: { route: PresentedRoute; selected: boolean; onPress: () => void; mapping?: "mapped" | "guide" | null }) {
+  const mapStatus = mapping ?? (route.selection ? null : "guide");
   return (
     <SRPanel
       radius={RADIUS.lg / 2}
@@ -38,10 +39,15 @@ export function RouteCard({
       <View style={styles.row}>
         <View style={styles.body}>
           <View style={styles.badges}>
-            {route.verification !== "verified" ? (
+            {route.verification === "verified" ? (
               <VerificationBadge state={route.verification} compact />
             ) : null}
           </View>
+          {mapStatus ? (
+            <Text style={{ fontSize: 11, lineHeight: 15, fontFamily: "Inter_700Bold", color: mapStatus === "mapped" ? EXPLORE.accent : BASECAMP.textMuted, marginBottom: 3 }}>
+              {mapStatus === "mapped" ? "Mapped route" : "Route guide only — mapping not available"}
+            </Text>
+          ) : null}
           <Text style={styles.name} numberOfLines={3}>{route.name}</Text>
           {route.headline.length > 0 ? (
             <View style={styles.headline}>

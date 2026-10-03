@@ -389,7 +389,14 @@ export function presentRoutes(
   mountain: PresentedMountain,
 ): PresentedRoute[] {
   if (mountain.discoveryCandidate) return [];
-  const rows = lookup.routes ?? [];
+  const seen = new Set<string>();
+  const rows = (lookup.routes ?? []).filter(row => {
+    if (!isTrustedRouteRow(row)) return true;
+    const identity = `${row.identityKey}@${row.version ?? ""}`;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
   return rows.map((row, index) =>
     isTrustedRouteRow(row)
       ? presentTrustedRoute(row, mountain.id, mountain.name)

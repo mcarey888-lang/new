@@ -81,9 +81,9 @@ describe("Mountain Detail", () => {
   it("selects a route in place instead of navigating to a route screen", () => {
     expect(body).toMatch(/setSelectedKey/);
     expect(body).toMatch(/SelectedRoute/);
-    /* the only router.push targets are Track, the goal setup and back */
+    /* Selecting a route stays inline; separate explicit actions may launch the shared tracker/planner/library. */
     const pushes = body.match(/pathname: "\/[a-z-]+"/g) ?? [];
-    expect(pushes.every(p => /hike-tracking/.test(p))).toBe(true);
+    expect(pushes.every(p => /hike-tracking|route-planner|trails-saved/.test(p))).toBe(true);
     expect(body).not.toMatch(/route-detail/);
   });
 

@@ -508,3 +508,17 @@ mtime_ms = 1790449040920
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/c89b3451-54ee-4976-86b5-9eef9facbd92/7841646b-5525-491a-a563-70a704d58cb4"
 storage_version_token = "1790449051992040"
 content_type = "image/png"
+
+[[outputs]]
+id = "y3iG87YIwd9nPbMREaZOr"
+uri = "file://docs/MOUNTAIN_PLANNING_HUB_REPORT.md"
+type = "text"
+title = "Mountain planning hub — implementation report"
+description = "Reuse audit, exact files, API and licence boundaries, checks, remaining limitations and native-device checklist."
+logical_id = "7cd92423-52a8-40de-8b7a-a337165623d1"
+content_hash = "sha256:8046785ee663dfbb5523d2256694a64f263d6030e110fa389125ad0b44c14edd"
+size = 14306
+mtime_ms = 1791067732366
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/7cd92423-52a8-40de-8b7a-a337165623d1/7dda87de-1cd0-4f60-9395-e172a4290871"
+storage_version_token = "1791067830127561"
+content_type = "text/markdown"

@@ -15,7 +15,7 @@ import { Car, ChevronDown, ChevronUp, Clock, Download, Footprints, Route as Rout
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { SREyebrow, SRPanel, SRSubPanel } from "@/components/ui";
 import { CAPABILITIES } from "@/constants/capabilities";
-import { FactList, VerificationBadge, VerificationNotice } from "./parts";
+import { FactList, VerificationBadge } from "./parts";
 import { ElevationProfile } from "./ElevationProfile";
 import { MountainDnaPanel } from "./MountainDnaPanel";
 import type { PresentedDna, PresentedFact, PresentedSelectedRoute } from "@/utils/mountainDetailPresentation";
@@ -28,7 +28,7 @@ const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: s
 
 export function SelectedRoute({
   selected, dna, mountainSummitElevation, mountainName, startPointLabel,
-  onWalkToStart, onDriveToStart, onDownloadOffline,
+  onWalkToStart, onDriveToStart, onDownloadOffline, onSaveDataPackage, dataPackageSaved, onViewMap,
 }: {
   selected: PresentedSelectedRoute;
   dna: PresentedDna;
@@ -39,6 +39,10 @@ export function SelectedRoute({
   onWalkToStart?: () => void;
   onDriveToStart?: () => void;
   onDownloadOffline?: () => void;
+  /** Route DATA only (no map tiles). */
+  onSaveDataPackage?: () => void;
+  dataPackageSaved?: boolean;
+  onViewMap?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { route, eligibility } = selected;
@@ -59,7 +63,7 @@ export function SelectedRoute({
             <Text style={styles.summary} numberOfLines={SUMMARY_LINES}>{route.summary}</Text>
           ) : null}
         </View>
-        <VerificationBadge state={route.verification} />
+        {eligibility.isNavigable ? <VerificationBadge state={route.verification} /> : null}
       </View>
 
       {selected.headline.length > 0 ? (
@@ -68,7 +72,7 @@ export function SelectedRoute({
         </View>
       ) : null}
 
-      {eligibility.isNavigable && startPointLabel && onWalkToStart && onDriveToStart ? (
+      {eligibility.isNavigable && startPointLabel && onWalkToStart ? (
         <View style={styles.section} testID="route-start-directions">
           <Text style={styles.sectionLabel}>GET TO THE ROUTE START</Text>
           <Text style={styles.startLabel}>{startPointLabel}</Text>
@@ -82,6 +86,7 @@ export function SelectedRoute({
               <Footprints size={15} color={EXPLORE.accent} />
               <Text style={styles.directionsText}>Walk to start</Text>
             </Pressable>
+            {onDriveToStart ? (
             <Pressable
               onPress={onDriveToStart}
               accessibilityRole="button"
@@ -91,9 +96,10 @@ export function SelectedRoute({
               <Car size={15} color={EXPLORE.accent} />
               <Text style={styles.directionsText}>Drive near start</Text>
             </Pressable>
+            ) : null}
           </View>
           <Text style={styles.startNote}>
-            Mapped route start, not confirmed parking. Driving directions may end at the nearest road.
+            Mapped route start, not confirmed parking.
           </Text>
         </View>
       ) : null}
@@ -140,12 +146,19 @@ export function SelectedRoute({
       ) : null}
 
       <View style={styles.facts}>
-        <FactList facts={selected.facts} />
+        <FactList facts={selected.facts.filter(f => f.state !== "missing" && !!f.value)} />
       </View>
 
-      <MountainDnaPanel dna={dna} />
+      {dna.state !== "unavailable" ? <MountainDnaPanel dna={dna} /> : null}
 
       <View style={styles.footer}>
+        {eligibility.isNavigable && onViewMap ? (
+          <Pressable onPress={onViewMap} accessibilityRole="button" accessibilityLabel="View mapped route"
+            testID="mountain-view-route-map" style={styles.download}>
+            <RouteIcon size={16} color={EXPLORE.accent} />
+            <Text style={styles.downloadText}>View mapped route</Text>
+          </Pressable>
+        ) : null}
         {eligibility.isNavigable && eligibility.canDownloadOffline ? (
           <Pressable
             onPress={onDownloadOffline}
@@ -156,6 +169,13 @@ export function SelectedRoute({
             <Download size={16} color={EXPLORE.accent} />
             <Text style={styles.downloadText}>Download for offline use</Text>
           </Pressable>
+        ) : eligibility.isNavigable && onSaveDataPackage ? (
+          <Pressable onPress={onSaveDataPackage} accessibilityRole="button"
+            accessibilityLabel={dataPackageSaved ? "Update saved route data" : "Save route data to this device"}
+            style={styles.download}>
+            <Download size={16} color={EXPLORE.accent} />
+            <Text style={styles.downloadText}>{dataPackageSaved ? "Saved on this device" : "Save route data"}</Text>
+          </Pressable>
         ) : eligibility.isNavigable ? (
           /* Verified, but the capability does not exist in this build. Saying
              so is more honest than a button that cannot do anything. */
@@ -165,7 +185,7 @@ export function SelectedRoute({
               : "Offline route packaging is not part of this version of SummitReady. Your recorded activities already work offline."}
           </Text>
         ) : (
-          <VerificationNotice mountainName={mountainName} />
+          <Text style={styles.absent}>Route guide only — mapping is not available. You can still record a free hike or create your own plan.</Text>
         )}
       </View>
     </SRPanel>
@@ -186,6 +206,7 @@ function HeadlineTile({ fact }: { fact: PresentedFact }) {
 }
 
 function Altitude({ fact, overrideLabel }: { fact: PresentedFact; overrideLabel?: string }) {
+  if (!fact.value) return null;
   return (
     <View style={styles.altitude}>
       <Text style={styles.altitudeValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>

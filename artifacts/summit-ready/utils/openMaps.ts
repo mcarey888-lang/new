@@ -20,14 +20,27 @@ export function openMapPin(lat: number, lng: number, label: string) {
 }
 
 /** Navigate to verified GPS coordinates (use only when coords are from a trusted source). */
-export function openMapDirections(lat: number, lng: number, label: string) {
-  const web = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-  if (Platform.OS === "ios") {
-    openUrl(`maps://?daddr=${lat},${lng}&q=${encodeURIComponent(label)}`, web);
-  } else if (Platform.OS === "android") {
-    openUrl(`geo:0,0?q=${lat},${lng}(${encodeURIComponent(label)})`, web);
-  } else {
-    Linking.openURL(web).catch(() => {});
+export async function openMapDirections(lat: number, lng: number, label: string): Promise<boolean> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+      Math.abs(lat) > 90 || Math.abs(lng) > 180 || !label.trim()) {
+    Alert.alert("Directions unavailable", "This destination has no valid parking or access coordinates.");
+    return false;
+  }
+  const destination = `${lat},${lng}`;
+  const name = encodeURIComponent(label);
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&query=${name}`;
+  const native = Platform.OS === "ios"
+    ? `maps://?daddr=${destination}&q=${name}&dirflg=d`
+    : Platform.OS === "android" ? `google.navigation:q=${destination}&mode=d&title=${name}` : web;
+  try {
+    await Linking.openURL(native);
+    return true;
+  } catch {
+    if (native !== web) {
+      try { await Linking.openURL(web); return true; } catch { /* Show the failure below. */ }
+    }
+    Alert.alert("Could not open directions", `A map app or browser could not be opened for ${label}. Try again or use the destination coordinates shown.`);
+    return false;
   }
 }
 
