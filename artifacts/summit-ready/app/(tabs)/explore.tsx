@@ -724,6 +724,21 @@ export default function ExploreScreen() {
           <Text style={styles.heroKicker}>EXPLORE</Text>
           <Text style={styles.heroTitle}>Discover your next peak</Text>
           <Text style={styles.heroSub}>Find a mountain and a route worth the journey.</Text>
+          <Pressable
+            onPress={() => router.push("/route-planner")}
+            style={styles.plannerLaunch}
+            accessibilityRole="button"
+            accessibilityLabel="Plan a route"
+            accessibilityHint="Opens the map planner to draw and save a personal route."
+            testID="open-route-planner"
+          >
+            <RouteIcon size={22} color={BASECAMP.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.plannerTitle}>Plan a route</Text>
+              <Text style={styles.plannerSubtitle}>Draw and save your own route</Text>
+            </View>
+            <ChevronRight size={18} color={BASECAMP.textMuted} />
+          </Pressable>
           <View style={styles.search}>
             <Pressable
               onPress={submitSearch}
@@ -1029,6 +1044,13 @@ const styles = StyleSheet.create({
   heroKicker: { ...TYPE.eyebrow, color: BASECAMP.accent, marginBottom: 4 },
   heroTitle: { ...TYPE.hero, fontSize: 30, lineHeight: 33, color: BASECAMP.text, maxWidth: 330 },
   heroSub: { ...TYPE.body, fontSize: 12.5, lineHeight: 17, color: BASECAMP.textMuted, marginTop: 5, maxWidth: 330 },
+  plannerLaunch: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginTop: 14, padding: 14, borderRadius: 16,
+    backgroundColor: BASECAMP.glass, borderWidth: 1, borderColor: BASECAMP.glassBorder,
+  },
+  plannerTitle: { ...TYPE.body, fontFamily: "Inter_700Bold", color: BASECAMP.text },
+  plannerSubtitle: { ...TYPE.body, fontSize: 11, color: BASECAMP.textMuted, marginTop: 3 },
 
   segmentedControlWrap: { marginTop: 18 },
   segmentedControl: {

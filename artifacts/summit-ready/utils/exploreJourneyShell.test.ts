@@ -23,6 +23,18 @@ describe("Explore", () => {
     expect(body).not.toMatch(/trail-detail/);
   });
 
+  it("keeps the route planner entry above the Explore search field", () => {
+    expect(body).toContain('onPress={() => router.push("/route-planner")}');
+    expect(body).toContain('testID="open-route-planner"');
+    expect(body).toContain('accessibilityLabel="Plan a route"');
+    expect(body.indexOf('testID="open-route-planner"')).toBeLessThan(
+      body.indexOf("<View style={styles.search}>"),
+    );
+    expect(body).not.toContain("routes aren’t saved yet");
+    expect(read("app/_layout.tsx")).toContain('<Stack.Screen name="route-planner"');
+    expect(read("app/route-planner.tsx")).toContain("export default function RoutePlannerScreen");
+  });
+
   it("does not mistake a curated display region for an exact verified region", () => {
     const open = body.slice(body.indexOf("function openMountain"), body.indexOf("function imageUri"));
     expect(open).toContain("name: mountainSubject(trail.name)");
