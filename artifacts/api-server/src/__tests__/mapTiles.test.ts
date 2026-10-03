@@ -70,6 +70,15 @@ describe("cache", () => {
 describe("baseLayers with satellite", () => {
   const prefix = "/api/map-tiles";
 
+  it("keeps the remaining layers without OS Light or OS Road", () => {
+    expect(baseLayers("oskey", prefix, true).map((layer) => layer.id)).toEqual([
+      "Outdoor_3857",
+      "osm",
+      "satellite",
+      "satellite-streets",
+    ]);
+  });
+
   it("offers no satellite layer without a token", () => {
     const ids = baseLayers("oskey", prefix, false).map((l) => l.id);
     expect(ids).not.toContain("satellite");

@@ -101,8 +101,6 @@ export function baseLayers(
 
   return [
     os("Outdoor_3857", "OS Outdoor"),
-    os("Light_3857", "OS Light"),
-    os("Road_3857", "OS Road"),
     {
       id: "osm",
       label: "OpenStreetMap",
