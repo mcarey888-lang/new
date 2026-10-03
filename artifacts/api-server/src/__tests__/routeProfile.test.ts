@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   ASCENT_THRESHOLD_M,
+  cumulativeAscent,
   MAX_SAMPLES,
   SAMPLE_INTERVAL_M,
   ascentDescent,
@@ -254,5 +255,67 @@ describe("profiling a route", () => {
   it("says too_short for a single point", async () => {
     const r = await routeProfile([{ latitude: 53.115, longitude: -3.988 }], { fetcher: tileFetcher });
     expect(r.outcome).toBe("too_short");
+  });
+});
+
+describe("ascent banked along the way", () => {
+  /* "How much is left to climb" is a subtraction from the route's total, so
+     the running figure and the total have to come from the same walk. Two
+     implementations of one rule means the one nobody is testing drifts, and
+     the person is shown a remaining figure that does not reconcile with the
+     total beside it. */
+
+  it("ends exactly on the total the route reports", () => {
+    const series = [100, 150, 120, 200, 180, 260];
+    const running = cumulativeAscent(series);
+    expect(running[running.length - 1]).toBe(ascentDescent(series).ascentM);
+  });
+
+  it("agrees with the total on a plain climb", () => {
+    const climb = Array.from({ length: 50 }, (_, i) => 300 + i * 10);
+    const running = cumulativeAscent(climb);
+    expect(running[running.length - 1]).toBe(ascentDescent(climb).ascentM);
+  });
+
+  it("never goes backwards", () => {
+    /* Climbing done cannot be undone by walking downhill. A figure that fell
+       would read as the route getting longer. */
+    const undulating = [100, 160, 110, 170, 115, 190, 150, 250];
+    const running = cumulativeAscent(undulating);
+    for (let i = 1; i < running.length; i += 1) {
+      expect(running[i]!).toBeGreaterThanOrEqual(running[i - 1]!);
+    }
+  });
+
+  it("counts a climb while it is being made, not only once it is banked", () => {
+    /* Somebody halfway up a long ascent has climbed half of it. Counting only
+       confirmed climbs would freeze the figure for the whole way up and then
+       jump at the top. */
+    const climb = [300, 350, 400, 450, 500];
+    const running = cumulativeAscent(climb);
+    expect(running[2]!).toBeGreaterThan(0);
+    expect(running[2]!).toBeLessThan(running[4]!);
+  });
+
+  it("ignores noise, exactly as the total does", () => {
+    const jitter = Array.from({ length: 200 }, (_, i) => 500 + (i % 2 ? 3 : -3));
+    expect(cumulativeAscent(jitter).every(v => v === 0)).toBe(true);
+  });
+
+  it("starts at zero", () => {
+    expect(cumulativeAscent([300, 400, 500])[0]).toBe(0);
+  });
+
+  it("travels with every profile point", async () => {
+    const r = await routeProfile(
+      [{ latitude: 53.1180, longitude: -3.9880 }, { latitude: 53.1150, longitude: -3.9880 }],
+      { fetcher: tileFetcher },
+    );
+    if (r.outcome !== "profiled") throw new Error("expected profiled");
+    expect(r.points.every(p => typeof p.cumulativeAscentM === "number")).toBe(true);
+    expect(r.points[0]!.cumulativeAscentM).toBe(0);
+    /* And the last one is the route's ascent, so remaining is a subtraction
+       that reconciles. */
+    expect(r.points[r.points.length - 1]!.cumulativeAscentM).toBe(r.ascentM);
   });
 });

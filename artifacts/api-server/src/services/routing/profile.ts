@@ -58,6 +58,20 @@ export interface ProfilePoint {
   /** Height, or null where the data could not be read. Never zero for
    *  missing — zero is sea level, and on a mountain that is a cliff. */
   elevationM: number | null;
+  /**
+   * Climbing done between the start and this point, by the same threshold rule
+   * as the route's total.
+   *
+   * Here rather than computed by whoever is drawing the profile, because
+   * "how much is left to climb" is a subtraction from the total and the two
+   * numbers have to come from the same method. An app recomputing it with its
+   * own rule would produce a remaining figure that does not reconcile with the
+   * total shown beside it, and the person would be right to trust neither.
+   *
+   * Null wherever the elevation is null, for the same reason it is: unknown is
+   * not zero.
+   */
+  cumulativeAscentM: number | null;
 }
 
 export type ProfileResult =
@@ -129,6 +143,54 @@ export function resample(points: readonly LatLng[], intervalM: number): LatLng[]
  * banks the gain, and starts a descent. Noise never crosses the threshold, so
  * it never banks anything.
  */
+/**
+ * Ascent banked at each point along the series.
+ *
+ * Shares `ascentDescent`'s walk exactly, so the last entry equals the total it
+ * reports. Separating them would be two implementations of one rule, and the
+ * one that drifts would be the one nobody is testing.
+ *
+ * A climb is banked when it is confirmed, not while it is being made, so this
+ * steps rather than slopes. That is the honest shape: until a rise clears the
+ * threshold it is not yet known to be climbing rather than noise.
+ */
+export function cumulativeAscent(
+  elevations: readonly number[],
+  thresholdM = ASCENT_THRESHOLD_M,
+): number[] {
+  const out: number[] = new Array(elevations.length).fill(0);
+  if (elevations.length < 2) return out;
+
+  let ascent = 0;
+  let pivot = elevations[0]!;
+  let extreme = elevations[0]!;
+  let direction = 0;
+
+  for (let i = 1; i < elevations.length; i += 1) {
+    const e = elevations[i]!;
+    if (direction === 0) {
+      if (e - pivot > thresholdM) { direction = 1; extreme = e; }
+      else if (pivot - e > thresholdM) { direction = -1; extreme = e; }
+    } else if (direction === 1) {
+      if (e > extreme) extreme = e;
+      if (extreme - e > thresholdM) {
+        ascent += extreme - pivot;
+        pivot = extreme; extreme = e; direction = -1;
+      }
+    } else {
+      if (e < extreme) extreme = e;
+      if (e - extreme > thresholdM) {
+        pivot = extreme; extreme = e; direction = 1;
+      }
+    }
+    /* While climbing, the gain so far is real even though it is not yet banked
+       — somebody halfway up has climbed it. Counting only banked ascent would
+       leave the figure frozen for the whole of a long ascent. */
+    out[i] = direction === 1 ? ascent + (e - pivot) : ascent;
+  }
+  return out;
+}
+
 export function ascentDescent(
   elevations: readonly number[],
   thresholdM = ASCENT_THRESHOLD_M,
@@ -208,7 +270,11 @@ export async function routeProfile(
   for (let i = 0; i < sampled.length; i += 1) {
     if (i > 0) run += distanceM(sampled[i - 1]!, sampled[i]!);
     const e = await elevationAt(sampled[i]!, opts.fetcher);
-    profile.push({ distanceM: Math.round(run), elevationM: e === null ? null : Math.round(e * 10) / 10 });
+    profile.push({
+      distanceM: Math.round(run),
+      elevationM: e === null ? null : Math.round(e * 10) / 10,
+      cumulativeAscentM: null,
+    });
     if (e === null) missing += 1;
     else known.push(e);
   }
@@ -221,6 +287,10 @@ export async function routeProfile(
   }
 
   const { ascentM, descentM } = ascentDescent(known, opts.thresholdM);
+  /* Only reached when nothing is missing, so `known` lines up with `profile`
+     one for one and the indices can be trusted. */
+  const climbed = cumulativeAscent(known, opts.thresholdM);
+  for (let i = 0; i < profile.length; i += 1) profile[i]!.cumulativeAscentM = Math.round(climbed[i]!);
   return {
     outcome: "profiled",
     points: profile,
