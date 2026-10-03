@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import { ChevronLeft, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FollowRouteButton } from "@/components/track/FollowRouteButton";
 import {
   deleteRoute,
   describeRoute,
@@ -73,6 +74,10 @@ export default function RoutePlannerScreen() {
   const [mapReady, setMapReady] = useState(false);
   const [routeLoadError, setRouteLoadError] = useState<string | null>(null);
   const [routeLoadAttempt, setRouteLoadAttempt] = useState(0);
+  const [selectedSavedRoute, setSelectedSavedRoute] = useState<{ owner: string; route: PlannedRoute } | null>(null);
+  const loadingSavedRoute = useRef<{ owner: string; route: PlannedRoute } | null>(null);
+  const currentOwner = useRef(userId);
+  currentOwner.current = userId;
   const webViewRef = useRef<WebView>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -94,6 +99,12 @@ export default function RoutePlannerScreen() {
     let msg: { type?: string; route?: DraftFromPage };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === "ready") setMapReady(true);
+    if (msg.type === "routeChanged") setSelectedSavedRoute(null);
+    if (msg.type === "routeLoaded") {
+      const pending = loadingSavedRoute.current;
+      if (pending?.owner === currentOwner.current) setSelectedSavedRoute(pending);
+      loadingSavedRoute.current = null;
+    }
     if (msg.type === "saveRequested" && msg.route) {
       setDraft(msg.route);
       setName("");
@@ -114,12 +125,17 @@ export default function RoutePlannerScreen() {
   useEffect(() => {
     let cancelled = false;
     setRouteLoadError(null);
+    setSelectedSavedRoute(null);
+    loadingSavedRoute.current = null;
     if (!mapReady || !plannedRouteId) return;
     toPage({ type: "clear" });
     if (!userId) return;
     void loadRoute(plannedRouteId, () => tokenGetter.current()).then(result => {
       if (cancelled) return;
-      if (result.ok) toPage({ type: "loadRoute", route: result.value });
+      if (result.ok) {
+        loadingSavedRoute.current = { owner: userId, route: result.value };
+        toPage({ type: "loadRoute", route: result.value });
+      }
       else setRouteLoadError(result.reason);
     });
     return () => { cancelled = true; };
@@ -137,10 +153,11 @@ export default function RoutePlannerScreen() {
        failure. */
     toPage({ type: "saveResult", ok: result.ok, reason: result.ok ? null : result.reason });
     if (result.ok) {
+      if (userId) setSelectedSavedRoute({ owner: userId, route: result.value });
       setDraft(null);
       setRoutes(null); // the list is stale now
     }
-  }, [draft, name, getToken, toPage]);
+  }, [draft, name, getToken, toPage, userId]);
 
   const openList = useCallback(async () => {
     setListOpen(true);
@@ -151,9 +168,10 @@ export default function RoutePlannerScreen() {
   }, [getToken]);
 
   const open = useCallback((route: PlannedRoute) => {
+    if (userId) loadingSavedRoute.current = { owner: userId, route };
     toPage({ type: "loadRoute", route });
     setListOpen(false);
-  }, [toPage]);
+  }, [toPage, userId]);
 
   const remove = useCallback(async (route: PlannedRoute) => {
     const result = await deleteRoute(route.id, getToken);
@@ -228,6 +246,12 @@ export default function RoutePlannerScreen() {
       >
         <Text style={styles.backLabel}>Saved routes</Text>
       </Pressable>
+      {selectedSavedRoute?.owner === userId && selectedSavedRoute ? (
+        <View style={styles.followRoutePanel}>
+          <Text style={styles.backLabel} numberOfLines={1}>{selectedSavedRoute.route.name}</Text>
+          <FollowRouteButton route={selectedSavedRoute.route} />
+        </View>
+      ) : null}
 
       {/* Naming happens here rather than in the page because Alert.prompt is
           iOS only, and a route worth saving is worth being able to name on
@@ -311,6 +335,7 @@ export default function RoutePlannerScreen() {
 }
 
 const styles = StyleSheet.create({
+  followRoutePanel: { position: "absolute", bottom: Platform.OS === "web" ? 110 : 140, left: 16, right: 16, backgroundColor: "#16221e", padding: 12, borderRadius: 12 },
   routeLoadError: { position: "absolute", bottom: 150, left: 16, right: 16, zIndex: 10, backgroundColor: "#16221e", padding: 16, borderRadius: 12 },
   container: { flex: 1, backgroundColor: "#05090B" },
   webview: { flex: 1, backgroundColor: "#05090B" },

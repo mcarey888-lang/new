@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/expo";
 import { ChevronRight, Route } from "lucide-react-native";
 import { BASECAMP, TYPE } from "@/constants/tokens";
 import { describeRoute, listRoutes, type PlannedRoute } from "@/utils/plannedRouteApi";
+import { FollowRouteButton } from "./FollowRouteButton";
 
 export function SavedRoutesSection() {
   const { userId, isLoaded, getToken } = useAuth();
@@ -63,7 +64,8 @@ export function SavedRoutesSection() {
       ) : !current?.routes.length ? (
         <Text style={styles.message}>No saved routes yet. Draw and save one in the planner.</Text>
       ) : current.routes.map(route => (
-        <Pressable key={route.id} onPress={() => openPlanner(route.id)}
+        <View key={route.id}>
+        <Pressable onPress={() => openPlanner(route.id)}
           accessibilityRole="button" accessibilityLabel={`Open saved route: ${route.name}`}
           accessibilityHint="Opens your personal route in the map planner"
           testID={`track-saved-route-${route.id}`} style={styles.row}>
@@ -74,6 +76,8 @@ export function SavedRoutesSection() {
           </View>
           <ChevronRight size={18} color={BASECAMP.textMuted} />
         </Pressable>
+        <FollowRouteButton route={route} />
+        </View>
       ))}
     </View>
   );

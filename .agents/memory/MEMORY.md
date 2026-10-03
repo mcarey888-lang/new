@@ -71,3 +71,4 @@
 - [Saved sample profiles](saved-sample-profiles.md) — fictional year stays account-scoped and private; never turn demo hikes/posts into verified activity or public member content.
 - [Publish composite foreign keys](publish-composite-foreign-keys.md) — publish diffs can omit redundant-looking unique indexes and order prerequisite constraints after FKs; inspect the generated SQL.
 - [Expo Clerk test redirects](expo-clerk-test-redirect.md) — programmatic test login can reject the shared-host redirect even when local Expo renders; distinguish helper failure from app failure.
+- [Personal route following](personal-route-following.md) — saved plans are recording targets, but planned geometry is navigation-only; actual GPS and expedition evidence remain separate.

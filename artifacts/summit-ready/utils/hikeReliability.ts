@@ -1,3 +1,5 @@
+import type { PersonalRouteHandoff } from "./personalRouteHandoff";
+
 export interface DurableTrackPoint {
   lat: number;
   lon: number;
@@ -35,6 +37,7 @@ export interface HikeCheckpoint {
   canonicalRouteIdentityKey?: string;
   canonicalRouteVersion?: string;
   canonicalMountainId?: string;
+  personalRoute?: PersonalRouteHandoff;
   syncState?: "local_only" | "queued" | "synced";
   hillMeta: Record<string, unknown>;
   savedAt: number;

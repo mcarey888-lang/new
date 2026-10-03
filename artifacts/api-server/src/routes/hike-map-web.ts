@@ -78,6 +78,7 @@ osLayer.addTo(map);
 
 var pts = [];
 var idleMarker = null;
+var referenceMarkers = [];
 
 var refGlow = L.polyline([], {
   color: "rgba(255,138,0,0.22)", weight: 14, opacity: 1,
@@ -177,18 +178,20 @@ function handleMsg(e) {
       }
     }
     if (msg.type === "referenceRoute" && Array.isArray(msg.points)) {
+      referenceMarkers.forEach(function(marker) { map.removeLayer(marker); });
+      referenceMarkers = [];
       document.getElementById("waiting").style.display = "none";
       refPolyline.setLatLngs(msg.points);
       refGlow.setLatLngs(msg.points);
       if (msg.points.length > 1) {
-        L.circleMarker(msg.points[0], {
+        referenceMarkers.push(L.circleMarker(msg.points[0], {
           radius: 8, fillColor: "#fff", color: "#FF8A00",
           weight: 3, fillOpacity: 1, interactive: false
-        }).bindTooltip("Start", { permanent: false, direction: "top" }).addTo(map);
-        L.circleMarker(msg.points[msg.points.length-1], {
+        }).bindTooltip("Start", { permanent: false, direction: "top" }).addTo(map));
+        referenceMarkers.push(L.circleMarker(msg.points[msg.points.length-1], {
           radius: 8, fillColor: "#FF8A00", color: "#fff",
           weight: 3, fillOpacity: 1, interactive: false
-        }).bindTooltip("Summit", { permanent: false, direction: "top" }).addTo(map);
+        }).bindTooltip(msg.endLabel === "Finish" ? "Finish" : "Summit", { permanent: false, direction: "top" }).addTo(map));
         map.fitBounds(refPolyline.getBounds(), { padding: [60, 60], maxZoom: 15, animate: false });
       }
     }
