@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { OsTileBudget } from "../lib/os-tile-budget";
 
 /**
  * Satellite tile proxy.
@@ -143,8 +144,7 @@ function cachePut(key: string, tile: CachedTile): void {
 
 const router: IRouter = Router();
 
-const osBudgets = new Map<string, { start: number; count: number }>();
-let osGlobal = { start: 0, count: 0 };
+const osBudget = new OsTileBudget();
 export const OS_MAX_TILE_ZOOM = 17;
 export function validOsTile(z: number, x: number, y: number): boolean {
   return validTile(z, x, y) && z <= OS_MAX_TILE_ZOOM;
@@ -158,17 +158,9 @@ router.get("/map-tiles/os-outdoor/:z/:x/:y", async (req, res) => {
   if (!validOsTile(z, x, y)) { res.status(400).end(); return; }
   const token = process.env.OS_MAPS_KEY;
   if (!token) { res.status(503).end(); return; }
-  const now = Date.now();
-  if (now - osGlobal.start >= 60000) osGlobal = { start: now, count: 0 };
-  const ip = req.ip ?? "unknown";
-  let budget = osBudgets.get(ip);
-  if (!budget || now - budget.start >= 60000) {
-    if (osBudgets.size >= 2048) osBudgets.delete(osBudgets.keys().next().value!);
-    budget = { start: now, count: 0 };
-    osBudgets.set(ip, budget);
-  }
-  if (++budget.count > 1000 || ++osGlobal.count > 3000) {
-    res.set("Retry-After", "60").status(429).end(); return;
+  const retryAfter = osBudget.take(req.ip ?? "unknown");
+  if (retryAfter) {
+    res.set("Retry-After", String(retryAfter)).status(429).end(); return;
   }
   try {
     const upstream = await fetch(
@@ -177,6 +169,13 @@ router.get("/map-tiles/os-outdoor/:z/:x/:y", async (req, res) => {
     );
     if (!upstream.ok) {
       req.log?.warn({ status: upstream.status, z, x, y }, "OS tile upstream rejected request");
+      if (upstream.status === 429) {
+        const value = upstream.headers.get("retry-after");
+        // Preserve seconds/HTTP dates; never forward arbitrary provider headers.
+        const valid = value && (/^\d{1,9}$/.test(value) ||
+          (value.length <= 64 && /^[A-Za-z]{3}, /.test(value) && Number.isFinite(Date.parse(value))));
+        res.set("Retry-After", valid ? value : "60");
+      }
       res.status(upstream.status).end(); return;
     }
     if (Number(upstream.headers.get("content-length")) > 2 * 1024 * 1024) {

@@ -33,3 +33,14 @@ OSM fallback is separate work after native maps are proven.
 **Why:** The user explicitly confirmed these scope boundaries in the follow-up.
 
 **How to apply:** Report native views and web/embedded map coverage separately.
+
+Preserve the separation between downloaded-tile authority and disposable renderer
+copies; do not combine them merely to reduce foreground copy costs. Original fetch
+age is immutable, and a display must expire at its earliest tile deadline.
+
+**Why:** The user explicitly approved this conservative isolation after review.
+The native renderer can write to its cache and renew file modification times on
+reads, so merging stores can silently renew licensed imagery.
+
+**How to apply:** Measure performance on phones before optimizing. Any replacement
+must preserve independent expiry authority and must not use file mtime as tile age.

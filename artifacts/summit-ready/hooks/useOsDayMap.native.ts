@@ -5,6 +5,7 @@ import * as FS from "expo-file-system/legacy";
 import { OsDayCacheStore, netConnectivity, type DisplayLease, type TileFiles } from "@/utils/osDayCacheStore";
 import type { Connectivity } from "@/utils/tileSource";
 import type { RoutePoint } from "@/utils/offRoute";
+import { OsTileRateLimitError } from "@/utils/osTileRetry";
 
 const API = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api` : "/api";
 export const OS_TILE_TEMPLATE = `${API}/map-tiles/os-outdoor/{z}/{x}/{y}.png`;
@@ -23,19 +24,37 @@ const files: TileFiles = {
   remove: path => FS.deleteAsync(path, { idempotent: true }),
   move: (from, to) => FS.moveAsync({ from, to }),
   copy: (from, to) => FS.copyAsync({ from, to }),
-  download: async (url, to) => {
+  download: async (url, to, signal) => {
+    if (signal?.aborted) throw new Error("Map download cancelled.");
     // OS proxy returns no-store; do not inherit browser/server cache age.
     const task = FS.createDownloadResumable(url, to, { headers: { "Cache-Control": "no-cache" } });
-    const timeout = setTimeout(() => { void task.pauseAsync().catch(() => {}); }, 15000);
+    let rejectStopped: (error: Error) => void = () => {};
+    const stopped = new Promise<never>((_, reject) => { rejectStopped = reject; });
+    let stopping: Promise<unknown> | null = null;
+    const stop = (message: string) => {
+      stopping ??= task.pauseAsync().catch(() => {});
+      rejectStopped(new Error(message));
+    };
+    const abort = () => stop("Map download cancelled.");
+    const timeout = setTimeout(() => stop("OS tile download timed out."), 15000);
+    signal?.addEventListener("abort", abort, { once: true });
     try {
-      const response = await task.downloadAsync();
+      const response = await Promise.race([task.downloadAsync(), stopped]);
+      if (response?.status === 429) {
+        await FS.deleteAsync(to, { idempotent: true });
+        throw new OsTileRateLimitError(response.headers);
+      }
       if (!response || response.status !== 200) throw new Error(`OS tile download failed (${response?.status ?? "timeout"}).`);
       const info = await FS.getInfoAsync(to);
       if (!info.exists || info.isDirectory || info.size === 0) throw new Error("Empty OS map tile.");
       const magic = await FS.readAsStringAsync(to, { encoding: FS.EncodingType.Base64, position: 0, length: 8 });
       if (magic !== "iVBORw0KGgo=") throw new Error("The OS tile server did not return a PNG image.");
       return info.size;
-    } finally { clearTimeout(timeout); }
+    } finally {
+      clearTimeout(timeout); signal?.removeEventListener("abort", abort);
+      // Drain native cancellation before the caller removes the partial file.
+      if (stopping) await stopping;
+    }
   },
 };
 const store = FS.documentDirectory
@@ -88,7 +107,12 @@ export function useOsDayMap() {
       const ticket = generation;
       try {
         await startOsDayMaps();
+        const preparingAt = performance.now();
         const next = await store!.display();
+        if (__DEV__) console.info("OS day-map display prepared", {
+          elapsedMs: Math.round(performance.now() - preparingAt),
+          copiedBytes: next.copiedBytes,
+        });
         if (closed || ticket !== generation || AppState.currentState !== "active") {
           await store!.release(next); return;
         }

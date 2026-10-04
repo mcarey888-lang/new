@@ -31,7 +31,12 @@ paths:
             image/png:
               schema: { type: string, format: binary }
         "400": { description: Invalid tile address }
-        "429": { description: Tile request budget exceeded }
+        "429":
+          description: Local tile budget exceeded or OS upstream throttled
+          headers:
+            Retry-After:
+              description: Wait at least this many seconds or until this HTTP date before retrying
+              schema: { type: string }
         "502": { description: Upstream failed or did not return a valid PNG }
         "503": { description: OS server key is not configured }
   /healthz:

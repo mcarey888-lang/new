@@ -4,9 +4,12 @@ import { get } from "node:http";
 import type { Server } from "node:http";
 import router, { validOsTile } from "../routes/map-tiles";
 
-let server: Server, base: string;
+let server: Server, base: string, seenIp: string | undefined;
 beforeAll(async () => {
-  const app = express(); app.use("/api", router);
+  const app = express();
+  app.set("trust proxy", 1); // Same setting as the existing application.
+  app.use((req, _res, next) => { seenIp = req.ip; next(); });
+  app.use("/api", router);
   await new Promise<void>(resolve => { server = app.listen(0, "127.0.0.1", () => resolve()); });
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("No test listener.");
@@ -14,9 +17,9 @@ beforeAll(async () => {
 });
 afterAll(() => new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve())));
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-function request(path: string) {
+function request(path: string, headers: Record<string, string> = {}) {
   return new Promise<{ status: number; headers: Record<string, unknown>; body: Buffer }>((resolve, reject) => {
-    get(base + path, response => {
+    get(base + path, { headers }, response => {
       const chunks: Buffer[] = [];
       response.on("data", chunk => chunks.push(Buffer.from(chunk)));
       response.on("end", () => resolve({ status: response.statusCode!, headers: response.headers, body: Buffer.concat(chunks) }));
@@ -57,7 +60,7 @@ describe("OS tile proxy without real credentials or paid upstream calls", () => 
   });
   it("does not cache OS bytes in the timeless satellite store", async () => {
     vi.stubEnv("OS_MAPS_KEY", "unit-test-only");
-    const upstream = vi.fn().mockResolvedValue(new Response(fixture()));
+    const upstream = vi.fn().mockImplementation(async () => new Response(fixture()));
     vi.stubGlobal("fetch", upstream);
     await request("11/994/630.png"); await request("11/994/630.png");
     expect(upstream).toHaveBeenCalledTimes(2);
@@ -75,5 +78,27 @@ describe("OS tile proxy without real credentials or paid upstream calls", () => 
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("private upstream URL")));
     const failed = await request("11/992/630.png");
     expect(failed.status).toBe(502); expect(failed.body.length).toBe(0);
+  });
+  it("forwards upstream Retry-After rather than aborting without a usable delay", async () => {
+    vi.stubEnv("OS_MAPS_KEY", "unit-test-only");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("private", { status: 429, headers: { "Retry-After": "10" } })));
+    const result = await request("11/995/630.png");
+    expect(result.status).toBe(429);
+    expect(result.headers["retry-after"]).toBe("10");
+    expect(result.body.length).toBe(0);
+    expect(result.headers["cache-control"]).toBe("no-store");
+  });
+  it("provides a safe delay when upstream throttling has no Retry-After", async () => {
+    vi.stubEnv("OS_MAPS_KEY", "unit-test-only");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429 })));
+    expect((await request("11/995/630.png")).headers["retry-after"]).toBe("60");
+  });
+  it("resolves the last forwarded hop rather than using the immediate proxy address", async () => {
+    vi.stubEnv("OS_MAPS_KEY", "unit-test-only");
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(fixture())));
+    await request("11/995/630.png", { "x-forwarded-for": "192.0.2.30, 198.51.100.40" });
+    expect(seenIp).toBe("198.51.100.40");
+    await request("11/995/630.png", { "x-forwarded-for": "198.51.100.41" });
+    expect(seenIp).toBe("198.51.100.41");
   });
 });

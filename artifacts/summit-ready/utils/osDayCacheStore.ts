@@ -1,6 +1,7 @@
 import { CACHE_WINDOW_MS, MAX_CACHE_ZOOM, MIN_CACHE_ZOOM, isFresh, planFor, sweep, tileKey, tilesForRoute, type CachedTile } from "./dayCache";
 import { resolveTile, type Connectivity } from "./tileSource";
 import type { RoutePoint } from "./offRoute";
+import { withOsTileRetry, waitForOsRetry, type OsRetryWait } from "./osTileRetry";
 
 /** Injectable IO: licence decisions remain in the three unchanged pure modules. */
 export interface TileFiles {
@@ -12,13 +13,14 @@ export interface TileFiles {
   remove(path: string): Promise<void>;
   move(from: string, to: string): Promise<void>;
   copy(from: string, to: string): Promise<void>;
-  download(url: string, to: string): Promise<number>;
+  download(url: string, to: string, signal?: AbortSignal): Promise<number>;
 }
 export interface DisplayLease {
   path: string;
   createdAt: number;
   expiresAt: number;
   cache: Map<string, CachedTile>;
+  copiedBytes: number;
 }
 const MAX_BYTES = 256 * 1024 * 1024;
 const MAX_DOWNLOAD_TILES = 4000;
@@ -52,6 +54,7 @@ export class OsDayCacheStore {
     private files: TileFiles,
     private tileBase: string,
     private now: () => number = Date.now,
+    private retryWait: OsRetryWait = waitForOsRetry,
   ) {}
   private serial<T>(fn: () => Promise<T>): Promise<T> {
     const next = this.queue.then(fn, fn);
@@ -72,9 +75,14 @@ export class OsDayCacheStore {
     await this.files.remove(`${this.root}pending/`);
     await this.files.mkdir(`${this.root}tiles/`);
     let records: unknown = [];
-    if (await this.files.size(`${this.root}manifest.json`) !== null) {
-      try { records = JSON.parse(await this.files.read(`${this.root}manifest.json`)); }
-      catch { records = []; }
+    // SDK moves do not promise atomic replacement on both platforms. A complete
+    // pending manifest recovers the remove/move crash window without inventing age.
+    for (const name of ["manifest.pending", "manifest.json"]) {
+      if (await this.files.size(`${this.root}${name}`) === null) continue;
+      try {
+        const parsed: unknown = JSON.parse(await this.files.read(`${this.root}${name}`));
+        if (Array.isArray(parsed) && parsed.every(validRecord)) { records = parsed; break; }
+      } catch { /* A torn pending write can still fall back to the complete manifest. */ }
     }
     this.held.clear();
     if (Array.isArray(records)) {
@@ -101,6 +109,13 @@ export class OsDayCacheStore {
       const createdAt = Number(name.split("-")[0]);
       if (!Number.isFinite(createdAt) || createdAt > this.now() || this.now() - createdAt >= CACHE_WINDOW_MS) {
         await this.files.remove(`${this.root}display/${name}/`);
+      }
+    }
+    // An interrupted native writer must not leave unindexed staged OS bytes forever.
+    for (const name of await this.files.list(`${this.root}pending/`)) {
+      const fetchedAt = Number(name.split("-")[0]);
+      if (!Number.isFinite(fetchedAt) || !isFresh({ fetchedAt }, this.now())) {
+        await this.files.remove(`${this.root}pending/${name}`);
       }
     }
     const expired = new Set(sweep(this.held, this.now()).expired);
@@ -137,15 +152,17 @@ export class OsDayCacheStore {
       const path = `${this.root}display/${createdAt}-${++this.sequence}/`;
       await this.files.mkdir(path);
       let expiresAt = createdAt + CACHE_WINDOW_MS;
+      let copiedBytes = 0;
       try {
         for (const [key, record] of cache) {
           if (!record.bytes || !isFresh(record, createdAt + 1000)) continue;
           expiresAt = Math.min(expiresAt, record.fetchedAt + CACHE_WINDOW_MS);
           await this.files.mkdir(`${path}${record.z}/${record.x}/`);
           await this.files.copy(`${this.root}tiles/${key}`, `${path}${key}`);
+          copiedBytes += record.bytes;
         }
         if (this.now() < createdAt || this.now() >= expiresAt) throw new Error("OS map display expired while preparing.");
-        return { path, createdAt, expiresAt, cache };
+        return { path, createdAt, expiresAt, cache, copiedBytes };
       } catch (error) {
         await this.files.remove(path);
         throw error;
@@ -180,10 +197,13 @@ export class OsDayCacheStore {
       if (source.kind === "cache") { progress?.(++done / plan.missing.length); continue; }
       if (source.kind !== "network") throw new Error("This map tile cannot be downloaded.");
       const fetchedAt = this.now(); // Conservative: includes network latency in tile age.
-      const pending = `${this.root}pending/${++this.sequence}`;
+      const pending = `${this.root}pending/${fetchedAt}-${++this.sequence}`;
       await this.files.mkdir(`${this.root}pending/`);
       try {
-        const bytes = await this.files.download(`${this.tileBase}/${key}.png`, pending);
+        const bytes = await withOsTileRetry(
+          () => this.files.download(`${this.tileBase}/${key}.png`, pending, signal),
+          signal, this.retryWait,
+        );
         if (signal?.aborted) throw new Error("Map download cancelled.");
         if (bytes <= 0 || bytes > 2 * 1024 * 1024 || !isFresh({ fetchedAt }, this.now())) {
           throw new Error("Downloaded map tile is invalid or expired.");

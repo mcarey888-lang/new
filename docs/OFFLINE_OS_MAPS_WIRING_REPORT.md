@@ -35,13 +35,42 @@ Explorer/Leisure, whose British National Grid tile scheme is incompatible with
 this simple native XYZ setup. No permanent OpenStreetMap offline fallback exists.
 Apple/Google basemaps must not be represented as such a fallback.
 
+## Review fixes
+
+- Increased the paid-proxy limits to **6,000 requests per IP per minute** and
+  **24,000 globally per minute**. Tests cover a 4,000-tile route with browsing
+  headroom and three concurrent maximum-sized routes. Rejected requests do not
+  consume the remaining global allowance.
+- Local 429 responses report the actual remaining window in `Retry-After`.
+  Upstream 429 delays are forwarded when valid; missing delays default to 60 seconds.
+  The OpenAPI response documents the header.
+- Native downloads honour seconds and HTTP-date delays, wait cancellably and
+  retry the same tile, keeping previously downloaded files and original ages.
+  Five attempts per tile is the bound; persistent throttling reports an explicit
+  error and preserves partial progress for a later resume. Other failures are not
+  silently retried. Native cancellation is drained before removing partial files;
+  timestamped interrupted staging files are also swept.
+- Startup prefers a complete, validated pending manifest, then falls back to an
+  intact main manifest if pending JSON is torn. Real-file tests simulate a crash
+  after removing the main manifest and verify recovery with unchanged timestamps.
+  This does not assume that Expo's cross-platform overwrite is atomic.
+- The existing application already sets `trust proxy: 1`. Mock HTTP requests with
+  different forwarded addresses resolve separately under that setting. This is
+  **not proof of the published deployment's actual forwarding chain**; that remains
+  an explicit verification gap. No real client addresses were added to logs.
+- Development builds log `OS day-map display prepared` with `elapsedMs` and
+  `copiedBytes`. Elapsed time includes the serialized wait and display preparation,
+  not just file copies. These are measurement hooks, **not handset timing results**.
+  Real-phone foreground performance and peak disk usage remain unmeasured.
+
 ## Verification
 
 | Check | Result |
 | --- | --- |
 | Supplied decision-module tests | 90 passed |
-| New real-temporary-filesystem tests | 12 passed |
-| OS proxy tests using mocked upstream responses | 7 passed |
+| Real-temporary-filesystem tests | 17 passed |
+| Retry/delay/cancellation tests | 7 passed |
+| OS proxy and rate-budget tests using mocked upstream responses | 15 passed |
 | Mobile TypeScript | Passed |
 | Native JavaScript/Hermes export | iOS and Android passed |
 | API production build | Passed |
@@ -53,7 +82,9 @@ The filesystem tests advance an **injected clock** by the full cache window and
 assert the actual temporary tile files have been deleted. They also cover future
 timestamps after clock rollback, restart cleanup, renderer isolation, a late native
 callback's recreated directory, failed deletion, empty/missing files, fetch failure,
-offline/aborted downloads and NetInfo mapping. This is not a phone clock-change test.
+offline/aborted downloads and NetInfo mapping. The review adds mid-download 429
+recovery, bounded throttling with cheap resume, pending-manifest crash recovery,
+torn-manifest fallback and expired staging cleanup. This is not a phone clock-change test.
 
 The accidental elevationProfileLive filename has been removed from scripts.test
 as requested. Its source-scanning tests target a live chart marker on the other
@@ -100,5 +131,14 @@ evidence systems.
    readiness text and no stale drawing. Confirm Start and GPS recording remain immediate.
 7. Document exactly which native views were verified; do not describe the web
    recorder as offline-supported. Its integration is outside this job.
-8. Only after recording the evidence, enable the capability in its own commit.
+8. Download a real long route on good wifi. Force a 429, confirm its entire
+   Retry-After interval is observed, then automatic resume without refetching
+   already completed tiles. Cancel during the wait and check immediate cancellation.
+9. On each phone, record foreground `elapsedMs` and `copiedBytes` for a roughly
+   1,000-tile route and inspect peak disk while render leases coexist. Verify the
+   iPhone actually reads the Apple Maps UrlTile cache offline.
+10. Verify the published proxy chain attributes different clients correctly
+    without exposing keys or logging raw client IPs. The current one-hop trust
+    setting must match the actual deployment topology.
+11. Only after recording the evidence, enable the capability in its own commit.
    Until then, retain the development label and false release flag.

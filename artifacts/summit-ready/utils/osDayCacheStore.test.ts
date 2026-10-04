@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { OsDayCacheStore, netConnectivity, type TileFiles } from "./osDayCacheStore";
 import { CACHE_WINDOW_MS, tileKey, tilesForRoute } from "./dayCache";
 import { mapReadiness, readinessMessage } from "./tileSource";
+import { OsTileRateLimitError } from "./osTileRetry";
 
 const route = [{ latitude: 56.796, longitude: -5.003 }];
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+c6x8AAAAASUVORK5CYII=", "base64");
@@ -71,6 +72,15 @@ describe("native day-cache plumbing using actual temporary disk files", () => {
     await store.sweep();
     expect(await files.list(retired)).toEqual([]);
   });
+  it("removes expired staged files left by an interrupted native writer", async () => {
+    await store.snapshot();
+    await files.mkdir(`${root}pending/`);
+    const staged = `${root}pending/${clock}-late`;
+    await fs.writeFile(staged, png);
+    clock += CACHE_WINDOW_MS;
+    await store.sweep();
+    expect(await files.size(staged)).toBeNull();
+  });
   it("future timestamps fail closed after a backwards clock change", async () => {
     const saved = await store.downloadRoute(route, "online");
     clock--;
@@ -120,5 +130,62 @@ describe("native day-cache plumbing using actual temporary disk files", () => {
     expect(netConnectivity({ isConnected: true, isInternetReachable: false })).toBe("metered");
     expect(netConnectivity({ isConnected: true, isInternetReachable: null })).toBe("metered");
     expect(netConnectivity({ isConnected: null, isInternetReachable: null })).toBe("offline");
+  });
+  it("waits out 429 mid-route and keeps earlier real files without downloading them twice", async () => {
+    const original = files.download;
+    const tries = new Map<string, number>();
+    const waits: number[] = [];
+    files.download = async (url, path, signal) => {
+      const count = (tries.get(url) ?? 0) + 1; tries.set(url, count);
+      if (tries.size === 20 && count === 1) throw new OsTileRateLimitError({ "Retry-After": "10" });
+      return original(url, path, signal);
+    };
+    store = new OsDayCacheStore(root, files, "https://fixture.invalid/tiles", () => clock, async ms => { waits.push(ms); });
+    const cache = await store.downloadRoute(route, "online");
+    expect(waits).toEqual([10000]);
+    expect([...tries.values()].filter(n => n === 2)).toHaveLength(1);
+    expect(downloads).toBe(tilesForRoute(route).length);
+    expect(mapReadiness(tilesForRoute(route), cache, clock, "offline", { fallbackAvailable: false }).kind).toBe("full");
+    await store.downloadRoute(route, "online");
+    expect(downloads).toBe(tilesForRoute(route).length);
+  });
+  it("keeps committed partial tiles when throttling exhausts retries, then resumes cheaply", async () => {
+    const original = files.download;
+    const waits: number[] = [];
+    files.download = async (url, path, signal) => {
+      if (downloads >= 20) throw new OsTileRateLimitError({ "Retry-After": "1" });
+      return original(url, path, signal);
+    };
+    store = new OsDayCacheStore(root, files, "https://fixture.invalid/tiles", () => clock, async ms => { waits.push(ms); });
+    await expect(store.downloadRoute(route, "online")).rejects.toBeInstanceOf(OsTileRateLimitError);
+    const partial = await store.snapshot();
+    expect(partial.size).toBe(20);
+    expect(waits).toEqual([1000, 1000, 1000, 1000]);
+    files.download = original;
+    const restarted = new OsDayCacheStore(root, files, "https://fixture.invalid/tiles", () => clock);
+    await restarted.downloadRoute(route, "online");
+    expect(downloads).toBe(tilesForRoute(route).length);
+  });
+  it("recovers a complete pending manifest after a crash in remove/move", async () => {
+    const saved = await store.downloadRoute(route, "online");
+    const move = files.move;
+    files.move = async (a, b) => { if (b.endsWith("manifest.json")) throw new Error("simulated crash"); await move(a, b); };
+    await expect(store.sweep()).rejects.toThrow("simulated crash");
+    expect(await files.size(`${root}manifest.json`)).toBeNull();
+    expect(await files.size(`${root}manifest.pending`)).toBeGreaterThan(0);
+    files.move = move;
+    const restarted = new OsDayCacheStore(root, files, "https://fixture.invalid", () => clock);
+    const recovered = await restarted.snapshot();
+    expect(recovered).toEqual(saved);
+    for (const key of saved.keys()) expect(await files.size(`${root}tiles/${key}`)).toBe(png.length);
+    clock += CACHE_WINDOW_MS;
+    await restarted.sweep();
+    for (const key of saved.keys()) expect(await files.size(`${root}tiles/${key}`)).toBeNull();
+  });
+  it("falls back to the intact manifest if the pending write was torn", async () => {
+    const saved = await store.downloadRoute(route, "online");
+    await fs.writeFile(`${root}manifest.pending`, "[incomplete");
+    const restarted = new OsDayCacheStore(root, files, "https://fixture.invalid", () => clock);
+    expect(await restarted.snapshot()).toEqual(saved);
   });
 });
