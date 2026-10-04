@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
@@ -43,10 +43,45 @@ function isDevelopmentLoopbackOrigin(origin: string): boolean {
     && /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(origin);
 }
 
+/**
+ * Whether an origin is one of ours, ignoring the port.
+ *
+ * REPLIT_DOMAINS gives a bare hostname, so the allow-list holds
+ * "https://host" with no port. A browser sent to "https://host:8080" puts the
+ * port in the Origin header, the exact-match lookup misses, and the request is
+ * refused — on a development URL that is unmistakably the same deployment.
+ *
+ * This cost an afternoon. The page itself loaded, because a document GET sends
+ * no Origin at all; only the fetch calls carried one, so drawing a route
+ * failed while the map around it looked perfectly healthy.
+ *
+ * Only the port is forgiven, and only for a scheme and host already on the
+ * list, so nothing new is let in.
+ */
+function isAllowedOrigin(origin: string): boolean {
+  if (allowedOrigins.has(origin)) return true;
+  let host: string;
+  let protocol: string;
+  try {
+    const url = new URL(origin);
+    host = url.hostname;
+    protocol = url.protocol;
+  } catch {
+    return false;
+  }
+  for (const allowed of allowedOrigins) {
+    try {
+      const a = new URL(allowed);
+      if (a.hostname === host && a.protocol === protocol) return true;
+    } catch { /* a malformed entry allows nothing */ }
+  }
+  return false;
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin) || isDevelopmentLoopbackOrigin(origin)) {
+      if (!origin || isAllowedOrigin(origin) || isDevelopmentLoopbackOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin not allowed — ${origin}`));
@@ -55,6 +90,19 @@ app.use(
     credentials: true,
   }),
 );
+
+/* A rejected origin reaches Express as a thrown error, and the default handler
+   renders it as a 500 with a stack trace — so the server says "I am broken"
+   when it means "I do not allow you". Callers cannot tell the two apart, and
+   this one sent a route-drawing page chasing a fault that did not exist.
+   The request is still refused; only the answer is honest about why. */
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof Error && err.message.startsWith("CORS: ")) {
+    res.status(403).json({ error: "origin_not_allowed" });
+    return;
+  }
+  next(err);
+});
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const generalLimiter = rateLimit({
