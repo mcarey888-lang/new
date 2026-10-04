@@ -254,3 +254,39 @@ describe("the route the host receives", () => {
     expect(bodyOf(page(), "function flatten")).toContain("last.lat !== q.lat || last.lng !== q.lng");
   });
 });
+
+describe("a reply that is not a snap result", () => {
+  /* The readout said "3 sections not on a path" and nothing else, on a route
+     drawn directly over mapped rights of way. The cause was a reply that was
+     not a snap result at all — it parsed as JSON, carried no `outcome`, and
+     fell through to the branch meant for unrecognised outcomes. A throttled
+     server and ground with no paths on it looked identical. */
+
+  it("checks the response was accepted before reading it as a result", () => {
+    expect(page()).toContain("if (!r.ok) return { outcome: r.status === 429 ?");
+  });
+
+  it("names throttling as itself", () => {
+    const html = page();
+    expect(html).toContain('"rate_limited"');
+    expect(html).toContain("too many requests — wait a moment");
+  });
+
+  it("does not mistake a reply with no outcome for unmapped ground", () => {
+    const html = page();
+    expect(html).toContain('typeof data.outcome !== "string"');
+    expect(html).toContain('"not_a_snap_reply"');
+  });
+
+  it("counts a throttled leg towards the straight sections", () => {
+    expect(page()).toContain("gaps + offPath + unavailable + noPaths + throttled + other");
+  });
+
+  it("leads with throttling, because tapping on makes it worse", () => {
+    const html = page();
+    const throttledAt = html.indexOf("too many requests — wait a moment");
+    const busyAt = html.indexOf("map service busy, try again");
+    expect(throttledAt).toBeGreaterThan(-1);
+    expect(busyAt).toBeGreaterThan(throttledAt);
+  });
+});
