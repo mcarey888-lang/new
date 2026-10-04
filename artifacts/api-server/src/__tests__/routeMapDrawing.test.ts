@@ -179,6 +179,40 @@ describe("the snap radius the page asks for", () => {
     const metresPerPixel = (156543.03392 * Math.cos(53.12 * Math.PI / 180)) / 2 ** 14;
     expect(metresPerPixel * multiplier).toBeGreaterThan(113);
   });
+
+  /* The multiplier alone solves the zoomed-OUT end. The other end broke too:
+     zoomed right in on aerial imagery, the scaled radius falls below the
+     offset between the photograph and the mapped geometry, so a tap placed
+     exactly on the visible path misses the path in the data. */
+  it("does not collapse when somebody zooms in to be precise", () => {
+    const html = page();
+    const floor = /var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(html);
+    expect(floor, "no floor on the snap radius").not.toBeNull();
+    expect(Number(floor![1])).toBeGreaterThanOrEqual(20);
+    expect(html).toContain("Math.max(SNAP_RADIUS_FLOOR_M, Math.round(metresPerPixel * 45))");
+  });
+
+  it("keeps a usable tolerance at every zoom somebody can draw at", () => {
+    const html = page();
+    const multiplier = Number(/metresPerPixel \* (\d+)/.exec(html)![1]);
+    const floorM = Number(/var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(html)![1]);
+    const radiusAt = (z: number) =>
+      Math.max(floorM, (156543.03392 * Math.cos((53.12 * Math.PI) / 180) * multiplier) / 2 ** z);
+    /* Zoom 19 is close enough to count parked cars, which is exactly where
+       somebody zooms to place a tap carefully. */
+    for (const z of [14, 16, 17, 18, 19, 20]) {
+      expect(radiusAt(z), `tolerance collapsed at zoom ${z}`).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  it("stays tight enough not to reach across to a different path", () => {
+    /* The floor buys tolerance where there was none; it must not buy so much
+       that a car park with several paths becomes ambiguous. The snapper takes
+       the nearest way inside the radius, so this is a bound on how far a
+       "nearest" can be, not a licence to pick the wrong one. */
+    const floorM = Number(/var SNAP_RADIUS_FLOOR_M = (\d+);/.exec(page())![1]);
+    expect(floorM).toBeLessThanOrEqual(40);
+  });
 });
 
 describe("the route the host receives", () => {

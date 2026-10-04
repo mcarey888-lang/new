@@ -231,6 +231,12 @@ var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
 var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
 var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
 var GPX_URL = ${JSON.stringify(gpxUrl ?? null)};
+/* The smallest tolerance a tap is ever given, in metres. Covers the offset
+   between aerial imagery and mapped geometry, plus a thumb. Kept well under
+   the spacing of genuinely distinct paths, and the snapper still takes the
+   nearest way inside it, so a wider floor finds a path where there was
+   nothing — it does not pick a different one. */
+var SNAP_RADIUS_FLOOR_M = 25;
 var ROUTE_COLOR = "#167DF7";
 var ASSERTED_COLOR = "#E9B949";
 
@@ -674,7 +680,15 @@ function setSnapping(on) {
 function snapRadiusM() {
   var lat = map.getCenter().lat;
   var metresPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());
-  return Math.round(metresPerPixel * 45);
+  /* Scaled by zoom, because a thumb covers the same pixels whatever the scale.
+     But floored, because the scaling collapses at the top end: at zoom 19 the
+     multiplier alone gives 8 m, and aerial imagery and OpenStreetMap geometry
+     routinely disagree by more than that. Zoomed right in on a photograph, a
+     tap placed exactly on the path somebody can SEE lands outside the path the
+     data holds, and the readout can only say they tapped off the path — which
+     reads as a lie to the person looking at their own finger on the line.
+     Zooming in to be precise must not be what breaks it. */
+  return Math.max(SNAP_RADIUS_FLOOR_M, Math.round(metresPerPixel * 45));
 }
 
 var legToken = 0;
