@@ -5,7 +5,8 @@
 The plumbing is implemented, but **offline maps are not release-verified**.
 `CAPABILITIES.routeOfflineDownload` remains false. No real iPhone or Android
 device was available for testing. Native JavaScript compilation is not device proof.
-No migrations, schema changes, Git push or capability-enabling commit were made.
+No migrations, schema changes or capability-enabling commit were made.
+Pushing this work for review does not enable offline maps.
 
 ## Implemented
 
@@ -45,7 +46,7 @@ Apple/Google basemaps must not be represented as such a fallback.
 | Native JavaScript/Hermes export | iOS and Android passed |
 | API production build | Passed |
 | Live OS proxy request | HTTP 200, PNG bytes |
-| Full mobile npm test | 880 passed, 7 failed |
+| Full mobile npm test after follow-up cleanup | 875 passed, 2 failed |
 | Real-device download/sweep/drawing | Not tested |
 
 The filesystem tests advance an **injected clock** by the full cache window and
@@ -54,10 +55,17 @@ timestamps after clock rollback, restart cleanup, renderer isolation, a late nat
 callback's recreated directory, failed deletion, empty/missing files, fetch failure,
 offline/aborted downloads and NetInfo mapping. This is not a phone clock-change test.
 
-The full suite's failures are the two existing mode-toggle assertions plus five
-imported elevationProfileLive source assertions expecting older chart UI absent
-from this checkout. Missing pure prerequisite modules/tests were imported, not
-older recorder/profile changes. Those unrelated UI assertions were not weakened.
+The accidental elevationProfileLive filename has been removed from scripts.test
+as requested. Its source-scanning tests target a live chart marker on the other
+branch, not offline maps; no chart implementation commit was cherry-picked.
+The only remaining failures are:
+
+- utils/exploreJourneyShell.test.ts > Explore > uses the shell's shared mode toggle rather than a screen-local copy
+- utils/journey1Correction.test.ts > the mode toggle has one shared position > screen headers do not create another toggle
+
+Missing pure prerequisite modules/tests were imported, not older recorder/profile
+changes. The mobile typecheck still passes. API typecheck errors are confirmed
+pre-existing by the branch author and have been left untouched.
 
 OpenAPI generation completed. Its workspace-wide typecheck still fails on
 shared-library typing issues. API-wide TypeScript also reports errors outside
@@ -72,9 +80,10 @@ converted to the native UrlTile view and does not consume this native day cache.
 Opening its standalone page without recorder GPS messages correctly waits for GPS;
 that screenshot is not a successful offline-map test.
 
-Do not claim that a downloaded native preview will supply offline tiles during
-recording. Connecting that map is separate work and must preserve the existing GPS,
-recovery, activity and evidence systems.
+The user explicitly left the web recorder out of this job. Do not claim it is
+covered by the native cache or require its conversion as part of this work.
+Any future integration must preserve the existing GPS, recovery, activity and
+evidence systems.
 
 ## Real-device release checklist
 
@@ -89,6 +98,7 @@ recovery, activity and evidence systems.
 5. Roll the clock backwards. Future timestamps must not create a fresh cache.
 6. Simulate partial connectivity and storage/deletion failure. Confirm accurate
    readiness text and no stale drawing. Confirm Start and GPS recording remain immediate.
-7. Verify the same behaviour in the actual recorder once its map is connected.
+7. Document exactly which native views were verified; do not describe the web
+   recorder as offline-supported. Its integration is outside this job.
 8. Only after recording the evidence, enable the capability in its own commit.
    Until then, retain the development label and false release flag.
