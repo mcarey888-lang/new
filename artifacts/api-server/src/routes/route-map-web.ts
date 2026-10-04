@@ -230,6 +230,7 @@ var SNAP_URL = ${JSON.stringify(snapUrl ?? null)};
 var PROFILE_URL = ${JSON.stringify(profileUrl ?? null)};
 var GPX_URL = ${JSON.stringify(gpxUrl ?? null)};
 var ROUTE_COLOR = "#167DF7";
+var SNAP_RADIUS_FLOOR_M = 25;
 var ASSERTED_COLOR = "#E9B949";
 
 function post(msg) {
@@ -677,7 +678,7 @@ function setSnapping(on) {
 /**
  * How far from a path a tap should still count, for the zoom now on screen.
  *
- * A fingertip is about twenty screen pixels wide whatever the zoom; what those
+ * The tap tolerance spans forty-five screen pixels whatever the zoom; what those
  * pixels are worth on the ground is not. Zoomed out over a hillside each one
  * is ten metres or more, so a fixed radius asks for an accuracy no thumb has.
  * Deriving it from the scale means the tolerance matches what the person can
@@ -687,7 +688,7 @@ function setSnapping(on) {
 function snapRadiusM() {
   var lat = map.getCenter().lat;
   var metresPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());
-  return Math.round(metresPerPixel * 20);
+  return Math.max(SNAP_RADIUS_FLOOR_M, Math.round(metresPerPixel * 45));
 }
 
 var legToken = 0;

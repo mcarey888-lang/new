@@ -177,6 +177,9 @@ app.use("/api", (req, res, next) => {
     return mountainHeroLimiter(req, res, next);
   }
   if (req.method === "GET" && req.path.startsWith("/map-tiles/")) {
+    // OS tiles already have the independent 6,000/IP and 24,000/global budget.
+    // Applying the browsing limiter here would break 4,000-tile route downloads.
+    if (req.path.startsWith("/map-tiles/os-outdoor/")) return next();
     return mapTilesLimiter(req, res, next);
   }
   return generalLimiter(req, res, next);

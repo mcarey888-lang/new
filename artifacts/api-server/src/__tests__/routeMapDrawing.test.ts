@@ -26,6 +26,7 @@ describe("zooming out in 3D", () => {
     const events = new Map<string, () => void>();
     const map = {
       addControl: vi.fn(),
+      getCenter: () => ({ lat: 53.1149 }),
       on: vi.fn((name: string, callback: () => void) => { events.set(name, callback); }),
       getZoom: () => zoom, getPitch: () => pitch,
       setPitch: vi.fn((value: number) => { pitch = value; }),
@@ -48,6 +49,7 @@ describe("zooming out in 3D", () => {
     runInNewContext(script!, context);
     const runtime = context as typeof context & {
       mapLoaded: boolean; setMode: (mode: string) => void; routePts: unknown[];
+      snapRadiusM: () => number;
     };
     runtime.mapLoaded = true;
     return {
@@ -77,6 +79,20 @@ describe("zooming out in 3D", () => {
     expect(map.setProjection).toHaveBeenLastCalledWith({ type: "mercator" });
     expect(map.setTerrain).toHaveBeenLastCalledWith(null);
     expect(map.getPitch()).toBe(0);
+  });
+  it("keeps a 25m minimum tap tolerance at detailed zooms", () => {
+    const { runtime, zoomTo } = cameraHarness();
+    zoomTo(19);
+    expect(runtime.snapRadiusM()).toBe(25);
+    zoomTo(22);
+    expect(runtime.snapRadiusM()).toBe(25);
+  });
+  it("scales tap tolerance by 45 pixels when zoomed out", () => {
+    const { runtime, zoomTo } = cameraHarness();
+    zoomTo(13);
+    expect(runtime.snapRadiusM()).toBe(Math.round(
+      156543.03392 * Math.cos(53.1149 * Math.PI / 180) / 2 ** 13 * 45,
+    ));
   });
 
   it("pins matching globe-capable renderer and stylesheet versions", () => {
