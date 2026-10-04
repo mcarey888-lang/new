@@ -562,7 +562,7 @@ function updateHud() {
      somebody how much of their route is a guess and "partly snapped" does
      not. Said in words as well as colour: amber against blue fails anyone who
      cannot separate the two, and fails everyone in bright sun. */
-  var pending = 0, gaps = 0, offPath = 0, unavailable = 0, noPaths = 0, other = 0;
+  var pending = 0, gaps = 0, offPath = 0, unavailable = 0, noPaths = 0, throttled = 0, other = 0;
   for (var i = 0; i < legs.length; i++) {
     var leg = legs[i];
     var k = leg ? leg.kind : "straight";
@@ -572,10 +572,11 @@ function updateHud() {
     else if (k !== "routed") {
       if (leg && leg.reason === "unavailable") unavailable++;
       else if (leg && leg.reason === "no_paths") noPaths++;
+      else if (leg && leg.reason === "rate_limited") throttled++;
       else other++;
     }
   }
-  var straight = gaps + offPath + unavailable + noPaths + other;
+  var straight = gaps + offPath + unavailable + noPaths + throttled + other;
   var note = "";
   if (pending) note = "Finding paths…";
   else if (!snapping) note = "Snapping off — straight lines";
@@ -585,7 +586,10 @@ function updateHud() {
        produces a sentence nobody reads; naming the one to act on is the point.
        A service that would not answer comes first because it is the only one
        that fixes itself by waiting, and the only one that is our fault. */
-    if (unavailable) note += " · map service busy, try again";
+    /* Throttling first: it is the one that clears by itself, and the one
+       where carrying on tapping makes it worse rather than better. */
+    if (throttled) note += " · too many requests — wait a moment";
+    else if (unavailable) note += " · map service busy, try again";
     else if (noPaths) note += " · no paths mapped here";
     else if (gaps) note += " · no path across the gap";
     else if (offPath) note += " · tap further onto the path";
@@ -709,8 +713,22 @@ function snapLeg(i) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ from: from, to: to, radiusM: snapRadiusM() })
-  }).then(function (r) { return r.json(); }).then(function (data) {
+  }).then(function (r) {
+    /* A rejected request still has a body, and it parses as JSON, so without
+       this check a rate-limit reply becomes an object with no outcome field and
+       the leg fails with nothing to say. That is the one readout state that
+       cannot tell a throttled server from unmapped ground. */
+    if (!r.ok) return { outcome: r.status === 429 ? "rate_limited" : "http_" + r.status };
+    return r.json();
+  }).then(function (data) {
     if (!legs[i] || legs[i].token !== token) return;
+    if (!data || typeof data.outcome !== "string") {
+      /* Something answered, but not with a snap result. A proxy error page, a
+         login redirect, a limiter body. Named so it is not mistaken for the
+         ground having no paths on it. */
+      legs[i] = { kind: "straight", token: token, points: null, reason: "not_a_snap_reply" };
+      redraw(); emit(); return;
+    }
     if (data.outcome === "routed") {
       legs[i] = { kind: "routed", token: token, points: data.points,
                   lengthM: data.lengthM, detourFactor: data.detourFactor,

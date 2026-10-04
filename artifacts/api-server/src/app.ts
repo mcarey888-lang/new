@@ -77,6 +77,20 @@ const artworkImageLimiter = rateLimit({
 });
 const artworkImagePath = /^\/artwork\/ui-assets\/candidates\/[^/]+\/v\d+\/(?:master|hero|card)$/;
 
+// Map tiles are the same shape of problem as the artwork galleries above, and
+// worse. One map view fetches dozens of tiles and a pan or zoom fetches
+// hundreds, so on the shared 120-a-minute budget a few seconds of moving the
+// map around leaves nothing for anything else — including /path-snap, which is
+// then refused while the person is still tapping. Route drawing stops working
+// and the map, which caused it, carries on looking fine.
+const mapTilesLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 1500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many map tile requests. Please try again shortly." },
+});
+
 // Browse searches, thumbnail fan-out, and hero requests need independent
 // budgets. One failing image/hero loop must not make normal searches return 429.
 const catalogueSearchLimiter = rateLimit({
@@ -113,6 +127,9 @@ app.use("/api", (req, res, next) => {
   }
   if (req.method === "POST" && /^\/artwork\/mountains\/[^/]+\/request-hero$/.test(req.path)) {
     return mountainHeroLimiter(req, res, next);
+  }
+  if (req.method === "GET" && req.path.startsWith("/map-tiles/")) {
+    return mapTilesLimiter(req, res, next);
   }
   return generalLimiter(req, res, next);
 });
