@@ -107,16 +107,37 @@ describe("classifications", () => {
   });
 
   it("reads a tied top as its classification", () => {
-    // "Ma=" is a tied Marilyn. Dropped as unknown, a hill loses its only badge.
-    expect(classificationLabel(["Ma="])).toBe("Marilyn");
+    expect(classificationLabel(["W="])).toBe("Wainwright");
     expect(baseClassCode("Hu=")).toBe("Hu");
     expect(baseClassCode("M")).toBe("M");
   });
 
   it("prefers the better-known list when a hill is on several", () => {
     expect(classificationLabel(["Ma", "Hu", "W"])).toBe("Wainwright");
-    expect(classificationLabel(["Ma", "Hu"])).toBe("Marilyn");
-    expect(classificationLabel(["Hu"])).toBe("HuMP");
+    expect(classificationLabel(["MT", "C"])).toBe("Corbett");
+  });
+
+  it("badges nothing for Marilyn and HuMP", () => {
+    /* They are real classifications, and the map uses their prominence
+       thresholds to decide what to draw. As a label they mislead: nearly every
+       Welsh hill is a Marilyn, so Snowdon would be badged with a word that
+       tells the average walker less than nothing. */
+    expect(classificationLabel(["Ma"])).toBeNull();
+    expect(classificationLabel(["Hu"])).toBeNull();
+    expect(classificationLabel(["Ma", "Hu"])).toBeNull();
+  });
+
+  it("leaves Snowdon unbadged rather than calling it a Marilyn", () => {
+    // The live row. Consequence of the rule above, stated outright so nobody
+    // later reads it as a bug.
+    const codes = ["Ma", "Hu", "CoH", "Sim"];
+    expect(classificationLabel(codes)).toBeNull();
+  });
+
+  it("still badges a minor Scottish hill a walker would know", () => {
+    expect(classificationLabel(["M", "Ma"])).toBe("Munro");
+    expect(classificationLabel(["C", "Ma"])).toBe("Corbett");
+    expect(classificationLabel(["D"])).toBe("Donald");
   });
 
   it("says nothing rather than Unclassified", () => {
