@@ -536,3 +536,17 @@ mtime_ms = 1791070709750
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/b0ddfe95-4e81-4d66-ba06-82d13735cc48/18f3c543-1985-4326-87c8-c4f6872cd42a"
 storage_version_token = "1791070756262869"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "fw5_o7uGM42hY7mNdqb4J"
+uri = "file://docs/verification/summit-clustering/delayed-race-final.jpg"
+type = "image"
+title = "Confirmed stale-response failure"
+description = "The camera is back in Snowdonia, but the delayed Ben Nevis answer has replaced the summit data. No summit markers remain visible."
+logical_id = "1cbbce6f-0d8e-4799-b69c-f17fba2fe052"
+content_hash = "sha256:6f3c04e518c8e8f2e9e2400547c955c9018551b64c1f4c7595a60ddd50bb827f"
+size = 99882
+mtime_ms = 1791201795418
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/1cbbce6f-0d8e-4799-b69c-f17fba2fe052/7e861ebc-2b02-4134-b68c-c60eac7fe829"
+storage_version_token = "1791201835749403"
+content_type = "image/jpeg"
