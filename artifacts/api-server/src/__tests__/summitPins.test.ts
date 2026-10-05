@@ -142,6 +142,38 @@ describe("names", () => {
     expect(splitName("Scafell Pike")).toEqual({ name: "Scafell Pike", alternative: null });
   });
 
+  it("splits the dash form the catalogue actually uses for Snowdon", () => {
+    // Verified against the live row: the stored name is "Snowdon - Yr
+    // Wyddfa", not the bracketed form I had assumed.
+    expect(splitName("Snowdon - Yr Wyddfa"))
+      .toEqual({ name: "Snowdon", alternative: "Yr Wyddfa" });
+  });
+
+  it("leaves a subsidiary top joined up, so two pins are not both Beinn Dearg", () => {
+    // The dangerous case. DoBIH uses the same dash for a second name and for
+    // a subsidiary top. Split, this puts a pin labelled "Beinn Dearg" on a
+    // summit that is not Beinn Dearg, right beside the one that is.
+    expect(splitName("Beinn Dearg - South Top"))
+      .toEqual({ name: "Beinn Dearg - South Top", alternative: null });
+    expect(splitName("Carn Mor Dearg - NE Top").alternative).toBeNull();
+    expect(splitName("Sgurr nan Ceathreamhnan - Far West Top").alternative).toBeNull();
+  });
+
+  it("keeps the hyphens inside a name", () => {
+    // Pen-y-ghent is one word with hyphens, not a name and an alternative.
+    expect(splitName("Pen-y-ghent")).toEqual({ name: "Pen-y-ghent", alternative: null });
+    expect(splitName("Bwlch-y-Groes").alternative).toBeNull();
+  });
+
+  it("handles an en dash as well as a hyphen", () => {
+    expect(splitName("Snowdon – Yr Wyddfa"))
+      .toEqual({ name: "Snowdon", alternative: "Yr Wyddfa" });
+  });
+
+  it("splits only once, however many dashes a name carries", () => {
+    expect(splitName("A - B - C")).toEqual({ name: "A", alternative: "B - C" });
+  });
+
   it("copes with a name that is only the bracketed form", () => {
     expect(splitName("[Yr Wyddfa]")).toEqual({ name: "Yr Wyddfa", alternative: null });
   });
