@@ -78,4 +78,5 @@
 - [OS offline-map constraints](offline-os-map-constraints.md) — keep the 22-hour licence margin and require real-device proof; maps must never delay Start or alter protected systems.
 - [Failed Orval cleanup](orval-failed-generation-cleanup.md) — invalid specs can delete generated clients before validation; regenerate before checking consumers.
 - [Git sequencer lock recovery](git-sequencer-lock-recovery.md) — after an index-lock failure, verify applied history before continuing; the failed pick may be skipped.
-- [Summit query review boundary](summit-query-review-boundary.md) — verify author-owned summit SQL with real data; report issues rather than silently creating a second version.
+- [Summit map review boundary](summit-query-review-boundary.md) — verify author-owned summit logic; preserve globe integration and report failures rather than creating a second version.
+- [MapLibre browser WebGL](maplibre-browser-webgl.md) — disabled GL in managed runners can be an environment issue; local Chromium software rendering enabled real map verification.

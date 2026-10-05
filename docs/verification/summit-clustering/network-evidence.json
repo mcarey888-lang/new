@@ -1,0 +1,525 @@
+{
+  "route": "http://localhost:8080/api/route-map",
+  "webgl": {
+    "ok": true,
+    "vendor": "WebKit",
+    "renderer": "WebKit WebGL"
+  },
+  "apiSummitRequests": [
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.05253,53.09171,-3.94267,53.13808&zoom=13",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 0,
+      "count": 25,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-8.01563,53.03920,-0.98438,55.91039&zoom=7",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 64,
+      "count": 241,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-3.73638,54.12925,-1.97857,54.84716&zoom=9",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 4,
+      "count": 80,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.00451,53.05246,-3.94958,53.07567&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 5,
+      "count": 10,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-8.01563,53.03920,-0.98438,55.91039&zoom=7",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 12,
+      "count": 241,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-12.73975,50.49033,3.73975,58.15155&zoom=7",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 6,
+      "count": 400,
+      "truncated": true
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-12.73975,50.49033,3.73975,58.15155&zoom=7",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 12,
+      "count": 400,
+      "truncated": true
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-8.01563,53.03920,-0.98438,55.91039&zoom=7",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 19,
+      "count": 241,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.00451,53.05246,-3.94958,53.07567&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 2,
+      "count": 10,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.02302,53.05245,-3.96809,53.07566&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 41,
+      "count": 13,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.02202,53.05345,-3.96709,53.07666&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 8,
+      "count": 14,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.00451,53.05246,-3.94958,53.07567&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 14,
+      "count": 10,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-5.03047,56.78642,-4.97553,56.80757&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 2211,
+      "count": 16,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.00451,53.05246,-3.94958,53.07567&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 2,
+      "count": 10,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.04203,53.04935,-3.91206,53.11894&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 229,
+      "count": 37,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.35233,52.98087,-3.60176,53.38055&zoom=12",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 355,
+      "count": 258,
+      "truncated": false
+    },
+    {
+      "url": "http://localhost:8080/api/summits?bbox=-4.04203,53.04935,-3.91206,53.11894&zoom=14",
+      "status": 200,
+      "failed": null,
+      "canceled": false,
+      "responseMs": 5,
+      "count": 37,
+      "truncated": false
+    }
+  ],
+  "cluster": {
+    "zoom7VisibleClusters": 7,
+    "clicked": {
+      "cluster": true,
+      "cluster_id": 1178,
+      "point_count": 31,
+      "point_count_abbreviated": 31
+    },
+    "zoomAfter": 9,
+    "clustersAfter": 28,
+    "pointsAfter": 5
+  },
+  "selection": {
+    "message": {
+      "type": "summitSelected",
+      "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+      "name": "Clogwyn Bwlch-y-maen",
+      "alternativeName": null,
+      "heightM": 548,
+      "classification": null,
+      "place": "Conwy, Wales",
+      "lat": 53.069283401329955,
+      "lng": -3.9729872345924377
+    },
+    "apiMatch": {
+      "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+      "name": "Clogwyn Bwlch-y-maen",
+      "heightM": 548,
+      "lat": 53.069283,
+      "lng": -3.972988,
+      "featureCoords": [
+        -3.9729872345924377,
+        53.069283401329955
+      ],
+      "selected": [
+        {
+          "type": "ready"
+        },
+        {
+          "type": "layerChanged",
+          "id": "osm",
+          "reason": "tiles_failed"
+        },
+        {
+          "type": "tap",
+          "lat": 54.49042918972995,
+          "lng": -2.8575439453136653
+        },
+        {
+          "type": "summitSelected",
+          "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+          "name": "Clogwyn Bwlch-y-maen",
+          "alternativeName": null,
+          "heightM": 548,
+          "classification": null,
+          "place": "Conwy, Wales",
+          "lat": 53.069283401329955,
+          "lng": -3.9729872345924377
+        },
+        {
+          "type": "tap",
+          "lat": 53.06929780035492,
+          "lng": -3.973013957641541
+        }
+      ]
+    }
+  },
+  "drag": {
+    "durationMs": 5035,
+    "during": [],
+    "after": [
+      {
+        "url": "http://localhost:8080/api/summits?bbox=-4.02302,53.05245,-3.96809,53.07566&zoom=14",
+        "status": 200
+      }
+    ],
+    "stationaryRepeatedMoveend": {
+      "requestCount": 0,
+      "requests": [],
+      "center": [
+        -3.9945513831553163,
+        53.06505772054543
+      ]
+    }
+  },
+  "truncation": {
+    "diagnostic": {
+      "url": "http://localhost:8080/api/summits?bbox=-12.73975,50.49033,3.73975,58.15155&zoom=7",
+      "status": 200,
+      "count": 400,
+      "truncated": true
+    },
+    "note": {
+      "text": "Showing the most prominent hills \u2014 zoom in for the rest",
+      "display": "block"
+    },
+    "cleared": {
+      "text": "",
+      "display": "none"
+    }
+  },
+  "race": {
+    "beforeRelease": {
+      "elapsedFromPauseMs": 459,
+      "center": [
+        -3.977048,
+        53.064063
+      ],
+      "loadedSummits": {
+        "minLat": 53.05245649425521,
+        "maxLat": 53.075666379236054,
+        "minLng": -4.004513820312496,
+        "maxLng": -3.9495821796874395,
+        "band": "all",
+        "truncated": false
+      },
+      "generation": 13,
+      "requestsSinceB": [
+        {
+          "url": "http://localhost:8080/api/summits?bbox=-5.03047,56.78642,-4.97553,56.80757&zoom=14"
+        }
+      ]
+    },
+    "final": {
+      "center": [
+        -3.977048,
+        53.064063
+      ],
+      "bounds": {
+        "west": -4.004513820312496,
+        "south": 53.05245649425521,
+        "east": -3.9495821796874395,
+        "north": 53.075666379236054
+      },
+      "loadedSummits": {
+        "minLat": 56.786423173656004,
+        "maxLat": 56.80757384381326,
+        "minLng": -5.030465820313168,
+        "maxLng": -4.97553417968814,
+        "band": "all",
+        "truncated": false
+      },
+      "generation": 13,
+      "visiblePoints": 0,
+      "visibleClusters": 0,
+      "sourceCoordinates": [],
+      "sourceProperties": [],
+      "returnARequests": [],
+      "bRequest": {
+        "url": "http://localhost:8080/api/summits?bbox=-5.03047,56.78642,-4.97553,56.80757&zoom=14",
+        "status": 200,
+        "bodyCount": 16,
+        "truncated": false
+      },
+      "centerStillA": true,
+      "loadedBoundsMatchA": false,
+      "loadedBoundsMatchB": true
+    },
+    "liveBResponse": {
+      "status": 200,
+      "count": 16,
+      "truncated": false,
+      "summits": [
+        {
+          "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+          "name": "Ben Nevis",
+          "lat": 56.796891,
+          "lng": -5.003675,
+          "heightM": 1345
+        },
+        {
+          "id": "42367103-1d70-4a15-a280-e3c27bddc3c3",
+          "name": "Aonach Beag",
+          "lat": 56.799998,
+          "lng": -4.954138,
+          "heightM": 1234
+        },
+        {
+          "id": "508bd98a-f98f-4ffd-b9fa-e93f15604490",
+          "name": "Carn Mor Dearg",
+          "lat": 56.805246,
+          "lng": -4.986616,
+          "heightM": 1221
+        },
+        {
+          "id": "6f95e4df-2222-42ab-836e-099000f85569",
+          "name": "Meall an t-Suidhe",
+          "lat": 56.811113,
+          "lng": -5.049503,
+          "heightM": 711
+        },
+        {
+          "id": "6b4fd606-786d-4d3d-9ef5-bc0dc2694680",
+          "name": "Aonach Mor",
+          "lat": 56.812932,
+          "lng": -4.961744,
+          "heightM": 1220
+        },
+        {
+          "id": "6925c5ea-3ab6-43fe-a403-0b79a603522f",
+          "name": "Meall Cumhann",
+          "lat": 56.782351,
+          "lng": -4.984058,
+          "heightM": 697
+        },
+        {
+          "id": "b3ad67d9-6cbf-49dc-b8c8-e07ad703f0a4",
+          "name": "Stob an Chul-Choire",
+          "lat": 56.814649,
+          "lng": -4.945392,
+          "heightM": 1070
+        },
+        {
+          "id": "1fb1cbf9-52fd-4115-96fe-f8bd4e2f5e1c",
+          "name": "Sgurr a' Bhuic",
+          "lat": 56.788301,
+          "lng": -4.941721,
+          "heightM": 964
+        },
+        {
+          "id": "c32dbdf4-50d0-47ca-9864-2cd268002f6a",
+          "name": "Carn Dearg (SW)",
+          "lat": 56.785897,
+          "lng": -5.02081,
+          "heightM": 1020
+        },
+        {
+          "id": "70eacc6f-2639-44f6-9bfc-025788dc5a04",
+          "name": "Carn Dearg (NW)",
+          "lat": 56.802248,
+          "lng": -5.015949,
+          "heightM": 1221
+        },
+        {
+          "id": "894a7770-34d1-4104-8e77-dd17375e8c8a",
+          "name": "Cathar na Seilge",
+          "lat": 56.771617,
+          "lng": -4.995729,
+          "heightM": 433
+        },
+        {
+          "id": "fbda6fa3-c841-4cc0-8e62-ae9a7b1743fa",
+          "name": "Carn Dearg Meadhonach",
+          "lat": 56.809721,
+          "lng": -4.989299,
+          "heightM": 1180
+        },
+        {
+          "id": "e999c8d4-4a88-44cb-9b56-111590e89f24",
+          "name": "Douglas Boulder",
+          "lat": 56.801586,
+          "lng": -5.003543,
+          "heightM": 974
+        },
+        {
+          "id": "eafb37e7-0529-4431-a0f0-df1a4a3ac09a",
+          "name": "Stob Coire Bhealaich",
+          "lat": 56.794761,
+          "lng": -4.946404,
+          "heightM": 1101
+        },
+        {
+          "id": "6aaa8f96-2188-4b2c-ba38-59196b2e8929",
+          "name": "Carn Dearg (NW) (old GR)",
+          "lat": 56.804146,
+          "lng": -5.017003,
+          "heightM": 1214
+        },
+        {
+          "id": "4ac3e830-577c-439f-88ff-ae8849980e52",
+          "name": "Carn Beag Dearg",
+          "lat": 56.817786,
+          "lng": -4.997465,
+          "heightM": 1010
+        }
+      ]
+    }
+  },
+  "projectionTerrain": {
+    "local3d": {
+      "zoom": 14,
+      "mode": "3d",
+      "projection": "globe",
+      "pitch": 60,
+      "terrain": true,
+      "terrainEnabled": true,
+      "activeLayer": "osm"
+    },
+    "below12": {
+      "zoom": 11.5,
+      "projection": "globe",
+      "pitch": 60,
+      "terrain": false,
+      "terrainEnabled": false
+    },
+    "world": {
+      "zoom": 5,
+      "projection": "globe",
+      "pitch": 0,
+      "terrain": false,
+      "terrainEnabled": false,
+      "worldView": true
+    },
+    "restoredLocal": {
+      "zoom": 14,
+      "projection": "globe",
+      "pitch": 60,
+      "terrain": true,
+      "terrainEnabled": true,
+      "activeLayer": "osm"
+    }
+  },
+  "console": {
+    "errors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "url": "http://localhost:8080/favicon.ico"
+      },
+      {
+        "text": "Access to fetch at 'https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/30/20.png?key=[redacted] from origin 'http://localhost:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+        "url": "http://localhost:8080/api/route-map"
+      },
+      {
+        "text": "Failed to load resource: net::ERR_FAILED",
+        "url": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/30/20.png?key=[redacted]"
+      },
+      {
+        "text": "Access to fetch at 'https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/31/20.png?key=[redacted] from origin 'http://localhost:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+        "url": "http://localhost:8080/api/route-map"
+      },
+      {
+        "text": "Failed to load resource: net::ERR_FAILED",
+        "url": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/31/20.png?key=[redacted]"
+      },
+      {
+        "text": "Access to fetch at 'https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/32/18.png?key=[redacted] from origin 'http://localhost:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+        "url": "http://localhost:8080/api/route-map"
+      },
+      {
+        "text": "Failed to load resource: net::ERR_FAILED",
+        "url": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/32/18.png?key=[redacted]"
+      },
+      {
+        "text": "Access to fetch at 'https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/30/19.png?key=[redacted] from origin 'http://localhost:8080' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+        "url": "http://localhost:8080/api/route-map"
+      },
+      {
+        "text": "Failed to load resource: net::ERR_FAILED",
+        "url": "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/6/30/19.png?key=[redacted]"
+      }
+    ],
+    "warnings": [
+      [
+        "You are using the same source for a hillshade layer and for 3D terrain. Please consider using two separate sources to improve rendering quality."
+      ],
+      "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback.",
+      "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback.",
+      "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback.",
+      "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    ],
+    "missingGlyphErrors": 0
+  }
+}
