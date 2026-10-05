@@ -36,13 +36,14 @@ router.get("/summits", async (req, res) => {
      without a round trip to the database saves the query entirely. */
   if (filterForZoom(zoom).kind === "none") {
     res.set("Cache-Control", "public, max-age=300");
-    res.json({ summits: [], truncated: false, zoom });
+    res.json({ summits: [], truncated: false, zoom, covered: box });
     return;
   }
 
-  const query = buildSummitQuery(padBBox(box, PAN_MARGIN_DEG), zoom);
+  const covered = padBBox(box, PAN_MARGIN_DEG);
+  const query = buildSummitQuery(covered, zoom);
   if (!query) {
-    res.json({ summits: [], truncated: false, zoom });
+    res.json({ summits: [], truncated: false, zoom, covered: box });
     return;
   }
 
@@ -67,7 +68,11 @@ router.get("/summits", async (req, res) => {
        not often. Five minutes costs nothing and removes most of the repeat
        requests a person panning around generates. */
     res.set("Cache-Control", "public, max-age=300");
-    res.json({ summits, truncated, zoom });
+    /* The rectangle actually searched, which is wider than the one asked for.
+       Without it the caller can only assume it holds the rectangle it sent,
+       so the slightest pan looks like new ground and it asks again for hills
+       it already has. */
+    res.json({ summits, truncated, zoom, covered });
   } catch (err) {
     /* Never the error object: a connection error can carry the database URL,
        and that URL carries a password. */

@@ -41,6 +41,7 @@ var summitShouldRefetch = ${shouldRefetchSource()};
 var summitLoaded = null;       // the rectangle and band currently held
 var summitRequest = 0;         // generation, so a slow answer cannot win
 var summitAbort = null;
+var summitPending = null;   // the view the in-flight request is for
 var summitTimer = null;
 var summitsOn = false;
 
@@ -196,7 +197,17 @@ function requestSummits() {
     minLng: b.getWest(), maxLng: b.getEast(),
     band: band,
   };
-  if (!summitShouldRefetch(summitLoaded, next)) return;
+  if (!summitShouldRefetch(summitLoaded, next)) {
+    /* Nothing to ask for. But a request may still be in flight for somewhere
+       the map has since left, and letting it run costs a round trip whose
+       answer will only be thrown away. */
+    if (summitAbort && summitPending && summitShouldRefetch(summitPending, next)) {
+      summitAbort.abort();
+      summitAbort = null;
+      summitPending = null;
+    }
+    return;
+  }
 
   /* Each request carries a generation. An answer for a view the map has since
      left is dropped, because otherwise a slow reply lands after a newer one
@@ -204,6 +215,7 @@ function requestSummits() {
   var token = ++summitRequest;
   if (summitAbort) summitAbort.abort();
   summitAbort = typeof AbortController === "function" ? new AbortController() : null;
+  summitPending = { minLat: next.minLat, maxLat: next.maxLat, minLng: next.minLng, maxLng: next.maxLng, band: band, truncated: false };
 
   var url = SUMMITS_URL + "?bbox=" +
     [next.minLng, next.minLat, next.maxLng, next.maxLat].map(function (n) { return n.toFixed(5); }).join(",") +
@@ -216,6 +228,41 @@ function requestSummits() {
     })
     .then(function (data) {
       if (token !== summitRequest) return;
+
+      /* The guard above asks whether this is the newest request. That is not
+         the same question as whether it still answers anything.
+         
+         Pan to Ben Nevis and straight back to Snowdonia: the return journey
+         issues no request at all, because Snowdonia is already loaded. So the
+         Ben Nevis request stays the newest, arrives, and is accepted — and
+         the map, sitting over Snowdonia, is handed Ben Nevis's hills and
+         shows none at all. Silently, with no error anywhere.
+         
+         So the real test is whether this answer covers where the map is NOW.
+         If it does not, it is an answer to a question nobody is asking any
+         more, and the pins already on screen are the better ones to keep. */
+      var covered = (data && data.covered) || null;
+      var arriving = {
+        minLat: covered ? covered.minLat : next.minLat,
+        maxLat: covered ? covered.maxLat : next.maxLat,
+        minLng: covered ? covered.minLng : next.minLng,
+        maxLng: covered ? covered.maxLng : next.maxLng,
+        band: band,
+        truncated: !!(data && data.truncated),
+      };
+      var bounds = map.getBounds();
+      var here = {
+        minLat: bounds.getSouth(), maxLat: bounds.getNorth(),
+        minLng: bounds.getWest(), maxLng: bounds.getEast(),
+        band: summitBandFor(map.getZoom()),
+      };
+      if (summitShouldRefetch(arriving, here)) {
+        /* Not for here. Leave what is drawn alone and let the next move ask
+           again for the right place. */
+        return;
+      }
+
+      summitPending = null;
       var pins = (data && data.summits) || [];
       map.getSource("summits").setData({
         type: "FeatureCollection",
@@ -233,12 +280,10 @@ function requestSummits() {
           };
         }),
       });
-      summitLoaded = {
-        minLat: next.minLat, maxLat: next.maxLat,
-        minLng: next.minLng, maxLng: next.maxLng,
-        band: band,
-        truncated: !!(data && data.truncated),
-      };
+      /* What the server actually searched, which is wider than what was
+         asked for. Recording the narrower rectangle made every small pan look
+         like new ground and asked again for hills already held. */
+      summitLoaded = arriving;
       /* Said plainly. A map quietly showing the biggest few hundred, with no
          hint that there are more, is a map that lies by omission. */
       summitNotice(summitLoaded.truncated ? "Showing the most prominent hills — zoom in for the rest" : null);
