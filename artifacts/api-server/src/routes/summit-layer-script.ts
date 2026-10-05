@@ -133,6 +133,7 @@ function addSummitLayers() {
     var feature = e.features && e.features[0];
     if (!feature) return;
     var p = feature.properties || {};
+    showSummitCard(p, feature.geometry.coordinates);
     post({
       type: "summitSelected",
       id: p.id,
@@ -154,6 +155,96 @@ function addSummitLayers() {
   map.on("mouseleave", "summit-point", normal);
 }
 
+/* ── The card a tapped summit opens ─────────────────────────────────────── */
+
+var summitCard = null;
+var summitCardFor = null;
+
+function ensureSummitCard() {
+  if (summitCard) return summitCard;
+  summitCard = document.createElement("div");
+  summitCard.id = "summitCard";
+  summitCard.setAttribute("role", "dialog");
+  summitCard.setAttribute("aria-label", "Summit details");
+  /* Built here rather than in the page so the map file gains nothing but the
+     call that starts this layer. */
+  summitCard.style.cssText = [
+    "position:absolute", "left:12px", "right:12px", "bottom:12px", "z-index:5",
+    "max-width:420px", "margin:0 auto", "display:none",
+    "background:rgba(11,20,24,.96)", "color:#F4F7F6",
+    "border:1px solid rgba(242,193,78,.35)", "border-radius:10px",
+    "padding:14px 16px", "box-shadow:0 10px 30px rgba(0,0,0,.45)",
+    "font:400 14px/1.45 system-ui,-apple-system,sans-serif",
+  ].join(";");
+  document.body.appendChild(summitCard);
+  return summitCard;
+}
+
+function summitCardText(p) {
+  /* Height, list and place on one line, in that order, because that is the
+     order somebody reads them: what it is, how big, where. Any part that is
+     missing is left out rather than filled with a dash. */
+  var bits = [];
+  if (p.classification) bits.push(String(p.classification));
+  if (p.heightM !== null && p.heightM !== undefined && p.heightM !== "") {
+    bits.push(Math.round(Number(p.heightM)) + " m");
+  }
+  if (p.place) bits.push(String(p.place));
+  return bits.join(" · ");
+}
+
+function summitAscentLine(p) {
+  /* Nothing at all when it is not known, and it almost never is: the
+     catalogue holds a couple of dozen route ascents against twenty-one
+     thousand hills. A dash or a zero here would read as a flat walk. */
+  var metres = p.ascentM;
+  if (metres === null || metres === undefined || metres === "" || Number(metres) <= 0) return "";
+  var route = p.ascentRoute;
+  return route ? Math.round(Number(metres)) + " m of climbing via " + route
+               : Math.round(Number(metres)) + " m of climbing";
+}
+
+function escapeSummitText(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function showSummitCard(p, coordinates) {
+  var card = ensureSummitCard();
+  summitCardFor = { id: p.id, lat: coordinates[1], lng: coordinates[0], name: p.name };
+
+  var ascent = summitAscentLine(p);
+  card.innerHTML =
+    '<button type="button" id="summitCardClose" aria-label="Close" ' +
+      'style="position:absolute;top:8px;right:10px;background:none;border:0;color:#9FB0AC;' +
+      'font-size:20px;line-height:1;cursor:pointer">&times;</button>' +
+    '<div style="font:600 17px/1.25 system-ui,sans-serif;padding-right:24px">' +
+      escapeSummitText(p.name) + '</div>' +
+    (p.alternativeName
+      ? '<div style="color:#9FB0AC;font-size:13px;margin-top:2px">' + escapeSummitText(p.alternativeName) + '</div>'
+      : '') +
+    '<div style="color:#C8D4D1;margin-top:7px">' + escapeSummitText(summitCardText(p)) + '</div>' +
+    (ascent ? '<div style="color:#C8D4D1;margin-top:3px">' + escapeSummitText(ascent) + '</div>' : '') +
+    '<button type="button" id="summitPlanRoute" ' +
+      'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
+      'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
+      'Plan a route from here</button>';
+  card.style.display = "block";
+
+  document.getElementById("summitCardClose").onclick = hideSummitCard;
+  document.getElementById("summitPlanRoute").onclick = function () {
+    post({ type: "planRouteFrom", id: summitCardFor.id, name: summitCardFor.name,
+           lat: summitCardFor.lat, lng: summitCardFor.lng });
+    hideSummitCard();
+  };
+}
+
+function hideSummitCard() {
+  if (summitCard) summitCard.style.display = "none";
+  summitCardFor = null;
+}
+
 function summitVisibility(on) {
   var layers = ["summit-cluster", "summit-cluster-count", "summit-point", "summit-label"];
   for (var i = 0; i < layers.length; i++) {
@@ -165,6 +256,7 @@ function summitVisibility(on) {
 
 function setSummitsOn(on) {
   summitsOn = !!on;
+  if (!summitsOn) hideSummitCard();
   summitVisibility(summitsOn);
   if (summitsOn) requestSummits();
   else summitNotice(null);
@@ -274,8 +366,13 @@ function requestSummits() {
               id: s.id, name: s.name,
               alternativeName: s.alternativeName,
               heightM: s.heightM,
+              prominenceM: s.prominenceM,
               classification: s.classification,
               place: s.place,
+              /* Flattened: MapLibre feature properties are a flat bag, and an
+                 object arrives at the other end as "[object Object]". */
+              ascentM: s.ascent && s.ascent.kind === "known" ? s.ascent.metres : null,
+              ascentRoute: s.ascent && s.ascent.kind === "known" ? s.ascent.routeName : null,
             },
           };
         }),
