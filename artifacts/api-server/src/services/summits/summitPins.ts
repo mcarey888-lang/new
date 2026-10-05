@@ -39,6 +39,20 @@ export const ALL_SUMMITS_ZOOM = 13;
  */
 export const HEADLINE_CLASSES = ["M", "C", "W"] as const;
 
+/**
+ * The prominence that earns a pin at the widest zoom regardless of list.
+ *
+ * Without this the widest band is blank over most of the country. Munros and
+ * Corbetts are Scottish and Wainwrights are Lake District, so Wales, Ireland,
+ * the Peak District and Dartmoor would show nothing at all — Yr Wyddfa absent
+ * from a map of Britain, which is indefensible.
+ *
+ * 500 m of prominence is a high bar that no classification covers: it catches
+ * Yr Wyddfa, Scafell Pike, Carrauntoohil and the handful of others that any
+ * map of these islands has to show.
+ */
+export const HEADLINE_PROMINENCE_M = 500;
+
 /** Prominence in metres for a Marilyn and a HuMP, which is what those
  *  classifications mean rather than numbers chosen here. */
 export const MARILYN_PROMINENCE_M = 150;
@@ -47,8 +61,10 @@ export const HUMP_PROMINENCE_M = 100;
 export type PinFilter =
   /** Draw nothing. */
   | { kind: "none" }
-  /** Only hills carrying one of these DoBIH codes. */
-  | { kind: "classified"; codes: readonly string[] }
+  /** Hills on one of these lists, OR standing this proud. Either qualifies:
+   *  the lists cover the famous Scottish and Lakeland hills, the prominence
+   *  covers everywhere those lists do not reach. */
+  | { kind: "headline"; codes: readonly string[]; minProminenceM: number }
   /** Only hills standing at least this proud of their surroundings. */
   | { kind: "prominence"; minProminenceM: number }
   /** Everything in the rectangle. */
@@ -66,7 +82,7 @@ export function filterForZoom(zoom: number): PinFilter {
   if (zoom >= 12) return { kind: "prominence", minProminenceM: 30 };
   if (zoom >= 10) return { kind: "prominence", minProminenceM: HUMP_PROMINENCE_M };
   if (zoom >= 9) return { kind: "prominence", minProminenceM: MARILYN_PROMINENCE_M };
-  return { kind: "classified", codes: HEADLINE_CLASSES };
+  return { kind: "headline", codes: HEADLINE_CLASSES, minProminenceM: HEADLINE_PROMINENCE_M };
 }
 
 /**

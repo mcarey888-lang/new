@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ALL_SUMMITS_ZOOM, HEADLINE_CLASSES, HUMP_PROMINENCE_M, MARILYN_PROMINENCE_M, MIN_PIN_ZOOM,
+  ALL_SUMMITS_ZOOM, HEADLINE_CLASSES, HEADLINE_PROMINENCE_M, HUMP_PROMINENCE_M,
+  MARILYN_PROMINENCE_M, MIN_PIN_ZOOM,
   ascentDisplay, ascentLabel, baseClassCode, classificationLabel, filterForZoom, padBBox,
   parseBBox, pinCap, placeLabel, splitName, toPin, type MountainRow,
 } from "../services/summits/summitPins";
@@ -27,7 +28,23 @@ describe("which summits a zoom draws", () => {
     // About 720 hills between Munros, Corbetts and Wainwrights — few enough to
     // read, and what somebody zoomed this far out is actually looking for.
     const f = filterForZoom(MIN_PIN_ZOOM);
-    expect(f).toEqual({ kind: "classified", codes: HEADLINE_CLASSES });
+    expect(f).toEqual({
+      kind: "headline", codes: HEADLINE_CLASSES, minProminenceM: HEADLINE_PROMINENCE_M,
+    });
+  });
+
+  it("does not leave Wales, Ireland and the Peak District blank", () => {
+    /* Munros and Corbetts are Scottish; Wainwrights are Lake District. On
+       lists alone the widest zoom shows nothing at all over Snowdonia, and a
+       map of Britain without Yr Wyddfa on it is indefensible. Prominence is
+       the second way in, and it works everywhere. */
+    const f = filterForZoom(MIN_PIN_ZOOM);
+    expect(f.kind).toBe("headline");
+    if (f.kind !== "headline") throw new Error("expected headline");
+    expect(f.minProminenceM).toBeGreaterThan(0);
+    /* Yr Wyddfa 1038 m, Scafell Pike 912 m, Carrauntoohil 1038 m. The bar has
+       to sit below all of them. */
+    expect(f.minProminenceM).toBeLessThan(900);
   });
 
   it("opens up to Marilyns, then HuMPs, as you come in", () => {
@@ -46,7 +63,7 @@ describe("which summits a zoom draws", () => {
     const strictness = (z: number): number => {
       const f = filterForZoom(z);
       if (f.kind === "none") return 4;
-      if (f.kind === "classified") return 3;
+      if (f.kind === "headline") return 3;
       if (f.kind === "prominence") return 1 + f.minProminenceM / 10000;
       return 0;
     };

@@ -176,6 +176,11 @@ app.use("/api", (req, res, next) => {
   if (req.method === "POST" && /^\/artwork\/mountains\/[^/]+\/request-hero$/.test(req.path)) {
     return mountainHeroLimiter(req, res, next);
   }
+  // Summit pins ride the map budget: the map asks for them on every pan, for
+  // the same reason and at the same rate as tiles.
+  if (req.method === "GET" && req.path === "/summits") {
+    return mapTilesLimiter(req, res, next);
+  }
   if (req.method === "GET" && req.path.startsWith("/map-tiles/")) {
     // OS tiles already have the independent 6,000/IP and 24,000/global budget.
     // Applying the browsing limiter here would break 4,000-tile route downloads.
