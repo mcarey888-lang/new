@@ -16,3 +16,12 @@ with software rendering.
 changes. If standard automation cannot attach, the browser can be driven over
 raw DevTools Protocol. First verify actual MapLibre initialization, not just a
 generic canvas context, before reporting any interaction as passed.
+
+Check OS tile rendering from the actual published origin, not localhost.
+
+**Why:** The summit-map author confirms OS tile CORS rejection on localhost is
+expected and does not establish a production-layer failure.
+
+**How to apply:** Observe tile statuses and visible contours/paths in a browser
+on the published map page, and verify the active OS attribution. A redirect to
+a landing page blocks verification; it is not a tile failure.
