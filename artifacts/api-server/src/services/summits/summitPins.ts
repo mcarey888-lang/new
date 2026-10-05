@@ -128,6 +128,23 @@ const CLASS_NAMES: Record<string, string> = {
  */
 const CLASS_PRECEDENCE = ["M", "C", "W", "D", "MT", "WO", "Ma", "Hu"] as const;
 
+/**
+ * The lists a walker recognises, and the only ones that earn a badge.
+ *
+ * Marilyn and HuMP are left out deliberately. They are real classifications
+ * and the map uses their prominence thresholds to decide what to draw, but as
+ * a label on a pin they mislead: almost every Welsh hill and most English ones
+ * outside the Lake District are Marilyns, so Snowdon would be badged "Marilyn"
+ * — a word that tells the average walker less than nothing, on the most famous
+ * mountain in Wales.
+ *
+ * The consequence is deliberate and worth stating: Snowdon gets no badge, and
+ * a minor Scottish hill gets "Munro". That is an honest reflection of the
+ * data, because the named lists really are regional. A pin reading
+ * "Snowdon · 1,085 m · Gwynedd, Wales" says everything it needs to.
+ */
+const BADGED_CLASSES = new Set(["M", "C", "W", "D", "MT", "WO"]);
+
 /** Strips the tied-top marker so "Ma=" reads as a Marilyn. */
 export function baseClassCode(code: string): string {
   return code.trim().replace(/=+$/, "");
@@ -140,7 +157,7 @@ export function baseClassCode(code: string): string {
 export function classificationLabel(codes: readonly string[]): string | null {
   const held = new Set(codes.map(baseClassCode));
   for (const code of CLASS_PRECEDENCE) {
-    if (held.has(code)) return CLASS_NAMES[code]!;
+    if (held.has(code) && BADGED_CLASSES.has(code)) return CLASS_NAMES[code]!;
   }
   return null;
 }
