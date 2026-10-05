@@ -108,13 +108,23 @@ function filterClause(filter: PinFilter, params: unknown[]): string[] {
          and guessing on their behalf would put them on the map at a zoom
          where they were not earned. */
       return [`m.prominence_m IS NOT NULL`, `m.prominence_m >= $${params.length}`];
-    case "classified": {
+    case "headline": {
       params.push(withTiedVariants(filter.codes));
-      return [`EXISTS (
-      SELECT 1
-      FROM public.mountain_source_records AS fsr
-      JOIN public.mountain_classifications AS fc ON fc.source_record_id = fsr.id
-      WHERE fsr.mountain_id = m.id AND fc.classification_code = ANY($${params.length}::text[])
+      const codesPlaceholder = `$${params.length}`;
+      params.push(filter.minProminenceM);
+      const prominencePlaceholder = `$${params.length}`;
+      /* Either qualifies. The lists carry the famous Scottish and Lakeland
+         hills; the prominence carries Yr Wyddfa, Scafell Pike and
+         Carrauntoohil, which are on none of them and cannot be missing from a
+         map of these islands. */
+      return [`(
+      EXISTS (
+        SELECT 1
+        FROM public.mountain_source_records AS fsr
+        JOIN public.mountain_classifications AS fc ON fc.source_record_id = fsr.id
+        WHERE fsr.mountain_id = m.id AND fc.classification_code = ANY(${codesPlaceholder}::text[])
+      )
+      OR m.prominence_m >= ${prominencePlaceholder}
     )`];
     }
     case "none":

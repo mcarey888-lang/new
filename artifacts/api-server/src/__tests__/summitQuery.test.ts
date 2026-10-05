@@ -70,6 +70,14 @@ describe("the zoom bands", () => {
     expect(codes).toContain("C");
   });
 
+  it("lets a proud hill in at that zoom even with no classification", () => {
+    /* Otherwise Snowdonia is blank at the widest zoom: no Munros, no
+       Corbetts, no Wainwrights in Wales. */
+    const q = buildSummitQuery(box, MIN_PIN_ZOOM)!;
+    expect(q.text).toContain("OR m.prominence_m >=");
+    expect(q.params[5]).toBe(500);
+  });
+
   it("asks by prominence in the middle bands", () => {
     const q = buildSummitQuery(box, 9)!;
     expect(q.text).toContain("m.prominence_m >= $5");
