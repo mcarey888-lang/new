@@ -1,62 +1,80 @@
 /**
- * Which summits a map shows, and what a pin may claim about them.
+ * Which summits a map draws, and what a pin may claim about them.
  *
- * Two separate jobs that both have to be right before any of this reaches a
- * screen.
+ * Built against the Summit Data Engine catalogue, `public.mountains`: 21,792
+ * rows, every one carrying a PostGIS point, read through the engine's
+ * read-only pool. Not `canonical_hills`, which holds no rows at all.
  *
- * WHICH ONES. There are tens of thousands of summits. Drawing them all at
- * national zoom is both unreadable and several megabytes over mobile data, so
- * the map shows fewer, larger hills as you pull back. That is not a
- * compromise — no paper map labels every bump at 1:250,000 either.
+ * WHICH ONES. Drawing 21,792 pins at national zoom is unreadable and several
+ * megabytes over mobile data. So the map thins them as you pull back — but by
+ * prominence and classification rather than height, because height is a poor
+ * measure of whether a hill is worth seeing. A 900 m shoulder of a bigger
+ * mountain is not a destination; a 600 m isolated hill often is. Prominence
+ * says which is which, and the DoBIH classifications say it even better: at
+ * the scale where somebody is scanning a whole country, Munros and Wainwrights
+ * are exactly what they are looking for.
  *
- * WHAT A PIN SAYS. A summit's height is a fact: it is the same however you got
- * there. Its ascent is not — it depends entirely on which path you took and
- * where you parked. The schema already keeps verified ascent apart from
- * estimated, with the number of recorded climbs beside it, and a pin that
- * flattens all that into a bare "820 m" throws away the only thing that makes
- * the figure worth trusting.
+ * WHAT A PIN SAYS. Name, height, where it is, and what list it belongs to.
+ * Not ascent — see the note on that below, because its absence is the single
+ * most important thing to understand about this data.
  *
  * Pure. No database, no network. The caller fetches rows; this decides what
- * may be said about them.
+ * may be drawn and what may be said.
  */
 
-/** Below this, the map shows no summit pins at all — at that scale they would
- *  be a smear of dots over a country outline, and nobody is picking a hill
- *  from it. */
+/* ── Which summits a zoom shows ─────────────────────────────────────────── */
+
+/** Below this the map draws no pins. At that scale they are a smear over a
+ *  country outline, and nobody picks a hill out of it. */
 export const MIN_PIN_ZOOM = 7;
 
-/** Above this, every summit in view is drawn, however small. */
+/** At and above this, every summit in the rectangle is drawn. */
 export const ALL_SUMMITS_ZOOM = 13;
 
 /**
- * The height a summit must reach to be drawn at a given zoom.
+ * The named lists worth showing when the whole country is on screen.
  *
- * Height is a poor proxy for how notable a hill is — prominence is the right
- * measure, and a classification (Munro, Wainwright) is better still for
- * somebody choosing a day out. Neither is stored today, so height is what can
- * honestly be used. The bands are expressed as a named ladder rather than a
- * formula so that swapping in prominence later changes this one function.
- *
- * Returns null when nothing should be drawn.
+ * Roughly 720 hills between them — few enough to read, and the ones somebody
+ * zoomed this far out is actually looking for.
  */
-export function heightFloorForZoom(zoom: number): number | null {
-  if (!Number.isFinite(zoom) || zoom < MIN_PIN_ZOOM) return null;
-  if (zoom >= ALL_SUMMITS_ZOOM) return 0;
-  if (zoom >= 12) return 300;
-  if (zoom >= 11) return 450;
-  if (zoom >= 10) return 600;
-  if (zoom >= 9) return 750;
-  if (zoom >= 8) return 900;
-  return 1000;
+export const HEADLINE_CLASSES = ["M", "C", "W"] as const;
+
+/** Prominence in metres for a Marilyn and a HuMP, which is what those
+ *  classifications mean rather than numbers chosen here. */
+export const MARILYN_PROMINENCE_M = 150;
+export const HUMP_PROMINENCE_M = 100;
+
+export type PinFilter =
+  /** Draw nothing. */
+  | { kind: "none" }
+  /** Only hills carrying one of these DoBIH codes. */
+  | { kind: "classified"; codes: readonly string[] }
+  /** Only hills standing at least this proud of their surroundings. */
+  | { kind: "prominence"; minProminenceM: number }
+  /** Everything in the rectangle. */
+  | { kind: "all" };
+
+/**
+ * What to draw at a given zoom.
+ *
+ * Returned as a description rather than a SQL fragment so the ladder can be
+ * read, tested and argued with in one place, without a query in the way.
+ */
+export function filterForZoom(zoom: number): PinFilter {
+  if (!Number.isFinite(zoom) || zoom < MIN_PIN_ZOOM) return { kind: "none" };
+  if (zoom >= ALL_SUMMITS_ZOOM) return { kind: "all" };
+  if (zoom >= 12) return { kind: "prominence", minProminenceM: 30 };
+  if (zoom >= 10) return { kind: "prominence", minProminenceM: HUMP_PROMINENCE_M };
+  if (zoom >= 9) return { kind: "prominence", minProminenceM: MARILYN_PROMINENCE_M };
+  return { kind: "classified", codes: HEADLINE_CLASSES };
 }
 
 /**
- * The most pins to return for one view.
+ * The most pins one view may return.
  *
- * A cap the client can rely on matters more than the exact number: clustering
- * is cheap, but a response is not, and an unbounded query over a dense area is
- * how a map becomes unusable on a slow connection. Tightest when zoomed out,
- * because that is where a careless rectangle covers the whole country.
+ * A limit the client can count on matters more than its exact value: an
+ * unbounded query over a dense area is how a map becomes unusable on a slow
+ * connection. Tightest zoomed out, where a careless rectangle covers Britain.
  */
 export function pinCap(zoom: number): number {
   if (!Number.isFinite(zoom) || zoom < MIN_PIN_ZOOM) return 0;
@@ -65,117 +83,198 @@ export function pinCap(zoom: number): number {
   return 400;
 }
 
-/* ── What a pin may claim ───────────────────────────────────────────────── */
+/* ── Classifications ────────────────────────────────────────────────────── */
 
-export interface SummitRow {
-  slug: string;
-  name: string;
-  country: string | null;
-  region: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  summitElevationM: number | null;
-  estimatedGainM: number | null;
-  verifiedGainM: number | null;
-  verifiedSampleCount: number;
+/**
+ * DoBIH codes to words.
+ *
+ * Codes are stored raw, and a hill usually carries several. A trailing "="
+ * marks a tied top — the same classification, so it is read as the base code
+ * rather than treated as unknown and dropped.
+ */
+const CLASS_NAMES: Record<string, string> = {
+  M:  "Munro",
+  MT: "Munro Top",
+  C:  "Corbett",
+  W:  "Wainwright",
+  WO: "Wainwright Outlying Fell",
+  D:  "Donald",
+  Ma: "Marilyn",
+  Hu: "HuMP",
+};
+
+/**
+ * Which one to put on the pin when a hill is on several lists.
+ *
+ * Ben Nevis carries eight codes. Only one fits on a pin, and it should be the
+ * one that means something to a walker: "Munro" tells them more than "Sim".
+ * Most specific and best known first.
+ */
+const CLASS_PRECEDENCE = ["M", "C", "W", "D", "MT", "WO", "Ma", "Hu"] as const;
+
+/** Strips the tied-top marker so "Ma=" reads as a Marilyn. */
+export function baseClassCode(code: string): string {
+  return code.trim().replace(/=+$/, "");
 }
 
-export type GainDisplay =
-  /** Measured, from real recorded climbs. The count travels with it because
-   *  "from 14 climbs" and "from 1 climb" are not the same claim. */
-  | { kind: "verified"; metres: number; sampleCount: number }
-  /** Worked out rather than measured. Said so, every time. */
-  | { kind: "estimated"; metres: number }
-  /** Not known. Not zero — a summit with no ascent is not a summit, and a
-   *  zero here would be read as a flat walk. */
+/**
+ * The single label a pin shows, or null when a hill is on no list worth
+ * naming. Null rather than "Unclassified", which tells nobody anything.
+ */
+export function classificationLabel(codes: readonly string[]): string | null {
+  const held = new Set(codes.map(baseClassCode));
+  for (const code of CLASS_PRECEDENCE) {
+    if (held.has(code)) return CLASS_NAMES[code]!;
+  }
+  return null;
+}
+
+/* ── Names ──────────────────────────────────────────────────────────────── */
+
+export interface SummitName { name: string; alternative: string | null }
+
+/**
+ * DoBIH writes a second name in brackets: "Ben Nevis [Beinn Nibheis]".
+ *
+ * Shown raw it reads like a formatting fault, and the Gaelic or Welsh name
+ * deserves better than to be buried in square brackets. Split apart, the pin
+ * shows one and the card can show both.
+ */
+export function splitName(raw: string): SummitName {
+  const match = /^(.*?)\s*\[([^\]]+)\]\s*$/.exec(raw.trim());
+  if (!match) return { name: raw.trim(), alternative: null };
+  const name = match[1]!.trim();
+  const alternative = match[2]!.trim();
+  if (!name) return { name: alternative, alternative: null };
+  return { name, alternative: alternative || null };
+}
+
+/* ── Ascent ─────────────────────────────────────────────────────────────── */
+
+/**
+ * There is no summit ascent figure in this catalogue, and there is no honest
+ * way to invent one.
+ *
+ * `prominence_m` is not it. Prominence is how far a summit stands above the
+ * lowest col connecting it to higher ground — a fact about the landscape, not
+ * about any walk. Ben Nevis has 1,344 m of prominence and no route up it
+ * climbs that, because nobody starts at sea level in the col.
+ *
+ * Route ascent does exist, in `route_facts.total_ascent_m`, and today it holds
+ * 23 rows against 21,792 mountains. So for virtually every summit the true
+ * answer is "not known", and the pin says nothing rather than borrowing a
+ * number that means something else.
+ */
+export type AscentDisplay =
+  | { kind: "known"; metres: number; routeName: string | null }
   | { kind: "unknown" };
 
-/**
- * How much climbing, and how much that figure can be trusted.
- *
- * A non-positive figure is treated as missing. Zero ascent to a summit is not
- * a measurement, it is an empty column, and showing it as 0 m would be the
- * most misleading thing on the card.
- */
-export function gainDisplay(row: Pick<SummitRow, "estimatedGainM" | "verifiedGainM" | "verifiedSampleCount">): GainDisplay {
-  const verified = row.verifiedGainM;
-  if (typeof verified === "number" && Number.isFinite(verified) && verified > 0 && row.verifiedSampleCount > 0) {
-    return { kind: "verified", metres: Math.round(verified), sampleCount: row.verifiedSampleCount };
+export function ascentDisplay(totalAscentM: number | null | undefined, routeName?: string | null): AscentDisplay {
+  if (typeof totalAscentM !== "number" || !Number.isFinite(totalAscentM) || totalAscentM <= 0) {
+    return { kind: "unknown" };
   }
-  const estimated = row.estimatedGainM;
-  if (typeof estimated === "number" && Number.isFinite(estimated) && estimated > 0) {
-    return { kind: "estimated", metres: Math.round(estimated) };
-  }
-  return { kind: "unknown" };
+  return { kind: "known", metres: Math.round(totalAscentM), routeName: routeName?.trim() || null };
 }
 
-/**
- * The line under the height on a summit card, or null when there is nothing
- * honest to say.
- *
- * Null rather than "Unknown": a card that lists a blank where every other card
- * has a number invites the reader to assume the hill is flat. Saying nothing
- * at all leaves the question open, which is the true state.
- */
-export function gainLabel(gain: GainDisplay): string | null {
-  switch (gain.kind) {
-    case "verified":
-      return gain.sampleCount === 1
-        ? `${gain.metres} m ascent, from 1 recorded climb`
-        : `${gain.metres} m ascent, from ${gain.sampleCount} recorded climbs`;
-    case "estimated":
-      return `around ${gain.metres} m ascent, estimated`;
-    case "unknown":
-      return null;
-  }
+/** The ascent line on a card, or null when there is nothing honest to say. */
+export function ascentLabel(ascent: AscentDisplay): string | null {
+  if (ascent.kind === "unknown") return null;
+  return ascent.routeName
+    ? `${ascent.metres} m of climbing via ${ascent.routeName}`
+    : `${ascent.metres} m of climbing`;
+}
+
+/* ── Rows to pins ───────────────────────────────────────────────────────── */
+
+export interface MountainRow {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  elevationM: number | null;
+  prominenceM: number | null;
+  country: string | null;
+  region: string | null;
+  county: string | null;
+  classificationCodes?: readonly string[];
+  totalAscentM?: number | null;
 }
 
 export interface SummitPin {
-  slug: string;
+  /** The catalogue UUID. The mountain page takes this as `catalogueId`, so a
+   *  pin can open it without any join. */
+  id: string;
   name: string;
-  /** Where it is. Never null — a summit without coordinates cannot be a pin. */
+  alternativeName: string | null;
   lat: number;
   lng: number;
-  /** Metres. Null when the record does not carry one; never a stand-in. */
   heightM: number | null;
-  /** "Snowdonia, Wales" and the like, or null. */
+  prominenceM: number | null;
+  /** "Munro", "Wainwright", or null. */
+  classification: string | null;
+  /** "Highland, Scotland" and the like, or null. */
   place: string | null;
-  gain: GainDisplay;
+  ascent: AscentDisplay;
 }
 
-/** "Snowdonia, Wales" from the parts that exist, or null when neither does. */
-export function placeLabel(row: Pick<SummitRow, "region" | "country">): string | null {
-  const parts = [row.region, row.country]
-    .map(p => (typeof p === "string" ? p.trim() : ""))
-    .filter(p => p.length > 0);
-  if (parts.length === 0) return null;
-  /* A region that already names its country reads badly doubled up. */
-  if (parts.length === 2 && parts[0]!.toLowerCase().includes(parts[1]!.toLowerCase())) return parts[0]!;
-  return [...new Set(parts)].join(", ");
+/**
+ * Where it is, in the words somebody would use.
+ *
+ * DoBIH regions are catalogue strings like "04A: Fort William to Loch Treig &
+ * Loch Leven" — precise, and not how anyone describes where they walked. The
+ * county reads better, so it leads, with the region kept only when there is
+ * no county.
+ */
+export function placeLabel(row: Pick<MountainRow, "county" | "region" | "country">): string | null {
+  const clean = (v: string | null | undefined): string | null => {
+    const t = typeof v === "string" ? v.trim() : "";
+    return t.length > 0 ? t : null;
+  };
+  const county = clean(row.county);
+  const region = clean(row.region);
+  const country = clean(row.country);
+  /* A DoBIH region code reads as a catalogue reference, not a place. */
+  const usableRegion = region && !/^\d/.test(region) ? region : null;
+  const local = county ?? usableRegion;
+  if (!local && !country) return null;
+  if (!local) return country;
+  if (!country) return local;
+  if (local.toLowerCase() === country.toLowerCase()) return country;
+  return `${local}, ${country}`;
 }
 
 /**
  * A row becomes a pin, or it does not.
  *
- * A summit with no coordinates cannot be drawn, so it is dropped rather than
- * placed at a plausible-looking default. An island off Africa at 0,0 is the
- * classic version of that bug.
+ * Every row in this catalogue has a point today, but a row without one is
+ * dropped rather than placed at a default. At 0,0 a Scottish mountain appears
+ * in the Atlantic off Africa.
  */
-export function toPin(row: SummitRow): SummitPin | null {
+export function toPin(row: MountainRow): SummitPin | null {
   const { latitude: lat, longitude: lng } = row;
   if (typeof lat !== "number" || typeof lng !== "number") return null;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  if (!row.slug || !row.name) return null;
-  const height = row.summitElevationM;
+  if (!row.id || !row.name?.trim()) return null;
+
+  const { name, alternative } = splitName(row.name);
+  const round = (v: number | null | undefined): number | null =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : null;
+
   return {
-    slug: row.slug,
-    name: row.name,
+    id: row.id,
+    name,
+    alternativeName: alternative,
     lat,
     lng,
-    heightM: typeof height === "number" && Number.isFinite(height) && height > 0 ? Math.round(height) : null,
+    heightM: round(row.elevationM),
+    /* Zero prominence is real — a col height of 0 appears in the data — so it
+       is kept apart from missing rather than rounded away. */
+    prominenceM: typeof row.prominenceM === "number" && Number.isFinite(row.prominenceM)
+      ? Math.round(row.prominenceM) : null,
+    classification: classificationLabel(row.classificationCodes ?? []),
     place: placeLabel(row),
-    gain: gainDisplay(row),
+    ascent: ascentDisplay(row.totalAscentM),
   };
 }
 
@@ -183,11 +282,9 @@ export function toPin(row: SummitRow): SummitPin | null {
 
 export interface BBox { minLat: number; maxLat: number; minLng: number; maxLng: number }
 
-/**
- * "minLng,minLat,maxLng,maxLat" — the order every mapping tool uses, so the
- * caller can pass what its map gave it without rearranging and getting it
- * wrong.
- */
+/** "minLng,minLat,maxLng,maxLat" — the order every mapping tool writes, so a
+ *  caller can pass what its map gave it without rearranging and getting it
+ *  wrong. */
 export function parseBBox(raw: unknown): BBox | null {
   if (typeof raw !== "string") return null;
   const parts = raw.split(",").map(p => Number(p.trim()));
@@ -199,13 +296,12 @@ export function parseBBox(raw: unknown): BBox | null {
 }
 
 /**
- * A rectangle grown by a margin, in degrees of latitude.
+ * A rectangle grown by a margin in degrees of latitude.
  *
- * The map asks for more than it shows so that a short pan does not leave a
- * blank band at the edge while a new request is in flight. Longitude is
- * widened by the same ground distance, which is more degrees the further north
- * you are — at Cape Wrath a degree of longitude is less than half what it is
- * at the equator.
+ * The map asks for more than it shows, so a short pan does not leave a blank
+ * band while a new request is in flight. Longitude widens by the same ground
+ * distance, which is more degrees the further north you are — at Cape Wrath a
+ * degree of longitude covers barely half what it does at the equator.
  */
 export function padBBox(box: BBox, marginDeg: number): BBox {
   const midLat = (box.minLat + box.maxLat) / 2;
