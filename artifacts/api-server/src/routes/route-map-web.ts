@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { summitLayerScript } from "./summit-layer-script";
 
 const router: IRouter = Router();
 
@@ -142,6 +143,10 @@ export function buildRouteMapHtml(
   profileUrl?: string,
   /** Where this server builds GPX. Absent hides the download. */
   gpxUrl?: string,
+  /** Where this server answers summit-pin requests. Absent means the map
+   *  draws no summits at all, which is a quieter map rather than a broken
+   *  one — route drawing does not depend on them. */
+  summitsUrl?: string,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -192,6 +197,9 @@ export function buildRouteMapHtml(
     -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
     font:600 11px/1.45 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.82);
   }
+#summitNote { position: absolute; left: 12px; bottom: 12px; z-index: 3;
+  background: rgba(11,20,24,.88); color: #F4F7F6; font: 500 12px/1.35 system-ui, sans-serif;
+  padding: 7px 11px; border-radius: 6px; max-width: 62vw; }
   #hud[hidden]{display:none}
   #hudNote{display:block;margin-top:3px;font-weight:500;color:#E9B949}
   ${chrome === "none" ? ".panel,#hud{display:none}" : ""}
@@ -223,6 +231,7 @@ export function buildRouteMapHtml(
   <button id="save" disabled>Save route</button>
 </div>
 <div id="hud" hidden><span id="hudMain"></span><span id="hudNote"></span></div>
+<div id="summitNote" style="display:none"></div>
 <script>
 var LAYERS = ${JSON.stringify(layers)};
 var TERRAIN = ${JSON.stringify(TERRAIN_TILES)};
@@ -415,6 +424,11 @@ map.on("load", function () {
       "circle-color": ["case", ["==", ["get", "kind"], "warn"], ASSERTED_COLOR, ROUTE_COLOR],
       "circle-stroke-color": "#05090B", "circle-stroke-width": 2
     } });
+
+  if (typeof addSummitLayers === "function") {
+    addSummitLayers();
+    setSummitsOn(true);
+  }
 
   map.on("click", function (e) {
     post({ type: "tap", lat: e.lngLat.lat, lng: e.lngLat.lng });
@@ -1025,6 +1039,9 @@ document.getElementById("gpx").onclick = function () {
     if (note) note.textContent = "Could not build the GPX file";
   });
 };
+
+${summitsUrl ? summitLayerScript(summitsUrl) : ""}
+${summitsUrl ? `map.on("moveend", scheduleSummits);` : ""}
 </script>
 </body>
 </html>`;
@@ -1039,10 +1056,11 @@ router.get("/route-map", (req, res) => {
   const snapUrl = `${req.baseUrl}/path-snap`;
   const profileUrl = `${req.baseUrl}/route-profile`;
   const gpxUrl = `${req.baseUrl}/route-gpx`;
+  const summitsUrl = `${req.baseUrl}/summits`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl));
 });
 
 export default router;

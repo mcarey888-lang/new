@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_SUMMITS_ZOOM, HEADLINE_CLASSES, HEADLINE_PROMINENCE_M, HUMP_PROMINENCE_M,
-  MARILYN_PROMINENCE_M, MIN_PIN_ZOOM,
+  MARILYN_PROMINENCE_M, MIN_PIN_ZOOM, zoomBandKey, zoomBandTable,
   ascentDisplay, ascentLabel, baseClassCode, classificationLabel, filterForZoom, padBBox,
   parseBBox, pinCap, placeLabel, splitName, toPin, type MountainRow,
 } from "../services/summits/summitPins";
@@ -85,6 +85,35 @@ describe("which summits a zoom draws", () => {
       expect(filterForZoom(z).kind).toBe("none");
       expect(pinCap(z)).toBe(0);
     }
+  });
+});
+
+describe("the band table the map reads", () => {
+  it("records each band at the lowest zoom it covers", () => {
+    /* Built the other way round, a zoom in the middle of a band matches no
+       row, falls through to the band below, and the map quietly shows the
+       wrong hills while looking perfectly healthy. */
+    const table = zoomBandTable();
+    const bandFor = (z: number): string => {
+      for (const [minZoom, key] of table) if (z >= minZoom) return key;
+      return "none";
+    };
+    for (let zoom = 0; zoom <= 20; zoom += 1) {
+      expect(bandFor(zoom), `zoom ${zoom} reads the wrong band`).toBe(zoomBandKey(zoom));
+    }
+  });
+
+  it("is ordered so the first match wins", () => {
+    const table = zoomBandTable();
+    for (let i = 1; i < table.length; i += 1) {
+      expect(table[i]![0]).toBeLessThan(table[i - 1]![0]);
+    }
+  });
+
+  it("names a band for every zoom the ladder has", () => {
+    expect(zoomBandKey(MIN_PIN_ZOOM - 1)).toBe("none");
+    expect(zoomBandKey(ALL_SUMMITS_ZOOM)).toBe("all");
+    expect(zoomBandKey(MIN_PIN_ZOOM)).toContain("headline");
   });
 });
 
