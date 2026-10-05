@@ -150,19 +150,54 @@ export function classificationLabel(codes: readonly string[]): string | null {
 export interface SummitName { name: string; alternative: string | null }
 
 /**
- * DoBIH writes a second name in brackets: "Ben Nevis [Beinn Nibheis]".
+ * A subsidiary top, rather than a second name for the same hill.
  *
- * Shown raw it reads like a formatting fault, and the Gaelic or Welsh name
- * deserves better than to be buried in square brackets. Split apart, the pin
+ * DoBIH uses the same dash for both: "Snowdon - Yr Wyddfa" is one mountain
+ * under two names, but "Beinn Dearg - South Top" is a different summit
+ * altogether. Splitting the second would put a pin labelled "Beinn Dearg" on
+ * a top that is not Beinn Dearg, two of them side by side with the same name,
+ * and nobody looking at the map could tell which was the mountain.
+ *
+ * So the test is deliberately narrow: only a trailing "Top" blocks the split.
+ * Being too cautious leaves a name joined up, which is untidy. Being too eager
+ * mislabels a summit, which is a lie on a map.
+ */
+const SUBSIDIARY_TOP = /\bTop$/i;
+
+/**
+ * DoBIH writes a second name two ways: in brackets, "Ben Nevis [Beinn
+ * Nibheis]", and after a dash, "Snowdon - Yr Wyddfa".
+ *
+ * Shown raw either reads like a formatting fault, and the Welsh or Gaelic name
+ * deserves better than to be stuck behind punctuation. Split apart, the pin
  * shows one and the card can show both.
+ *
+ * The dash has to be a separator rather than part of a name, so it must have
+ * space around it: Pen-y-ghent keeps its hyphens.
  */
 export function splitName(raw: string): SummitName {
-  const match = /^(.*?)\s*\[([^\]]+)\]\s*$/.exec(raw.trim());
-  if (!match) return { name: raw.trim(), alternative: null };
-  const name = match[1]!.trim();
-  const alternative = match[2]!.trim();
-  if (!name) return { name: alternative, alternative: null };
-  return { name, alternative: alternative || null };
+  const trimmed = raw.trim();
+
+  const bracketed = /^(.*?)\s*\[([^\]]+)\]\s*$/.exec(trimmed);
+  if (bracketed) {
+    const name = bracketed[1]!.trim();
+    const alternative = bracketed[2]!.trim();
+    if (!name) return { name: alternative, alternative: null };
+    return { name, alternative: alternative || null };
+  }
+
+  /* Hyphen, en dash or em dash, with whitespace on both sides. Only the first
+     one splits: a name with two is not two alternatives. */
+  const dashed = /^(.+?)\s+[-–—]\s+(.+)$/.exec(trimmed);
+  if (dashed) {
+    const name = dashed[1]!.trim();
+    const alternative = dashed[2]!.trim();
+    if (name && alternative && !SUBSIDIARY_TOP.test(alternative)) {
+      return { name, alternative };
+    }
+  }
+
+  return { name: trimmed, alternative: null };
 }
 
 /* ── Ascent ─────────────────────────────────────────────────────────────── */
