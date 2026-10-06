@@ -85,14 +85,14 @@ function harness(opts: { abortable?: boolean } = {}) {
     api, pending,
     moveTo(box: Box, z = zoom) { view = box; zoom = z; },
     features: () => data.features,
-    answer(index: number, box: Box, names: string[]) {
+    answer(index: number, box: Box, names: string[], truncated = false) {
       pending[index]!.resolve({
         summits: names.map((name, i) => ({
           id: `id-${name}`, name, alternativeName: null, heightM: 900 + i,
           classification: null, place: "Somewhere",
           lat: (box.s + box.n) / 2, lng: (box.w + box.e) / 2,
         })),
-        truncated: false,
+        truncated: truncated,
         covered: { minLat: box.s - 0.02, maxLat: box.n + 0.02, minLng: box.w - 0.03, maxLng: box.e + 0.03 },
       });
     },
@@ -249,5 +249,56 @@ describe("when the request cannot be called back", () => {
     h.answer(0, SNOWDONIA, ["Yr Wyddfa", "Tryfan", "Glyder Fawr"]);
     await settle();
     expect(h.features()).toHaveLength(3);
+  });
+});
+
+
+describe("an answer the server had to cut short", () => {
+  /* The arrival check used the same predicate as "should I fetch again", and
+     that one short-circuits on truncation. So every truncated answer was
+     thrown away on arrival — and since the retry truncates too, the map stayed
+     empty over anywhere busy enough to hit the cap. Scotland at the widest
+     zoom returns 400 of 770 eligible hills, so it drew nothing at all. */
+
+  it("is still drawn", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Yr Wyddfa", "Tryfan", "Glyder Fawr"], true);
+    await settle();
+    expect(h.features()).toHaveLength(3);
+  });
+
+  it("is recorded, so the notice can say the list was cut", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Yr Wyddfa"], true);
+    await settle();
+    expect(h.api.loaded()).not.toBeNull();
+  });
+
+  it("still asks again on the next move, because it was incomplete", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Yr Wyddfa"], true);
+    await settle();
+    /* Inside the covered rectangle, which a complete answer would not refetch
+       — but a cut-short one must, since the hills it dropped may be here. */
+    h.moveTo({ s: 53.0, n: 53.1, w: -4.1, e: -4.0 });
+    h.api.requestSummits();
+    expect(h.pending).toHaveLength(2);
+  });
+
+  it("does not ask again inside a complete answer", async () => {
+    const h = harness();
+    h.api.addSummitLayers();
+    h.api.setSummitsOn(true);
+    h.answer(0, SNOWDONIA, ["Yr Wyddfa"], false);
+    await settle();
+    h.moveTo({ s: 53.0, n: 53.1, w: -4.1, e: -4.0 });
+    h.api.requestSummits();
+    expect(h.pending).toHaveLength(1);
   });
 });

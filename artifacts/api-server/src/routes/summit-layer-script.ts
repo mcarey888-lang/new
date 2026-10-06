@@ -1,5 +1,5 @@
 import { ALL_SUMMITS_ZOOM, MIN_PIN_ZOOM, zoomBandTable } from "../services/summits/summitPins";
-import { shouldRefetchSource } from "../services/summits/summitViewport";
+import { coversViewSource, shouldRefetchSource } from "../services/summits/summitViewport";
 
 /**
  * The summit layer, as a script the map page includes.
@@ -36,6 +36,10 @@ function summitBandFor(zoom) {
 
 /* Serialised from the server module that the tests exercise. One
    implementation, not two. */
+/* Both emitted under their own names, because shouldRefetch calls coversView
+   and a renamed copy would leave that call pointing at nothing. The browser
+   gets the same two functions the tests exercise. */
+var coversView = ${coversViewSource()};
 var summitShouldRefetch = ${shouldRefetchSource()};
 
 var summitLoaded = null;       // the rectangle and band currently held
@@ -132,6 +136,11 @@ function addSummitLayers() {
   map.on("click", "summit-point", function (e) {
     var feature = e.features && e.features[0];
     if (!feature) return;
+    /* While drawing, every tap is a point on the route — the page's own
+       handler has already added one. Opening a card as well, and then
+       offering a button that adds a second point, builds a two-leg route
+       nobody drew. */
+    if (typeof drawing !== "undefined" && drawing) return;
     var p = feature.properties || {};
     showSummitCard(p, feature.geometry.coordinates);
     post({
@@ -253,6 +262,9 @@ function showSummitCard(p, coordinates) {
        the lookup exact; the rest is what it falls back to. */
     post({ type: "openMountain", catalogueId: p.id, name: p.name,
            region: p.area || null, country: p.country || null });
+    /* Closed on the way out, or coming back from the mountain page lands on a
+       card still describing where you were before you left. */
+    hideSummitCard();
   };
   open.onclick = openMountain;
   open.onkeydown = function (e) {
@@ -388,9 +400,13 @@ function requestSummits() {
         minLng: bounds.getWest(), maxLng: bounds.getEast(),
         band: summitBandFor(map.getZoom()),
       };
-      if (summitShouldRefetch(arriving, here)) {
+      if (!coversView(arriving, here)) {
         /* Not for here. Leave what is drawn alone and let the next move ask
-           again for the right place. */
+           again for the right place.
+           
+           Asked with the refetch rule instead, this rejected every truncated
+           answer — and since the retry truncates too, the map stayed empty
+           over anywhere busy enough to hit the cap. */
         return;
       }
 

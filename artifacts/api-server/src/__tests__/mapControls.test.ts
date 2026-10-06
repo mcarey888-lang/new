@@ -163,3 +163,31 @@ describe("the page it goes into", () => {
     expect(embedded).not.toContain("buildControls();");
   });
 });
+
+describe("what hiding the old panel could have broken", () => {
+  it("still tells the app when the layer changes", () => {
+    /* The old buttons posted this and the protocol documents it. Calling
+       setLayer alone changes the map and tells nobody. */
+    expect(script()).toContain('post({ type: "layerChanged", id: layer.id })');
+  });
+
+  it("keeps flyover reachable", () => {
+    /* Hidden with the panel and absent from the rail, the feature was simply
+       gone — no error, no button, nothing calling it. */
+    const s = script();
+    expect(s).toContain('fly.textContent = "Fly the route"');
+    expect(s).toContain('mirror("ctlFly", "fly")');
+  });
+
+  it("keeps the save bar off the route readout", () => {
+    /* Distance, ascent and "not on a path" live bottom left, and the bar
+       appears under exactly the conditions that make them worth reading. */
+    const s = script();
+    expect(s).toContain('routeBar.style.right = "12px"');
+    expect(s).not.toContain('routeBar.style.left = "12px"');
+  });
+
+  it("keeps the drawing bar clear of the host screen's own chips", () => {
+    expect(script()).toContain('drawBar.style.top = "64px"');
+  });
+});

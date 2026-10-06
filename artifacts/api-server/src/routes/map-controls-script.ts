@@ -155,6 +155,21 @@ function buildLayersSheet() {
   });
   layersSheet.appendChild(pair);
 
+  var flyRow = document.createElement("div");
+  flyRow.style.cssText = "padding:0 7px 9px";
+  var fly = document.createElement("button");
+  fly.type = "button";
+  fly.id = "ctlFly";
+  fly.textContent = "Fly the route";
+  fly.style.cssText = "width:100%;padding:7px;border-radius:6px;border:1px solid " + CONTROL_EDGE +
+    ";background:transparent;color:#F4F7F6;font:500 13px system-ui,sans-serif;cursor:pointer";
+  /* It belongs with the view controls because that is what it is. Without a
+     home here, hiding the old panel left it unreachable and the feature
+     quietly dead. */
+  fly.onclick = function () { var o = originalButton("fly"); if (o && !o.disabled) o.click(); };
+  flyRow.appendChild(fly);
+  layersSheet.appendChild(flyRow);
+
   var head = document.createElement("div");
   head.textContent = "Map";
   head.style.cssText = "color:#9FB0AC;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:2px 11px 4px;border-top:1px solid " + CONTROL_EDGE;
@@ -165,7 +180,14 @@ function buildLayersSheet() {
       var b = sheetButton(layer.label);
       b.dataset.layer = layer.id;
       b.className = "ctlLayer";
-      b.onclick = function () { setLayer(layer.id); syncControls(); closeLayersSheet(); };
+      b.onclick = function () {
+        setLayer(layer.id);
+        /* The old buttons posted this and the app's protocol documents it.
+           Calling setLayer alone changes the map and tells nobody. */
+        post({ type: "layerChanged", id: layer.id });
+        syncControls();
+        closeLayersSheet();
+      };
       layersSheet.appendChild(b);
     })(LAYERS[i]);
   }
@@ -191,7 +213,9 @@ function buildDrawBar() {
      and a disabled button is still something to read past. */
   drawBar = sheetShell();
   drawBar.style.left = "12px";
-  drawBar.style.top = "12px";
+  /* Below the host screen's own Back and Saved routes chips, which sit at the
+     very top left. Level with them, Follow paths and Undo end up underneath. */
+  drawBar.style.top = "64px";
   drawBar.style.padding = "7px";
   drawBar.style.display = "none";
 
@@ -236,7 +260,11 @@ function buildRouteBar() {
   /* Saving and exporting appear once there is a route to save or export, and
      not a moment before. */
   routeBar = sheetShell();
-  routeBar.style.left = "12px";
+  /* Right, not left: the route readout and the summit notice both live bottom
+     left, and this bar appears under exactly the conditions that make the
+     readout worth reading — distance, ascent, and whether a section missed a
+     path. Covering it would hide the save messages too. */
+  routeBar.style.right = "12px";
   routeBar.style.bottom = "12px";
   routeBar.style.padding = "7px";
 
@@ -296,6 +324,7 @@ function syncControls() {
     follow.disabled = !!(snapOriginal && snapOriginal.disabled);
   }
 
+  mirror("ctlFly", "fly");
   mirror("ctlUndo", "undo");
   mirror("ctlClear", "clear");
   mirror("ctlSave", "save");

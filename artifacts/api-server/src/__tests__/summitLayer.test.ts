@@ -262,3 +262,20 @@ describe("the card's route button says what it will do", () => {
     expect(script()).toContain('typeof anchors !== "undefined"');
   });
 });
+
+describe("a tap while drawing", () => {
+  it("does not also open a summit card", () => {
+    /* The page's own handler has already added a point. A card as well, with
+       a button that adds a second, builds a two-leg route nobody drew. */
+    expect(script()).toContain('if (typeof drawing !== "undefined" && drawing) return;');
+  });
+});
+
+describe("leaving for the mountain page", () => {
+  it("closes the card on the way out", () => {
+    // Otherwise coming back lands on a card describing where you were before.
+    const s = script();
+    const open = s.slice(s.indexOf("var openMountain"));
+    expect(open.slice(0, open.indexOf("};"))).toContain("hideSummitCard()");
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldRefetch, shouldRefetchSource, type LoadedView } from "../services/summits/summitViewport";
+import { coversView, coversViewSource, shouldRefetch, shouldRefetchSource, type LoadedView } from "../services/summits/summitViewport";
 
 const loaded = (over: Partial<LoadedView> = {}): LoadedView => ({
   minLat: 52.9, maxLat: 53.3, minLng: -4.4, maxLng: -3.8,
@@ -51,20 +51,52 @@ describe("when the map asks again", () => {
 });
 
 describe("the copy that ships to the browser", () => {
-  it("is the same function the tests just exercised", () => {
-    const src = shouldRefetchSource();
-    expect(src).toContain("loaded.band !== next.band");
-    expect(src).toContain("loaded.truncated");
+  it("is the same pair of functions the tests just exercised", () => {
+    /* The band check lives in coversView and the truncation check in
+       shouldRefetch, so each is asserted where it actually is. */
+    expect(coversViewSource()).toContain("loaded.band !== next.band");
+    expect(shouldRefetchSource()).toContain("loaded.truncated");
+    expect(shouldRefetchSource()).toContain("coversView(loaded, next)");
   });
 
-  it("closes over nothing, so serialising it is safe", () => {
-    /* The moment this function reaches for an import or a module constant,
-       the browser copy silently breaks while the tests carry on passing. The
-       cheapest guard is to run it with no module scope at all. */
-    const isolated = new Function(`return (${shouldRefetchSource()})`)() as typeof shouldRefetch;
+  it("works with nothing in scope but the pair of them", () => {
+    /* shouldRefetch calls coversView, so the page has to carry both under
+       their own names. Emitted under a different name, that call points at
+       nothing and every pan throws — which is exactly what happened when this
+       was first split in two.
+       
+       Running them with no module scope at all is the cheapest way to catch
+       either one reaching for something the browser will not have. */
+    const isolated = new Function(
+      `${coversViewSource()}; return (${shouldRefetchSource()})`,
+    )() as typeof shouldRefetch;
     expect(isolated(null, inside)).toBe(true);
     expect(isolated(loaded(), inside)).toBe(false);
     expect(isolated(loaded(), { ...inside, band: "other" })).toBe(true);
     expect(isolated(loaded({ truncated: true }), inside)).toBe(true);
+  });
+});
+
+
+describe("covering a view and needing a new one are different questions", () => {
+  it("says a truncated answer still covers the ground it describes", () => {
+    /* It is incomplete, not wrong. Treating the two as one threw away every
+       cut-short answer on arrival, and the map drew nothing over anywhere
+       busy enough to hit the cap. */
+    expect(coversView(loaded({ truncated: true }), inside)).toBe(true);
+  });
+
+  it("but still asks again, because something was left out", () => {
+    expect(shouldRefetch(loaded({ truncated: true }), inside)).toBe(true);
+  });
+
+  it("agrees with shouldRefetch when nothing was cut", () => {
+    for (const view of [inside, { ...inside, band: "other" }, { ...inside, maxLat: 99 }]) {
+      expect(shouldRefetch(loaded(), view)).toBe(!coversView(loaded(), view));
+    }
+  });
+
+  it("covers nothing when there is nothing loaded", () => {
+    expect(coversView(null, inside)).toBe(false);
   });
 });
