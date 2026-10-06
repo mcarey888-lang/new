@@ -84,16 +84,38 @@ export default function RoutePlannerScreen() {
   }, []);
 
   const onMessage = useCallback((raw: string) => {
-    let msg: { type?: string; route?: DraftFromPage };
+    let msg: {
+      type?: string; route?: DraftFromPage;
+      catalogueId?: string; name?: string; region?: string | null; country?: string | null;
+    };
     try { msg = JSON.parse(raw); } catch { return; }
-    /* Only the save handshake is handled here. Everything else the page emits
-       is its own business, and reacting to it from two places is how the two
-       get out of step. */
+
+    /* Two things the app owns, and only two. Drawing, snapping and starting a
+       route from a summit all stay on the page: reacting to them from here as
+       well is how the two get out of step. */
     if (msg.type === "saveRequested" && msg.route) {
       setDraft(msg.route);
       setName("");
+      return;
     }
-  }, []);
+
+    if (msg.type === "openMountain" && typeof msg.catalogueId === "string" && msg.catalogueId) {
+      /* Leaving the map is a screen change, which belongs to the app rather
+         than to a page inside a web view. The catalogue id makes the lookup
+         exact; name, region and country are what it falls back to, and are
+         left out when the catalogue does not carry them rather than sent as
+         empty strings that would read as real answers. */
+      router.push({
+        pathname: "/mountain",
+        params: {
+          catalogueId: msg.catalogueId,
+          ...(msg.name ? { name: msg.name } : {}),
+          ...(msg.region ? { region: msg.region } : {}),
+          ...(msg.country ? { country: msg.country } : {}),
+        },
+      } as never);
+    }
+  }, [router]);
 
   /* On web the page talks through window.postMessage, which needs a listener
      rather than a prop. */
