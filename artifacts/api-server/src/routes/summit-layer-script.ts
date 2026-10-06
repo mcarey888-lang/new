@@ -236,7 +236,13 @@ function showSummitCard(p, coordinates) {
     '<button type="button" id="summitPlanRoute" ' +
       'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
       'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
-      'Plan a route from here</button>';
+      /* The label has to match what the button does. With a route already
+         drawn this appends to it, which is reasonable — but calling that
+         "plan a route from here" would read as starting a new one, and
+         somebody would tap it expecting their existing line to be replaced.
+         Neither behaviour is wrong; describing it wrongly is. */
+      (summitRouteExists() ? 'Add to your route' : 'Plan a route from here') +
+      '</button>';
   card.style.display = "block";
 
   document.getElementById("summitCardClose").onclick = hideSummitCard;
@@ -267,6 +273,11 @@ function showSummitCard(p, coordinates) {
       if (typeof syncControls === "function") syncControls();
     }
   };
+}
+
+/** Whether there is already a line on the map to add to. */
+function summitRouteExists() {
+  return typeof anchors !== "undefined" && anchors && anchors.length > 0;
 }
 
 function hideSummitCard() {
