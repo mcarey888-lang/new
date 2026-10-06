@@ -550,3 +550,45 @@ mtime_ms = 1791201795418
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/1cbbce6f-0d8e-4799-b69c-f17fba2fe052/7e861ebc-2b02-4134-b68c-c60eac7fe829"
 storage_version_token = "1791201835749403"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "xtUXPY67i9X-XTNR_OXvy"
+uri = "file://docs/verification/summit-latest/snowdon-card.jpg"
+type = "image"
+title = "Snowdon card — actual browser"
+description = "Yr Wyddfa, 1085 m, Gwynedd, Wales; no classification or ascent line."
+logical_id = "1995de46-a2a6-4c22-9f91-cb4d9d1f90a6"
+content_hash = "sha256:7ed5cf92e99c161aa5ab89d87adc0c7aa24a59ffb82758c9868e45ff09c72205"
+size = 175209
+mtime_ms = 1791268249031
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/1995de46-a2a6-4c22-9f91-cb4d9d1f90a6/54427f7b-e438-44a0-a2e5-762896211014"
+storage_version_token = "1791268859719935"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "Jyx4NCKEI7EpHh--c8qBe"
+uri = "file://docs/verification/summit-latest/ben-nevis-card.jpg"
+type = "image"
+title = "Ben Nevis card — actual browser"
+description = "Beinn Nibheis; Munro · 1345 m · Highland, Scotland."
+logical_id = "6587db1f-b51b-4519-a6d2-9a1a9cac79b6"
+content_hash = "sha256:58728ed11683dcc1ecf50048bf4c99d190ca31feef13887baf864b587505ceba"
+size = 198571
+mtime_ms = 1791268147643
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/6587db1f-b51b-4519-a6d2-9a1a9cac79b6/6275a867-8624-4cd3-80e8-c5634b1ec498"
+storage_version_token = "1791268860968708"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "v4J8S0k7A5cLwSw8EBnKp"
+uri = "file://docs/verification/summit-latest/duplicate-anchor-drawing.jpg"
+type = "image"
+title = "Drawing edge case — duplicate summit anchor"
+description = "After selecting Snowdon while drawing and pressing the card button, a 0.076 m route exposes Save and GPX."
+logical_id = "55ccbc4c-aa94-452a-92b3-0201c878a07a"
+content_hash = "sha256:595b378612163b753390f017697a42e24e6191a8b77d9eb406a9a325c0eb39e8"
+size = 176493
+mtime_ms = 1791268382815
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/55ccbc4c-aa94-452a-92b3-0201c878a07a/fc1ce7a9-1faa-40f6-abe4-75886514a409"
+storage_version_token = "1791268862021730"
+content_type = "image/jpeg"
