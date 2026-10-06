@@ -1,0 +1,900 @@
+{
+  "route": "http://localhost:8080/api/route-map",
+  "method": "Chromium software WebGL; real summit endpoint; observed native postMessage bridge; real mouse clicks",
+  "initial": {
+    "layers": [
+      {
+        "id": "Outdoor_3857",
+        "label": "OS Outdoor"
+      },
+      {
+        "id": "osm",
+        "label": "OpenStreetMap"
+      },
+      {
+        "id": "satellite",
+        "label": "Satellite"
+      },
+      {
+        "id": "satellite-streets",
+        "label": "Satellite + Labels"
+      }
+    ],
+    "panelDisplay": "none",
+    "rail": [
+      {
+        "label": "Map layers",
+        "width": 44,
+        "radius": "22px"
+      },
+      {
+        "label": "Show my location",
+        "width": 44,
+        "radius": "22px"
+      },
+      {
+        "label": "Plan a route",
+        "width": 44,
+        "radius": "22px"
+      }
+    ],
+    "saveVisible": false,
+    "gpxVisible": false
+  },
+  "layersSheet": {
+    "modeButtons": [
+      "2D",
+      "3D"
+    ],
+    "mapButtons": [
+      "OS Outdoor",
+      "OpenStreetMap",
+      "Satellite",
+      "Satellite + Labels"
+    ],
+    "oldPanelDisplay": "none"
+  },
+  "network": [
+    {
+      "requestId": "2051.42",
+      "phase": "initial",
+      "url": "http://localhost:8080/api/summits?bbox=-4.05253,53.09171,-3.94267,53.13808&zoom=13",
+      "start": 1791268031142,
+      "status": 200,
+      "elapsedMs": 211
+    },
+    {
+      "requestId": "2051.128",
+      "phase": "snowdon",
+      "url": "http://localhost:8080/api/summits?bbox=-4.10370,53.05689,-4.04877,53.08010&zoom=14",
+      "start": 1791268130385,
+      "status": 200,
+      "elapsedMs": 269
+    },
+    {
+      "requestId": "2051.159",
+      "phase": "ben-nevis",
+      "url": "http://localhost:8080/api/summits?bbox=-5.03114,56.78631,-4.97621,56.80746&zoom=14",
+      "start": 1791268145476,
+      "status": 200,
+      "elapsedMs": 402
+    },
+    {
+      "requestId": "2051.179",
+      "phase": "projection",
+      "url": "http://localhost:8080/api/summits?bbox=-5.06866,56.78348,-4.93869,56.84690&zoom=14",
+      "start": 1791268149990,
+      "status": 200,
+      "elapsedMs": 544
+    },
+    {
+      "requestId": "2051.347",
+      "phase": "projection",
+      "url": "http://localhost:8080/api/summits?bbox=-5.06866,56.78348,-4.93869,56.84690&zoom=14",
+      "start": 1791268153255,
+      "status": 200,
+      "elapsedMs": 75
+    },
+    {
+      "requestId": "2051.599",
+      "phase": "race",
+      "url": "http://localhost:8080/api/summits?bbox=-4.00451,53.05246,-3.94958,53.07567&zoom=14",
+      "start": 1791268241289,
+      "status": 200,
+      "elapsedMs": 27
+    },
+    {
+      "requestId": "2051.651",
+      "phase": "race-B",
+      "url": "http://localhost:8080/api/summits?bbox=-5.03047,56.78642,-4.97553,56.80757&zoom=14",
+      "start": 1791268242501,
+      "failed": "net::ERR_ABORTED",
+      "cancelled": true
+    },
+    {
+      "requestId": "2051.734",
+      "phase": "snowdon",
+      "url": "http://localhost:8080/api/summits?bbox=-4.10370,53.05689,-4.04877,53.08010&zoom=14",
+      "start": 1791268247484,
+      "status": 200,
+      "elapsedMs": 0
+    }
+  ],
+  "console": [
+    {
+      "phase": "race-A-load",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "phase": "projection",
+      "type": "warning",
+      "text": "You are using the same source for a hillshade layer and for 3D terrain. Please consider using two separate sources to improve rendering quality."
+    },
+    {
+      "phase": "projection",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "projection",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "projection",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "projection",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "race-A-load",
+      "type": "warning",
+      "text": "You are using the same source for a hillshade layer and for 3D terrain. Please consider using two separate sources to improve rendering quality."
+    },
+    {
+      "phase": "race-A-load",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "phase": "race-A-load",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "race-A-load",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "race-A-load",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    },
+    {
+      "phase": "race-A-load",
+      "type": "warning",
+      "text": "performance warning: READ-usage buffer was written, then fenced, but written again before being read back. This discarded the shadow copy that was created to accelerate readback."
+    }
+  ],
+  "exceptions": [],
+  "checkErrors": [],
+  "benNevis": {
+    "feature": {
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "alternativeName": "Beinn Nibheis",
+      "heightM": 1345,
+      "prominenceM": 1345,
+      "classification": "Munro",
+      "place": "Highland, Scotland",
+      "country": "Scotland",
+      "area": "Highland"
+    },
+    "card": "×\nBen Nevis\nBeinn Nibheis\nMunro · 1345 m · Highland, Scotland\nTap for routes and detail\nPlan a route from here",
+    "openMountain": {
+      "type": "openMountain",
+      "catalogueId": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "region": "Highland",
+      "country": "Scotland"
+    }
+  },
+  "camera": {
+    "local3D": {
+      "mode": "3d",
+      "projection": {
+        "type": "globe"
+      },
+      "pitch": 60,
+      "zoom": 14,
+      "terrain": true
+    },
+    "world": {
+      "mode": "3d",
+      "projection": {
+        "type": "globe"
+      },
+      "pitch": 0,
+      "zoom": 5,
+      "terrain": false
+    },
+    "restored": {
+      "mode": "3d",
+      "projection": {
+        "type": "globe"
+      },
+      "pitch": 60,
+      "zoom": 14,
+      "terrain": true
+    },
+    "flat2D": {
+      "mode": "2d",
+      "projection": {
+        "type": "mercator"
+      },
+      "pitch": 0,
+      "zoom": 14,
+      "terrain": false
+    }
+  },
+  "drawStart": {
+    "drawing": true,
+    "barVisible": true,
+    "buttons": [
+      "Follow paths",
+      "Undo",
+      "Clear",
+      "Done"
+    ],
+    "oldPanel": "none",
+    "saveVisible": false
+  },
+  "noRouteLabel": "Plan a route from here",
+  "afterStartFrom": {
+    "anchors": 2,
+    "routePoints": 2,
+    "drawing": true,
+    "saveVisible": true,
+    "messages": [
+      {
+        "type": "planRouteFrom",
+        "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+        "name": "Ben Nevis",
+        "lat": 56.796890730179314,
+        "lng": -5.003674328327179
+      }
+    ]
+  },
+  "withRoute": {
+    "anchors": 3,
+    "routePoints": 3,
+    "saveVisible": true,
+    "saveDisabled": false,
+    "gpxVisible": true
+  },
+  "withRouteLabel": "Add to your route",
+  "afterAdd": {
+    "anchors": 4,
+    "routePoints": 4
+  },
+  "afterUndo": {
+    "anchors": 3,
+    "routePoints": 3
+  },
+  "afterClear": {
+    "anchors": 0,
+    "routePoints": 0,
+    "saveVisible": false
+  },
+  "afterDone": {
+    "drawing": false,
+    "barVisible": false,
+    "oldPanel": "none"
+  },
+  "messages": [
+    {
+      "type": "ready"
+    },
+    {
+      "type": "summitSelected",
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "alternativeName": "Beinn Nibheis",
+      "heightM": 1345,
+      "classification": "Munro",
+      "place": "Highland, Scotland",
+      "lat": 56.796890730179314,
+      "lng": -5.003674328327179
+    },
+    {
+      "type": "tap",
+      "lat": 56.796891000000244,
+      "lng": -5.003674999998765
+    },
+    {
+      "type": "openMountain",
+      "catalogueId": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "region": "Highland",
+      "country": "Scotland"
+    },
+    {
+      "type": "drawingChanged",
+      "on": true
+    },
+    {
+      "type": "snappingChanged",
+      "on": false
+    },
+    {
+      "type": "summitSelected",
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "alternativeName": "Beinn Nibheis",
+      "heightM": 1345,
+      "classification": "Munro",
+      "place": "Highland, Scotland",
+      "lat": 56.796890730179314,
+      "lng": -5.003674328327179
+    },
+    {
+      "type": "tap",
+      "lat": 56.79689100000044,
+      "lng": -5.00367500000047
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 0,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        }
+      ],
+      "legs": [],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        }
+      ]
+    },
+    {
+      "type": "planRouteFrom",
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "lat": 56.796890730179314,
+      "lng": -5.003674328327179
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 0,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        }
+      ],
+      "legs": [
+        {
+          "kind": "straight",
+          "lengthM": null
+        }
+      ],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        }
+      ]
+    },
+    {
+      "type": "tap",
+      "lat": 56.79783102072781,
+      "lng": -4.995521084594458
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 507,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ],
+      "legs": [
+        {
+          "kind": "straight",
+          "lengthM": null
+        },
+        {
+          "kind": "straight",
+          "lengthM": null
+        }
+      ],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ]
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 507,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ],
+      "legs": [
+        {
+          "kind": "straight",
+          "lengthM": null
+        },
+        {
+          "kind": "straight",
+          "lengthM": null
+        }
+      ],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ]
+    },
+    {
+      "type": "summitSelected",
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "alternativeName": "Beinn Nibheis",
+      "heightM": 1345,
+      "classification": "Munro",
+      "place": "Highland, Scotland",
+      "lat": 56.796890730179314,
+      "lng": -5.003674328327179
+    },
+    {
+      "type": "tap",
+      "lat": 56.79689100000044,
+      "lng": -5.00367500000047
+    },
+    {
+      "type": "profile",
+      "profile": {
+        "outcome": "profiled",
+        "points": [
+          {
+            "distanceM": 0,
+            "elevationM": 1316.2
+          },
+          {
+            "distanceM": 30,
+            "elevationM": 1315.8
+          },
+          {
+            "distanceM": 60,
+            "elevationM": 1323.2
+          },
+          {
+            "distanceM": 90,
+            "elevationM": 1330.4
+          },
+          {
+            "distanceM": 120,
+            "elevationM": 1330.1
+          },
+          {
+            "distanceM": 150,
+            "elevationM": 1325.2
+          },
+          {
+            "distanceM": 180,
+            "elevationM": 1318.5
+          },
+          {
+            "distanceM": 210,
+            "elevationM": 1310.5
+          },
+          {
+            "distanceM": 240,
+            "elevationM": 1290.6
+          },
+          {
+            "distanceM": 270,
+            "elevationM": 1264.8
+          },
+          {
+            "distanceM": 300,
+            "elevationM": 1231.2
+          },
+          {
+            "distanceM": 330,
+            "elevationM": 1197.5
+          },
+          {
+            "distanceM": 360,
+            "elevationM": 1162.4
+          },
+          {
+            "distanceM": 390,
+            "elevationM": 1125.6
+          },
+          {
+            "distanceM": 420,
+            "elevationM": 1088.1
+          },
+          {
+            "distanceM": 450,
+            "elevationM": 1053.6
+          },
+          {
+            "distanceM": 480,
+            "elevationM": 1026.7
+          },
+          {
+            "distanceM": 507,
+            "elevationM": 1003.9
+          }
+        ],
+        "ascentM": 14,
+        "descentM": 327,
+        "minElevationM": 1004,
+        "maxElevationM": 1330,
+        "lengthM": 507,
+        "method": {
+          "thresholdM": 8,
+          "sampleIntervalM": 30,
+          "samples": 18
+        }
+      }
+    },
+    {
+      "type": "planRouteFrom",
+      "id": "c72f54a6-7022-4569-8573-0cb476b24a50",
+      "name": "Ben Nevis",
+      "lat": 56.796890730179314,
+      "lng": -5.003674328327179
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 1015,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        }
+      ],
+      "legs": [
+        {
+          "kind": "straight",
+          "lengthM": null
+        },
+        {
+          "kind": "straight",
+          "lengthM": null
+        },
+        {
+          "kind": "straight",
+          "lengthM": null
+        }
+      ],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        }
+      ]
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 507,
+      "anchors": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ],
+      "legs": [
+        {
+          "kind": "straight",
+          "lengthM": null
+        },
+        {
+          "kind": "straight",
+          "lengthM": null
+        }
+      ],
+      "points": [
+        {
+          "lat": 56.79689100000044,
+          "lng": -5.00367500000047
+        },
+        {
+          "lat": 56.796890730179314,
+          "lng": -5.003674328327179
+        },
+        {
+          "lat": 56.79783102072781,
+          "lng": -4.995521084594458
+        }
+      ]
+    },
+    {
+      "type": "routeChanged",
+      "snapped": false,
+      "lengthM": 0,
+      "anchors": [],
+      "legs": [],
+      "points": []
+    },
+    {
+      "type": "drawingChanged",
+      "on": false
+    },
+    {
+      "type": "summitSelected",
+      "id": "d2e4f6b3-d992-4ed4-9622-4ab05c6ef1dd",
+      "name": "Snowdon",
+      "alternativeName": "Yr Wyddfa",
+      "heightM": 1085,
+      "classification": null,
+      "place": "Gwynedd, Wales",
+      "lat": 53.068495320636714,
+      "lng": -4.076230823993683
+    },
+    {
+      "type": "tap",
+      "lat": 53.06849599999978,
+      "lng": -4.076230999999382
+    },
+    {
+      "type": "openMountain",
+      "catalogueId": "d2e4f6b3-d992-4ed4-9622-4ab05c6ef1dd",
+      "name": "Snowdon",
+      "region": "Gwynedd",
+      "country": "Wales"
+    }
+  ],
+  "race": {
+    "before": {
+      "center": {
+        "lng": -3.977048,
+        "lat": 53.064063
+      },
+      "loaded": {
+        "minLat": 53.03246,
+        "maxLat": 53.095670000000005,
+        "minLng": -4.037792208716763,
+        "maxLng": -3.916297791283237,
+        "band": "all",
+        "truncated": false
+      },
+      "ids": [
+        "2e7fd733-78e0-4735-bbfc-7bde36577048",
+        "444a611e-3f2d-4423-a702-38c38874b358",
+        "494853b4-ae01-404e-9bfa-c249b2ceecaf",
+        "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+        "5baec4f5-46a4-4a6d-827a-d0cedbd42a3f",
+        "789d978d-0fd2-4259-a106-3c134a15a21a",
+        "a58ff282-9132-4531-89ce-e5e0ef096340",
+        "bd94ee39-601a-4e77-837e-e8072e516584",
+        "dba6fbfd-a9b7-4564-bbc5-f91c902d642f",
+        "f7f5a5bc-0e09-44c2-a6d8-592c05c18873"
+      ],
+      "visible": [
+        {
+          "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+          "name": "Clogwyn Bwlch-y-maen"
+        },
+        {
+          "id": "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+          "name": "Carnedd y Cribau"
+        }
+      ],
+      "generation": 7,
+      "pending": null
+    },
+    "held": {
+      "id": "interception-job-52.0",
+      "time": 1791268242570,
+      "status": 200,
+      "records": 16,
+      "covered": {
+        "minLat": 56.76642,
+        "maxLat": 56.82757,
+        "minLng": -5.06699253538079,
+        "maxLng": -4.93900746461921
+      },
+      "heldMs": 2485
+    },
+    "release": "Invalid InterceptionId.",
+    "after": {
+      "center": {
+        "lng": -3.977047999999968,
+        "lat": 53.064063000000004
+      },
+      "loaded": {
+        "minLat": 53.03246,
+        "maxLat": 53.095670000000005,
+        "minLng": -4.037792208716763,
+        "maxLng": -3.916297791283237,
+        "band": "all",
+        "truncated": false
+      },
+      "ids": [
+        "2e7fd733-78e0-4735-bbfc-7bde36577048",
+        "444a611e-3f2d-4423-a702-38c38874b358",
+        "494853b4-ae01-404e-9bfa-c249b2ceecaf",
+        "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+        "5baec4f5-46a4-4a6d-827a-d0cedbd42a3f",
+        "789d978d-0fd2-4259-a106-3c134a15a21a",
+        "a58ff282-9132-4531-89ce-e5e0ef096340",
+        "bd94ee39-601a-4e77-837e-e8072e516584",
+        "dba6fbfd-a9b7-4564-bbc5-f91c902d642f",
+        "f7f5a5bc-0e09-44c2-a6d8-592c05c18873"
+      ],
+      "visible": [
+        {
+          "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+          "name": "Clogwyn Bwlch-y-maen"
+        },
+        {
+          "id": "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+          "name": "Carnedd y Cribau"
+        }
+      ],
+      "generation": 8,
+      "pending": null
+    },
+    "identicalIds": true
+  },
+  "tinyPan": {
+    "deltaDegrees": 0.001,
+    "newRequests": 0,
+    "state": {
+      "center": {
+        "lng": -3.9760479999999916,
+        "lat": 53.06506299999998
+      },
+      "loaded": {
+        "minLat": 53.03246,
+        "maxLat": 53.095670000000005,
+        "minLng": -4.037792208716763,
+        "maxLng": -3.916297791283237,
+        "band": "all",
+        "truncated": false
+      },
+      "ids": [
+        "2e7fd733-78e0-4735-bbfc-7bde36577048",
+        "444a611e-3f2d-4423-a702-38c38874b358",
+        "494853b4-ae01-404e-9bfa-c249b2ceecaf",
+        "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+        "5baec4f5-46a4-4a6d-827a-d0cedbd42a3f",
+        "789d978d-0fd2-4259-a106-3c134a15a21a",
+        "a58ff282-9132-4531-89ce-e5e0ef096340",
+        "bd94ee39-601a-4e77-837e-e8072e516584",
+        "dba6fbfd-a9b7-4564-bbc5-f91c902d642f",
+        "f7f5a5bc-0e09-44c2-a6d8-592c05c18873"
+      ],
+      "visible": [
+        {
+          "id": "2e7fd733-78e0-4735-bbfc-7bde36577048",
+          "name": "Clogwyn Bwlch-y-maen"
+        },
+        {
+          "id": "50a9a764-6e9f-4d68-9c67-e6d971b6dfb0",
+          "name": "Carnedd y Cribau"
+        }
+      ],
+      "generation": 8,
+      "pending": null
+    }
+  },
+  "snowdon": {
+    "feature": {
+      "id": "d2e4f6b3-d992-4ed4-9622-4ab05c6ef1dd",
+      "name": "Snowdon",
+      "alternativeName": "Yr Wyddfa",
+      "heightM": 1085,
+      "prominenceM": 1039,
+      "place": "Gwynedd, Wales",
+      "country": "Wales",
+      "area": "Gwynedd"
+    },
+    "card": "×\nSnowdon\nYr Wyddfa\n1085 m · Gwynedd, Wales\nTap for routes and detail\nPlan a route from here",
+    "openMountain": {
+      "type": "openMountain",
+      "catalogueId": "d2e4f6b3-d992-4ed4-9622-4ab05c6ef1dd",
+      "name": "Snowdon",
+      "region": "Gwynedd",
+      "country": "Wales"
+    }
+  }
+}

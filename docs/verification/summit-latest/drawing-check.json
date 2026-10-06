@@ -1,0 +1,55 @@
+{
+  "normalSelection": {
+    "drawing": false,
+    "anchors": [],
+    "lengthM": 0,
+    "routePoints": 0,
+    "saveVisible": false,
+    "cardLabel": "Plan a route from here"
+  },
+  "normalStartButton": {
+    "drawing": true,
+    "anchors": [
+      {
+        "lat": 53.068495320636714,
+        "lng": -4.076230823993683
+      }
+    ],
+    "lengthM": 0,
+    "routePoints": 1,
+    "saveVisible": false,
+    "cardLabel": "Plan a route from here"
+  },
+  "selectionWhileDrawing": {
+    "drawing": true,
+    "anchors": [
+      {
+        "lat": 53.06849599999978,
+        "lng": -4.076230999999382
+      }
+    ],
+    "lengthM": 0,
+    "routePoints": 1,
+    "saveVisible": false,
+    "cardLabel": "Plan a route from here"
+  },
+  "buttonWhileDrawing": {
+    "drawing": true,
+    "anchors": [
+      {
+        "lat": 53.06849599999978,
+        "lng": -4.076230999999382
+      },
+      {
+        "lat": 53.068495320636714,
+        "lng": -4.076230823993683
+      }
+    ],
+    "lengthM": 0.07645152578736189,
+    "routePoints": 2,
+    "saveVisible": true,
+    "cardLabel": "Plan a route from here"
+  },
+  "knownAscentSample": [],
+  "sampleTruncated": true
+}

@@ -25,3 +25,13 @@ expected and does not establish a production-layer failure.
 **How to apply:** Observe tile statuses and visible contours/paths in a browser
 on the published map page, and verify the active OS attribution. A redirect to
 a landing page blocks verification; it is not a tile failure.
+
+Use the public, asynchronous GeoJSON source `getData()` for browser assertions,
+not a presumed shape of the private `_data` property.
+
+**Why:** `_data` can be an object without a FeatureCollection's `features`, even
+while the live source renders correctly; private-field checks produced false
+harness failures.
+
+**How to apply:** Await `getData()` when comparing the actual source's summit IDs
+before and after a race. Keep automation errors separate from page exceptions.

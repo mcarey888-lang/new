@@ -24,3 +24,14 @@ was deliberately separated to avoid colliding with local globe and terrain work.
 **How to apply:** Review the incoming page diff before importing. Keep integration
 to module wiring and notice UI, and leave offline download disabled unless the user
 explicitly authorizes enabling it.
+
+The requested summit-card display is name, alternative name when available,
+classification when present, summit height and place. No ascent or climbing
+text is wanted on any card, including records with known route ascent.
+
+**Why:** The author explicitly requested height-only metadata rather than implying
+that a summit itself has a route ascent; most catalogue records have none.
+
+**How to apply:** Do not equate absence on sampled cards with a universal guarantee.
+Report conflicting display conditionals to the author rather than patching their
+card implementation without permission.

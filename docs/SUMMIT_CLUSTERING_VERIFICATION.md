@@ -1,5 +1,10 @@
 # Summit clustering — live browser verification
 
+**Historical report:** the delayed-response and tiny-pan failures below were
+rechecked after the next six shared-branch commits. They pass in the
+[2026-10-06 verification](SUMMIT_MAP_LATEST_VERIFICATION.md); retain this report
+as evidence of the earlier version, not the current race behaviour.
+
 Checked 2026-10-05. Imported author commits `b7d5b8b`, `4d0e877` and `d381a85`
 from `origin/claude/route-map-server`. No local fixes to the summit query, pin
 logic, clustering settings or page behaviour.
