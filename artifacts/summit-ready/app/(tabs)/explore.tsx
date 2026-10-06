@@ -979,8 +979,12 @@ export default function ExploreScreen() {
               <Text style={styles.mapSub}>Browse mountains and routes on an interactive map.</Text>
               <SRPanel
                 radius={7.5}
-                onPress={() => router.push("/hills-finder" as any)}
-                accessibilityLabel="Find hills near you"
+                /* The card promises an interactive map, so it opens one. It
+                   used to open the hills list, which is a good screen and not
+                   what the words above it say. That list keeps its other three
+                   ways in, from this screen and from Track. */
+                onPress={() => router.push("/route-planner" as any)}
+                accessibilityLabel="Open the map"
                 style={styles.mapCard}
               >
                 <LinearGradient
