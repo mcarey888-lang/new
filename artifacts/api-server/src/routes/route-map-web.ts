@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { summitLayerScript } from "./summit-layer-script";
+import { mapControlsScript } from "./map-controls-script";
 
 const router: IRouter = Router();
 
@@ -1046,6 +1047,9 @@ document.getElementById("gpx").onclick = function () {
 
 ${summitsUrl ? summitLayerScript(summitsUrl) : ""}
 ${summitsUrl ? `map.on("moveend", scheduleSummits);` : ""}
+
+${chrome === "full" ? mapControlsScript(Boolean(gpxUrl)) : ""}
+${chrome === "full" ? "buildControls();" : ""}
 </script>
 </body>
 </html>`;
