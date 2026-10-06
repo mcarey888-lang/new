@@ -219,13 +219,20 @@ function showSummitCard(p, coordinates) {
     '<button type="button" id="summitCardClose" aria-label="Close" ' +
       'style="position:absolute;top:8px;right:10px;background:none;border:0;color:#9FB0AC;' +
       'font-size:20px;line-height:1;cursor:pointer">&times;</button>' +
-    '<div style="font:600 17px/1.25 system-ui,sans-serif;padding-right:24px">' +
+    /* The card itself opens the mountain. Tapping a pin should show you what
+       it is without taking you anywhere; wanting more is a second deliberate
+       tap, which is how every map app people already use behaves. */
+    '<div id="summitCardOpen" role="button" tabindex="0" ' +
+      'style="cursor:pointer;padding-right:24px">' +
+    '<div style="font:600 17px/1.25 system-ui,sans-serif">' +
       escapeSummitText(p.name) + '</div>' +
     (p.alternativeName
       ? '<div style="color:#9FB0AC;font-size:13px;margin-top:2px">' + escapeSummitText(p.alternativeName) + '</div>'
       : '') +
     '<div style="color:#C8D4D1;margin-top:7px">' + escapeSummitText(summitCardText(p)) + '</div>' +
     (ascent ? '<div style="color:#C8D4D1;margin-top:3px">' + escapeSummitText(ascent) + '</div>' : '') +
+    '<div style="color:#8E9D99;font-size:12px;margin-top:8px">Tap for routes and detail</div>' +
+    '</div>' +
     '<button type="button" id="summitPlanRoute" ' +
       'style="margin-top:12px;width:100%;padding:10px;border:0;border-radius:7px;' +
       'background:#F2C14E;color:#0B1418;font:600 14px system-ui,sans-serif;cursor:pointer">' +
@@ -233,10 +240,32 @@ function showSummitCard(p, coordinates) {
   card.style.display = "block";
 
   document.getElementById("summitCardClose").onclick = hideSummitCard;
+
+  var open = document.getElementById("summitCardOpen");
+  var openMountain = function () {
+    /* Everything the mountain page asks for by name. The catalogue id makes
+       the lookup exact; the rest is what it falls back to. */
+    post({ type: "openMountain", catalogueId: p.id, name: p.name,
+           region: p.area || null, country: p.country || null });
+  };
+  open.onclick = openMountain;
+  open.onkeydown = function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMountain(); }
+  };
+
   document.getElementById("summitPlanRoute").onclick = function () {
+    /* Handled here rather than by the app: starting a route from a summit is
+       the map's own job, and a round trip to ask permission would only add a
+       way for it to fail. The app is told so it can follow along. */
+    var at = { lng: summitCardFor.lng, lat: summitCardFor.lat };
     post({ type: "planRouteFrom", id: summitCardFor.id, name: summitCardFor.name,
            lat: summitCardFor.lat, lng: summitCardFor.lng });
     hideSummitCard();
+    if (typeof setDrawing === "function" && typeof addPoint === "function") {
+      if (!drawing) setDrawing(true);
+      addPoint(at);
+      if (typeof syncControls === "function") syncControls();
+    }
   };
 }
 
@@ -369,6 +398,8 @@ function requestSummits() {
               prominenceM: s.prominenceM,
               classification: s.classification,
               place: s.place,
+              country: s.country,
+              area: s.area,
               /* Flattened: MapLibre feature properties are a flat bag, and an
                  object arrives at the other end as "[object Object]". */
               ascentM: s.ascent && s.ascent.kind === "known" ? s.ascent.metres : null,

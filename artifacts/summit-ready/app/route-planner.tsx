@@ -103,7 +103,10 @@ export default function RoutePlannerScreen() {
   }, []);
 
   const onMessage = useCallback((raw: string) => {
-    let msg: { type?: string; route?: DraftFromPage };
+    let msg: {
+      type?: string; route?: DraftFromPage;
+      catalogueId?: string; name?: string; region?: string | null; country?: string | null;
+    };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === "ready") setMapReady(true);
     if (msg.type === "routeChanged") setSelectedSavedRoute(null);
@@ -115,8 +118,26 @@ export default function RoutePlannerScreen() {
     if (msg.type === "saveRequested" && msg.route) {
       setDraft(msg.route);
       setName("");
+      return;
     }
-  }, []);
+
+    if (msg.type === "openMountain" && typeof msg.catalogueId === "string" && msg.catalogueId) {
+      /* Leaving the map is a screen change, which belongs to the app rather
+         than to a page inside a web view. The catalogue id makes the lookup
+         exact; name, region and country are what it falls back to, and are
+         left out when the catalogue does not carry them rather than sent as
+         empty strings that would read as real answers. */
+      router.push({
+        pathname: "/mountain",
+        params: {
+          catalogueId: msg.catalogueId,
+          ...(msg.name ? { name: msg.name } : {}),
+          ...(msg.region ? { region: msg.region } : {}),
+          ...(msg.country ? { country: msg.country } : {}),
+        },
+      } as never);
+    }
+  }, [router]);
 
   /* On web the page talks through window.postMessage, which needs a listener
      rather than a prop. */

@@ -319,6 +319,11 @@ export interface SummitPin {
   classification: string | null;
   /** "Highland, Scotland" and the like, or null. */
   place: string | null;
+  /** The two parts of that, kept separate as well as joined. The mountain
+   *  page takes them as its own fields, and splitting a joined string back
+   *  apart at the other end is how a county with a comma in it goes wrong. */
+  country: string | null;
+  area: string | null;
   ascent: AscentDisplay;
 }
 
@@ -330,17 +335,29 @@ export interface SummitPin {
  * county reads better, so it leads, with the region kept only when there is
  * no county.
  */
+function cleanPart(value: string | null | undefined): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length > 0 ? text : null;
+}
+
+/**
+ * The local part of where a hill is, in words somebody would use.
+ *
+ * The county leads. A DoBIH region is a catalogue string like "04A: Fort
+ * William to Loch Treig & Loch Leven" — precise, and not how anybody says
+ * where they walked — so it is only used when there is no county, and only
+ * when it does not start with a catalogue number.
+ */
+export function areaLabel(row: Pick<MountainRow, "county" | "region">): string | null {
+  const county = cleanPart(row.county);
+  if (county) return county;
+  const region = cleanPart(row.region);
+  return region && !/^\d/.test(region) ? region : null;
+}
+
 export function placeLabel(row: Pick<MountainRow, "county" | "region" | "country">): string | null {
-  const clean = (v: string | null | undefined): string | null => {
-    const t = typeof v === "string" ? v.trim() : "";
-    return t.length > 0 ? t : null;
-  };
-  const county = clean(row.county);
-  const region = clean(row.region);
-  const country = clean(row.country);
-  /* A DoBIH region code reads as a catalogue reference, not a place. */
-  const usableRegion = region && !/^\d/.test(region) ? region : null;
-  const local = county ?? usableRegion;
+  const country = cleanPart(row.country);
+  const local = areaLabel(row);
   if (!local && !country) return null;
   if (!local) return country;
   if (!country) return local;
@@ -379,6 +396,8 @@ export function toPin(row: MountainRow): SummitPin | null {
       ? Math.round(row.prominenceM) : null,
     classification: classificationLabel(row.classificationCodes ?? []),
     place: placeLabel(row),
+    country: cleanPart(row.country),
+    area: areaLabel(row),
     ascent: ascentDisplay(row.totalAscentM),
   };
 }
