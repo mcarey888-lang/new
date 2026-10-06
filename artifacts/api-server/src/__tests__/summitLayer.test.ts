@@ -242,3 +242,23 @@ describe("the card, rendered", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 });
+
+describe("the card's route button says what it will do", () => {
+  it("offers to start a route when there is none", () => {
+    expect(script()).toContain("'Plan a route from here'");
+  });
+
+  it("offers to add to one when there is", () => {
+    /* It appends either way. Appending is reasonable; calling it "plan a
+       route from here" is not, because somebody would tap it expecting their
+       existing line to be replaced. */
+    const s = script();
+    expect(s).toContain("summitRouteExists() ? 'Add to your route'");
+    expect(s).toContain("function summitRouteExists()");
+  });
+
+  it("copes with the route state not existing at all", () => {
+    // The summit layer can load on a page with no drawing on it.
+    expect(script()).toContain('typeof anchors !== "undefined"');
+  });
+});
