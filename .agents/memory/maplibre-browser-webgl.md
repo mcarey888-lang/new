@@ -35,3 +35,13 @@ harness failures.
 
 **How to apply:** Await `getData()` when comparing the actual source's summit IDs
 before and after a race. Keep automation errors separate from page exceptions.
+
+Verify permission refusal in a fresh page session after a successful geolocation
+test; changing the automation permission alone may leave a cached successful fix.
+
+**Why:** The browser returned another successful emulated fix after a permission
+override, but a fresh page with permission denied produced the actual refusal.
+
+**How to apply:** Check the page's real PermissionStatus and the actual callback
+result before claiming the refusal path ran. Distinguish a posted error message
+from a visible explanation to the person using the map.

@@ -620,3 +620,17 @@ mtime_ms = 1791392655322
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/be2d9009-91d0-478f-985b-086d978e25fd/6964b084-ef53-4372-b00d-51890fccc8fd"
 storage_version_token = "1791392770570169"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "seS_g_9iBKGZkEmHXv8-D"
+uri = "file://screenshots/route-map-phone-location.jpg"
+type = "image"
+title = "Phone-width route map check"
+description = "375-pixel browser capture: save bar above the expanded readout, with a blue dot and halo from an emulated location fix. Circle sizing and permission-denial issues are reported separately."
+logical_id = "dc2e40b7-c192-4d04-902f-0d551664c6c4"
+content_hash = "sha256:77083ab0879d4c99934285c73a9c0971d92c02d1769494c54c3ba0069350ab4b"
+size = 41302
+mtime_ms = 1791403446433
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/dc2e40b7-c192-4d04-902f-0d551664c6c4/04d6a0e6-b6f7-4b4f-90c3-e8be2411b9e9"
+storage_version_token = "1791403942529905"
+content_type = "image/jpeg"

@@ -3,12 +3,14 @@ name: Summit map review boundary
 description: Ownership and integration scope for externally authored summit-map work.
 ---
 
-Treat externally supplied summit-map SQL, pin logic and clustering as author-owned.
+Treat externally supplied summit-map SQL, pin logic, clustering, controls and
+location rendering as author-owned.
 Bring across the supplied patches and verify them against real data and browser
 behaviour; report failures instead of silently maintaining a corrected local version.
 
 **Why:** The author cannot access this database and explicitly prefers correcting
-their own query over having two independently changed versions.
+their own work over having two independently changed versions. This includes
+phone-layout and location-display failures, not just summit queries.
 
 **How to apply:** Use the existing read-only engine pool for diagnostics and live
 endpoint checks. Make only requested integration resolutions. Obtain explicit
