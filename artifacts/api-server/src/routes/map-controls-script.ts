@@ -260,12 +260,13 @@ function buildRouteBar() {
   /* Saving and exporting appear once there is a route to save or export, and
      not a moment before. */
   routeBar = sheetShell();
-  /* Right, not left: the route readout and the summit notice both live bottom
-     left, and this bar appears under exactly the conditions that make the
-     readout worth reading — distance, ascent, and whether a section missed a
-     path. Covering it would hide the save messages too. */
-  routeBar.style.right = "12px";
-  routeBar.style.bottom = "12px";
+  /* Above the route readout, not beside it.
+     
+     Beside it was my first attempt and it was wrong on a phone: the readout
+     is up to 60% of the width and this bar is about half, so on a 400-pixel
+     screen they still overlapped and the distance, ascent and save messages
+     disappeared behind Save route. Stacking cannot collide at any width. */
+  routeBar.style.left = "12px";
   routeBar.style.padding = "7px";
 
   var row = document.createElement("div");
@@ -293,6 +294,27 @@ function buildRouteBar() {
 
   routeBar.appendChild(row);
   document.body.appendChild(routeBar);
+  placeRouteBar();
+  window.addEventListener("resize", placeRouteBar);
+}
+
+/**
+ * Sit the bar clear of the readout, whatever height it happens to be.
+ *
+ * Measured rather than guessed: the readout is one line or two depending on
+ * whether a section missed a path, and a fixed offset is wrong half the time.
+ */
+function placeRouteBar() {
+  if (!routeBar) return;
+  var hud = document.getElementById("hud");
+  var bottom = 12;
+  if (hud && !hud.hidden) {
+    var box = hud.getBoundingClientRect();
+    if (box.height > 0) {
+      bottom = Math.max(12, Math.round(window.innerHeight - box.top) + 10);
+    }
+  }
+  routeBar.style.bottom = bottom + "px";
 }
 
 function mirror(controlId, originalId) {
@@ -332,7 +354,10 @@ function syncControls() {
 
   /* The bar earns its place by there being something to save. */
   var saveOriginal = originalButton("save");
-  if (routeBar) routeBar.style.display = saveOriginal && !saveOriginal.disabled ? "block" : "none";
+  if (routeBar) {
+    routeBar.style.display = saveOriginal && !saveOriginal.disabled ? "block" : "none";
+    placeRouteBar();
+  }
 
   var modes = document.querySelectorAll(".ctlMode");
   for (var i = 0; i < modes.length; i++) {
@@ -350,6 +375,49 @@ function syncControls() {
   }
 }
 
+/**
+ * Draw where the person is.
+ *
+ * The button used to centre the map and nothing else, which is not what
+ * anybody means by "show my location" — it moved the view and left them
+ * guessing which part of it was them.
+ *
+ * Two marks: a soft circle for how certain the fix is, and a solid dot for
+ * the position. The halo is the honest part. A bare dot claims a precision
+ * that a phone on a hillside does not have.
+ */
+function showMyLocation(lng, lat, accuracyM) {
+  if (!map.getSource("me")) {
+    map.addSource("me", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    map.addLayer({
+      id: "me-accuracy", type: "circle", source: "me",
+      paint: {
+        "circle-color": "#4C9BE8", "circle-opacity": 0.18,
+        "circle-stroke-color": "#4C9BE8", "circle-stroke-opacity": 0.4, "circle-stroke-width": 1,
+        /* Metres on the ground rather than pixels, so the circle keeps
+           meaning the same thing as the map is zoomed. */
+        "circle-radius": ["interpolate", ["exponential", 2], ["zoom"],
+          0, 0, 22, ["/", ["get", "accuracyM"], 0.0187]],
+      },
+    });
+    map.addLayer({
+      id: "me-dot", type: "circle", source: "me",
+      paint: {
+        "circle-color": "#4C9BE8", "circle-radius": 7,
+        "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2.5,
+      },
+    });
+  }
+  map.getSource("me").setData({
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [lng, lat] },
+      properties: { accuracyM: accuracyM > 0 ? accuracyM : 0 },
+    }],
+  });
+}
+
 function locateMe() {
   if (!navigator.geolocation) {
     /* Named rather than silent. A button that does nothing is worse than one
@@ -359,9 +427,16 @@ function locateMe() {
   }
   navigator.geolocation.getCurrentPosition(
     function (pos) {
+      showMyLocation(pos.coords.longitude, pos.coords.latitude, pos.coords.accuracy || 0);
       map.easeTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: Math.max(map.getZoom(), 13), duration: 600 });
+      post({ type: "located", lat: pos.coords.latitude, lng: pos.coords.longitude,
+             accuracyM: pos.coords.accuracy || null });
     },
-    function () { post({ type: "locateDenied" }); },
+    function (err) {
+      /* Which kind of failure matters: refused permission is the person's to
+         change, a timeout on a hillside is not. */
+      post({ type: "locateDenied", reason: err && err.code === 1 ? "permission" : "unavailable" });
+    },
     { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
   );
 }

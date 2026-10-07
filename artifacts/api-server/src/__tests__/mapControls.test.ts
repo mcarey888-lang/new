@@ -103,6 +103,8 @@ function built(opts: { gpx?: boolean; drawing?: boolean; saveDisabled?: boolean 
       textContent: "", innerHTML: "", id: "", type: "", title: "", className: "",
       disabled: false, onclick: null,
       setAttribute(k: string, v: string) { (this as Record<string, unknown>)[k] = v; },
+      getBoundingClientRect() { return { top: 700, height: 40 }; },
+      hidden: false,
       appendChild(c: unknown) { (this["children"] as unknown[]).push(c); },
     };
     created.push(node);
@@ -115,11 +117,12 @@ function built(opts: { gpx?: boolean; drawing?: boolean; saveDisabled?: boolean 
     snap: { ...make(), disabled: false },
   };
   const panel = make();
+  const hud = make();
   const doc = {
     createElement: make,
     querySelector: (sel: string) => (sel === ".panel" ? panel : null),
     querySelectorAll: () => [] as unknown[],
-    getElementById: (id: string) => originals[id] ?? null,
+    getElementById: (id: string) => originals[id] ?? (id === "hud" ? hud : null),
     body: { appendChild(c: unknown) { created.push(c as Record<string, unknown>); } },
   };
   const scope = `var map = { getZoom: function () { return 10; }, easeTo: function () {} };
@@ -130,8 +133,9 @@ function built(opts: { gpx?: boolean; drawing?: boolean; saveDisabled?: boolean 
     function setLayer() {} function undoPoint() {} function clearRoute() {}
     ${mapControlsScript(opts.gpx ?? true)}
     buildControls();`;
-  new Function("document", "navigator", "MutationObserver", scope)(
-    doc, {}, undefined,
+  const win = { innerHeight: 800, addEventListener() {} };
+  new Function("document", "navigator", "MutationObserver", "window", scope)(
+    doc, {}, undefined, win,
   );
   return { labels: created.map(n => String(n["textContent"] ?? "")).filter(Boolean) };
 }
@@ -179,15 +183,60 @@ describe("what hiding the old panel could have broken", () => {
     expect(s).toContain('mirror("ctlFly", "fly")');
   });
 
-  it("keeps the save bar off the route readout", () => {
-    /* Distance, ascent and "not on a path" live bottom left, and the bar
-       appears under exactly the conditions that make them worth reading. */
+  it("stacks the save bar above the readout rather than beside it", () => {
+    /* Beside it was my first attempt and it was wrong on a phone: the readout
+       takes up to 60% of the width and the bar about half, so on a 400-pixel
+       screen they still overlapped. Stacking cannot collide at any width. */
     const s = script();
-    expect(s).toContain('routeBar.style.right = "12px"');
-    expect(s).not.toContain('routeBar.style.left = "12px"');
+    expect(s).toContain("function placeRouteBar()");
+    expect(s).toContain("hud.getBoundingClientRect()");
+    expect(s).not.toContain('routeBar.style.bottom = "12px"');
+  });
+
+  it("measures the readout rather than guessing its height", () => {
+    /* It is one line or two depending on whether a section missed a path, so
+       a fixed offset is wrong half the time. */
+    const s = script();
+    expect(s).toContain("window.innerHeight - box.top");
+    expect(s).toContain('window.addEventListener("resize", placeRouteBar)');
   });
 
   it("keeps the drawing bar clear of the host screen's own chips", () => {
     expect(script()).toContain('drawBar.style.top = "64px"');
+  });
+});
+
+describe("showing where you are", () => {
+  it("draws a mark, not just a camera move", () => {
+    /* The button used to centre the map and nothing else, which is not what
+       anybody means by "show my location" — it moved the view and left them
+       guessing which part of it was them. */
+    const s = script();
+    expect(s).toContain("function showMyLocation");
+    expect(s).toContain('map.addSource("me"');
+    expect(s).toContain('id: "me-dot"');
+  });
+
+  it("shows how certain the fix is", () => {
+    /* A bare dot claims a precision a phone on a hillside does not have. */
+    const s = script();
+    expect(s).toContain('id: "me-accuracy"');
+    expect(s).toContain('["get", "accuracyM"]');
+  });
+
+  it("sizes that circle in metres, not pixels", () => {
+    // Otherwise the circle means something different at every zoom.
+    expect(script()).toContain('["interpolate", ["exponential", 2], ["zoom"]');
+  });
+
+  it("separates a refusal from a failure to get a fix", () => {
+    /* Refused permission is the person's to change; a timeout on a hillside
+       is not, and telling them to check their settings would be wrong. */
+    const s = script();
+    expect(s).toContain('err.code === 1 ? "permission" : "unavailable"');
+  });
+
+  it("tells the app where the person is", () => {
+    expect(script()).toContain('type: "located"');
   });
 });
