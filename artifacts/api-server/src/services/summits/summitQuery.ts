@@ -15,7 +15,29 @@ import { filterForZoom, pinCap, type BBox, type PinFilter } from "./summitPins";
  * query is written around `geom &&` and the reason this paragraph exists.
  */
 
-/** Columns every pin needs, aliased to the shape `toPin` expects. */
+/**
+ * Columns every pin needs, aliased to the shape `toPin` expects.
+ *
+ * NO ASCENT HERE, AND THAT IS NOT AN OVERSIGHT. `toPin` accepts a
+ * `totalAscentM` and the card knows how to show it, but this query never
+ * selects one, so every pin arrives with ascent unknown and the card's ascent
+ * line never draws.
+ *
+ * That is currently the right answer rather than a gap to fill in passing.
+ * `route_facts.total_ascent_m` holds 23 rows against 21,792 mountains, and it
+ * is reached through route definitions and identities rather than hanging off
+ * the mountain. Joining it would add work to a query the map runs on every
+ * pan, in order to put a figure on roughly one summit in a thousand.
+ *
+ * That decision has now been made and this is the settled answer, not a gap
+ * waiting to be filled: a summit card shows no ascent. Ascent is a property of
+ * a route rather than of a hill — it depends entirely on which path is taken
+ * and where somebody parks — so the place for the figure is on a chosen route,
+ * where it describes something real, not on a pin where it would have to pick
+ * a route on the reader's behalf without saying so.
+ *
+ * Adding it here needs that decision reopened, not just a column added.
+ */
 const SELECT_COLUMNS = `
     m.id::text                       AS "id",
     m.name                           AS "name",

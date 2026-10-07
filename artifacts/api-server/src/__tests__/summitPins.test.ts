@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   ALL_SUMMITS_ZOOM, HEADLINE_CLASSES, HEADLINE_PROMINENCE_M, HUMP_PROMINENCE_M,
   MARILYN_PROMINENCE_M, MIN_PIN_ZOOM, zoomBandKey, zoomBandTable,
@@ -382,5 +384,18 @@ describe("the rectangle", () => {
     expect(grown.maxLat).toBeLessThanOrEqual(90);
     expect(grown.minLng).toBeGreaterThanOrEqual(-180);
     expect(grown.maxLng).toBeLessThanOrEqual(180);
+  });
+});
+
+describe("ascent on a summit card", () => {
+  it("is deliberately absent, and the reasoning is recorded", () => {
+    /* Decided rather than overlooked: ascent belongs to a route, not a hill,
+       so a pin showing one would be picking a route on the reader's behalf
+       without saying so. The query carries the reasoning; this asserts it is
+       still there, so the next person to notice the empty column reads why
+       before filling it in. */
+    const sql = readFileSync(join(__dirname, "..", "services/summits/summitQuery.ts"), "utf8");
+    expect(sql).toContain("NO ASCENT HERE");
+    expect(sql).toContain("settled answer, not a gap");
   });
 });
