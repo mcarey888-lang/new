@@ -592,3 +592,31 @@ mtime_ms = 1791268382815
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/55ccbc4c-aa94-452a-92b3-0201c878a07a/fc1ce7a9-1faa-40f6-abe4-75886514a409"
 storage_version_token = "1791268862021730"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "oo14A0f6Ud7d513DkJx4k"
+uri = "file://screenshots/current-onboarding-review/current-onboarding-six-screens.jpg"
+type = "image"
+title = "Current onboarding — all six screens"
+description = "Captured from the actual current app, not the older onboarding demo. Browser rendering at phone size; Explore selected for the last screen."
+logical_id = "ff990d06-c769-4710-99e8-938c40f9994d"
+content_hash = "sha256:87bc85ead33e16ad0eb9c6b84b206c8e4dab11bda8955e0a889a191f2a644087"
+size = 350466
+mtime_ms = 1791392469095
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/ff990d06-c769-4710-99e8-938c40f9994d/716bd8ac-ec15-4fe6-bb68-3dbb5021fa8c"
+storage_version_token = "1791392769341220"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "6VOv-TPEF0oQeeAd5V9kA"
+uri = "file://screenshots/current-onboarding-review/current-onboarding-review.pdf"
+type = "pdf"
+title = "Current onboarding — screen-by-screen review"
+description = "Seven pages: the app welcome page followed by the six current onboarding screens. No account creation or final Continue action was performed."
+logical_id = "be2d9009-91d0-478f-985b-086d978e25fd"
+content_hash = "sha256:0799d1aa3f95968c81a90db7057982098d1f69421e4ef143a0e223234b74a5f9"
+size = 220597
+mtime_ms = 1791392655322
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:c845fd48-4223-49a2-a54f-cbec8cb8f5c3/be2d9009-91d0-478f-985b-086d978e25fd/6964b084-ef53-4372-b00d-51890fccc8fd"
+storage_version_token = "1791392770570169"
+content_type = "application/pdf"
