@@ -80,4 +80,4 @@
 - [Git sequencer lock recovery](git-sequencer-lock-recovery.md) — after an index-lock failure, verify applied history before continuing; the failed pick may be skipped.
 - [Summit map review boundary](summit-query-review-boundary.md) — verify author-owned summit logic; preserve globe integration and report failures rather than creating a second version.
 - [MapLibre browser WebGL](maplibre-browser-webgl.md) — disabled GL in managed runners can be an environment issue; local Chromium software rendering enabled real map verification.
-- [Free version requirement](free-version-product-requirement.md) — offer no-subscription access; confirm feature scope rather than assuming all Pro features should become free.
+- [Free/Pro access policy](free-version-product-requirement.md) — Free exploration, recording and readiness snapshot; Pro preparation; core safety and personal-data access stays free.
