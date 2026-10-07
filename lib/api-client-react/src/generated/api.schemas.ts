@@ -85,6 +85,46 @@ export interface CommunityPost {
   hasPhoto: boolean;
 }
 
+export interface MountainParkingLookupInput {
+  /**
+   * @minLength 2
+   * @maxLength 160
+   */
+  mountainName: string;
+  /**
+   * @minLength 2
+   * @maxLength 160
+   */
+  region: string;
+  /** @maxLength 250 */
+  mountainId?: string;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  latitude?: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  longitude?: number;
+}
+
+export interface MountainParkingSuggestion {
+  id: string;
+  name: string;
+  description: string;
+  sourceName: string;
+  sourceUrl: string;
+  directionsQuery: string;
+  lastChecked: string;
+}
+
+export interface MountainParkingLookupResult {
+  options: MountainParkingSuggestion[];
+  cached: boolean;
+}
+
 export interface MountainHeroPrompt {
   prompt: string;
   hasReference: boolean;

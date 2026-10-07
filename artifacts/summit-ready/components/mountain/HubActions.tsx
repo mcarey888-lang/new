@@ -32,20 +32,20 @@ export function ActionGrid({
   resumable, busy, onRoutes, onParking, onTrack, onResume, onOffline,
 }: {
   resumable: boolean; busy: boolean;
-  onRoutes: () => void; onParking: () => void; onTrack: () => void; onResume: () => void; onOffline: () => void;
+  onRoutes: () => void; onParking: () => void; onTrack: () => void; onResume: () => void; onOffline?: () => void;
 }) {
   return (
     <View style={styles.grid}>
       <ActionTile testID="mountain-view-routes" label="View routes" onPress={onRoutes}
         icon={<RouteIcon size={17} color={EXPLORE.accent} />} hint="Scrolls to the routes section" />
-      <ActionTile testID="mountain-parking" label="Parking & starts" onPress={onParking}
+      <ActionTile testID="mountain-parking" label="Parking directions" onPress={onParking}
         icon={<MapPin size={17} color={EXPLORE.accent} />} hint="Scrolls to parking and start points" />
       <ActionTile testID="mountain-track" primary disabled={busy}
         label={resumable ? "Resume activity" : "Track mountain"}
         onPress={resumable ? onResume : onTrack}
         icon={<Play size={17} color={EXPLORE.accent} />} />
-      <ActionTile testID="mountain-offline" label="Download offline" onPress={onOffline}
-        icon={<Download size={17} color={EXPLORE.accent} />} hint="Scrolls to offline downloads" />
+      {onOffline ? <ActionTile testID="mountain-offline" label="Download offline" onPress={onOffline}
+        icon={<Download size={17} color={EXPLORE.accent} />} hint="Scrolls to offline downloads" /> : null}
     </View>
   );
 }

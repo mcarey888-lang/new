@@ -202,6 +202,7 @@ app.use("/api/hills-unified",                aiLimiter);
 app.use("/api/adjust-plan",                  aiLimiter);
 app.use("/api/hill-detail",                  aiLimiter);
 app.use("/api/directions/lookup",            aiLimiter);
+app.use("/api/directions/parking-options",   aiLimiter);
 app.use("/api/directions/verify",            aiLimiter);
 app.use("/api/trail-start",                  aiLimiter);
 app.use("/api/mountain-verification-test",   aiLimiter);

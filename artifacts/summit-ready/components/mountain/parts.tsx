@@ -73,9 +73,7 @@ export function FactRow({ fact, icon }: { fact: PresentedFact; icon?: React.Reac
       ) : (
         <Text style={styles.factValue} numberOfLines={3}>
           {fact.value}
-          {fact.state === "candidate" ? (
-            <Text style={styles.factCandidate}>{"  UNVERIFIED"}</Text>
-          ) : null}
+          
         </Text>
       )}
     </View>

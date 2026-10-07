@@ -8,6 +8,63 @@
 import * as zod from "zod";
 
 /**
+ * @summary Find sourced parking suggestions and reuse shared research
+ */
+export const lookupMountainParkingOptionsBodyMountainNameMin = 2;
+export const lookupMountainParkingOptionsBodyMountainNameMax = 160;
+
+export const lookupMountainParkingOptionsBodyRegionMin = 2;
+export const lookupMountainParkingOptionsBodyRegionMax = 160;
+
+export const lookupMountainParkingOptionsBodyMountainIdMax = 250;
+
+export const lookupMountainParkingOptionsBodyLatitudeMin = -90;
+export const lookupMountainParkingOptionsBodyLatitudeMax = 90;
+
+export const lookupMountainParkingOptionsBodyLongitudeMin = -180;
+export const lookupMountainParkingOptionsBodyLongitudeMax = 180;
+
+export const LookupMountainParkingOptionsBody = zod.object({
+  mountainName: zod
+    .string()
+    .min(lookupMountainParkingOptionsBodyMountainNameMin)
+    .max(lookupMountainParkingOptionsBodyMountainNameMax),
+  region: zod
+    .string()
+    .min(lookupMountainParkingOptionsBodyRegionMin)
+    .max(lookupMountainParkingOptionsBodyRegionMax),
+  mountainId: zod
+    .string()
+    .max(lookupMountainParkingOptionsBodyMountainIdMax)
+    .optional(),
+  latitude: zod
+    .number()
+    .min(lookupMountainParkingOptionsBodyLatitudeMin)
+    .max(lookupMountainParkingOptionsBodyLatitudeMax)
+    .optional(),
+  longitude: zod
+    .number()
+    .min(lookupMountainParkingOptionsBodyLongitudeMin)
+    .max(lookupMountainParkingOptionsBodyLongitudeMax)
+    .optional(),
+});
+
+export const LookupMountainParkingOptionsResponse = zod.object({
+  options: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      sourceName: zod.string(),
+      sourceUrl: zod.string().url(),
+      directionsQuery: zod.string(),
+      lastChecked: zod.coerce.date(),
+    }),
+  ),
+  cached: zod.boolean(),
+});
+
+/**
  * No key reaches the client. No HTTP caching; native downloads enforce the separate 22-hour day-cache window.
  * @summary Server-proxied OS Outdoor Web Mercator raster tile
  */

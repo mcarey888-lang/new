@@ -1,5 +1,26 @@
 import type { MountainLookupResponse } from "./mountainDetailPresentation";
 import { presentMountain } from "./mountainDetailPresentation";
+import { lookupMountainParkingOptions } from "@workspace/api-client-react";
+import type { MountainParkingSuggestion } from "@workspace/api-client-react";
+export type { MountainParkingSuggestion } from "@workspace/api-client-react";
+
+export async function lookupMountainParkingSuggestions(
+  lookup: MountainLookupResponse, signal?: AbortSignal,
+): Promise<MountainParkingSuggestion[]> {
+  const mountain = presentMountain(lookup);
+  const region = mountain.place?.trim();
+  if (!region) throw new Error("Choose a mountain with a location to find parking.");
+  const result = await lookupMountainParkingOptions({
+    mountainName: mountain.name,
+    region,
+    ...(lookup.canonicalIdentity?.id ? { mountainId: lookup.canonicalIdentity.id } : {}),
+    ...(mountain.summitCoordinates ? {
+      latitude: mountain.summitCoordinates.latitude,
+      longitude: mountain.summitCoordinates.longitude,
+    } : {}),
+  }, { signal });
+  return result.options;
+}
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api` : "/api";
 export interface MountainAccessPoint {

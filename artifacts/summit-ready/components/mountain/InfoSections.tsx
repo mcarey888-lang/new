@@ -32,9 +32,7 @@ export function SafetySection({ hazards }: { hazards: readonly HazardItem[] }) {
                 style={s.btn}><Text style={s.btnText}>Read source</Text></Pressable>
             ) : null}
           </View>
-        )) : (
-          <Text style={s.body}>No sourced hazard assessment is stored for this mountain.</Text>
-        )}
+        )) : null}
         <Text style={s.warn}>Check current mountain weather and access notices before setting out.</Text>
       </SRPanel>
     </View>
@@ -49,7 +47,7 @@ export function AboutSection({ text, state }: { text: string | null; state: "loa
       <Text style={s.desc}>
         {state === "loading" ? "Loading description…" : state === "error" ? "Description is unavailable right now." : text}
       </Text>
-      {text ? <Text style={s.cap}>Guide overview. Route and access details are not verified by this text.</Text> : null}
+      {text ? <Text style={s.cap}>General mountain overview. Check route conditions and access before travelling.</Text> : null}
     </View>
   );
 }

@@ -15,6 +15,28 @@ tags:
   - name: community
     description: Authenticated SummitReady member sharing
 paths:
+  /directions/parking-options:
+    post:
+      operationId: lookupMountainParkingOptions
+      summary: Find sourced parking suggestions and reuse shared research
+      tags: [directions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MountainParkingLookupInput"
+      responses:
+        "200":
+          description: Sourced suggestions, never a guarantee of access or parking availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountainParkingLookupResult"
+        "400":
+          description: Invalid mountain identity
+        "503":
+          description: Research is temporarily unavailable
   /map-tiles/os-outdoor/{z}/{x}/{y}:
     get:
       operationId: getOsOutdoorTile
@@ -526,6 +548,35 @@ components:
           format: date-time
         hasPhoto:
           type: boolean
+    MountainParkingLookupInput:
+      type: object
+      required: [mountainName, region]
+      properties:
+        mountainName: { type: string, minLength: 2, maxLength: 160 }
+        region: { type: string, minLength: 2, maxLength: 160 }
+        mountainId: { type: string, maxLength: 250 }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+    MountainParkingSuggestion:
+      type: object
+      required: [id, name, description, sourceName, sourceUrl, directionsQuery, lastChecked]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        sourceName: { type: string }
+        sourceUrl: { type: string, format: uri }
+        directionsQuery: { type: string }
+        lastChecked: { type: string, format: date-time }
+    MountainParkingLookupResult:
+      type: object
+      required: [options, cached]
+      properties:
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/MountainParkingSuggestion"
+        cached: { type: boolean }
     MountainHeroPrompt:
       type: object
       required: [prompt, hasReference]

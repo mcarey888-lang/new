@@ -39,20 +39,21 @@ export function RouteActionBar({
     >
       <Text style={styles.context} numberOfLines={1}>{`${mountainName} · ${routeName}`}</Text>
       <View style={styles.row}>
+        {canPlan ? (
         <Pressable
           onPress={onAddToPlan}
-          disabled={!canPlan}
-          accessibilityRole="button"
+                    accessibilityRole="button"
           accessibilityLabel={planned ? "Added to plan" : "Add to plan"}
-          accessibilityState={{ disabled: !canPlan, selected: planned }}
+          accessibilityState={{ selected: planned }}
           hitSlop={HIT.slop}
-          style={[styles.action, planned ? styles.planned : styles.secondary, !canPlan && styles.disabled]}
+          style={[styles.action, planned ? styles.planned : styles.secondary]}
         >
           {planned ? <Check size={15} color={EXPLORE.verified} /> : <CalendarPlus size={15} color={BASECAMP.text} />}
           <Text style={[styles.actionText, planned && { color: EXPLORE.verified }]} numberOfLines={1}>
             {planned ? "Added to Plan" : "Add to Plan"}
           </Text>
         </Pressable>
+        ) : null}
 
         {eligibility.isNavigable ? (
           <Pressable

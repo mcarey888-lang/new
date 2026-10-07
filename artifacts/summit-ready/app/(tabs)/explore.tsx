@@ -250,11 +250,7 @@ function ResultRow({ trail }: { trail: Trail }) {
 function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
   const [failed, setFailed] = useState(false);
   const place = [item.region, item.country].filter(Boolean).join(", ");
-  const statusLabel = item.verificationStatus === "verified"
-    ? "Verified catalogue"
-    : item.verificationStatus === "imported"
-      ? "Imported · not verified"
-      : "AI suggestion · not verified";
+  const statusLabel = item.verificationStatus === "verified" ? "Mountain" : "Mountain suggestion";
   return (
     <SRPanel
       radius={7.5}
@@ -279,10 +275,6 @@ function DiscoveryResultRow({ item }: { item: DiscoveryItem }) {
                 <Text style={styles.resultTagText}>{Math.round(item.elevationM).toLocaleString()} m elevation</Text>
               </View>
             ) : null}
-            <Text style={[
-              styles.discoveryStatus,
-              item.verificationStatus === "verified" ? styles.discoveryVerified : styles.discoveryUnverified,
-            ]}>{statusLabel}</Text>
           </View>
         </View>
         <ChevronRight size={15} color={BASECAMP.textFaint} />

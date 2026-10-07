@@ -14,7 +14,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ChevronDown, ChevronUp, Route as RouteIcon, TrendingUp, Clock } from "lucide-react-native";
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { SRPanel } from "@/components/ui";
-import { VerificationBadge } from "./parts";
 import type { PresentedFact, PresentedRoute } from "@/utils/mountainDetailPresentation";
 
 const HEADLINE_ICON: Record<string, React.ComponentType<{ size: number; color: string }>> = {
@@ -38,14 +37,9 @@ export function RouteCard({
     >
       <View style={styles.row}>
         <View style={styles.body}>
-          <View style={styles.badges}>
-            {route.verification === "verified" ? (
-              <VerificationBadge state={route.verification} compact />
-            ) : null}
-          </View>
           {mapStatus ? (
             <Text style={{ fontSize: 11, lineHeight: 15, fontFamily: "Inter_700Bold", color: mapStatus === "mapped" ? EXPLORE.accent : BASECAMP.textMuted, marginBottom: 3 }}>
-              {mapStatus === "mapped" ? "Mapped route" : "Route guide only — mapping not available"}
+              {mapStatus === "mapped" ? "Mapped route" : "Route overview"}
             </Text>
           ) : null}
           <Text style={styles.name} numberOfLines={3}>{route.name}</Text>

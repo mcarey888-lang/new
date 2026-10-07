@@ -8,16 +8,18 @@ import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } 
 import { Footprints, MapPin, Navigation } from "lucide-react-native";
 import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import { SRPanel, SRSectionHeader } from "@/components/ui";
-import { openMapDirections, openMapPin, openMapSearch } from "@/utils/openMaps";
-import type { MountainAccessPoint } from "@/utils/mountainAccess";
+import { openMapDirections, openMapDirectionsQuery, openMapPin, openMapSearch } from "@/utils/openMaps";
+import type { MountainAccessPoint, MountainParkingSuggestion } from "@/utils/mountainAccess";
 import type { MountainParkingOption } from "@/utils/mountainParkingOptions";
 
 export type AccessState = "idle" | "loading" | "done" | "error";
+export type SuggestionState = "idle" | "loading" | "done" | "error";
 
 export function ParkingSection({
   mountainName, place, options, access, accessState, onFind, onUseAsStart,
-  routeStart, onWalkToRouteStart,
+  routeStart, onWalkToRouteStart, suggestions = [], suggestionState = "idle",
 }: {
+  suggestions?: readonly MountainParkingSuggestion[]; suggestionState?: SuggestionState;
   mountainName: string; place: string | null;
   options: readonly MountainParkingOption[];
   access: MountainAccessPoint | null; accessState: AccessState;
@@ -28,12 +30,12 @@ export function ParkingSection({
     Alert.alert("Directions unavailable", "No map application could open this destination.");
   return (
     <View style={styles.wrap}>
-      <SRSectionHeader title="Parking & start points" icon={<MapPin size={13} color={EXPLORE.accent} />} />
+      <SRSectionHeader title="Parking" icon={<MapPin size={13} color={EXPLORE.accent} />} />
 
       {access ? (
         <SRPanel radius={8} style={styles.card} testID="mountain-access-point">
           <Text style={styles.trust}>{access.trust.toUpperCase()}</Text>
-          <Text style={styles.name}>{access.name}</Text>
+          <Text style={styles.name} numberOfLines={3}>{access.name}</Text>
           <Text style={styles.meta}>{access.sourceName}{access.lastChecked ? ` · checked ${access.lastChecked}` : ""}</Text>
           <Text style={styles.note}>{access.note}</Text>
           <View style={styles.row}>
@@ -52,9 +54,6 @@ export function ParkingSection({
               onPress={() => void Linking.openURL(access.sourceUrl).catch(() =>
                 Alert.alert("Source unavailable", "The source could not be opened right now."))} />
           </View>
-          {!access.canGetDirections ? (
-            <Text style={styles.caveat}>This is a candidate, not a confirmed place to park. Directions are not offered; check the source and local signs.</Text>
-          ) : null}
         </SRPanel>
       ) : null}
 
@@ -71,25 +70,43 @@ export function ParkingSection({
 
       {options.map(o => (
         <SRPanel key={o.id} radius={8} style={styles.card}>
-          <Text style={styles.trust}>LISTED BY OPERATOR</Text>
+          <Text style={styles.trust}>CAR PARK LISTING</Text>
           <Text style={styles.name}>{o.name}</Text>
           <Text style={styles.meta}>{o.approach} · {o.osGridReference} · {o.postcode}</Text>
           <Text style={styles.note}>{o.note}</Text>
           <View style={styles.row}>
-            <Btn label="Find in Maps" a11y={`Find ${o.name} in Maps`} icon="pin" onPress={() => openMapSearch(o.mapSearch)} />
-            <Btn label={`${o.sourceName} listing`} a11y={`Read ${o.sourceName} listing for ${o.name}`} icon="pin"
+            <Btn label="Get directions" a11y={`Get directions to ${o.name}`} icon="nav"
+              onPress={() => void openMapDirectionsQuery(o.mapSearch).then(ok => { if (!ok) failedDirections(); })} />
+             <Btn label="Source" a11y={`Read ${o.sourceName} listing for ${o.name}`} icon="pin"
               onPress={() => void Linking.openURL(o.sourceUrl).catch(() =>
                 Alert.alert("Source unavailable", "The listing could not be opened right now."))} />
           </View>
         </SRPanel>
       ))}
 
+      {suggestions.map(g => (
+        <SRPanel key={g.id} radius={8} style={styles.card}>
+          <Text style={styles.trust}>SUGGESTED PARKING</Text>
+          <Text style={styles.name}>{g.name}</Text>
+          <Text style={styles.note}>{g.description}</Text>
+          <View style={styles.row}>
+            <Btn label="Get directions" a11y={`Get directions to ${g.name}`} icon="nav"
+              onPress={() => void openMapDirectionsQuery(g.directionsQuery).then(ok => { if (!ok) failedDirections(); })} />
+            {g.sourceUrl ? (
+               <Btn label="Source" a11y={`Open ${g.sourceName} source for ${g.name}`} icon="pin"
+                onPress={() => void Linking.openURL(g.sourceUrl).catch(() =>
+                  Alert.alert("Source unavailable", "The source could not be opened right now."))} />
+            ) : null}
+          </View>
+        </SRPanel>
+      ))}
+
       <SRPanel radius={8} style={styles.card}>
-        <Text style={styles.note}>
-          {access || options.length
-            ? "Grid references locate an area, not the vehicle entrance. Check access and signs before travelling."
-            : "No confirmed parking is stored for this mountain yet."}
-        </Text>
+        {!(access || options.length || suggestions.length) ? <Text style={styles.name}>Where do I park?</Text> : null}
+        {suggestionState === "loading" ? <Text style={styles.note}>Looking for parking options…</Text> : null}
+        {suggestionState === "error" ? <Text style={styles.caveat}>Parking options could not be loaded. Try again.</Text> : null}
+        {suggestionState === "done" && !suggestions.length && !access ? <Text style={styles.note}>No parking options found yet. You can search the map instead.</Text> : null}
+        <Text style={styles.note}>Check access, charges and local signs before travelling.</Text>
         {accessState === "done" && !access ? (
           <Text style={styles.caveat}>No access point could be confirmed from available sources.</Text>
         ) : null}
@@ -98,8 +115,8 @@ export function ParkingSection({
         ) : null}
         <View style={styles.row}>
           <Btn testID="mountain-find-parking"
-            label={accessState === "loading" ? "Looking…" : "Find parking"}
-            a11y={`Find parking for ${mountainName}`} icon="nav" disabled={accessState === "loading"}
+            label={accessState === "loading" ? "Looking…" : suggestionState === "error" ? "Retry" : "Find parking"}
+            a11y={`Find parking for ${mountainName}`} icon="nav" disabled={accessState === "loading" || suggestionState === "loading"}
             onPress={onFind} />
           <Btn label="Search nearby parking" a11y={`Search the map for parking near ${mountainName}`} icon="nav"
             onPress={() => openMapSearch(`${mountainName} car park ${place ?? ""}`.trim())} />

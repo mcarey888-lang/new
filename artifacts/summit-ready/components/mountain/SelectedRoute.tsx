@@ -15,7 +15,7 @@ import { Car, ChevronDown, ChevronUp, Clock, Download, Footprints, Route as Rout
 import { BASECAMP, EXPLORE, RADIUS, SP, TYPE } from "@/constants/tokens";
 import { SREyebrow, SRPanel, SRSubPanel } from "@/components/ui";
 import { CAPABILITIES } from "@/constants/capabilities";
-import { FactList, VerificationBadge } from "./parts";
+import { FactList } from "./parts";
 import { ElevationProfile } from "./ElevationProfile";
 import { MountainDnaPanel } from "./MountainDnaPanel";
 import type { PresentedDna, PresentedFact, PresentedSelectedRoute } from "@/utils/mountainDetailPresentation";
@@ -66,7 +66,6 @@ export function SelectedRoute({
             <Text style={styles.summary} numberOfLines={SUMMARY_LINES}>{route.summary}</Text>
           ) : null}
         </View>
-        {eligibility.isNavigable ? <VerificationBadge state={route.verification} /> : null}
       </View>
 
       {selected.headline.length > 0 ? (
@@ -107,6 +106,7 @@ export function SelectedRoute({
         </View>
       ) : null}
 
+      {selected.profile && selected.profile.length >= 2 ? (
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>ELEVATION PROFILE</Text>
         <View style={styles.profile}>
@@ -124,6 +124,7 @@ export function SelectedRoute({
           />
         </View>
       </View>
+      ) : null}
 
       {description ? (
         <View style={styles.section}>
@@ -163,34 +164,9 @@ export function SelectedRoute({
             <Text style={styles.downloadText}>View mapped route</Text>
           </Pressable>
         ) : null}
-        {eligibility.isNavigable && eligibility.canDownloadOffline ? (
-          <Pressable
-            onPress={onDownloadOffline}
-            accessibilityRole="button"
-            accessibilityLabel="Download for offline use"
-            style={styles.download}
-          >
-            <Download size={16} color={EXPLORE.accent} />
-            <Text style={styles.downloadText}>Download for offline use</Text>
-          </Pressable>
-        ) : eligibility.isNavigable && onSaveDataPackage ? (
-          <Pressable onPress={onSaveDataPackage} accessibilityRole="button"
-            accessibilityLabel={dataPackageSaved ? "Update saved route data" : "Save route data to this device"}
-            style={styles.download}>
-            <Download size={16} color={EXPLORE.accent} />
-            <Text style={styles.downloadText}>{dataPackageSaved ? "Saved on this device" : "Save route data"}</Text>
-          </Pressable>
-        ) : eligibility.isNavigable ? (
-          /* Verified, but the capability does not exist in this build. Saying
-             so is more honest than a button that cannot do anything. */
-          <Text style={styles.absent} testID="offline-absent">
-            {CAPABILITIES.routeOfflineDownload
-              ? "Offline download is unavailable for this route."
-              : "Offline route packaging is not part of this version of SummitReady. Your recorded activities already work offline."}
-          </Text>
-        ) : (
-          <Text style={styles.absent}>Route guide only — mapping is not available. You can still record a free hike or create your own plan.</Text>
-        )}
+        {!eligibility.isNavigable ? (
+          <Text style={styles.absent}>Route overview. Follow the description and local signs; no map line is shown for this route.</Text>
+        ) : null}
       </View>
     </SRPanel>
   );

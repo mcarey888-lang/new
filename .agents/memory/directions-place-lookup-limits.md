@@ -7,4 +7,10 @@ Map-navigation credentials do not necessarily grant place search access. In this
 
 **Why:** A generated “Tryfan North Ridge car park Eryri” search failed in Google Maps. Repeated Google Places attempts were permission-denied, while an OpenStreetMap bounded parking query resolved real features with variable coverage. GPS proximity confirms that a user visited a candidate, not its access rights.
 
-**How to apply:** Show candidate provenance and explicit caveats, never save unvisited candidate pins in the shared database, and never retain the user's exact GPS fix when a confirmed parking feature's own coordinates suffice.
+**How to apply:** Keep GPS-confirmed destinations separate from suggestions, and never retain the user's exact GPS fix when a confirmed parking feature's own coordinates suffice.
+
+Shared, source-backed parking research is now explicitly requested: show options for a mountain and save the answer for later visitors. It may be cached without a visit, but must remain suggested parking, not confirmed entrance pins or route-start evidence. Use sourced names/addresses for map-provider resolution; never invent coordinates.
+
+**Why:** On 2026-10-07 the user asked for AI parking lookup when locations are missing, with reusable answers so the next visitor can press Get directions. This supersedes the earlier blanket prohibition on caching unvisited candidates, not the GPS-confirmation or access-rights boundary.
+
+**How to apply:** Ground research in actual retrieved sources, preserve mountain/region identity and source dates, refresh old answers, and keep brief access/signage guidance. A cached suggestion must not alter canonical route eligibility or shared confirmed parking.

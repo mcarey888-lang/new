@@ -44,6 +44,26 @@ export async function openMapDirections(lat: number, lng: number, label: string)
   }
 }
 
+/** Ask the map provider to resolve a sourced parking name/address. */
+export async function openMapDirectionsQuery(query: string): Promise<boolean> {
+  const destination = query.trim();
+  if (!destination || destination.length > 400) return false;
+  // Let the map provider resolve a sourced named car park/address. Never turn
+  // an AI suggestion into an invented coordinate or a confirmed entrance pin.
+  const encoded = encodeURIComponent(destination);
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
+  const native = Platform.OS === "ios"
+    ? `maps://?daddr=${encoded}&dirflg=d`
+    : Platform.OS === "android" ? `google.navigation:q=${encoded}&mode=d` : web;
+  try { await Linking.openURL(native); return true; }
+  catch {
+    if (native !== web) {
+      try { await Linking.openURL(web); return true; } catch { /* Caller presents a retry. */ }
+    }
+    return false;
+  }
+}
+
 /** Directions to the start of a verified route. This is not a parking recommendation. */
 export function openRouteStartDirections(lat: number, lng: number, mode: "walking" | "driving") {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) ||

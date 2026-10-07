@@ -38,6 +38,8 @@ import type {
   MountainHeroGenerationInput,
   MountainHeroGenerationStarted,
   MountainHeroPrompt,
+  MountainParkingLookupInput,
+  MountainParkingLookupResult,
   ReportCommunityPost201,
   UpdateCommunityPostVisibility200,
   UploadCommunityPostPhoto200,
@@ -51,6 +53,96 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Find sourced parking suggestions and reuse shared research
+ */
+export const getLookupMountainParkingOptionsUrl = () => {
+  return `/api/directions/parking-options`;
+};
+
+export const lookupMountainParkingOptions = async (
+  mountainParkingLookupInput: MountainParkingLookupInput,
+  options?: RequestInit,
+): Promise<MountainParkingLookupResult> => {
+  return customFetch<MountainParkingLookupResult>(
+    getLookupMountainParkingOptionsUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(mountainParkingLookupInput),
+    },
+  );
+};
+
+export const getLookupMountainParkingOptionsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof lookupMountainParkingOptions>>,
+    TError,
+    { data: BodyType<MountainParkingLookupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof lookupMountainParkingOptions>>,
+  TError,
+  { data: BodyType<MountainParkingLookupInput> },
+  TContext
+> => {
+  const mutationKey = ["lookupMountainParkingOptions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof lookupMountainParkingOptions>>,
+    { data: BodyType<MountainParkingLookupInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return lookupMountainParkingOptions(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LookupMountainParkingOptionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof lookupMountainParkingOptions>>
+>;
+export type LookupMountainParkingOptionsMutationBody =
+  BodyType<MountainParkingLookupInput>;
+export type LookupMountainParkingOptionsMutationError = ErrorType<void>;
+
+/**
+ * @summary Find sourced parking suggestions and reuse shared research
+ */
+export const useLookupMountainParkingOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof lookupMountainParkingOptions>>,
+    TError,
+    { data: BodyType<MountainParkingLookupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof lookupMountainParkingOptions>>,
+  TError,
+  { data: BodyType<MountainParkingLookupInput> },
+  TContext
+> => {
+  return useMutation(getLookupMountainParkingOptionsMutationOptions(options));
+};
 
 /**
  * No key reaches the client. No HTTP caching; native downloads enforce the separate 22-hour day-cache window.

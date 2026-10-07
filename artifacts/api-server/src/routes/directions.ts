@@ -4,11 +4,31 @@ import { db } from "@workspace/db";
 import { verifiedDirections } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { LookupMountainParkingOptionsBody } from "@workspace/api-zod";
+import { getMountainParkingSuggestions } from "../services/mountainParkingResearch.js";
 import {
   directionsIdentity, fetchParkingPlace, gpsConfirmsPlace, searchParking,
 } from "../services/directionsLookup.js";
 
 const router: IRouter = Router();
+router.post("/directions/parking-options", async (req, res) => {
+  const parsed = LookupMountainParkingOptionsBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Choose a mountain and its region to find parking." });
+  const target = parsed.data;
+  if (!target.mountainName.trim() || !target.region.trim() ||
+      ((target.latitude === undefined) !== (target.longitude === undefined))) {
+    return res.status(400).json({ error: "A mountain name and region are required; coordinates must be paired." });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    return res.json(await getMountainParkingSuggestions({
+      ...target, mountainName: target.mountainName.trim(), region: target.region.trim(),
+    }));
+  } catch (err) {
+    req.log.warn({ err }, "Sourced mountain parking research failed");
+    return res.status(503).json({ error: "Parking suggestions could not be loaded. Please try again or search in Maps." });
+  }
+});
 function sourceUrl(placeId: string): string {
   const short = /^([NWR])(\d+)$/.exec(placeId);
   if (short) {

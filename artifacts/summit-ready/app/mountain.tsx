@@ -38,7 +38,7 @@ import { BASECAMP, EXPLORE, SP, TYPE } from "@/constants/tokens";
 import {
   SREmptyState, SREyebrow, SRHeroFrame, SRPanel, SRScreenHeader, SRSectionHeader, SRSegmented,
 } from "@/components/ui";
-import { Footnote, VerificationBadge } from "@/components/mountain/parts";
+import { Footnote } from "@/components/mountain/parts";
 import { RouteCard } from "@/components/mountain/RouteCard";
 import { SelectedRoute } from "@/components/mountain/SelectedRoute";
 import { RouteActionBar } from "@/components/mountain/RouteActionBar";
@@ -56,16 +56,16 @@ import { saveCanonicalRouteHandoff } from "@/utils/canonicalRouteHandoff";
 import { openRouteStartDirections } from "@/utils/openMaps";
 import { ActionGrid, ActionTile, TrackChoices } from "@/components/mountain/HubActions";
 import { ParkingSection } from "@/components/mountain/ParkingSection";
-import type { AccessState } from "@/components/mountain/ParkingSection";
+import type { AccessState, SuggestionState } from "@/components/mountain/ParkingSection";
 import {
-  AboutSection, CorrectionRow, KeyFacts, OfflineSection, ProvenanceNote, SafetySection, SourcesSection, known,
+  AboutSection, KeyFacts, SafetySection, known,
 } from "@/components/mountain/InfoSections";
 import type { HazardItem } from "@/components/mountain/InfoSections";
 import { useRoutePackage, useTrackLauncher } from "@/hooks/useMountainHub";
 import { readMountainPageCache, writeMountainPageCache, readMountainRoutePackage } from "@/utils/mountainHubStorage";
-import { lookupMountainAccess } from "@/utils/mountainAccess";
+import { lookupMountainAccess, lookupMountainParkingSuggestions } from "@/utils/mountainAccess";
 import { mountainHazardNotes } from "@/utils/mountainSafety";
-import type { MountainAccessPoint } from "@/utils/mountainAccess";
+import type { MountainAccessPoint, MountainParkingSuggestion } from "@/utils/mountainAccess";
 import { sourcedParkingOptionsForMountain } from "@/utils/mountainParkingOptions";
 import {
   CATALOGUE_UNAVAILABLE_NOTICE, ELEVATION_FOOTNOTE, FALLBACK_NOTICE,
@@ -119,6 +119,9 @@ export default function MountainDetailScreen() {
   const [trackOpen, setTrackOpen] = useState(false);
   const [access, setAccess] = useState<MountainAccessPoint | null>(null);
   const [accessState, setAccessState] = useState<AccessState>("idle");
+  const [suggestions, setSuggestions] = useState<MountainParkingSuggestion[]>([]);
+  const [suggestionState, setSuggestionState] = useState<SuggestionState>("idle");
+  const suggestAbort = useRef<AbortController | null>(null);
   const lookupRef = useRef<MountainLookupResponse | null>(null);
   lookupRef.current = lookup;
   const scrollRef = useRef<ScrollView>(null);
@@ -183,6 +186,9 @@ export default function MountainDetailScreen() {
     setSelectedKey(null);
     setAccess(null);
     setAccessState("idle");
+    setSuggestions([]);
+    setSuggestionState("idle");
+    suggestAbort.current?.abort();
     setOfflineNotice(false);
     setSearched(false);
     void load();
@@ -190,6 +196,7 @@ export default function MountainDetailScreen() {
       loadGeneration.current++;
       loadAbort.current?.abort();
       accessAbort.current?.abort();
+      suggestAbort.current?.abort();
     };
   }, [load]);
 
@@ -518,31 +525,34 @@ export default function MountainDetailScreen() {
     setSearched(true);
   }
 
-  async function findParking() {
-    if (!lookup) return;
-    accessAbort.current?.abort();
+  async function loadSuggestions(current: MountainLookupResponse) {
+    suggestAbort.current?.abort();
     const controller = new AbortController();
-    accessAbort.current = controller;
-    setAccessState("loading");
+    suggestAbort.current = controller;
+    setSuggestionState("loading");
     try {
-      const found = await lookupMountainAccess(lookup, controller.signal);
+      const found = await lookupMountainParkingSuggestions(current, controller.signal);
       if (controller.signal.aborted) return;
-      setAccess(found);
-      setAccessState("done");
+      setSuggestions(found);
+      setSuggestionState("done");
     } catch {
-      if (!controller.signal.aborted) setAccessState("error");
+      if (!controller.signal.aborted) setSuggestionState("error");
     }
   }
 
-  const hazards = useMemo<HazardItem[]>(() => mountainHazardNotes(record), [record]);
+  async function findParking() {
+    if (!lookup) return;
+    void loadSuggestions(lookup);
+  }
 
-  const sources = useMemo(() => {
-    const out = new Set<string>();
-    if (mountain?.provenanceVersion) out.add(`Summit Data Engine, provenance ${mountain.provenanceVersion}`);
-    for (const r of routes) if (r.attribution) out.add(r.attribution);
-    for (const o of parkingOptions) out.add(`${o.sourceName}, car park listing`);
-    return [...out];
-  }, [mountain, routes, parkingOptions]);
+  const autoSuggestKey = lookup && parkingOptions.length === 0 ? (canonicalMountainId ?? name ?? "m") : null;
+  useEffect(() => {
+    if (!autoSuggestKey || !lookupRef.current) return;
+    void loadSuggestions(lookupRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSuggestKey]);
+
+  const hazards = useMemo<HazardItem[]>(() => mountainHazardNotes(record), [record]);
 
   const topPad = Platform.OS === "web" ? 18 : insets.top + 8;
   const bottomPad = (presented ? 132 : 24) + TAB_BAR_HEIGHT
@@ -577,6 +587,7 @@ export default function MountainDetailScreen() {
     );
   }
 
+  const overviewFacts = known(mountain.overview).filter(f => f.key !== "place");
   const Section = reducedMotion ? View : Animated.View;
 
   return (
@@ -608,14 +619,12 @@ export default function MountainDetailScreen() {
             <SRScreenHeader title="" onBack={() => router.back()} />
           </View>
           <View style={styles.heroBody}>
-            <Text style={styles.heroName} numberOfLines={3}>{mountain.name}</Text>
+            <Text style={styles.heroName} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.7}>{mountain.name}</Text>
             {/* The mountain's height. A route's ascent is a different number
                 and is never shown here. */}
             {mountain.summitElevation.value ? (
               <Text style={styles.heroElevation}>
-                {mountain.discoveryCandidate
-                  ? `${mountain.summitElevation.value} · CANDIDATE`
-                  : mountain.summitElevation.value}
+                {mountain.summitElevation.value}
               </Text>
             ) : null}
             {mountain.place ? (
@@ -624,21 +633,6 @@ export default function MountainDetailScreen() {
                 <Text style={styles.heroPlaceText} numberOfLines={2}>{mountain.place}</Text>
               </View>
             ) : null}
-            <View style={styles.heroBadges}>
-              {lookup?.catalogueStatus === "unavailable"
-                ? <Text style={styles.catalogueUnavailableBadge}>CATALOGUE UNAVAILABLE</Text>
-              : mountain.discoveryCandidate
-                ? <Text style={styles.candidateBadge}>
-                    {mountain.candidateStatus === "imported"
-                      ? "IMPORTED · NOT VERIFIED"
-                      : mountain.candidateStatus === "ai_unverified"
-                        ? "AI CANDIDATE · NOT VERIFIED"
-                        : "CANDIDATE · NOT VERIFIED"}
-                  </Text>
-                : mountain.verified
-                  ? <VerificationBadge state="verified" />
-                  : <Text style={styles.candidateBadge}>GUIDE INFORMATION · NOT VERIFIED</Text>}
-            </View>
           </View>
         </SRHeroFrame>
         {canonicalMountainId && userId ? (
@@ -663,11 +657,11 @@ export default function MountainDetailScreen() {
           </View>
         ) : null}
 
-        {known(mountain.overview).length ? (
+        {overviewFacts.length ? (
           <Section entering={reducedMotion ? undefined : FadeInDown.delay(60).duration(360)} style={styles.gutter}>
             <SRPanel radius={8} style={styles.overviewPanel}>
               <View style={styles.overviewRow}>
-                {known(mountain.overview).map(f => (
+                {overviewFacts.map(f => (
                   <View key={f.key} style={styles.overviewItem}>
                     <Text style={styles.overviewValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{f.value}</Text>
                     <Text style={styles.overviewLabel} numberOfLines={2}>{f.label}</Text>
@@ -675,7 +669,7 @@ export default function MountainDetailScreen() {
                 ))}
               </View>
             </SRPanel>
-            <Footnote>{ELEVATION_FOOTNOTE}</Footnote>
+            
           </Section>
         ) : null}
 
@@ -686,8 +680,7 @@ export default function MountainDetailScreen() {
           onParking={() => scrollTo("parking")}
           onTrack={() => setTrackOpen(v => !v)}
           onResume={resume}
-          onOffline={() => scrollTo("offline")}
-        />
+          />
         {trackOpen && !resumable ? (
           <TrackChoices
             busy={launching}
@@ -717,11 +710,11 @@ export default function MountainDetailScreen() {
             <View style={styles.gutter}>
               <SREmptyState
                 icon={<MountainIcon size={20} color={BASECAMP.textDim} />}
-                title="No mapped routes yet"
+                title="No routes listed yet"
                 body={searched
-                  ? "The route library was refreshed and holds no routes for this mountain. Route discovery is not available yet, so nothing was built."
-                  : "Routes appear here once they are stored for this mountain. You can refresh the library, plan your own route or record a free hike."}
-                action="Find routes for this mountain"
+                  ? "Nothing new was found. Choose another mountain or plan your own route."
+                  : "Choose another mountain, plan your own route or record a free hike."}
+                action="Refresh"
                 onAction={() => void findRoutes()}
                 style={styles.emptyRoutes}
                 testID="mountain-find-routes"
@@ -764,7 +757,7 @@ export default function MountainDetailScreen() {
                     ) : (
                       <SRPanel radius={8} style={styles.pending}>
                         <Text style={styles.pendingText}>
-                          Route guide only — mapping not available. No route geometry is being used.
+                          Route overview. No map line is shown for this route.
                         </Text>
                       </SRPanel>
                     )
@@ -783,6 +776,8 @@ export default function MountainDetailScreen() {
             options={parkingOptions}
             access={access}
             accessState={accessState}
+            suggestions={suggestions}
+            suggestionState={suggestionState}
             onFind={() => void findParking()}
             onUseAsStart={p => planRoute({ latitude: p.latitude, longitude: p.longitude, label: p.name })}
             routeStart={routeStart ? { label: routeStartLabel } : null}
@@ -794,30 +789,6 @@ export default function MountainDetailScreen() {
         <AboutSection text={summitDescription} state={descriptionState} />
         <KeyFacts facts={mountain.practical} />
 
-        <View onLayout={mark("offline")}>
-          <OfflineSection
-            routeName={presented?.route.name ?? null}
-            canPackage={!!presented?.eligibility.isNavigable && !!userId}
-            pkg={pkgState.pkg}
-            saving={pkgState.status === "saving"}
-            onSave={() => void pkgState.save()}
-            onRemove={() => void pkgState.remove()}
-          />
-        </View>
-
-        <SourcesSection sources={sources} />
-        <CorrectionRow />
-        {/* Unavailable catalogue/contribution guidance is secondary, never the primary action. */}
-        {mountain.fallback ? (
-          <ProvenanceNote text={mountain.discoveryCandidate
-            ? `${DISCOVERY_CANDIDATE_NOTICE.title}. ${DISCOVERY_CANDIDATE_NOTICE.body}`
-            : lookup?.catalogueStatus === "unavailable"
-              ? `${CATALOGUE_UNAVAILABLE_NOTICE.title}. ${CATALOGUE_UNAVAILABLE_NOTICE.body}`
-              : FALLBACK_NOTICE.body} />
-        ) : null}
-        {mountain.provenanceVersion ? (
-          <ProvenanceNote text={`Summit Data Engine, provenance ${mountain.provenanceVersion}. Static information, not live conditions.`} />
-        ) : null}
       </ScrollView>
 
       {presented && !recordPending ? (
