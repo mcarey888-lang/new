@@ -29,8 +29,14 @@ import { filterForZoom, pinCap, type BBox, type PinFilter } from "./summitPins";
  * the mountain. Joining it would add work to a query the map runs on every
  * pan, in order to put a figure on roughly one summit in a thousand.
  *
- * Wiring it up is a decision about which route's ascent a pin should claim,
- * which is not a decision to make inside a SELECT list.
+ * That decision has now been made and this is the settled answer, not a gap
+ * waiting to be filled: a summit card shows no ascent. Ascent is a property of
+ * a route rather than of a hill — it depends entirely on which path is taken
+ * and where somebody parks — so the place for the figure is on a chosen route,
+ * where it describes something real, not on a pin where it would have to pick
+ * a route on the reader's behalf without saying so.
+ *
+ * Adding it here needs that decision reopened, not just a column added.
  */
 const SELECT_COLUMNS = `
     m.id::text                       AS "id",
