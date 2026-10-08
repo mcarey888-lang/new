@@ -1,4 +1,5 @@
 import { ALL_SUMMITS_ZOOM, MIN_PIN_ZOOM, zoomBandTable } from "../services/summits/summitPins";
+import { ARRIVAL_ZOOM } from "../services/summits/summitSearch";
 import { coversViewSource, shouldRefetchSource } from "../services/summits/summitViewport";
 
 /**
@@ -13,12 +14,14 @@ import { coversViewSource, shouldRefetchSource } from "../services/summits/summi
  * it: not asking the server on every frame, not letting a slow answer
  * overwrite a newer one, and saying so when the list came back cut short.
  */
-export function summitLayerScript(summitsUrl: string): string {
+export function summitLayerScript(summitsUrl: string, directionsUrl?: string): string {
   const bands = JSON.stringify(zoomBandTable());
   return `
 /* ── Summit pins ────────────────────────────────────────────────────────── */
 
 var SUMMITS_URL = ${JSON.stringify(summitsUrl)};
+var SUMMIT_SEARCH_URL = ${JSON.stringify(summitsUrl + "/search")};
+var DIRECTIONS_URL = ${JSON.stringify(directionsUrl ?? null)};
 var SUMMIT_BANDS = ${bands};
 var SUMMIT_MIN_ZOOM = ${MIN_PIN_ZOOM};
 var SUMMIT_ALL_ZOOM = ${ALL_SUMMITS_ZOOM};
@@ -52,6 +55,7 @@ var summitsOn = false;
 function summitEmpty() { return { type: "FeatureCollection", features: [] }; }
 
 function addSummitLayers() {
+  buildSummitSearch();
   map.addSource("summits", {
     type: "geojson",
     data: summitEmpty(),
@@ -240,6 +244,7 @@ function showSummitCard(p, coordinates) {
       : '') +
     '<div style="color:#C8D4D1;margin-top:7px">' + escapeSummitText(summitCardText(p)) + '</div>' +
     (ascent ? '<div style="color:#C8D4D1;margin-top:3px">' + escapeSummitText(ascent) + '</div>' : '') +
+    '<div id="summitParking" style="font-size:12px;margin-top:7px;display:none"></div>' +
     '<div style="color:#8E9D99;font-size:12px;margin-top:8px">Tap for routes and detail</div>' +
     '</div>' +
     '<button type="button" id="summitPlanRoute" ' +
@@ -253,6 +258,13 @@ function showSummitCard(p, coordinates) {
       (summitRouteExists() ? 'Add to your route' : 'Plan a route from here') +
       '</button>';
   card.style.display = "block";
+  /* The clicked coordinates rather than the pin's, so a cluster click looks
+     for parking where the person actually tapped. The region comes from the
+     pin, because "Scafell Pike" alone matches more than one hill. */
+  showParkingFor({
+    name: p.name, place: p.place,
+    lat: summitCardFor.lat, lng: summitCardFor.lng,
+  });
 
   document.getElementById("summitCardClose").onclick = hideSummitCard;
 
@@ -295,6 +307,239 @@ function summitRouteExists() {
 function hideSummitCard() {
   if (summitCard) summitCard.style.display = "none";
   summitCardFor = null;
+  /* The marker belongs to the card. Left behind, it sits on the map claiming
+     to be the parking for whatever gets opened next. */
+  parkingToken++;
+  clearParking();
+}
+
+/* ── Searching for a hill ───────────────────────────────────────────────── */
+
+var searchBox = null;
+var searchInput = null;
+var searchList = null;
+var searchTimer = null;
+var searchToken = 0;
+
+function buildSummitSearch() {
+  if (searchBox) return;
+  searchBox = document.createElement("div");
+  searchBox.style.cssText = [
+    "position:absolute", "left:12px", "top:64px", "z-index:6",
+    "width:min(340px, calc(100% - 80px))",
+  ].join(";");
+
+  var field = document.createElement("div");
+  field.style.cssText = [
+    "display:flex", "align-items:center", "gap:8px",
+    "background:rgba(11,20,24,.92)", "border:1px solid rgba(255,255,255,.14)",
+    "border-radius:10px", "padding:9px 12px",
+    "box-shadow:0 2px 10px rgba(0,0,0,.35)",
+  ].join(";");
+  field.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9FB0AC" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+
+  searchInput = document.createElement("input");
+  searchInput.type = "search";
+  searchInput.placeholder = "Search for a hill";
+  searchInput.setAttribute("aria-label", "Search for a hill");
+  searchInput.style.cssText = [
+    "flex:1", "min-width:0", "background:none", "border:0", "outline:none",
+    "color:#F4F7F6", "font:400 14px system-ui,-apple-system,sans-serif",
+  ].join(";");
+  searchInput.oninput = function () { scheduleSearch(); };
+  searchInput.onkeydown = function (e) {
+    if (e.key === "Escape") { searchInput.value = ""; renderSearchResults([], ""); searchInput.blur(); }
+  };
+  field.appendChild(searchInput);
+  searchBox.appendChild(field);
+
+  searchList = document.createElement("div");
+  searchList.style.cssText = [
+    "margin-top:6px", "background:rgba(11,20,24,.96)",
+    "border:1px solid rgba(255,255,255,.14)", "border-radius:10px",
+    "overflow:hidden", "display:none",
+    "box-shadow:0 10px 30px rgba(0,0,0,.45)",
+    "max-height:min(46vh, 320px)", "overflow-y:auto",
+  ].join(";");
+  searchBox.appendChild(searchList);
+  document.body.appendChild(searchBox);
+}
+
+function scheduleSearch() {
+  if (searchTimer) clearTimeout(searchTimer);
+  /* Typing is faster than the network. Without a pause every keystroke is a
+     query, and the answers arrive out of order. */
+  searchTimer = setTimeout(runSearch, 220);
+}
+
+function runSearch() {
+  var q = (searchInput.value || "").trim();
+  if (q.length < 2) { renderSearchResults([], q); return; }
+  var token = ++searchToken;
+  fetch(SUMMIT_SEARCH_URL + "?q=" + encodeURIComponent(q))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      /* An answer for something the person has since typed past is not an
+         answer any more. */
+      if (token !== searchToken) return;
+      renderSearchResults((data && data.results) || [], q, data && data.tooShort);
+    })
+    .catch(function () {
+      if (token !== searchToken) return;
+      renderSearchResults(null, q);
+    });
+}
+
+function renderSearchResults(results, query, tooShort) {
+  searchList.innerHTML = "";
+  if (results === null) {
+    /* Named, because an empty list and a failed search look identical. */
+    searchList.innerHTML = '<div style="padding:12px 14px;color:#C8D4D1;font-size:13px">Could not search just now</div>';
+    searchList.style.display = "block";
+    return;
+  }
+  if (!query || tooShort || !results.length) {
+    if (query && !tooShort && !results.length) {
+      searchList.innerHTML = '<div style="padding:12px 14px;color:#C8D4D1;font-size:13px">No hill by that name</div>';
+      searchList.style.display = "block";
+    } else {
+      searchList.style.display = "none";
+    }
+    return;
+  }
+
+  results.forEach(function (s) {
+    var row = document.createElement("button");
+    row.type = "button";
+    row.style.cssText = [
+      "display:block", "width:100%", "text-align:left", "border:0",
+      "background:transparent", "color:#F4F7F6", "cursor:pointer",
+      "padding:11px 14px", "border-bottom:1px solid rgba(255,255,255,.07)",
+    ].join(";");
+    var bits = [];
+    if (s.classification) bits.push(s.classification);
+    if (s.heightM) bits.push(s.heightM + " m");
+    if (s.place) bits.push(s.place);
+    /* When the hit was on the Welsh or Gaelic name, show that name too —
+       otherwise the result looks unrelated to what was typed. */
+    var second = s.matchedAlternative && s.alternativeName
+      ? escapeSummitText(s.alternativeName) + " · " + escapeSummitText(bits.join(" · "))
+      : escapeSummitText(bits.join(" · "));
+    row.innerHTML =
+      '<div style="font:600 14px system-ui,sans-serif">' + escapeSummitText(s.name) + '</div>' +
+      (second ? '<div style="color:#9FB0AC;font-size:12px;margin-top:2px">' + second + '</div>' : '');
+    row.onclick = function () { goToSummit(s); };
+    searchList.appendChild(row);
+  });
+  searchList.style.display = "block";
+}
+
+function goToSummit(summit) {
+  searchList.style.display = "none";
+  searchInput.value = summit.name;
+  searchInput.blur();
+  map.easeTo({ center: [summit.lng, summit.lat], zoom: ${ARRIVAL_ZOOM}, duration: 900 });
+  /* Opened straight away rather than waiting for the pins to load: the person
+     asked for this hill by name, so they should not have to find it again. */
+  showSummitCard(summit, [summit.lng, summit.lat]);
+  post({ type: "summitSearched", id: summit.id, name: summit.name });
+}
+
+function setSearchVisible(on) {
+  if (searchBox) searchBox.style.display = on ? "block" : "none";
+  if (!on && searchList) searchList.style.display = "none";
+}
+
+/* ── Where to park ──────────────────────────────────────────────────────── */
+
+var parkingToken = 0;
+
+function clearParking() {
+  if (map.getSource("parking")) {
+    map.getSource("parking").setData({ type: "FeatureCollection", features: [] });
+  }
+}
+
+function ensureParkingLayers() {
+  if (map.getSource("parking")) return;
+  map.addSource("parking", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "parking-dot", type: "circle", source: "parking",
+    paint: {
+      "circle-color": "#3C7DD9", "circle-radius": 9,
+      "circle-stroke-color": "#0B1418", "circle-stroke-width": 2,
+    },
+  });
+  map.addLayer({
+    id: "parking-label", type: "symbol", source: "parking",
+    layout: {
+      "text-field": "P", "text-size": 11,
+      "text-font": ["Noto Sans Bold", "Open Sans Bold", "Arial Unicode MS Bold"],
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#FFFFFF" },
+  });
+  map.addLayer({
+    id: "parking-name", type: "symbol", source: "parking",
+    minzoom: 11,
+    layout: {
+      "text-field": ["get", "label"], "text-size": 11,
+      "text-font": ["Noto Sans Regular", "Open Sans Regular", "Arial Unicode MS Regular"],
+      "text-offset": [0, 1.3], "text-anchor": "top", "text-optional": true,
+    },
+    paint: { "text-color": "#F4F7F6", "text-halo-color": "#0B1418", "text-halo-width": 1.4 },
+  });
+}
+
+function showParkingFor(summit) {
+  if (!DIRECTIONS_URL) return;
+  var token = ++parkingToken;
+  clearParking();
+  fetch(DIRECTIONS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      hillName: summit.name,
+      location: summit.place || "",
+      summitLat: summit.lat,
+      summitLng: summit.lng,
+    }),
+  })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      if (token !== parkingToken) return;
+      if (!data || typeof data.lat !== "number" || typeof data.lng !== "number") return;
+      ensureParkingLayers();
+      map.getSource("parking").setData({
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [data.lng, data.lat] },
+          properties: { label: data.name || "Parking", status: data.status || "" },
+        }],
+      });
+      setParkingNote(data);
+    })
+    .catch(function () { /* No parking found is a normal answer, not a fault. */ });
+}
+
+/**
+ * Say how much the parking is worth trusting.
+ *
+ * One of these has been stood in by somebody with a phone; the other was found
+ * by searching a map. Drawn the same, a guess sends people down a farm track
+ * at seven in the morning, so the card has to tell them apart.
+ */
+function setParkingNote(data) {
+  var el = document.getElementById("summitParking");
+  if (!el) return;
+  if (!data) { el.textContent = ""; el.style.display = "none"; return; }
+  var confirmed = data.status === "gps_confirmed";
+  el.textContent = confirmed
+    ? "Parking: " + (data.name || "confirmed by walkers")
+    : "Possible parking: " + (data.name || "found on the map") + " — not confirmed";
+  el.style.color = confirmed ? "#8FC8A6" : "#C8B98E";
+  el.style.display = "block";
 }
 
 function summitVisibility(on) {

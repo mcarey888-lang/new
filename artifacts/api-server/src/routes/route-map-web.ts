@@ -150,6 +150,10 @@ export function buildRouteMapHtml(
    *  draws no summits at all, which is a quieter map rather than a broken
    *  one — route drawing does not depend on them. */
   summitsUrl?: string,
+  /** Where this server looks up parking. Absent means the summit card simply
+   *  says nothing about parking, which is the honest outcome — a car park
+   *  invented to fill the gap is worse than no line at all. */
+  directionsUrl?: string,
 ): string {
   const layers = baseLayers(osKey, tilePrefix, hasMapbox);
   const initial = layers[0];
@@ -1045,7 +1049,7 @@ document.getElementById("gpx").onclick = function () {
   });
 };
 
-${summitsUrl ? summitLayerScript(summitsUrl) : ""}
+${summitsUrl ? summitLayerScript(summitsUrl, directionsUrl) : ""}
 ${summitsUrl ? `map.on("moveend", scheduleSummits);` : ""}
 
 ${chrome === "full" ? mapControlsScript(Boolean(gpxUrl)) : ""}
@@ -1065,10 +1069,11 @@ router.get("/route-map", (req, res) => {
   const profileUrl = `${req.baseUrl}/route-profile`;
   const gpxUrl = `${req.baseUrl}/route-gpx`;
   const summitsUrl = `${req.baseUrl}/summits`;
+  const directionsUrl = `${req.baseUrl}/directions/lookup`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Vary on the query so a chromeless response is not served to a browser.
   res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl));
+  res.send(buildRouteMapHtml(osKey, chrome, tilePrefix, Boolean(process.env.MAPBOX_TOKEN), snapUrl, profileUrl, gpxUrl, summitsUrl, directionsUrl));
 });
 
 export default router;

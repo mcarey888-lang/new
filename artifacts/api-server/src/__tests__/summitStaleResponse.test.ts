@@ -16,6 +16,32 @@ const BEN_NEVIS = { s: 56.7, n: 56.9, w: -5.1, e: -4.9 };
 
 interface Box { s: number; n: number; w: number; e: number }
 
+/**
+ * Enough DOM for the script to build its own furniture.
+ *
+ * The search box and the parking note are created in script rather than
+ * written into the page, so a document that can only find elements is not
+ * enough to run it any more.
+ */
+export function stubDocument() {
+  const el = () => ({
+    style: {} as Record<string, string>,
+    textContent: "",
+    innerHTML: "",
+    type: "", placeholder: "", value: "",
+    children: [] as unknown[],
+    setAttribute: () => {},
+    appendChild(child: unknown) { this.children.push(child); return child; },
+    addEventListener: () => {},
+    blur: () => {}, focus: () => {}, click: () => {},
+  });
+  return {
+    createElement: el,
+    getElementById: () => el(),
+    body: el(),
+  };
+}
+
 /** A map, a network and just enough DOM for the script to run. */
 function harness(opts: { abortable?: boolean } = {}) {
   let view: Box = SNOWDONIA;
@@ -58,7 +84,7 @@ function harness(opts: { abortable?: boolean } = {}) {
 
   const scope = {
     map, post: () => {}, fetch: fetchStub,
-    document: { getElementById: () => ({ textContent: "", style: {} }) },
+    document: stubDocument(),
     setTimeout: ((fn: () => void) => { fn(); return 0; }) as unknown as typeof setTimeout,
     clearTimeout: () => {},
     /* Some browsers, and any request already on the wire, cannot be called
