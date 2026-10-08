@@ -85,6 +85,7 @@ import {
   readBackgroundActiveHike,
   writeActiveHike,
 } from "@/utils/activeHikeSession";
+import { requestBackgroundLocation } from "@/utils/backgroundLocationDisclosure";
 import { enqueueSyncPending, retrySyncOutbox } from "@/utils/syncOutbox";
 import {
   clearPendingHikeSelection,
@@ -1244,14 +1245,29 @@ export default function HikeTrackingScreen() {
       );
     }
 
-    // Request background location permission (needed for lock-screen tracking)
+    /* Background location, disclosure first. Google Play does not accept the
+       system dialog on its own: the app has to say what it collects, that it
+       keeps collecting while closed, and why, and wait to be told to go
+       ahead. Going straight to the system prompt is what gets an app pulled. */
     if (Platform.OS !== "web") {
-      const result = await Location.requestBackgroundPermissionsAsync().catch(() => null);
-      backgroundAllowedRef.current = result?.status === "granted";
-      if (!backgroundAllowedRef.current) {
+      const outcome = await requestBackgroundLocation({
+        confirm: ({ title, message, agreeLabel, declineLabel }) =>
+          new Promise<boolean>(resolve => {
+            Alert.alert(title, message, [
+              { text: declineLabel, style: "cancel", onPress: () => resolve(false) },
+              { text: agreeLabel, onPress: () => resolve(true) },
+            /* Dismissing without choosing is not agreement. */
+            ], { cancelable: true, onDismiss: () => resolve(false) });
+          }),
+        request: () => Location.requestBackgroundPermissionsAsync(),
+      });
+      backgroundAllowedRef.current = outcome.granted;
+      if (!outcome.granted) {
         Alert.alert(
           "Background tracking unavailable",
-          "Your hike will still be recorded while SummitReady is open, but tracking may stop when the app is closed or the phone is locked.",
+          outcome.declinedDisclosure
+            ? "Your hike will be recorded while SummitReady is open. You can turn on background tracking later in your phone's settings."
+            : "Your hike will still be recorded while SummitReady is open, but tracking may stop when the app is closed or the phone is locked.",
         );
       }
     }
