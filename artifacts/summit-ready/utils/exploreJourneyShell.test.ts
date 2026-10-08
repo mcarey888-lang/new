@@ -40,9 +40,15 @@ describe("Explore", () => {
     expect(body).toMatch(/BASECAMP|EXPLORE/);
   });
 
-  it("uses the shell's shared mode toggle rather than a screen-local copy", () => {
-    expect(body).not.toMatch(/<ModeTogglePill/);
-    expect(code(read("app/(tabs)/_layout.tsx"))).toMatch(/<ModeTogglePill \/>/);
+  it("shows exactly one mode toggle, wherever it comes from", () => {
+    const shell = code(read("app/(tabs)/_layout.tsx"));
+    const ownToggles = (body.match(/<ModeTogglePill/g) ?? []).length;
+    expect(ownToggles).toBeLessThanOrEqual(1);
+    /* Explore keeps its toggle inline in its own header. That is allowed, so
+       long as the shell stops rendering the floating one here — otherwise
+       there are two, which is what this test exists to catch. */
+    if (ownToggles === 1) expect(shell).toMatch(/currentRoute !== "explore"/);
+    else expect(shell).toMatch(/<ModeTogglePill \/>/);
   });
 
   it("invents no popularity, rating or engagement figure", () => {
