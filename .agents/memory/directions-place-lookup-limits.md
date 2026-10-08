@@ -9,6 +9,12 @@ Map-navigation credentials do not necessarily grant place search access. In this
 
 **How to apply:** Keep GPS-confirmed destinations separate from suggestions, and never retain the user's exact GPS fix when a confirmed parking feature's own coordinates suffice.
 
+On the route map, walker GPS-confirmed car parks must be green. OpenStreetMap search candidates must remain amber and visibly labelled unconfirmed; do not flatten these statuses to simplify the interface.
+
+**Why:** The map author explicitly warns that an unconfirmed parking candidate can be a farm track. The distinction is intentional safety information, unlike the unwanted blanket uncertainty badges on Explore mountain details. A GPS visit still does not establish legal access rights.
+
+**How to apply:** Preserve the confidence distinction through lookup responses, map markers and summit-card wording. Check real confirmed examples when available, and disclose when browser checks only encountered provisional candidates.
+
 Shared, source-backed parking research is now explicitly requested: show options for a mountain and save the answer for later visitors. It may be cached without a visit, but must remain suggested parking, not confirmed entrance pins or route-start evidence. Use sourced names/addresses for map-provider resolution; never invent coordinates.
 
 **Why:** On 2026-10-07 the user asked for AI parking lookup when locations are missing, with reusable answers so the next visitor can press Get directions. This supersedes the earlier blanket prohibition on caching unvisited candidates, not the GPS-confirmation or access-rights boundary.
