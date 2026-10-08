@@ -1,0 +1,155 @@
+API-wide TypeScript check after shared-branch integration. Server build/start and live map requests succeeded; these type-check errors are outside the incoming changed files.
+
+artifacts/api-server/src/__tests__/canonicalHistoryRoute.test.ts:57:22 - error TS2322: Type 'Mock<Procedure | Constructable>' is not assignable to type '(ownerUserId: string) => Promise<readonly { id: string; distanceKm: number | null; createdAt: Date; updatedAt: Date; ownerUserId: string; sourceType: string; sourceId: string; sourceVersion: string | null; ... 13 more ...; visibility: string; }[]>'.
+  Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type '(ownerUserId: string) => Promise<readonly { id: string; distanceKm: number | null; createdAt: Date; updatedAt: Date; ownerUserId: string; sourceType: string; sourceId: string; sourceVersion: string | null; ... 13 more ...; visibility: string; }[]>'.
+    Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(ownerUserId: string): Promise<readonly { id: string; distanceKm: number | null; createdAt: Date; updatedAt: Date; ownerUserId: string; sourceType: string; sourceId: string; sourceVersion: string | null; ... 13 more ...; visibility: string; }[]>'.
+
+57     dependencies = { readActivities, readLinks };
+                        ~~~~~~~~~~~~~~
+
+  artifacts/api-server/src/routes/canonical-history.ts:65:3
+    65   readActivities: (ownerUserId: string) => Promise<readonly CanonicalActivityRow[]>;
+         ~~~~~~~~~~~~~~
+    The expected type comes from property 'readActivities' which is declared here on type 'CanonicalHistoryRouteDependencies'
+
+artifacts/api-server/src/__tests__/canonicalHistoryRoute.test.ts:57:38 - error TS2322: Type 'Mock<Procedure | Constructable>' is not assignable to type '(ownerUserId: string, activityIds: readonly string[]) => Promise<readonly { id: string; createdAt: Date; metadata: unknown; activityId: string; ownerUserId: string; linkType: string; targetId: string; }[]>'.
+  Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type '(ownerUserId: string, activityIds: readonly string[]) => Promise<readonly { id: string; createdAt: Date; metadata: unknown; activityId: string; ownerUserId: string; linkType: string; targetId: string; }[]>'.
+    Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(ownerUserId: string, activityIds: readonly string[]): Promise<readonly { id: string; createdAt: Date; metadata: unknown; activityId: string; ownerUserId: string; linkType: string; targetId: string; }[]>'.
+
+57     dependencies = { readActivities, readLinks };
+                                        ~~~~~~~~~
+
+  artifacts/api-server/src/routes/canonical-history.ts:66:3
+    66   readLinks: (
+         ~~~~~~~~~
+    The expected type comes from property 'readLinks' which is declared here on type 'CanonicalHistoryRouteDependencies'
+
+artifacts/api-server/src/__tests__/uiAssetWorkflowService.test.ts:133:30 - error TS2345: Argument of type '{ candidateId: string; assetKey: string; familyId: "RANKS"; version: number; prompt: string; negativePrompt: string; model: string; referenceAssets: never[]; status: "SELECTED" | "APPROVED_ASSET"; generatedAt: string; paths: { ...; }; }' is not assignable to parameter of type 'UiAssetCandidate'.
+  Types of property 'paths' are incompatible.
+    Type '{ objectPaths: { master: string; }; }' is not assignable to type 'Record<string, string> | { masterPath: string; heroPath: string; cardPath: string; thumbnailPath: string; objectPaths: Record<string, string>; }'.
+      Type '{ objectPaths: { master: string; }; }' is missing the following properties from type '{ masterPath: string; heroPath: string; cardPath: string; thumbnailPath: string; objectPaths: Record<string, string>; }': masterPath, heroPath, cardPath, thumbnailPath
+
+133     manifest.candidates.push(master, refinement, curator, extra);
+                                 ~~~~~~
+
+artifacts/api-server/src/lib/objectStorage.ts:270:11 - error TS2339: Property 'signed_url' does not exist on type 'unknown'.
+
+270   const { signed_url: signedURL } = await response.json();
+              ~~~~~~~~~~
+
+artifacts/api-server/src/routes/adjust-plan.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/alpine.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/artwork.ts:154:24 - error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'string | Record<string, string>'.
+  No index signature with a parameter of type 'string' was found on type 'string | Record<string, string>'.
+
+154     const objectPath = candidate.paths.objectPaths?.[param(req.params.crop)];
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/canonical-history.ts:115:9 - error TS2345: Argument of type '{ links: { linkType: CanonicalActivityLinkType; targetId: string; metadata: Record<string, unknown>; }[]; id: string; distanceKm: number | null; createdAt: Date; ... 18 more ...; visibility: string; }[]' is not assignable to parameter of type 'readonly CanonicalHistoryActivity[]'.
+  Type '{ links: { linkType: CanonicalActivityLinkInput["linkType"]; targetId: string; metadata: Record<string, unknown>; }[]; id: string; distanceKm: number | null; createdAt: Date; updatedAt: Date; ... 17 more ...; visibility: string; }' is not assignable to type 'CanonicalHistoryActivity'.
+    Types of property 'primaryContext' are incompatible.
+      Type 'string' is not assignable to type '"training" | "expedition" | "free_hike" | "mountain_simulation"'.
+
+115         activities.map((activity) => ({
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+116           ...activity,
+    ~~~~~~~~~~~~~~~~~~~~~~
+... 
+121           })),
+    ~~~~~~~~~~~~~~
+122         })),
+    ~~~~~~~~~~~
+
+artifacts/api-server/src/routes/coach.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/hills-unified.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/hills.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/mountain-discovery.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/mountain.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/routes/virtual-expedition.ts:21:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+21 import { openai } from "@workspace/integrations-openai-ai-server";
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/services/artwork/imageProvider.ts:9:49 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+9 import { editImages, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
+                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/services/canonicalActivityProjections.ts:99:7 - error TS2322: Type '("training" | "expeditions" | "mountains_free_hike")[]' is not assignable to type 'never[]'.
+  Type '"training" | "expeditions" | "mountains_free_hike"' is not assignable to type 'never'.
+    Type '"training"' is not assignable to type 'never'.
+
+99       merged.matchedContexts = contextMatches(merged);
+         ~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/services/mountain/canonicalRouteRecord.ts:3:43 - error TS6059: File '/home/runner/workspace/artifacts/summit-ready/utils/routeIntelligence.ts' is not under 'rootDir' '/home/runner/workspace/artifacts/api-server/src'. 'rootDir' is expected to contain all source files.
+
+3 import type { CanonicalRouteRecord } from "../../../../summit-ready/utils/routeIntelligence";
+                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+artifacts/api-server/src/services/mountain/canonicalRouteRecord.ts:321:5 - error TS2322: Type '{ mountain: { id: string; canonicalName: string | undefined; aliases: never[]; verification: { engineStatus: string; productLifecycle: string; qaFlags: never[]; }; provenance: { provider: string; sourceUrl: string; attribution: string; rightsClassification: string; provenanceVersion: string; qaFlags: never[]; }; rou...' is not assignable to type 'CanonicalRouteRecord'.
+  The types of 'mountain.id' are incompatible between these types.
+    Type 'string' is not assignable to type '`sde:mountain:${string}`'.
+
+321     record,
+        ~~~~~~
+
+  artifacts/api-server/src/services/mountain/canonicalRouteRecord.ts:14:3
+    14   record: CanonicalRouteRecord | null;
+         ~~~~~~
+    The expected type comes from property 'record' which is declared here on type 'CanonicalRouteRecordResponse'
+
+artifacts/api-server/src/services/mountainParkingResearch.ts:2:24 - error TS6305: Output file '/home/runner/workspace/lib/integrations-openai-ai-server/dist/index.d.ts' has not been built from source file '/home/runner/workspace/lib/integrations-openai-ai-server/src/index.ts'.
+
+2 import { openai } from "@workspace/integrations-openai-ai-server";
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Found 19 errors in 17 files.
+
+Errors  Files
+     2  artifacts/api-server/src/__tests__/canonicalHistoryRoute.test.ts:57
+     1  artifacts/api-server/src/__tests__/uiAssetWorkflowService.test.ts:133
+     1  artifacts/api-server/src/lib/objectStorage.ts:270
+     1  artifacts/api-server/src/routes/adjust-plan.ts:2
+     1  artifacts/api-server/src/routes/alpine.ts:2
+     1  artifacts/api-server/src/routes/artwork.ts:154
+     1  artifacts/api-server/src/routes/canonical-history.ts:115
+     1  artifacts/api-server/src/routes/coach.ts:2
+     1  artifacts/api-server/src/routes/hills-unified.ts:2
+     1  artifacts/api-server/src/routes/hills.ts:2
+     1  artifacts/api-server/src/routes/mountain-discovery.ts:2
+     1  artifacts/api-server/src/routes/mountain.ts:2
+     1  artifacts/api-server/src/routes/virtual-expedition.ts:21
+     1  artifacts/api-server/src/services/artwork/imageProvider.ts:9
+     1  artifacts/api-server/src/services/canonicalActivityProjections.ts:99
+     2  artifacts/api-server/src/services/mountain/canonicalRouteRecord.ts:3
+     1  artifacts/api-server/src/services/mountainParkingResearch.ts:2

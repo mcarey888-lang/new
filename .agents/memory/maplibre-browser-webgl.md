@@ -36,6 +36,17 @@ harness failures.
 **How to apply:** Await `getData()` when comparing the actual source's summit IDs
 before and after a race. Keep automation errors separate from page exceptions.
 
+Verify that the browser reference is an actual MapLibre instance before inspecting
+its sources; `typeof map === "object"` is not enough.
+
+**Why:** A DOM element named `map` can appear as a browser global while the real
+map instance remains inside a closure. Inspection then fails in the automation
+without indicating an application failure.
+
+**How to apply:** Confirm the public map methods exist on the inspected instance,
+then read source data through `getData()`. Do not report harness exceptions as
+page errors.
+
 Verify permission refusal in a fresh page session after a successful geolocation
 test; changing the automation permission alone may leave a cached successful fix.
 
