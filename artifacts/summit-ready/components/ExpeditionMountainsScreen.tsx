@@ -16,6 +16,7 @@ import {
 } from "lucide-react-native";
 import { VirtualMountainCard } from "@/components/VirtualMountainCard";
 import { ExpeditionDayCount } from "@/components/ExpeditionDayCount";
+import { ManualDnaHeader } from "@/components/ManualDnaHeader";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -1351,10 +1352,14 @@ export default function ExpeditionMountainsScreen() {
         distanceKm: manual.targetDna.distanceKm,
         averageGradientPercent: manual.targetDna.averageGradientPercent,
       });
-      const { gainM: gain, distanceKm: distance, gainMatch, distanceMatch, overall } = dna;
       return (
-        <LinearGradient colors={T.bgGrad} style={{ flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPad, paddingBottom: botPad, paddingHorizontal: 16, gap: 12 }}>
+        <LinearGradient colors={T.bgGrad} style={{ flex: 1, paddingTop: topPad }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            stickyHeaderIndices={[2]}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: botPad, paddingHorizontal: 16, gap: 12 }}
+          >
             <TouchableOpacity onPress={() => { setView("browse"); setResults(null); }} style={s.backRow}>
               <ArrowLeft size={16} color={T.textMuted} /><Text style={s.backText}>Back to choices</Text>
             </TouchableOpacity>
@@ -1365,13 +1370,14 @@ export default function ExpeditionMountainsScreen() {
               <Text style={s.improveCandidateMeta}>Target average gradient: {manual.targetDna.averageGradientPercent == null ? "unavailable" : `${manual.targetDna.averageGradientPercent}% (estimated)`}</Text>
               <Text style={s.improveCandidateMeta}>Target technical character: {manual.targetDna.technicalCharacter ?? "unavailable"}</Text>
             </View>
-            <View style={[s.card, { gap: 8 }]}>
-              <Text style={s.sectionTitle}>Live expedition DNA</Text>
-              <Text style={s.manualHeadline}>{overall}% match</Text>
-              <Text style={s.improveCandidateMeta}>Gain {gain.toLocaleString()}m / {manual.targetDna.elevationGainM.toLocaleString()}m · {gainMatch}% · {gain < manual.targetDna.elevationGainM ? `${Math.round(manual.targetDna.elevationGainM - gain)}m gain remaining` : "gain above target"}</Text>
-              <Text style={s.improveCandidateMeta}>Distance {distance.toFixed(1)}km / {manual.targetDna.distanceKm}km · {distanceMatch}% · {distance < manual.targetDna.distanceKm ? `${(manual.targetDna.distanceKm - distance).toFixed(1)}km remaining` : "distance above target"}</Text>
-              <Text style={s.improveCandidateMeta}>Estimated average gradient {dna.averageGradientPercent == null ? "unavailable" : `${dna.averageGradientPercent}%`} · Gradient similarity {dna.gradientSimilarity}% · Technical suitability {dna.technicalSuitability}%</Text>
-              <Text style={s.improveCandidateMeta}>{gain === 0 ? "No summits selected yet." : dna.range === "within" ? "Within the preferred range." : dna.range === "within_widened" ? "Within the widened preferred range." : dna.range === "below" ? "Below the preferred range." : "Above the preferred range."}</Text>
+            <View style={{ paddingBottom: 8, backgroundColor: T.bgGrad[0] }}>
+              <ManualDnaHeader
+                dna={dna}
+                target={{ gainM: manual.targetDna.elevationGainM, distanceKm: manual.targetDna.distanceKm, averageGradientPercent: manual.targetDna.averageGradientPercent }}
+                mountainName={tp.name}
+                selectedCount={selected.length}
+                hasGradientEvidence={selected.every(route => route.estimatedAverageGradientPercent != null && Number.isFinite(route.estimatedAverageGradientPercent))}
+              />
             </View>
             <View style={s.card}>
               <Text style={s.sectionTitle}>Selected Summits</Text>
