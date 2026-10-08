@@ -13,7 +13,9 @@ export type ParkingStatus = "gps_confirmed" | "internet_lookup";
 
 export interface ParkingPin {
   placeId: string;
-  name: string;
+  /** Null when it has no name. The map labels those by distance, which at
+   *  least tells them apart; a placeholder repeated six times does not. */
+  name: string | null;
   lat: number;
   lng: number;
   distanceM: number;

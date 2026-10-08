@@ -293,6 +293,32 @@ describe("the car parks on the summit card", () => {
     expect(note.textContent).toBe("3 possible car parks on the map — none confirmed");
   });
 
+  it("tells unnamed car parks apart by distance, not by repeating a placeholder", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({
+      parking: [
+        { ...guess, placeId: "N5", name: null, distanceM: 3123 },
+        { ...guess, placeId: "N6", name: null, distanceM: 4772 },
+      ],
+    });
+    await h.tick();
+    const labels = h.parking()!.features.map(f => f.properties["label"]);
+    /* Six pins all reading "Mapped parking near Scafell Pike" is what this
+       replaced: identical, and true of none of them in particular. */
+    expect(labels[0]).toBe("Car park · 3.1 km (unconfirmed)");
+    expect(labels[1]).toBe("Car park · 4.8 km (unconfirmed)");
+    expect(new Set(labels).size).toBe(2);
+  });
+
+  it("falls back to metres for a car park at the foot of the hill", async () => {
+    const h = harness();
+    h.api.showParkingFor(HILL);
+    h.queue[0]!.resolve({ parking: [{ ...guess, name: null, distanceM: 420 }] });
+    await h.tick();
+    expect(h.parking()!.features[0]!.properties["label"]).toBe("Car park · 420 m (unconfirmed)");
+  });
+
   it("labels an unconfirmed pin as unconfirmed on the map itself", async () => {
     const h = harness();
     h.api.showParkingFor(HILL);
